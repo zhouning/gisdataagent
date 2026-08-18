@@ -15,6 +15,7 @@ from typing import Any
 from sqlalchemy import text
 
 from .db_engine import get_engine
+from .i18n import t
 from .observability import get_logger
 
 logger = get_logger("asset_lifecycle")
@@ -24,15 +25,19 @@ class AssetLifecycleRepositoryError(RuntimeError):
     """Raised when the authoritative catalog cannot be queried."""
 
 
-_STAGE_LABELS = {
-    "discovered": "已发现",
-    "documented": "已编目",
-    "governed": "已治理",
-    "published": "已发布",
-    "operating": "运营中",
-    "retired": "已退役",
+_STAGE_LABEL_KEYS = {
+    "discovered": "asset.stage.discovered",
+    "documented": "asset.stage.documented",
+    "governed": "asset.stage.governed",
+    "published": "asset.stage.published",
+    "operating": "asset.stage.operating",
+    "retired": "asset.stage.retired",
 }
-_STAGE_ORDER = tuple(_STAGE_LABELS)
+_STAGE_ORDER = tuple(_STAGE_LABEL_KEYS)
+
+
+def _stage_label(stage_id: str) -> str:
+    return t(_STAGE_LABEL_KEYS[stage_id])
 
 
 def _json_object(value: Any) -> dict[str, Any]:
@@ -150,7 +155,7 @@ def _readiness_check(
             "blocking": False,
             "weight": weight,
             "earned": weight,
-            "message": "不适用",
+            "message": t("asset.readiness.not_applicable"),
         }
     return {
         "id": check_id,
@@ -305,38 +310,52 @@ def calculate_asset_lifecycle(
     )
     checks = [
         _readiness_check(
-            "responsible_owner", "责任人", bool(owner), 15, "缺少责任人",
+            "responsible_owner", t("asset.readiness.owner_label"), bool(owner), 15,
+            t("asset.readiness.owner_missing"),
             evidence=owner,
         ),
         _readiness_check(
-            "description", "资产描述", bool(description), 15, "缺少资产描述",
-            evidence="描述已填写",
+            "description", t("asset.readiness.description_label"), bool(description), 15,
+            t("asset.readiness.description_missing"),
+            evidence=t("asset.readiness.description_present"),
         ),
         _readiness_check(
-            "classification", "资产分类", bool(asset_type and asset_type != "other"), 10,
-            "缺少资产分类", evidence=asset_type,
+            "classification", t("asset.readiness.classification_label"),
+            bool(asset_type and asset_type != "other"), 10,
+            t("asset.readiness.classification_missing"), evidence=asset_type,
         ),
         _readiness_check(
-            "spatial_reference", "空间参考", bool(crs), 10, "空间资产缺少 CRS",
+            "spatial_reference", t("asset.readiness.spatial_reference_label"), bool(crs), 10,
+            t("asset.readiness.spatial_reference_missing"),
             evidence=crs, applicable=spatial_asset,
         ),
         _readiness_check(
-            "sensitivity", "敏感级别", _has_value(sensitivity), 10, "缺少敏感级别",
+            "sensitivity", t("asset.readiness.sensitivity_label"), _has_value(sensitivity), 10,
+            t("asset.readiness.sensitivity_missing"),
             evidence=str(sensitivity or ""),
         ),
         _readiness_check(
-            "quality_evidence", "质量证据", has_quality_evidence, 15, "尚未执行质量检查",
-            evidence=f"质量分 {quality_score:g}" if quality_score is not None else "",
-        ),
-        _readiness_check(
-            "usage_authorization", "使用授权", _has_value(license_value), 15,
-            "缺少许可或使用授权", evidence=str(license_value or ""),
-        ),
-        _readiness_check(
-            "lineage_evidence", "血缘证据", has_lineage, 10, "尚无可验证的血缘关系",
+            "quality_evidence", t("asset.readiness.quality_label"), has_quality_evidence, 15,
+            t("asset.readiness.quality_missing"),
             evidence=(
-                f"{lineage_view['source_count']} 个上游 / "
-                f"{lineage_view['derived_count']} 个下游"
+                t("asset.readiness.quality_score", score=quality_score)
+                if quality_score is not None
+                else ""
+            ),
+        ),
+        _readiness_check(
+            "usage_authorization", t("asset.readiness.usage_label"), _has_value(license_value), 15,
+            t("asset.readiness.usage_missing"), evidence=str(license_value or ""),
+        ),
+        _readiness_check(
+            "lineage_evidence", t("asset.readiness.lineage_label"), has_lineage, 10,
+            t("asset.readiness.lineage_missing"),
+            evidence=(
+                t(
+                    "asset.readiness.lineage_counts",
+                    upstream=lineage_view["source_count"],
+                    downstream=lineage_view["derived_count"],
+                )
             ),
             blocking=False,
         ),
@@ -347,12 +366,12 @@ def calculate_asset_lifecycle(
 
     publication_evidence: list[str] = []
     if shared:
-        publication_evidence.append("目录资产已共享")
+        publication_evidence.append(t("asset.publication.shared"))
     if access_level in {"shared", "public", "published"}:
-        publication_evidence.append(f"访问级别为 {access_level}")
+        publication_evidence.append(t("asset.publication.access_level", level=access_level))
     publication_status = str(_path(operational, "publication", "status") or "").lower()
     if publication_status in {"published", "active"}:
-        publication_evidence.append(f"发布状态为 {publication_status}")
+        publication_evidence.append(t("asset.publication.status", status=publication_status))
     endpoint = _first_value(
         operational,
         (
@@ -363,7 +382,7 @@ def calculate_asset_lifecycle(
         ),
     )
     if endpoint:
-        publication_evidence.append("已登记服务端点")
+        publication_evidence.append(t("asset.publication.endpoint"))
     data_product_urn = _display_value(
         _first_value(
             operational,
@@ -374,7 +393,7 @@ def calculate_asset_lifecycle(
         )
     )
     if data_product_urn:
-        publication_evidence.append("已关联治理数据产品")
+        publication_evidence.append(t("asset.publication.data_product"))
 
     lifecycle_status = str(
         _path(operational, "lifecycle", "status")
@@ -421,7 +440,7 @@ def calculate_asset_lifecycle(
             status = "pending"
         stages.append({
             "id": stage_id,
-            "label": _STAGE_LABELS[stage_id],
+            "label": _stage_label(stage_id),
             "status": status,
             "achieved": achieved[stage_id],
         })
@@ -459,7 +478,7 @@ def calculate_asset_lifecycle(
             "updated_at": _iso(asset.get("updated_at") or asset.get("updated")),
         },
         "current_stage": current_stage,
-        "current_stage_label": _STAGE_LABELS[current_stage],
+        "current_stage_label": _stage_label(current_stage),
         "stages": stages,
         "readiness": {
             "score": readiness_score,

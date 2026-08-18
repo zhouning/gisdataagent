@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
 
 interface ScenarioInfo {
   id: string;
@@ -35,15 +37,15 @@ interface PredictionResult {
 }
 
 const LULC_COLORS: Record<string, string> = {
-  '水体': '#4169E1',
-  '树木': '#228B22',
-  '草地': '#90EE90',
-  '灌木': '#DEB887',
-  '耕地': '#FFD700',
-  '建设用地': '#DC143C',
-  '裸地': '#D2B48C',
-  '冰雪': '#FFFFFF',
-  '湿地': '#20B2AA',
+  '\u6c34\u4f53': '#4169E1',
+  '\u6811\u6728': '#228B22',
+  '\u8349\u5730': '#90EE90',
+  '\u704c\u6728': '#DEB887',
+  '\u8015\u5730': '#FFD700',
+  '\u5efa\u8bbe\u7528\u5730': '#DC143C',
+  '\u88f8\u5730': '#D2B48C',
+  '\u51b0\u96ea': '#FFFFFF',
+  '\u6e7f\u5730': '#20B2AA',
 };
 
 interface CounterfactualResult {
@@ -57,6 +59,7 @@ interface CounterfactualResult {
 }
 
 export default function WorldModelTab() {
+  const { t } = useTranslation();
   const [scenarios, setScenarios] = useState<ScenarioInfo[]>([]);
   const [status, setStatus] = useState<ModelStatus | null>(null);
   const [selectedScenario, setSelectedScenario] = useState('baseline');
@@ -75,11 +78,11 @@ export default function WorldModelTab() {
   const [cfResult, setCfResult] = useState<CounterfactualResult | null>(null);
 
   useEffect(() => {
-    fetch('/api/world-model/status', { credentials: 'include' })
+    fetch('/api/world-model/status', { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.ok ? r.json() : null)
       .then(d => d && setStatus(d))
       .catch(() => {});
-    fetch('/api/world-model/scenarios', { credentials: 'include' })
+    fetch('/api/world-model/scenarios', { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.ok ? r.json() : null)
       .then(d => d?.scenarios && setScenarios(d.scenarios))
       .catch(() => {});
@@ -92,13 +95,13 @@ export default function WorldModelTab() {
     try {
       const parts = bbox.split(',').map(Number);
       if (parts.length !== 4 || parts.some(isNaN)) {
-        setError('bbox 格式错误，应为 minx,miny,maxx,maxy');
+        setError(t('worldModel.errors.invalidBbox'));
         return;
       }
       const resp = await fetch('/api/world-model/predict', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bbox: parts,
           scenario: selectedScenario,
@@ -113,7 +116,7 @@ export default function WorldModelTab() {
         setPrediction(data);
         // Trigger map panel update by fetching pending map data
         try {
-          const mapResp = await fetch('/api/map/pending', { credentials: 'include' });
+          const mapResp = await fetch('/api/map/pending', { credentials: 'include', headers: getLocaleHeaders() });
           const mapData = await mapResp.json();
           if (mapData.map_update && (window as any).__handleMapUpdate) {
             (window as any).__handleMapUpdate(mapData.map_update);
@@ -121,7 +124,7 @@ export default function WorldModelTab() {
         } catch { /* map update is best-effort */ }
       }
     } catch (e: any) {
-      setError(e.message || 'Request failed');
+      setError(e.message || t('worldModel.errors.requestFailed'));
     } finally {
       setLoading(false);
     }
@@ -136,7 +139,7 @@ export default function WorldModelTab() {
       const resp = await fetch('/api/causal-world-model/intervene', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bbox,
           intervention_sub_bbox: interventionSubBbox,
@@ -150,7 +153,7 @@ export default function WorldModelTab() {
       if (data.error) setError(data.error);
       else setCfResult(data);
     } catch (e: any) {
-      setError(e.message || 'Request failed');
+      setError(e.message || t('worldModel.errors.requestFailed'));
     } finally {
       setLoading(false);
     }
@@ -165,7 +168,7 @@ export default function WorldModelTab() {
       const resp = await fetch('/api/causal-world-model/counterfactual', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bbox,
           scenario_a: selectedScenario,
@@ -178,7 +181,7 @@ export default function WorldModelTab() {
       if (data.error) setError(data.error);
       else setCfResult(data);
     } catch (e: any) {
-      setError(e.message || 'Request failed');
+      setError(e.message || t('worldModel.errors.requestFailed'));
     } finally {
       setLoading(false);
     }
@@ -206,6 +209,17 @@ export default function WorldModelTab() {
 
   const timelineData = buildTimelineData();
 
+  const scenarioLabel = (scenario: ScenarioInfo) => t(`worldModel.scenarios.${scenario.id}.name`, { defaultValue: scenario.name_en || scenario.name_zh || scenario.id });
+  const scenarioDescription = (scenario: ScenarioInfo) => t(`worldModel.scenarios.${scenario.id}.description`, { defaultValue: scenario.description });
+  const lulcLabel = (name: string) => {
+    const keyByName: Record<string, string> = {
+      '\u6c34\u4f53': 'water', '\u6811\u6728': 'trees', '\u8349\u5730': 'grass', '\u704c\u6728': 'shrub', '\u8015\u5730': 'cropland',
+      '\u5efa\u8bbe\u7528\u5730': 'builtUp', '\u88f8\u5730': 'bare', '\u51b0\u96ea': 'snowIce', '\u6e7f\u5730': 'wetland',
+    };
+    return t(`worldModel.lulc.${keyByName[name] || name}`, { defaultValue: name });
+  };
+  const formatPercent = (value: number) => `${formatNumber(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+
   // Get all unique classes from transition matrix
   const tmClasses = prediction
     ? Array.from(new Set([
@@ -229,7 +243,7 @@ export default function WorldModelTab() {
                 color: mode === m ? '#fff' : '#333',
               }}
             >
-              {m === 'predict' ? '预测' : m === 'intervene' ? '干预' : '反事实'}
+              {t(`worldModel.modes.${m}`)}
             </button>
           ))}
         </div>
@@ -237,43 +251,43 @@ export default function WorldModelTab() {
         <div className="worldmodel-status">
           {status ? (
             <span className={`status-badge ${status.weights_exist && status.gee_available ? 'ready' : 'warning'}`}>
-              {status.weights_exist && status.gee_available ? '就绪' : status.gee_available ? '需训练' : 'GEE 不可用'}
+              {status.weights_exist && status.gee_available ? t('worldModel.status.ready') : status.gee_available ? t('worldModel.status.trainingRequired') : t('worldModel.status.geeUnavailable')}
             </span>
           ) : (
-            <span className="status-badge loading">检测中...</span>
+            <span className="status-badge loading">{t('worldModel.status.checking')}</span>
           )}
-          {status?.param_count ? <span className="param-info">{(status.param_count / 1000).toFixed(1)}K params</span> : null}
+          {status?.param_count ? <span className="param-info">{formatNumber(status.param_count / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}K {t('worldModel.status.parameters')}</span> : null}
         </div>
 
         <div className="config-row">
-          <label>区域 (bbox)</label>
+          <label>{t('worldModel.controls.region')}</label>
           <input
             type="text"
             value={bbox}
             onChange={e => setBbox(e.target.value)}
-            placeholder="minx,miny,maxx,maxy"
+            placeholder={t('worldModel.controls.bboxPlaceholder')}
           />
         </div>
 
         <div className="config-row">
-          <label>情景</label>
+          <label>{t('worldModel.controls.scenario')}</label>
           <select value={selectedScenario} onChange={e => setSelectedScenario(e.target.value)}>
             {scenarios.map(s => (
               <option key={s.id} value={s.id}>
-                {s.name_zh} ({s.id})
+                {scenarioLabel(s)} ({s.id})
               </option>
             ))}
           </select>
         </div>
         {scenarios.find(s => s.id === selectedScenario)?.description && (
           <div className="scenario-desc">
-            {scenarios.find(s => s.id === selectedScenario)?.description}
+            {scenarioDescription(scenarios.find(s => s.id === selectedScenario)!)}
           </div>
         )}
 
         <div className="config-row-group">
           <div className="config-row">
-            <label>起始年份</label>
+            <label>{t('worldModel.controls.startYear')}</label>
             <input
               type="number"
               min={2017}
@@ -283,7 +297,7 @@ export default function WorldModelTab() {
             />
           </div>
           <div className="config-row">
-            <label>预测年数</label>
+            <label>{t('worldModel.controls.horizon')}</label>
             <input
               type="range"
               min={1}
@@ -291,7 +305,7 @@ export default function WorldModelTab() {
               value={nYears}
               onChange={e => setNYears(Number(e.target.value))}
             />
-            <span className="range-label">{nYears} 年</span>
+            <span className="range-label">{t('worldModel.controls.years', { count: formatNumber(nYears) })}</span>
           </div>
         </div>
 
@@ -299,19 +313,19 @@ export default function WorldModelTab() {
         {mode === 'intervene' && (
           <>
             <div className="config-row">
-              <label>干预子区域</label>
+              <label>{t('worldModel.controls.interventionBbox')}</label>
               <input
                 type="text"
                 value={interventionSubBbox}
                 onChange={e => setInterventionSubBbox(e.target.value)}
-                placeholder="minx,miny,maxx,maxy (须在主区域内)"
+                placeholder={t('worldModel.controls.interventionBboxPlaceholder')}
               />
             </div>
             <div className="config-row">
-              <label>干预类型</label>
+              <label>{t('worldModel.controls.interventionType')}</label>
               <select value={interventionType} onChange={e => setInterventionType(e.target.value)}>
                 {scenarios.map(s => (
-                  <option key={s.id} value={s.id}>{s.name_zh}</option>
+                  <option key={s.id} value={s.id}>{scenarioLabel(s)}</option>
                 ))}
               </select>
             </div>
@@ -319,10 +333,10 @@ export default function WorldModelTab() {
         )}
         {mode === 'counterfactual' && (
           <div className="config-row">
-            <label>对照情景 (B)</label>
+            <label>{t('worldModel.controls.scenarioB')}</label>
             <select value={scenarioB} onChange={e => setScenarioB(e.target.value)}>
               {scenarios.map(s => (
-                <option key={s.id} value={s.id}>{s.name_zh}</option>
+                <option key={s.id} value={s.id}>{scenarioLabel(s)}</option>
               ))}
             </select>
           </div>
@@ -333,7 +347,7 @@ export default function WorldModelTab() {
           onClick={mode === 'predict' ? handlePredict : mode === 'intervene' ? handleIntervene : handleCounterfactual}
           disabled={loading}
         >
-          {loading ? '计算中...' : mode === 'predict' ? '运行预测' : mode === 'intervene' ? '运行干预分析' : '运行反事实对比'}
+          {loading ? t('worldModel.actions.computing') : t(`worldModel.actions.${mode}`)}
         </button>
 
         {error && <div className="error-msg">{error}</div>}
@@ -348,12 +362,12 @@ export default function WorldModelTab() {
           {/* Timeline Chart - Stacked Area */}
           {timelineData && (
             <div className="timeline-section">
-              <h4>面积分布变化趋势</h4>
+              <h4>{t('worldModel.results.areaTrend')}</h4>
               <div className="timeline-chart">
                 <table className="timeline-table">
                   <thead>
                     <tr>
-                      <th>类别</th>
+                      <th>{t('worldModel.results.class')}</th>
                       {timelineData.years.map(y => (
                         <th key={y}>{y}</th>
                       ))}
@@ -367,11 +381,11 @@ export default function WorldModelTab() {
                             className="color-dot"
                             style={{ backgroundColor: s.color }}
                           />
-                          {s.name}
+                          {lulcLabel(s.name)}
                         </td>
                         {s.data.map((v, i) => (
                           <td key={i} className="pct-cell">
-                            {v.toFixed(1)}%
+                            {formatPercent(v)}
                           </td>
                         ))}
                       </tr>
@@ -391,7 +405,7 @@ export default function WorldModelTab() {
                               height: `${s.data[yi]}%`,
                               backgroundColor: s.color,
                             }}
-                            title={`${s.name}: ${s.data[yi].toFixed(1)}%`}
+                            title={`${lulcLabel(s.name)}: ${formatPercent(s.data[yi])}`}
                           />
                         ))}
                       </div>
@@ -407,17 +421,17 @@ export default function WorldModelTab() {
           {tmClasses.length > 0 && (
             <div className="transition-section">
               <h4>
-                转移矩阵 ({prediction.start_year} → {prediction.years[prediction.years.length - 1]})
+                {t('worldModel.results.transitionMatrix', { from: prediction.start_year, to: prediction.years[prediction.years.length - 1] })}
               </h4>
               <div className="transition-matrix">
                 <table>
                   <thead>
                     <tr>
-                      <th>From ↓ / To →</th>
+                      <th>{t('worldModel.results.fromTo')}</th>
                       {tmClasses.map(c => (
                         <th key={c}>
                           <span className="color-dot" style={{ backgroundColor: LULC_COLORS[c] || '#808080' }} />
-                          {c}
+                          {lulcLabel(c)}
                         </th>
                       ))}
                     </tr>
@@ -427,7 +441,7 @@ export default function WorldModelTab() {
                       <tr key={from}>
                         <td className="row-header">
                           <span className="color-dot" style={{ backgroundColor: LULC_COLORS[from] || '#808080' }} />
-                          {from}
+                          {lulcLabel(from)}
                         </td>
                         {tmClasses.map(to => {
                           const val = prediction.transition_matrix[from]?.[to] ?? 0;
@@ -446,7 +460,7 @@ export default function WorldModelTab() {
                                   : 'transparent',
                               }}
                             >
-                              {val > 0 ? val : '—'}
+                              {val > 0 ? formatNumber(val) : '—'}
                             </td>
                           );
                         })}
@@ -459,7 +473,7 @@ export default function WorldModelTab() {
           )}
 
           <div className="result-meta">
-            网格: {prediction.grid_shape[0]}×{prediction.grid_shape[1]} | 耗时: {prediction.elapsed_seconds}s
+            {t('worldModel.results.meta', { rows: formatNumber(prediction.grid_shape[0]), columns: formatNumber(prediction.grid_shape[1]), seconds: formatNumber(prediction.elapsed_seconds, { maximumFractionDigits: 2 }) })}
           </div>
         </div>
       )}
@@ -467,31 +481,31 @@ export default function WorldModelTab() {
       {/* Causal World Model Results (Angle C) */}
       {cfResult && (
         <div className="worldmodel-results">
-          <div className="result-summary">{cfResult.summary || '分析完成'}</div>
+          <div className="result-summary">{cfResult.summary || t('worldModel.results.analysisComplete')}</div>
           {cfResult.aggregate_effects && (
             <div style={{ background: '#f5f5f5', padding: '8px 12px', borderRadius: '6px', margin: '8px 0', fontSize: '13px' }}>
-              <strong>总体效应：</strong>
-              变化像素占比 {cfResult.aggregate_effects.total_changed_pct?.toFixed(1)}%
-              {cfResult.aggregate_effects.dominant_change && ` | 主要变化: ${cfResult.aggregate_effects.dominant_change}`}
+              <strong>{t('worldModel.results.aggregateEffect')}：</strong>
+              {t('worldModel.results.changedPixelShare', { value: formatPercent(cfResult.aggregate_effects.total_changed_pct ?? 0) })}
+              {cfResult.aggregate_effects.dominant_change && ` | ${t('worldModel.results.dominantChange')}: ${lulcLabel(cfResult.aggregate_effects.dominant_change)}`}
             </div>
           )}
           {cfResult.per_year_effects && (
             <div className="timeline-section">
-              <h4>逐年效应</h4>
+              <h4>{t('worldModel.results.yearlyEffects')}</h4>
               <table className="timeline-table">
                 <thead>
                   <tr>
-                    <th>年份</th>
-                    <th>变化像素</th>
-                    <th>变化比例</th>
+                    <th>{t('worldModel.results.year')}</th>
+                    <th>{t('worldModel.results.changedPixels')}</th>
+                    <th>{t('worldModel.results.changedShare')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {Object.entries(cfResult.per_year_effects).map(([year, eff]) => (
                     <tr key={year}>
                       <td>{year}</td>
-                      <td>{(eff as any).changed_pixels}</td>
-                      <td>{((eff as any).changed_pct ?? 0).toFixed(1)}%</td>
+                      <td>{formatNumber((eff as any).changed_pixels)}</td>
+                      <td>{formatPercent((eff as any).changed_pct ?? 0)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -505,9 +519,9 @@ export default function WorldModelTab() {
       {!prediction && !cfResult && !loading && !error && (
         <div className="empty-state">
           <div className="empty-icon">🌍</div>
-          <div>配置参数后点击"运行预测"</div>
+          <div>{t('worldModel.empty.title')}</div>
           <div className="empty-hint">
-            世界模型将预测指定区域在不同政策情景下的土地利用变化趋势
+            {t('worldModel.empty.description')}
           </div>
         </div>
       )}

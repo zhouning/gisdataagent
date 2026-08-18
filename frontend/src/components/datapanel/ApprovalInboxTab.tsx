@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
   Ban,
@@ -36,52 +37,16 @@ import {
   type ApprovalCaseNotificationRecoveryEvent,
   type ApprovalPrincipal,
 } from './platformControlApi';
+import { formatDate, formatNumber } from '../../i18n';
 
 const PAGE_SIZE = 30;
 type StatusFilter = '' | ApprovalCase['status'];
 type Verdict = Exclude<ApprovalCase['status'], 'pending'>;
 type AssignmentOperation = 'assign' | 'reassign' | 'delegate' | 'release';
 
-const STATUS_LABELS: Record<ApprovalCase['status'], string> = {
-  pending: '待审批',
-  approved: '已批准',
-  rejected: '已驳回',
-  cancelled: '已取消',
-};
-
-const VERDICT_LABELS: Record<Verdict, string> = {
-  approved: '批准',
-  rejected: '驳回',
-  cancelled: '取消',
-};
-
-const NOTIFICATION_KIND_LABELS: Record<ApprovalCaseNotification['notification_kind'], string> = {
-  requested: '请求提醒',
-  expired: '到期告警',
-  decided: '关闭通知',
-};
-
-const NOTIFICATION_STATUS_LABELS: Record<ApprovalCaseNotification['status'], string> = {
-  pending: '待投递',
-  in_flight: '投递中',
-  done: '已送达',
-  failed: '投递失败',
-  suppressed: '已抑制',
-};
-
-const ASSIGNMENT_ACTION_LABELS: Record<ApprovalCaseAssignmentEvent['action'], string> = {
-  assigned: '指派',
-  reassigned: '重指派',
-  delegated: '委托',
-  released: '释放',
-  closed: '关闭',
-};
-
-function formatDate(value?: string | null): string {
+function formatApprovalDate(value?: string | null): string {
   if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString('zh-CN', {
+  return formatDate(value, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -98,39 +63,11 @@ function resourceName(resourceUrn: string): string {
   return resourceUrn.split('/').pop() || resourceUrn;
 }
 
-function principalLabel(principal: ApprovalPrincipal): string {
-  return `${principal.display_name} · ${principal.principal_type === 'team' ? '团队' : '个人'}`;
-}
-
-function accessReasonText(reason?: string): string {
-  const labels: Record<string, string> = {
-    reserved: '该事项已由其他负责人或团队承接',
-    not_registered: '当前账号尚未登记为审批主体',
-    inactive: '当前审批主体已停用',
-    not_approval_eligible: '当前账号未获得审批资格',
-    unavailable: '当前账号处于不在岗状态',
-    not_yet_valid: '审批资格尚未生效',
-    expired: '审批资格已经到期',
-    requester_is_not_independent: '申请人不能审批自己的申请',
-  };
-  return reason ? labels[reason] || '当前身份不满足审批资格规则' : '正在解析审批资格';
-}
-
-function compactJson(value: Record<string, unknown>, maxLength = 1800): string {
+function compactJson(value: Record<string, unknown>, truncatedLabel: string, maxLength = 1800): string {
   const serialized = JSON.stringify(value, null, 2);
   return serialized.length > maxLength
-    ? `${serialized.slice(0, maxLength)}\n...内容已截断`
+    ? `${serialized.slice(0, maxLength)}\n${truncatedLabel}`
     : serialized;
-}
-
-function errorText(error: unknown): string {
-  if (error instanceof PlatformControlApiError) {
-    if (error.status === 401) return '登录状态已失效';
-    if (error.status === 403) return '当前身份无权执行该审批操作';
-    if (error.status === 409) return '审批状态已变化，请刷新后重试';
-    return error.requestId ? `${error.message} (${error.requestId})` : error.message;
-  }
-  return error instanceof Error ? error.message : '审批中心暂不可用';
 }
 
 export default function ApprovalInboxTab({
@@ -139,6 +76,7 @@ export default function ApprovalInboxTab({
   userRole?: string;
   username?: string;
 }) {
+  const { t, i18n } = useTranslation('common');
   const canUsePlatform = userRole === 'admin' || userRole === 'platform_operator';
   const [cases, setCases] = useState<ApprovalCase[]>([]);
   const [selectedRef, setSelectedRef] = useState<string | null>(null);
@@ -172,6 +110,29 @@ export default function ApprovalInboxTab({
   const [decisionError, setDecisionError] = useState('');
   const [refreshToken, setRefreshToken] = useState(0);
 
+  const statusLabel = (status: ApprovalCase['status']) => t(`approvalInbox.status.${status}`);
+  const verdictLabel = (value: Verdict) => t(`approvalInbox.verdict.${value}`);
+  const principalLabel = (principal: ApprovalPrincipal) => t('approvalInbox.principalLabel', {
+    name: principal.display_name,
+    type: t(`approvalInbox.principalType.${principal.principal_type}`),
+  });
+  const accessReasonText = (accessReason?: string) => accessReason
+    ? t(`approvalInbox.accessReason.${accessReason}`, {
+      defaultValue: t('approvalInbox.accessReason.default'),
+    })
+    : t('approvalInbox.accessReason.resolving');
+  const errorText = (error: unknown) => {
+    if (error instanceof PlatformControlApiError) {
+      if (error.status === 401) return t('approvalInbox.errors.unauthorized');
+      if (error.status === 403) return t('approvalInbox.errors.forbidden');
+      if (error.status === 409) return t('approvalInbox.errors.conflict');
+      return t('approvalInbox.errors.requestFailed', {
+        requestId: error.requestId ? ` (${error.requestId})` : '',
+      });
+    }
+    return error instanceof Error ? error.message : t('approvalInbox.errors.unavailable');
+  };
+
   useEffect(() => {
     if (!canUsePlatform) return;
     const controller = new AbortController();
@@ -204,7 +165,7 @@ export default function ApprovalInboxTab({
         if (!controller.signal.aborted) setListLoading(false);
       });
     return () => controller.abort();
-  }, [actionFilter, canUsePlatform, refreshToken, statusFilter]);
+  }, [actionFilter, canUsePlatform, refreshToken, statusFilter, i18n.resolvedLanguage]);
 
   const selectedCase = useMemo(
     () => cases.find(item => item.approval_case_ref === selectedRef) || null,
@@ -265,7 +226,7 @@ export default function ApprovalInboxTab({
         if (!controller.signal.aborted) setEventsLoading(false);
       });
     return () => controller.abort();
-  }, [selectedCase?.approval_case_ref, selectedCase?.state_version, userRole]);
+  }, [selectedCase?.approval_case_ref, selectedCase?.state_version, userRole, i18n.resolvedLanguage]);
 
   const pageStats = useMemo(() => ({
     pending: cases.filter(item => item.status === 'pending' && !isExpired(item)).length,
@@ -400,8 +361,8 @@ export default function ApprovalInboxTab({
     return (
       <div className="model-access-denied" role="alert">
         <ShieldCheck aria-hidden="true" />
-        <strong>平台角色权限不足</strong>
-        <span>统一审批中心仅对平台管理员和平台操作员开放。</span>
+        <strong>{t('approvalInbox.accessDeniedTitle')}</strong>
+        <span>{t('approvalInbox.accessDeniedDescription')}</span>
       </div>
     );
   }
@@ -424,57 +385,57 @@ export default function ApprovalInboxTab({
       <header className="approval-inbox-header">
         <div>
           <Inbox aria-hidden="true" />
-          <span><strong>统一审批中心</strong><small>ApprovalCase 权威收件箱</small></span>
+          <span><strong>{t('approvalInbox.title')}</strong><small>{t('approvalInbox.subtitle')}</small></span>
         </div>
         <button
           type="button"
           className="approval-icon-button"
           onClick={() => setRefreshToken(value => value + 1)}
           disabled={listLoading || decisionLoading}
-          title="刷新审批状态"
-          aria-label="刷新审批状态"
+          title={t('approvalInbox.refresh')}
+          aria-label={t('approvalInbox.refresh')}
         >
           <RefreshCw className={listLoading ? 'spinning' : ''} />
         </button>
       </header>
 
-      <div className="approval-inbox-summary" aria-label="当前页审批统计">
-        <div><span>可处理</span><strong>{pageStats.pending}</strong></div>
-        <div><span>已过期</span><strong>{pageStats.expired}</strong></div>
-        <div><span>已终结</span><strong>{pageStats.terminal}</strong></div>
-        <div><span>当前页</span><strong>{cases.length}</strong></div>
+      <div className="approval-inbox-summary" aria-label={t('approvalInbox.pageStats')}>
+        <div><span>{t('approvalInbox.stats.actionable')}</span><strong>{formatNumber(pageStats.pending)}</strong></div>
+        <div><span>{t('approvalInbox.stats.expired')}</span><strong>{formatNumber(pageStats.expired)}</strong></div>
+        <div><span>{t('approvalInbox.stats.terminal')}</span><strong>{formatNumber(pageStats.terminal)}</strong></div>
+        <div><span>{t('approvalInbox.stats.currentPage')}</span><strong>{formatNumber(cases.length)}</strong></div>
       </div>
 
       <form className="approval-inbox-filters" onSubmit={applyActionFilter}>
         <label>
-          <span>状态</span>
+          <span>{t('approvalInbox.filters.status')}</span>
           <select value={statusFilter} onChange={event => setStatusFilter(event.target.value as StatusFilter)}>
-            <option value="pending">待审批</option>
-            <option value="">全部</option>
-            <option value="approved">已批准</option>
-            <option value="rejected">已驳回</option>
-            <option value="cancelled">已取消</option>
+            <option value="pending">{statusLabel('pending')}</option>
+            <option value="">{t('approvalInbox.filters.all')}</option>
+            <option value="approved">{statusLabel('approved')}</option>
+            <option value="rejected">{statusLabel('rejected')}</option>
+            <option value="cancelled">{statusLabel('cancelled')}</option>
           </select>
         </label>
         <label className="approval-action-filter">
-          <span>动作</span>
+          <span>{t('approvalInbox.filters.action')}</span>
           <span className="approval-filter-input">
             <Search aria-hidden="true" />
             <input
               value={actionInput}
               onChange={event => setActionInput(event.target.value)}
-              placeholder="精确动作标识"
+              placeholder={t('approvalInbox.filters.actionPlaceholder')}
               maxLength={128}
             />
           </span>
         </label>
-        <button type="submit">筛选</button>
+        <button type="submit">{t('approvalInbox.filters.apply')}</button>
       </form>
 
       {listError && <div className="approval-error" role="alert"><AlertTriangle />{listError}</div>}
 
       <div className="approval-inbox-layout">
-        <aside className="approval-case-browser" aria-label="审批事项">
+        <aside className="approval-case-browser" aria-label={t('approvalInbox.casesAria')}>
           <div className="approval-case-list">
             {cases.map(item => {
               const itemExpired = isExpired(item);
@@ -489,26 +450,28 @@ export default function ApprovalInboxTab({
                   }}
                 >
                   <span className={`approval-status ${itemExpired ? 'expired' : item.status}`}>
-                    {itemExpired ? '已过期' : STATUS_LABELS[item.status]}
+                    {itemExpired ? t('approvalInbox.expired') : statusLabel(item.status)}
                   </span>
                   <strong title={item.action}>{item.action}</strong>
                   <small title={item.target_resource_urn}>{resourceName(item.target_resource_urn)}</small>
-                  <time>{formatDate(item.requested_at)}</time>
-                  <ChevronRight aria-hidden="true" />
+                  <time>{formatApprovalDate(item.requested_at)}</time>
+                  <ChevronRight className="rtl-flip" aria-hidden="true" />
                 </button>
               );
             })}
-            {!listLoading && cases.length === 0 && <div className="approval-empty">暂无符合条件的审批事项</div>}
+            {!listLoading && cases.length === 0 && (
+              <div className="approval-empty">{t('approvalInbox.emptyCases')}</div>
+            )}
           </div>
           {hasMore && (
             <button type="button" className="approval-load-more" onClick={loadMore} disabled={listLoading}>
-              {listLoading ? '加载中...' : '加载更多'}
+              {listLoading ? t('approvalInbox.loading') : t('approvalInbox.loadMore')}
             </button>
           )}
         </aside>
 
         <main className="approval-case-detail">
-          {!selectedCase && <div className="approval-empty">选择审批事项查看详情</div>}
+          {!selectedCase && <div className="approval-empty">{t('approvalInbox.selectCase')}</div>}
           {selectedCase && (
             <>
               <div className="approval-detail-heading">
@@ -518,21 +481,21 @@ export default function ApprovalInboxTab({
                   <code title={selectedCase.approval_case_ref}>{selectedCase.approval_case_ref}</code>
                 </div>
                 <span className={`approval-status ${expired ? 'expired' : selectedCase.status}`}>
-                  {expired ? '已过期' : STATUS_LABELS[selectedCase.status]} · v{selectedCase.state_version}
+                  {expired ? t('approvalInbox.expired') : statusLabel(selectedCase.status)} · v{selectedCase.state_version}
                 </span>
               </div>
 
               <dl className="approval-facts">
-                <div><dt><UserRound />发起人</dt><dd>{selectedCase.requester_subject}</dd></div>
-                <div><dt><Clock3 />有效期至</dt><dd>{formatDate(selectedCase.expires_at)}</dd></div>
-                <div><dt>目标指纹</dt><dd><code title={selectedCase.target_fingerprint}>{selectedCase.target_fingerprint}</code></dd></div>
-                <div><dt>目标资源</dt><dd>{selectedCase.target_resource_urn}</dd></div>
+                <div><dt><UserRound />{t('approvalInbox.facts.requester')}</dt><dd>{selectedCase.requester_subject}</dd></div>
+                <div><dt><Clock3 />{t('approvalInbox.facts.expiresAt')}</dt><dd>{formatApprovalDate(selectedCase.expires_at)}</dd></div>
+                <div><dt>{t('approvalInbox.facts.fingerprint')}</dt><dd><code title={selectedCase.target_fingerprint}>{selectedCase.target_fingerprint}</code></dd></div>
+                <div><dt>{t('approvalInbox.facts.resource')}</dt><dd>{selectedCase.target_resource_urn}</dd></div>
               </dl>
 
               <section className="approval-detail-section approval-assignment-section">
                 <div className="approval-section-heading">
-                  <h4><UserCheck />负责人路由</h4>
-                  <span>{assignment ? `v${assignment.assignment_version}` : '未指派'}</span>
+                  <h4><UserCheck />{t('approvalInbox.assignment.title')}</h4>
+                  <span>{assignment ? `v${assignment.assignment_version}` : t('approvalInbox.assignment.unassigned')}</span>
                 </div>
                 <div className={`approval-assignment-current ${assignment?.status || 'unassigned'}`}>
                   <UserRound />
@@ -543,29 +506,33 @@ export default function ApprovalInboxTab({
                           item => item.principal_subject === assignment.assignee_subject,
                         )?.display_name || assignment.assignee_subject
                         : assignment?.status === 'closed'
-                          ? '路由已关闭'
-                          : '开放处理池'}
+                          ? t('approvalInbox.assignment.closed')
+                          : t('approvalInbox.assignment.openPool')}
                     </strong>
                     <small>
                       {assignment
-                        ? `${assignment.last_reason} · ${formatDate(assignment.updated_at)}`
-                        : '尚未建立负责人约束'}
+                        ? `${assignment.last_reason} · ${formatApprovalDate(assignment.updated_at)}`
+                        : t('approvalInbox.assignment.noConstraint')}
                     </small>
                   </span>
                   {assignment?.status === 'assigned' && (
-                    <em>委托深度 {assignment.delegation_depth}/5</em>
+                    <em>{t('approvalInbox.assignment.delegationDepth', {
+                      depth: formatNumber(assignment.delegation_depth),
+                    })}</em>
                   )}
                 </div>
 
                 {assignmentEvents.length > 0 && (
                   <details className="approval-assignment-audit">
-                    <summary>路由审计 {assignmentEvents.length} 条</summary>
+                    <summary>{t('approvalInbox.assignment.auditCount', {
+                      count: formatNumber(assignmentEvents.length),
+                    })}</summary>
                     <ol>
                       {assignmentEvents.map(item => (
                         <li key={item.assignment_event_id}>
-                          <span>{ASSIGNMENT_ACTION_LABELS[item.action]} · v{item.assignment_version}</span>
-                          <strong>{item.to_assignee_subject || '开放处理池'}</strong>
-                          <small>{item.actor_subject} · {formatDate(item.occurred_at)}</small>
+                          <span>{t(`approvalInbox.assignment.action.${item.action}`)} · v{item.assignment_version}</span>
+                          <strong>{item.to_assignee_subject || t('approvalInbox.assignment.openPool')}</strong>
+                          <small>{item.actor_subject} · {formatApprovalDate(item.occurred_at)}</small>
                           <p>{item.reason}</p>
                         </li>
                       ))}
@@ -575,13 +542,13 @@ export default function ApprovalInboxTab({
 
                 {(canAdminRoute || canDelegate) && (
                   <form className="approval-assignment-form" onSubmit={submitAssignment}>
-                    <div className="approval-assignment-actions" role="group" aria-label="负责人路由操作">
+                    <div className="approval-assignment-actions" role="group" aria-label={t('approvalInbox.assignment.operationsAria')}>
                       {canAdminRoute && (!assignment || assignment.status === 'released') && (
                         <button
                           type="button"
                           className={assignmentOperation === 'assign' ? 'active' : ''}
                           onClick={() => setAssignmentOperation('assign')}
-                        ><UserCheck />指派</button>
+                        ><UserCheck />{t('approvalInbox.assignment.action.assigned')}</button>
                       )}
                       {canAdminRoute && assignment?.status === 'assigned' && (
                         <>
@@ -589,12 +556,12 @@ export default function ApprovalInboxTab({
                             type="button"
                             className={assignmentOperation === 'reassign' ? 'active' : ''}
                             onClick={() => setAssignmentOperation('reassign')}
-                          ><UserCheck />重指派</button>
+                          ><UserCheck />{t('approvalInbox.assignment.action.reassigned')}</button>
                           <button
                             type="button"
                             className={assignmentOperation === 'release' ? 'active' : ''}
                             onClick={() => setAssignmentOperation('release')}
-                          ><UserMinus />释放</button>
+                          ><UserMinus />{t('approvalInbox.assignment.action.released')}</button>
                         </>
                       )}
                       {canDelegate && (
@@ -602,17 +569,17 @@ export default function ApprovalInboxTab({
                           type="button"
                           className={assignmentOperation === 'delegate' ? 'active' : ''}
                           onClick={() => setAssignmentOperation('delegate')}
-                        ><UserRound />委托</button>
+                        ><UserRound />{t('approvalInbox.assignment.action.delegated')}</button>
                       )}
                     </div>
                     {assignmentOperation !== 'release' && (
                       <label>
-                        <span>目标负责人</span>
+                        <span>{t('approvalInbox.assignment.target')}</span>
                         <select
                           value={assigneeInput}
                           onChange={event => setAssigneeInput(event.target.value)}
                         >
-                          <option value="">选择当前合格主体</option>
+                          <option value="">{t('approvalInbox.assignment.selectEligible')}</option>
                           {approvalPrincipals
                             .filter(item => item.principal_subject !== assignment?.assignee_subject)
                             .map(item => (
@@ -624,12 +591,12 @@ export default function ApprovalInboxTab({
                       </label>
                     )}
                     <label>
-                      <span>路由理由</span>
+                      <span>{t('approvalInbox.assignment.reason')}</span>
                       <textarea
                         value={assignmentReason}
                         onChange={event => setAssignmentReason(event.target.value)}
                         maxLength={512}
-                        placeholder="填写可审计的指派或委托依据"
+                        placeholder={t('approvalInbox.assignment.reasonPlaceholder')}
                       />
                     </label>
                     {assignmentError && <div className="approval-error" role="alert"><AlertTriangle />{assignmentError}</div>}
@@ -642,23 +609,23 @@ export default function ApprovalInboxTab({
                         || (assignmentOperation !== 'release' && !assigneeInput.trim())
                       }
                     >
-                      {assignmentLoading ? '提交中...' : '确认路由变更'}
+                      {assignmentLoading ? t('approvalInbox.submitting') : t('approvalInbox.assignment.confirm')}
                     </button>
                   </form>
                 )}
               </section>
 
               <section className="approval-detail-section">
-                <h4>申请理由</h4>
+                <h4>{t('approvalInbox.requestReason')}</h4>
                 <p>{selectedCase.request_reason}</p>
-                <h4>请求上下文</h4>
-                <pre>{compactJson(selectedCase.request_context)}</pre>
+                <h4>{t('approvalInbox.requestContext')}</h4>
+                <pre>{compactJson(selectedCase.request_context, t('approvalInbox.contentTruncated'))}</pre>
               </section>
 
               <section className="approval-detail-section">
                 <div className="approval-section-heading">
-                  <h4><Bell />通知与 SLA</h4>
-                  <span>{notifications.length} 条</span>
+                  <h4><Bell />{t('approvalInbox.notifications.title')}</h4>
+                  <span>{t('approvalInbox.itemCount', { count: formatNumber(notifications.length) })}</span>
                 </div>
                 <div className="approval-notification-list">
                   {notifications.map(item => {
@@ -675,16 +642,16 @@ export default function ApprovalInboxTab({
                     return (
                     <div key={item.notification_id}>
                       <span className={`approval-delivery-status ${item.status}`}>
-                        {NOTIFICATION_STATUS_LABELS[item.status]}
+                        {t(`approvalInbox.notifications.status.${item.status}`)}
                       </span>
-                      <strong>{NOTIFICATION_KIND_LABELS[item.notification_kind]}</strong>
+                      <strong>{t(`approvalInbox.notifications.kind.${item.notification_kind}`)}</strong>
                       <small>{item.channel} · {item.destination_ref}</small>
                       <dl>
-                        <div><dt>可投递</dt><dd>{formatDate(item.available_at)}</dd></div>
-                        <div><dt>尝试</dt><dd>{item.attempt_count}/{item.max_attempts}</dd></div>
-                        <div><dt>人工恢复</dt><dd>{item.recovery_count}/10</dd></div>
-                        {item.completed_at && <div><dt>完成</dt><dd>{formatDate(item.completed_at)}</dd></div>}
-                        {item.last_recovered_at && <div><dt>最近恢复</dt><dd>{formatDate(item.last_recovered_at)}</dd></div>}
+                        <div><dt>{t('approvalInbox.notifications.availableAt')}</dt><dd>{formatApprovalDate(item.available_at)}</dd></div>
+                        <div><dt>{t('approvalInbox.notifications.attempts')}</dt><dd>{formatNumber(item.attempt_count)}/{formatNumber(item.max_attempts)}</dd></div>
+                        <div><dt>{t('approvalInbox.notifications.manualRecoveries')}</dt><dd>{formatNumber(item.recovery_count)}/{formatNumber(10)}</dd></div>
+                        {item.completed_at && <div><dt>{t('approvalInbox.notifications.completedAt')}</dt><dd>{formatApprovalDate(item.completed_at)}</dd></div>}
+                        {item.last_recovered_at && <div><dt>{t('approvalInbox.notifications.lastRecoveredAt')}</dt><dd>{formatApprovalDate(item.last_recovered_at)}</dd></div>}
                       </dl>
                       {item.last_error && <p title={item.last_error}>{item.last_error}</p>}
                       {item.last_recovered_by && (
@@ -694,14 +661,22 @@ export default function ApprovalInboxTab({
                       )}
                       {itemRecoveries.length > 0 && (
                         <details className="approval-recovery-audit">
-                          <summary>恢复审计 {itemRecoveries.length} 条</summary>
+                          <summary>{t('approvalInbox.recovery.auditCount', {
+                            count: formatNumber(itemRecoveries.length),
+                          })}</summary>
                           <ol>
                             {itemRecoveries.map(recovery => (
                               <li key={recovery.recovery_event_id}>
-                                <strong>第 {recovery.recovery_no} 次</strong>
+                                <strong>{t('approvalInbox.recovery.sequence', {
+                                  sequence: formatNumber(recovery.recovery_no),
+                                })}</strong>
                                 <span>{recovery.reason}</span>
                                 <small>
-                                  {recovery.actor_subject} · {formatDate(recovery.occurred_at)} · 原尝试 {recovery.previous_attempt_count}
+                                  {t('approvalInbox.recovery.auditMetadata', {
+                                    actor: recovery.actor_subject,
+                                    date: formatApprovalDate(recovery.occurred_at),
+                                    attempts: formatNumber(recovery.previous_attempt_count),
+                                  })}
                                 </small>
                               </li>
                             ))}
@@ -718,12 +693,14 @@ export default function ApprovalInboxTab({
                             setRecoveryError('');
                           }}
                         >
-                          <RotateCcw />人工恢复
+                          <RotateCcw />{t('approvalInbox.recovery.open')}
                         </button>
                       )}
                       {item.status === 'failed' && (staleExpiry || recoveryLimitReached) && (
                         <small className="approval-recovery-blocked">
-                          {staleExpiry ? '审批已终结，到期告警不可重放' : '已达到人工恢复上限'}
+                          {staleExpiry
+                            ? t('approvalInbox.recovery.staleExpiry')
+                            : t('approvalInbox.recovery.limitReached')}
                         </small>
                       )}
                       {canRecover && recoveryTarget === item.notification_id && (
@@ -732,12 +709,12 @@ export default function ApprovalInboxTab({
                           onSubmit={event => submitNotificationRecovery(event, item)}
                         >
                           <label>
-                            <span>恢复理由</span>
+                            <span>{t('approvalInbox.recovery.reason')}</span>
                             <textarea
                               value={recoveryReason}
                               onChange={event => setRecoveryReason(event.target.value)}
                               maxLength={512}
-                              placeholder="填写故障处理和重投依据"
+                              placeholder={t('approvalInbox.recovery.reasonPlaceholder')}
                             />
                           </label>
                           {recoveryError && <div className="approval-error" role="alert"><AlertTriangle />{recoveryError}</div>}
@@ -750,9 +727,11 @@ export default function ApprovalInboxTab({
                                 setRecoveryError('');
                               }}
                               disabled={recoveryLoading}
-                            >取消</button>
+                            >{t('approvalInbox.cancel')}</button>
                             <button type="submit" disabled={!recoveryReason.trim() || recoveryLoading}>
-                              <RotateCcw />{recoveryLoading ? '恢复中...' : '确认重投'}
+                              <RotateCcw />{recoveryLoading
+                                ? t('approvalInbox.recovery.recovering')
+                                : t('approvalInbox.recovery.confirm')}
                             </button>
                           </div>
                         </form>
@@ -761,28 +740,30 @@ export default function ApprovalInboxTab({
                     );
                   })}
                   {!eventsLoading && notifications.length === 0 && (
-                    <div className="approval-empty compact">暂无通知投递记录</div>
+                    <div className="approval-empty compact">{t('approvalInbox.notifications.empty')}</div>
                   )}
                 </div>
               </section>
 
               <section className="approval-detail-section">
                 <div className="approval-section-heading">
-                  <h4><FileClock />审计事件</h4>
-                  <span>{events.length} 条</span>
+                  <h4><FileClock />{t('approvalInbox.events.title')}</h4>
+                  <span>{t('approvalInbox.itemCount', { count: formatNumber(events.length) })}</span>
                 </div>
                 {eventsError && <div className="approval-error" role="alert"><AlertTriangle />{eventsError}</div>}
-                {eventsLoading && <div className="approval-empty compact">加载事件...</div>}
+                {eventsLoading && <div className="approval-empty compact">{t('approvalInbox.events.loading')}</div>}
                 {!eventsLoading && (
                   <ol className="approval-event-list">
                     {events.map(item => (
                       <li key={item.approval_event_id}>
                         <span className={`approval-event-dot ${item.to_status}`} />
                         <div>
-                          <strong>{STATUS_LABELS[item.to_status]}</strong>
+                          <strong>{statusLabel(item.to_status)}</strong>
                           <p>{item.reason}</p>
-                          <small>{item.actor_subject} · {formatDate(item.occurred_at)}</small>
-                          {Object.keys(item.details).length > 0 && <pre>{compactJson(item.details, 700)}</pre>}
+                          <small>{item.actor_subject} · {formatApprovalDate(item.occurred_at)}</small>
+                          {Object.keys(item.details).length > 0 && (
+                            <pre>{compactJson(item.details, t('approvalInbox.contentTruncated'), 700)}</pre>
+                          )}
                         </div>
                       </li>
                     ))}
@@ -797,35 +778,39 @@ export default function ApprovalInboxTab({
                     <span>
                       <strong>
                         {accessDenied
-                          ? '当前身份不可处理此事项'
+                          ? t('approvalInbox.decision.notAuthorizedTitle')
                           : expired
-                            ? '审批窗口已关闭'
+                            ? t('approvalInbox.decision.expiredTitle')
                             : selectedCase.status === 'pending'
-                              ? '审批资格解析中'
-                              : `该事项${STATUS_LABELS[selectedCase.status]}`}
+                              ? t('approvalInbox.decision.resolvingTitle')
+                              : t('approvalInbox.decision.terminalTitle', {
+                                status: statusLabel(selectedCase.status),
+                              })}
                       </strong>
                       <small>
                         {accessDenied
                           ? accessReasonText(actorAccess?.access_reason)
-                          : selectedCase.decision_reason || '不可再提交终态决定'}
+                          : selectedCase.decision_reason || t('approvalInbox.decision.terminalDescription')}
                       </small>
                     </span>
                   </div>
                 ) : (
                   <form onSubmit={submitDecision}>
-                    <h4>提交终态决定</h4>
-                    <div className="approval-verdict-control" role="group" aria-label="审批决定">
-                      <button type="button" className={verdict === 'approved' ? 'active approved' : ''} onClick={() => setVerdict('approved')}><CheckCircle2 />批准</button>
-                      <button type="button" className={verdict === 'rejected' ? 'active rejected' : ''} onClick={() => setVerdict('rejected')}><XCircle />驳回</button>
-                      <button type="button" className={verdict === 'cancelled' ? 'active cancelled' : ''} onClick={() => setVerdict('cancelled')}><Ban />取消</button>
+                    <h4>{t('approvalInbox.decision.title')}</h4>
+                    <div className="approval-verdict-control" role="group" aria-label={t('approvalInbox.decision.groupAria')}>
+                      <button type="button" className={verdict === 'approved' ? 'active approved' : ''} onClick={() => setVerdict('approved')}><CheckCircle2 />{verdictLabel('approved')}</button>
+                      <button type="button" className={verdict === 'rejected' ? 'active rejected' : ''} onClick={() => setVerdict('rejected')}><XCircle />{verdictLabel('rejected')}</button>
+                      <button type="button" className={verdict === 'cancelled' ? 'active cancelled' : ''} onClick={() => setVerdict('cancelled')}><Ban />{verdictLabel('cancelled')}</button>
                     </div>
                     <label>
-                      <span>{VERDICT_LABELS[verdict]}理由</span>
-                      <textarea value={reason} onChange={event => setReason(event.target.value)} maxLength={512} placeholder="必须填写可审计的决定理由" />
+                      <span>{t('approvalInbox.decision.reasonLabel', { verdict: verdictLabel(verdict) })}</span>
+                      <textarea value={reason} onChange={event => setReason(event.target.value)} maxLength={512} placeholder={t('approvalInbox.decision.reasonPlaceholder')} />
                     </label>
                     {decisionError && <div className="approval-error" role="alert"><AlertTriangle />{decisionError}</div>}
                     <button className="approval-decision-submit" type="submit" disabled={!reason.trim() || decisionLoading}>
-                      {decisionLoading ? '提交中...' : `确认${VERDICT_LABELS[verdict]}`}
+                      {decisionLoading
+                        ? t('approvalInbox.submitting')
+                        : t('approvalInbox.decision.confirm', { verdict: verdictLabel(verdict) })}
                     </button>
                   </form>
                 )}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, Component, type ReactNode } from 'react';
 import { useChatSession, useAuth, useConfig } from '@chainlit/react-client';
 import { useRecoilValue } from 'recoil';
+import { useTranslation } from 'react-i18next';
 import { sessionState } from '@chainlit/react-client';
 import { MapContext, AppContext } from './contexts';
 import LoginPage from './components/LoginPage';
@@ -9,7 +10,9 @@ import MapPanel from './components/MapPanel';
 import DataPanel from './components/DataPanel';
 import AdminDashboard from './components/AdminDashboard';
 import UserSettings from './components/UserSettings';
+import LanguageSwitcher from './components/LanguageSwitcher';
 import { usePlatformBranding } from './platformBranding';
+import i18n, { getLocale } from './i18n';
 import {
   MessageSquare, Map, LayoutGrid, Settings, Bell, User, LogOut, ChevronDown, Shield,
 } from 'lucide-react';
@@ -26,9 +29,9 @@ class ErrorBoundary extends Component<{ name: string; children: ReactNode }, { e
       return (
         <div className="error-boundary">
           <div className="error-boundary-icon">!</div>
-          <div className="error-boundary-title">{this.props.name} 发生错误</div>
+          <div className="error-boundary-title">{this.props.name}: {i18n.t('app.errorOccurred')}</div>
           <div className="error-boundary-msg">{this.state.error.message}</div>
-          <button className="btn-secondary btn-sm" onClick={() => this.setState({ error: null })}>重试</button>
+          <button className="btn-secondary btn-sm" onClick={() => this.setState({ error: null })}>{i18n.t('app.retry')}</button>
         </div>
       );
     }
@@ -37,6 +40,7 @@ class ErrorBoundary extends Component<{ name: string; children: ReactNode }, { e
 }
 
 export default function App() {
+  const { t } = useTranslation('common');
   const { branding } = usePlatformBranding();
   const { data: authConfig, user, isReady, isAuthenticated, setUserFromAPI, logout } = useAuth();
   const { config } = useConfig();
@@ -64,7 +68,7 @@ export default function App() {
   useEffect(() => {
     if (isAuthenticated && !hasConnected.current) {
       hasConnected.current = true;
-      connect({ userEnv: {} });
+      connect({ userEnv: { locale: getLocale() } });
     }
     if (!isAuthenticated) {
       hasConnected.current = false;
@@ -198,14 +202,15 @@ export default function App() {
               <img src="/public/logo_light.png" alt={branding.platform_name} className="login-logo-img" />
             </div>
             <h1 className="login-brand-title">{branding.platform_name}</h1>
-            <p className="login-brand-subtitle">Loading...</p>
+            <p className="login-brand-subtitle">{t('app.loading')}</p>
           </div>
           <div className="login-bg-grid"></div>
           <div className="login-bg-glow"></div>
         </div>
         <div className="login-form-side">
           <div className="login-card">
-            <h2>Loading...</h2>
+            <div className="login-language-row"><LanguageSwitcher compact /></div>
+            <h2>{t('app.loading')}</h2>
           </div>
         </div>
       </div>
@@ -217,7 +222,7 @@ export default function App() {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
-  const displayName = user?.display_name || user?.identifier || 'User';
+  const displayName = user?.display_name || user?.identifier || t('app.user');
   const avatarLetter = (user?.identifier || 'U')[0].toUpperCase();
   const userRole = (user?.metadata as any)?.role || '';
   const isAdmin = userRole === 'admin';
@@ -233,16 +238,17 @@ export default function App() {
         <div className="header-spacer" />
         <div className="header-status">
           <span className="status-dot" />
-          <span className="status-text">Ready</span>
+          <span className="status-text">{t('app.ready')}</span>
         </div>
+        <LanguageSwitcher compact />
         {isAdmin && (
           <button
             className={`header-admin-btn ${showAdmin ? 'active' : ''}`}
             onClick={() => setShowAdmin(!showAdmin)}
-            title={showAdmin ? '返回工作台' : '管理后台'}
+            title={showAdmin ? t('nav.workbench') : t('nav.adminPanel')}
           >
             <Shield size={15} />
-            <span>{showAdmin ? '工作台' : '管理'}</span>
+            <span>{showAdmin ? t('nav.workbench') : t('nav.admin')}</span>
           </button>
         )}
         <div className="header-user" onClick={() => setShowUserMenu(!showUserMenu)}>
@@ -252,10 +258,10 @@ export default function App() {
           {showUserMenu && (
             <div className="user-menu" onClick={(e) => e.stopPropagation()}>
               <button onClick={() => { setShowSettings(true); setShowUserMenu(false); }}>
-                <Settings size={14} /> 账户设置
+                <Settings size={14} /> {t('nav.accountSettings')}
               </button>
               <button onClick={() => { logout(); window.location.href = '/'; }}>
-                <LogOut size={14} /> 退出登录
+                <LogOut size={14} /> {t('nav.logout')}
               </button>
             </div>
           )}
@@ -267,17 +273,17 @@ export default function App() {
         {/* --- Left AppNav Icon Rail (48px) --- */}
         {!isMobile && (
           <nav className="app-nav">
-            <button className={`nav-btn ${activePanel === 'chat' ? 'active' : ''}`} title="工作区" onClick={() => setActivePanel('chat')}>
+            <button className={`nav-btn ${activePanel === 'chat' ? 'active' : ''}`} title={t('nav.chat')} onClick={() => setActivePanel('chat')}>
               <MessageSquare size={20} />
             </button>
-            <button className={`nav-btn ${activePanel === 'map' ? 'active' : ''}`} title="地图视图" onClick={() => setActivePanel('map')}>
+            <button className={`nav-btn ${activePanel === 'map' ? 'active' : ''}`} title={t('nav.map')} onClick={() => setActivePanel('map')}>
               <Map size={20} />
             </button>
-            <button className={`nav-btn ${activePanel === 'data' ? 'active' : ''}`} title="数据面板" onClick={() => setActivePanel('data')}>
+            <button className={`nav-btn ${activePanel === 'data' ? 'active' : ''}`} title={t('nav.data')} onClick={() => setActivePanel('data')}>
               <LayoutGrid size={20} />
             </button>
             <div className="nav-spacer" />
-            <button className="nav-btn" title="通知">
+            <button className="nav-btn" title={t('nav.notifications')}>
               <Bell size={20} />
             </button>
           </nav>
@@ -290,7 +296,7 @@ export default function App() {
           <div className="workspace" ref={workspaceRef}
             style={{ '--chat-width': `${chatWidth}px`, '--data-width': `${dataWidth}px` } as React.CSSProperties}>
             {(!isMobile || activePanel === 'chat') && (
-              <ErrorBoundary name="聊天面板">
+              <ErrorBoundary name={t('nav.chat')}>
                 <ChatPanel onMapUpdate={handleMapUpdate} onDataUpdate={handleDataUpdate} onLayerControl={handleLayerControl} />
               </ErrorBoundary>
             )}
@@ -299,7 +305,7 @@ export default function App() {
                 onMouseDown={onResizeStart('chat')} />
             )}
             {(!isMobile || activePanel === 'map') && (
-              <ErrorBoundary name="地图面板">
+              <ErrorBoundary name={t('nav.mapPanel')}>
                 <MapPanel layers={mapLayers} center={mapCenter} zoom={mapZoom} layerControl={layerControl} />
               </ErrorBoundary>
             )}
@@ -308,7 +314,7 @@ export default function App() {
                 onMouseDown={onResizeStart('data')} />
             )}
             {(!isMobile || activePanel === 'data') && (
-              <ErrorBoundary name="数据面板">
+              <ErrorBoundary name={t('nav.dataPanel')}>
                 <DataPanel
                   dataFile={dataFile}
                   userRole={userRole}
@@ -327,15 +333,15 @@ export default function App() {
         <div className="mobile-tab-bar">
           <button className={`mobile-tab-btn${activePanel === 'chat' ? ' active' : ''}`} onClick={() => setActivePanel('chat')}>
             <MessageSquare size={20} />
-            <span>对话</span>
+            <span>{t('nav.conversation')}</span>
           </button>
           <button className={`mobile-tab-btn${activePanel === 'map' ? ' active' : ''}`} onClick={() => setActivePanel('map')}>
             <Map size={20} />
-            <span>地图</span>
+            <span>{t('nav.map')}</span>
           </button>
           <button className={`mobile-tab-btn${activePanel === 'data' ? ' active' : ''}`} onClick={() => setActivePanel('data')}>
             <LayoutGrid size={20} />
-            <span>数据</span>
+            <span>{t('nav.data')}</span>
           </button>
         </div>
       )}

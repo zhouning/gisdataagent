@@ -9,6 +9,7 @@ from google.adk.tools.base_toolset import BaseToolset
 
 from .. import knowledge_graph as kg_engine
 from ..gis_processors import _resolve_path
+from ..i18n import t as translate
 
 
 # ---------------------------------------------------------------------------
@@ -52,7 +53,7 @@ def build_knowledge_graph(
 
         paths = [p.strip() for p in file_paths.split(",") if p.strip()]
         if not paths:
-            return "Error: 请提供至少一个文件路径。"
+            return translate("kg.file_required")
 
         adj = detect_adjacency.lower() == "true"
         cont = detect_containment.lower() == "true"
@@ -95,7 +96,7 @@ def build_knowledge_graph(
         return json.dumps(result, ensure_ascii=False, indent=2, default=str)
     except Exception as e:
         traceback.print_exc()
-        return f"Error: {e}"
+        return translate("kg.build_failed", error=e)
 
 
 def query_knowledge_graph(
@@ -127,7 +128,7 @@ def query_knowledge_graph(
 
         elif query_type == "neighbors":
             if not node_id:
-                return "Error: neighbors查询需要提供node_id。"
+                return translate("kg.node_required")
             result = graph.query_neighbors(
                 node_id, depth=int(depth),
             )
@@ -135,13 +136,13 @@ def query_knowledge_graph(
 
         elif query_type == "path":
             if not node_id or not target_node:
-                return "Error: path查询需要提供node_id和target_node。"
+                return translate("kg.path_nodes_required")
             result = graph.query_path(node_id, target_node)
             return json.dumps(result, ensure_ascii=False, indent=2, default=str)
 
         elif query_type == "type":
             if not entity_type:
-                return "Error: type查询需要提供entity_type。"
+                return translate("kg.entity_type_required")
             results = graph.query_by_type(entity_type)
             return json.dumps(
                 {"entity_type": entity_type, "count": len(results), "nodes": results},
@@ -149,10 +150,10 @@ def query_knowledge_graph(
             )
 
         else:
-            return f"Error: 未知的查询类型 '{query_type}'。支持: stats, neighbors, path, type"
+            return translate("kg.unknown_query_type", query_type=query_type)
     except Exception as e:
         traceback.print_exc()
-        return f"Error: {e}"
+        return translate("kg.query_failed", error=e)
 
 
 def export_knowledge_graph(format: str = "json") -> str:
@@ -168,7 +169,10 @@ def export_knowledge_graph(format: str = "json") -> str:
         graph = _get_or_create_graph()
 
         if graph.graph.number_of_nodes() == 0:
-            return json.dumps({"status": "empty", "message": "知识图谱为空，请先构建图谱。"})
+            return json.dumps({
+                "status": "empty",
+                "message": translate("kg.empty"),
+            }, ensure_ascii=False)
 
         data = graph.export_to_json()
         from dataclasses import asdict
@@ -183,7 +187,7 @@ def export_knowledge_graph(format: str = "json") -> str:
         return json.dumps(result, ensure_ascii=False, indent=2, default=str)
     except Exception as e:
         traceback.print_exc()
-        return f"Error: {e}"
+        return translate("kg.export_failed", error=e)
 
 
 # ---------------------------------------------------------------------------

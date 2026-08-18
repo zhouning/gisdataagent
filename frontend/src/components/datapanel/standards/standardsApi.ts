@@ -1,3 +1,5 @@
+import { getLocaleHeaders } from "../../../i18n";
+
 export interface StdDocumentSummary {
   id: string; doc_code: string; title: string;
   source_type: string; status: string; owner_user_id: string;
@@ -6,6 +8,12 @@ export interface StdClause { id: string; ordinal_path: string; heading?: string;
   clause_no?: string; kind: string; body_md?: string; }
 export interface StdDataElement { id: string; code: string; name_zh: string;
   datatype?: string; obligation: string; }
+
+const fetch = (input: RequestInfo | URL, init: RequestInit = {}) => {
+  const headers = new Headers(init.headers);
+  Object.entries(getLocaleHeaders()).forEach(([key, value]) => headers.set(key, value));
+  return globalThis.fetch(input, {...init, headers});
+};
 
 const j = async <T>(r: Response): Promise<T> => {
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);

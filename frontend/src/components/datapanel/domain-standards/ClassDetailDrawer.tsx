@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next';
+import { isRtlLocale } from '../../../i18n';
+
 interface AttributeRow {
   attribute_name: string;
   attribute_type: string;
@@ -38,19 +41,21 @@ interface Props {
 }
 
 export default function ClassDetailDrawer({ classDetail, onClose, onClassNavigate }: Props) {
+  const { t } = useTranslation();
   const open = classDetail !== null;
+  const isRtl = isRtlLocale();
 
   return (
     <div style={{
       position: 'absolute',
       top: 0,
-      right: 0,
+      insetInlineEnd: 0,
       bottom: 0,
       width: 320,
       background: '#fff',
-      borderLeft: '1px solid #e5e7eb',
-      boxShadow: '-4px 0 16px rgba(0,0,0,0.08)',
-      transform: open ? 'translateX(0)' : 'translateX(100%)',
+      borderInlineStart: '1px solid #e5e7eb',
+      boxShadow: '0 0 16px rgba(0,0,0,0.08)',
+      transform: open ? 'translateX(0)' : `translateX(${isRtl ? '-100%' : '100%'})`,
       transition: 'transform 0.22s ease',
       zIndex: 10,
       display: 'flex',
@@ -82,21 +87,22 @@ export default function ClassDetailDrawer({ classDetail, onClose, onClassNavigat
                 background: 'none', border: 'none', cursor: 'pointer',
                 color: '#6b7280', fontSize: 18, lineHeight: 1, padding: '2px 6px',
               }}
-              title="关闭"
+              title={t('domainStandards.actions.close')}
+              aria-label={t('domainStandards.actions.close')}
             >×</button>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px' }}>
             {/* Attributes */}
-            <Section title="属性">
+            <Section title={t('domainStandards.details.attributes')}>
               {classDetail.attributes.length === 0 ? (
-                <div style={{ color: '#9ca3af', fontSize: 12 }}>无属性</div>
+                <div style={{ color: '#9ca3af', fontSize: 12 }}>{t('domainStandards.details.noAttributes')}</div>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: '#f3f4f6' }}>
-                      <th style={thStyle}>名称</th>
-                      <th style={thStyle}>类型</th>
+                      <th style={thStyle}>{t('domainStandards.details.name')}</th>
+                      <th style={thStyle}>{t('domainStandards.details.type')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -112,9 +118,9 @@ export default function ClassDetailDrawer({ classDetail, onClose, onClassNavigat
             </Section>
 
             {/* Generalizations */}
-            <Section title="继承">
+            <Section title={t('domainStandards.relations.inheritance')}>
               {classDetail.generalizations.length === 0 ? (
-                <div style={{ color: '#9ca3af', fontSize: 12 }}>无继承关系</div>
+                <div style={{ color: '#9ca3af', fontSize: 12 }}>{t('domainStandards.details.noInheritance')}</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {classDetail.generalizations.map((g, i) => (
@@ -124,7 +130,7 @@ export default function ClassDetailDrawer({ classDetail, onClose, onClassNavigat
                       style={{
                         background: '#eff6ff', border: '1px solid #bfdbfe',
                         borderRadius: 4, padding: '4px 8px', cursor: 'pointer',
-                        color: '#1d4ed8', fontSize: 12, textAlign: 'left',
+                        color: '#1d4ed8', fontSize: 12, textAlign: 'start',
                       }}
                     >
                       ↑ {g.target_class_name}
@@ -135,9 +141,9 @@ export default function ClassDetailDrawer({ classDetail, onClose, onClassNavigat
             </Section>
 
             {/* Associations */}
-            <Section title="关联">
+            <Section title={t('domainStandards.relations.association')}>
               {classDetail.associations.length === 0 ? (
-                <div style={{ color: '#9ca3af', fontSize: 12 }}>无关联关系</div>
+                <div style={{ color: '#9ca3af', fontSize: 12 }}>{t('domainStandards.details.noAssociations')}</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {classDetail.associations.map((a, i) => (
@@ -145,9 +151,9 @@ export default function ClassDetailDrawer({ classDetail, onClose, onClassNavigat
                       background: '#fffbeb', border: '1px solid #fde68a',
                       borderRadius: 4, padding: '5px 8px', fontSize: 12,
                     }}>
-                      <div style={{ fontWeight: 600, color: '#92400e', marginBottom: 2 }}>{a.association_name || '(未命名)'}</div>
+                      <div style={{ fontWeight: 600, color: '#92400e', marginBottom: 2 }}>{a.association_name || t('domainStandards.details.unnamed')}</div>
                       {a.ends.map((e, j) => (
-                        <div key={j} style={{ color: '#78350f' }}>→ {e.type_name}</div>
+                        <div key={j} style={{ color: '#78350f' }}>{isRtl ? '←' : '→'} {e.type_name}</div>
                       ))}
                     </div>
                   ))}
@@ -166,7 +172,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div style={{ marginBottom: 16 }}>
       <div style={{
         fontSize: 11, fontWeight: 700, color: '#6b7280',
-        textTransform: 'uppercase', letterSpacing: '0.05em',
+        textTransform: 'uppercase', letterSpacing: 0,
         marginBottom: 6, paddingBottom: 4,
         borderBottom: '1px solid #f3f4f6',
       }}>
@@ -178,7 +184,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 const thStyle: React.CSSProperties = {
-  padding: '4px 6px', textAlign: 'left', fontWeight: 600,
+  padding: '4px 6px', textAlign: 'start', fontWeight: 600,
   color: '#374151', fontSize: 11,
 };
 

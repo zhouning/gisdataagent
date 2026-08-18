@@ -5,6 +5,7 @@ from collections import defaultdict, deque
 from typing import Optional
 
 from .db_engine import get_engine
+from .i18n import t as translate
 from sqlalchemy import text
 
 logger = logging.getLogger("data_agent.skill_dependency_graph")
@@ -126,13 +127,15 @@ def validate_dependency(skill_id: int, new_dep_id: int, username: str) -> dict:
         {"valid": True} or {"valid": False, "reason": str}
     """
     if skill_id == new_dep_id:
-        return {"valid": False, "reason": "技能不能依赖自身"}
+        return {"valid": False, "reason": translate("skill_dependency.self_dependency")}
 
     skills = _load_skills_with_deps(username)
     if new_dep_id not in skills:
-        return {"valid": False, "reason": f"依赖技能 ID {new_dep_id} 不存在"}
+        return {"valid": False, "reason": translate(
+            "skill_dependency.dependency_not_found", skill_id=new_dep_id)}
     if skill_id not in skills:
-        return {"valid": False, "reason": f"技能 ID {skill_id} 不存在"}
+        return {"valid": False, "reason": translate(
+            "skill_dependency.skill_not_found", skill_id=skill_id)}
 
     # Simulate adding the dependency and check for cycles
     test_skills = {sid: {"name": info["name"], "depends_on": list(info["depends_on"])} for sid, info in skills.items()}
@@ -140,7 +143,8 @@ def validate_dependency(skill_id: int, new_dep_id: int, username: str) -> dict:
         test_skills[skill_id]["depends_on"].append(new_dep_id)
 
     if _detect_cycle(test_skills):
-        return {"valid": False, "reason": "添加此依赖会形成循环"}
+        return {"valid": False, "reason": translate(
+            "skill_dependency.would_cycle")}
 
     return {"valid": True}
 
@@ -150,18 +154,21 @@ def update_dependencies(skill_id: int, depends_on: list[int], username: str) -> 
     # Validate all dependencies
     skills = _load_skills_with_deps(username)
     if skill_id not in skills:
-        return {"status": "error", "message": f"技能 {skill_id} 不存在"}
+        return {"status": "error", "message": translate(
+            "skill_dependency.skill_not_found", skill_id=skill_id)}
 
     # Check ownership
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate(
+            "skill_dependency.db_unavailable")}
 
     # Simulate and check for cycles
     test_skills = {sid: {"name": info["name"], "depends_on": list(info["depends_on"])} for sid, info in skills.items()}
     test_skills[skill_id]["depends_on"] = depends_on
     if _detect_cycle(test_skills):
-        return {"status": "error", "message": "依赖关系存在循环"}
+        return {"status": "error", "message": translate(
+            "skill_dependency.cycle")}
 
     try:
         with engine.connect() as conn:
@@ -172,4 +179,5 @@ def update_dependencies(skill_id: int, depends_on: list[int], username: str) -> 
         return {"status": "ok", "depends_on": depends_on}
     except Exception as e:
         logger.warning("Failed to update dependencies: %s", e)
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate(
+            "skill_dependency.update_failed", error=e)}

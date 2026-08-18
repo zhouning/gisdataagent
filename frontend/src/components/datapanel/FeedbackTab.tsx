@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ThumbsUp, ThumbsDown, BarChart3, RefreshCw, Play } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { getLocaleHeaders } from '../../i18n';
 
 interface FeedbackStats {
   total: number;
@@ -23,6 +25,7 @@ interface FeedbackItem {
 }
 
 export default function FeedbackTab() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [items, setItems] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -32,8 +35,8 @@ export default function FeedbackTab() {
     setLoading(true);
     try {
       const [sResp, lResp] = await Promise.all([
-        fetch('/api/feedback/stats?days=30', { credentials: 'include' }),
-        fetch('/api/feedback/list?limit=50', { credentials: 'include' }),
+        fetch('/api/feedback/stats?days=30', { credentials: 'include', headers: getLocaleHeaders() }),
+        fetch('/api/feedback/list?limit=50', { credentials: 'include', headers: getLocaleHeaders() }),
       ]);
       if (sResp.ok) setStats(await sResp.json());
       if (lResp.ok) setItems(await lResp.json());
@@ -47,7 +50,7 @@ export default function FeedbackTab() {
     setProcessing(true);
     try {
       await fetch('/api/feedback/process-downvotes', {
-        method: 'POST', credentials: 'include',
+        method: 'POST', credentials: 'include', headers: getLocaleHeaders(),
       });
       fetchAll();
     } catch { /* ignore */ }
@@ -65,28 +68,28 @@ export default function FeedbackTab() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <h3 style={{ margin: 0, fontSize: 14, color: '#a0d2db' }}>
           <BarChart3 size={16} style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />
-          反馈看板
+          {t('feedback.title')}
         </h3>
         <button onClick={fetchAll} disabled={loading}
           style={{ background: 'none', border: '1px solid #444', borderRadius: 4, color: '#888', padding: '3px 8px', cursor: 'pointer', fontSize: 12 }}>
-          <RefreshCw size={12} /> 刷新
+          <RefreshCw size={12} /> {t('feedback.actions.refresh')}
         </button>
       </div>
 
       {/* Stats cards */}
       {stats && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
-          <StatCard label="总反馈" value={stats.total} />
-          <StatCard label="满意率" value={`${rate}%`} color={parseFloat(rate) >= 80 ? '#4ade80' : '#f59e0b'} />
-          <StatCard label="好评" value={stats.upvotes} color="#4ade80" icon={<ThumbsUp size={12} />} />
-          <StatCard label="差评" value={stats.downvotes} color="#f87171" icon={<ThumbsDown size={12} />} />
+          <StatCard label={t('feedback.stats.total')} value={stats.total} />
+          <StatCard label={t('feedback.stats.satisfaction')} value={`${rate}%`} color={parseFloat(rate) >= 80 ? '#4ade80' : '#f59e0b'} />
+          <StatCard label={t('feedback.stats.upvotes')} value={stats.upvotes} color="#4ade80" icon={<ThumbsUp size={12} />} />
+          <StatCard label={t('feedback.stats.downvotes')} value={stats.downvotes} color="#f87171" icon={<ThumbsDown size={12} />} />
         </div>
       )}
 
       {/* Trend sparkline */}
       {stats?.trend && stats.trend.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>30 天趋势</div>
+          <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{t('feedback.trend')}</div>
           <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 40 }}>
             {stats.trend.map((t, i) => {
               const total = t.up + t.down;
@@ -107,7 +110,7 @@ export default function FeedbackTab() {
       {/* By pipeline */}
       {stats?.by_pipeline && Object.keys(stats.by_pipeline).length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>按管线分布</div>
+          <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{t('feedback.byPipeline')}</div>
           {Object.entries(stats.by_pipeline).map(([pipe, counts]) => {
             const total = counts.up + counts.down;
             const upPct = total > 0 ? (counts.up / total) * 100 : 0;
@@ -129,12 +132,12 @@ export default function FeedbackTab() {
         <button onClick={processDownvotes} disabled={processing}
           style={{ background: '#1a1a2e', border: '1px solid #f87171', borderRadius: 4, color: '#f87171', padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>
           <Play size={12} style={{ marginRight: 4 }} />
-          {processing ? '处理中...' : '批量处理差评'}
+          {processing ? t('feedback.actions.processing') : t('feedback.actions.processDownvotes')}
         </button>
       </div>
 
       {/* Recent feedback list */}
-      <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>最近反馈</div>
+      <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{t('feedback.recent')}</div>
       <div style={{ maxHeight: 300, overflowY: 'auto' }}>
         {items.map(item => (
           <div key={item.id}
@@ -157,7 +160,7 @@ export default function FeedbackTab() {
           </div>
         ))}
         {items.length === 0 && !loading && (
-          <div style={{ textAlign: 'center', color: '#555', padding: 20 }}>暂无反馈数据</div>
+          <div style={{ textAlign: 'center', color: '#555', padding: 20 }}>{t('feedback.empty')}</div>
         )}
       </div>
     </div>

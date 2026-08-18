@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatDate, formatNumber, getLocaleHeaders } from '../../i18n';
 import FilePickerDialog from './FilePickerDialog';
 
 interface QcTemplate {
@@ -50,6 +52,7 @@ interface ReportTemplate {
 }
 
 export default function QcMonitorTab() {
+  const { t } = useTranslation();
   const [templates, setTemplates] = useState<QcTemplate[]>([]);
   const [categories, setCategories] = useState<DefectCategory[]>([]);
   const [defects, setDefects] = useState<DefectCode[]>([]);
@@ -70,21 +73,21 @@ export default function QcMonitorTab() {
 
   const fetchDashboard = async () => {
     try {
-      const r = await fetch('/api/qc/dashboard', { credentials: 'include' });
+      const r = await fetch('/api/qc/dashboard', { credentials: 'include', headers: getLocaleHeaders() });
       if (r.ok) { const d = await r.json(); setDashboard(d); }
     } catch { /* ignore */ }
   };
 
   const fetchTemplates = async () => {
     try {
-      const r = await fetch('/api/workflows/qc-templates', { credentials: 'include' });
+      const r = await fetch('/api/workflows/qc-templates', { credentials: 'include', headers: getLocaleHeaders() });
       if (r.ok) { const d = await r.json(); setTemplates(d.templates || []); }
     } catch { /* ignore */ }
   };
 
   const fetchTaxonomy = async () => {
     try {
-      const r = await fetch('/api/defect-taxonomy', { credentials: 'include' });
+      const r = await fetch('/api/defect-taxonomy', { credentials: 'include', headers: getLocaleHeaders() });
       if (r.ok) {
         const d = await r.json();
         setCategories(d.categories || []);
@@ -95,14 +98,14 @@ export default function QcMonitorTab() {
 
   const fetchReviews = async () => {
     try {
-      const r = await fetch('/api/qc/reviews', { credentials: 'include' });
+      const r = await fetch('/api/qc/reviews', { credentials: 'include', headers: getLocaleHeaders() });
       if (r.ok) { const d = await r.json(); setReviews(d.reviews || []); }
     } catch { /* ignore */ }
   };
 
   const fetchReportTemplates = async () => {
     try {
-      const r = await fetch('/api/reports/templates', { credentials: 'include' });
+      const r = await fetch('/api/reports/templates', { credentials: 'include', headers: getLocaleHeaders() });
       if (r.ok) { const d = await r.json(); setReportTemplates(d.templates || []); }
     } catch { /* ignore */ }
   };
@@ -117,7 +120,7 @@ export default function QcMonitorTab() {
       for (const s of tpl.sections) { sectionData[s] = ''; }
       const r = await fetch('/api/reports/generate', {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ section_data: sectionData, metadata: reportMeta }),
       });
       if (r.ok) {
@@ -125,9 +128,9 @@ export default function QcMonitorTab() {
         setReportPath(d.path || null);
       } else {
         const d = await r.json();
-        alert(d.error || '报告生成失败');
+        alert(d.error || t('qcMonitor.errors.generateReport'));
       }
-    } catch { alert('网络错误'); }
+    } catch { alert(t('qcMonitor.errors.network')); }
     finally { setGenerating(false); }
   };
 
@@ -139,12 +142,12 @@ export default function QcMonitorTab() {
     try {
       const r = await fetch('/api/workflows/from-template', {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ template_id: templateId }),
       });
-      if (r.ok) { alert('工作流创建成功'); }
-      else { const d = await r.json(); alert(d.error || '创建失败'); }
-    } catch { alert('网络错误'); }
+      if (r.ok) { alert(t('qcMonitor.messages.workflowCreated')); }
+      else { const d = await r.json(); alert(d.error || t('qcMonitor.errors.create')); }
+    } catch { alert(t('qcMonitor.errors.network')); }
   };
 
   const handleQuickExecute = (templateId: string) => {
@@ -159,17 +162,17 @@ export default function QcMonitorTab() {
     try {
       const r = await fetch('/api/workflows/from-template-and-execute', {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ template_id: quickExecTemplate, parameters: { file_path: filePath } }),
       });
       if (r.ok) {
         const data = await r.json();
-        alert(`工作流已创建并开始执行\nID: ${data.workflow_id}\nRun: ${data.run_id || 'N/A'}\n请前往"编排→工作流"查看实时进度`);
+        alert(t('qcMonitor.messages.workflowRunning', { workflowId: data.workflow_id, runId: data.run_id || 'N/A' }));
       } else {
         const d = await r.json();
-        alert(d.error || '执行失败');
+        alert(d.error || t('qcMonitor.errors.execute'));
       }
-    } catch { alert('网络错误'); }
+    } catch { alert(t('qcMonitor.errors.network')); }
     finally { setQuickExecTemplate(null); }
   };
 
@@ -195,31 +198,42 @@ export default function QcMonitorTab() {
     }
   };
 
+  const statusLabel = (status: string) => {
+    const key = ({
+      pending: 'pending',
+      in_review: 'inReview',
+      fixed: 'fixed',
+      approved: 'approved',
+      rejected: 'rejected',
+    } as Record<string, string>)[status];
+    return key ? t(`qcMonitor.status.${key}`) : status;
+  };
+
   const pendingCount = reviews.filter(r => r.status === 'pending').length;
   const fixedCount = reviews.filter(r => r.status === 'fixed').length;
   const approvedCount = reviews.filter(r => r.status === 'approved').length;
 
-  if (loading) return <div style={{ padding: 12, color: '#888' }}>加载中...</div>;
+  if (loading) return <div style={{ padding: 12, color: '#888' }}>{t('qcMonitor.common.loading')}</div>;
 
   return (
     <div style={{ padding: 12 }}>
       {/* Summary bar */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
         <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 10, textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: '#7dd3fc' }}>{reviews.length}</div>
-          <div style={{ color: '#888', fontSize: 11 }}>总复核数</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: '#7dd3fc' }}>{formatNumber(reviews.length)}</div>
+          <div style={{ color: '#888', fontSize: 11 }}>{t('qcMonitor.summary.totalReviews')}</div>
         </div>
         <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 10, textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: '#fb8c00' }}>{pendingCount}</div>
-          <div style={{ color: '#888', fontSize: 11 }}>待处理</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: '#fb8c00' }}>{formatNumber(pendingCount)}</div>
+          <div style={{ color: '#888', fontSize: 11 }}>{t('qcMonitor.summary.pending')}</div>
         </div>
         <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 10, textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: '#43a047' }}>{fixedCount}</div>
-          <div style={{ color: '#888', fontSize: 11 }}>已修复</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: '#43a047' }}>{formatNumber(fixedCount)}</div>
+          <div style={{ color: '#888', fontSize: 11 }}>{t('qcMonitor.summary.fixed')}</div>
         </div>
         <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 10, textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: '#10b981' }}>{approvedCount}</div>
-          <div style={{ color: '#888', fontSize: 11 }}>已通过</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: '#10b981' }}>{formatNumber(approvedCount)}</div>
+          <div style={{ color: '#888', fontSize: 11 }}>{t('qcMonitor.summary.approved')}</div>
         </div>
       </div>
 
@@ -233,7 +247,7 @@ export default function QcMonitorTab() {
               color: section === s ? '#7dd3fc' : '#888',
               border: `1px solid ${section === s ? '#2563eb' : '#333'}`,
             }}>
-            {s === 'dashboard' ? '概览' : s === 'templates' ? '模板' : s === 'taxonomy' ? '缺陷分类' : s === 'reviews' ? '复核' : '报告'}
+            {t(`qcMonitor.tabs.${s}`)}
           </button>
         ))}
       </div>
@@ -244,34 +258,34 @@ export default function QcMonitorTab() {
           {/* Stat cards */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
             <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#7dd3fc' }}>{dashboard?.templates.count || 0}</div>
-              <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>质检模板</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#7dd3fc' }}>{formatNumber(dashboard?.templates.count || 0)}</div>
+              <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>{t('qcMonitor.dashboard.templates')}</div>
             </div>
             <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#fb8c00' }}>{dashboard?.reviews.pending || 0}</div>
-              <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>待复核</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#fb8c00' }}>{formatNumber(dashboard?.reviews.pending || 0)}</div>
+              <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>{t('qcMonitor.dashboard.pendingReviews')}</div>
             </div>
             <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}>{dashboard?.workflows.running || 0}</div>
-              <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>运行中工作流</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}>{formatNumber(dashboard?.workflows.running || 0)}</div>
+              <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>{t('qcMonitor.dashboard.runningWorkflows')}</div>
             </div>
             <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#e53935' }}>{dashboard?.alerts.recent_alerts || 0}</div>
-              <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>近期告警</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#e53935' }}>{formatNumber(dashboard?.alerts.recent_alerts || 0)}</div>
+              <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>{t('qcMonitor.dashboard.recentAlerts')}</div>
             </div>
           </div>
 
           {/* Recent Reviews */}
           <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, marginBottom: 16 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: '#e0e0e0' }}>最近复核</div>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: '#e0e0e0' }}>{t('qcMonitor.dashboard.recentReviews')}</div>
             {dashboard?.recent_reviews && dashboard.recent_reviews.length > 0 ? (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead><tr style={{ background: '#1f2937' }}>
-                  <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>文件</th>
-                  <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>缺陷码</th>
-                  <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>严重度</th>
-                  <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>状态</th>
-                  <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>创建时间</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'start', color: '#aaa' }}>{t('qcMonitor.table.file')}</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'start', color: '#aaa' }}>{t('qcMonitor.table.defectCode')}</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'start', color: '#aaa' }}>{t('qcMonitor.table.severity')}</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'start', color: '#aaa' }}>{t('qcMonitor.table.status')}</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'start', color: '#aaa' }}>{t('qcMonitor.table.createdAt')}</th>
                 </tr></thead>
                 <tbody>
                   {dashboard.recent_reviews.map(r => {
@@ -284,27 +298,27 @@ export default function QcMonitorTab() {
                           <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 3, fontSize: 11, background: sevColor(r.severity), color: 'white' }}>{r.severity}</span>
                         </td>
                         <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937' }}>
-                          <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 3, fontSize: 11, background: ss.bg, color: ss.color }}>{r.status}</span>
+                          <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 3, fontSize: 11, background: ss.bg, color: ss.color }}>{statusLabel(r.status)}</span>
                         </td>
-                        <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', color: '#aaa' }}>{new Date(r.created_at).toLocaleString('zh-CN')}</td>
+                        <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', color: '#aaa' }}>{formatDate(r.created_at, { dateStyle: 'medium', timeStyle: 'short' })}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
             ) : (
-              <div style={{ color: '#888', fontSize: 12, textAlign: 'center', padding: 12 }}>暂无复核记录</div>
+              <div style={{ color: '#888', fontSize: 12, textAlign: 'center', padding: 12 }}>{t('qcMonitor.empty.recentReviews')}</div>
             )}
           </div>
 
           {/* Workflow Stats */}
           <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: '#e0e0e0' }}>工作流统计</div>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: '#e0e0e0' }}>{t('qcMonitor.dashboard.workflowStats')}</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11, color: '#888' }}>
-                  <span>已完成</span>
-                  <span>{dashboard?.workflows.completed || 0}</span>
+                  <span>{t('qcMonitor.workflow.completed')}</span>
+                  <span>{formatNumber(dashboard?.workflows.completed || 0)}</span>
                 </div>
                 <div style={{ height: 8, background: '#1f2937', borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ height: '100%', background: '#10b981', width: `${dashboard?.workflows.total ? (dashboard.workflows.completed / dashboard.workflows.total * 100) : 0}%` }} />
@@ -312,8 +326,8 @@ export default function QcMonitorTab() {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11, color: '#888' }}>
-                  <span>运行中</span>
-                  <span>{dashboard?.workflows.running || 0}</span>
+                  <span>{t('qcMonitor.workflow.running')}</span>
+                  <span>{formatNumber(dashboard?.workflows.running || 0)}</span>
                 </div>
                 <div style={{ height: 8, background: '#1f2937', borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ height: '100%', background: '#3b82f6', width: `${dashboard?.workflows.total ? (dashboard.workflows.running / dashboard.workflows.total * 100) : 0}%` }} />
@@ -321,8 +335,8 @@ export default function QcMonitorTab() {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11, color: '#888' }}>
-                  <span>失败</span>
-                  <span>{dashboard?.workflows.failed || 0}</span>
+                  <span>{t('qcMonitor.workflow.failed')}</span>
+                  <span>{formatNumber(dashboard?.workflows.failed || 0)}</span>
                 </div>
                 <div style={{ height: 8, background: '#1f2937', borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ height: '100%', background: '#e53935', width: `${dashboard?.workflows.total ? (dashboard.workflows.failed / dashboard.workflows.total * 100) : 0}%` }} />
@@ -330,8 +344,8 @@ export default function QcMonitorTab() {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11, color: '#888' }}>
-                  <span>SLA违规</span>
-                  <span>{dashboard?.workflows.sla_violated || 0}</span>
+                  <span>{t('qcMonitor.workflow.slaViolated')}</span>
+                  <span>{formatNumber(dashboard?.workflows.sla_violated || 0)}</span>
                 </div>
                 <div style={{ height: 8, background: '#1f2937', borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ height: '100%', background: '#fb8c00', width: `${dashboard?.workflows.total ? (dashboard.workflows.sla_violated / dashboard.workflows.total * 100) : 0}%` }} />
@@ -345,26 +359,26 @@ export default function QcMonitorTab() {
       {/* Templates */}
       {section === 'templates' && (
         <div>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#e0e0e0' }}>质检工作流模板</div>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#e0e0e0' }}>{t('qcMonitor.sections.workflowTemplates')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
-            {templates.map(t => (
-              <div key={t.id} style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: '#e0e0e0' }}>{t.name}</div>
-                <div style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>{t.description}</div>
-                <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>{t.step_count} 步骤</div>
+            {templates.map(template => (
+              <div key={template.id} style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: '#e0e0e0' }}>{template.name}</div>
+                <div style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>{template.description}</div>
+                <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>{t('qcMonitor.templates.steps', { count: formatNumber(template.step_count) })}</div>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  <button onClick={() => createFromTemplate(t.id)} style={{
+                  <button onClick={() => createFromTemplate(template.id)} style={{
                     padding: '4px 12px', borderRadius: 4, border: 'none',
                     background: '#1a73e8', color: 'white', cursor: 'pointer', fontSize: 12,
-                  }}>创建工作流</button>
-                  <button onClick={() => handleQuickExecute(t.id)} style={{
+                  }}>{t('qcMonitor.actions.createWorkflow')}</button>
+                  <button onClick={() => handleQuickExecute(template.id)} style={{
                     padding: '4px 12px', borderRadius: 4, border: 'none',
                     background: '#16a34a', color: 'white', cursor: 'pointer', fontSize: 12,
-                  }}>上传并执行</button>
+                  }}>{t('qcMonitor.actions.uploadAndRun')}</button>
                 </div>
               </div>
             ))}
-            {templates.length === 0 && <div style={{ color: '#888', fontSize: 12 }}>暂无模板</div>}
+            {templates.length === 0 && <div style={{ color: '#888', fontSize: 12 }}>{t('qcMonitor.empty.templates')}</div>}
           </div>
         </div>
       )}
@@ -372,8 +386,8 @@ export default function QcMonitorTab() {
       {/* Taxonomy — collapsible categories with defect codes */}
       {section === 'taxonomy' && (
         <div>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#e0e0e0' }}>缺陷分类体系</div>
-          {categories.length === 0 && <div style={{ color: '#888', fontSize: 12 }}>暂无缺陷分类数据</div>}
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#e0e0e0' }}>{t('qcMonitor.sections.taxonomy')}</div>
+          {categories.length === 0 && <div style={{ color: '#888', fontSize: 12 }}>{t('qcMonitor.empty.taxonomy')}</div>}
           {categories.map(cat => {
             const catDefects = defects.filter(d => d.category === cat.id);
             const collapsed = collapsedCats.has(cat.id);
@@ -384,9 +398,9 @@ export default function QcMonitorTab() {
                 }}>
                   <div>
                     <span style={{ fontWeight: 600, color: '#e0e0e0', fontSize: 13 }}>{cat.name}</span>
-                    <span style={{ marginLeft: 8, fontSize: 11, color: '#888' }}>{cat.description}</span>
+                    <span style={{ marginInlineStart: 8, fontSize: 11, color: '#888' }}>{cat.description}</span>
                   </div>
-                  <span style={{ color: '#888', fontSize: 12 }}>{collapsed ? '+' : '-'} ({catDefects.length})</span>
+                  <span style={{ color: '#888', fontSize: 12 }}>{collapsed ? '+' : '-'} ({formatNumber(catDefects.length)})</span>
                 </div>
                 {!collapsed && catDefects.length > 0 && (
                   <div style={{ padding: '0 12px 8px' }}>
@@ -405,7 +419,7 @@ export default function QcMonitorTab() {
                           <span style={{
                             display: 'inline-block', padding: '2px 6px', borderRadius: 3, fontSize: 11,
                             background: '#1e3a5f', color: '#7dd3fc',
-                          }}>自动修复</span>
+                          }}>{t('qcMonitor.taxonomy.autoFix')}</span>
                         )}
                       </div>
                     ))}
@@ -420,15 +434,15 @@ export default function QcMonitorTab() {
       {/* Reviews table with expandable rows */}
       {section === 'reviews' && (
         <div>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#e0e0e0' }}>复核管理</div>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#e0e0e0' }}>{t('qcMonitor.sections.reviewManagement')}</div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead><tr style={{ background: '#1f2937' }}>
-              <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>ID</th>
-              <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>文件</th>
-              <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>缺陷码</th>
-              <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>严重度</th>
-              <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>状态</th>
-              <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>负责人</th>
+              <th style={{ padding: '6px 8px', textAlign: 'start', color: '#aaa' }}>ID</th>
+              <th style={{ padding: '6px 8px', textAlign: 'start', color: '#aaa' }}>{t('qcMonitor.table.file')}</th>
+              <th style={{ padding: '6px 8px', textAlign: 'start', color: '#aaa' }}>{t('qcMonitor.table.defectCode')}</th>
+              <th style={{ padding: '6px 8px', textAlign: 'start', color: '#aaa' }}>{t('qcMonitor.table.severity')}</th>
+              <th style={{ padding: '6px 8px', textAlign: 'start', color: '#aaa' }}>{t('qcMonitor.table.status')}</th>
+              <th style={{ padding: '6px 8px', textAlign: 'start', color: '#aaa' }}>{t('qcMonitor.table.assignee')}</th>
             </tr></thead>
             <tbody>{reviews.map(r => {
               const ss = statusStyle(r.status);
@@ -444,7 +458,7 @@ export default function QcMonitorTab() {
                       <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 3, fontSize: 11, background: sevColor(r.severity), color: 'white' }}>{r.severity}</span>
                     </td>
                     <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937' }}>
-                      <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 3, fontSize: 11, background: ss.bg, color: ss.color }}>{r.status}</span>
+                      <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 3, fontSize: 11, background: ss.bg, color: ss.color }}>{statusLabel(r.status)}</span>
                     </td>
                     <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', color: '#aaa' }}>{r.assigned_to || '-'}</td>
                   </tr>
@@ -452,12 +466,12 @@ export default function QcMonitorTab() {
                     <tr key={`${r.id}-detail`}>
                       <td colSpan={6} style={{ padding: '8px 12px', background: '#0d1117', borderBottom: '1px solid #1f2937', fontSize: 12 }}>
                         <div style={{ marginBottom: 4 }}>
-                          <span style={{ color: '#888' }}>复核意见: </span>
-                          <span style={{ color: '#ccc' }}>{r.review_comment || '暂无'}</span>
+                          <span style={{ color: '#888' }}>{t('qcMonitor.reviews.comment')}: </span>
+                          <span style={{ color: '#ccc' }}>{r.review_comment || t('qcMonitor.common.none')}</span>
                         </div>
                         <div>
-                          <span style={{ color: '#888' }}>修复说明: </span>
-                          <span style={{ color: '#ccc' }}>{r.fix_description || '暂无'}</span>
+                          <span style={{ color: '#888' }}>{t('qcMonitor.reviews.fixDescription')}: </span>
+                          <span style={{ color: '#ccc' }}>{r.fix_description || t('qcMonitor.common.none')}</span>
                         </div>
                       </td>
                     </tr>
@@ -466,60 +480,60 @@ export default function QcMonitorTab() {
               );
             })}</tbody>
           </table>
-          {reviews.length === 0 && <div style={{ color: '#888', textAlign: 'center', padding: 24 }}>暂无复核项</div>}
+          {reviews.length === 0 && <div style={{ color: '#888', textAlign: 'center', padding: 24 }}>{t('qcMonitor.empty.reviews')}</div>}
         </div>
       )}
 
       {/* Report generation */}
       {section === 'report' && (
         <div>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#e0e0e0' }}>质检报告生成</div>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: '#e0e0e0' }}>{t('qcMonitor.sections.reportGeneration')}</div>
           {/* Template selection */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 12 }}>
-            {reportTemplates.map(t => (
-              <div key={t.id} onClick={() => { setSelectedReportTpl(t.id); setReportPath(null); }}
+            {reportTemplates.map(template => (
+              <div key={template.id} onClick={() => { setSelectedReportTpl(template.id); setReportPath(null); }}
                 style={{
-                  background: selectedReportTpl === t.id ? '#1e3a5f' : '#111827',
-                  border: `1px solid ${selectedReportTpl === t.id ? '#2563eb' : '#1f2937'}`,
+                  background: selectedReportTpl === template.id ? '#1e3a5f' : '#111827',
+                  border: `1px solid ${selectedReportTpl === template.id ? '#2563eb' : '#1f2937'}`,
                   borderRadius: 6, padding: 12, cursor: 'pointer',
                 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, color: selectedReportTpl === t.id ? '#7dd3fc' : '#e0e0e0', marginBottom: 4 }}>{t.name}</div>
-                <div style={{ fontSize: 11, color: '#888' }}>{t.description}</div>
-                <div style={{ fontSize: 10, color: '#666', marginTop: 4 }}>{t.sections.length} 个章节</div>
+                <div style={{ fontWeight: 600, fontSize: 13, color: selectedReportTpl === template.id ? '#7dd3fc' : '#e0e0e0', marginBottom: 4 }}>{template.name}</div>
+                <div style={{ fontSize: 11, color: '#888' }}>{template.description}</div>
+                <div style={{ fontSize: 10, color: '#666', marginTop: 4 }}>{t('qcMonitor.report.sectionCount', { count: formatNumber(template.sections.length) })}</div>
               </div>
             ))}
-            {reportTemplates.length === 0 && <div style={{ color: '#888', fontSize: 12 }}>暂无报告模板</div>}
+            {reportTemplates.length === 0 && <div style={{ color: '#888', fontSize: 12 }}>{t('qcMonitor.empty.reportTemplates')}</div>}
           </div>
 
           {/* Metadata form + generate */}
           {selectedReportTpl && (
             <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#e0e0e0', marginBottom: 8 }}>报告元数据</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#e0e0e0', marginBottom: 8 }}>{t('qcMonitor.report.metadata')}</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
                 <div>
-                  <div style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>项目名称</div>
+                  <div style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>{t('qcMonitor.report.projectName')}</div>
                   <input value={reportMeta.project_name} onChange={e => setReportMeta({ ...reportMeta, project_name: e.target.value })}
                     style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>检查日期</div>
+                  <div style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>{t('qcMonitor.report.checkDate')}</div>
                   <input value={reportMeta.check_date} onChange={e => setReportMeta({ ...reportMeta, check_date: e.target.value })}
-                    placeholder="2026年04月02日"
+                    placeholder={t('qcMonitor.report.datePlaceholder')}
                     style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>检查员</div>
+                  <div style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>{t('qcMonitor.report.checker')}</div>
                   <input value={reportMeta.checker} onChange={e => setReportMeta({ ...reportMeta, checker: e.target.value })}
                     style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>审核员</div>
+                  <div style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>{t('qcMonitor.report.reviewer')}</div>
                   <input value={reportMeta.reviewer} onChange={e => setReportMeta({ ...reportMeta, reviewer: e.target.value })}
                     style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
                 </div>
               </div>
               <div style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>
-                章节: {reportTemplates.find(t => t.id === selectedReportTpl)?.sections.join(' / ')}
+                {t('qcMonitor.report.sections', { sections: reportTemplates.find(template => template.id === selectedReportTpl)?.sections.join(' / ') })}
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button onClick={generateReport} disabled={generating}
@@ -527,12 +541,12 @@ export default function QcMonitorTab() {
                     padding: '6px 16px', borderRadius: 4, border: 'none', fontSize: 12, cursor: generating ? 'not-allowed' : 'pointer',
                     background: generating ? '#555' : '#1a73e8', color: 'white',
                   }}>
-                  {generating ? '生成中...' : '生成报告'}
+                  {generating ? t('qcMonitor.actions.generating') : t('qcMonitor.actions.generateReport')}
                 </button>
                 {reportPath && (
                   <a href={`/api/files/download?path=${encodeURIComponent(reportPath)}`} target="_blank" rel="noreferrer"
                     style={{ fontSize: 12, color: '#10b981', textDecoration: 'underline' }}>
-                    下载报告
+                    {t('qcMonitor.actions.downloadReport')}
                   </a>
                 )}
               </div>

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import ModuleList from './domain-standards/ModuleList';
 import ClassGraph from './domain-standards/ClassGraph';
 import ClassDetailDrawer, { type ClassDetail } from './domain-standards/ClassDetailDrawer';
+import { formatDate, formatNumber, getLocaleHeaders } from '../../i18n';
 
 interface XmiStatus {
   compiled: boolean;
@@ -11,6 +13,7 @@ interface XmiStatus {
 }
 
 export default function DomainStandardsTab() {
+  const { t, i18n } = useTranslation();
   const [status, setStatus] = useState<XmiStatus | null>(null);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
@@ -19,7 +22,7 @@ export default function DomainStandardsTab() {
 
   useEffect(() => {
     fetchStatus();
-  }, []);
+  }, [i18n.resolvedLanguage]);
 
   useEffect(() => {
     if (selectedClassId) {
@@ -27,11 +30,11 @@ export default function DomainStandardsTab() {
     } else {
       setClassDetail(null);
     }
-  }, [selectedClassId]);
+  }, [selectedClassId, i18n.resolvedLanguage]);
 
   const fetchStatus = async () => {
     try {
-      const resp = await fetch('/api/xmi/status', { credentials: 'include' });
+      const resp = await fetch('/api/xmi/status', { credentials: 'include', headers: getLocaleHeaders() });
       if (resp.ok) {
         const data = await resp.json();
         setStatus(data);
@@ -41,7 +44,10 @@ export default function DomainStandardsTab() {
 
   const fetchClassDetail = async (classId: string) => {
     try {
-      const resp = await fetch(`/api/xmi/classes/${encodeURIComponent(classId)}`, { credentials: 'include' });
+      const resp = await fetch(`/api/xmi/classes/${encodeURIComponent(classId)}`, {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       if (resp.ok) {
         const data = await resp.json();
         setClassDetail(data);
@@ -50,14 +56,14 @@ export default function DomainStandardsTab() {
   };
 
   const handleCompile = async () => {
-    const sourceDir = window.prompt('请输入 XMI 源文件目录路径:');
+    const sourceDir = window.prompt(t('domainStandards.prompt.sourceDirectory'));
     if (!sourceDir) return;
     setCompiling(true);
     try {
       const resp = await fetch('/api/xmi/compile', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ source_dir: sourceDir }),
       });
       if (resp.ok) {
@@ -92,13 +98,16 @@ export default function DomainStandardsTab() {
           <span style={{ fontSize: 12, color: '#374151' }}>
             {status
               ? status.compiled
-                ? `已编译 ${status.module_count} 模块, ${status.class_count} 类`
-                : '未编译'
-              : '加载中...'}
+                ? t('domainStandards.status.compiled', {
+                    modules: formatNumber(status.module_count),
+                    classes: formatNumber(status.class_count),
+                  })
+                : t('domainStandards.status.notCompiled')
+              : t('domainStandards.status.loading')}
           </span>
           {status?.last_compiled && (
             <span style={{ fontSize: 11, color: '#9ca3af' }}>
-              ({new Date(status.last_compiled).toLocaleDateString('zh-CN')})
+              ({formatDate(status.last_compiled, { dateStyle: 'medium' })})
             </span>
           )}
         </div>
@@ -131,7 +140,7 @@ export default function DomainStandardsTab() {
               animation: 'spin 0.7s linear infinite',
             }} />
           )}
-          编译标准
+          {compiling ? t('domainStandards.actions.compiling') : t('domainStandards.actions.compile')}
         </button>
       </div>
 
@@ -140,7 +149,7 @@ export default function DomainStandardsTab() {
         {/* Left: Module list */}
         <div style={{
           width: 280,
-          borderRight: '1px solid #e5e7eb',
+          borderInlineEnd: '1px solid #e5e7eb',
           flexShrink: 0,
           overflow: 'hidden',
           display: 'flex',
@@ -149,11 +158,11 @@ export default function DomainStandardsTab() {
           <div style={{
             padding: '6px 12px',
             fontSize: 11, fontWeight: 700, color: '#6b7280',
-            textTransform: 'uppercase', letterSpacing: '0.05em',
+            textTransform: 'uppercase', letterSpacing: 0,
             borderBottom: '1px solid #f3f4f6',
             background: '#f9fafb',
           }}>
-            模块列表
+            {t('domainStandards.sections.modules')}
           </div>
           <ModuleList
             onModuleSelect={setSelectedModuleId}

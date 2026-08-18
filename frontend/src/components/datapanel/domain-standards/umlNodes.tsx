@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import { useTranslation } from 'react-i18next';
 
 // Edge style constants
 export const INHERITS_EDGE_STYLE = { stroke: '#3b82f6', strokeWidth: 2 };
@@ -11,6 +12,7 @@ interface UmlClassNodeData {
 }
 
 export function UmlClassNode({ data }: { data: UmlClassNodeData }) {
+  const { t } = useTranslation('common');
   const attrs = data.attributes || [];
   const visible = attrs.slice(0, 5);
   const overflow = attrs.length - 5;
@@ -46,7 +48,9 @@ export function UmlClassNode({ data }: { data: UmlClassNodeData }) {
             </div>
           ))}
           {overflow > 0 && (
-            <div style={{ color: '#9ca3af', fontSize: 11, marginTop: 2 }}>+{overflow} more</div>
+            <div style={{ color: '#9ca3af', fontSize: 11, marginTop: 2 }}>
+              {t('domainStandards.moreAttributes', { count: overflow })}
+            </div>
           )}
         </div>
       )}

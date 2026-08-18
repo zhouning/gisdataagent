@@ -5,6 +5,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from data_agent.db_engine import get_engine
 from data_agent.agent_messaging import get_message_bus
+from data_agent.i18n import t as translate
 from datetime import datetime, timedelta
 
 
@@ -35,11 +36,11 @@ async def messaging_stats(request: Request) -> JSONResponse:
     """获取消息统计"""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "未授权"}, status_code=401)
+        return JSONResponse({"error": translate("messaging.unauthorized")}, status_code=401)
 
     engine = get_engine()
     if not engine:
-        return JSONResponse({"error": "数据库不可用"}, status_code=503)
+        return JSONResponse({"error": translate("messaging.db_unavailable")}, status_code=503)
 
     with engine.connect() as conn:
         result = conn.execute("""
@@ -74,11 +75,11 @@ async def list_messages(request: Request) -> JSONResponse:
     """列出消息（支持过滤）"""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "未授权"}, status_code=401)
+        return JSONResponse({"error": translate("messaging.unauthorized")}, status_code=401)
 
     engine = get_engine()
     if not engine:
-        return JSONResponse({"error": "数据库不可用"}, status_code=503)
+        return JSONResponse({"error": translate("messaging.db_unavailable")}, status_code=503)
 
     # 查询参数
     from_agent = request.query_params.get("from_agent")
@@ -131,12 +132,12 @@ async def replay_message(request: Request) -> JSONResponse:
     """重新发送未送达消息"""
     user = _get_user_from_request(request)
     if not user or not _is_admin(user):
-        return JSONResponse({"error": "需要管理员权限"}, status_code=403)
+        return JSONResponse({"error": translate("messaging.admin_required")}, status_code=403)
 
     msg_id = request.path_params.get("id")
     engine = get_engine()
     if not engine:
-        return JSONResponse({"error": "数据库不可用"}, status_code=503)
+        return JSONResponse({"error": translate("messaging.db_unavailable")}, status_code=503)
 
     with engine.connect() as conn:
         row = conn.execute(
@@ -146,7 +147,8 @@ async def replay_message(request: Request) -> JSONResponse:
         ).fetchone()
 
         if not row:
-            return JSONResponse({"error": "消息不存在或已送达"}, status_code=404)
+            return JSONResponse({"error": translate(
+                "messaging.not_found_or_delivered")}, status_code=404)
 
     # 重新发布消息
     bus = get_message_bus()
@@ -157,19 +159,22 @@ async def replay_message(request: Request) -> JSONResponse:
     )
     await bus.publish(msg)
 
-    return JSONResponse({"status": "success", "message": "消息已重新发送"})
+    return JSONResponse({
+        "status": "success",
+        "message": translate("messaging.replayed"),
+    })
 
 
 async def cleanup_messages(request: Request) -> JSONResponse:
     """清理旧消息"""
     user = _get_user_from_request(request)
     if not user or not _is_admin(user):
-        return JSONResponse({"error": "需要管理员权限"}, status_code=403)
+        return JSONResponse({"error": translate("messaging.admin_required")}, status_code=403)
 
     days = int(request.query_params.get("days", "30"))
     engine = get_engine()
     if not engine:
-        return JSONResponse({"error": "数据库不可用"}, status_code=503)
+        return JSONResponse({"error": translate("messaging.db_unavailable")}, status_code=503)
 
     with engine.connect() as conn:
         result = conn.execute(

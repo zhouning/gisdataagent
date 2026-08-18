@@ -59,7 +59,7 @@ def _check_lockout(username: str) -> Optional[str]:
             return None
         if entry.get("locked_until", 0) > time.time():
             remaining = int(entry["locked_until"] - time.time())
-            return f"账户已锁定，请 {remaining} 秒后重试"
+            return t("auth.account_locked", remaining=remaining)
         return None
 
 
@@ -190,29 +190,29 @@ def change_password(username: str, old_password: str, new_password: str) -> dict
     Returns: {"status": "success"} or {"status": "error", "message": "..."}
     """
     if not new_password or len(new_password) < 6:
-        return {"status": "error", "message": "新密码至少 6 个字符"}
+        return {"status": "error", "message": t("auth.password_new_length")}
 
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": t("auth.delete_db_unavailable")}
     try:
         with engine.connect() as conn:
             row = conn.execute(text(
                 f"SELECT password_hash FROM {T_APP_USERS} WHERE username = :u"
             ), {"u": username}).fetchone()
             if not row:
-                return {"status": "error", "message": "用户不存在"}
+                return {"status": "error", "message": t("auth.delete_user_not_found")}
 
             stored_hash = row[0]
             if not _verify_password(old_password, stored_hash):
-                return {"status": "error", "message": "当前密码错误"}
+                return {"status": "error", "message": t("auth.current_password_failed")}
 
             new_hash = _make_password_hash(new_password)
             conn.execute(text(
                 f"UPDATE {T_APP_USERS} SET password_hash = :h WHERE username = :u"
             ), {"h": new_hash, "u": username})
             conn.commit()
-        return {"status": "success", "message": "密码修改成功"}
+        return {"status": "success", "message": t("auth.password_change_success")}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -239,7 +239,7 @@ def register_user(username: str, password: str, display_name: str = "",
         return {"status": "error", "message": t("auth.email_format")}
 
     if role not in _VALID_ROLES:
-        return {"status": "error", "message": f"invalid role: {role}"}
+        return {"status": "error", "message": t("auth.invalid_role", role=role)}
 
     engine = get_engine()
     if not engine:

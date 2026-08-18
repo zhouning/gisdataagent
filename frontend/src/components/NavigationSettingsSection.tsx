@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, Eye, EyeOff, RotateCcw, Save, Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { getLocaleHeaders } from '../i18n';
 
 interface NavigationItem {
   tab_key: string;
@@ -19,20 +21,22 @@ interface NavigationResponse {
   items?: NavigationItem[];
 }
 
-const compareNavigationItems = (left: NavigationItem, right: NavigationItem) => (
+const compareNavigationItems = (left: NavigationItem, right: NavigationItem, locale = 'zh-CN') => (
   (left.group_sort_order ?? 0) - (right.group_sort_order ?? 0)
   || (left.section_sort_order ?? 0) - (right.section_sort_order ?? 0)
   || left.sort_order - right.sort_order
-  || left.label.localeCompare(right.label, 'zh-CN')
+  || left.label.localeCompare(right.label, locale)
 );
 
-const normalizeItems = (payload: NavigationResponse) => (
+const normalizeItems = (payload: NavigationResponse, locale: string) => (
   (payload.items || [])
     .map(item => ({ ...item, visible: item.visible !== false }))
-    .sort(compareNavigationItems)
+    .sort((left, right) => compareNavigationItems(left, right, locale))
 );
 
 export default function NavigationSettingsSection() {
+  const { t, i18n } = useTranslation('common');
+  const locale = i18n.resolvedLanguage || i18n.language || 'zh-CN';
   const [items, setItems] = useState<NavigationItem[]>([]);
   const [initialItems, setInitialItems] = useState<NavigationItem[]>([]);
   const [query, setQuery] = useState('');
@@ -45,34 +49,39 @@ export default function NavigationSettingsSection() {
     setLoading(true);
     setMessage(null);
     try {
-      const response = await fetch('/api/admin/navigation', { credentials: 'include' });
-      if (!response.ok) throw new Error('导航配置加载失败');
+      const response = await fetch('/api/admin/navigation', { credentials: 'include', headers: getLocaleHeaders() });
+      if (!response.ok) throw new Error(t('adminNavigation.loadFailed'));
       const payload: NavigationResponse = await response.json();
-      const next = normalizeItems(payload);
+      const next = normalizeItems(payload, locale);
       setItems(next);
       setInitialItems(next);
     } catch (error) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : '导航配置加载失败' });
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : t('adminNavigation.loadFailed') });
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [locale]);
 
   const changed = JSON.stringify(items) !== JSON.stringify(initialItems);
   const visibleCount = items.filter(item => item.visible).length;
-  const groupOptions = useMemo(
-    () => [...new Map(items.map(item => [item.group_key, item.group_label])).entries()],
-    [items],
+  const navigationLabel = (kind: 'groups' | 'sections' | 'tabs', key: string, fallback: string) => (
+    t(`dataPanel.${kind}.${key}`, { defaultValue: fallback })
   );
+  const groupOptions = useMemo(() => [
+    ...new Map(items.map(item => [
+      item.group_key,
+      navigationLabel('groups', item.group_key, item.group_label),
+    ])).entries(),
+  ], [items, t]);
   const visibleItems = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return items.filter(item => (
       (!groupFilter || item.group_key === groupFilter)
-      && (!normalized || `${item.label} ${item.tab_key} ${item.section_label}`.toLowerCase().includes(normalized))
-    )).sort(compareNavigationItems);
-  }, [groupFilter, items, query]);
+      && (!normalized || `${navigationLabel('tabs', item.tab_key, item.label)} ${item.tab_key} ${navigationLabel('sections', item.section_key, item.section_label)}`.toLowerCase().includes(normalized))
+    )).sort((left, right) => compareNavigationItems(left, right, locale));
+  }, [groupFilter, items, locale, query, t]);
 
   const updateItem = (tabKey: string, update: Partial<NavigationItem>) => {
     setItems(current => current.map(item => item.tab_key === tabKey ? { ...item, ...update } : item));
@@ -104,7 +113,7 @@ export default function NavigationSettingsSection() {
       const response = await fetch('/api/admin/navigation', {
         method: 'PUT',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({
           items: items.map(item => ({
             tab_key: item.tab_key,
@@ -116,69 +125,73 @@ export default function NavigationSettingsSection() {
       }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || '导航配置保存失败');
-      const next = normalizeItems(payload.items ? payload : { items });
+      if (!response.ok) throw new Error(payload.error || t('adminNavigation.saveFailed'));
+      const next = normalizeItems(payload.items ? payload : { items }, locale);
       setItems(next);
       setInitialItems(next);
-      setMessage({ type: 'success', text: '工作台导航已保存，刷新后对用户生效。' });
+      setMessage({ type: 'success', text: t('adminNavigation.saveSuccess') });
     } catch (error) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : '导航配置保存失败' });
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : t('adminNavigation.saveFailed') });
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <div className="admin-loading">加载导航配置...</div>;
+  if (loading) return <div className="admin-loading">{t('adminNavigation.loading')}</div>;
 
   return (
     <section className="navigation-settings-section">
       <div className="admin-section-heading">
         <span><Eye size={18} /></span>
         <div>
-          <h3>工作台导航</h3>
-          <p>控制右侧数据面板的 Tab 显示、分组内顺序和客户可见范围。隐藏导航不等于替代后端权限校验。</p>
+          <h3>{t('adminNavigation.title')}</h3>
+          <p>{t('adminNavigation.description')}</p>
         </div>
       </div>
 
       <div className="navigation-settings-toolbar">
-        <div className="navigation-settings-summary" title="当前可见 Tab 数">
-          <strong>{visibleCount}</strong><span>/ {items.length} 可见</span>
+        <div className="navigation-settings-summary" title={t('adminNavigation.visibleCountTooltip')}>
+          <strong>{visibleCount}</strong><span>{t('adminNavigation.visibleSummary', { total: items.length })}</span>
         </div>
         <label className="navigation-search">
           <Search size={15} />
-          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索 Tab、标识或集合" />
+          <input value={query} onChange={event => setQuery(event.target.value)} placeholder={t('adminNavigation.searchPlaceholder')} />
         </label>
-        <select aria-label="按一级组筛选" value={groupFilter} onChange={event => setGroupFilter(event.target.value)}>
-          <option value="">全部一级组</option>
+        <select aria-label={t('adminNavigation.groupFilterAria')} value={groupFilter} onChange={event => setGroupFilter(event.target.value)}>
+          <option value="">{t('adminNavigation.allGroups')}</option>
           {groupOptions.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
         </select>
         <button className="btn-secondary" onClick={() => setItems(initialItems)} disabled={!changed || saving}>
-          <RotateCcw size={14} />撤销
+          <RotateCcw size={14} />{t('adminNavigation.undo')}
         </button>
         <button className="btn-primary" onClick={save} disabled={!changed || saving}>
-          <Save size={14} />{saving ? '保存中' : '保存配置'}
+          <Save size={14} />{saving ? t('adminNavigation.saving') : t('adminNavigation.saveConfig')}
         </button>
       </div>
 
       <div className="navigation-settings-list">
-        {visibleItems.length === 0 ? <div className="empty-state">没有匹配的导航项</div> : visibleItems.map(item => (
+        {visibleItems.length === 0 ? <div className="empty-state">{t('adminNavigation.empty')}</div> : visibleItems.map(item => (
           <div key={item.tab_key} className={`navigation-settings-row${item.visible ? '' : ' hidden'}`}>
             <button
               className="navigation-visibility-button"
               onClick={() => updateItem(item.tab_key, { visible: !item.visible })}
-              title={item.visible ? '隐藏 Tab' : '显示 Tab'}
-              aria-label={item.visible ? `隐藏${item.label}` : `显示${item.label}`}
+              title={item.visible ? t('adminNavigation.hideTab') : t('adminNavigation.showTab')}
+              aria-label={item.visible
+                ? t('adminNavigation.hideItem', { label: navigationLabel('tabs', item.tab_key, item.label) })
+                : t('adminNavigation.showItem', { label: navigationLabel('tabs', item.tab_key, item.label) })}
             >
               {item.visible ? <Eye size={16} /> : <EyeOff size={16} />}
             </button>
             <div className="navigation-settings-label">
-              <strong>{item.label}</strong>
+              <strong>{navigationLabel('tabs', item.tab_key, item.label)}</strong>
               <code>{item.tab_key}</code>
             </div>
-            <div className="navigation-settings-location">{item.group_label} / {item.section_label}</div>
+            <div className="navigation-settings-location">
+              {navigationLabel('groups', item.group_key, item.group_label)} / {navigationLabel('sections', item.section_key, item.section_label)}
+            </div>
             <div className="navigation-order-actions">
-              <button onClick={() => move(item.tab_key, -1)} title="上移" aria-label={`上移${item.label}`}><ChevronUp size={15} /></button>
-              <button onClick={() => move(item.tab_key, 1)} title="下移" aria-label={`下移${item.label}`}><ChevronDown size={15} /></button>
+              <button onClick={() => move(item.tab_key, -1)} title={t('adminNavigation.moveUp')} aria-label={t('adminNavigation.moveItemUp', { label: navigationLabel('tabs', item.tab_key, item.label) })}><ChevronUp size={15} /></button>
+              <button onClick={() => move(item.tab_key, 1)} title={t('adminNavigation.moveDown')} aria-label={t('adminNavigation.moveItemDown', { label: navigationLabel('tabs', item.tab_key, item.label) })}><ChevronDown size={15} /></button>
             </div>
           </div>
         ))}

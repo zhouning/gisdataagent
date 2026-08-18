@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { formatNumber } from "../../../../i18n";
 import { getDeriveStatus, DerivationStatusByStrategy } from "../standardsApi";
 
 interface Props {
@@ -7,6 +9,7 @@ interface Props {
 }
 
 export default function DeriveStatusSummary({versionId, refreshTick}: Props) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<DerivationStatusByStrategy>({});
 
   useEffect(() => {
@@ -20,19 +23,19 @@ export default function DeriveStatusSummary({versionId, refreshTick}: Props) {
                  border: "1px solid #ddd", borderRadius: 4,
                  background: "#fafafa"}}>
       <div style={{fontSize: 12, fontWeight: 500, marginBottom: 6}}>
-        派生汇总
+        {t("standards.derive.summary.title")}
       </div>
       {Object.keys(status).length === 0 && (
-        <div style={{fontSize: 11, color: "#888"}}>无数据</div>
+        <div style={{fontSize: 11, color: "#888"}}>{t("standards.derive.summary.empty")}</div>
       )}
       {Object.entries(status).map(([s, counts]) => (
         <div key={s} style={{fontSize: 11, marginBottom: 4}}>
           <div style={{fontWeight: 500}}>{s}</div>
           <div style={{display: "flex", gap: 8, marginTop: 2}}>
-            <span style={{color: "#0a7"}}>active {counts.active}</span>
-            <span style={{color: "#f80"}}>stale {counts.stale}</span>
+            <span style={{color: "#0a7"}}>{t("standards.derive.summary.count", {status: t("standards.derive.status.active"), count: formatNumber(counts.active)})}</span>
+            <span style={{color: "#f80"}}>{t("standards.derive.summary.count", {status: t("standards.derive.status.stale"), count: formatNumber(counts.stale)})}</span>
             {counts.failed > 0 && (
-              <span style={{color: "#c33"}}>failed {counts.failed}</span>
+              <span style={{color: "#c33"}}>{t("standards.derive.summary.count", {status: t("standards.derive.status.failed"), count: formatNumber(counts.failed)})}</span>
             )}
           </div>
         </div>

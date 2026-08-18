@@ -7,6 +7,7 @@ import requests
 import time
 import os
 from .gis_processors import _generate_output_path
+from .i18n import t as translate
 
 
 # Amap geocode level → confidence tier mapping
@@ -122,7 +123,11 @@ def batch_geocode(file_path: str, address_col: str, city: str = None) -> dict:
             df = pd.read_csv(file_path)
 
         if address_col not in df.columns:
-            return {"status": "error", "message": f"Column '{address_col}' not found. Available: {list(df.columns)}"}
+            return {"status": "error", "message": translate(
+                "geocoding.column_not_found",
+                column=address_col,
+                available=list(df.columns),
+            )}
 
         # 2. Select Geocoding Provider
         use_amap = bool(os.environ.get("GAODE_API_KEY"))
@@ -181,7 +186,7 @@ def batch_geocode(file_path: str, address_col: str, city: str = None) -> dict:
                 print(f"  [Error] Geocoding error for {query}: {e}")
 
         if success_count == 0:
-            return {"status": "error", "message": "No addresses could be geocoded."}
+            return {"status": "error", "message": translate("geocoding.none_geocoded")}
 
         # 4. Create GeoDataFrame
         gdf = gpd.GeoDataFrame(results, crs="EPSG:4326")
@@ -199,12 +204,17 @@ def batch_geocode(file_path: str, address_col: str, city: str = None) -> dict:
             "success": success_count,
             "provider": provider_name,
             "confidence_summary": conf_counts,
-            "message": f"Geocoded {success_count}/{len(df)} addresses via {provider_name}. "
-                       f"Confidence: {conf_counts}"
+            "message": translate(
+                "geocoding.batch_success",
+                success=success_count,
+                total=len(df),
+                provider=provider_name,
+                confidence=conf_counts,
+            ),
         }
 
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("geocoding.batch_failed", error=e)}
 
 
 def reverse_geocode(file_path: str, lng_col: str = None, lat_col: str = None) -> dict:
@@ -241,7 +251,9 @@ def reverse_geocode(file_path: str, lng_col: str = None, lat_col: str = None) ->
                 elif 'x' in cols_lower and 'y' in cols_lower:
                     lng_col, lat_col = cols_lower['x'], cols_lower['y']
                 else:
-                    return {"status": "error", "message": f"无法自动检测经纬度列。可用列: {list(df.columns)}。请指定 lng_col 和 lat_col。"}
+                    return {"status": "error", "message": translate(
+                        "geocoding.coord_columns_missing", available=list(df.columns)
+                    )}
 
             coords = list(zip(df[lng_col].astype(float), df[lat_col].astype(float)))
         else:
@@ -339,11 +351,16 @@ def reverse_geocode(file_path: str, lng_col: str = None, lat_col: str = None) ->
             "total": len(coords),
             "success": success_count,
             "provider": provider_name,
-            "message": f"逆地理编码完成: {success_count}/{len(coords)} 条记录已转换为地址 (via {provider_name})。",
+            "message": translate(
+                "geocoding.reverse_success",
+                success=success_count,
+                total=len(coords),
+                provider=provider_name,
+            ),
         }
 
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("geocoding.reverse_failed", error=e)}
 
 
 def calculate_driving_distance(
@@ -375,9 +392,9 @@ def calculate_driving_distance(
     # 2. Amap driving route API
     api_key = os.environ.get("GAODE_API_KEY")
     if not api_key:
-        return (
-            f"直线距离: {straight_dist/1000:.2f} km\n"
-            f"（驾车距离不可用：未配置 GAODE_API_KEY）"
+        return translate(
+            "geocoding.driving_unavailable",
+            distance=f"{straight_dist/1000:.2f}",
         )
 
     try:
@@ -399,24 +416,33 @@ def calculate_driving_distance(
             drive_dist = float(path["distance"])  # meters
             drive_time = float(path["duration"])  # seconds
             if drive_time >= 3600:
-                time_str = f"{int(drive_time//3600)}小时{int((drive_time%3600)//60)}分钟"
+                time_str = translate(
+                    "geocoding.duration_hours",
+                    hours=int(drive_time // 3600),
+                    minutes=int((drive_time % 3600) // 60),
+                )
             else:
-                time_str = f"{int(drive_time//60)}分钟"
-            return (
-                f"直线距离: {straight_dist/1000:.2f} km\n"
-                f"驾车距离: {drive_dist/1000:.2f} km\n"
-                f"预计驾车时间: {time_str}"
+                time_str = translate(
+                    "geocoding.duration_minutes", minutes=int(drive_time // 60)
+                )
+            return translate(
+                "geocoding.driving_success",
+                straight=f"{straight_dist/1000:.2f}",
+                driving=f"{drive_dist/1000:.2f}",
+                duration=time_str,
             )
         else:
             info = data.get("info", "unknown error")
-            return (
-                f"直线距离: {straight_dist/1000:.2f} km\n"
-                f"（驾车距离查询失败: {info}）"
+            return translate(
+                "geocoding.driving_query_failed",
+                distance=f"{straight_dist/1000:.2f}",
+                error=info,
             )
     except Exception as e:
-        return (
-            f"直线距离: {straight_dist/1000:.2f} km\n"
-            f"（驾车距离查询异常: {str(e)}）"
+        return translate(
+            "geocoding.driving_query_exception",
+            distance=f"{straight_dist/1000:.2f}",
+            error=e,
         )
 
 
@@ -478,7 +504,7 @@ def search_nearby_poi(
 
     api_key = os.environ.get("GAODE_API_KEY")
     if not api_key:
-        return {"status": "error", "message": "未配置 GAODE_API_KEY，无法使用 POI 搜索。请在 .env 中设置高德 API Key。"}
+        return {"status": "error", "message": translate("geocoding.poi_api_key_missing")}
 
     try:
         radius = min(int(radius), 50000)
@@ -506,7 +532,9 @@ def search_nearby_poi(
             if data.get("status") != "1":
                 info = data.get("info", "unknown")
                 if not all_pois:
-                    return {"status": "error", "message": f"高德 POI 搜索失败: {info}"}
+                    return {"status": "error", "message": translate(
+                        "geocoding.poi_provider_failed", error=info
+                    )}
                 break
 
             pois = data.get("pois", [])
@@ -521,7 +549,10 @@ def search_nearby_poi(
             time.sleep(0.1)
 
         if not all_pois:
-            return {"status": "error", "message": f"在 ({lng},{lat}) 周围 {radius}m 内未找到 '{keywords}' 相关 POI。"}
+            return {"status": "error", "message": translate(
+                "geocoding.nearby_not_found",
+                lng=lng, lat=lat, radius=radius, keywords=keywords,
+            )}
 
         records = []
         for poi in all_pois:
@@ -545,7 +576,7 @@ def search_nearby_poi(
             })
 
         if not records:
-            return {"status": "error", "message": "POI 搜索成功但无法解析坐标数据。"}
+            return {"status": "error", "message": translate("geocoding.poi_parse_failed")}
 
         gdf = gpd.GeoDataFrame(records, crs="EPSG:4326")
         out_path = _generate_output_path("poi_nearby", "shp")
@@ -555,10 +586,13 @@ def search_nearby_poi(
             "status": "success",
             "output_path": out_path,
             "total": len(gdf),
-            "message": f"在 ({lng},{lat}) 周围 {radius}m 内找到 {len(gdf)} 个 '{keywords}' 相关 POI。",
+            "message": translate(
+                "geocoding.nearby_success",
+                lng=lng, lat=lat, radius=radius, count=len(gdf), keywords=keywords,
+            ),
         }
     except Exception as e:
-        return {"status": "error", "message": f"POI 周边搜索异常: {str(e)}"}
+        return {"status": "error", "message": translate("geocoding.nearby_failed", error=e)}
 
 
 def search_poi_by_keyword(
@@ -582,7 +616,7 @@ def search_poi_by_keyword(
 
     api_key = os.environ.get("GAODE_API_KEY")
     if not api_key:
-        return {"status": "error", "message": "未配置 GAODE_API_KEY，无法使用 POI 搜索。请在 .env 中设置高德 API Key。"}
+        return {"status": "error", "message": translate("geocoding.poi_api_key_missing")}
 
     try:
         page_size = 25
@@ -609,7 +643,9 @@ def search_poi_by_keyword(
             if data.get("status") != "1":
                 info = data.get("info", "unknown")
                 if not all_pois:
-                    return {"status": "error", "message": f"高德 POI 搜索失败: {info}"}
+                    return {"status": "error", "message": translate(
+                        "geocoding.poi_provider_failed", error=info
+                    )}
                 break
 
             pois = data.get("pois", [])
@@ -624,7 +660,9 @@ def search_poi_by_keyword(
             time.sleep(0.1)
 
         if not all_pois:
-            return {"status": "error", "message": f"在 '{region}' 内未找到 '{keywords}' 相关 POI。"}
+            return {"status": "error", "message": translate(
+                "geocoding.keyword_not_found", region=region, keywords=keywords
+            )}
 
         records = []
         for poi in all_pois:
@@ -647,7 +685,7 @@ def search_poi_by_keyword(
             })
 
         if not records:
-            return {"status": "error", "message": "POI 搜索成功但无法解析坐标数据。"}
+            return {"status": "error", "message": translate("geocoding.poi_parse_failed")}
 
         gdf = gpd.GeoDataFrame(records, crs="EPSG:4326")
         out_path = _generate_output_path("poi_keyword", "shp")
@@ -657,10 +695,13 @@ def search_poi_by_keyword(
             "status": "success",
             "output_path": out_path,
             "total": len(gdf),
-            "message": f"在 '{region}' 内找到 {len(gdf)} 个 '{keywords}' 相关 POI。",
+            "message": translate(
+                "geocoding.keyword_success",
+                region=region, count=len(gdf), keywords=keywords,
+            ),
         }
     except Exception as e:
-        return {"status": "error", "message": f"POI 关键词搜索异常: {str(e)}"}
+        return {"status": "error", "message": translate("geocoding.keyword_failed", error=e)}
 
 
 def get_admin_boundary(
@@ -681,7 +722,7 @@ def get_admin_boundary(
 
     api_key = os.environ.get("GAODE_API_KEY")
     if not api_key:
-        return {"status": "error", "message": "未配置 GAODE_API_KEY，无法获取行政区划边界。请在 .env 中设置高德 API Key。"}
+        return {"status": "error", "message": translate("geocoding.boundary_api_key_missing")}
 
     try:
         # First call: get the target district (+ optional child list)
@@ -701,7 +742,9 @@ def get_admin_boundary(
 
         if data.get("status") != "1" or not data.get("districts"):
             info = data.get("info", "unknown")
-            return {"status": "error", "message": f"行政区划查询失败: {info}"}
+            return {"status": "error", "message": translate(
+                "geocoding.boundary_query_failed", error=info
+            )}
 
         top_district = data["districts"][0]
         records = []
@@ -768,7 +811,9 @@ def get_admin_boundary(
                     })
 
         if not records:
-            return {"status": "error", "message": f"未能解析 '{district_name}' 的行政区划边界数据。"}
+            return {"status": "error", "message": translate(
+                "geocoding.boundary_parse_failed", district=district_name
+            )}
 
         gdf = gpd.GeoDataFrame(records, crs="EPSG:4326")
         out_path = _generate_output_path("admin_boundary", "shp")
@@ -778,7 +823,9 @@ def get_admin_boundary(
             "status": "success",
             "output_path": out_path,
             "total": len(gdf),
-            "message": f"获取到 '{district_name}' 的行政区划边界 ({len(gdf)} 个区划)。",
+            "message": translate(
+                "geocoding.boundary_success", district=district_name, count=len(gdf)
+            ),
         }
     except Exception as e:
-        return {"status": "error", "message": f"行政区划边界获取异常: {str(e)}"}
+        return {"status": "error", "message": translate("geocoding.boundary_failed", error=e)}

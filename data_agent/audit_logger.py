@@ -11,6 +11,7 @@ from sqlalchemy import text
 
 from .database_tools import T_APP_USERS, T_AUDIT_LOG
 from .db_engine import get_engine
+from .i18n import t as translate
 from .user_context import current_user_role
 
 # --- Action constants ---
@@ -303,11 +304,11 @@ def query_audit_log(
     """
     role = current_user_role.get()
     if role != "admin":
-        return {"status": "error", "message": "权限不足：仅管理员可查询审计日志。"}
+        return {"status": "error", "message": translate("audit.query_denied")}
 
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置。"}
+        return {"status": "error", "message": translate("audit.db_unavailable")}
 
     days = min(max(days, 1), 90)
 
@@ -333,7 +334,7 @@ def query_audit_log(
             """), params).fetchall()
 
             if not rows:
-                return {"status": "success", "message": "未找到符合条件的审计日志。"}
+                return {"status": "success", "message": translate("audit.no_results")}
 
             lines = []
             for r in rows:
@@ -346,10 +347,12 @@ def query_audit_log(
 
             return {
                 "status": "success",
-                "message": f"最近 {days} 天审计日志（{len(rows)} 条）：\n" + "\n".join(lines),
+                "message": translate(
+                    "audit.query_summary", days=days, count=len(rows)
+                ) + "\n" + "\n".join(lines),
             }
     except Exception as e:
-        return {"status": "error", "message": f"查询失败: {e}"}
+        return {"status": "error", "message": translate("audit.query_failed", error=e)}
 
 
 def cleanup_old_audit_logs() -> int:

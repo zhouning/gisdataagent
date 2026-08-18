@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { getLocaleHeaders } from '../../i18n';
 
 interface MarketItem {
   id: number;
@@ -14,6 +16,7 @@ interface MarketItem {
 }
 
 export default function MarketplaceTab() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<MarketItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<'rating' | 'usage' | 'recent'>('rating');
@@ -23,7 +26,7 @@ export default function MarketplaceTab() {
   const fetchItems = async (sortBy: string) => {
     setLoading(true);
     try {
-      const r = await fetch(`/api/marketplace?sort=${sortBy}`, { credentials: 'include' });
+      const r = await fetch(`/api/marketplace?sort=${sortBy}`, { credentials: 'include', headers: getLocaleHeaders() });
       if (r.ok) { const d = await r.json(); setItems(d.items || []); }
     } catch { /* ignore */ }
     finally { setLoading(false); }
@@ -39,7 +42,7 @@ export default function MarketplaceTab() {
         : null;
     if (!url) return;
     const r = await fetch(url, { method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() }, body: '{}' });
     if (r.ok) { fetchItems(sort); }
   };
 
@@ -53,11 +56,11 @@ export default function MarketplaceTab() {
           : null;
     if (!url) return;
     await fetch(url, { method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ score }) });
+      headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() }, body: JSON.stringify({ score }) });
     fetchItems(sort);
   };
 
-  const typeLabel: Record<string, string> = { skill: '技能', tool: '工具', template: '模板', bundle: '套件' };
+  const typeLabel: Record<string, string> = { skill: t('marketplace.types.skill'), tool: t('marketplace.types.tool'), template: t('marketplace.types.template'), bundle: t('marketplace.types.bundle') };
   const typeColor: Record<string, string> = { skill: '#7c3aed', tool: '#0d9488', template: '#d97706', bundle: '#2563eb' };
 
   const filtered = items.filter(i => {
@@ -67,33 +70,33 @@ export default function MarketplaceTab() {
     return true;
   });
 
-  if (loading) return <div style={{ padding: 16, color: '#888' }}>加载中...</div>;
+  if (loading) return <div style={{ padding: 16, color: '#888' }}>{t('marketplace.loading')}</div>;
 
   return (
     <div style={{ padding: '8px 12px', fontSize: 13 }}>
       <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input placeholder="搜索..." value={search} onChange={e => setSearch(e.target.value)}
+        <input placeholder={t('marketplace.search')} value={search} onChange={e => setSearch(e.target.value)}
           style={{ flex: 1, minWidth: 100, background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '3px 8px', color: '#e0e0e0', fontSize: 12 }} />
         <select value={filter} onChange={e => setFilter(e.target.value)}
           style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '3px 6px', color: '#e0e0e0', fontSize: 12 }}>
-          <option value="all">全部</option>
-          <option value="skill">技能</option>
-          <option value="tool">工具</option>
-          <option value="template">模板</option>
-          <option value="bundle">套件</option>
+          <option value="all">{t('marketplace.filters.all')}</option>
+          <option value="skill">{t('marketplace.types.skill')}</option>
+          <option value="tool">{t('marketplace.types.tool')}</option>
+          <option value="template">{t('marketplace.types.template')}</option>
+          <option value="bundle">{t('marketplace.types.bundle')}</option>
         </select>
         <select value={sort} onChange={e => setSort(e.target.value as any)}
           style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '3px 6px', color: '#e0e0e0', fontSize: 12 }}>
-          <option value="rating">评分</option>
-          <option value="usage">使用量</option>
-          <option value="recent">最新</option>
+          <option value="rating">{t('marketplace.sort.rating')}</option>
+          <option value="usage">{t('marketplace.sort.usage')}</option>
+          <option value="recent">{t('marketplace.sort.recent')}</option>
         </select>
       </div>
 
-      <div style={{ color: '#888', fontSize: 11, marginBottom: 6 }}>{filtered.length} 个共享资源</div>
+      <div style={{ color: '#888', fontSize: 11, marginBottom: 6 }}>{t('marketplace.count', { count: filtered.length })}</div>
 
       {filtered.length === 0 && (
-        <div style={{ color: '#888', textAlign: 'center', padding: 24 }}>暂无共享资源</div>
+        <div style={{ color: '#888', textAlign: 'center', padding: 24 }}>{t('marketplace.empty')}</div>
       )}
 
       {filtered.map(item => (
@@ -120,17 +123,17 @@ export default function MarketplaceTab() {
               {(item.type === 'skill' || item.type === 'tool') && (
                 <button onClick={() => handleClone(item)}
                   style={{ fontSize: 11, color: '#7dd3fc', background: 'none', border: '1px solid #334155', borderRadius: 4, padding: '1px 8px', cursor: 'pointer' }}>
-                  克隆
+                  {t('marketplace.actions.clone')}
                 </button>
               )}
             </div>
           </div>
           <div style={{ fontSize: 11, color: '#aaa', marginTop: 4 }}>
-            {item.description || '无描述'}
+            {item.description || t('marketplace.noDescription')}
           </div>
           <div style={{ fontSize: 10, color: '#666', marginTop: 4, display: 'flex', gap: 12 }}>
             <span>by {item.owner}</span>
-            <span>克隆 {item.clone_count}</span>
+            <span>{t('marketplace.cloneCount', { count: item.clone_count })}</span>
             {item.category && <span>{item.category}</span>}
           </div>
         </div>

@@ -12,6 +12,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SAWarning
 
 from . import BaseConnector, ConnectorRegistry
+from ..i18n import t as translate
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ def _connection_url(endpoint_url: str, auth_config: dict) -> str:
 def _read_only_sql(sql: str) -> str:
     statement = sql.strip()
     if not _READ_QUERY_RE.match(statement) or ";" in statement.rstrip(";"):
-        raise ValueError("database connector only accepts one read-only SELECT query")
+        raise ValueError(translate("connector.database.read_only_required"))
     return statement
 
 
@@ -59,7 +60,7 @@ def _database_capabilities(
             r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?",
             target_table,
         ):
-            return {"error": "invalid table identifier", "layers": []}
+            return {"error": translate("connector.database.invalid_table"), "layers": []}
         engine = create_engine(
             _connection_url(endpoint_url, auth_config),
             pool_size=1,
@@ -105,7 +106,9 @@ def _database_capabilities(
                 schema, table = "public", target_table
             if not inspector.has_table(table, schema=schema):
                 return {
-                    "error": f"governed source table was not discovered: {target_table}",
+                    "error": translate(
+                        "connector.database.table_not_discovered", table=target_table
+                    ),
                     "layers": [],
                 }
             table_refs = [(schema, table)]
@@ -167,7 +170,10 @@ def _database_capabilities(
             "discovery_scope": target_table or "database",
         }
     except Exception as exc:
-        return {"error": str(exc)[:200], "layers": []}
+        return {
+            "error": translate("connector.database.discovery_failed", error=str(exc)[:200]),
+            "layers": [],
+        }
     finally:
         if engine is not None:
             engine.dispose()
@@ -206,11 +212,17 @@ class DatabaseConnector(BaseConnector):
 
         if not sql and table:
             if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?", table):
-                return {"status": "error", "message": "invalid table identifier"}
+                return {
+                    "status": "error",
+                    "message": translate("connector.database.invalid_table"),
+                }
             where = f" WHERE {filter_expr}" if filter_expr else ""
             sql = f"SELECT * FROM {table}{where} LIMIT {min(limit, 5000)}"
         elif not sql:
-            return {"status": "error", "message": "需要提供 sql 或 table 参数"}
+            return {
+                "status": "error",
+                "message": translate("connector.database.query_required"),
+            }
 
         try:
             sql = _read_only_sql(sql)
@@ -228,7 +240,12 @@ class DatabaseConnector(BaseConnector):
                     df = pd.read_sql(text(sql), conn)
                     return df
         except Exception as e:
-            return {"status": "error", "message": str(e)[:300]}
+            return {
+                "status": "error",
+                "message": translate(
+                    "connector.database.query_failed", error=str(e)[:300]
+                ),
+            }
         finally:
             try:
                 engine.dispose()
@@ -250,7 +267,12 @@ class DatabaseConnector(BaseConnector):
             engine.dispose()
             return {"health": "healthy", "message": "OK"}
         except Exception as e:
-            return {"health": "error", "message": str(e)[:200]}
+            return {
+                "health": "error",
+                "message": translate(
+                    "connector.database.health_failed", error=str(e)[:200]
+                ),
+            }
 
     async def get_capabilities(self, endpoint_url: str, auth_config: dict) -> dict:
         """List tables in the database."""

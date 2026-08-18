@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { ListTree } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface TaskNode {
   id: string;
@@ -15,6 +17,7 @@ interface TaskDecompositionCardProps {
 }
 
 export default function TaskDecompositionCard({ tasks: initialTasks, onApprove, onCancel }: TaskDecompositionCardProps) {
+  const { t } = useTranslation('common');
   const [tasks, setTasks] = useState<TaskNode[]>(
     initialTasks.map(t => ({ ...t, enabled: true }))
   );
@@ -34,9 +37,11 @@ export default function TaskDecompositionCard({ tasks: initialTasks, onApprove, 
 
   return (
     <div style={{ background: 'var(--surface)', padding: '16px', borderRadius: 'var(--radius-md)', marginBottom: '12px' }}>
-      <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 600 }}>🔀 任务分解</h4>
+      <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <ListTree size={16} /> {t('taskDecomposition.title')}
+      </h4>
       <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-        检测到复杂查询，已分解为 {tasks.length} 个子任务。请确认后执行：
+        {t('taskDecomposition.summary', { count: tasks.length })}
       </p>
 
       <div style={{ maxHeight: '400px', overflow: 'auto', marginBottom: '12px' }}>
@@ -54,16 +59,18 @@ export default function TaskDecompositionCard({ tasks: initialTasks, onApprove, 
                 type="checkbox"
                 checked={task.enabled}
                 onChange={() => toggleTask(task.id)}
+                aria-label={t('taskDecomposition.toggleTask', { index: idx + 1 })}
                 style={{ marginTop: '4px' }}
               />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>
-                  任务 {idx + 1} {task.agent_hint && `· ${task.agent_hint}`}
+                  {t('taskDecomposition.taskLabel', { index: idx + 1 })} {task.agent_hint && `· ${task.agent_hint}`}
                 </div>
                 <textarea
                   value={task.description}
                   onChange={e => updateDescription(task.id, e.target.value)}
                   disabled={!task.enabled}
+                  aria-label={t('taskDecomposition.editTask', { index: idx + 1 })}
                   rows={2}
                   style={{
                     width: '100%',
@@ -78,7 +85,7 @@ export default function TaskDecompositionCard({ tasks: initialTasks, onApprove, 
                 />
                 {task.dependencies.length > 0 && (
                   <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                    依赖: {task.dependencies.join(', ')}
+                    {t('taskDecomposition.dependencies', { dependencies: task.dependencies.join(', ') })}
                   </div>
                 )}
               </div>
@@ -89,10 +96,10 @@ export default function TaskDecompositionCard({ tasks: initialTasks, onApprove, 
 
       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
         <button onClick={onCancel} style={{ padding: '6px 12px', fontSize: '12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>
-          取消
+          {t('taskDecomposition.cancel')}
         </button>
         <button onClick={handleApprove} style={{ padding: '6px 12px', fontSize: '12px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>
-          批准并执行 ({tasks.filter(t => t.enabled).length}/{tasks.length})
+          {t('taskDecomposition.approve', { selected: tasks.filter(task => task.enabled).length, total: tasks.length })}
         </button>
       </div>
     </div>

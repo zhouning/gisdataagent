@@ -100,6 +100,30 @@ class TestCatalogAPI(unittest.TestCase):
         self.assertEqual(resp.status_code, 400)
 
     @patch("data_agent.frontend_api._get_user_from_request")
+    def test_catalog_search_missing_query_localizes_and_tolerates_mock_headers(self, mock_user):
+        """The validation error follows the request locale without test-stub header leakage."""
+        mock_user.return_value = _make_user()
+        from data_agent.frontend_api import _api_catalog_search
+        from data_agent.i18n import set_language
+
+        expected = {
+            "zh": "搜索参数 q 必填。",
+            "en": "The search parameter q is required.",
+            "ar": "معلمة البحث q مطلوبة.",
+        }
+        try:
+            for language, message in expected.items():
+                set_language(language)
+                request = _make_request(query_params={})
+                # MagicMock requests expose a non-mapping ``headers`` attribute;
+                # the endpoint must treat it as absent rather than a fingerprint.
+                resp = _run_async(_api_catalog_search(request))
+                self.assertEqual(resp.status_code, 400)
+                self.assertEqual(json.loads(resp.body), {"error": message})
+        finally:
+            set_language("zh")
+
+    @patch("data_agent.frontend_api._get_user_from_request")
     def test_catalog_search_success(self, mock_user):
         mock_user.return_value = _make_user()
         from data_agent.frontend_api import _api_catalog_search

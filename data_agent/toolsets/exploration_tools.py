@@ -16,6 +16,7 @@ from ..gis_processors import (
     _resolve_path,
 )
 from ..doc_auditor import check_consistency
+from ..i18n import t as translate
 
 
 # ---------------------------------------------------------------------------
@@ -29,11 +30,11 @@ def describe_geodataframe(file_path: str) -> dict:
         warns, recs = [], []
 
         if not gdf.crs:
-            warns.append("缺少坐标参考系 (No CRS)")
-            recs.append("请指定坐标系，如 EPSG:4326 或 EPSG:4490")
+            warns.append(translate("exploration.missing_crs"))
+            recs.append(translate("exploration.set_crs"))
         elif gdf.crs.is_geographic:
-            warns.append(f"当前为地理坐标系 ({gdf.crs})，面积/距离计算将不准确")
-            recs.append("建议重投影至投影坐标系")
+            warns.append(translate("exploration.geographic_crs", crs=gdf.crs))
+            recs.append(translate("exploration.reproject_recommended"))
 
         null_cols = {}
         for col in gdf.columns:
@@ -44,15 +45,25 @@ def describe_geodataframe(file_path: str) -> dict:
                 null_cols[col] = n_null
         if null_cols:
             worst = max(null_cols, key=null_cols.get)
-            warns.append(f"发现 {len(null_cols)} 列存在空值，最严重: {worst} ({null_cols[worst]}个空值)")
-            recs.append("建议清除或填充空值后再进行分析")
+            warns.append(translate(
+                "exploration.null_columns",
+                count=len(null_cols),
+                worst=worst,
+                nulls=null_cols[worst],
+            ))
+            recs.append(translate("exploration.clean_nulls"))
 
         n_null_geom = int(gdf.geometry.isna().sum())
         n_empty_geom = int(gdf.geometry.is_empty.sum()) if n_null_geom < len(gdf) else 0
         total_bad_geom = n_null_geom + n_empty_geom
         if total_bad_geom > 0:
-            warns.append(f"发现 {total_bad_geom} 个空几何要素 (null={n_null_geom}, empty={n_empty_geom})")
-            recs.append("建议删除空几何要素")
+            warns.append(translate(
+                "exploration.bad_geometries",
+                total=total_bad_geom,
+                nulls=n_null_geom,
+                empty=n_empty_geom,
+            ))
+            recs.append(translate("exploration.remove_bad_geometries"))
 
         if gdf.crs and gdf.crs.is_geographic:
             valid_geom = gdf[gdf.geometry.notna() & ~gdf.geometry.is_empty]
@@ -61,8 +72,8 @@ def describe_geodataframe(file_path: str) -> dict:
                 near_origin = (bounds["minx"].abs() < 0.01) & (bounds["miny"].abs() < 0.01)
                 n_origin = int(near_origin.sum())
                 if n_origin > 0:
-                    warns.append(f"发现 {n_origin} 个要素坐标接近原点 (0,0)，疑似异常")
-                    recs.append("请核查坐标为(0,0)附近的要素是否为数据错误")
+                    warns.append(translate("exploration.near_origin", count=n_origin))
+                    recs.append(translate("exploration.check_origin"))
 
                 out_of_bounds = (
                     (bounds["minx"] < -180) | (bounds["maxx"] > 180)
@@ -70,23 +81,23 @@ def describe_geodataframe(file_path: str) -> dict:
                 )
                 n_oob = int(out_of_bounds.sum())
                 if n_oob > 0:
-                    warns.append(f"发现 {n_oob} 个要素坐标超出经纬度范围 (-180~180, -90~90)")
-                    recs.append("请核查坐标系是否正确设置")
+                    warns.append(translate("exploration.out_of_bounds", count=n_oob))
+                    recs.append(translate("exploration.check_crs"))
 
         n_dup = 0
         try:
             wkt_series = gdf.geometry.dropna().apply(lambda g: g.wkt if not g.is_empty else None)
             n_dup = int(wkt_series.duplicated().sum())
             if n_dup > 0:
-                warns.append(f"发现 {n_dup} 个重复几何要素")
-                recs.append("建议去重")
+                warns.append(translate("exploration.duplicate_geometries", count=n_dup))
+                recs.append(translate("exploration.deduplicate"))
         except Exception:
             pass
 
         geom_types = gdf.geometry.dropna().geom_type.unique().tolist()
         if len(geom_types) > 1:
-            warns.append(f"数据包含混合几何类型: {geom_types}")
-            recs.append("建议统一几何类型后再分析")
+            warns.append(translate("exploration.mixed_geometry", types=geom_types))
+            recs.append(translate("exploration.normalize_geometry"))
 
         # Geocoding confidence check
         gc_conf_counts = None
@@ -94,8 +105,12 @@ def describe_geodataframe(file_path: str) -> dict:
             gc_conf_counts = gdf["gc_match"].value_counts().to_dict()
             low_conf = gc_conf_counts.get("低", 0) + gc_conf_counts.get("未知", 0)
             if low_conf > 0:
-                warns.append(f"地理编码置信度: {gc_conf_counts}，其中 {low_conf} 条低置信/未知")
-                recs.append("低置信度编码结果可能定位不准确，建议人工核查")
+                warns.append(translate(
+                    "exploration.geocoding_confidence",
+                    counts=gc_conf_counts,
+                    low_count=low_conf,
+                ))
+                recs.append(translate("exploration.review_geocoding"))
 
         numeric_cols = gdf.select_dtypes(include=[np.number]).columns.tolist()
         attr_stats = {}
@@ -119,14 +134,15 @@ def describe_geodataframe(file_path: str) -> dict:
             "geometry_types": geom_types,
             "file_type": os.path.splitext(file_path)[1],
             "columns": list(gdf.columns),
-            "null_values_per_column": null_cols if null_cols else "无",
+            "null_values_per_column": null_cols if null_cols else translate("exploration.none"),
             "null_empty_geometries": total_bad_geom,
             "duplicate_geometries": n_dup,
-            "attribute_statistics": attr_stats if attr_stats else "无数值列",
+            "attribute_statistics": attr_stats if attr_stats else translate(
+                "exploration.no_numeric_columns"),
             "data_health": {
                 "severity": severity,
-                "warnings": warns if warns else ["数据质量良好"],
-                "recommendations": recs if recs else ["可直接进行分析"],
+                "warnings": warns if warns else [translate("exploration.quality_good")],
+                "recommendations": recs if recs else [translate("exploration.ready")],
                 "ready_for_analysis": not warns,
             },
             "geocoding_confidence": gc_conf_counts,
@@ -134,18 +150,22 @@ def describe_geodataframe(file_path: str) -> dict:
         }
         return {"status": "success", "summary": summary}
     except FileNotFoundError:
-        return {"status": "error", "error_message": f"文件未找到: {file_path}",
-                "recovery": "请先调用 search_data_assets 或 list_user_files 检查可用文件"}
+        return {
+            "status": "error",
+            "error_message": translate("exploration.file_not_found", path=file_path),
+            "recovery": translate("exploration.recovery_files"),
+        }
     except Exception as e:
         err = str(e)
         recovery = ""
         if "No such file" in err or "does not exist" in err:
-            recovery = "请先调用 search_data_assets 或 list_user_files 检查可用文件"
+            recovery = translate("exploration.recovery_files")
         elif "CRS" in err or "crs" in err:
-            recovery = "请先调用 reproject_spatial_data 统一坐标系后再试"
+            recovery = translate("exploration.recovery_crs")
         elif "geometry" in err.lower():
-            recovery = "数据可能缺少有效几何列，请检查文件格式是否为空间数据"
-        return {"status": "error", "error_message": err,
+            recovery = translate("exploration.recovery_geometry")
+        return {"status": "error", "error_message": translate(
+                    "exploration.profile_failed", error=err),
                 **({"recovery": recovery} if recovery else {})}
 
 
@@ -155,7 +175,8 @@ def reproject_spatial_data(file_path: str, target_crs: str = "EPSG:3857") -> str
         gdf = _load_spatial_data(file_path).to_crs(target_crs)
         out = _generate_output_path("reprojected", "shp")
         gdf.to_file(out); return out
-    except Exception as e: return f"Error: {str(e)}"
+    except Exception as e:
+        return translate("exploration.reproject_failed", error=e)
 
 
 def engineer_spatial_features(file_path: str) -> dict[str, any]:
@@ -169,8 +190,14 @@ def engineer_spatial_features(file_path: str) -> dict[str, any]:
         gdf['CY'] = gdf_calc.geometry.centroid.y
         out = _generate_output_path("enhanced", "shp")
         gdf.to_file(out)
-        return {"status": "success", "output_path": out, "message": "Standardized to SHP with features"}
-    except Exception as e: return {"status": "error", "error_message": str(e)}
+        return {
+            "status": "success",
+            "output_path": out,
+            "message": translate("exploration.features_engineered"),
+        }
+    except Exception as e:
+        return {"status": "error", "error_message": translate(
+            "exploration.feature_engineering_failed", error=e)}
 
 
 # ---------------------------------------------------------------------------
@@ -194,7 +221,10 @@ def batch_profile_datasets(directory_path: str, standard_id: str = "") -> str:
     try:
         resolved = _resolve_path(directory_path)
         if not os.path.isdir(resolved):
-            return _json.dumps({"status": "error", "message": f"目录不存在: {directory_path}"},
+            return _json.dumps({"status": "error", "message": translate(
+                                   "exploration.directory_not_found",
+                                   path=directory_path,
+                               )},
                                ensure_ascii=False)
 
         files = []
@@ -212,7 +242,11 @@ def batch_profile_datasets(directory_path: str, standard_id: str = "") -> str:
                     files.append(os.path.join(root, fn))
 
         if not files:
-            return _json.dumps({"status": "ok", "message": "目录下未找到可识别的空间数据文件", "file_count": 0},
+            return _json.dumps({
+                "status": "ok",
+                "message": translate("exploration.directory_empty"),
+                "file_count": 0,
+            },
                                ensure_ascii=False)
 
         profiles = []
@@ -249,7 +283,14 @@ def batch_profile_datasets(directory_path: str, standard_id: str = "") -> str:
                     for w in warns[:3]:
                         issues.append({"file": os.path.basename(fp), "issue": w})
                 else:
-                    profiles.append({"file": os.path.basename(fp), "format": ext, "error": result.get("message", "加载失败")})
+                    profiles.append({
+                        "file": os.path.basename(fp),
+                        "format": ext,
+                        "error": result.get(
+                            "error_message",
+                            translate("exploration.load_failed"),
+                        ),
+                    })
             except Exception as e:
                 profiles.append({"file": os.path.basename(fp), "format": ext, "error": str(e)[:100]})
 
@@ -267,7 +308,8 @@ def batch_profile_datasets(directory_path: str, standard_id: str = "") -> str:
         return _json.dumps({"status": "ok", "summary": summary, "files": profiles, "issues": issues[:20]},
                            ensure_ascii=False, default=str)
     except Exception as e:
-        return _json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return _json.dumps({"status": "error", "message": translate(
+                               "exploration.batch_failed", error=e)}, ensure_ascii=False)
 
 
 _ALL_FUNCS = [

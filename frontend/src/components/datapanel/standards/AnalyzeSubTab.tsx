@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { formatNumber } from "../../../i18n";
 import {
   getSimilar,
   getVersionClauses,
@@ -13,13 +15,6 @@ import {
 
 interface Props { versionId: string | null; }
 
-const edgeTypeLabel = (edgeType: string) => {
-  if (edgeType === "derives") return "派生";
-  if (edgeType === "references") return "引用";
-  if (edgeType === "similar_clause") return "相似条款";
-  return edgeType;
-};
-
 const shortId = (value?: string | null) => value ? value.slice(0, 8) : "-";
 const compactText = (value: string, max = 96) =>
   value.length > max ? `${value.slice(0, max)}...` : value;
@@ -29,6 +24,7 @@ const similarKey = (hit: any, index: number) =>
   `${hit.document_version_id ?? ""}`;
 
 export default function AnalyzeSubTab({versionId}: Props) {
+  const { t } = useTranslation();
   const [clauses, setClauses] = useState<StdClause[]>([]);
   const [des, setDes] = useState<StdDataElement[]>([]);
   const [terms, setTerms] = useState<any[]>([]);
@@ -129,8 +125,11 @@ export default function AnalyzeSubTab({versionId}: Props) {
     return grouped;
   }, [impactGraph]);
 
+  const edgeTypeLabel = (edgeType: string) =>
+    t(`standards.analyze.edgeTypes.${edgeType}`, {defaultValue: edgeType});
+
   if (!versionId) return <div style={{padding:24, color:"#888"}}>
-    请在"采集"Tab 选择一个文档查看条款。
+    {t("standards.analyze.selectDocument")}
   </div>;
 
   const summary = impactGraph?.summary;
@@ -140,69 +139,72 @@ export default function AnalyzeSubTab({versionId}: Props) {
     <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:12}}>
       {analysisLoading && (
         <div style={{gridColumn:"1 / -1", color:"#666", fontSize:13}}>
-          分析数据加载中...
+          {t("standards.analyze.loading")}
         </div>
       )}
       {analysisError && (
         <div role="alert" style={{gridColumn:"1 / -1", color:"#b00020", fontSize:13}}>
-          分析数据加载失败: {analysisError}
+          {t("standards.analyze.loadFailed", {message: analysisError})}
         </div>
       )}
       <div>
-        <h4>条款树（{clauses.length}）</h4>
+        <h4>{t("standards.analyze.clauses", {count: formatNumber(clauses.length)})}</h4>
         <ul style={{maxHeight:280, overflow:"auto"}}>
           {clauses.map(c=>(
             <li key={c.id}><b>{c.clause_no}</b> {c.heading}
-              <div style={{color:"#666", fontSize:12, marginLeft:8}}>{c.body_md?.slice(0,80)}</div>
+              <div style={{color:"#666", fontSize:12, marginInlineStart:8}}>{c.body_md?.slice(0,80)}</div>
             </li>
           ))}
         </ul>
-        <h4>术语（{terms.length}）</h4>
+        <h4>{t("standards.analyze.terms", {count: formatNumber(terms.length)})}</h4>
         <ul style={{maxHeight:120, overflow:"auto"}}>
           {terms.map((t:any)=>(<li key={t.id}>{t.term_code} — {t.name_zh}</li>))}
         </ul>
       </div>
       <div>
-        <h4>数据元（{des.length}）</h4>
+        <h4>{t("standards.analyze.dataElements", {count: formatNumber(des.length)})}</h4>
         <table style={{width:"100%", fontSize:13}}>
-          <thead><tr><th>code</th><th>name_zh</th><th>datatype</th><th>oblig.</th></tr></thead>
+          <thead><tr><th>{t("standards.analyze.table.code")}</th><th>{t("standards.analyze.table.chineseName")}</th><th>{t("standards.analyze.table.datatype")}</th><th>{t("standards.analyze.table.obligation")}</th></tr></thead>
           <tbody>
             {des.map(d=>(<tr key={d.id}><td>{d.code}</td><td>{d.name_zh}</td>
-              <td>{d.datatype}</td><td>{d.obligation}</td></tr>))}
+              <td>{d.datatype}</td><td>{t(`standards.analyze.obligation.${d.obligation}`, {defaultValue: d.obligation})}</td></tr>))}
           </tbody>
         </table>
-        <h4>相似条款（{similar.length}）</h4>
+        <h4>{t("standards.analyze.similarClauses", {count: formatNumber(similar.length)})}</h4>
         <ul style={{maxHeight:160, overflow:"auto"}}>
           {similar.map((h:any,i:number)=>(
             <li key={similarKey(h, i)}>
-              v={shortId(h.document_version_id)} sim={Number(h.similarity).toFixed(3)}
+              {t("standards.analyze.similarItem", {
+                version: shortId(h.document_version_id),
+                similarity: formatNumber(Number(h.similarity), {minimumFractionDigits: 3, maximumFractionDigits: 3}),
+              })}
             </li>
           ))}
         </ul>
       </div>
 
       <div style={{gridColumn:"1 / -1", borderTop:"1px solid #ddd", paddingTop:10}}>
-        <h4 style={{marginBottom:8}}>跨标准影响图谱</h4>
-        {impactLoading && <div style={{color:"#666", fontSize:13}}>影响图谱加载中...</div>}
-        {impactError && <div style={{color:"#b00020", fontSize:13}}>影响图谱加载失败: {impactError}</div>}
+        <h4 style={{marginBottom:8}}>{t("standards.analyze.impact.title")}</h4>
+        {impactLoading && <div style={{color:"#666", fontSize:13}}>{t("standards.analyze.impact.loading")}</div>}
+        {impactError && <div style={{color:"#b00020", fontSize:13}}>{t("standards.analyze.impact.loadFailed", {message: impactError})}</div>}
         {!impactLoading && !impactError && (
           <>
             <div style={{display:"flex", gap:8, flexWrap:"wrap", marginBottom:8, fontSize:13}}>
-              <span>节点: <b>{summary?.node_count ?? 0}</b></span>
-              <span>边: <b>{summary?.edge_count ?? 0}</b></span>
-              <span>跨版本: <b>{summary?.cross_version_edge_count ?? 0}</b></span>
-              <span>派生: <b>{byType.derives ?? 0}</b></span>
-              <span>引用: <b>{byType.references ?? 0}</b></span>
-              <span>相似: <b>{byType.similar_clause ?? 0}</b></span>
+              <span>{t("standards.analyze.impact.nodes")}: <b>{formatNumber(summary?.node_count ?? 0)}</b></span>
+              <span>{t("standards.analyze.impact.edges")}: <b>{formatNumber(summary?.edge_count ?? 0)}</b></span>
+              <span>{t("standards.analyze.impact.crossVersion")}: <b>{formatNumber(summary?.cross_version_edge_count ?? 0)}</b></span>
+              <span>{t("standards.analyze.edgeTypes.derives")}: <b>{formatNumber(byType.derives ?? 0)}</b></span>
+              <span>{t("standards.analyze.edgeTypes.references")}: <b>{formatNumber(byType.references ?? 0)}</b></span>
+              <span>{t("standards.analyze.edgeTypes.similar_clause")}: <b>{formatNumber(byType.similar_clause ?? 0)}</b></span>
             </div>
             <div style={{maxHeight:220, overflow:"auto", border:"1px solid #e0e0e0", padding:8}}>
               {(impactGraph?.edges.length ?? 0) === 0 && (
-                <div style={{color:"#888", fontSize:13}}>暂无影响关系</div>
+                <div style={{color:"#888", fontSize:13}}>{t("standards.analyze.impact.empty")}</div>
               )}
               {Object.entries(edgesByType).map(([edgeType, edges]) => (
                 <div key={edgeType} style={{marginBottom:10}}>
                   <div style={{fontSize:12, color:"#666", fontWeight:600, marginBottom:4}}>
-                    {edgeTypeLabel(edgeType)} ({edges.length})
+                    {edgeTypeLabel(edgeType)} ({formatNumber(edges.length)})
                   </div>
                   {edges.map(edge => {
                     const sourceLabel = nodeLabels.get(edge.source) ?? edge.source;
@@ -218,8 +220,8 @@ export default function AnalyzeSubTab({versionId}: Props) {
                         <b>{edgeTypeLabel(edge.edge_type)}</b>{" "}
                         {compactText(sourceLabel)} {"->"} {compactText(targetLabel)}
                         {edge.status ? <span style={{color:"#666"}}> [{edge.status}]</span> : null}
-                        {typeof edge.score === "number" ? <span style={{color:"#666"}}> score={edge.score.toFixed(3)}</span> : null}
-                        {edge.metadata?.cross_version ? <span style={{color:"#666"}}> 跨版本</span> : null}
+                        {typeof edge.score === "number" ? <span style={{color:"#666"}}> {t("standards.analyze.impact.score", {value: formatNumber(edge.score, {minimumFractionDigits: 3, maximumFractionDigits: 3})})}</span> : null}
+                        {edge.metadata?.cross_version ? <span style={{color:"#666"}}> {t("standards.analyze.impact.crossVersion")}</span> : null}
                       </div>
                     );
                   })}

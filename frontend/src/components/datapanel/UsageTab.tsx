@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getPipelineLabel } from './utils';
+import { useTranslation } from 'react-i18next';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
 
 interface UsageData {
   daily: { count: number; tokens: number };
@@ -9,13 +10,17 @@ interface UsageData {
 }
 
 export default function UsageTab() {
+  const { t, i18n } = useTranslation('common');
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(false);
 
   const fetchUsage = async () => {
     setLoading(true);
     try {
-      const resp = await fetch('/api/user/token-usage', { credentials: 'include' });
+      const resp = await fetch('/api/user/token-usage', {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       if (resp.ok) setUsage(await resp.json());
     } catch { /* ignore */ }
     finally { setLoading(false); }
@@ -25,10 +30,10 @@ export default function UsageTab() {
     fetchUsage();
     const interval = setInterval(fetchUsage, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [i18n.resolvedLanguage]);
 
-  if (loading && !usage) return <div className="empty-state">加载中...</div>;
-  if (!usage) return <div className="empty-state">无法获取用量数据</div>;
+  if (loading && !usage) return <div className="empty-state">{t('assetWorkbench.common.loading')}</div>;
+  if (!usage) return <div className="empty-state">{t('assetWorkbench.usage.unavailable')}</div>;
 
   const dailyPct = usage.limits.daily_limit > 0
     ? Math.min(100, Math.round((usage.limits.daily_count / usage.limits.daily_limit) * 100))
@@ -41,42 +46,46 @@ export default function UsageTab() {
   return (
     <div className="usage-view">
       <div className="usage-card">
-        <div className="usage-card-title">今日用量</div>
-        <div className="usage-card-value">{usage.limits.daily_count} / {usage.limits.daily_limit}</div>
+        <div className="usage-card-title">{t('assetWorkbench.usage.today')}</div>
+        <div className="usage-card-value">
+          {formatNumber(usage.limits.daily_count)} / {formatNumber(usage.limits.daily_limit)}
+        </div>
         <div className="usage-progress">
           <div
             className={`usage-progress-fill ${dailyPct >= 90 ? 'warning' : ''}`}
             style={{ width: `${dailyPct}%` }}
           />
         </div>
-        <div className="usage-card-sub">{usage.daily.tokens.toLocaleString()} tokens</div>
+        <div className="usage-card-sub">{t('assetWorkbench.usage.tokenCount', { count: formatNumber(usage.daily.tokens) })}</div>
       </div>
 
       <div className="usage-card">
-        <div className="usage-card-title">本月汇总</div>
-        <div className="usage-card-value">{usage.monthly.total_tokens.toLocaleString()}</div>
-        <div className="usage-card-sub">tokens</div>
+        <div className="usage-card-title">{t('assetWorkbench.usage.monthlySummary')}</div>
+        <div className="usage-card-value">{formatNumber(usage.monthly.total_tokens)}</div>
+        <div className="usage-card-sub">{t('assetWorkbench.usage.tokens')}</div>
         <div className="usage-detail-row">
-          <span>输入</span><span>{usage.monthly.input_tokens.toLocaleString()}</span>
+          <span>{t('assetWorkbench.usage.input')}</span><span>{formatNumber(usage.monthly.input_tokens)}</span>
         </div>
         <div className="usage-detail-row">
-          <span>输出</span><span>{usage.monthly.output_tokens.toLocaleString()}</span>
+          <span>{t('assetWorkbench.usage.output')}</span><span>{formatNumber(usage.monthly.output_tokens)}</span>
         </div>
         <div className="usage-detail-row">
-          <span>分析次数</span><span>{usage.monthly.count}</span>
+          <span>{t('assetWorkbench.usage.analysisCount')}</span><span>{formatNumber(usage.monthly.count)}</span>
         </div>
       </div>
 
       {usage.pipeline_breakdown.length > 0 && (
         <div className="usage-card">
-          <div className="usage-card-title">本月管线分布</div>
+          <div className="usage-card-title">{t('assetWorkbench.usage.pipelineBreakdown')}</div>
           {usage.pipeline_breakdown.map((b) => (
             <div key={b.pipeline_type} className="usage-breakdown-row">
               <div className="usage-breakdown-label">
                 <span className={`pipeline-badge ${b.pipeline_type}`}>
-                  {getPipelineLabel(b.pipeline_type)}
+                  {t(`assetWorkbench.pipelineTypes.${b.pipeline_type}`, { defaultValue: b.pipeline_type })}
                 </span>
-                <span className="usage-breakdown-count">{b.count}次</span>
+                <span className="usage-breakdown-count">
+                  {t('assetWorkbench.usage.runCount', { count: formatNumber(b.count) })}
+                </span>
               </div>
               <div className="usage-progress">
                 <div
@@ -84,7 +93,7 @@ export default function UsageTab() {
                   style={{ width: `${Math.round((b.tokens / maxTokens) * 100)}%` }}
                 />
               </div>
-              <div className="usage-breakdown-tokens">{b.tokens.toLocaleString()}</div>
+              <div className="usage-breakdown-tokens">{formatNumber(b.tokens)}</div>
             </div>
           ))}
         </div>

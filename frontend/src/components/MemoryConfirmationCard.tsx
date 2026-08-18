@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Brain, Plus, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Fact {
   key: string;
@@ -13,6 +15,7 @@ interface MemoryConfirmationCardProps {
 }
 
 export default function MemoryConfirmationCard({ facts: initialFacts, onSave, onDiscard }: MemoryConfirmationCardProps) {
+  const { t } = useTranslation('common');
   const [facts, setFacts] = useState<Fact[]>(initialFacts);
   const [selected, setSelected] = useState<Set<number>>(new Set(initialFacts.map((_, i) => i)));
 
@@ -45,9 +48,11 @@ export default function MemoryConfirmationCard({ facts: initialFacts, onSave, on
 
   return (
     <div style={{ background: 'var(--surface)', padding: '16px', borderRadius: 'var(--radius-md)', marginBottom: '12px' }}>
-      <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600 }}>📝 发现新记忆</h4>
+      <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <Brain size={16} /> {t('memoryConfirmation.title')}
+      </h4>
       <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-        从分析结果中提取了以下事实，请确认后保存：
+        {t('memoryConfirmation.description')}
       </p>
 
       <div style={{ maxHeight: '300px', overflow: 'auto', marginBottom: '12px' }}>
@@ -57,19 +62,20 @@ export default function MemoryConfirmationCard({ facts: initialFacts, onSave, on
               type="checkbox"
               checked={selected.has(idx)}
               onChange={() => toggleSelect(idx)}
+              aria-label={t('memoryConfirmation.toggleFact', { index: idx + 1 })}
               style={{ marginTop: '4px' }}
             />
             <div style={{ flex: 1 }}>
               <input
                 value={fact.key}
                 onChange={e => updateFact(idx, 'key', e.target.value)}
-                placeholder="关键词"
+                placeholder={t('memoryConfirmation.keywordPlaceholder')}
                 style={{ width: '100%', padding: '4px 6px', fontSize: '12px', marginBottom: '4px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}
               />
               <textarea
                 value={fact.value}
                 onChange={e => updateFact(idx, 'value', e.target.value)}
-                placeholder="内容"
+                placeholder={t('memoryConfirmation.contentPlaceholder')}
                 rows={2}
                 style={{ width: '100%', padding: '4px 6px', fontSize: '12px', marginBottom: '4px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', resize: 'vertical' }}
               />
@@ -78,13 +84,13 @@ export default function MemoryConfirmationCard({ facts: initialFacts, onSave, on
                 onChange={e => updateFact(idx, 'category', e.target.value)}
                 style={{ width: '100%', padding: '4px 6px', fontSize: '11px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}
               >
-                <option value="data_characteristic">数据特征</option>
-                <option value="analysis_conclusion">分析结论</option>
-                <option value="user_preference">用户偏好</option>
+                <option value="data_characteristic">{t('memoryConfirmation.categories.dataCharacteristic')}</option>
+                <option value="analysis_conclusion">{t('memoryConfirmation.categories.analysisConclusion')}</option>
+                <option value="user_preference">{t('memoryConfirmation.categories.userPreference')}</option>
               </select>
             </div>
             <button onClick={() => removeFact(idx)} style={{ padding: '4px 8px', fontSize: '11px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-              删除
+              <Trash2 size={13} /> {t('memoryConfirmation.remove')}
             </button>
           </div>
         ))}
@@ -92,14 +98,14 @@ export default function MemoryConfirmationCard({ facts: initialFacts, onSave, on
 
       <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', alignItems: 'center' }}>
         <button onClick={addFact} style={{ padding: '6px 12px', fontSize: '12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>
-          + 添加
+          <Plus size={13} /> {t('memoryConfirmation.add')}
         </button>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={onDiscard} style={{ padding: '6px 12px', fontSize: '12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>
-            全部丢弃
+            {t('memoryConfirmation.discardAll')}
           </button>
           <button onClick={handleSave} style={{ padding: '6px 12px', fontSize: '12px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>
-            保存选中 ({selected.size})
+            {t('memoryConfirmation.saveSelected', { count: selected.size })}
           </button>
         </div>
       </div>

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
 
 interface McpServer {
   name: string;
@@ -50,6 +52,11 @@ interface McpServerForm {
   enabled: boolean;
 }
 
+interface ConnectionTestResult {
+  success: boolean;
+  message: string;
+}
+
 const emptyServerForm = (): McpServerForm => ({
   description: '',
   transport: 'streamable_http',
@@ -89,10 +96,11 @@ function ServerConfigFields({
   form: McpServerForm;
   onChange: (updates: Partial<McpServerForm>) => void;
 }) {
+  const { t } = useTranslation('common');
   const isRemote = form.transport !== 'stdio';
   return (
     <>
-      <input placeholder="描述" value={form.description}
+      <input placeholder={t('assetWorkbench.tools.description')} value={form.description}
         onChange={(event) => onChange({ description: event.target.value })} />
       <select value={form.transport}
         onChange={(event) => onChange({ transport: event.target.value })}>
@@ -101,33 +109,34 @@ function ServerConfigFields({
         <option value="stdio">Stdio</option>
       </select>
       {isRemote ? (
-        <input placeholder="URL (如 https://mcp.example.com/mcp)" value={form.url}
+        <input placeholder={t('assetWorkbench.tools.urlPlaceholder')} value={form.url}
           onChange={(event) => onChange({ url: event.target.value })} />
       ) : (
-        <input placeholder="命令 (如 python -m server)" value={form.command}
+        <input placeholder={t('assetWorkbench.tools.commandPlaceholder')} value={form.command}
           onChange={(event) => onChange({ command: event.target.value })} />
       )}
       {isRemote && (
         <>
-          <input placeholder="Token 环境变量名 (可选)" value={form.bearer_token_env_var}
+          <input placeholder={t('assetWorkbench.tools.tokenEnvPlaceholder')} value={form.bearer_token_env_var}
             onChange={(event) => onChange({ bearer_token_env_var: event.target.value })} />
-          <input placeholder="CA 证书路径 (可选)" value={form.ca_cert}
+          <input placeholder={t('assetWorkbench.tools.caCertPlaceholder')} value={form.ca_cert}
             onChange={(event) => onChange({ ca_cert: event.target.value })} />
         </>
       )}
       <div className="mcp-form-row">
-        <input placeholder="分类" value={form.category}
+        <input placeholder={t('assetWorkbench.tools.category')} value={form.category}
           onChange={(event) => onChange({ category: event.target.value })} />
-        <input type="number" min="0.1" max="300" step="0.5" placeholder="超时（秒）"
+        <input type="number" min="0.1" max="300" step="0.5" placeholder={t('assetWorkbench.tools.timeoutSeconds')}
           value={form.timeout} onChange={(event) => onChange({ timeout: event.target.value })} />
       </div>
-      <input placeholder="管线 (逗号分隔: general,planner)" value={form.pipelines}
+      <input placeholder={t('assetWorkbench.tools.pipelinesPlaceholder')} value={form.pipelines}
         onChange={(event) => onChange({ pipelines: event.target.value })} />
     </>
   );
 }
 
 export default function ToolsTab({ userRole }: { userRole?: string }) {
+  const { t, i18n } = useTranslation('common');
   const [servers, setServers] = useState<McpServer[]>([]);
   const [tools, setTools] = useState<McpTool[]>([]);
   const [selectedServer, setSelectedServer] = useState<string | null>(null);
@@ -140,10 +149,10 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
   const [savingEdit, setSavingEdit] = useState(false);
   const [testingEdit, setTestingEdit] = useState(false);
   const [editError, setEditError] = useState('');
-  const [editTestResult, setEditTestResult] = useState<string | null>(null);
+  const [editTestResult, setEditTestResult] = useState<ConnectionTestResult | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
   const [addName, setAddName] = useState('');
   const [addForm, setAddForm] = useState<McpServerForm>(emptyServerForm);
   const [addError, setAddError] = useState('');
@@ -157,7 +166,10 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
 
   const fetchServers = async () => {
     try {
-      const resp = await fetch('/api/mcp/servers', { credentials: 'include' });
+      const resp = await fetch('/api/mcp/servers', {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       if (resp.ok) {
         const data = await resp.json();
         setServers(data.servers || []);
@@ -169,7 +181,10 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
     setLoading(true);
     const params = serverName ? `?server=${serverName}` : '';
     try {
-      const resp = await fetch(`/api/mcp/tools${params}`, { credentials: 'include' });
+      const resp = await fetch(`/api/mcp/tools${params}`, {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       if (resp.ok) {
         const data = await resp.json();
         setTools(data.tools || []);
@@ -184,7 +199,7 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
       const resp = await fetch(`/api/mcp/servers/${serverName}/toggle`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({ enabled: !currentEnabled }),
       });
       if (resp.ok) await fetchServers();
@@ -198,6 +213,7 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
       const resp = await fetch(`/api/mcp/servers/${serverName}/reconnect`, {
         method: 'POST',
         credentials: 'include',
+        headers: getLocaleHeaders(),
       });
       if (resp.ok) await fetchServers();
     } catch { /* ignore */ }
@@ -206,15 +222,14 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
 
   const handleAddServer = async () => {
     setAddError('');
-    if (!addName.trim()) { setAddError('名称必填'); return; }
+    if (!addName.trim()) { setAddError(t('assetWorkbench.tools.errors.nameRequired')); return; }
     try {
       const resp = await fetch('/api/mcp/servers', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({ name: addName.trim(), ...formPayload(addForm) }),
       });
-      const data = await resp.json();
       if (resp.ok) {
         setShowAddForm(false);
         setAddName('');
@@ -222,9 +237,9 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
         setTestResult(null);
         await fetchServers();
       } else {
-        setAddError(data.error || data.message || '添加失败');
+        setAddError(t('assetWorkbench.tools.errors.addFailed'));
       }
-    } catch { setAddError('网络错误'); }
+    } catch { setAddError(t('assetWorkbench.common.networkError')); }
   };
 
   const startEditing = (server: McpServer) => {
@@ -243,13 +258,17 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
       const resp = await fetch('/api/mcp/servers/test', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify(formPayload(editForm)),
       });
-      const data = await resp.json();
-      setEditTestResult(data.message || (resp.ok ? '连接成功' : data.error || '连接失败'));
+      setEditTestResult({
+        success: resp.ok,
+        message: resp.ok
+          ? t('assetWorkbench.tools.connectionSuccess')
+          : t('assetWorkbench.tools.connectionFailed'),
+      });
     } catch {
-      setEditTestResult('网络错误');
+      setEditTestResult({ success: false, message: t('assetWorkbench.common.networkError') });
     } finally {
       setTestingEdit(false);
     }
@@ -263,12 +282,11 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
       const resp = await fetch(`/api/mcp/servers/${encodeURIComponent(editingServer)}`, {
         method: 'PUT',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify(formPayload(editForm)),
       });
-      const data = await resp.json();
       if (!resp.ok) {
-        setEditError(data.error || data.message || '保存失败');
+        setEditError(t('assetWorkbench.tools.errors.saveFailed'));
         return;
       }
       setEditingServer(null);
@@ -276,19 +294,20 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
       await fetchServers();
       if (selectedServer === editingServer) await fetchTools(editingServer);
     } catch {
-      setEditError('网络错误');
+      setEditError(t('assetWorkbench.common.networkError'));
     } finally {
       setSavingEdit(false);
     }
   };
 
   const handleDeleteServer = async (serverName: string) => {
-    if (!confirm(`确定删除 MCP 服务器「${serverName}」？`)) return;
+    if (!confirm(t('assetWorkbench.tools.deleteConfirm', { name: serverName }))) return;
     setDeleting(serverName);
     try {
       await fetch(`/api/mcp/servers/${serverName}`, {
         method: 'DELETE',
         credentials: 'include',
+        headers: getLocaleHeaders(),
       });
       await fetchServers();
     } catch { /* ignore */ }
@@ -301,18 +320,24 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
     try {
       const resp = await fetch('/api/mcp/servers/test', {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify(formPayload(addForm)),
       });
-      const data = await resp.json();
-      setTestResult(data.message || (resp.ok ? 'OK' : data.error || '连接失败'));
-    } catch { setTestResult('网络错误'); }
+      setTestResult({
+        success: resp.ok,
+        message: resp.ok
+          ? t('assetWorkbench.tools.connectionSuccess')
+          : t('assetWorkbench.tools.connectionFailed'),
+      });
+    } catch {
+      setTestResult({ success: false, message: t('assetWorkbench.common.networkError') });
+    }
     finally { setTesting(false); }
   };
 
   const fetchRules = async () => {
     try {
-      const r = await fetch('/api/mcp/rules', { credentials: 'include' });
+      const r = await fetch('/api/mcp/rules', { credentials: 'include', headers: getLocaleHeaders() });
       if (r.ok) { const d = await r.json(); setRules(d.rules || []); }
     } catch { /* ignore */ }
   };
@@ -328,7 +353,7 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
       if (ruleForm.fallback_server) body.fallback_server = ruleForm.fallback_server;
       const r = await fetch('/api/mcp/rules', {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify(body),
       });
       if (r.ok) {
@@ -341,7 +366,9 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
 
   const handleDeleteRule = async (id: number) => {
     try {
-      await fetch(`/api/mcp/rules/${id}`, { method: 'DELETE', credentials: 'include' });
+      await fetch(`/api/mcp/rules/${id}`, {
+        method: 'DELETE', credentials: 'include', headers: getLocaleHeaders(),
+      });
       await fetchRules();
     } catch { /* ignore */ }
   };
@@ -349,7 +376,9 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
   const handleMatchTest = async () => {
     if (!matchTest.trim()) return;
     try {
-      const r = await fetch(`/api/mcp/rules/match?task_type=${encodeURIComponent(matchTest)}`, { credentials: 'include' });
+      const r = await fetch(`/api/mcp/rules/match?task_type=${encodeURIComponent(matchTest)}`, {
+        credentials: 'include', headers: getLocaleHeaders(),
+      });
       if (r.ok) { const d = await r.json(); setMatchResult(d.match || 'not_found'); }
       else { setMatchResult('not_found'); }
     } catch { setMatchResult('not_found'); }
@@ -362,7 +391,7 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
     fetchRules();
     const interval = setInterval(fetchServers, 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [i18n.resolvedLanguage]);
 
   useEffect(() => {
     if (servers.some((s) => s.status === 'connected')) {
@@ -370,14 +399,14 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
     } else {
       setTools([]);
     }
-  }, [selectedServer, servers.length]);
+  }, [selectedServer, servers.length, i18n.resolvedLanguage]);
 
   const connectedCount = servers.filter((s) => s.status === 'connected').length;
 
   return (
     <div className="tools-view">
       <div className="tools-summary">
-        <div style={{ display: 'flex', gap: 4, marginRight: 8 }}>
+        <div style={{ display: 'flex', gap: 4, marginInlineEnd: 8 }}>
           {(['servers', 'rules'] as const).map(m => (
             <button key={m} onClick={() => setViewMode(m)}
               style={{
@@ -386,20 +415,24 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
                 color: viewMode === m ? '#7dd3fc' : '#888',
                 border: `1px solid ${viewMode === m ? '#2563eb' : '#333'}`,
               }}>
-              {m === 'servers' ? '服务器' : '工具规则'}
+              {m === 'servers'
+                ? t('assetWorkbench.tools.servers')
+                : t('assetWorkbench.tools.rules')}
             </button>
           ))}
         </div>
         {viewMode === 'servers' && (
           <>
-            <span>{servers.length} 服务器</span>
+            <span>{t('assetWorkbench.tools.serverCount', { count: formatNumber(servers.length) })}</span>
             <span className="tools-summary-sep">/</span>
-            <span className={connectedCount > 0 ? 'tools-connected' : ''}>{connectedCount} 已连接</span>
+            <span className={connectedCount > 0 ? 'tools-connected' : ''}>
+              {t('assetWorkbench.tools.connectedCount', { count: formatNumber(connectedCount) })}
+            </span>
             {isAdmin && (
               <button className="btn-add-server" onClick={() => {
                 setShowAddForm(!showAddForm);
                 setEditingServer(null);
-              }} title="添加 MCP 服务器" aria-label="添加 MCP 服务器">
+              }} title={t('assetWorkbench.tools.addServer')} aria-label={t('assetWorkbench.tools.addServer')}>
                 <Plus size={14} />
               </button>
             )}
@@ -407,8 +440,8 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
         )}
         {viewMode === 'rules' && (
           <>
-            <span>{rules.length} 条规则</span>
-            <button className="btn-add-server" onClick={() => setShowRuleForm(!showRuleForm)} title="添加规则" aria-label="添加规则">
+            <span>{t('assetWorkbench.tools.ruleCount', { count: formatNumber(rules.length) })}</span>
+            <button className="btn-add-server" onClick={() => setShowRuleForm(!showRuleForm)} title={t('assetWorkbench.tools.addRule')} aria-label={t('assetWorkbench.tools.addRule')}>
               <Plus size={14} />
             </button>
           </>
@@ -417,44 +450,50 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
 
       {viewMode === 'servers' && showAddForm && isAdmin && (
         <div className="mcp-add-form">
-          <div className="mcp-add-form-title">添加 MCP 服务器</div>
-          <input placeholder="名称 (唯一标识)" value={addName}
+          <div className="mcp-add-form-title">{t('assetWorkbench.tools.addServer')}</div>
+          <input placeholder={t('assetWorkbench.tools.namePlaceholder')} value={addName}
             onChange={(event) => setAddName(event.target.value)} />
           <ServerConfigFields form={addForm}
             onChange={(updates) => setAddForm((current) => ({ ...current, ...updates }))} />
           <label className="mcp-add-checkbox">
             <input type="checkbox" checked={addForm.enabled}
               onChange={e => setAddForm({...addForm, enabled: e.target.checked})} />
-            立即连接
+            {t('assetWorkbench.tools.connectImmediately')}
           </label>
           {addError && <div className="mcp-add-error">{addError}</div>}
-          {testResult && <div className={`mcp-test-result ${testResult.includes('成功') ? 'success' : 'error'}`}>{testResult}</div>}
+          {testResult && (
+            <div className={`mcp-test-result ${testResult.success ? 'success' : 'error'}`}>
+              {testResult.message}
+            </div>
+          )}
           <div className="mcp-add-actions">
-            <button className="btn-secondary btn-sm" onClick={() => setShowAddForm(false)}>取消</button>
-            <button className="btn-secondary btn-sm" onClick={handleTestConnection} disabled={testing}>{testing ? '测试中...' : '测试连接'}</button>
-            <button className="btn-primary btn-sm" onClick={handleAddServer}>添加</button>
+            <button className="btn-secondary btn-sm" onClick={() => setShowAddForm(false)}>{t('assetWorkbench.common.cancel')}</button>
+            <button className="btn-secondary btn-sm" onClick={handleTestConnection} disabled={testing}>
+              {testing ? t('assetWorkbench.tools.testing') : t('assetWorkbench.tools.testConnection')}
+            </button>
+            <button className="btn-primary btn-sm" onClick={handleAddServer}>{t('assetWorkbench.common.add')}</button>
           </div>
         </div>
       )}
 
       {viewMode === 'servers' && editingServer && isAdmin && (
         <div className="mcp-add-form mcp-edit-form">
-          <div className="mcp-add-form-title">编辑 {editingServer}</div>
+          <div className="mcp-add-form-title">{t('assetWorkbench.tools.editServer', { name: editingServer })}</div>
           <ServerConfigFields form={editForm}
             onChange={(updates) => setEditForm((current) => ({ ...current, ...updates }))} />
           {editError && <div className="mcp-add-error">{editError}</div>}
           {editTestResult && (
-            <div className={`mcp-test-result ${editTestResult.includes('成功') ? 'success' : 'error'}`}>
-              {editTestResult}
+            <div className={`mcp-test-result ${editTestResult.success ? 'success' : 'error'}`}>
+              {editTestResult.message}
             </div>
           )}
           <div className="mcp-add-actions">
-            <button className="btn-secondary btn-sm" onClick={() => setEditingServer(null)}>取消</button>
+            <button className="btn-secondary btn-sm" onClick={() => setEditingServer(null)}>{t('assetWorkbench.common.cancel')}</button>
             <button className="btn-secondary btn-sm" onClick={handleEditTestConnection} disabled={testingEdit || savingEdit}>
-              {testingEdit ? '测试中...' : '测试连接'}
+              {testingEdit ? t('assetWorkbench.tools.testing') : t('assetWorkbench.tools.testConnection')}
             </button>
             <button className="btn-primary btn-sm" onClick={handleSaveEdit} disabled={savingEdit || testingEdit}>
-              {savingEdit ? '保存中...' : '保存并重连'}
+              {savingEdit ? t('assetWorkbench.common.saving') : t('assetWorkbench.tools.saveAndReconnect')}
             </button>
           </div>
         </div>
@@ -483,7 +522,9 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
             )}
             {isAdmin && (
               <div className="tools-server-actions">
-                <label className="toggle-switch" title={s.enabled ? '禁用' : '启用'}>
+                <label className="toggle-switch" title={s.enabled
+                  ? t('assetWorkbench.tools.disable')
+                  : t('assetWorkbench.tools.enable')}>
                   <input
                     type="checkbox"
                     checked={s.enabled}
@@ -495,8 +536,8 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
                 <button
                   className="btn-edit-server"
                   onClick={(event) => { event.stopPropagation(); startEditing(s); }}
-                  title="编辑服务器配置"
-                  aria-label={`编辑 ${s.name}`}
+                  title={t('assetWorkbench.tools.editConfig')}
+                  aria-label={t('assetWorkbench.tools.editAria', { name: s.name })}
                 >
                   <Pencil size={13} />
                 </button>
@@ -505,8 +546,8 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
                     className="btn-reconnect"
                     disabled={reconnecting === s.name}
                     onClick={(e) => { e.stopPropagation(); handleReconnect(s.name); }}
-                    title="重新连接"
-                    aria-label={`重新连接 ${s.name}`}
+                    title={t('assetWorkbench.tools.reconnect')}
+                    aria-label={t('assetWorkbench.tools.reconnectAria', { name: s.name })}
                   >
                     <RefreshCw size={13} className={reconnecting === s.name ? 'is-spinning' : ''} />
                   </button>
@@ -515,8 +556,8 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
                   className="btn-delete-server"
                   disabled={deleting === s.name}
                   onClick={(e) => { e.stopPropagation(); handleDeleteServer(s.name); }}
-                  title="删除"
-                  aria-label={`删除 ${s.name}`}
+                  title={t('assetWorkbench.common.delete')}
+                  aria-label={t('assetWorkbench.tools.deleteAria', { name: s.name })}
                 >
                   <Trash2 size={13} />
                 </button>
@@ -526,8 +567,10 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
         ))}
         {servers.length === 0 && (
           <div className="empty-state">
-            暂无 MCP 服务器<br />
-            {isAdmin ? '点击上方 + 按钮添加' : '请联系管理员配置'}
+            {t('assetWorkbench.tools.noServers')}<br />
+            {isAdmin
+              ? t('assetWorkbench.tools.addServerHint')
+              : t('assetWorkbench.tools.contactAdmin')}
           </div>
         )}
       </div>
@@ -535,7 +578,7 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
       {tools.length > 0 && (
         <div className="tools-list">
           <div className="tools-list-header">
-            <span>{selectedServer ? `${selectedServer}` : '全部工具'}</span>
+            <span>{selectedServer ? `${selectedServer}` : t('assetWorkbench.tools.allTools')}</span>
             <span className="tools-count">{tools.length}</span>
           </div>
           {tools.map((tool) => (
@@ -550,7 +593,7 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
       )}
 
       {loading && tools.length === 0 && connectedCount > 0 && (
-        <div className="empty-state">加载工具中...</div>
+        <div className="empty-state">{t('assetWorkbench.tools.loadingTools')}</div>
       )}
       </>)}
 
@@ -560,45 +603,47 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
           {/* Add Rule Form */}
           {showRuleForm && (
             <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, marginBottom: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#e0e0e0', marginBottom: 8 }}>添加工具规则</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#e0e0e0', marginBottom: 8 }}>
+                {t('assetWorkbench.tools.addToolRule')}
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
                 <div>
-                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>任务类型 *</div>
+                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>{t('assetWorkbench.tools.taskType')} *</div>
                   <input value={ruleForm.task_type} onChange={e => setRuleForm({ ...ruleForm, task_type: e.target.value })}
-                    placeholder="如: spatial_analysis"
+                    placeholder={t('assetWorkbench.tools.taskTypePlaceholder')}
                     style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>工具名称 *</div>
+                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>{t('assetWorkbench.tools.toolName')} *</div>
                   <input value={ruleForm.tool_name} onChange={e => setRuleForm({ ...ruleForm, tool_name: e.target.value })}
                     style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>服务器名称 *</div>
+                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>{t('assetWorkbench.tools.serverName')} *</div>
                   <input value={ruleForm.server_name} onChange={e => setRuleForm({ ...ruleForm, server_name: e.target.value })}
                     style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
                 <div>
-                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>优先级</div>
+                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>{t('assetWorkbench.tools.priority')}</div>
                   <input type="number" value={ruleForm.priority} onChange={e => setRuleForm({ ...ruleForm, priority: parseInt(e.target.value) || 0 })}
                     style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>降级工具</div>
+                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>{t('assetWorkbench.tools.fallbackTool')}</div>
                   <input value={ruleForm.fallback_tool} onChange={e => setRuleForm({ ...ruleForm, fallback_tool: e.target.value })}
                     style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>降级服务器</div>
+                  <div style={{ fontSize: 10, color: '#888', marginBottom: 2 }}>{t('assetWorkbench.tools.fallbackServer')}</div>
                   <input value={ruleForm.fallback_server} onChange={e => setRuleForm({ ...ruleForm, fallback_server: e.target.value })}
                     style={{ width: '100%', padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={handleAddRule} style={{ padding: '4px 12px', borderRadius: 4, border: 'none', background: '#1a73e8', color: 'white', cursor: 'pointer', fontSize: 12 }}>保存</button>
-                <button onClick={() => setShowRuleForm(false)} style={{ padding: '4px 12px', borderRadius: 4, border: '1px solid #333', background: 'transparent', color: '#888', cursor: 'pointer', fontSize: 12 }}>取消</button>
+                <button onClick={handleAddRule} style={{ padding: '4px 12px', borderRadius: 4, border: 'none', background: '#1a73e8', color: 'white', cursor: 'pointer', fontSize: 12 }}>{t('assetWorkbench.common.save')}</button>
+                <button onClick={() => setShowRuleForm(false)} style={{ padding: '4px 12px', borderRadius: 4, border: '1px solid #333', background: 'transparent', color: '#888', cursor: 'pointer', fontSize: 12 }}>{t('assetWorkbench.common.cancel')}</button>
               </div>
             </div>
           )}
@@ -607,12 +652,12 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
           {rules.length > 0 ? (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead><tr style={{ background: '#1f2937' }}>
-                <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>任务类型</th>
-                <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>工具</th>
-                <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>服务器</th>
-                <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>优先级</th>
-                <th style={{ padding: '6px 8px', textAlign: 'left', color: '#aaa' }}>降级</th>
-                <th style={{ padding: '6px 8px', textAlign: 'right', color: '#aaa' }}>操作</th>
+                <th style={{ padding: '6px 8px', textAlign: 'start', color: '#aaa' }}>{t('assetWorkbench.tools.taskType')}</th>
+                <th style={{ padding: '6px 8px', textAlign: 'start', color: '#aaa' }}>{t('assetWorkbench.tools.tool')}</th>
+                <th style={{ padding: '6px 8px', textAlign: 'start', color: '#aaa' }}>{t('assetWorkbench.tools.server')}</th>
+                <th style={{ padding: '6px 8px', textAlign: 'start', color: '#aaa' }}>{t('assetWorkbench.tools.priority')}</th>
+                <th style={{ padding: '6px 8px', textAlign: 'start', color: '#aaa' }}>{t('assetWorkbench.tools.fallback')}</th>
+                <th style={{ padding: '6px 8px', textAlign: 'end', color: '#aaa' }}>{t('assetWorkbench.tools.actions')}</th>
               </tr></thead>
               <tbody>
                 {rules.map(r => (
@@ -620,14 +665,14 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
                     <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', color: '#7dd3fc', fontFamily: 'monospace' }}>{r.task_type}</td>
                     <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', color: '#ccc' }}>{r.tool_name}</td>
                     <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', color: '#aaa' }}>{r.server_name}</td>
-                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', color: '#888' }}>{r.priority}</td>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', color: '#888' }}>{formatNumber(r.priority)}</td>
                     <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', color: '#666', fontSize: 11 }}>
                       {r.fallback_tool ? `${r.fallback_tool} @ ${r.fallback_server || '-'}` : '-'}
                     </td>
-                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', textAlign: 'right' }}>
+                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #1f2937', textAlign: 'end' }}>
                       <button onClick={() => handleDeleteRule(r.id)}
                         style={{ padding: '2px 8px', borderRadius: 3, border: '1px solid #333', background: 'transparent', color: '#e53935', cursor: 'pointer', fontSize: 11 }}>
-                        删除
+                        {t('assetWorkbench.common.delete')}
                       </button>
                     </td>
                   </tr>
@@ -635,29 +680,42 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
               </tbody>
             </table>
           ) : (
-            <div style={{ color: '#888', textAlign: 'center', padding: 24, fontSize: 12 }}>暂无工具规则，点击 + 添加</div>
+            <div style={{ color: '#888', textAlign: 'center', padding: 24, fontSize: 12 }}>
+              {t('assetWorkbench.tools.noRules')}
+            </div>
           )}
 
           {/* Test Match */}
           <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 6, padding: 12, marginTop: 10 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#e0e0e0', marginBottom: 6 }}>规则匹配测试</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#e0e0e0', marginBottom: 6 }}>
+              {t('assetWorkbench.tools.matchTest')}
+            </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <input value={matchTest} onChange={e => { setMatchTest(e.target.value); setMatchResult(null); }}
-                placeholder="输入任务类型..."
+                placeholder={t('assetWorkbench.tools.matchPlaceholder')}
                 style={{ flex: 1, padding: '4px 8px', background: '#0d1117', border: '1px solid #333', borderRadius: 4, color: '#ccc', fontSize: 12 }} />
               <button onClick={handleMatchTest}
                 style={{ padding: '4px 12px', borderRadius: 4, border: 'none', background: '#1a73e8', color: 'white', cursor: 'pointer', fontSize: 12 }}>
-                匹配
+                {t('assetWorkbench.tools.match')}
               </button>
             </div>
             {matchResult && matchResult !== 'not_found' && (
               <div style={{ marginTop: 6, fontSize: 11, color: '#10b981' }}>
-                匹配成功: {(matchResult as ToolRule).tool_name} @ {(matchResult as ToolRule).server_name}
-                {(matchResult as ToolRule).fallback_tool && <span style={{ color: '#888' }}> (降级: {(matchResult as ToolRule).fallback_tool})</span>}
+                {t('assetWorkbench.tools.matchSuccess', {
+                  tool: (matchResult as ToolRule).tool_name,
+                  server: (matchResult as ToolRule).server_name,
+                })}
+                {(matchResult as ToolRule).fallback_tool && (
+                  <span style={{ color: '#888' }}> {t('assetWorkbench.tools.matchFallback', {
+                    tool: (matchResult as ToolRule).fallback_tool,
+                  })}</span>
+                )}
               </div>
             )}
             {matchResult === 'not_found' && (
-              <div style={{ marginTop: 6, fontSize: 11, color: '#fb8c00' }}>未找到匹配规则</div>
+              <div style={{ marginTop: 6, fontSize: 11, color: '#fb8c00' }}>
+                {t('assetWorkbench.tools.noMatch')}
+              </div>
             )}
           </div>
         </div>

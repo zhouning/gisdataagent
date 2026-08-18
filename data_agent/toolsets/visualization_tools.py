@@ -4,6 +4,8 @@ import json
 
 import numpy as np
 
+from ..i18n import t
+
 
 def load_admin_boundary(
     province: str = "",
@@ -47,22 +49,22 @@ def load_admin_boundary(
             conditions.append(f"township LIKE '%{township.strip()}%'")
 
         if not conditions:
-            return json.dumps({"error": "至少需要提供 province, city, county 或 township 之一"}, ensure_ascii=False)
+            return json.dumps({"error": t("visualization.admin_boundary_filter_required")}, ensure_ascii=False)
 
         where_clause = " AND ".join(conditions)
         sql = f'SELECT * FROM "xiangzhen" WHERE {where_clause}'
 
         engine = get_engine()
         if not engine:
-            return json.dumps({"error": "数据库连接不可用"}, ensure_ascii=False)
+            return json.dumps({"error": t("visualization.database_unavailable")}, ensure_ascii=False)
         with engine.connect() as conn:
             _inject_user_context(conn)
             gdf = gpd.read_postgis(text(sql), conn, geom_col="geometry")
 
         if gdf.empty:
             return json.dumps({
-                "error": f"未找到匹配的行政区。查询条件: {where_clause}",
-                "suggestion": "请检查地名拼写，或尝试只提供上级行政区（如只传 county 不传 township）"
+                "error": t("visualization.admin_boundary_not_found", conditions=where_clause),
+                "suggestion": t("visualization.admin_boundary_suggestion")
             }, ensure_ascii=False)
 
         # Save to GeoJSON
@@ -93,7 +95,7 @@ def load_admin_boundary(
 
         return json.dumps({
             "status": "ok",
-            "message": f"已加载 {len(gdf)} 个行政区边界",
+            "message": t("visualization.admin_boundary_loaded", count=len(gdf)),
             "geojson_path": fpath,
             "map_config": map_config,
         }, ensure_ascii=False)
@@ -101,7 +103,7 @@ def load_admin_boundary(
     except Exception as e:
         import traceback
         return json.dumps({
-            "error": str(e),
+            "error": t("visualization.admin_boundary_failed", error=e),
             "traceback": traceback.format_exc()[-500:]
         }, ensure_ascii=False)
 
@@ -142,10 +144,7 @@ def _load_spatial_data_with_filter(data_path: str, sql_filter: str = None) -> gp
     # Safety guard: large tables MUST have sql_filter to prevent full-table download
     _LARGE_TABLES = {"xiangzhen", "admin_boundaries", "townships"}
     if not ext_check and stripped.lower() in _LARGE_TABLES and not sql_filter:
-        raise ValueError(
-            f"表 '{stripped}' 数据量过大，必须提供 sql_filter 参数进行过滤。"
-            f"例如: sql_filter=\"city='上海市' AND county='松江区'\""
-        )
+        raise ValueError(t("visualization.large_table_filter_required", table=stripped))
 
     # Only apply SQL filter for PostGIS table names (no file extension)
     if sql_filter and not ext_check and _re.match(r'^[a-zA-Z0-9_]+$', stripped):
@@ -238,7 +237,11 @@ def visualize_optimization_comparison(original_data_path: str, optimized_data_pa
         orig_cols = {c.lower(): c for c in gdf_orig.columns}
         dlmc_col = orig_cols.get('dlmc', 'DLMC')
         if dlmc_col not in gdf_orig.columns:
-             return f"Error: Column 'DLMC' not found in original data. Available: {list(gdf_orig.columns)}"
+            return t(
+                "visualization.column_missing_available",
+                column="DLMC",
+                available=list(gdf_orig.columns),
+            )
 
         opt_cols = {c.lower(): c for c in gdf_opt.columns}
         opt_type_col = opt_cols.get('opt_type', 'Opt_Type')
@@ -256,20 +259,33 @@ def visualize_optimization_comparison(original_data_path: str, optimized_data_pa
 
         gdf_orig['c'] = [cmap[t] for t in initial]
         gdf_orig.plot(ax=axes[0], color=gdf_orig['c'], edgecolor='none')
-        axes[0].set_title('优化前现状 (Before)', fontsize=16, fontweight='bold')
+        axes[0].set_title(
+            t("visualization.optimization.before_title"),
+            fontsize=16,
+            fontweight='bold',
+        )
         axes[0].set_axis_off()
 
         gdf_opt['c'] = [cmap[t] for t in final]
         gdf_opt.plot(ax=axes[1], color=gdf_opt['c'], edgecolor='none')
-        axes[1].set_title('优化后布局 (After)', fontsize=16, fontweight='bold')
+        axes[1].set_title(
+            t("visualization.optimization.after_title"),
+            fontsize=16,
+            fontweight='bold',
+        )
         axes[1].set_axis_off()
 
         patches_type = [
-            mpatches.Patch(color='#FFD700', label='耕地'),
-            mpatches.Patch(color='#228B22', label='林地'),
-            mpatches.Patch(color='#D3D3D3', label='其他'),
+            mpatches.Patch(color='#FFD700', label=t("visualization.land.farmland")),
+            mpatches.Patch(color='#228B22', label=t("visualization.land.forest")),
+            mpatches.Patch(color='#D3D3D3', label=t("visualization.land.other")),
         ]
-        axes[0].legend(handles=patches_type, loc='lower left', fontsize=11, title="用地类型")
+        axes[0].legend(
+            handles=patches_type,
+            loc='lower left',
+            fontsize=11,
+            title=t("visualization.land.type_title"),
+        )
 
         change = np.zeros(len(gdf_orig), dtype=np.int8)
         change[(initial == FARMLAND) & (final == FOREST)] = 1
@@ -277,24 +293,44 @@ def visualize_optimization_comparison(original_data_path: str, optimized_data_pa
         diff_colors = {0: '#F0F0F0', 1: '#FF4444', 2: '#4488FF'}
         gdf_orig['diff_c'] = [diff_colors[c] for c in change]
         gdf_orig.plot(ax=axes[2], color=gdf_orig['diff_c'], edgecolor='none')
-        axes[2].set_title('空间置换差异图 (Swap Map)', fontsize=16, fontweight='bold')
+        axes[2].set_title(
+            t("visualization.optimization.swap_title"),
+            fontsize=16,
+            fontweight='bold',
+        )
         axes[2].set_axis_off()
 
         n_f2l = int((change == 1).sum())
         n_l2f = int((change == 2).sum())
         patches_diff = [
-            mpatches.Patch(color='#F0F0F0', label='未变化'),
-            mpatches.Patch(color='#FF4444', label=f'耕地 -> 林地 ({n_f2l}块)\n(退耕还林/坡度优化)'),
-            mpatches.Patch(color='#4488FF', label=f'林地 -> 耕地 ({n_l2f}块)\n(宜耕资源开发)'),
+            mpatches.Patch(
+                color='#F0F0F0',
+                label=t("visualization.optimization.unchanged"),
+            ),
+            mpatches.Patch(
+                color='#FF4444',
+                label=t("visualization.optimization.farmland_to_forest", count=n_f2l),
+            ),
+            mpatches.Patch(
+                color='#4488FF',
+                label=t("visualization.optimization.forest_to_farmland", count=n_l2f),
+            ),
         ]
-        axes[2].legend(handles=patches_diff, loc='center left', bbox_to_anchor=(1, 0.5), fontsize=11, title="置换类型说明")
+        axes[2].legend(
+            handles=patches_diff,
+            loc='center left',
+            bbox_to_anchor=(1, 0.5),
+            fontsize=11,
+            title=t("visualization.optimization.swap_legend_title"),
+        )
 
         out_path = _generate_output_path("comparison", "png")
         plt.tight_layout()
         plt.savefig(out_path, dpi=300, bbox_inches='tight')
         plt.close()
-        return f"Comparison visualization saved to {out_path}"
-    except Exception as e: return f"Error: {str(e)}"
+        return t("visualization.comparison_generated", path=out_path)
+    except Exception as e:
+        return t("visualization.comparison_failed", error=e)
 
 
 def visualize_interactive_map(original_data_path: str, optimized_data_path: str = None, center_lat: float = None, center_lng: float = None, zoom: int = None, sql_filter: str = None) -> str:
@@ -334,7 +370,11 @@ def visualize_interactive_map(original_data_path: str, optimized_data_path: str 
         if is_point:
             points = gdf_orig[~gdf_orig.geometry.is_empty & gdf_orig.geometry.notna()]
             heat_data = [[p.y, p.x] for p in points.geometry]
-            plugins.HeatMap(heat_data, name="热力图 (Heatmap)", show=True).add_to(m)
+            plugins.HeatMap(
+                heat_data,
+                name=t("visualization.interactive.heatmap"),
+                show=True,
+            ).add_to(m)
 
             cols_lower = {c.lower(): c for c in gdf_orig.columns}
             cluster_col = cols_lower.get('cluster_id')
@@ -359,7 +399,9 @@ def visualize_interactive_map(original_data_path: str, optimized_data_path: str 
                         tooltip=f"Cluster: {cid}"
                     ).add_to(m)
             else:
-                marker_cluster = plugins.MarkerCluster(name="点位聚合 (Markers)").add_to(m)
+                marker_cluster = plugins.MarkerCluster(
+                    name=t("visualization.interactive.markers")
+                ).add_to(m)
                 for idx, row in points.iterrows():
                     folium.Marker([row.geometry.y, row.geometry.x]).add_to(marker_cluster)
 
@@ -419,34 +461,70 @@ def visualize_interactive_map(original_data_path: str, optimized_data_path: str 
                 return {'fillColor': color, 'color': color, 'weight': 1, 'fillOpacity': 0.8}
 
             tooltip_fields = [c for c in [dlmc_col, slope_col, shape_area_col] if c in gdf_orig.columns]
+            tooltip_aliases = {
+                dlmc_col: t("visualization.tooltip.land_type"),
+                slope_col: t("visualization.tooltip.slope"),
+                shape_area_col: t("visualization.tooltip.area"),
+            }
 
             folium.GeoJson(
                 gdf_orig,
-                name='优化前现状 (Before)',
+                name=t("visualization.optimization.before_title"),
                 style_function=style_type,
-                tooltip=folium.GeoJsonTooltip(fields=tooltip_fields, aliases=['地类:', '坡度:', '面积:']) if tooltip_fields else None,
+                tooltip=(folium.GeoJsonTooltip(
+                    fields=tooltip_fields,
+                    aliases=[tooltip_aliases[field] for field in tooltip_fields],
+                ) if tooltip_fields else None),
                 show=False
             ).add_to(m)
 
+            opt_tooltip_fields = [
+                field for field in [opt_type_col, slope_col]
+                if field in gdf_opt.columns
+            ]
+            opt_tooltip_aliases = {
+                opt_type_col: t("visualization.tooltip.optimized_type"),
+                slope_col: t("visualization.tooltip.slope"),
+            }
             folium.GeoJson(
                 gdf_opt,
-                name='优化后布局 (After)',
+                name=t("visualization.optimization.after_title"),
                 style_function=style_type,
-                tooltip=folium.GeoJsonTooltip(fields=[opt_type_col, slope_col], aliases=['优化类型(1耕2林):', '坡度:']) if opt_type_col in gdf_opt.columns else None,
+                tooltip=(folium.GeoJsonTooltip(
+                    fields=opt_tooltip_fields,
+                    aliases=[opt_tooltip_aliases[field] for field in opt_tooltip_fields],
+                ) if opt_tooltip_fields else None),
                 show=True
             ).add_to(m)
 
             if not gdf_diff.empty:
+                diff_tooltip_fields = [
+                    field for field in [dlmc_col, slope_col, 'Change_Type']
+                    if field in gdf_diff.columns
+                ]
+                diff_tooltip_aliases = {
+                    dlmc_col: t("visualization.tooltip.original_type"),
+                    slope_col: t("visualization.tooltip.slope"),
+                    'Change_Type': t("visualization.tooltip.change_type"),
+                }
                 folium.GeoJson(
                     gdf_diff,
-                    name='空间置换差异 (Changes)',
+                    name=t("visualization.optimization.changes"),
                     style_function=style_diff,
-                    tooltip=folium.GeoJsonTooltip(fields=[dlmc_col, slope_col, 'Change_Type'],
-                                                 aliases=['原类型:', '坡度:', '变化(1退耕2开垦):']) if dlmc_col in gdf_diff.columns else None,
+                    tooltip=(folium.GeoJsonTooltip(
+                        fields=diff_tooltip_fields,
+                        aliases=[
+                            diff_tooltip_aliases[field]
+                            for field in diff_tooltip_fields
+                        ],
+                    ) if diff_tooltip_fields else None),
                     show=True
                 ).add_to(m)
         else:
-            folium.GeoJson(gdf_orig, name="Data Layer").add_to(m)
+            folium.GeoJson(
+                gdf_orig,
+                name=t("visualization.interactive.data_layer"),
+            ).add_to(m)
 
         folium.LayerControl(collapsed=False).add_to(m)
 
@@ -455,19 +533,24 @@ def visualize_interactive_map(original_data_path: str, optimized_data_path: str 
 
         # Save map config for frontend Leaflet rendering
         if is_point:
-            layers_cfg = [{"name": "Points", "type": "point"}]
+            layers_cfg = [{
+                "name": t("visualization.interactive.points"),
+                "type": "point",
+            }]
         elif optimized_data_path:
             # Categorized layers for per-feature coloring on the map panel
             layers_cfg = [
                 {
-                    "name": "优化后布局",
+                    "name": t("visualization.optimization.after_title"),
                     "type": "categorized",
                     "category_column": "Opt_Type",
                     "category_colors": {
                         "0": "#D3D3D3", "1": "#FFD700", "2": "#228B22",
                     },
                     "category_labels": {
-                        "0": "其他", "1": "耕地", "2": "林地",
+                        "0": t("visualization.land.other"),
+                        "1": t("visualization.land.farmland"),
+                        "2": t("visualization.land.forest"),
                     },
                     "style": {"fillOpacity": 0.6, "weight": 0.5},
                 },
@@ -487,7 +570,7 @@ def visualize_interactive_map(original_data_path: str, optimized_data_path: str 
                     diff_geojson = output_path.replace('.html', '_diff.geojson')
                     gdf_diff_4326.to_file(diff_geojson, driver='GeoJSON')
                     layers_cfg.append({
-                        "name": "空间置换差异",
+                        "name": t("visualization.optimization.changes"),
                         "type": "categorized",
                         "geojson": os.path.basename(diff_geojson),
                         "category_column": "Change_Type",
@@ -495,22 +578,26 @@ def visualize_interactive_map(original_data_path: str, optimized_data_path: str 
                             "1": "#FF4444", "2": "#4488FF",
                         },
                         "category_labels": {
-                            "1": "耕地→林地", "2": "林地→耕地",
+                            "1": t("visualization.land.farmland_to_forest"),
+                            "2": t("visualization.land.forest_to_farmland"),
                         },
                         "style": {"fillOpacity": 0.8, "weight": 1},
                     })
             except Exception:
                 pass
         else:
-            layers_cfg = [{"name": "Data Layer", "type": "polygon"}]
+            layers_cfg = [{
+                "name": t("visualization.interactive.data_layer"),
+                "type": "polygon",
+            }]
 
         _save_map_config(output_path, gdf_orig, layers_cfg,
                          center=center, zoom=zoom_start)
 
-        return f"Interactive comparison map saved to {output_path}"
+        return t("visualization.interactive_generated", path=output_path)
 
     except Exception as e:
-        return f"Error generating interactive map: {str(e)}"
+        return t("visualization.interactive_failed", error=e)
 
 
 def generate_choropleth(
@@ -547,12 +634,12 @@ def generate_choropleth(
 
         if value_column not in gdf.columns:
             available = [c for c in gdf.columns if c != 'geometry']
-            return f"Error: 字段 '{value_column}' 不存在。可用字段: {available}"
+            return t("visualization.column_missing_available", column=value_column, available=available)
 
         gdf[value_column] = pd.to_numeric(gdf[value_column], errors='coerce')
         valid = gdf[gdf[value_column].notna()]
         if len(valid) == 0:
-            return f"Error: 字段 '{value_column}' 无有效数值数据"
+            return t("visualization.numeric_column_empty", column=value_column)
 
         values = valid[value_column].values
         num_classes = max(3, min(num_classes, 9))
@@ -597,9 +684,10 @@ def generate_choropleth(
         other_fields = [c for c in valid.columns if c not in ('geometry', value_column)][:3]
         tooltip_fields.extend(other_fields)
 
+        choropleth_name = t("visualization.choropleth_layer", column=value_column)
         folium.GeoJson(
             valid,
-            name=f'Choropleth ({value_column})',
+            name=choropleth_name,
             style_function=style_function,
             tooltip=folium.GeoJsonTooltip(fields=tooltip_fields, aliases=[f"{c}:" for c in tooltip_fields]),
         ).add_to(m)
@@ -613,30 +701,33 @@ def generate_choropleth(
         # Save map config for frontend Leaflet rendering
         breaks = [float(b) for b in classifier.bins]
         _save_map_config(output_path, valid, [{
-            "name": f"Choropleth ({value_column})",
+            "name": choropleth_name,
             "type": "choropleth",
             "value_column": value_column,
             "breaks": breaks,
             "color_scheme": color_scheme,
         }], center=center, zoom=zoom_start)
 
-        return (
-            f"等值区域图已生成: {output_path}\n"
-            f"分级方法: {classification_method}, 分级数: {num_classes}, 配色: {color_scheme}"
+        return t(
+            "visualization.choropleth_generated",
+            path=output_path,
+            method=classification_method,
+            classes=num_classes,
+            scheme=color_scheme,
         )
 
     except FileNotFoundError:
-        return f"Error: 文件未找到 {file_path}。Recovery: 请先调用 search_data_assets 或 list_user_files 检查可用文件"
+        return t("visualization.file_not_found_recovery", path=file_path)
     except Exception as e:
         err = str(e)
         recovery = ""
         if "column" in err.lower() or "not in" in err.lower() or "KeyError" in err:
-            recovery = " Recovery: 请先调用 describe_geodataframe 查看可用字段列表"
+            recovery = t("visualization.recovery.fields")
         elif "CRS" in err or "crs" in err:
-            recovery = " Recovery: 请先调用 reproject_spatial_data 统一坐标系"
+            recovery = t("visualization.recovery.reproject")
         elif "empty" in err.lower() or "0 records" in err:
-            recovery = " Recovery: 数据为空，请检查输入文件或筛选条件是否过于严格"
-        return f"Error generating choropleth: {err}{recovery}"
+            recovery = t("visualization.recovery.empty")
+        return t("visualization.choropleth_failed", error=err, recovery=recovery)
 
 
 def generate_bubble_map(
@@ -667,12 +758,12 @@ def generate_bubble_map(
 
         if size_column not in gdf.columns:
             available = [c for c in gdf.columns if c != 'geometry']
-            return f"Error: 字段 '{size_column}' 不存在。可用字段: {available}"
+            return t("visualization.column_missing_available", column=size_column, available=available)
 
         gdf[size_column] = pd.to_numeric(gdf[size_column], errors='coerce')
         valid = gdf[gdf[size_column].notna()].copy()
         if len(valid) == 0:
-            return f"Error: 字段 '{size_column}' 无有效数值数据"
+            return t("visualization.numeric_column_empty", column=size_column)
 
         min_val = valid[size_column].min()
         max_val = valid[size_column].max()
@@ -741,20 +832,20 @@ def generate_bubble_map(
 
         # Save map config for frontend Leaflet rendering
         _save_map_config(output_path, valid, [{
-            "name": f"Bubble ({size_column})",
+            "name": t("visualization.bubble_layer", column=size_column),
             "type": "bubble",
             "value_column": size_column,
             "style": {"max_radius": max_radius, "min_radius": 3},
             "color_scheme": color_scheme,
         }], center=center, zoom=13)
 
-        msg = f"气泡地图已生成: {output_path}\n大小字段: {size_column}"
+        msg = t("visualization.bubble_generated", path=output_path, size_column=size_column)
         if color_column:
-            msg += f", 颜色字段: {color_column}, 配色: {color_scheme}"
+            msg += t("visualization.bubble_color_suffix", column=color_column, scheme=color_scheme)
         return msg
 
     except Exception as e:
-        return f"Error generating bubble map: {str(e)}"
+        return t("visualization.bubble_failed", error=e)
 
 
 def visualize_geodataframe(file_path: str) -> str:
@@ -772,13 +863,14 @@ def visualize_geodataframe(file_path: str) -> str:
 
         colors = gdf[dlmc_col].apply(lambda x: {'建制镇': '#87CEEB', '村庄': '#87CEEB', '旱地': '#F9FAE8', '水田': '#F9FAE8', '果园': '#FFC0CB', '有林地': '#228B22'}.get(x, '#FFFFFF'))
         gdf.plot(ax=ax, color=colors.tolist(), edgecolor='black', alpha=0.7)
-        ax.set_title("土地利用现状图 (Land Use Map)", fontsize=15)
+        ax.set_title(t("visualization.static.land_use_title"), fontsize=15)
         ax.set_axis_off()
         out = _generate_output_path("visualization", "png")
         plt.savefig(out, dpi=300)
         plt.close()
-        return f"Visualization saved to {out}"
-    except Exception as e: return f"Error: {str(e)}"
+        return t("visualization.static.generated", path=out)
+    except Exception as e:
+        return t("visualization.static.failed", error=e)
 
 
 def export_map_png(file_path: str, value_column: str = None, title: str = None) -> str:
@@ -826,9 +918,9 @@ def export_map_png(file_path: str, value_column: str = None, title: str = None) 
         out = _generate_output_path("map_export", "png")
         plt.savefig(out, dpi=200, bbox_inches='tight', pad_inches=0.1)
         plt.close()
-        return f"地图已导出为 PNG: {out}"
+        return t("visualization.map_exported", path=out)
     except Exception as e:
-        return f"Error exporting map PNG: {str(e)}"
+        return t("visualization.map_export_failed", error=e)
 
 
 def compose_map(
@@ -871,12 +963,12 @@ def compose_map(
     try:
         layers = json.loads(layers_json)
     except (json.JSONDecodeError, TypeError) as e:
-        return f"Error: layers_json 解析失败 — {e}"
+        return t("visualization.layers_json_invalid", error=e)
 
     if not isinstance(layers, list) or len(layers) == 0:
-        return "Error: layers_json 必须是非空 JSON 数组"
+        return t("visualization.layers_json_array_required")
     if len(layers) > 10:
-        return "Error: 最多支持 10 个图层"
+        return t("visualization.layers_limit")
 
     try:
         # --- Phase 1: Load all data and collect bounds ---
@@ -886,7 +978,7 @@ def compose_map(
         for i, spec in enumerate(layers):
             data_path = spec.get("data_path")
             if not data_path:
-                return f"Error: 第 {i+1} 个图层缺少 data_path"
+                return t("visualization.layer_data_path_missing", index=i + 1)
 
             gdf = _load_spatial_data(data_path).to_crs(epsg=4326)
             if gdf.empty:
@@ -896,7 +988,7 @@ def compose_map(
             all_bounds.append(gdf.total_bounds)  # [minx, miny, maxx, maxy]
 
         if not loaded:
-            return "Error: 所有图层均为空数据"
+            return t("visualization.all_layers_empty")
 
         # --- Phase 2: Create map with auto-center ---
         if center_lat is not None and center_lng is not None:
@@ -915,7 +1007,7 @@ def compose_map(
 
         # --- Phase 3: Render each layer ---
         for spec, gdf in loaded:
-            layer_name = spec.get("name", "Layer")
+            layer_name = spec.get("name") or t("visualization.layer_default")
             layer_type = spec.get("type", "polygon").lower()
             color = spec.get("color", "#3388ff")
             opacity = float(spec.get("opacity", 0.7))
@@ -933,8 +1025,13 @@ def compose_map(
                 value_column = spec.get("value_column")
                 if not value_column or value_column not in gdf.columns:
                     avail = [c for c in gdf.columns if c != "geometry"]
-                    return (f"Error: 图层 '{layer_name}' (choropleth) 的 value_column "
-                            f"'{value_column}' 不存在。可用字段: {avail}")
+                    return t(
+                        "visualization.layer_column_missing_available",
+                        layer=layer_name,
+                        layer_type="choropleth",
+                        column=value_column,
+                        available=avail,
+                    )
                 _render_choropleth_layer(gdf, fg, m, spec, layer_name)
 
             elif layer_type == "heatmap":
@@ -944,12 +1041,17 @@ def compose_map(
                 value_column = spec.get("value_column")
                 if not value_column or value_column not in gdf.columns:
                     avail = [c for c in gdf.columns if c != "geometry"]
-                    return (f"Error: 图层 '{layer_name}' (bubble) 的 value_column "
-                            f"'{value_column}' 不存在。可用字段: {avail}")
+                    return t(
+                        "visualization.layer_column_missing_available",
+                        layer=layer_name,
+                        layer_type="bubble",
+                        column=value_column,
+                        available=avail,
+                    )
                 _render_bubble_layer(gdf, fg, spec, color, opacity, layer_name)
 
             else:
-                return f"Error: 不支持的图层类型 '{layer_type}'。支持: point, polygon, choropleth, heatmap, bubble"
+                return t("visualization.layer_type_unsupported", layer_type=layer_type)
 
             fg.add_to(m)
 
@@ -990,13 +1092,19 @@ def compose_map(
                 pass
 
         layer_summary = ", ".join(
-            f"{s.get('name', 'Layer')}({s.get('type', 'polygon')})"
+            f"{s.get('name') or t('visualization.layer_default')}"
+            f"({s.get('type', 'polygon')})"
             for s, _ in loaded
         )
-        return f"多图层地图已生成: {output_path}\n包含 {len(loaded)} 个图层: {layer_summary}"
+        return t(
+            "visualization.compose_generated",
+            path=output_path,
+            count=len(loaded),
+            summary=layer_summary,
+        )
 
     except Exception as e:
-        return f"Error in compose_map: {str(e)}"
+        return t("visualization.compose_failed", error=e)
 
 
 # --- compose_map helper renderers ---
@@ -1166,21 +1274,36 @@ def generate_3d_map(
         生成的文件路径及说明。
     """
     try:
+        resolved_layer_name = (
+            t("visualization.map3d_default_layer")
+            if layer_name == "3D Layer"
+            else layer_name
+        )
         gdf = _load_spatial_data(data_path)
         if gdf.empty:
-            return "Error: 数据为空，无法生成 3D 地图"
+            return t("visualization.map3d_data_empty")
 
         gdf_4326 = gdf.to_crs(epsg=4326) if gdf.crs and gdf.crs.to_epsg() != 4326 else gdf
 
         # Validate elevation_column
         if elevation_column and elevation_column not in gdf_4326.columns:
             available = [c for c in gdf_4326.columns if c != 'geometry']
-            return f"Error: 高度字段 '{elevation_column}' 不存在。可用字段: {available}"
+            return t(
+                "visualization.map3d_column_missing_available",
+                kind=t("visualization.map3d_kind.elevation"),
+                column=elevation_column,
+                available=available,
+            )
 
         # Validate value_column
         if value_column and value_column not in gdf_4326.columns:
             available = [c for c in gdf_4326.columns if c != 'geometry']
-            return f"Error: 着色字段 '{value_column}' 不存在。可用字段: {available}"
+            return t(
+                "visualization.map3d_column_missing_available",
+                kind=t("visualization.map3d_kind.color"),
+                column=value_column,
+                available=available,
+            )
 
         # Compute choropleth breaks if value_column specified
         breaks = None
@@ -1198,7 +1321,7 @@ def generate_3d_map(
             layer_type = "extrusion"
 
         layer_cfg = {
-            "name": layer_name,
+            "name": resolved_layer_name,
             "type": layer_type,
             "extruded": True,
             "elevation_scale": elevation_scale,
@@ -1217,20 +1340,31 @@ def generate_3d_map(
         output_path = _generate_output_path("3d_map", "html")
         # Write a minimal HTML placeholder (actual rendering is in frontend)
         with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(f"<html><body><h3>{layer_name}</h3>"
-                    f"<p>3D visualization rendered in the map panel.</p></body></html>")
+            f.write(
+                f"<html><body><h3>{resolved_layer_name}</h3>"
+                f"<p>{t('visualization.map3d_rendered_in_panel')}</p></body></html>"
+            )
 
         _save_map_config(output_path, gdf_4326, [layer_cfg], pitch=pitch, bearing=bearing)
 
-        msg = f"3D 地图已生成: {output_path}\n图层: {layer_name}, 类型: {layer_type}"
+        msg = t(
+            "visualization.map3d_generated",
+            path=output_path,
+            layer=resolved_layer_name,
+            layer_type=layer_type,
+        )
         if elevation_column:
-            msg += f", 高度字段: {elevation_column} (×{elevation_scale})"
+            msg += t(
+                "visualization.map3d_elevation_suffix",
+                column=elevation_column,
+                scale=elevation_scale,
+            )
         if value_column:
-            msg += f", 着色字段: {value_column}"
+            msg += t("visualization.map3d_color_suffix", column=value_column)
         return msg
 
     except Exception as e:
-        return f"Error generating 3D map: {str(e)}"
+        return t("visualization.map3d_failed", error=e)
 
 
 # ---------------------------------------------------------------------------
@@ -1253,10 +1387,17 @@ def control_map_layer(action: str, layer_name: str = "", color: str = "",
     """
     valid_actions = ("show", "hide", "style", "remove", "list")
     if action not in valid_actions:
-        return {"status": "error", "message": f"无效操作: {action}，支持: {', '.join(valid_actions)}"}
+        return {
+            "status": "error",
+            "message": t(
+                "visualization.layer_action_invalid",
+                action=action,
+                actions=", ".join(valid_actions),
+            ),
+        }
 
     if action != "list" and not layer_name:
-        return {"status": "error", "message": "请指定图层名称（layer_name）"}
+        return {"status": "error", "message": t("visualization.layer_name_required")}
 
     control = {"action": action, "layer_name": layer_name}
 
@@ -1271,11 +1412,11 @@ def control_map_layer(action: str, layer_name: str = "", color: str = "",
         control["style"] = style_updates
 
     action_labels = {
-        "show": f"已显示图层「{layer_name}」",
-        "hide": f"已隐藏图层「{layer_name}」",
-        "style": f"已更新图层「{layer_name}」的样式",
-        "remove": f"已移除图层「{layer_name}」",
-        "list": "请查看地图面板中的图层控制按钮了解当前图层列表",
+        "show": t("visualization.layer_action.show", layer=layer_name),
+        "hide": t("visualization.layer_action.hide", layer=layer_name),
+        "style": t("visualization.layer_action.style", layer=layer_name),
+        "remove": t("visualization.layer_action.remove", layer=layer_name),
+        "list": t("visualization.layer_action.list"),
     }
 
     return {

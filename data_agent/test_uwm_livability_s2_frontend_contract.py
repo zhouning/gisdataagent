@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +16,10 @@ def test_s2_panel_is_registered_in_uwm_livability_page():
 
 def test_s2_panel_exposes_action_conditioned_world_model_contract():
     text = PANEL.read_text(encoding="utf-8")
+    translations = json.loads(
+        (ROOT / "frontend/src/i18n/locales/zh-CN/common.json").read_text(encoding="utf-8")
+    )["uwmS2"]
+    localized_text = json.dumps(translations, ensure_ascii=False)
     for endpoint in [
         "/api/uwm/livability/s2/catalog",
         "/api/uwm/livability/s2/parcels",
@@ -30,13 +35,15 @@ def test_s2_panel_exposes_action_conditioned_world_model_contract():
         "不可预测效果", "不确定性", "局部空间关系边", "技术归因账本", "50 米", "150 米", "300 米",
         "规划项目证据", "原表", "不作为现状设施坐标",
     ]:
-        assert label in text
+        assert label in localized_text
     assert "credentials: 'include'" in text
     assert "window.__handleMapUpdate" in text
     assert "map_evidence" in text
-    assert "S2 受影响地块" in text
-    assert "S2 规划资源证据" in text
-    assert "S2 设施证据" in text
+    assert "uwmS2.map.affected" in text
+    assert "uwmS2.map.planningResources" in text
+    assert "uwmS2.map.facilities" in text
+    assert "useTranslation" in text
+    assert "getLocaleHeaders" in text
     assert "alternative_land_use_class" in text
     assert "actor_id:" not in text
     assert "setConfirmed(false)" in text
@@ -70,9 +77,9 @@ def test_s2_map_selection_round_trips_into_chat_input():
     assert "data-s2-parcel-id" not in map_panel
     assert "element.dataset.s2ParcelId" in map_panel
     assert "bindS2ParcelPopup" in map_panel
-    assert "点击地块后将回填左侧S2输入框" in map_panel
+    assert "map.s2SelectHint" in map_panel
     assert "s2-map-parcel-selected" in chat
-    assert "已从地图选择地块" in chat
+    assert "chat.s2SelectionPrompt" in chat
     assert "template.replace('{parcel_id}', parcelId)" in chat
 
 

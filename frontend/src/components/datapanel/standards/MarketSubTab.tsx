@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { formatNumber } from "../../../i18n";
 import {
   MarketDiffResponse,
   MarketListing,
@@ -22,6 +24,7 @@ interface Props {
 }
 
 export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<MarketStandardItem[]>([]);
   const [selected, setSelected] = useState<MarketStandardItem | null>(null);
@@ -54,7 +57,9 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
           return r.items[0] || null;
         });
       })
-      .catch((e: any) => setError(e?.message || "加载失败"))
+      .catch((e: any) => setError(t("standards.market.errors.load", {
+        message: e?.message || t("errors.unknown"),
+      })))
       .finally(() => setLoading(false));
   };
 
@@ -86,7 +91,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
       setDiff(result);
     } catch (e: any) {
       setDiff(null);
-      setError(e?.message || "diff 失败");
+      setError(t("standards.market.errors.diff", {message: e?.message || t("errors.unknown")}));
     } finally {
       setDiffBusy(false);
     }
@@ -104,7 +109,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
       await subscribeMarketStandard(selected.version_id);
       loadSubscriptions();
     } catch (e: any) {
-      setError(e?.message || "订阅失败");
+      setError(t("standards.market.errors.subscribe", {message: e?.message || t("errors.unknown")}));
     } finally {
       setSubsBusy(false);
     }
@@ -117,7 +122,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
       await unsubscribeMarketSubscription(subscriptionId);
       loadSubscriptions();
     } catch (e: any) {
-      setError(e?.message || "取消订阅失败");
+      setError(t("standards.market.errors.unsubscribe", {message: e?.message || t("errors.unknown")}));
     } finally {
       setSubsBusy(false);
     }
@@ -130,7 +135,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
       await markMarketSubscriptionSeen(subscriptionId);
       loadSubscriptions();
     } catch (e: any) {
-      setError(e?.message || "标记已读失败");
+      setError(t("standards.market.errors.markSeen", {message: e?.message || t("errors.unknown")}));
     } finally {
       setSubsBusy(false);
     }
@@ -147,10 +152,10 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
         owner_org_id: ownerOrgId.trim() || null,
         allowed_org_ids: parseOrgList(allowedOrgInput),
       });
-      setAuditMessage("已提交");
+      setAuditMessage(t("standards.market.audit.submitted"));
       loadCatalog();
     } catch (e: any) {
-      setError(e?.message || "提交审核失败");
+      setError(t("standards.market.errors.submit", {message: e?.message || t("errors.unknown")}));
     } finally {
       setAuditBusy(false);
     }
@@ -163,7 +168,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
       const result = await listMarketListings({status: "submitted", limit: 20});
       setReviewItems(result.items);
     } catch (e: any) {
-      setAuditMessage(e?.message || "加载审核队列失败");
+      setAuditMessage(t("standards.market.errors.auditQueue", {message: e?.message || t("errors.unknown")}));
     } finally {
       setAuditBusy(false);
     }
@@ -180,11 +185,21 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
       await loadAuditQueue();
       loadCatalog();
     } catch (e: any) {
-      setError(e?.message || "审核失败");
+      setError(t("standards.market.errors.review", {message: e?.message || t("errors.unknown")}));
     } finally {
       setAuditBusy(false);
     }
   };
+
+  const marketStatusLabel = (status: string | null | undefined) =>
+    t(`standards.market.status.${status || "listed"}`, {
+      defaultValue: t("standards.market.status.listed"),
+    });
+
+  const visibilityLabel = (scope: string | null | undefined) =>
+    t(`standards.market.visibility.${scope || "public"}`, {
+      defaultValue: t("standards.market.visibility.public"),
+    });
 
   return (
     <div style={{
@@ -192,7 +207,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
       height: "100%", minHeight: 0,
     }}>
       <div style={{
-        padding: 10, borderRight: "1px solid #e5e7eb",
+        padding: 10, borderInlineEnd: "1px solid #e5e7eb",
         overflow: "auto",
       }}>
         <div style={{display: "flex", gap: 6, marginBottom: 8}}>
@@ -200,7 +215,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") loadCatalog(); }}
-            placeholder="搜索标准、编码、版本"
+            placeholder={t("standards.market.searchPlaceholder")}
             style={{
               flex: 1, minWidth: 0, padding: "6px 8px",
               border: "1px solid #d1d5db", borderRadius: 4,
@@ -211,7 +226,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
             onClick={loadCatalog}
             disabled={loading}
             style={buttonStyle}>
-            搜索
+            {t("standards.market.search")}
           </button>
         </div>
         {error && (
@@ -223,16 +238,16 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
             {error}
           </div>
         )}
-        {loading && <div style={mutedStyle}>加载中</div>}
+        {loading && <div style={mutedStyle}>{t("standards.market.loading")}</div>}
         {!loading && items.length === 0 && (
-          <div style={mutedStyle}>暂无 released 标准</div>
+          <div style={mutedStyle}>{t("standards.market.emptyReleased")}</div>
         )}
         {items.map(item => (
           <button
             key={item.version_id}
             onClick={() => setSelected(item)}
             style={{
-              display: "block", width: "100%", textAlign: "left",
+              display: "block", width: "100%", textAlign: "start",
               padding: 10, marginBottom: 6, borderRadius: 4,
               border: selected?.version_id === item.version_id
                 ? "1px solid #0a7" : "1px solid #e5e7eb",
@@ -251,12 +266,12 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
               {item.title}
             </div>
             <div style={{display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6}}>
-              <Chip label="条款" value={item.asset_counts.clauses}/>
-              <Chip label="要素" value={item.asset_counts.data_elements}/>
-              <Chip label="术语" value={item.asset_counts.terms}/>
-              <Chip label="值域" value={item.asset_counts.value_domains}/>
-              <Chip label="上架" value={marketStatusLabel(item.market_status)}/>
-              <Chip label="范围" value={visibilityLabel(item.visibility_scope)}/>
+              <Chip label={t("standards.market.assets.clauses")} value={formatNumber(item.asset_counts.clauses)}/>
+              <Chip label={t("standards.market.assets.dataElements")} value={formatNumber(item.asset_counts.data_elements)}/>
+              <Chip label={t("standards.market.assets.terms")} value={formatNumber(item.asset_counts.terms)}/>
+              <Chip label={t("standards.market.assets.valueDomains")} value={formatNumber(item.asset_counts.value_domains)}/>
+              <Chip label={t("standards.market.listingStatus")} value={marketStatusLabel(item.market_status)}/>
+              <Chip label={t("standards.market.scope")} value={visibilityLabel(item.visibility_scope)}/>
             </div>
           </button>
         ))}
@@ -267,10 +282,10 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
             fontSize: 13, fontWeight: 650, color: "#111827",
             marginBottom: 8,
           }}>
-            我的订阅
+            {t("standards.market.subscriptions.title")}
           </div>
           {subscriptions.length === 0 && (
-            <div style={mutedStyle}>暂无订阅</div>
+            <div style={mutedStyle}>{t("standards.market.subscriptions.empty")}</div>
           )}
           {subscriptions.map(sub => (
             <div key={sub.id}
@@ -297,27 +312,27 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
                     {sub.title}
                   </div>
                 </div>
-                {sub.has_update && <Chip label="更新" value="new"/>}
+                {sub.has_update && <Chip label={t("standards.market.subscriptions.update")} value={t("standards.market.subscriptions.new")}/>}
               </div>
               <div style={{display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6}}>
                 {sub.latest_version_id && (
                   <button
                     onClick={() => onSelectVersion(sub.latest_version_id!)}
                     style={smallButtonStyle}>
-                    设为当前
+                    {t("standards.market.actions.setCurrent")}
                   </button>
                 )}
                 <button
                   onClick={() => markSeen(sub.id)}
                   disabled={subsBusy}
                   style={smallButtonStyle}>
-                  标记已读
+                  {t("standards.market.actions.markSeen")}
                 </button>
                 <button
                   onClick={() => cancelSubscription(sub.id)}
                   disabled={subsBusy}
                   style={smallDangerButtonStyle}>
-                  取消订阅
+                  {t("standards.market.actions.unsubscribe")}
                 </button>
               </div>
             </div>
@@ -331,13 +346,13 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
             alignItems: "center", gap: 8, marginBottom: 8,
           }}>
             <div style={{fontSize: 13, fontWeight: 650, color: "#111827"}}>
-              市场审核
+              {t("standards.market.audit.title")}
             </div>
             <button
               onClick={loadAuditQueue}
               disabled={auditBusy}
               style={smallButtonStyle}>
-              刷新
+              {t("standards.market.actions.refresh")}
             </button>
           </div>
           {auditMessage && (
@@ -350,7 +365,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
             </div>
           )}
           {reviewItems.length === 0 && (
-            <div style={mutedStyle}>暂无待审</div>
+            <div style={mutedStyle}>{t("standards.market.audit.empty")}</div>
           )}
           {reviewItems.map(item => (
             <div key={item.id}
@@ -373,18 +388,18 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
                 {item.title}
               </div>
               <div style={{display: "flex", gap: 4, marginTop: 6}}>
-                <Chip label="范围" value={visibilityLabel(item.visibility_scope)}/>
+                <Chip label={t("standards.market.scope")} value={visibilityLabel(item.visibility_scope)}/>
                 <button
                   onClick={() => reviewListing(item.id, "approved")}
                   disabled={auditBusy}
                   style={smallButtonStyle}>
-                  通过
+                  {t("standards.market.actions.approve")}
                 </button>
                 <button
                   onClick={() => reviewListing(item.id, "rejected")}
                   disabled={auditBusy}
                   style={smallDangerButtonStyle}>
-                  拒绝
+                  {t("standards.market.actions.reject")}
                 </button>
               </div>
             </div>
@@ -404,7 +419,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
                   {selected.title}
                 </div>
                 <div style={{fontSize: 12, color: "#6b7280", marginTop: 4}}>
-                  {selected.doc_code} · {selected.version_label} · {selected.source_type}
+                  {selected.doc_code} · {selected.version_label} · {t(`standards.ingest.sourceTypes.${selected.source_type}`, {defaultValue: selected.source_type})}
                 </div>
               </div>
               <div style={{
@@ -414,27 +429,29 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
                 <button
                   onClick={() => onSelectVersion(selected.version_id)}
                   style={outlineButtonStyle}>
-                  设为当前版本
+                  {t("standards.market.actions.setCurrentVersion")}
                 </button>
                 <button
                   onClick={submitSelectedListing}
                   disabled={auditBusy || selected.market_status === "approved"}
                   style={outlineButtonStyle}>
-                  {selected.market_status === "approved" ? "已通过审核" : "提交审核"}
+                  {selected.market_status === "approved"
+                    ? t("standards.market.actions.reviewApproved")
+                    : t("standards.market.actions.submitReview")}
                 </button>
                 {selectedSubscription ? (
                   <button
                     onClick={() => cancelSubscription(selectedSubscription.id)}
                     disabled={subsBusy}
                     style={outlineButtonStyle}>
-                    取消订阅
+                    {t("standards.market.actions.unsubscribe")}
                   </button>
                 ) : (
                   <button
                     onClick={subscribeSelected}
                     disabled={subsBusy}
                     style={buttonStyle}>
-                    订阅
+                    {t("standards.market.actions.subscribe")}
                   </button>
                 )}
               </div>
@@ -449,7 +466,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
             }}>
               <label style={{display: "block"}}>
                 <div style={{fontSize: 11, color: "#6b7280", marginBottom: 3}}>
-                  Visibility
+                  {t("standards.market.visibilityLabel")}
                 </div>
                 <select
                   value={visibilityScope}
@@ -459,18 +476,18 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
                     padding: "6px 8px", border: "1px solid #d1d5db",
                     borderRadius: 4, fontSize: 12, background: "#fff",
                   }}>
-                  <option value="public">公开</option>
-                  <option value="organization">组织</option>
-                  <option value="private">私有</option>
+                  <option value="public">{t("standards.market.visibility.public")}</option>
+                  <option value="organization">{t("standards.market.visibility.organization")}</option>
+                  <option value="private">{t("standards.market.visibility.private")}</option>
                 </select>
               </label>
               <Field
-                label="Owner org"
+                label={t("standards.market.ownerOrg")}
                 value={ownerOrgId}
                 onChange={setOwnerOrgId}
               />
               <Field
-                label="Allowed orgs"
+                label={t("standards.market.allowedOrgs")}
                 value={allowedOrgInput}
                 onChange={setAllowedOrgInput}
               />
@@ -481,12 +498,12 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
               gap: 8, alignItems: "end", marginBottom: 12,
             }}>
               <Field
-                label="Source version"
+                label={t("standards.market.sourceVersion")}
                 value={sourceVersionId}
                 onChange={setSourceVersionId}
               />
               <Field
-                label="Target version"
+                label={t("standards.market.targetVersion")}
                 value={targetVersionId}
                 onChange={setTargetVersionId}
               />
@@ -494,7 +511,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
                 onClick={runDiff}
                 disabled={diffBusy || !sourceVersionId || !targetVersionId}
                 style={buttonStyle}>
-                Diff
+                {diffBusy ? t("standards.market.diff.running") : t("standards.market.diff.action")}
               </button>
             </div>
 
@@ -503,11 +520,11 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
                 <div style={{
                   display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10,
                 }}>
-                  <Chip label="新增" value={diff.summary.added}/>
-                  <Chip label="删除" value={diff.summary.removed}/>
-                  <Chip label="变化" value={diff.summary.changed}/>
-                  <Chip label="不变" value={diff.summary.unchanged}/>
-                  <Chip label="字段差异" value={diff.summary.field_changes || 0}/>
+                  <Chip label={t("standards.market.diff.added")} value={formatNumber(diff.summary.added)}/>
+                  <Chip label={t("standards.market.diff.removed")} value={formatNumber(diff.summary.removed)}/>
+                  <Chip label={t("standards.market.diff.changed")} value={formatNumber(diff.summary.changed)}/>
+                  <Chip label={t("standards.market.diff.unchanged")} value={formatNumber(diff.summary.unchanged)}/>
+                  <Chip label={t("standards.market.diff.fieldChanges")} value={formatNumber(diff.summary.field_changes || 0)}/>
                 </div>
                 {(diff.summary.review_hints || []).length > 0 && (
                   <div style={{
@@ -524,7 +541,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
                           padding: "6px 8px",
                           color: "#7c2d12",
                         }}>
-                        {hint.message} ({hint.count})
+                        {hint.message} ({formatNumber(hint.count)})
                       </div>
                     ))}
                   </div>
@@ -539,14 +556,14 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
                     gap: 0, background: "#f9fafb", fontSize: 12,
                     fontWeight: 650, color: "#374151",
                   }}>
-                    <Cell>资产</Cell>
-                    <Cell>类型</Cell>
-                    <Cell>Source</Cell>
-                    <Cell>Target</Cell>
+                    <Cell>{t("standards.market.diff.asset")}</Cell>
+                    <Cell>{t("standards.market.diff.type")}</Cell>
+                    <Cell>{t("standards.market.diff.source")}</Cell>
+                    <Cell>{t("standards.market.diff.target")}</Cell>
                   </div>
                   {diff.changes.length === 0 && (
                     <div style={{padding: 10, fontSize: 12, color: "#6b7280"}}>
-                      无差异
+                      {t("standards.market.diff.empty")}
                     </div>
                   )}
                   {diff.changes.map((change, idx) => (
@@ -558,12 +575,12 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
                           borderTop: "1px solid #e5e7eb",
                           fontSize: 12,
                         }}>
-                        <Cell>{change.asset_type}<br/>{change.key}</Cell>
+                        <Cell>{t(`standards.market.assetTypes.${change.asset_type}`, {defaultValue: change.asset_type})}<br/>{change.key}</Cell>
                         <Cell>
-                          {change.change_type}
+                          {t(`standards.market.changeTypes.${change.change_type}`, {defaultValue: change.change_type})}
                           {!!change.field_change_count && (
                             <div style={{color: "#6b7280", marginTop: 4}}>
-                              {change.field_change_count} fields
+                              {t("standards.market.diff.fieldCount", {count: formatNumber(change.field_change_count)})}
                             </div>
                           )}
                         </Cell>
@@ -593,7 +610,7 @@ export default function MarketSubTab({selectedVersionId, onSelectVersion}: Props
             )}
           </>
         ) : (
-          <div style={mutedStyle}>请选择一个 released 标准</div>
+          <div style={mutedStyle}>{t("standards.market.selectReleased")}</div>
         )}
       </div>
     </div>
@@ -612,32 +629,6 @@ function Chip({label, value}: {label: string; value: React.ReactNode}) {
       <strong>{value}</strong>
     </span>
   );
-}
-
-function marketStatusLabel(status: string | null | undefined) {
-  switch (status) {
-    case "approved":
-      return "已通过";
-    case "submitted":
-      return "待审";
-    case "rejected":
-      return "已拒绝";
-    case "withdrawn":
-      return "已撤回";
-    default:
-      return "已上架";
-  }
-}
-
-function visibilityLabel(scope: string | null | undefined) {
-  switch (scope) {
-    case "organization":
-      return "组织";
-    case "private":
-      return "私有";
-    default:
-      return "公开";
-  }
 }
 
 function parseOrgList(raw: string) {
@@ -671,7 +662,7 @@ function Cell({children}: {children?: React.ReactNode}) {
   return (
     <div style={{
       padding: "8px 10px", minWidth: 0, overflowWrap: "anywhere",
-      borderRight: "1px solid #e5e7eb",
+      borderInlineEnd: "1px solid #e5e7eb",
     }}>
       {children}
     </div>

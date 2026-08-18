@@ -67,6 +67,7 @@ class TestSuggestionGeneration(unittest.TestCase):
         self.assertGreater(len(suggestions), 0)
         titles = [s.title for s in suggestions]
         self.assertIn("空间自相关分析", titles)
+        self.assertIn("spatialAutocorrelation", [s.template_key for s in suggestions])
 
     def test_point_suggestions(self):
         from data_agent.proactive_explorer import generate_suggestions
@@ -109,8 +110,14 @@ class TestSuggestionGeneration(unittest.TestCase):
 class TestAnalysisSuggestion(unittest.TestCase):
     def test_to_dict(self):
         from data_agent.proactive_explorer import AnalysisSuggestion
-        s = AnalysisSuggestion(title="Test", description="desc", relevance_score=0.75)
+        s = AnalysisSuggestion(
+            template_key="testSuggestion",
+            title="Test",
+            description="desc",
+            relevance_score=0.75,
+        )
         d = s.to_dict()
+        self.assertEqual(d["template_key"], "testSuggestion")
         self.assertEqual(d["title"], "Test")
         self.assertEqual(d["relevance_score"], 0.75)
 

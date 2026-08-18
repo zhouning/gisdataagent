@@ -1,2 +1,55 @@
-import {useEffect,useState} from 'react';import {AlertTriangle,RefreshCw,Shield} from 'lucide-react';type R=Record<string,any>;
-export default function PlanningVersionRegistryTab(){const [overview,setOverview]=useState<R|null>(null),[assets,setAssets]=useState<R[]>([]),[channels,setChannels]=useState<R>({}),[gate,setGate]=useState<R>({}),[message,setMessage]=useState('');const load=async()=>{try{setMessage('');const rs=await Promise.all(['overview','version-assets','version-channels','temporal-gate'].map(x=>fetch('/api/uwm/planning-version-registry/'+x,{credentials:'include'}))),d=await Promise.all(rs.map(x=>x.json()));if(rs.some(x=>!x.ok))throw new Error(d.find(x=>x.error)?.error||'规划版本产品不可用');setOverview(d[0]);setAssets(d[1].version_assets||[]);setChannels(d[2].version_channels||{});setGate(d[3].temporal_gate||{})}catch(e:unknown){setMessage(e instanceof Error?e.message:'规划版本产品不可用')}};useEffect(()=>{load()},[]);return <div className="traditional-livability-tab"><div className="traditional-panel"><div className="traditional-panel-title"><strong>规划与地块版本资产（需求2）</strong><button className="secondary-button" onClick={load}><RefreshCw size={14}/>刷新</button></div><div className="traditional-message error"><Shield size={15}/>审计时间不是规划生效时间；文件夹年份不是权威版本；样例/Demo资产不是批准规划数据库。</div>{message&&<div className="traditional-message error"><AlertTriangle size={15}/>{message}</div>}<div className="traditional-kpi-grid"><div className="traditional-kpi"><span>版本资产</span><strong>{overview?.summary?.version_asset_count??'-'}</strong></div><div className="traditional-kpi"><span>批准已验证</span><strong>{overview?.summary?.verified_approval_asset_count??'-'}</strong></div><div className="traditional-kpi"><span>权威当前版本</span><strong>{overview?.summary?.authoritative_current_version_count??'-'}</strong></div><div className="traditional-kpi"><span>开放时间机制</span><strong>{overview?.summary?.open_temporal_mechanism_count??'-'}</strong></div></div><h4>审计资产</h4><p>{assets.map(x=>`${x.title}:${x.feature_count??x.row_count??'-'}${x.layer_count?`/${x.layer_count}层`:''},批准=${x.approval_status}`).join(' · ')}</p><h4>版本证据通道</h4><p>{Object.entries(channels).map(([k,v]:[string,any])=>`${k}:${v.status}`).join(' · ')}</p><h4>时间与UWM基线门</h4><p>{Object.entries(gate.mechanisms||{}).map(([k,v])=>`${k}:${v}`).join(' · ')}</p><div className="traditional-message error"><Shield size={15}/>未解析当前版本、前后版本链、规划修编差异、地块历史或规划变化导致的UWM状态转移。</div></div></div>}
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { AlertTriangle, RefreshCw, Shield } from 'lucide-react';
+import { getLocaleHeaders } from '../../i18n';
+
+type Row = Record<string, any>;
+
+export default function PlanningVersionRegistryTab() {
+  const { t, i18n } = useTranslation();
+  const [overview, setOverview] = useState<Row | null>(null);
+  const [assets, setAssets] = useState<Row[]>([]);
+  const [channels, setChannels] = useState<Row>({});
+  const [gate, setGate] = useState<Row>({});
+  const [message, setMessage] = useState('');
+
+  const load = async () => {
+    try {
+      setMessage('');
+      const resources = ['overview', 'version-assets', 'version-channels', 'temporal-gate'];
+      const responses = await Promise.all(resources.map(resource => fetch('/api/uwm/planning-version-registry/' + resource, { credentials: 'include', headers: getLocaleHeaders() })));
+      const data = await Promise.all(responses.map(response => response.json()));
+      if (responses.some(response => !response.ok)) {
+        throw new Error(data.find(item => item.error)?.error || t('readinessPanels.planningVersion.errors.unavailable'));
+      }
+      setOverview(data[0]);
+      setAssets(data[1].version_assets || []);
+      setChannels(data[2].version_channels || {});
+      setGate(data[3].temporal_gate || {});
+    } catch (error: unknown) {
+      setMessage(error instanceof Error ? error.message : t('readinessPanels.planningVersion.errors.unavailable'));
+    }
+  };
+
+  useEffect(() => { void load(); }, [i18n.resolvedLanguage]);
+  return (
+    <div className="traditional-livability-tab">
+      <div className="traditional-panel">
+        <div className="traditional-panel-title"><strong>{t('readinessPanels.planningVersion.title')}</strong><button className="secondary-button" onClick={() => void load()}><RefreshCw size={14} />{t('readinessPanels.common.refresh')}</button></div>
+        <div className="traditional-message error"><Shield size={15} />{t('readinessPanels.planningVersion.warning')}</div>
+        {message && <div className="traditional-message error"><AlertTriangle size={15} />{message}</div>}
+        <div className="traditional-kpi-grid">
+          <div className="traditional-kpi"><span>{t('readinessPanels.planningVersion.kpis.assets')}</span><strong>{overview?.summary?.version_asset_count ?? '-'}</strong></div>
+          <div className="traditional-kpi"><span>{t('readinessPanels.planningVersion.kpis.verified')}</span><strong>{overview?.summary?.verified_approval_asset_count ?? '-'}</strong></div>
+          <div className="traditional-kpi"><span>{t('readinessPanels.planningVersion.kpis.authoritative')}</span><strong>{overview?.summary?.authoritative_current_version_count ?? '-'}</strong></div>
+          <div className="traditional-kpi"><span>{t('readinessPanels.planningVersion.kpis.temporal')}</span><strong>{overview?.summary?.open_temporal_mechanism_count ?? '-'}</strong></div>
+        </div>
+        <h4>{t('readinessPanels.planningVersion.sections.assets')}</h4>
+        <p>{assets.map(item => String(item.title) + ':' + String(item.feature_count ?? item.row_count ?? '-') + (item.layer_count ? '/' + String(item.layer_count) + ' ' + t('readinessPanels.planningVersion.layers') : '') + ', ' + t('readinessPanels.planningVersion.approval') + '=' + String(item.approval_status)).join(' · ') || '-'}</p>
+        <h4>{t('readinessPanels.planningVersion.sections.channels')}</h4><p>{Object.entries(channels).map(([key, value]: [string, any]) => key + ':' + String(value.status)).join(' · ') || '-'}</p>
+        <h4>{t('readinessPanels.planningVersion.sections.kernel')}</h4><p>{Object.entries(gate.mechanisms || {}).map(([key, value]) => key + ':' + String(value)).join(' · ') || '-'}</p>
+        <div className="traditional-message error"><Shield size={15} />{t('readinessPanels.planningVersion.finalWarning')}</div>
+      </div>
+    </div>
+  );
+}

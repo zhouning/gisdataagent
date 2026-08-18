@@ -1,3 +1,5 @@
+import i18n, { getLocaleHeaders } from '../../i18n';
+
 export interface ResourceVersion {
   tenant_id: string;
   resource_urn: string;
@@ -302,13 +304,15 @@ export class PlatformControlApiError extends Error {
 }
 
 async function platformRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(path, { ...init, credentials: 'include' });
+  const headers = new Headers(init.headers);
+  Object.entries(getLocaleHeaders()).forEach(([name, value]) => headers.set(name, value));
+  const response = await fetch(path, { ...init, credentials: 'include', headers });
   let envelope: PlatformEnvelope<T> | null = null;
   try {
     envelope = await response.json() as PlatformEnvelope<T>;
   } catch {
     throw new PlatformControlApiError(
-      '平台控制面返回了无法解析的响应',
+      i18n.t('platformControl.errors.invalidResponse'),
       response.status,
       'invalid_platform_response',
     );
@@ -317,7 +321,7 @@ async function platformRequest<T>(path: string, init: RequestInit = {}): Promise
     const error = envelope.error;
     const message = typeof error === 'string'
       ? error
-      : error?.message || '平台控制面请求失败';
+      : error?.message || i18n.t('platformControl.errors.requestFailed');
     const code = typeof error === 'string'
       ? 'platform_request_failed'
       : error?.code || 'platform_request_failed';
@@ -355,7 +359,7 @@ export function listApprovalCases(
 
 function approvalCaseId(approvalCaseRef: string): string {
   const caseId = approvalCaseRef.split('/').pop();
-  if (!caseId) throw new Error('ApprovalCase 标识无效');
+  if (!caseId) throw new Error(i18n.t('platformControl.errors.invalidApprovalCase'));
   return caseId;
 }
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Activity,
   AlertTriangle,
@@ -24,7 +25,8 @@ import {
   X,
 } from 'lucide-react';
 import L from 'leaflet';
-import { formatSize, getAssetCategory, getAssetIcon } from './utils';
+import { formatDate, formatNumber, getLocaleHeaders } from '../../i18n';
+import { getAssetCategory, getAssetIcon } from './utils';
 
 interface CatalogAsset {
   id: number;
@@ -215,30 +217,17 @@ interface MapPublication {
   layer: MapPublicationLayer;
 }
 
-const SENS_LABEL: Record<string, string> = {
-  public: '公开', internal: '内部', confidential: '机密',
-  restricted: '限制', secret: '绝密',
-};
 const SENS_COLOR: Record<string, string> = {
   public: '#15803d', internal: '#2563eb', confidential: '#b45309',
   restricted: '#dc2626', secret: '#7f1d1d',
 };
 const PAGE_SIZE = 50;
-const REQUEST_STATUS_LABEL: Record<DistributionRequestItem['status'], string> = {
-  pending: '待审批',
-  approved: '已批准',
-  rejected: '已驳回',
-};
-
-function formatGrantExpiry(value?: string): string {
-  if (!value) return '未设置';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${formatNumber(bytes)} B`;
+  if (bytes < 1024 * 1024) {
+    return `${formatNumber(bytes / 1024, { maximumFractionDigits: 1 })} KB`;
+  }
+  return `${formatNumber(bytes / (1024 * 1024), { maximumFractionDigits: 1 })} MB`;
 }
 
 function normalizeTags(value: unknown): string[] {
@@ -278,6 +267,7 @@ export default function CatalogTab({
   username = '',
   onAddMapLayer,
 }: CatalogTabProps) {
+  const { t, i18n } = useTranslation('common');
   const [assets, setAssets] = useState<CatalogAsset[]>([]);
   const [keyword, setKeyword] = useState('');
   const [assetType, setAssetType] = useState('');
@@ -293,14 +283,20 @@ export default function CatalogTab({
       let response: Response;
       if (searchMode === 'semantic' && keyword.trim()) {
         const params = new URLSearchParams({ q: keyword });
-        response = await fetch(`/api/catalog/search?${params}`, { credentials: 'include' });
+        response = await fetch(`/api/catalog/search?${params}`, {
+          credentials: 'include',
+          headers: getLocaleHeaders(),
+        });
       } else {
         const params = new URLSearchParams();
         if (keyword) params.set('keyword', keyword);
         if (assetType) params.set('asset_type', assetType);
         params.set('offset', String(page * PAGE_SIZE));
         params.set('limit', String(PAGE_SIZE));
-        response = await fetch(`/api/catalog?${params}`, { credentials: 'include' });
+        response = await fetch(`/api/catalog?${params}`, {
+          credentials: 'include',
+          headers: getLocaleHeaders(),
+        });
       }
       if (response.ok) {
         const data = await response.json();
@@ -315,12 +311,12 @@ export default function CatalogTab({
   useEffect(() => {
     const interval = setInterval(fetchAssets, 30000);
     return () => clearInterval(interval);
-  }, [keyword, assetType, page, searchMode]);
+  }, [keyword, assetType, page, searchMode, i18n.resolvedLanguage]);
 
   useEffect(() => {
     const timer = setTimeout(fetchAssets, 300);
     return () => clearTimeout(timer);
-  }, [keyword, assetType, page, searchMode]);
+  }, [keyword, assetType, page, searchMode, i18n.resolvedLanguage]);
 
   useEffect(() => { setPage(0); }, [keyword, assetType, searchMode]);
 
@@ -343,7 +339,9 @@ export default function CatalogTab({
       <div className="catalog-filter-bar">
         <input
           type="text"
-          placeholder={searchMode === 'keyword' ? '搜索资产...' : '语义搜索（如：热岛效应分析）...'}
+          placeholder={searchMode === 'keyword'
+            ? t('assetWorkbench.catalog.searchPlaceholder')
+            : t('assetWorkbench.catalog.semanticSearchPlaceholder')}
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
           className="catalog-search"
@@ -353,25 +351,27 @@ export default function CatalogTab({
           onChange={(event) => setAssetType(event.target.value)}
           className="catalog-type-select"
         >
-          <option value="">全部类型</option>
-          <option value="vector">矢量</option>
-          <option value="raster">栅格</option>
-          <option value="tabular">表格</option>
-          <option value="map">地图</option>
-          <option value="report">报告</option>
+          <option value="">{t('assetWorkbench.catalog.allTypes')}</option>
+          {['vector', 'raster', 'tabular', 'map', 'report'].map(type => (
+            <option key={type} value={type}>{t(`assetWorkbench.catalog.assetTypes.${type}`)}</option>
+          ))}
         </select>
         <button
           className={`catalog-search-mode ${searchMode === 'semantic' ? 'active' : ''}`}
           onClick={() => setSearchMode(mode => mode === 'keyword' ? 'semantic' : 'keyword')}
-          title={searchMode === 'keyword' ? '切换到语义搜索' : '切换到关键词搜索'}
+          title={searchMode === 'keyword'
+            ? t('assetWorkbench.catalog.switchToSemantic')
+            : t('assetWorkbench.catalog.switchToKeyword')}
         >
-          {searchMode === 'keyword' ? '关键词' : '语义'}
+          {searchMode === 'keyword'
+            ? t('assetWorkbench.catalog.keyword')
+            : t('assetWorkbench.catalog.semantic')}
         </button>
       </div>
       {loading && assets.length === 0 ? (
-        <div className="empty-state">加载中...</div>
+        <div className="empty-state">{t('assetWorkbench.common.loading')}</div>
       ) : assets.length === 0 ? (
-        <div className="empty-state">暂无数据资产</div>
+        <div className="empty-state">{t('assetWorkbench.common.noAssets')}</div>
       ) : (
         <>
           <ul className="file-list">
@@ -384,16 +384,24 @@ export default function CatalogTab({
                   <div className="file-name" title={asset.asset_name}>{asset.asset_name}</div>
                   {asset.asset_code && <div className="catalog-asset-code">{asset.asset_code}</div>}
                   <div className="file-meta">
-                    <span className={`type-badge ${asset.asset_type}`}>{asset.asset_type}</span>
+                    <span className={`type-badge ${asset.asset_type}`}>
+                      {t(`assetWorkbench.catalog.assetTypes.${asset.asset_type}`, {
+                        defaultValue: asset.asset_type,
+                      })}
+                    </span>
                     {asset.sensitivity_level && asset.sensitivity_level !== 'public' && (
                       <span className="sensitivity-badge" style={{
                         background: `${SENS_COLOR[asset.sensitivity_level] || '#6b7280'}20`,
                         color: SENS_COLOR[asset.sensitivity_level] || '#6b7280',
                       }}>
-                        {SENS_LABEL[asset.sensitivity_level] || asset.sensitivity_level}
+                        {t(`assetWorkbench.catalog.sensitivity.${asset.sensitivity_level}`, {
+                          defaultValue: asset.sensitivity_level,
+                        })}
                       </span>
                     )}
-                    {asset.feature_count > 0 && <span>{asset.feature_count} 要素</span>}
+                    {asset.feature_count > 0 && (
+                      <span>{t('assetWorkbench.catalog.featureCountShort', { count: formatNumber(asset.feature_count) })}</span>
+                    )}
                     {asset.crs && <span>{asset.crs}</span>}
                     {asset.relevance !== undefined && (
                       <span className="relevance-score">{Math.round(asset.relevance * 100)}%</span>
@@ -406,13 +414,17 @@ export default function CatalogTab({
           {searchMode === 'keyword' && totalPages > 1 && (
             <div className="catalog-pagination">
               <button disabled={page === 0} onClick={() => setPage(value => value - 1)}>
-                &laquo; 上一页
+                &laquo; {t('assetWorkbench.common.previous')}
               </button>
               <span className="catalog-page-info">
-                第 {page + 1} 页 / 共 {totalPages} 页（{total} 条）
+                {t('assetWorkbench.catalog.pagination', {
+                  current: formatNumber(page + 1),
+                  pages: formatNumber(totalPages),
+                  total: formatNumber(total),
+                })}
               </span>
               <button disabled={page + 1 >= totalPages} onClick={() => setPage(value => value + 1)}>
-                下一页 &raquo;
+                {t('assetWorkbench.common.next')} &raquo;
               </button>
             </div>
           )}
@@ -442,6 +454,7 @@ function AssetDetail({
   username: string;
   onAddMapLayer?: (layer: MapPublicationLayer) => void;
 }) {
+  const { t } = useTranslation('common');
   const [lifecycle, setLifecycle] = useState<AssetLifecycle | null>(null);
   const [lifecycleLoading, setLifecycleLoading] = useState(true);
   const [lifecycleError, setLifecycleError] = useState('');
@@ -471,15 +484,22 @@ function AssetDetail({
     try {
       const response = await fetch(`/api/catalog/${asset.id}/lifecycle`, {
         credentials: 'include',
+        headers: getLocaleHeaders(),
       });
-      if (!response.ok) throw new Error(response.status === 404 ? '资产不存在或无权访问' : '生命周期信息暂不可用');
+      if (!response.ok) {
+        throw new Error(response.status === 404
+          ? t('assetWorkbench.catalog.errors.assetUnavailable')
+          : t('assetWorkbench.catalog.errors.lifecycleUnavailable'));
+      }
       setLifecycle(await response.json());
     } catch (error) {
-      setLifecycleError(error instanceof Error ? error.message : '生命周期信息暂不可用');
+      setLifecycleError(error instanceof Error
+        ? error.message
+        : t('assetWorkbench.catalog.errors.lifecycleUnavailable'));
     } finally {
       setLifecycleLoading(false);
     }
-  }, [asset.id]);
+  }, [asset.id, t]);
 
   useEffect(() => { void loadLifecycle(); }, [loadLifecycle]);
 
@@ -489,20 +509,23 @@ function AssetDetail({
     try {
       const response = await fetch(`/api/catalog/${asset.id}/map-publications/current`, {
         credentials: 'include',
+        headers: getLocaleHeaders(),
       });
       if (response.status === 404) {
         setMapPublication(null);
         return;
       }
-      if (!response.ok) throw new Error('地图服务状态暂不可用');
+      if (!response.ok) throw new Error(t('assetWorkbench.catalog.errors.mapStatusUnavailable'));
       const body = await response.json();
       setMapPublication(body.publication as MapPublication);
     } catch (error) {
-      setMapPublicationError(error instanceof Error ? error.message : '地图服务状态暂不可用');
+      setMapPublicationError(error instanceof Error
+        ? error.message
+        : t('assetWorkbench.catalog.errors.mapStatusUnavailable'));
     } finally {
       setMapPublicationLoading(false);
     }
-  }, [asset.id]);
+  }, [asset.id, t]);
 
   useEffect(() => { void loadMapPublication(); }, [loadMapPublication]);
 
@@ -559,26 +582,19 @@ function AssetDetail({
       const response = await fetch(`/api/catalog/${asset.id}/review`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({ rating: score, comment: '' }),
       });
       if (response.ok) await loadLifecycle();
     } catch { /* keep the existing rating */ }
   };
 
-  const responseError = async (response: Response, fallback: string) => {
-    try {
-      const body = await response.json();
-      return typeof body.error === 'string' ? body.error : fallback;
-    } catch {
-      return fallback;
-    }
-  };
+  const responseError = async (_response: Response, fallback: string) => fallback;
 
   const handleRequestAccess = async () => {
     const reason = requestReason.trim();
     if (!reason) {
-      setDistributionError('请填写申请用途');
+      setDistributionError(t('assetWorkbench.catalog.errors.reasonRequired'));
       return;
     }
     setDistributionBusy('create');
@@ -587,7 +603,7 @@ function AssetDetail({
       const response = await fetch('/api/data-requests', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({
           asset_id: asset.id,
           reason,
@@ -595,12 +611,16 @@ function AssetDetail({
           package_quota: requestPackageQuota,
         }),
       });
-      if (!response.ok) throw new Error(await responseError(response, '提交申请失败'));
+      if (!response.ok) {
+        throw new Error(await responseError(response, t('assetWorkbench.catalog.errors.requestFailed')));
+      }
       setRequestReason('');
       setRequestFormOpen(false);
       await loadLifecycle();
     } catch (error) {
-      setDistributionError(error instanceof Error ? error.message : '提交申请失败');
+      setDistributionError(error instanceof Error
+        ? error.message
+        : t('assetWorkbench.catalog.errors.requestFailed'));
     } finally {
       setDistributionBusy('');
     }
@@ -614,10 +634,12 @@ function AssetDetail({
       const response = await fetch('/api/assets/package', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({ asset_ids: [asset.id] }),
       });
-      if (!response.ok) throw new Error(await responseError(response, '生成分发包失败'));
+      if (!response.ok) {
+        throw new Error(await responseError(response, t('assetWorkbench.catalog.errors.packageFailed')));
+      }
       const body = await response.json();
       setPackageResult({
         name: String(body.zip_name || 'data-package.zip'),
@@ -625,7 +647,9 @@ function AssetDetail({
       });
       await loadLifecycle();
     } catch (error) {
-      setDistributionError(error instanceof Error ? error.message : '生成分发包失败');
+      setDistributionError(error instanceof Error
+        ? error.message
+        : t('assetWorkbench.catalog.errors.packageFailed'));
     } finally {
       setDistributionBusy('');
     }
@@ -637,7 +661,7 @@ function AssetDetail({
   ) => {
     const reason = rejectReason.trim();
     if (action === 'reject' && !reason) {
-      setDistributionError('请填写驳回原因');
+      setDistributionError(t('assetWorkbench.catalog.errors.rejectReasonRequired'));
       return;
     }
     setDistributionBusy(`${action}-${requestId}`);
@@ -646,15 +670,19 @@ function AssetDetail({
       const response = await fetch(`/api/data-requests/${requestId}/${action}`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify(action === 'reject' ? { reason } : {}),
       });
-      if (!response.ok) throw new Error(await responseError(response, '处理申请失败'));
+      if (!response.ok) {
+        throw new Error(await responseError(response, t('assetWorkbench.catalog.errors.reviewFailed')));
+      }
       setRejectingRequestId(null);
       setRejectReason('');
       await loadLifecycle();
     } catch (error) {
-      setDistributionError(error instanceof Error ? error.message : '处理申请失败');
+      setDistributionError(error instanceof Error
+        ? error.message
+        : t('assetWorkbench.catalog.errors.reviewFailed'));
     } finally {
       setDistributionBusy('');
     }
@@ -663,7 +691,7 @@ function AssetDetail({
   const handleRevokeRequest = async (requestId: number) => {
     const reason = revocationReason.trim();
     if (!reason) {
-      setDistributionError('请填写撤销原因');
+      setDistributionError(t('assetWorkbench.catalog.errors.revokeReasonRequired'));
       return;
     }
     setDistributionBusy(`revoke-${requestId}`);
@@ -672,15 +700,19 @@ function AssetDetail({
       const response = await fetch(`/api/data-requests/${requestId}/revoke`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({ reason }),
       });
-      if (!response.ok) throw new Error(await responseError(response, '撤销授权失败'));
+      if (!response.ok) {
+        throw new Error(await responseError(response, t('assetWorkbench.catalog.errors.revokeFailed')));
+      }
       setRevokingRequestId(null);
       setRevocationReason('');
       await loadLifecycle();
     } catch (error) {
-      setDistributionError(error instanceof Error ? error.message : '撤销授权失败');
+      setDistributionError(error instanceof Error
+        ? error.message
+        : t('assetWorkbench.catalog.errors.revokeFailed'));
     } finally {
       setDistributionBusy('');
     }
@@ -696,11 +728,16 @@ function AssetDetail({
   const isAdmin = userRole === 'admin';
   const isOwner = requestAccess?.is_owner ?? Boolean(username && detail.owner === username);
   const canPublishMap = isAdmin || isOwner;
+  const readinessBlockers = lifecycle?.readiness.checks.filter(check => check.status === 'missing') || [];
+  const readinessWarnings = lifecycle?.readiness.checks.filter(check => check.status === 'warning') || [];
+  const formatGrantExpiry = (value?: string) => value
+    ? formatDate(value, { year: 'numeric', month: '2-digit', day: '2-digit' })
+    : t('assetWorkbench.common.notSet');
 
   const openMcpChat = (server: 'arcpy' | 'dts') => {
     const text = server === 'arcpy'
-      ? `请通过受控资产工作流处理数据湖资产 ID ${asset.id}：先检查 ArcPy MCP 兼容性，再使用 project_features 投影到 EPSG:32640。首次联调限制为 5000 个要素；成功后把结果作为新资产写回数据湖，登记版本和血缘，并返回新资产 ID 与 SHA-256。`
-      : `请检查资产 ID ${asset.id} 是否能进入 DTS MCP 的 road 管道，并列出还需要选择的 DOM/DEM 数据湖资产；不要把建筑物图层强行当作道路输入。`;
+      ? t('assetWorkbench.catalog.prompts.arcpy', { id: asset.id })
+      : t('assetWorkbench.catalog.prompts.dts', { id: asset.id });
     window.dispatchEvent(new CustomEvent('gda-chat-prefill', { detail: { text } }));
   };
 
@@ -711,11 +748,11 @@ function AssetDetail({
       const response = await fetch(`/api/catalog/${asset.id}/map-publications`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({}),
       });
       if (!response.ok) {
-        throw new Error(await responseError(response, '发布地图服务失败'));
+        throw new Error(await responseError(response, t('assetWorkbench.catalog.errors.mapPublishFailed')));
       }
       const body = await response.json();
       const publication = body.publication as MapPublication;
@@ -723,7 +760,9 @@ function AssetDetail({
       setMapPublication(publication);
       onAddMapLayer?.(layer);
     } catch (error) {
-      setMapPublicationError(error instanceof Error ? error.message : '发布地图服务失败');
+      setMapPublicationError(error instanceof Error
+        ? error.message
+        : t('assetWorkbench.catalog.errors.mapPublishFailed'));
     } finally {
       setMapPublicationBusy(false);
     }
@@ -731,9 +770,9 @@ function AssetDetail({
 
   return (
     <div className="asset-detail">
-      <button className="asset-back-btn" onClick={onBack} title="返回资产列表">
-        <ArrowLeft aria-hidden="true" />
-        <span>返回列表</span>
+      <button className="asset-back-btn" onClick={onBack} title={t('assetWorkbench.catalog.backTitle')}>
+        <ArrowLeft className="rtl-flip" aria-hidden="true" />
+        <span>{t('assetWorkbench.common.backToList')}</span>
       </button>
       <div className="asset-detail-heading">
         <div>
@@ -741,23 +780,27 @@ function AssetDetail({
           {detail.asset_code && <code>{detail.asset_code}</code>}
         </div>
         <div className="asset-heading-actions">
-          <button type="button" onClick={() => openMcpChat('arcpy')} title="在对话中使用 ArcPy MCP 处理此资产">
+          <button type="button" onClick={() => openMcpChat('arcpy')} title={t('assetWorkbench.catalog.arcpyTitle')}>
             <Workflow aria-hidden="true" />
-            <span>ArcPy 处理</span>
+            <span>{t('assetWorkbench.catalog.arcpyAction')}</span>
           </button>
-          <button type="button" onClick={() => openMcpChat('dts')} title="在对话中检查 DTS road 输入条件">
+          <button type="button" onClick={() => openMcpChat('dts')} title={t('assetWorkbench.catalog.dtsTitle')}>
             <ScanSearch aria-hidden="true" />
-            <span>DTS 检查</span>
+            <span>{t('assetWorkbench.catalog.dtsAction')}</span>
           </button>
           {lifecycle && (
             <span className={`asset-stage-badge ${lifecycle.current_stage}`}>
-              {lifecycle.current_stage_label}
+              {t(`assetWorkbench.catalog.lifecycleStages.${lifecycle.current_stage}`, {
+                defaultValue: lifecycle.current_stage_label,
+              })}
             </span>
           )}
         </div>
       </div>
 
-      {lifecycleLoading && <div className="asset-lifecycle-loading">正在汇总资产证据...</div>}
+      {lifecycleLoading && (
+        <div className="asset-lifecycle-loading">{t('assetWorkbench.catalog.loadingEvidence')}</div>
+      )}
       {lifecycleError && (
         <div className="asset-lifecycle-error" role="alert">
           <AlertTriangle aria-hidden="true" />
@@ -766,11 +809,11 @@ function AssetDetail({
       )}
 
       {lifecycle && (
-        <section className="asset-lifecycle-section" aria-label="资产生命周期">
+        <section className="asset-lifecycle-section" aria-label={t('assetWorkbench.catalog.lifecycleAria')}>
           <div className="asset-section-heading">
             <div>
               <ShieldCheck aria-hidden="true" />
-              <h4>生命周期与发布准备度</h4>
+              <h4>{t('assetWorkbench.catalog.lifecycleReadiness')}</h4>
             </div>
             <strong className={lifecycle.readiness.ready ? 'ready' : ''}>
               {lifecycle.readiness.score}<span>/100</span>
@@ -784,7 +827,7 @@ function AssetDetail({
                   <StageIcon status={stage.status} />
                   {index < lifecycle.stages.length - 1 && <span aria-hidden="true" />}
                 </div>
-                <span>{stage.label}</span>
+                <span>{t(`assetWorkbench.catalog.lifecycleStages.${stage.id}`, { defaultValue: stage.label })}</span>
               </div>
             ))}
           </div>
@@ -792,22 +835,24 @@ function AssetDetail({
           <div className="asset-operation-metrics">
             <div>
               <ShieldCheck aria-hidden="true" />
-              <span>质量</span>
-              <strong>{lifecycle.quality.has_evidence ? lifecycle.quality.score : '-'}</strong>
+              <span>{t('assetWorkbench.catalog.metrics.quality')}</span>
+              <strong>{lifecycle.quality.has_evidence && lifecycle.quality.score != null
+                ? formatNumber(lifecycle.quality.score)
+                : '-'}</strong>
             </div>
             <div>
               <Activity aria-hidden="true" />
-              <span>访问</span>
-              <strong>{lifecycle.usage.total_accesses}</strong>
+              <span>{t('assetWorkbench.catalog.metrics.accesses')}</span>
+              <strong>{formatNumber(lifecycle.usage.total_accesses)}</strong>
             </div>
             <div>
               <Users aria-hidden="true" />
-              <span>用户</span>
-              <strong>{lifecycle.usage.unique_users}</strong>
+              <span>{t('assetWorkbench.catalog.metrics.users')}</span>
+              <strong>{formatNumber(lifecycle.usage.unique_users)}</strong>
             </div>
             <div>
               <Clock3 aria-hidden="true" />
-              <span>版本</span>
+              <span>{t('assetWorkbench.catalog.metrics.version')}</span>
               <strong>v{lifecycle.versions.current || detail.version || 1}</strong>
             </div>
           </div>
@@ -818,18 +863,30 @@ function AssetDetail({
                 ? <CheckCircle2 aria-hidden="true" />
                 : <AlertTriangle aria-hidden="true" />}
               <div>
-                <strong>{lifecycle.readiness.ready ? '发布门禁通过' : `${lifecycle.readiness.blockers.length} 项阻塞发布`}</strong>
-                <span>{pendingRequests > 0 ? `${pendingRequests} 个申请待审批` : '当前无待审批申请'}</span>
+                <strong>{lifecycle.readiness.ready
+                  ? t('assetWorkbench.catalog.gatePassed')
+                  : t('assetWorkbench.catalog.gateBlocked', { count: formatNumber(readinessBlockers.length) })}</strong>
+                <span>{pendingRequests > 0
+                  ? t('assetWorkbench.catalog.pendingApprovals', { count: formatNumber(pendingRequests) })
+                  : t('assetWorkbench.catalog.noPendingApprovals')}</span>
               </div>
             </div>
-            {lifecycle.readiness.blockers.length > 0 && (
+            {readinessBlockers.length > 0 && (
               <ul className="asset-readiness-list blockers">
-                {lifecycle.readiness.blockers.map(blocker => <li key={blocker}>{blocker}</li>)}
+                {readinessBlockers.map(check => (
+                  <li key={check.id}>
+                    {t(`assetWorkbench.catalog.readinessChecks.${check.id}`, { defaultValue: check.message })}
+                  </li>
+                ))}
               </ul>
             )}
-            {lifecycle.readiness.warnings.length > 0 && (
+            {readinessWarnings.length > 0 && (
               <ul className="asset-readiness-list warnings">
-                {lifecycle.readiness.warnings.map(warning => <li key={warning}>{warning}</li>)}
+                {readinessWarnings.map(check => (
+                  <li key={check.id}>
+                    {t(`assetWorkbench.catalog.readinessChecks.${check.id}`, { defaultValue: check.message })}
+                  </li>
+                ))}
               </ul>
             )}
           </div>
@@ -837,31 +894,35 @@ function AssetDetail({
           {lifecycle.publication.evidence_detected && !lifecycle.readiness.ready && (
             <div className="asset-publication-drift">
               <AlertTriangle aria-hidden="true" />
-              <span>已检测到共享或发布事实，但治理门禁仍有缺口。</span>
+              <span>{t('assetWorkbench.catalog.publicationDrift')}</span>
             </div>
           )}
         </section>
       )}
 
-      <section className="asset-map-publication-section" aria-label="地图服务">
+      <section className="asset-map-publication-section" aria-label={t('assetWorkbench.catalog.mapService')}>
         <div className="asset-section-heading compact">
           <div>
             <Layers aria-hidden="true" />
-            <h4>地图服务</h4>
+            <h4>{t('assetWorkbench.catalog.mapService')}</h4>
           </div>
           {mapPublication?.status === 'ready' && (
-            <span className="asset-map-publication-ready">可用</span>
+            <span className="asset-map-publication-ready">{t('assetWorkbench.catalog.available')}</span>
           )}
         </div>
 
         {mapPublicationLoading ? (
-          <div className="asset-map-publication-empty">正在读取发布状态...</div>
+          <div className="asset-map-publication-empty">{t('assetWorkbench.catalog.loadingPublication')}</div>
         ) : mapPublication?.status === 'ready' ? (
           <>
             <div className="asset-map-publication-summary">
               <span>MVT</span>
-              <span>缩放 {mapPublication.min_zoom}-{mapPublication.max_zoom}</span>
-              <span>{mapPublication.property_allowlist.length} 个公开属性</span>
+              <span>{t('assetWorkbench.catalog.zoomRange', {
+                min: formatNumber(mapPublication.min_zoom), max: formatNumber(mapPublication.max_zoom),
+              })}</span>
+              <span>{t('assetWorkbench.catalog.publicProperties', {
+                count: formatNumber(mapPublication.property_allowlist.length),
+              })}</span>
             </div>
             <div className="asset-map-publication-actions">
               <button
@@ -870,7 +931,7 @@ function AssetDetail({
                 disabled={!onAddMapLayer || mapPublicationBusy}
               >
                 <Layers aria-hidden="true" />
-                <span>添加到地图</span>
+                <span>{t('assetWorkbench.catalog.addToMap')}</span>
               </button>
               {canPublishMap && (
                 <button
@@ -878,17 +939,19 @@ function AssetDetail({
                   className="secondary"
                   onClick={() => void handlePublishMap()}
                   disabled={mapPublicationBusy}
-                  title="按当前资产版本重新发布"
+                  title={t('assetWorkbench.catalog.republishTitle')}
                 >
                   <RefreshCw aria-hidden="true" />
-                  <span>{mapPublicationBusy ? '发布中...' : '重新发布'}</span>
+                  <span>{mapPublicationBusy
+                    ? t('assetWorkbench.catalog.publishing')
+                    : t('assetWorkbench.catalog.republish')}</span>
                 </button>
               )}
             </div>
           </>
         ) : (
           <>
-            <div className="asset-map-publication-empty">该资产尚未发布为地图图层</div>
+            <div className="asset-map-publication-empty">{t('assetWorkbench.catalog.notPublishedAsLayer')}</div>
             {canPublishMap && (
               <button
                 type="button"
@@ -897,7 +960,9 @@ function AssetDetail({
                 disabled={mapPublicationBusy}
               >
                 <Layers aria-hidden="true" />
-                <span>{mapPublicationBusy ? '发布中...' : '发布为地图图层'}</span>
+                <span>{mapPublicationBusy
+                  ? t('assetWorkbench.catalog.publishing')
+                  : t('assetWorkbench.catalog.publishAsLayer')}</span>
               </button>
             )}
           </>
@@ -912,13 +977,17 @@ function AssetDetail({
       </section>
 
       {lifecycle && requestAccess && (
-        <section className="asset-distribution-section" aria-label="分发申请">
+        <section className="asset-distribution-section" aria-label={t('assetWorkbench.catalog.distribution.title')}>
           <div className="asset-section-heading compact">
             <div>
               <ClipboardCheck aria-hidden="true" />
-              <h4>分发申请</h4>
+              <h4>{t('assetWorkbench.catalog.distribution.title')}</h4>
             </div>
-            {isAdmin && <span>{adminPendingItems.length} 项待处理</span>}
+            {isAdmin && (
+              <span>{t('assetWorkbench.catalog.distribution.pendingItems', {
+                count: formatNumber(adminPendingItems.length),
+              })}</span>
+            )}
           </div>
 
           {isAdmin ? (
@@ -929,10 +998,12 @@ function AssetDetail({
                     <div className="asset-distribution-request" key={item.id}>
                       <div className="asset-distribution-request-main">
                         <strong>{item.requester}</strong>
-                        <span>{item.reason || '未填写用途'}</span>
+                        <span>{item.reason || t('assetWorkbench.catalog.distribution.noPurpose')}</span>
                         <small>
-                          离线分发包 · {item.requested_duration_days || 30} 天 ·
-                          {' '}{item.requested_package_quota || 5} 次额度
+                          {t('assetWorkbench.catalog.distribution.requestSummary', {
+                            duration: formatNumber(item.requested_duration_days || 30),
+                            quota: formatNumber(item.requested_package_quota || 5),
+                          })}
                         </small>
                       </div>
                       <div className="asset-distribution-actions">
@@ -941,8 +1012,8 @@ function AssetDetail({
                           className="asset-distribution-action approve"
                           onClick={() => void handleReviewRequest(item.id, 'approve')}
                           disabled={Boolean(distributionBusy)}
-                          title="批准申请"
-                          aria-label={`批准 ${item.requester} 的申请`}
+                          title={t('assetWorkbench.catalog.distribution.approve')}
+                          aria-label={t('assetWorkbench.catalog.distribution.approveAria', { requester: item.requester })}
                         >
                           <Check aria-hidden="true" />
                         </button>
@@ -955,8 +1026,8 @@ function AssetDetail({
                             setDistributionError('');
                           }}
                           disabled={Boolean(distributionBusy)}
-                          title="驳回申请"
-                          aria-label={`驳回 ${item.requester} 的申请`}
+                          title={t('assetWorkbench.catalog.distribution.reject')}
+                          aria-label={t('assetWorkbench.catalog.distribution.rejectAria', { requester: item.requester })}
                         >
                           <X aria-hidden="true" />
                         </button>
@@ -966,8 +1037,8 @@ function AssetDetail({
                           <textarea
                             value={rejectReason}
                             onChange={event => setRejectReason(event.target.value)}
-                            placeholder="驳回原因"
-                            aria-label="驳回原因"
+                            placeholder={t('assetWorkbench.catalog.distribution.rejectReason')}
+                            aria-label={t('assetWorkbench.catalog.distribution.rejectReason')}
                             rows={2}
                           />
                           <div>
@@ -976,7 +1047,7 @@ function AssetDetail({
                               onClick={() => void handleReviewRequest(item.id, 'reject')}
                               disabled={distributionBusy === `reject-${item.id}`}
                             >
-                              确认驳回
+                              {t('assetWorkbench.catalog.distribution.confirmReject')}
                             </button>
                             <button
                               type="button"
@@ -984,7 +1055,7 @@ function AssetDetail({
                               onClick={() => setRejectingRequestId(null)}
                               disabled={Boolean(distributionBusy)}
                             >
-                              取消
+                              {t('assetWorkbench.common.cancel')}
                             </button>
                           </div>
                         </div>
@@ -993,27 +1064,36 @@ function AssetDetail({
                   ))}
                 </div>
               ) : (
-                <div className="asset-distribution-empty">当前没有待审批申请</div>
+                <div className="asset-distribution-empty">{t('assetWorkbench.catalog.noPendingApprovals')}</div>
               )}
 
               {adminActiveItems.length > 0 && (
                 <div className="asset-active-grants">
                   <div className="asset-active-grants-heading">
                     <ShieldCheck aria-hidden="true" />
-                    <strong>有效授权 {adminActiveItems.length}</strong>
+                    <strong>{t('assetWorkbench.catalog.distribution.activeGrants', {
+                      count: formatNumber(adminActiveItems.length),
+                    })}</strong>
                   </div>
                   {adminActiveItems.map(item => (
                     <div className="asset-distribution-request active" key={item.id}>
                       <div className="asset-distribution-request-main">
                         <strong>{item.requester}</strong>
-                        <span>有效至 {formatGrantExpiry(item.expires_at)}</span>
+                        <span>{t('assetWorkbench.catalog.distribution.validUntil', {
+                          date: formatGrantExpiry(item.expires_at),
+                        })}</span>
                         <small>
                           {item.product_version
-                            ? `已锁定产品版本 ${item.product_version.version_key}`
-                            : '资产级过渡授权'}
+                            ? t('assetWorkbench.catalog.distribution.lockedVersion', {
+                              version: item.product_version.version_key,
+                            })
+                            : t('assetWorkbench.catalog.distribution.assetGrant')}
                         </small>
                         <small>
-                          分发包额度 已用 {item.packages_created || 0} / {item.granted_package_quota || 0}
+                          {t('assetWorkbench.catalog.distribution.quotaUsed', {
+                            used: formatNumber(item.packages_created || 0),
+                            total: formatNumber(item.granted_package_quota || 0),
+                          })}
                         </small>
                       </div>
                       <button
@@ -1025,8 +1105,8 @@ function AssetDetail({
                           setDistributionError('');
                         }}
                         disabled={Boolean(distributionBusy)}
-                        title="撤销授权"
-                        aria-label={`撤销 ${item.requester} 的授权`}
+                        title={t('assetWorkbench.catalog.distribution.revoke')}
+                        aria-label={t('assetWorkbench.catalog.distribution.revokeAria', { requester: item.requester })}
                       >
                         <ShieldOff aria-hidden="true" />
                       </button>
@@ -1035,8 +1115,8 @@ function AssetDetail({
                           <textarea
                             value={revocationReason}
                             onChange={event => setRevocationReason(event.target.value)}
-                            placeholder="撤销原因"
-                            aria-label="撤销原因"
+                            placeholder={t('assetWorkbench.catalog.distribution.revokeReason')}
+                            aria-label={t('assetWorkbench.catalog.distribution.revokeReason')}
                             rows={2}
                           />
                           <div>
@@ -1045,7 +1125,7 @@ function AssetDetail({
                               onClick={() => void handleRevokeRequest(item.id)}
                               disabled={distributionBusy === `revoke-${item.id}`}
                             >
-                              确认撤销
+                              {t('assetWorkbench.catalog.distribution.confirmRevoke')}
                             </button>
                             <button
                               type="button"
@@ -1053,7 +1133,7 @@ function AssetDetail({
                               onClick={() => setRevokingRequestId(null)}
                               disabled={Boolean(distributionBusy)}
                             >
-                              取消
+                              {t('assetWorkbench.common.cancel')}
                             </button>
                           </div>
                         </div>
@@ -1069,16 +1149,25 @@ function AssetDetail({
                 <div className="asset-grant-summary">
                   <ShieldCheck aria-hidden="true" />
                   <div>
-                    <strong>{activeGrant.quota_exhausted ? '分发额度已用完' : '分发授权有效'}</strong>
-                    <span>离线分发包 · 有效至 {formatGrantExpiry(activeGrant.expires_at)}</span>
+                    <strong>{activeGrant.quota_exhausted
+                      ? t('assetWorkbench.catalog.distribution.quotaExhausted')
+                      : t('assetWorkbench.catalog.distribution.grantActive')}</strong>
+                    <span>{t('assetWorkbench.catalog.distribution.packageValidUntil', {
+                      date: formatGrantExpiry(activeGrant.expires_at),
+                    })}</span>
                     <span>
-                      额度 已用 {activeGrant.packages_created || 0} / {activeGrant.granted_package_quota || 0}
-                      {' '}· 剩余 {activeGrant.packages_remaining || 0}
+                      {t('assetWorkbench.catalog.distribution.quotaRemaining', {
+                        used: formatNumber(activeGrant.packages_created || 0),
+                        total: formatNumber(activeGrant.granted_package_quota || 0),
+                        remaining: formatNumber(activeGrant.packages_remaining || 0),
+                      })}
                     </span>
                     <small>
                       {activeGrant.product_version
-                        ? `已锁定产品版本 ${activeGrant.product_version.version_key}`
-                        : '资产级过渡授权'}
+                        ? t('assetWorkbench.catalog.distribution.lockedVersion', {
+                          version: activeGrant.product_version.version_key,
+                        })
+                        : t('assetWorkbench.catalog.distribution.assetGrant')}
                     </small>
                   </div>
                 </div>
@@ -1097,18 +1186,22 @@ function AssetDetail({
                   <div>
                     <strong>
                       {myRequest.grant_status === 'revoked'
-                        ? '授权已撤销'
+                        ? t('assetWorkbench.catalog.distribution.revoked')
                         : myRequest.grant_status === 'expired'
-                          ? '授权已过期'
-                          : REQUEST_STATUS_LABEL[myRequest.status]}
+                          ? t('assetWorkbench.catalog.distribution.expired')
+                          : t(`assetWorkbench.catalog.distribution.requestStatus.${myRequest.status}`)}
                     </strong>
-                    <span>{myRequest.reason || '未填写用途'}</span>
+                    <span>{myRequest.reason || t('assetWorkbench.catalog.distribution.noPurpose')}</span>
                     <span>
-                      离线分发包 · {myRequest.requested_duration_days || 30} 天 ·
-                      {' '}{myRequest.requested_package_quota || 5} 次额度
+                      {t('assetWorkbench.catalog.distribution.requestSummary', {
+                        duration: formatNumber(myRequest.requested_duration_days || 30),
+                        quota: formatNumber(myRequest.requested_package_quota || 5),
+                      })}
                     </span>
                     {myRequest.product_version && (
-                      <span>产品版本 {myRequest.product_version.version_key}</span>
+                      <span>{t('assetWorkbench.catalog.distribution.productVersion', {
+                        version: myRequest.product_version.version_key,
+                      })}</span>
                     )}
                     {myRequest.reject_reason && <em>{myRequest.reject_reason}</em>}
                     {myRequest.revocation_reason && <em>{myRequest.revocation_reason}</em>}
@@ -1116,7 +1209,7 @@ function AssetDetail({
                 </div>
               )}
               {isOwner && !myRequest && (
-                <div className="asset-distribution-empty">你是该资产的责任人</div>
+                <div className="asset-distribution-empty">{t('assetWorkbench.catalog.distribution.youAreOwner')}</div>
               )}
               {requestAccess.can_request && !requestFormOpen && (
                 <button
@@ -1130,37 +1223,39 @@ function AssetDetail({
                   <Send aria-hidden="true" />
                   <span>
                     {activeGrant?.quota_exhausted
-                      ? '申请追加额度'
-                      : myRequest ? '重新申请' : '申请使用'}
+                      ? t('assetWorkbench.catalog.distribution.requestMoreQuota')
+                      : myRequest
+                        ? t('assetWorkbench.catalog.distribution.reapply')
+                        : t('assetWorkbench.catalog.distribution.requestUse')}
                   </span>
                 </button>
               )}
               {requestAccess.can_request && requestFormOpen && (
                 <div className="asset-request-form">
                   <div className="asset-request-contract">
-                    <span>授权方式</span>
-                    <strong>离线分发包</strong>
+                    <span>{t('assetWorkbench.catalog.distribution.authorizationMethod')}</span>
+                    <strong>{t('assetWorkbench.catalog.distribution.offlinePackage')}</strong>
                     <div className="asset-request-contract-controls">
                       <label>
-                        <span>有效天数</span>
+                        <span>{t('assetWorkbench.catalog.distribution.validDays')}</span>
                         <input
                           type="number"
                           min={1}
                           max={365}
                           value={requestDurationDays}
                           onChange={event => setRequestDurationDays(Number(event.target.value))}
-                          aria-label="授权有效天数"
+                          aria-label={t('assetWorkbench.catalog.distribution.validDaysAria')}
                         />
                       </label>
                       <label>
-                        <span>打包次数</span>
+                        <span>{t('assetWorkbench.catalog.distribution.packageCount')}</span>
                         <input
                           type="number"
                           min={1}
                           max={100}
                           value={requestPackageQuota}
                           onChange={event => setRequestPackageQuota(Number(event.target.value))}
-                          aria-label="分发包申请额度"
+                          aria-label={t('assetWorkbench.catalog.distribution.packageQuotaAria')}
                         />
                       </label>
                     </div>
@@ -1168,8 +1263,8 @@ function AssetDetail({
                   <textarea
                     value={requestReason}
                     onChange={event => setRequestReason(event.target.value)}
-                    placeholder="填写申请用途"
-                    aria-label="申请用途"
+                    placeholder={t('assetWorkbench.catalog.distribution.purposePlaceholder')}
+                    aria-label={t('assetWorkbench.catalog.distribution.purpose')}
                     rows={3}
                   />
                   <div className="asset-request-actions">
@@ -1179,7 +1274,9 @@ function AssetDetail({
                       disabled={distributionBusy === 'create'}
                     >
                       <Send aria-hidden="true" />
-                      <span>{distributionBusy === 'create' ? '提交中...' : '提交申请'}</span>
+                      <span>{distributionBusy === 'create'
+                        ? t('assetWorkbench.catalog.distribution.submitting')
+                        : t('assetWorkbench.catalog.distribution.submit')}</span>
                     </button>
                     <button
                       type="button"
@@ -1187,7 +1284,7 @@ function AssetDetail({
                       onClick={() => setRequestFormOpen(false)}
                       disabled={Boolean(distributionBusy)}
                     >
-                      取消
+                      {t('assetWorkbench.common.cancel')}
                     </button>
                   </div>
                 </div>
@@ -1200,12 +1297,14 @@ function AssetDetail({
                     disabled={distributionBusy === 'package'}
                   >
                     <Package aria-hidden="true" />
-                    <span>{distributionBusy === 'package' ? '生成中...' : '生成分发包'}</span>
+                    <span>{distributionBusy === 'package'
+                      ? t('assetWorkbench.catalog.distribution.generating')
+                      : t('assetWorkbench.catalog.distribution.generatePackage')}</span>
                   </button>
                   {packageResult?.url && (
                     <a href={packageResult.url} download={packageResult.name}>
                       <Download aria-hidden="true" />
-                      <span>下载 {packageResult.name}</span>
+                      <span>{t('assetWorkbench.catalog.distribution.downloadPackage', { name: packageResult.name })}</span>
                     </a>
                   )}
                 </div>
@@ -1232,44 +1331,49 @@ function AssetDetail({
                   key={score}
                   className={`asset-rating-button ${active ? 'active' : ''}`}
                   onClick={() => handleRate(score)}
-                  title={`评分 ${score} 分`}
-                  aria-label={`评分 ${score} 分`}
+                  title={t('assetWorkbench.catalog.ratingAria', { score: formatNumber(score) })}
+                  aria-label={t('assetWorkbench.catalog.ratingAria', { score: formatNumber(score) })}
                 >
                   <Star aria-hidden="true" fill={active ? 'currentColor' : 'none'} />
                 </button>
               );
             })}
-            <span>{reviews.avg_rating.toFixed(1)}（{reviews.count} 条评价）</span>
+            <span>{t('assetWorkbench.catalog.ratingSummary', {
+              rating: formatNumber(reviews.avg_rating, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+              count: formatNumber(reviews.count),
+            })}</span>
           </div>
         </div>
       )}
 
       <div className="asset-detail-grid">
-        <div className="asset-detail-item"><span>类型</span><span className={`type-badge ${detail.asset_type}`}>{detail.asset_type}</span></div>
-        <div className="asset-detail-item"><span>责任人</span><span>{detail.owner || '未设置'}</span></div>
-        <div className="asset-detail-item"><span>格式</span><span>{detail.file_format || '-'}</span></div>
-        <div className="asset-detail-item"><span>存储</span><span>{detail.storage_backend || '-'}</span></div>
+        <div className="asset-detail-item"><span>{t('assetWorkbench.catalog.fields.type')}</span><span className={`type-badge ${detail.asset_type}`}>{t(`assetWorkbench.catalog.assetTypes.${detail.asset_type}`, { defaultValue: detail.asset_type })}</span></div>
+        <div className="asset-detail-item"><span>{t('assetWorkbench.catalog.fields.owner')}</span><span>{detail.owner || t('assetWorkbench.common.notSet')}</span></div>
+        <div className="asset-detail-item"><span>{t('assetWorkbench.catalog.fields.format')}</span><span>{detail.file_format || '-'}</span></div>
+        <div className="asset-detail-item"><span>{t('assetWorkbench.catalog.fields.storage')}</span><span>{detail.storage_backend || '-'}</span></div>
         <div className="asset-detail-item"><span>CRS</span><span>{detail.crs || '-'}</span></div>
-        <div className="asset-detail-item"><span>要素数</span><span>{detail.feature_count || 0}</span></div>
-        <div className="asset-detail-item"><span>大小</span><span>{formatSize(detail.file_size_bytes || 0)}</span></div>
+        <div className="asset-detail-item"><span>{t('assetWorkbench.catalog.fields.featureCount')}</span><span>{formatNumber(detail.feature_count || 0)}</span></div>
+        <div className="asset-detail-item"><span>{t('assetWorkbench.catalog.fields.size')}</span><span>{formatFileSize(detail.file_size_bytes || 0)}</span></div>
         <div className="asset-detail-item">
-          <span>敏感级别</span>
+          <span>{t('assetWorkbench.catalog.fields.sensitivity')}</span>
           <span className={`sensitivity-badge ${sensitivity ? '' : 'unset'}`} style={sensitivity ? {
             background: `${SENS_COLOR[sensitivity] || '#6b7280'}20`,
             color: SENS_COLOR[sensitivity] || '#6b7280',
           } : undefined}>
-            {sensitivity ? (SENS_LABEL[sensitivity] || sensitivity) : '未设置'}
+            {sensitivity
+              ? t(`assetWorkbench.catalog.sensitivity.${sensitivity}`, { defaultValue: sensitivity })
+              : t('assetWorkbench.common.notSet')}
           </span>
         </div>
-        <div className="asset-detail-item"><span>访问级别</span><span>{detail.access_level || 'private'}</span></div>
-        <div className="asset-detail-item"><span>许可</span><span>{detail.license || '未设置'}</span></div>
-        {detail.description && <div className="asset-detail-item full"><span>描述</span><span>{detail.description}</span></div>}
-        {detail.tags.length > 0 && <div className="asset-detail-item full"><span>标签</span><span>{detail.tags.join('、')}</span></div>}
+        <div className="asset-detail-item"><span>{t('assetWorkbench.catalog.fields.accessLevel')}</span><span>{t(`assetWorkbench.catalog.accessLevels.${detail.access_level || 'private'}`, { defaultValue: detail.access_level || 'private' })}</span></div>
+        <div className="asset-detail-item"><span>{t('assetWorkbench.catalog.fields.license')}</span><span>{detail.license || t('assetWorkbench.common.notSet')}</span></div>
+        {detail.description && <div className="asset-detail-item full"><span>{t('assetWorkbench.catalog.fields.description')}</span><span>{detail.description}</span></div>}
+        {detail.tags.length > 0 && <div className="asset-detail-item full"><span>{t('assetWorkbench.catalog.fields.tags')}</span><span>{detail.tags.join(t('assetWorkbench.catalog.tagSeparator'))}</span></div>}
       </div>
 
       {detail.spatial_extent && (
         <div className="bbox-preview-section">
-          <h4>空间范围</h4>
+          <h4>{t('assetWorkbench.catalog.spatialExtent')}</h4>
           <div className="bbox-preview" ref={bboxRef} />
           <div className="bbox-coords">
             [{detail.spatial_extent.minx?.toFixed(4)}, {detail.spatial_extent.miny?.toFixed(4)}, {' '}
@@ -1280,9 +1384,9 @@ function AssetDetail({
 
       {detail.column_schema.length > 0 && (
         <div className="column-schema-section">
-          <h4>字段结构</h4>
+          <h4>{t('assetWorkbench.catalog.columnSchema')}</h4>
           <div className="column-schema-table">
-            <div className="column-schema-header"><span>字段名</span><span>类型</span></div>
+            <div className="column-schema-header"><span>{t('assetWorkbench.catalog.fieldName')}</span><span>{t('assetWorkbench.catalog.fields.type')}</span></div>
             {detail.column_schema.map((column, index) => (
               <div key={`${column.name}-${index}`} className="column-schema-row">
                 <span>{column.name}</span><span>{column.type}</span>
@@ -1295,8 +1399,11 @@ function AssetDetail({
       {lineage && (
         <div className="lineage-section">
           <div className="asset-section-heading compact">
-            <div><GitBranch aria-hidden="true" /><h4>数据血缘</h4></div>
-            <span>{lineage.source_count} 上游 / {lineage.derived_count} 下游</span>
+            <div><GitBranch aria-hidden="true" /><h4>{t('assetWorkbench.catalog.lineage')}</h4></div>
+            <span>{t('assetWorkbench.catalog.lineageSummary', {
+              sources: formatNumber(lineage.source_count),
+              derived: formatNumber(lineage.derived_count),
+            })}</span>
           </div>
           {(lineage.ancestors.length > 0 || lineage.descendants.length > 0) ? (
             <div className="lineage-dag">
@@ -1311,7 +1418,7 @@ function AssetDetail({
                   ))}
                 </div>
               )}
-              {lineage.ancestors.length > 0 && <ArrowRight className="lineage-arrow-icon" aria-hidden="true" />}
+              {lineage.ancestors.length > 0 && <ArrowRight className="lineage-arrow-icon rtl-flip" aria-hidden="true" />}
               <div className="lineage-col">
                 <div className="lineage-node current">
                   <div className="lineage-node-name">{lineage.asset?.name || detail.asset_name}</div>
@@ -1322,7 +1429,7 @@ function AssetDetail({
                   )}
                 </div>
               </div>
-              {lineage.descendants.length > 0 && <ArrowRight className="lineage-arrow-icon" aria-hidden="true" />}
+              {lineage.descendants.length > 0 && <ArrowRight className="lineage-arrow-icon rtl-flip" aria-hidden="true" />}
               {lineage.descendants.length > 0 && (
                 <div className="lineage-col">
                   {lineage.descendants.map((node, index) => (
@@ -1336,7 +1443,7 @@ function AssetDetail({
               )}
             </div>
           ) : (
-            <div className="asset-lineage-empty">尚无血缘证据</div>
+            <div className="asset-lineage-empty">{t('assetWorkbench.catalog.noLineage')}</div>
           )}
         </div>
       )}

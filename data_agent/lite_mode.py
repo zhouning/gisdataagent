@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 
+from .i18n import t
 from .observability import get_logger
 
 logger = get_logger("lite_mode")
@@ -33,7 +34,7 @@ def init_lite_database(db_path: str = None) -> dict:
     except ImportError:
         return {
             "status": "error",
-            "message": "duckdb package not installed. Run: pip install duckdb",
+            "message": t("lite.duckdb_missing"),
         }
 
     # A standalone Windows installation keeps mutable control data outside
@@ -136,7 +137,7 @@ def init_lite_database(db_path: str = None) -> dict:
         "status": "ok",
         "db_path": db_path,
         "tables_created": tables_created,
-        "message": f"Lite 数据库初始化完成: {db_path}",
+        "message": t("lite.init_complete", db_path=db_path),
     }
     logger.info("Lite database initialized: %s (%d tables)", db_path, len(tables_created))
     return result
@@ -145,7 +146,7 @@ def init_lite_database(db_path: str = None) -> dict:
 def get_lite_status() -> dict:
     """Get current Lite mode status and database info."""
     if not is_lite_mode():
-        return {"lite_mode": False, "message": "运行在 PostgreSQL 模式"}
+        return {"lite_mode": False, "message": t("lite.postgres_mode")}
 
     db_path = os.environ.get("GDA_DUCKDB_PATH") or os.path.join(
         os.path.dirname(__file__), "local.duckdb"
@@ -196,7 +197,7 @@ def _cli_main():
         if result["status"] == "ok":
             print(f"  Tables: {', '.join(result['tables_created'])}")
             print(f"  DB path: {result['db_path']}")
-            print("\nRun with: DB_BACKEND=duckdb chainlit run data_agent/app.py -w")
+            print(f"\n{t('lite.cli.run_hint')}")
     elif cmd == "status":
         status = get_lite_status()
         for k, v in status.items():
@@ -208,15 +209,15 @@ def _cli_main():
             os.path.dirname(__file__), "local.duckdb"
         )
         if not os.path.exists(db_path):
-            print("[gis-agent] First run — initializing database...")
+            print(f"[gis-agent] {t('lite.cli.first_run')}")
             init_lite_database(db_path)
         os.execvp("chainlit", ["chainlit", "run", "data_agent/app.py", "-w"])
     elif cmd == "standards":
         from data_agent.standards.cli import main as standards_main
         sys.exit(standards_main(args[1:]))
     else:
-        print("Usage: gis-agent <command>")
-        print("  init        Initialize local DuckDB database")
-        print("  status      Show current mode status")
-        print("  run         Start server in Lite mode")
-        print("  standards   Standard-driven semantic-layer config helpers")
+        print(t("lite.cli.usage"))
+        print(t("lite.cli.init"))
+        print(t("lite.cli.status"))
+        print(t("lite.cli.run"))
+        print(t("lite.cli.standards"))

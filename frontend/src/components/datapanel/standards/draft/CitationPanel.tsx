@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   citationSearch, citationInsert, CitationCandidate,
 } from "../standardsApi";
@@ -9,10 +10,6 @@ interface Props {
   onInsert: (refId: string) => void;
 }
 
-const SOURCE_LABELS: Record<string, string> = {
-  pgvector: "本库", kb: "知识库", web: "网页快照",
-};
-
 function confidenceBadge(c: number | undefined): string {
   if (c === undefined) return "⚪";
   if (c >= 0.8) return "🟢";
@@ -21,6 +18,7 @@ function confidenceBadge(c: number | undefined): string {
 }
 
 export default function CitationPanel({clauseId, onClose, onInsert}: Props) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [sources, setSources] = useState<Record<string, boolean>>({
@@ -53,21 +51,21 @@ export default function CitationPanel({clauseId, onClose, onInsert}: Props) {
 
   return (
     <div style={{
-      position: "absolute", top: 0, right: 0, bottom: 0, width: 360,
-      background: "#fff", borderLeft: "1px solid #ccc", zIndex: 10,
+      position: "absolute", top: 0, insetInlineEnd: 0, bottom: 0, width: 360,
+      maxWidth: "90vw", background: "#fff", borderInlineStart: "1px solid #ccc", zIndex: 10,
       display: "flex", flexDirection: "column", color: "#222",
     }}>
       <div style={{padding: 8, borderBottom: "1px solid #ddd",
                    display: "flex", alignItems: "center", gap: 8}}>
-        <strong style={{flex: 1}}>引用助手</strong>
-        <button onClick={onClose}>×</button>
+        <strong style={{flex: 1}}>{t("standards.draft.citation.title")}</strong>
+        <button onClick={onClose} aria-label={t("standards.draft.citation.close")}>×</button>
       </div>
       <div style={{padding: 8, borderBottom: "1px solid #eee"}}>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") onSearch(); }}
-          placeholder="搜索词、字段代码、标准号..."
+          placeholder={t("standards.draft.citation.placeholder")}
           style={{width: "100%", padding: 4, marginBottom: 6,
                   border: "1px solid #ccc", borderRadius: 3}}
           disabled={busy}
@@ -82,18 +80,18 @@ export default function CitationPanel({clauseId, onClose, onInsert}: Props) {
                      onChange={(e) => setSources({
                        ...sources, [k]: e.target.checked
                      })}/>
-              {" "}{SOURCE_LABELS[k]}
+              {" "}{t(`standards.draft.citation.sources.${k}`)}
             </label>
           ))}
         </div>
         <button onClick={onSearch} disabled={busy || !query.trim()}>
-          {busy ? "搜索中..." : "搜索"}
+          {busy ? t("standards.draft.citation.searching") : t("standards.draft.citation.search")}
         </button>
       </div>
       {err && <div style={{padding: 8, color: "red", fontSize: 12}}>{err}</div>}
       <div style={{flex: 1, overflow: "auto", padding: 8}}>
         {results.length === 0 && !busy && (
-          <div style={{color: "#888", fontSize: 13}}>暂无结果</div>
+          <div style={{color: "#888", fontSize: 13}}>{t("standards.draft.citation.empty")}</div>
         )}
         {results.map((c, i) => {
           const conf = c.extra?.confidence as number | undefined;
@@ -115,7 +113,7 @@ export default function CitationPanel({clauseId, onClose, onInsert}: Props) {
               <button onClick={() => onPickInsert(c)}
                       style={{marginTop: 6, fontSize: 12,
                               padding: "2px 8px"}}>
-                插入
+                {t("standards.draft.citation.insert")}
               </button>
             </div>
           );

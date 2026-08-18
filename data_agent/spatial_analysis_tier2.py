@@ -10,6 +10,8 @@ from typing import Optional
 
 import numpy as np
 
+from .i18n import t
+
 try:
     from .observability import get_logger
     logger = get_logger("spatial_analysis_tier2")
@@ -75,7 +77,10 @@ def idw_interpolation(
             lat_col = next((c for c in df.columns if c.lower() in
                            ("lat", "latitude", "y", "纬度")), None)
             if not lon_col or not lat_col:
-                return json.dumps({"status": "error", "message": "无法识别坐标列"})
+                return json.dumps({
+                    "status": "error",
+                    "message": t("spatial_tier2.coordinate_columns_unknown"),
+                }, ensure_ascii=False)
             from shapely.geometry import Point
             gdf = gpd.GeoDataFrame(df, geometry=[Point(xy) for xy in zip(df[lon_col], df[lat_col])])
         else:
@@ -83,7 +88,11 @@ def idw_interpolation(
 
         if value_column not in gdf.columns:
             return json.dumps({"status": "error",
-                               "message": f"列 '{value_column}' 不存在。可用列: {list(gdf.columns)}"})
+                               "message": t(
+                                   "spatial_tier2.column_missing_available",
+                                   column=value_column,
+                                   columns=list(gdf.columns),
+                               )}, ensure_ascii=False)
 
         # Extract coordinates and values
         coords = np.array([(g.x, g.y) for g in gdf.geometry if g is not None])
@@ -95,7 +104,10 @@ def idw_interpolation(
         values = values[mask]
 
         if len(coords) < 3:
-            return json.dumps({"status": "error", "message": "至少需要3个有效数据点"})
+            return json.dumps({
+                "status": "error",
+                "message": t("spatial_tier2.minimum_points", analysis="IDW", count=3),
+            }, ensure_ascii=False)
 
         res = float(resolution)
         p = float(power)
@@ -147,7 +159,7 @@ def idw_interpolation(
                           origin='lower', cmap='RdYlBu_r')
             ax.scatter(coords[:, 0], coords[:, 1], c='black', s=5, alpha=0.5)
             plt.colorbar(im, ax=ax, label=value_column)
-            ax.set_title(f"IDW 插值 (power={p})")
+            ax.set_title(t("spatial_tier2.plot.idw", power=p))
             plt.tight_layout()
             plt.savefig(png_path, dpi=150)
             plt.close(fig)
@@ -173,7 +185,10 @@ def idw_interpolation(
 
     except Exception as e:
         logger.warning("IDW interpolation failed: %s", e)
-        return json.dumps({"status": "error", "message": str(e)})
+        return json.dumps({
+            "status": "error",
+            "message": t("spatial_tier2.operation_failed", analysis="IDW", error=e),
+        }, ensure_ascii=False)
 
 
 # ---------------------------------------------------------------------------
@@ -205,7 +220,10 @@ def kriging_interpolation(
 
         if value_column not in gdf.columns:
             return json.dumps({"status": "error",
-                               "message": f"列 '{value_column}' 不存在"})
+                               "message": t(
+                                   "spatial_tier2.column_missing",
+                                   column=value_column,
+                               )}, ensure_ascii=False)
 
         coords = np.array([(g.x, g.y) for g in gdf.geometry if g is not None])
         values = gdf.loc[gdf.geometry.notna(), value_column].values.astype(float)
@@ -214,7 +232,10 @@ def kriging_interpolation(
         values = values[mask]
 
         if len(coords) < 5:
-            return json.dumps({"status": "error", "message": "Kriging 至少需要5个有效数据点"})
+            return json.dumps({
+                "status": "error",
+                "message": t("spatial_tier2.minimum_points", analysis="Kriging", count=5),
+            }, ensure_ascii=False)
 
         res = float(resolution)
         x_min, y_min = coords.min(axis=0)
@@ -274,12 +295,12 @@ def kriging_interpolation(
                                 origin='lower', cmap='RdYlBu_r')
             axes[0].scatter(coords[:, 0], coords[:, 1], c='black', s=5)
             plt.colorbar(im0, ax=axes[0], label=value_column)
-            axes[0].set_title("Kriging 插值结果")
+            axes[0].set_title(t("spatial_tier2.plot.kriging_result"))
 
             im1 = axes[1].imshow(ss, extent=[x_min, x_max, y_min, y_max],
                                 origin='lower', cmap='YlOrRd')
-            plt.colorbar(im1, ax=axes[1], label="Kriging 方差")
-            axes[1].set_title("插值不确定性")
+            plt.colorbar(im1, ax=axes[1], label=t("spatial_tier2.plot.kriging_variance"))
+            axes[1].set_title(t("spatial_tier2.plot.interpolation_uncertainty"))
             plt.tight_layout()
             plt.savefig(png_path, dpi=150)
             plt.close(fig)
@@ -299,7 +320,10 @@ def kriging_interpolation(
 
     except Exception as e:
         logger.warning("Kriging failed: %s", e)
-        return json.dumps({"status": "error", "message": str(e)})
+        return json.dumps({
+            "status": "error",
+            "message": t("spatial_tier2.operation_failed", analysis="Kriging", error=e),
+        }, ensure_ascii=False)
 
 
 # ---------------------------------------------------------------------------
@@ -336,7 +360,11 @@ def gwr_analysis(
         for c in all_cols:
             if c not in gdf.columns:
                 return json.dumps({"status": "error",
-                                   "message": f"列 '{c}' 不存在。可用列: {list(gdf.columns)}"})
+                                   "message": t(
+                                       "spatial_tier2.column_missing_available",
+                                       column=c,
+                                       columns=list(gdf.columns),
+                                   )}, ensure_ascii=False)
 
         # Extract coordinates from centroids
         centroids = gdf.geometry.centroid
@@ -352,7 +380,10 @@ def gwr_analysis(
         coords_arr = coords_arr[mask]
 
         if len(y) < 10:
-            return json.dumps({"status": "error", "message": "GWR 至少需要10个有效观测"})
+            return json.dumps({
+                "status": "error",
+                "message": t("spatial_tier2.minimum_observations", analysis="GWR", count=10),
+            }, ensure_ascii=False)
 
         try:
             from mgwr.gwr import GWR
@@ -452,7 +483,10 @@ def gwr_analysis(
 
     except Exception as e:
         logger.warning("GWR analysis failed: %s", e)
-        return json.dumps({"status": "error", "message": str(e)})
+        return json.dumps({
+            "status": "error",
+            "message": t("spatial_tier2.operation_failed", analysis="GWR", error=e),
+        }, ensure_ascii=False)
 
 
 # ---------------------------------------------------------------------------
@@ -497,7 +531,10 @@ def spatial_change_detection(
 
         if id_column not in gdf1.columns or id_column not in gdf2.columns:
             return json.dumps({"status": "error",
-                               "message": f"ID列 '{id_column}' 不在两个数据集中"})
+                               "message": t(
+                                   "spatial_tier2.id_column_missing",
+                                   column=id_column,
+                               )}, ensure_ascii=False)
 
         # Determine comparison columns
         if compare_columns:
@@ -608,7 +645,14 @@ def spatial_change_detection(
 
     except Exception as e:
         logger.warning("Change detection failed: %s", e)
-        return json.dumps({"status": "error", "message": str(e)})
+        return json.dumps({
+            "status": "error",
+            "message": t(
+                "spatial_tier2.operation_failed",
+                analysis=t("spatial_tier2.analysis.change_detection"),
+                error=e,
+            ),
+        }, ensure_ascii=False)
 
 
 # ---------------------------------------------------------------------------
@@ -654,7 +698,10 @@ def viewshed_analysis(
         row_obs, col_obs = int(round(row_obs)), int(round(col_obs))
 
         if not (0 <= row_obs < dem.shape[0] and 0 <= col_obs < dem.shape[1]):
-            return json.dumps({"status": "error", "message": "观察点不在 DEM 范围内"})
+            return json.dumps({
+                "status": "error",
+                "message": t("spatial_tier2.observer_outside_dem"),
+            }, ensure_ascii=False)
 
         obs_elevation = dem[row_obs, col_obs] + obs_h
 
@@ -721,9 +768,19 @@ def viewshed_analysis(
             ax.imshow(dem, cmap='terrain', alpha=0.7)
             ax.imshow(viewshed, cmap='Greens', alpha=0.5,
                      vmin=0, vmax=1)
-            ax.plot(col_obs, row_obs, 'r*', markersize=15, label='观察点')
+            ax.plot(
+                col_obs,
+                row_obs,
+                'r*',
+                markersize=15,
+                label=t("spatial_tier2.plot.observer"),
+            )
             ax.legend()
-            ax.set_title(f"可视域分析 (高度={obs_h}m, 最大距离={max_dist}m)")
+            ax.set_title(t(
+                "spatial_tier2.plot.viewshed",
+                height=obs_h,
+                distance=max_dist,
+            ))
             plt.tight_layout()
             plt.savefig(png_path, dpi=150)
             plt.close(fig)
@@ -745,7 +802,17 @@ def viewshed_analysis(
         })
 
     except ImportError:
-        return json.dumps({"status": "error", "message": "rasterio 未安装，无法执行可视域分析"})
+        return json.dumps({
+            "status": "error",
+            "message": t("spatial_tier2.rasterio_missing"),
+        }, ensure_ascii=False)
     except Exception as e:
         logger.warning("Viewshed analysis failed: %s", e)
-        return json.dumps({"status": "error", "message": str(e)})
+        return json.dumps({
+            "status": "error",
+            "message": t(
+                "spatial_tier2.operation_failed",
+                analysis=t("spatial_tier2.analysis.viewshed"),
+                error=e,
+            ),
+        }, ensure_ascii=False)

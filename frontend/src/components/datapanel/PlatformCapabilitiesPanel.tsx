@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -24,29 +25,35 @@ import {
   requiresCapabilityConfirmation,
   validateCapabilityInput,
 } from './capabilityWebClient';
+import { formatNumber } from '../../i18n';
 import './PlatformCapabilitiesPanel.css';
 
-function errorMessage(error: unknown): string {
+function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof CapabilityValidationError && error.issues.length) {
-    return `${error.message}：${error.issues.join('；')}`;
+    return `${error.message}: ${error.issues.join('; ')}`;
   }
-  return error instanceof Error ? error.message : '能力操作失败';
+  return error instanceof Error ? error.message : fallback;
 }
 
-function parseCanonicalInput(value: string): Record<string, unknown> {
+function parseCanonicalInput(
+  value: string,
+  invalidJsonMessage: string,
+  objectExpectedMessage: string,
+): Record<string, unknown> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(value);
   } catch {
-    throw new Error('请输入有效的 JSON');
+    throw new Error(invalidJsonMessage);
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new Error('canonical input 必须是一个 JSON 对象');
+    throw new Error(objectExpectedMessage);
   }
   return parsed as Record<string, unknown>;
 }
 
 export default function PlatformCapabilitiesPanel({ userRole }: { userRole?: string }) {
+  const { t, i18n } = useTranslation('common');
   const [capabilities, setCapabilities] = useState<CapabilitySummary[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [detail, setDetail] = useState<CapabilityDetail | null>(null);
@@ -72,11 +79,11 @@ export default function PlatformCapabilitiesPanel({ userRole }: { userRole?: str
           : manifest.capabilities[0]?.capability_id ?? ''
       ));
     } catch (error) {
-      setMessage(errorMessage(error));
+      setMessage(errorMessage(error, t('capabilities.platform.errors.operationFailed')));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -98,10 +105,10 @@ export default function PlatformCapabilitiesPanel({ userRole }: { userRole?: str
         setConfirmationCode('');
         setReceipt(null);
       })
-      .catch((error) => { if (active) setMessage(errorMessage(error)); })
+      .catch((error) => { if (active) setMessage(errorMessage(error, t('capabilities.platform.errors.operationFailed'))); })
       .finally(() => { if (active) setDetailLoading(false); });
     return () => { active = false; };
-  }, [capabilities, selectedId]);
+  }, [capabilities, selectedId, i18n.resolvedLanguage, t]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -123,13 +130,17 @@ export default function PlatformCapabilitiesPanel({ userRole }: { userRole?: str
     setMessage('');
     setReceipt(null);
     try {
-      const input = parseCanonicalInput(inputText);
+      const input = parseCanonicalInput(
+        inputText,
+        t('capabilities.platform.errors.invalidJson'),
+        t('capabilities.platform.errors.objectExpected'),
+      );
       validateCapabilityInput(detail, input);
       setPreview(await buildCapabilityPreview(detail, input));
       setConfirmationCode('');
     } catch (error) {
       setPreview(null);
-      setMessage(errorMessage(error));
+      setMessage(errorMessage(error, t('capabilities.platform.errors.operationFailed')));
     }
   };
 
@@ -139,7 +150,11 @@ export default function PlatformCapabilitiesPanel({ userRole }: { userRole?: str
     setMessage('');
     setReceipt(null);
     try {
-      const input = parseCanonicalInput(inputText);
+      const input = parseCanonicalInput(
+        inputText,
+        t('capabilities.platform.errors.invalidJson'),
+        t('capabilities.platform.errors.objectExpected'),
+      );
       const nextReceipt = await invokeWebCapability(detail, input, {
         preview,
         confirmationCode,
@@ -148,27 +163,33 @@ export default function PlatformCapabilitiesPanel({ userRole }: { userRole?: str
       setPreview(null);
       setConfirmationCode('');
     } catch (error) {
-      setMessage(errorMessage(error));
+      setMessage(errorMessage(error, t('capabilities.platform.errors.operationFailed')));
     } finally {
       setExecuting(false);
     }
   };
 
+  const enumLabel = (group: string, value: string) =>
+    t(`capabilities.platform.enums.${group}.${value}`, { defaultValue: value });
+
+  const specText = (capabilityId: string, field: 'title' | 'description', fallback: string) =>
+    t(`capabilities.platform.specs.${capabilityId}.${field}`, { defaultValue: fallback });
+
   return (
     <div className="platform-capabilities-panel">
-      <aside className="platform-capability-index" aria-label="平台能力清单">
+      <aside className="platform-capability-index" aria-label={t('capabilities.platform.listAria')}>
         <div className="platform-capability-index-head">
           <div>
             <strong>CapabilitySpec</strong>
-            <span>{capabilities.length} 个 Web 能力</span>
+            <span>{t('capabilities.platform.count', { count: formatNumber(capabilities.length) })}</span>
           </div>
-          <button type="button" className="platform-icon-button" onClick={() => void refresh()} disabled={loading} title="刷新能力清单">
+          <button type="button" className="platform-icon-button" onClick={() => void refresh()} disabled={loading} title={t('capabilities.platform.refresh')} aria-label={t('capabilities.platform.refresh')}>
             <RefreshCw size={15} className={loading ? 'is-spinning' : ''} />
           </button>
         </div>
         <label className="platform-capability-search">
           <Search size={14} />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜索能力" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('capabilities.platform.search')} />
         </label>
         <div className="platform-capability-list">
           {filtered.map((item) => (
@@ -178,16 +199,16 @@ export default function PlatformCapabilitiesPanel({ userRole }: { userRole?: str
               className={selectedId === item.capability_id ? 'active' : ''}
               onClick={() => setSelectedId(item.capability_id)}
             >
-              <span className="platform-capability-list-title">{item.title}</span>
+              <span className="platform-capability-list-title">{specText(item.capability_id, 'title', item.title)}</span>
               <code>{item.capability_id}</code>
               <span className="platform-capability-list-meta">
-                <b>{item.operation}</b>
+                <b>{enumLabel('operation', item.operation)}</b>
                 <span>{item.tier}</span>
                 <span>v{item.version}</span>
               </span>
             </button>
           ))}
-          {!loading && filtered.length === 0 && <div className="platform-capability-empty">暂无匹配能力</div>}
+          {!loading && filtered.length === 0 && <div className="platform-capability-empty">{t('capabilities.platform.empty')}</div>}
         </div>
       </aside>
 
@@ -199,45 +220,45 @@ export default function PlatformCapabilitiesPanel({ userRole }: { userRole?: str
           </div>
         )}
         {detailLoading ? (
-          <div className="platform-capability-empty">正在读取能力合同...</div>
+          <div className="platform-capability-empty">{t('capabilities.platform.loadingContract')}</div>
         ) : detail ? (
           <>
             <header className="platform-capability-titlebar">
               <div>
                 <span className="platform-capability-eyebrow">{detail.spec.owner} / {detail.spec.tier}</span>
-                <h3>{detail.spec.title}</h3>
+                <h3>{specText(detail.spec.capability_id, 'title', detail.spec.title)}</h3>
                 <code>{detail.spec.capability_id}@{detail.spec.version}</code>
               </div>
               <div className="platform-capability-badges">
-                <span className={`risk-${detail.spec.risk}`}>{detail.spec.risk} risk</span>
-                <span>{detail.spec.operation}</span>
-                <span>{detail.spec.lifecycle}</span>
+                <span className={`risk-${detail.spec.risk}`}>{t('capabilities.platform.riskBadge', { risk: enumLabel('risk', detail.spec.risk) })}</span>
+                <span>{enumLabel('operation', detail.spec.operation)}</span>
+                <span>{enumLabel('lifecycle', detail.spec.lifecycle)}</span>
               </div>
             </header>
 
-            <p className="platform-capability-description">{detail.spec.description}</p>
+            <p className="platform-capability-description">{specText(detail.spec.capability_id, 'description', detail.spec.description)}</p>
 
             <div className="platform-contract-strip">
-              <div><span>Policy action</span><strong>{detail.spec.policy.action}</strong></div>
-              <div><span>Idempotency</span><strong>{detail.spec.execution.idempotency}</strong></div>
-              <div><span>Side effect</span><strong>{detail.spec.side_effect}</strong></div>
-              <div><span>Fingerprint</span><code title={detail.fingerprint}>{detail.fingerprint.slice(0, 12)}</code></div>
+              <div><span>{t('capabilities.platform.labels.policyAction')}</span><strong>{detail.spec.policy.action}</strong></div>
+              <div><span>{t('capabilities.platform.labels.idempotency')}</span><strong>{enumLabel('idempotency', detail.spec.execution.idempotency)}</strong></div>
+              <div><span>{t('capabilities.platform.labels.sideEffect')}</span><strong>{enumLabel('sideEffect', detail.spec.side_effect)}</strong></div>
+              <div><span>{t('capabilities.platform.labels.fingerprint')}</span><code title={detail.fingerprint}>{detail.fingerprint.slice(0, 12)}</code></div>
             </div>
 
             {!roleAllowed && (
               <div className="platform-capability-message warning">
                 <ShieldCheck size={15} />
-                <span>当前角色 {userRole} 不在合同提示角色中；服务端策略仍是最终授权依据。</span>
+                <span>{t('capabilities.platform.roleWarning', { role: userRole })}</span>
               </div>
             )}
 
             <div className="platform-capability-editor-head">
               <div>
-                <strong>Canonical input</strong>
+                <strong>{t('capabilities.platform.canonicalInput')}</strong>
                 <span>{detail.spec.input.semantic_type}</span>
               </div>
               <button type="button" className="platform-secondary-button" onClick={() => void handlePreview()}>
-                <Eye size={14} />校验并预览
+                <Eye size={14} />{t('capabilities.platform.validatePreview')}
               </button>
             </div>
             <textarea
@@ -249,7 +270,7 @@ export default function PlatformCapabilitiesPanel({ userRole }: { userRole?: str
                 setReceipt(null);
               }}
               spellCheck={false}
-              aria-label="Canonical capability input JSON"
+              aria-label={t('capabilities.platform.inputAria')}
             />
 
             {preview && (
@@ -257,9 +278,9 @@ export default function PlatformCapabilitiesPanel({ userRole }: { userRole?: str
                 <div className="platform-preview-heading">
                   <div>
                     {needsConfirmation ? <ShieldCheck size={16} /> : <CheckCircle2 size={16} />}
-                    <strong>{needsConfirmation ? '待人工确认' : '输入已通过合同校验'}</strong>
+                    <strong>{needsConfirmation ? t('capabilities.platform.pendingConfirmation') : t('capabilities.platform.inputValid')}</strong>
                   </div>
-                  <span><Clock3 size={13} />5 分钟有效</span>
+                  <span><Clock3 size={13} />{t('capabilities.platform.validFor')}</span>
                 </div>
                 {needsConfirmation && (
                   <div className="platform-confirmation-row">
@@ -267,10 +288,10 @@ export default function PlatformCapabilitiesPanel({ userRole }: { userRole?: str
                     <input
                       value={confirmationCode}
                       onChange={(event) => setConfirmationCode(event.target.value.toUpperCase())}
-                      placeholder="输入确认码"
+                      placeholder={t('capabilities.platform.confirmationPlaceholder')}
                       maxLength={12}
                       autoComplete="off"
-                      aria-label="高风险调用确认码"
+                      aria-label={t('capabilities.platform.confirmationAria')}
                     />
                   </div>
                 )}
@@ -281,7 +302,7 @@ export default function PlatformCapabilitiesPanel({ userRole }: { userRole?: str
                   disabled={executing || !roleAllowed || (needsConfirmation && confirmationCode.length !== 12)}
                 >
                   {executing ? <RefreshCw size={14} className="is-spinning" /> : <Play size={14} />}
-                  {executing ? '提交中' : needsConfirmation ? '确认并提交' : '执行查询'}
+                  {executing ? t('capabilities.platform.submitting') : needsConfirmation ? t('capabilities.platform.confirmSubmit') : t('capabilities.platform.executeQuery')}
                 </button>
               </div>
             )}
@@ -290,19 +311,19 @@ export default function PlatformCapabilitiesPanel({ userRole }: { userRole?: str
               <div className="platform-capability-receipt">
                 <div className="platform-receipt-heading">
                   <CheckCircle2 size={16} />
-                  <strong>{receipt.created === false ? '幂等重放' : '调用已受理'}</strong>
+                  <strong>{receipt.created === false ? t('capabilities.platform.idempotentReplay') : t('capabilities.platform.accepted')}</strong>
                   <span>HTTP {receipt.status_code}</span>
                 </div>
                 <div className="platform-receipt-meta">
                   <span>request_id</span><code>{receipt.request_id ?? '-'}</code>
-                  <span>created</span><code>{receipt.created === null ? '-' : String(receipt.created)}</code>
+                  <span>created</span><code>{receipt.created === null ? '-' : t(`capabilities.common.${receipt.created ? 'yes' : 'no'}`)}</code>
                 </div>
                 <pre>{JSON.stringify(receipt.data, null, 2)}</pre>
               </div>
             )}
           </>
         ) : (
-          <div className="platform-capability-empty">选择一个平台能力查看合同</div>
+          <div className="platform-capability-empty">{t('capabilities.platform.selectCapability')}</div>
         )}
       </section>
     </div>

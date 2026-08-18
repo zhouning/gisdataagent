@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable
 from urllib.parse import unquote, urlparse
 
+from ..i18n import t
 from .models import (
     StateBuildResult,
     TerritoryWorldModelAction,
@@ -200,6 +201,53 @@ TWM_BUSINESS_SCENARIOS: tuple[dict[str, Any], ...] = (
         "guardrails": ["硬约束方案不得进入推荐集", "预测结论必须带证据覆盖和不确定性"],
     },
 )
+
+
+_TWM_SCENARIO_I18N_FIELDS: dict[str, dict[str, str]] = {
+    "farmland_protection_review": {
+        "label": "twm_service.scenario.farmland.label",
+        "decision_question": "twm_service.scenario.farmland.decision_question",
+        "operator_goal": "twm_service.scenario.farmland.operator_goal",
+    },
+    "construction_project_compliance": {
+        "label": "twm_service.scenario.construction.label",
+        "decision_question": "twm_service.scenario.construction.decision_question",
+        "operator_goal": "twm_service.scenario.construction.operator_goal",
+    },
+    "territorial_plan_adjustment": {
+        "label": "twm_service.scenario.adjustment.label",
+        "decision_question": "twm_service.scenario.adjustment.decision_question",
+        "operator_goal": "twm_service.scenario.adjustment.operator_goal",
+    },
+}
+
+
+def _localized_twm_scenarios() -> list[dict[str, Any]]:
+    """Return the stable scenario contract with localized customer-facing text."""
+    localized: list[dict[str, Any]] = []
+    for source in TWM_BUSINESS_SCENARIOS:
+        item = deepcopy(source)
+        fields = _TWM_SCENARIO_I18N_FIELDS.get(str(item.get("id")), {})
+        for field, key in fields.items():
+            item[field] = t(key)
+        scenario_key = str(item.get("id") or "")
+        short_key = {
+            "farmland_protection_review": "farmland",
+            "construction_project_compliance": "construction",
+            "territorial_plan_adjustment": "adjustment",
+        }.get(scenario_key)
+        if short_key:
+            for field, resource_field in (
+                ("required_evidence", "required_evidence"),
+                ("decision_outputs", "decision_outputs"),
+                ("guardrails", "guardrails"),
+            ):
+                item[field] = [
+                    t(f"twm_service.scenario.{short_key}.{resource_field}.{index}")
+                    for index, _ in enumerate(item.get(field) or [])
+                ]
+        localized.append(item)
+    return localized
 
 
 TWM_RESEARCH_POSITIONING: dict[str, Any] = {
@@ -557,6 +605,122 @@ TWM_RESEARCH_NEXT_EXPERIMENTS: tuple[dict[str, Any], ...] = (
         "decision": "通过后才允许升级 C4 的标准适配 claim。",
     },
 )
+
+
+def _localized_research_positioning() -> dict[str, Any]:
+    """Overlay customer-facing research positioning text without changing its schema."""
+    result = deepcopy(TWM_RESEARCH_POSITIONING)
+    result["research_question"] = t("twm_service.research.positioning.research_question")
+    result["claim_boundary"] = t("twm_service.research.positioning.claim_boundary")
+    for index, item in enumerate(result.get("core_technology") or []):
+        for field in ("name", "claim", "why_it_matters"):
+            item[field] = t(f"twm_service.research.positioning.core.{index}.{field}")
+    for index, item in enumerate(result.get("innovation_hypotheses") or []):
+        for field in ("hypothesis", "test"):
+            item[field] = t(f"twm_service.research.positioning.innovation.{index}.{field}")
+    for field in ("unmet_need_hypotheses", "baselines_to_beat", "falsification_conditions", "minimum_evaluation_plan"):
+        result[field] = [
+            t(f"twm_service.research.positioning.{field}.{index}")
+            for index, _ in enumerate(result.get(field) or [])
+        ]
+    return result
+
+
+def _localized_research_claims() -> list[dict[str, Any]]:
+    claims = deepcopy(list(TWM_RESEARCH_CLAIM_MATRIX))
+    for item in claims:
+        claim_id = str(item.get("claim_id") or "")
+        prefix = f"twm_service.research.claim.{claim_id}"
+        for field in ("claim", "business_need", "core_technology", "current_evidence", "falsification"):
+            item[field] = t(f"{prefix}.{field}")
+        item["minimum_data"] = [
+            t(f"{prefix}.minimum_data.{index}")
+            for index, _ in enumerate(item.get("minimum_data") or [])
+        ]
+    return claims
+
+
+def _localized_research_baselines() -> list[dict[str, Any]]:
+    baselines = deepcopy(list(TWM_RESEARCH_BASELINES))
+    for item in baselines:
+        baseline_id = str(item.get("baseline_id") or "")
+        prefix = f"twm_service.research.baseline.{baseline_id}"
+        for field in ("label", "tests", "why_needed"):
+            item[field] = t(f"{prefix}.{field}")
+        item["minimum_output"] = [
+            t(f"{prefix}.minimum_output.{index}")
+            for index, _ in enumerate(item.get("minimum_output") or [])
+        ]
+    return baselines
+
+
+def _localized_research_experiments() -> list[dict[str, Any]]:
+    experiments = deepcopy(list(TWM_RESEARCH_NEXT_EXPERIMENTS))
+    for index, item in enumerate(experiments):
+        prefix = f"twm_service.research.experiment.{index}"
+        for field in ("experiment", "question", "decision"):
+            item[field] = t(f"{prefix}.{field}")
+        item["required_data"] = [
+            t(f"{prefix}.required_data.{data_index}")
+            for data_index, _ in enumerate(item.get("required_data") or [])
+        ]
+    return experiments
+
+
+def _localized_baseline_export_types() -> list[dict[str, Any]]:
+    export_types = deepcopy(list(TWM_BASELINE_EXPORT_TYPES))
+    for item in export_types:
+        export_type = str(item.get("export_type") or "")
+        prefix = f"twm_service.baseline.export_type.{export_type}"
+        for field in ("label", "business_use", "expected_source"):
+            item[field] = t(f"{prefix}.{field}")
+    return export_types
+
+
+def _localized_baseline_template_specs() -> list[dict[str, Any]]:
+    templates = deepcopy(list(TWM_BASELINE_EXPORT_TEMPLATE_SPECS))
+    for template in templates:
+        claim_id = str(template.get("claim_id") or "")
+        prefix = f"twm_service.baseline.template.{claim_id}"
+        for field in ("label", "business_question"):
+            template[field] = t(f"{prefix}.{field}")
+        for index, description in enumerate(template.get("field_descriptions") or []):
+            for field in ("description", "metric_use", "sanitization"):
+                description[field] = t(f"{prefix}.field.{index}.{field}")
+        for index, metric in enumerate(template.get("metric_column_map") or []):
+            metric["supports_claim_when"] = t(f"{prefix}.metric.{index}.supports_claim_when")
+        template["collection_steps"] = [
+            t(f"{prefix}.collection_step.{index}")
+            for index, _ in enumerate(template.get("collection_steps") or [])
+        ]
+        production_collection = template.get("production_collection") or {}
+        production_collection["sampling_unit"] = t(f"{prefix}.sampling_unit")
+        production_collection["notes"] = t(f"{prefix}.production_notes")
+    return templates
+
+
+def _localized_data_foundation_dataset_summaries(summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    localized = deepcopy(summaries)
+    for item in localized:
+        dataset_id = str(item.get("id") or "")
+        item["label"] = t(f"twm_service.data_foundation.dataset.{dataset_id}.label")
+        item["positioning"] = t(f"twm_service.data_foundation.dataset.{dataset_id}.positioning")
+        if "description" in item:
+            item["description"] = t(f"twm_service.data_foundation.dataset.{dataset_id}.description")
+    return localized
+
+
+def _localized_data_foundation_required_next_data() -> list[dict[str, Any]]:
+    """Keep the required-data contract stable while translating its descriptions."""
+    localized: list[dict[str, Any]] = []
+    for index, item in enumerate(TWM_DATA_FOUNDATION_REQUIRED_NEXT_DATA):
+        localized.append({
+            **item,
+            "data": t(f"twm_service.data_foundation.next_data.{index}.data"),
+            "minimum": t(f"twm_service.data_foundation.next_data.{index}.minimum"),
+            "unlocks": t(f"twm_service.data_foundation.next_data.{index}.unlocks"),
+        })
+    return localized
 
 
 TWM_BASELINE_EXPORT_TYPES: tuple[dict[str, Any], ...] = (
@@ -1312,10 +1476,10 @@ class TerritoryWorldModelService:
     # ------------------------------------------------------------------
 
     def list_business_scenarios(self) -> list[dict[str, Any]]:
-        return [json.loads(_json(item)) for item in TWM_BUSINESS_SCENARIOS]
+        return [json.loads(_json(item)) for item in _localized_twm_scenarios()]
 
     def research_positioning(self) -> dict[str, Any]:
-        return json.loads(_json(TWM_RESEARCH_POSITIONING))
+        return json.loads(_json(_localized_research_positioning()))
 
     def roadmap_status_report(self) -> dict[str, Any]:
         data_foundation = self.data_foundation_assessment()
@@ -1326,67 +1490,68 @@ class TerritoryWorldModelService:
         phases = [
             {
                 "id": "demo_closure",
-                "label": "Natural resources demo closure",
+                "label": t("twm_service.roadmap.phase.demo_closure.label"),
                 "status": "complete",
                 "completion_ratio": 0.9,
                 "evidence": [
-                    "Chinese-first TWM frontend tabs are implemented",
-                    "data foundation map preview and bbox-aligned overview map are implemented",
-                    "automated E2E evidence exists for the demo workflow",
+                    t("twm_service.roadmap.phase.demo_closure.evidence.0"),
+                    t("twm_service.roadmap.phase.demo_closure.evidence.1"),
+                    t("twm_service.roadmap.phase.demo_closure.evidence.2"),
                 ],
-                "remaining": ["manual acceptance and demo freeze before external presentation"],
+                "remaining": [t("twm_service.roadmap.phase.demo_closure.remaining.0")],
             },
             {
                 "id": "engineering_scaffold",
-                "label": "Auditable TWM engineering scaffold",
+                "label": t("twm_service.roadmap.phase.engineering_scaffold.label"),
                 "status": "partial" if engineering_mvp else "review",
                 "completion_ratio": 0.9 if engineering_mvp else 0.7,
                 "evidence": [
-                    "state/rule/evidence/audit pipeline",
-                    "forecast, counterfactual rollout, validation ladder and beam planning consumer",
-                    "trainable dynamics candidates and observational causal calibration reports",
-                    "dynamics model registry release gate report is implemented",
-                    "persistent model registry/version rollback is implemented in service, repository, API and Agent tools",
-                    "state snapshot lakehouse manifest maps TWM state, rule, evidence and registry layers to Iceberg/GeoParquet/Parquet storage",
-                    "state snapshot lakehouse materializer writes local Parquet/GeoParquet-compatible artifacts through service, API and Agent tools",
-                    "Iceberg/Sedona publish plan generates table DDL, artifact publish specs and geohash spatial index jobs",
-                    "Spark executor contract validates Iceberg snapshot ids, row counts and Sedona spatial index job results",
-                    "spark-submit execution bundle writes a production Spark/Sedona/Iceberg plan file and command package",
+                    t(f"twm_service.roadmap.phase.engineering_scaffold.evidence.{index}")
+                    for index in range(10)
                 ],
-                "remaining": ["service decomposition", "credentialed production Spark run and external Iceberg audit acceptance"],
+                "remaining": [
+                    t(f"twm_service.roadmap.phase.engineering_scaffold.remaining.{index}")
+                    for index in range(2)
+                ],
             },
             {
                 "id": "data_foundation_productization",
-                "label": "Data foundation productization",
+                "label": t("twm_service.roadmap.phase.data_foundation_productization.label"),
                 "status": "partial",
                 "completion_ratio": 0.7,
                 "evidence": [
-                    "demo dataset catalog, CRS diagnostics and map overlay readiness are exposed",
-                    "full GeoJSON preview is available for the current demo scale",
-                    "lineage and field drilldown reports are exposed through API, tools and frontend",
-                    "CRS remediation plan is exposed through API, tools and frontend",
-                    "authoritative production data templates are exposed through API, tools and frontend",
+                    t(f"twm_service.roadmap.phase.data_foundation_productization.evidence.{index}")
+                    for index in range(5)
                 ],
-                "remaining": ["vector tiles or server-side chunking", "production CRS conversion ETL", "production lineage ingestion templates"],
+                "remaining": [
+                    t(f"twm_service.roadmap.phase.data_foundation_productization.remaining.{index}")
+                    for index in range(3)
+                ],
             },
             {
                 "id": "trusted_poc",
-                "label": "Trusted pilot validation",
+                "label": t("twm_service.roadmap.phase.trusted_poc.label"),
                 "status": "candidate" if production_rows > 0 and policy_rows > 0 else "blocked",
                 "completion_ratio": 0.4 if production_rows > 0 and policy_rows > 0 else 0.25,
                 "evidence": [
-                    "public Dynamic World and GeoSOS/FLUS benchmark evidence exists",
-                    "claim ladder and baseline comparison contracts exist",
+                    t(f"twm_service.roadmap.phase.trusted_poc.evidence.{index}")
+                    for index in range(2)
                 ],
-                "remaining": ["real observed approval/review history", "policy/action feasibility labels", "same-case baseline and holdout evaluation"],
+                "remaining": [
+                    t(f"twm_service.roadmap.phase.trusted_poc.remaining.{index}")
+                    for index in range(3)
+                ],
             },
             {
                 "id": "productionization",
-                "label": "Production and air-gapped deployment",
+                "label": t("twm_service.roadmap.phase.productionization.label"),
                 "status": "blocked",
                 "completion_ratio": 0.15,
-                "evidence": ["air-gapped deployment strategy exists"],
-                "remaining": ["offline deployment package", "permissioned audit trail", "model/rule/version comparison", "sanitized diagnostic export"],
+                "evidence": [t("twm_service.roadmap.phase.productionization.evidence.0")],
+                "remaining": [
+                    t(f"twm_service.roadmap.phase.productionization.remaining.{index}")
+                    for index in range(4)
+                ],
             },
         ]
         blockers = [
@@ -1395,49 +1560,49 @@ class TerritoryWorldModelService:
                 "priority": "P0",
                 "status": "blocked" if production_rows <= 0 else "partial",
                 "current_value": production_rows,
-                "required_value": "one pilot region with multi-year observed approval/review history",
+                "required_value": t("twm_service.roadmap.blocker.production_observed_history.required"),
             },
             {
                 "id": "policy_action_history",
                 "priority": "P0",
                 "status": "blocked" if policy_rows <= 0 else "partial",
                 "current_value": policy_rows,
-                "required_value": "authoritative policy/action feasibility labels",
+                "required_value": t("twm_service.roadmap.blocker.policy_action_history.required"),
             },
             {
                 "id": "service_decomposition",
                 "priority": "P1",
                 "status": "open",
-                "current_value": "large facade service",
-                "required_value": "state, dynamics, calibration, planner, evidence/audit and readiness services",
+                "current_value": t("twm_service.roadmap.blocker.service_decomposition.current"),
+                "required_value": t("twm_service.roadmap.blocker.service_decomposition.required"),
             },
             {
                 "id": "full_flus_and_holdout_baselines",
                 "priority": "P2",
                 "status": "open",
-                "current_value": "public benchmark and simplified/direct adapters",
-                "required_value": "same-case full FLUS/GeoSOS baseline plus cross-region/cross-year holdout",
+                "current_value": t("twm_service.roadmap.blocker.full_baselines.current"),
+                "required_value": t("twm_service.roadmap.blocker.full_baselines.required"),
             },
         ]
         next_actions = [
             {
                 "priority": "P0",
-                "action": "secure real or sanitized observed history and policy/action labels for one pilot region",
+                "action": t("twm_service.roadmap.next_action.trusted_poc"),
                 "roadmap_phase": "trusted_poc",
             },
             {
                 "priority": "P0",
-                "action": "freeze and manually accept the current natural-resources demo workflow",
+                "action": t("twm_service.roadmap.next_action.demo_closure"),
                 "roadmap_phase": "demo_closure",
             },
             {
                 "priority": "P1",
-                "action": "split the TWM facade service along state/dynamics/calibration/planner/evidence boundaries",
+                "action": t("twm_service.roadmap.next_action.engineering_scaffold"),
                 "roadmap_phase": "engineering_scaffold",
             },
             {
                 "priority": "P1",
-                "action": "finish vector tiles or chunked preview, production CRS conversion ETL, and production lineage ingestion templates",
+                "action": t("twm_service.roadmap.next_action.data_foundation_productization"),
                 "roadmap_phase": "data_foundation_productization",
             },
         ]
@@ -1445,7 +1610,7 @@ class TerritoryWorldModelService:
             "schema": "territory_world_model.roadmap_status_report.v1",
             "generated_at": now_utc_iso(),
             "overall_status": "prototype_complete_review_only",
-            "claim_boundary": "Current TWM is a rigorous prototype: demo-complete and engineering-reviewable, but production, prediction and causal claims remain review-only until real observed history, policy labels and same-case baselines pass.",
+            "claim_boundary": t("twm_service.roadmap.claim_boundary"),
             "data_gate": {
                 "status": data_foundation.get("status", "review"),
                 "production_ready_observed_history_rows": production_rows,
@@ -1475,118 +1640,140 @@ class TerritoryWorldModelService:
         dimensions = [
             {
                 "id": "data_foundation",
-                "label": "Data foundation",
+                "label": t("twm_service.readiness.dimension.data_foundation.label"),
                 "status": "review" if data_foundation.get("status") == "review" else "pass",
                 "score": 0.7 if landing.get("engineering_mvp_supported") else 0.4,
                 "evidence": [
-                    f"dataset_count={len(data_foundation.get('datasets') or [])}",
-                    f"structural_fixture_rows={structural_rows}",
-                    f"synthetic_experiment_rows={synthetic_rows}",
-                    f"structural_status={structural.get('structural_status', 'unknown')}",
+                    t(
+                        "twm_service.readiness.dimension.data_foundation.evidence.dataset_count",
+                        count=len(data_foundation.get("datasets") or []),
+                    ),
+                    t(
+                        "twm_service.readiness.dimension.data_foundation.evidence.structural_rows",
+                        count=structural_rows,
+                    ),
+                    t(
+                        "twm_service.readiness.dimension.data_foundation.evidence.synthetic_rows",
+                        count=synthetic_rows,
+                    ),
+                    t(
+                        "twm_service.readiness.dimension.data_foundation.evidence.structural_status",
+                        status=structural.get("structural_status", "unknown"),
+                    ),
                 ],
                 "missing": list(landing.get("key_blockers") or []),
                 "test_data_work": [
-                    "keep demo and synthetic fixtures explicitly marked not-for-production",
-                    "add boundary-case fixture rows for CRS, geometry validity and layer role binding",
-                    "add authorized production observed-history rows only after custodian signoff",
+                    t(f"twm_service.readiness.dimension.data_foundation.test_data_work.{index}")
+                    for index in range(3)
                 ],
             },
             {
                 "id": "policy_rules",
-                "label": "Policy rules",
+                "label": t("twm_service.readiness.dimension.policy_rules.label"),
                 "status": "review",
                 "score": 0.68,
                 "evidence": [
-                    "default rule catalog and rule/evidence pipeline are implemented",
-                    "to_spatial_policy_rule can derive review-required disabled candidates from standards",
-                    f"local_rule_evaluation_rows={rule_eval_count}",
+                    t("twm_service.readiness.dimension.policy_rules.evidence.0"),
+                    t("twm_service.readiness.dimension.policy_rules.evidence.1"),
+                    t("twm_service.readiness.dimension.policy_rules.evidence.local_rows", count=rule_eval_count),
                 ],
                 "missing": [
-                    "authoritative rule clause to executable rule acceptance records",
-                    "positive, negative and boundary fixtures for each production rule code",
+                    t(f"twm_service.readiness.dimension.policy_rules.missing.{index}")
+                    for index in range(2)
                 ],
                 "test_data_work": [
-                    "add one pass, one violation and one boundary-touching feature set per hard-constraint rule",
-                    "add stale/re-derived spatial-policy-rule fixtures linked to standard versions",
+                    t(f"twm_service.readiness.dimension.policy_rules.test_data_work.{index}")
+                    for index in range(2)
                 ],
             },
             {
                 "id": "simulator",
-                "label": "Simulator",
+                "label": t("twm_service.readiness.dimension.simulator.label"),
                 "status": "review",
                 "score": 0.55 if synthetic_rows else 0.3,
                 "evidence": [
-                    "action-conditioned forecast, counterfactual rollout and trainable dynamics candidates exist",
-                    "synthetic multi-period experiment foundation supports simulator plumbing regression",
-                    "public Dynamic World and GeoSOS/FLUS benchmark evidence exists as non-production support",
+                    t(f"twm_service.readiness.dimension.simulator.evidence.{index}")
+                    for index in range(3)
                 ],
                 "missing": [
-                    "real temporal holdout from observed approval/review history",
-                    "policy/action feasibility labels for action-mask validation",
-                    "same-case full FLUS/GeoSOS or manual baseline evidence",
+                    t(f"twm_service.readiness.dimension.simulator.missing.{index}")
+                    for index in range(3)
                 ],
                 "test_data_work": [
-                    "extend synthetic false-allow and false-block cases without changing production gate status",
-                    "add same-case baseline export fixtures with train/holdout split metadata",
+                    t(f"twm_service.readiness.dimension.simulator.test_data_work.{index}")
+                    for index in range(2)
                 ],
             },
             {
                 "id": "planner",
-                "label": "Planner",
+                "label": t("twm_service.readiness.dimension.planner.label"),
                 "status": "review",
                 "score": 0.6,
                 "evidence": [
-                    "beam planner consumes candidate actions under hard-constraint and evidence gates",
-                    "farmland optimization bundle adapter rejects hard-blocked candidates from recommendation",
-                    "selected-plan evaluation bundle links planning, rollout and validation reports",
+                    t(f"twm_service.readiness.dimension.planner.evidence.{index}")
+                    for index in range(3)
                 ],
                 "missing": [
-                    "real candidate-plan source and human review outcomes",
-                    "planner regret and legal-feasible top-k metrics against same-case baselines",
+                    t(f"twm_service.readiness.dimension.planner.missing.{index}")
+                    for index in range(2)
                 ],
                 "test_data_work": [
-                    "add candidate bundles where the highest utility candidate is infeasible and must be blocked",
-                    "add baseline replay fixtures for manual GIS, rule-only and optimizer outputs",
+                    t(f"twm_service.readiness.dimension.planner.test_data_work.{index}")
+                    for index in range(2)
                 ],
             },
             {
                 "id": "evidence_audit",
-                "label": "Evidence and audit",
+                "label": t("twm_service.readiness.dimension.evidence_audit.label"),
                 "status": "review",
                 "score": 0.62,
                 "evidence": [
-                    "audit report, evidence chain and review-task surfaces are implemented",
-                    f"local_review_task_rows={review_task_count}",
-                    "claim ladder and deployment punch-list gates are exposed",
+                    t("twm_service.readiness.dimension.evidence_audit.evidence.0"),
+                    t("twm_service.readiness.dimension.evidence_audit.evidence.local_rows", count=review_task_count),
+                    t("twm_service.readiness.dimension.evidence_audit.evidence.2"),
                 ],
                 "missing": [
-                    "production human-review completion evidence",
-                    "row-level evidence material lineage from authoritative systems",
+                    t(f"twm_service.readiness.dimension.evidence_audit.missing.{index}")
+                    for index in range(2)
                 ],
                 "test_data_work": [
-                    "add evidence-component fixtures for missing-document, conflicting-source and resolved-review cases",
-                    "add audit export fixtures that prove raw geometries remain excluded from sanitized bundles",
+                    t(f"twm_service.readiness.dimension.evidence_audit.test_data_work.{index}")
+                    for index in range(2)
                 ],
             },
             {
                 "id": "production_gate",
-                "label": "Production gate",
+                "label": t("twm_service.readiness.dimension.production_gate.label"),
                 "status": "blocked" if production_rows <= 0 or policy_rows <= 0 else "review",
                 "score": 0.0 if production_rows <= 0 or policy_rows <= 0 else 0.35,
                 "evidence": [
-                    f"production_observed_history_rows={production_rows}",
-                    f"production_policy_history_rows={policy_rows}",
-                    f"roadmap_overall_status={roadmap.get('overall_status')}",
+                    t(
+                        "twm_service.readiness.dimension.production_gate.evidence.observed_rows",
+                        count=production_rows,
+                    ),
+                    t(
+                        "twm_service.readiness.dimension.production_gate.evidence.policy_rows",
+                        count=policy_rows,
+                    ),
+                    t(
+                        "twm_service.readiness.dimension.production_gate.evidence.roadmap_status",
+                        status=roadmap.get("overall_status"),
+                    ),
                 ],
                 "missing": [
-                    f"production_observed_history_rows={production_rows}",
-                    f"production_policy_history_rows={policy_rows}",
-                    "same_case_baseline_holdout_evidence",
+                    t(
+                        "twm_service.readiness.dimension.production_gate.missing.observed_rows",
+                        count=production_rows,
+                    ),
+                    t(
+                        "twm_service.readiness.dimension.production_gate.missing.policy_rows",
+                        count=policy_rows,
+                    ),
+                    t("twm_service.readiness.dimension.production_gate.missing.same_case_baseline"),
                 ],
                 "test_data_work": [
-                    "prepare authoritative observed-history intake template for custodian-provided rows",
-                    "prepare authoritative policy/action feasibility template with allowed and blocked examples",
-                    "do not replace production gate with synthetic rows or public benchmark wins",
+                    t(f"twm_service.readiness.dimension.production_gate.test_data_work.{index}")
+                    for index in range(3)
                 ],
             },
         ]
@@ -1596,26 +1783,26 @@ class TerritoryWorldModelService:
             {
                 "priority": "P0",
                 "dimension": "production_gate",
-                "action": "collect custodian-signed authoritative observed-history and policy/action feasibility rows",
-                "why": "this is the only path from prototype evidence to trusted pilot validation",
+                "action": t("twm_service.readiness.test_data_plan.production_gate.action"),
+                "why": t("twm_service.readiness.test_data_plan.production_gate.why"),
             },
             {
                 "priority": "P1",
                 "dimension": "policy_rules",
-                "action": "expand hard-constraint fixtures with pass, violation and boundary cases per rule",
-                "why": "rule behavior should fail safely before authoritative data arrives",
+                "action": t("twm_service.readiness.test_data_plan.policy_rules.action"),
+                "why": t("twm_service.readiness.test_data_plan.policy_rules.why"),
             },
             {
                 "priority": "P1",
                 "dimension": "simulator",
-                "action": "add synthetic false-allow and false-block stress cases while keeping not_for_production flags",
-                "why": "simulator safety can improve without weakening production gates",
+                "action": t("twm_service.readiness.test_data_plan.simulator.action"),
+                "why": t("twm_service.readiness.test_data_plan.simulator.why"),
             },
             {
                 "priority": "P1",
                 "dimension": "planner",
-                "action": "add candidate bundles where infeasible high-score plans are blocked from recommendation",
-                "why": "planner value depends on legal-feasible ranking, not raw score maximization",
+                "action": t("twm_service.readiness.test_data_plan.planner.action"),
+                "why": t("twm_service.readiness.test_data_plan.planner.why"),
             },
         ]
         return {
@@ -1834,13 +2021,13 @@ class TerritoryWorldModelService:
             ]
             test_data_work = []
             if "positive_violation" in missing_categories:
-                test_data_work.append(f"add positive violation fixture for {rule_code}")
+                test_data_work.append(t("twm_service.rule_fixture.work.positive_violation", rule_code=rule_code))
             if "negative_pass" in missing_categories:
-                test_data_work.append(f"add negative pass fixture for {rule_code}")
+                test_data_work.append(t("twm_service.rule_fixture.work.negative_pass", rule_code=rule_code))
             if "boundary_case" in missing_categories:
-                test_data_work.append(f"add explicit boundary/threshold/touching fixture for {rule_code}")
+                test_data_work.append(t("twm_service.rule_fixture.work.boundary_case", rule_code=rule_code))
             if rule["production_ready_fixture_count"] <= 0:
-                test_data_work.append(f"keep {rule_code} regression fixtures separate from future authoritative production acceptance rows")
+                test_data_work.append(t("twm_service.rule_fixture.work.production_separation", rule_code=rule_code))
             rule_reports.append(
                 {
                     **rule,
@@ -1887,15 +2074,15 @@ class TerritoryWorldModelService:
                 "items": [
                     {
                         "priority": "P0",
-                        "action": "add explicit boundary/threshold/touching fixtures for each hard-constraint rule",
+                        "action": t("twm_service.rule_fixture.plan.boundary_cases"),
                     },
                     {
                         "priority": "P1",
-                        "action": "add future authoritative production acceptance rows only after custodian signoff",
+                        "action": t("twm_service.rule_fixture.plan.authoritative_rows"),
                     },
                     {
                         "priority": "P1",
-                        "action": "keep synthetic regression fixtures marked synthetic and not_for_production",
+                        "action": t("twm_service.rule_fixture.plan.synthetic_marking"),
                     },
                 ],
             },
@@ -1919,11 +2106,8 @@ class TerritoryWorldModelService:
             "schema": "territory_world_model.research_claim_matrix.v1",
             "status": overall_status,
             "generated_at": now_utc_iso(),
-            "research_question": TWM_RESEARCH_POSITIONING["research_question"],
-            "claim_boundary": (
-                "Every TWM research claim must name the unmet business need, a simpler baseline, minimum real-data evidence, "
-                "metrics and falsification conditions before it can be upgraded beyond prototype status."
-            ),
+            "research_question": _localized_research_positioning()["research_question"],
+            "claim_boundary": t("twm_service.research.claim_matrix.claim_boundary"),
             "current_data_gate": {
                 "status": data_foundation.get("status", "review"),
                 "production_ready_observed_history_rows": production_rows,
@@ -1931,9 +2115,12 @@ class TerritoryWorldModelService:
                 "production_deployment_supported": data_foundation.get("landing_readiness", {}).get("production_deployment_supported", False),
                 "predictive_or_causal_claim_supported": data_foundation.get("landing_readiness", {}).get("predictive_or_causal_claim_supported", False),
             },
-            "claims": [self._research_claim_with_gate(item, production_rows, policy_rows) for item in TWM_RESEARCH_CLAIM_MATRIX],
-            "baselines": list(TWM_RESEARCH_BASELINES),
-            "next_experiments": list(TWM_RESEARCH_NEXT_EXPERIMENTS),
+            "claims": [
+                self._research_claim_with_gate(item, production_rows, policy_rows)
+                for item in _localized_research_claims()
+            ],
+            "baselines": _localized_research_baselines(),
+            "next_experiments": _localized_research_experiments(),
             "decision_policy": {
                 "promote_to_retrospective_evidence": [
                     "real_or_sanitized_history_present",
@@ -1954,10 +2141,7 @@ class TerritoryWorldModelService:
                     "business_users_reject_decision_question",
                 ],
             },
-            "mentor_answer": (
-                "TWM 的创新性不能靠列举模型组件来证明。当前应把每个主张绑定到真实业务问题、简单基线、数据门槛和可证伪指标；"
-                "在生产历史和 baseline 对比缺失前，TWM 只能主张工程原型和审查脚手架，不能主张生产级 world model。"
-            ),
+            "mentor_answer": t("twm_service.research.claim_matrix.mentor_answer"),
         }
         return json.loads(_json(result))
 
@@ -1966,7 +2150,7 @@ class TerritoryWorldModelService:
         claims_by_id = {item["claim_id"]: item for item in claim_matrix["claims"]}
         baselines_by_id = {item["baseline_id"]: item for item in claim_matrix["baselines"]}
         export_types = []
-        for item in TWM_BASELINE_EXPORT_TYPES:
+        for item in _localized_baseline_export_types():
             compatible_claims = []
             for claim_id in item.get("compatible_claims", []):
                 claim = claims_by_id.get(str(claim_id))
@@ -1991,26 +2175,17 @@ class TerritoryWorldModelService:
                 {
                     "schema": "territory_world_model.baseline_export_schema.v1",
                     "generated_at": now_utc_iso(),
-                    "purpose": (
-                        "Define the minimum real or sanitized same-case exports required before TWM baseline comparisons can support "
-                        "retrospective evidence instead of synthetic regression evidence."
-                    ),
+                    "purpose": t("twm_service.baseline.schema.purpose"),
                     "same_case_join_requirements": {
                         "primary_join_key": "case_id for approval/review cases; candidate_id for plan-option candidate rows",
                         "minimum_overlap_ratio": 0.8,
                         "required_for_claim_upgrade": True,
-                        "policy": (
-                            "TWM and baseline outputs must cover the same historical projects, parcels, candidates or review cases. "
-                            "Aggregate-only metrics are acceptable for smoke tests but cannot promote research claims."
-                        ),
+                        "policy": t("twm_service.baseline.schema.same_case_policy"),
                     },
                     "privacy_and_sanitization": {
                         "accepted_data_classes": ["real_sanitized", "real_internal_review", "synthetic_regression"],
                         "recommended_columns": ["not_for_production", "sanitization_level", "source_system", "export_batch_id"],
-                        "minimum_rule": (
-                            "Production or sensitive project/person identifiers must be removed or replaced by stable anonymous IDs; "
-                            "geometry may be generalized if case joins, rule hits and final dispositions remain traceable."
-                        ),
+                        "minimum_rule": t("twm_service.baseline.schema.minimum_sanitization_rule"),
                     },
                     "export_types": export_types,
                     "validation_api": {
@@ -2018,10 +2193,7 @@ class TerritoryWorldModelService:
                         "required_payload": ["twm_case_output_path", "baseline_case_output_path"],
                         "optional_payload": ["claim_id", "baseline_id", "export_type"],
                     },
-                    "claim_boundary": (
-                        "Passing this schema check only means the baseline export is structurally comparable. It does not by itself prove "
-                        "TWM has solved an unmet business need."
-                    ),
+                    "claim_boundary": t("twm_service.baseline.schema.claim_boundary"),
                 }
             )
         )
@@ -2034,35 +2206,24 @@ class TerritoryWorldModelService:
         export_types = {item["export_type"]: item for item in schema.get("export_types", [])}
         templates = [
             self._baseline_export_template_public(item, claims_by_id, baselines_by_id, export_types)
-            for item in TWM_BASELINE_EXPORT_TEMPLATE_SPECS
+            for item in _localized_baseline_template_specs()
         ]
         return json.loads(
             _json(
                 {
                     "schema": "territory_world_model.baseline_export_templates.v1",
                     "generated_at": now_utc_iso(),
-                    "purpose": (
-                        "Provide real/sanitized same-case CSV collection templates for the C1/C2/C3 TWM research claims. "
-                        "These templates are for evidence collection and validation, not for direct production deployment."
-                    ),
+                    "purpose": t("twm_service.baseline.templates.purpose"),
                     "templates": templates,
                     "global_sanitization_rules": [
-                        "Replace real project, parcel, candidate, organization and person identifiers with stable anonymous IDs.",
-                        "Keep the same anonymous join key across TWM and baseline exports; otherwise the comparison is invalid.",
-                        "Use evidence_uri as an internal sanitized evidence index instead of raw file paths or sensitive text.",
-                        "Set not_for_production=true unless the export has passed internal data-governance release review.",
-                        "Preserve rule_version, boundary_version and source_system because metric results are not interpretable without lineage.",
+                        t(f"twm_service.baseline.templates.sanitization_rule.{index}")
+                        for index in range(5)
                     ],
                     "validation_flow": [
-                        "Fill both TWM and baseline CSVs for the same cases or candidates.",
-                        "Import or place the CSVs inside the repository workspace.",
-                        "Run POST /api/twm/baseline-export-validation-report and fix blockers.",
-                        "Only after export validation passes, run POST /api/twm/baseline-evidence-pipeline-report.",
+                        t(f"twm_service.baseline.templates.validation_flow.{index}")
+                        for index in range(4)
                     ],
-                    "claim_boundary": (
-                        "Templates reduce ambiguity in data collection. They do not prove TWM innovation or production value until "
-                        "real/sanitized same-case exports beat the named simpler baselines under the claim metrics."
-                    ),
+                    "claim_boundary": t("twm_service.baseline.templates.claim_boundary"),
                 }
             )
         )
@@ -2115,12 +2276,10 @@ class TerritoryWorldModelService:
                     "preview_metrics": preview_metrics,
                     "not_for_production": True,
                     "next_actions": [
-                        "use this returned path as twm_case_output_path or baseline_case_output_path",
-                        "run baseline_export_validation_report before using this export in a comparison",
+                        t("twm_service.baseline.import.next_action.0"),
+                        t("twm_service.baseline.import.next_action.1"),
                     ],
-                    "claim_boundary": (
-                        "Imported baseline CSVs are staged for TWM validation. Importing a file does not make it production evidence."
-                    ),
+                    "claim_boundary": t("twm_service.baseline.import.claim_boundary"),
                 }
             )
         )
@@ -2223,10 +2382,7 @@ class TerritoryWorldModelService:
             "blocking_errors": list(dict.fromkeys(blocking_errors)),
             "warnings": list(dict.fromkeys(warnings)),
             "next_actions": self._baseline_export_validation_next_actions(status, blocking_errors, warnings),
-            "claim_boundary": (
-                "This validation checks whether real or sanitized TWM/baseline outputs are structurally comparable on the same cases. "
-                "Research or production claims still require metric lift, workflow need confirmation and external review."
-            ),
+            "claim_boundary": t("twm_service.baseline.validation.claim_boundary"),
         }
         if truthy(payload.get("save_scenario") or payload.get("persist_scenario") or payload.get("save_run_card")):
             result["scenario_card"] = self._save_baseline_export_validation_scenario(payload, result)
@@ -2315,10 +2471,7 @@ class TerritoryWorldModelService:
                 "metrics_pass": enough_metrics,
             },
             "upgrade_decision": upgrade_decision,
-            "claim_boundary": (
-                "This report can compare metrics against a named baseline, but it does not upgrade TWM claims unless real-data gates "
-                "and metric thresholds both pass."
-            ),
+            "claim_boundary": t("twm_service.baseline.comparison.claim_boundary"),
             "next_actions": self._baseline_comparison_next_actions(upgrade_decision, baseline_id),
         }
         if truthy(payload.get("save_scenario") or payload.get("persist_scenario") or payload.get("save_run_card")):
@@ -2376,10 +2529,7 @@ class TerritoryWorldModelService:
             "baseline_comparison": comparison,
             "pipeline_decision": pipeline_decision,
             "next_actions": self._baseline_evidence_pipeline_next_actions(validation, comparison),
-            "claim_boundary": (
-                "The pipeline enforces same-case export validation before metric comparison. A completed pipeline still does not upgrade "
-                "TWM claims unless real-data gates, workflow need evidence and metric thresholds pass."
-            ),
+            "claim_boundary": t("twm_service.baseline.pipeline.claim_boundary"),
         }
         return json.loads(_json(result))
 
@@ -2673,6 +2823,7 @@ class TerritoryWorldModelService:
                 "export_type": export_type,
                 "baseline_id": baseline_id,
                 "label": export_spec.get("label") or template.get("label"),
+                "expected_source": export_spec.get("expected_source"),
                 "required_columns": required_columns,
                 "recommended_columns": recommended_columns,
                 "compatible_claims": export_spec.get("compatible_claims") or [claim_id],
@@ -2879,21 +3030,21 @@ class TerritoryWorldModelService:
     ) -> list[str]:
         if status == "pass":
             return [
-                "run baseline_comparison_report on the validated same-case exports",
-                "package metrics, case coverage and workflow notes for mentor/external review",
+                t("twm_service.baseline.validation.next_action.pass.0"),
+                t("twm_service.baseline.validation.next_action.pass.1"),
             ]
         actions: list[str] = []
         if any("missing_required_columns" in item for item in blocking_errors):
-            actions.append("export the missing required columns from the TWM and baseline systems")
+            actions.append(t("twm_service.baseline.validation.next_action.missing_columns"))
         if any("same_case" in item for item in blocking_errors):
-            actions.append("join TWM and baseline outputs on the same historical case or candidate IDs")
+            actions.append(t("twm_service.baseline.validation.next_action.same_case"))
         if any("path" in item or "file" in item for item in blocking_errors):
-            actions.append("provide readable CSV exports inside the repository workspace")
+            actions.append(t("twm_service.baseline.validation.next_action.readable_csv"))
         if any("claim_parser_columns" in item for item in warnings):
-            actions.append("add the claim-specific parser columns before using this export for metric evidence")
+            actions.append(t("twm_service.baseline.validation.next_action.parser_columns"))
         if any("not_for_production" in item for item in warnings):
-            actions.append("mark whether the export is sanitized, internal-review-only or synthetic regression data")
-        actions.append("keep TWM claims at prototype scaffold level until validation passes on real or sanitized same-case data")
+            actions.append(t("twm_service.baseline.validation.next_action.data_class"))
+        actions.append(t("twm_service.baseline.validation.next_action.prototype_gate"))
         return list(dict.fromkeys(actions))
 
     def _baseline_evidence_pipeline_next_actions(
@@ -2904,29 +3055,29 @@ class TerritoryWorldModelService:
         blocking_errors = list(validation.get("blocking_errors") or [])
         if blocking_errors:
             return [
-                "fix export validation blockers before running metric comparison",
+                t("twm_service.baseline.pipeline.next_action.validation_blocked"),
                 *list(validation.get("next_actions") or [])[:3],
             ]
         if comparison is None:
             return [
-                "run baseline comparison after reviewing export validation warnings",
+                t("twm_service.baseline.pipeline.next_action.validate_only"),
                 *list(validation.get("next_actions") or [])[:2],
             ]
         decision = str(comparison.get("upgrade_decision") or "")
         if decision == "metrics_pass_but_data_gate_blocks_upgrade":
             return [
-                "keep this result as regression evidence until real production history gates pass",
+                t("twm_service.baseline.pipeline.next_action.data_gate"),
                 *list(comparison.get("next_actions") or [])[:2],
             ]
         if decision == "no_metric_lift_over_baseline":
             return [
-                "do not add model complexity until the simpler baseline gap is understood",
+                t("twm_service.baseline.pipeline.next_action.no_lift"),
                 *list(comparison.get("next_actions") or [])[:2],
             ]
         if decision == "eligible_for_retrospective_evidence":
             return [
-                "package validation and comparison run cards for external review",
-                "repeat on held-out region/time split before any pilot claim",
+                t("twm_service.baseline.pipeline.next_action.eligible.0"),
+                t("twm_service.baseline.pipeline.next_action.eligible.1"),
             ]
         return list(comparison.get("next_actions") or validation.get("next_actions") or [])
 
@@ -2979,22 +3130,25 @@ class TerritoryWorldModelService:
     def _baseline_comparison_next_actions(self, upgrade_decision: str, baseline_id: str) -> list[str]:
         if upgrade_decision == "eligible_for_retrospective_evidence":
             return [
-                "package case-level evidence and baseline outputs for external review",
-                "repeat on a held-out region/time split before pilot claim",
+                t("twm_service.baseline.comparison.next_action.eligible.0"),
+                t("twm_service.baseline.comparison.next_action.eligible.1"),
             ]
         if upgrade_decision == "metrics_pass_but_data_gate_blocks_upgrade":
             return [
-                "collect real or sanitized production history required by the claim gate",
-                f"keep {baseline_id or 'baseline'} comparison as synthetic/regression evidence only",
+                t("twm_service.baseline.comparison.next_action.data_gate.0"),
+                t(
+                    "twm_service.baseline.comparison.next_action.data_gate.1",
+                    baseline_id=baseline_id or "baseline",
+                ),
             ]
         if upgrade_decision == "no_metric_lift_over_baseline":
             return [
-                "inspect failed metrics and simplify the TWM claim",
-                "do not add new model backends until the baseline gap is understood",
+                t("twm_service.baseline.comparison.next_action.no_lift.0"),
+                t("twm_service.baseline.comparison.next_action.no_lift.1"),
             ]
         return [
-            "provide both TWM metrics and named baseline metrics for the same cases",
-            "keep the claim at prototype scaffold level",
+            t("twm_service.baseline.comparison.next_action.review.0"),
+            t("twm_service.baseline.comparison.next_action.review.1"),
         ]
 
     def _save_baseline_comparison_scenario(self, payload: dict[str, Any], report: dict[str, Any]) -> dict[str, Any]:
@@ -3074,7 +3228,9 @@ class TerritoryWorldModelService:
     def data_foundation_assessment(self) -> dict[str, Any]:
         validation = self._load_data_foundation_validation()
         validation_summary = validation.get("summary", {}) if isinstance(validation, dict) else {}
-        dataset_summaries = [self._data_foundation_dataset_summary(item) for item in TWM_DATA_FOUNDATION_DATASETS]
+        dataset_summaries = _localized_data_foundation_dataset_summaries(
+            [self._data_foundation_dataset_summary(item) for item in TWM_DATA_FOUNDATION_DATASETS]
+        )
         production_rows = safe_int(validation_summary.get("twm_production_ready_observed_history_rows"), 0)
         policy_rows = safe_int(validation_summary.get("production_policy_history_row_count"), 0)
         synthetic_rows = safe_int(validation_summary.get("twm_synthetic_experiment_row_count"), 0)
@@ -3088,25 +3244,28 @@ class TerritoryWorldModelService:
             status = "ready_for_pilot_validation"
         landing_readiness = {
             "status": status,
-            "verdict": (
-                "当前数据基础足以支撑 TWM 工程化原型、规则/证据/审计链路和合成实验验证；"
-                "不足以支撑生产级审批结论、真实预测效果或真实因果改进声明。"
-            ),
+                "verdict": t("twm_service.data_foundation.landing.verdict"),
             "production_deployment_supported": False,
             "engineering_mvp_supported": True,
             "business_review_scaffold_supported": True,
             "predictive_or_causal_claim_supported": False,
             "key_blockers": [
-                "生产可用观察历史行数为 0",
-                "生产政策动作历史未提供",
-                "关键审批、复核、规则评价和项目样本主要为 synthetic/not-for-production",
-                "尚缺真实 workflow baseline 对比来证明未满足需求与改进幅度",
+                t("twm_service.data_foundation.landing.blocker.observed_history", count=0),
+                t("twm_service.data_foundation.landing.blocker.policy_history"),
+                t("twm_service.data_foundation.landing.blocker.synthetic_samples"),
+                t("twm_service.data_foundation.landing.blocker.workflow_baseline"),
             ],
         }
         if production_rows > 0:
-            landing_readiness["key_blockers"][0] = f"生产可用观察历史行数仍不足：{production_rows}"
+            landing_readiness["key_blockers"][0] = t(
+                "twm_service.data_foundation.landing.blocker.observed_history_insufficient",
+                count=production_rows,
+            )
         if policy_rows > 0:
-            landing_readiness["key_blockers"][1] = f"生产政策动作历史仍不足：{policy_rows}"
+            landing_readiness["key_blockers"][1] = t(
+                "twm_service.data_foundation.landing.blocker.policy_history_insufficient",
+                count=policy_rows,
+            )
 
         result = {
             "schema": "territory_world_model.data_foundation_assessment.v1",
@@ -3152,45 +3311,52 @@ class TerritoryWorldModelService:
                 "external_support": {
                     "paper7_caliper_matched_status": validation_summary.get("paper7_caliper_matched_status", "unknown"),
                     "paper7_caliper_matched_pair_count": safe_int(validation_summary.get("paper7_caliper_matched_pair_count"), 0),
-                    "boundary": "Paper7 可作为因果校准分支外部支持，但不能替代 TWM 生产审批历史验证。",
+                    "boundary": t("twm_service.data_foundation.external_support.boundary"),
                 },
             },
-            "supported_problems": list(TWM_DATA_FOUNDATION_SUPPORTED_PROBLEMS),
-            "unsupported_claims": list(TWM_DATA_FOUNDATION_UNSUPPORTED_CLAIMS),
+            "supported_problems": [
+                {
+                    **item,
+                    "problem": t(f"twm_service.data_foundation.supported_problem.{index}.problem"),
+                    "support": t(f"twm_service.data_foundation.supported_problem.{index}.support"),
+                }
+                for index, item in enumerate(TWM_DATA_FOUNDATION_SUPPORTED_PROBLEMS)
+            ],
+            "unsupported_claims": [
+                {
+                    **item,
+                    "claim": t(f"twm_service.data_foundation.unsupported_claim.{index}.claim"),
+                    "reason": t(f"twm_service.data_foundation.unsupported_claim.{index}.reason"),
+                }
+                for index, item in enumerate(TWM_DATA_FOUNDATION_UNSUPPORTED_CLAIMS)
+            ],
             "problem_data_fit": [
                 {
-                    "business_problem": "耕地保护与占补平衡审查",
+                    "business_problem": t("twm_service.data_foundation.problem_fit.0.business_problem"),
                     "current_fit": "partial",
-                    "why": "图斑、PBF、生态红线、项目、规则命中和证据链结构齐备，但关键边界和审批记录仍非生产数据。",
-                    "safe_output": "风险暴露、证据缺口、人工复核任务和候选方案审计。",
-                    "unsafe_output": "自动审批通过/不通过或真实政策效果承诺。",
+                    "why": t("twm_service.data_foundation.problem_fit.0.why"),
+                    "safe_output": t("twm_service.data_foundation.problem_fit.0.safe_output"),
+                    "unsafe_output": t("twm_service.data_foundation.problem_fit.0.unsafe_output"),
                 },
                 {
-                    "business_problem": "建设项目用地合规预审",
+                    "business_problem": t("twm_service.data_foundation.problem_fit.1.business_problem"),
                     "current_fit": "partial",
-                    "why": "可模拟项目-分区-边界-复核任务关系，但缺真实项目流转、补正、处置和监管闭环历史。",
-                    "safe_output": "合规预审工作流原型和审查清单。",
-                    "unsafe_output": "生产级项目合规结论。",
+                    "why": t("twm_service.data_foundation.problem_fit.1.why"),
+                    "safe_output": t("twm_service.data_foundation.problem_fit.1.safe_output"),
+                    "unsafe_output": t("twm_service.data_foundation.problem_fit.1.unsafe_output"),
                 },
                 {
-                    "business_problem": "国土空间用途调整推演",
+                    "business_problem": t("twm_service.data_foundation.problem_fit.2.business_problem"),
                     "current_fit": "experimental",
-                    "why": "合成多期样本可测动作条件动态和 planner consumer，但缺真实跨期状态和政策动作标签。",
-                    "safe_output": "反事实推演管线、action-mask 和 beam-plan 方法验证。",
-                    "unsafe_output": "真实区域规划效果预测。",
+                    "why": t("twm_service.data_foundation.problem_fit.2.why"),
+                    "safe_output": t("twm_service.data_foundation.problem_fit.2.safe_output"),
+                    "unsafe_output": t("twm_service.data_foundation.problem_fit.2.unsafe_output"),
                 },
             ],
-            "required_next_data": list(TWM_DATA_FOUNDATION_REQUIRED_NEXT_DATA),
+            "required_next_data": _localized_data_foundation_required_next_data(),
             "mentor_answer": {
-                "short_answer": (
-                    "目前 TWM 靠谱的部分是工程和研究假设验证，不是生产落地证明。"
-                    "数据基础能说明 TWM 的对象-关系-规则-证据框架可跑通，也能暴露哪些业务问题需要真实数据继续验证；"
-                    "但在真实审批历史和政策动作标签缺失前，不能声称它已经解决真实国土治理决策。"
-                ),
-                "research_judgment": (
-                    "下一阶段应把研究问题收敛到真实未满足需求：跨图层规则审查、证据链完整性、审查任务优先级和方案不可行原因解释。"
-                    "这些问题需要用真实或脱敏业务样本与 manual/rule-only/simulator/optimizer baseline 对比。"
-                ),
+                    "short_answer": t("twm_service.data_foundation.mentor.short_answer"),
+                    "research_judgment": t("twm_service.data_foundation.mentor.research_judgment"),
             },
             "source_reports": {
                 "health_markdown": "docs/reports/twm_data_foundation_health.md",
@@ -3203,7 +3369,7 @@ class TerritoryWorldModelService:
         dataset_id = compact_text(dataset_id)
         spec = next((item for item in TWM_DATA_FOUNDATION_DATASETS if item.get("id") == dataset_id), None)
         if spec is None:
-            raise LookupError(f"data foundation dataset not found: {dataset_id}")
+            raise LookupError(t("twm_service.data_foundation.error.dataset_not_found", dataset_id=dataset_id))
 
         assessment = self.data_foundation_assessment()
         validation = dict(assessment.get("validation_snapshot") or {})
@@ -3245,11 +3411,11 @@ class TerritoryWorldModelService:
                 "dataset_root": spec.get("path"),
                 "not_for_production": bool(summary.get("not_for_production", True)) or not_for_production_count > 0,
                 "readiness_note": (
-                    "可用于字段、空间范围和链路回归核查；not_for_production 数据不得作为生产治理结论。"
+                    t("twm_service.data_foundation.lineage.readiness.review_not_for_production")
                     if lineage_status == "review_not_for_production"
-                    else "缺失文件需先补齐后才能进入数据基础核查。"
+                    else t("twm_service.data_foundation.lineage.readiness.missing")
                     if lineage_status == "missing"
-                    else "候选权威来源仍需人工验收数据版本、来源证明和权限边界。"
+                    else t("twm_service.data_foundation.lineage.readiness.candidate_authoritative")
                 ),
             }
             if spatial_layer:
@@ -3271,36 +3437,48 @@ class TerritoryWorldModelService:
             {
                 "id": "authoritative_source_lineage",
                 "status": "blocked" if lineage_status == "review_not_for_production" else "review",
-                "current_value": f"{nonproduction_count} not-for-production records; {synthetic_count} synthetic records",
-                "required_value": "source authority, data version, update time, permission boundary and custodian sign-off for each production layer/table",
+                "current_value": t(
+                    "twm_service.data_foundation.lineage.gate.authoritative_source_lineage.current_value",
+                    nonproduction_count=nonproduction_count,
+                    synthetic_count=synthetic_count,
+                ),
+                "required_value": t(
+                    "twm_service.data_foundation.lineage.gate.authoritative_source_lineage.required_value"
+                ),
             },
             {
                 "id": "production_observed_history",
                 "status": "blocked" if production_rows <= 0 else "partial",
                 "current_value": production_rows,
-                "required_value": "real or sanitized approval/review/remediation/enforcement history with final outcomes",
+                "required_value": t(
+                    "twm_service.data_foundation.lineage.gate.production_observed_history.required_value"
+                ),
             },
             {
                 "id": "production_policy_action_labels",
                 "status": "blocked" if policy_rows <= 0 else "partial",
                 "current_value": policy_rows,
-                "required_value": "authoritative policy/action feasibility labels for TWM action-conditioned validation",
+                "required_value": t(
+                    "twm_service.data_foundation.lineage.gate.production_policy_action_labels.required_value"
+                ),
             },
             {
                 "id": "map_overlay_crs",
                 "status": "ready" if map_overlay_readiness.get("status") == "ready" else "blocked",
                 "current_value": map_overlay_readiness.get("message", ""),
-                "required_value": "all spatial layers have known CRS and can be converted to the map display CRS",
+                "required_value": t(
+                    "twm_service.data_foundation.lineage.gate.map_overlay_crs.required_value"
+                ),
             },
         ]
         return json.loads(_json({
             "schema": "territory_world_model.data_foundation_lineage_report.v1",
             "generated_at": now_utc_iso(),
             "dataset_id": dataset_id,
-            "dataset_label": spec.get("label"),
+            "dataset_label": t(f"twm_service.data_foundation.dataset.{dataset_id}.label"),
             "dataset_root": spec.get("path"),
             "source_nature": spec.get("nature"),
-            "positioning": spec.get("positioning"),
+            "positioning": t(f"twm_service.data_foundation.dataset.{dataset_id}.positioning"),
             "not_for_production": bool(summary.get("not_for_production", True)),
             "file_count": safe_int(summary.get("file_count"), len(files)),
             "spatial_layer_count": sum(1 for item in files if item.get("source_role") == "spatial_layer"),
@@ -3319,18 +3497,15 @@ class TerritoryWorldModelService:
             "map_overlay_readiness": map_overlay_readiness,
             "readiness_gates": readiness_gates,
             "files": files,
-            "required_next_data": list(TWM_DATA_FOUNDATION_REQUIRED_NEXT_DATA),
-            "claim_boundary": (
-                "Lineage report supports source review, field mapping, CRS readiness and production onboarding planning; "
-                "it does not upgrade not-for-production datasets into authoritative evidence."
-            ),
+            "required_next_data": list(assessment.get("required_next_data") or _localized_data_foundation_required_next_data()),
+            "claim_boundary": t("twm_service.data_foundation.lineage.claim_boundary"),
         }))
 
     def data_foundation_crs_remediation_plan(self, dataset_id: str) -> dict[str, Any]:
         dataset_id = compact_text(dataset_id)
         spec = next((item for item in TWM_DATA_FOUNDATION_DATASETS if item.get("id") == dataset_id), None)
         if spec is None:
-            raise LookupError(f"data foundation dataset not found: {dataset_id}")
+            raise LookupError(t("twm_service.data_foundation.error.dataset_not_found", dataset_id=dataset_id))
 
         assessment = self.data_foundation_assessment()
         summary = next((item for item in assessment.get("datasets", []) if item.get("id") == dataset_id), None)
@@ -3359,12 +3534,14 @@ class TerritoryWorldModelService:
                         "action": "verify_declared_crs",
                         "status": "recommended",
                         "source_crs_assumption": source_crs_assumption,
-                        "acceptance": "dataset custodian or metadata confirms EPSG:4326 / WGS84 lonlat",
+                        "acceptance": t(
+                            "twm_service.data_foundation.crs.verify_declared_crs.acceptance"
+                        ),
                     },
                     {
                         "action": "preserve_source_layer",
                         "status": "ready",
-                        "reason": "bbox already falls within longitude/latitude bounds for the current demo map overlay",
+                        "reason": t("twm_service.data_foundation.crs.preserve_source_layer.reason"),
                     },
                 ]
                 output_policy = {
@@ -3380,18 +3557,18 @@ class TerritoryWorldModelService:
                         "action": "identify_source_crs",
                         "status": "required",
                         "source_crs_assumption": source_crs_assumption,
-                        "method": "read CRS metadata, dataset manifest, sidecar .prj, or obtain custodian confirmation before transformation",
+                        "method": t("twm_service.data_foundation.crs.identify_source_crs.method"),
                     },
                     {
                         "action": "reproject_to_target_crs",
                         "status": "required",
                         "target_crs": target_crs,
-                        "tooling": "GDAL/ogr2ogr, pyproj/geopandas, or an approved spatial ETL job",
+                        "tooling": t("twm_service.data_foundation.crs.reproject_to_target_crs.tooling"),
                     },
                     {
                         "action": "validate_bbox_and_geometry",
                         "status": "required",
-                        "acceptance": "converted bbox is within lon/lat bounds, feature count matches source, and invalid geometries are reported",
+                        "acceptance": t("twm_service.data_foundation.crs.validate_bbox_and_geometry.acceptance"),
                     },
                     {
                         "action": "write_lineage_preserving_output",
@@ -3430,10 +3607,10 @@ class TerritoryWorldModelService:
             "schema": "territory_world_model.data_foundation_crs_remediation_plan.v1",
             "generated_at": now_utc_iso(),
             "dataset_id": dataset_id,
-            "dataset_label": spec.get("label"),
+            "dataset_label": t(f"twm_service.data_foundation.dataset.{dataset_id}.label"),
             "dataset_root": spec.get("path"),
             "source_nature": spec.get("nature"),
-            "positioning": spec.get("positioning"),
+            "positioning": t(f"twm_service.data_foundation.dataset.{dataset_id}.positioning"),
             "target_crs": target_crs,
             "status": status,
             "layer_count": len(layers),
@@ -3449,15 +3626,12 @@ class TerritoryWorldModelService:
                 "default_output_suffix": "_wgs84.geojson",
             },
             "acceptance_criteria": [
-                "每个待处理空间图层必须先确认 source CRS，不能仅凭 bbox 猜测直接转换。",
-                "转换后 bbox 必须落入 EPSG:4326 经纬度范围，且要素数量与源文件一致。",
-                "输出文件必须保留源文件、源 CRS、目标 CRS、转换时间和工具版本 lineage。",
-                "not-for-production 数据仅可用于演示和回归；CRS 转换不会提升其生产权威性。",
+                t("twm_service.data_foundation.crs.acceptance_criteria.0"),
+                t("twm_service.data_foundation.crs.acceptance_criteria.1"),
+                t("twm_service.data_foundation.crs.acceptance_criteria.2"),
+                t("twm_service.data_foundation.crs.acceptance_criteria.3"),
             ],
-            "claim_boundary": (
-                "This CRS remediation plan is an onboarding and map-overlay readiness artifact. "
-                "It does not transform geometries in the API response, certify source authority, or support production decision claims."
-            ),
+            "claim_boundary": t("twm_service.data_foundation.crs.claim_boundary"),
         }))
 
     def data_foundation_authoritative_templates(self) -> dict[str, Any]:
@@ -3628,6 +3802,19 @@ class TerritoryWorldModelService:
                 "current_value": "CRS remediation plan exists; production ETL not implemented",
             },
         ]
+        for template in templates:
+            template_id = str(template.get("template_id") or "")
+            prefix = f"twm_service.data_foundation.authoritative_template.{template_id}"
+            template["label"] = t(f"{prefix}.label")
+            template["accepted_formats"] = [
+                t(f"{prefix}.accepted_format.{index}")
+                for index, _ in enumerate(template.get("accepted_formats") or [])
+            ]
+        for gate in readiness_gates:
+            gate_id = str(gate.get("id") or "")
+            prefix = f"twm_service.data_foundation.authoritative_template.gate.{gate_id}"
+            gate["required_value"] = t(f"{prefix}.required_value")
+            gate["current_value"] = t(f"{prefix}.current_value")
         return json.loads(_json({
             "schema": "territory_world_model.data_foundation_authoritative_templates.v1",
             "generated_at": now_utc_iso(),
@@ -3638,20 +3825,17 @@ class TerritoryWorldModelService:
             "shared_lineage_fields": shared_lineage_fields,
             "readiness_gates": readiness_gates,
             "onboarding_steps": [
-                "map authoritative source fields to the template required_fields and shared_lineage_fields",
-                "run schema, CRS, domain, uniqueness and join-key validation before TWM state build",
-                "load sanitized same-case approval/action/evidence history for baseline comparison",
-                "keep not-for-production fixtures separate from production candidate datasets",
+                t("twm_service.data_foundation.authoritative_template.onboarding_step.0"),
+                t("twm_service.data_foundation.authoritative_template.onboarding_step.1"),
+                t("twm_service.data_foundation.authoritative_template.onboarding_step.2"),
+                t("twm_service.data_foundation.authoritative_template.onboarding_step.3"),
             ],
             "claim_boundary_notes": [
-                "Templates define what production onboarding must provide; they are not production data.",
-                "Passing these templates requires custodian sign-off and not-for-production flag clearance.",
-                "The template report does not validate predictive, causal or approval automation claims.",
+                t("twm_service.data_foundation.authoritative_template.claim_boundary_note.0"),
+                t("twm_service.data_foundation.authoritative_template.claim_boundary_note.1"),
+                t("twm_service.data_foundation.authoritative_template.claim_boundary_note.2"),
             ],
-            "claim_boundary": (
-                "Authoritative templates support production data onboarding planning and review. "
-                "They do not by themselves certify authority, data rights, model performance or production deployment readiness."
-            ),
+            "claim_boundary": t("twm_service.data_foundation.authoritative_template.claim_boundary"),
         }))
 
     def _update_data_foundation_bbox(self, coords: Any, bbox: list[float | None]) -> None:
@@ -3680,7 +3864,7 @@ class TerritoryWorldModelService:
                 "map_overlay_ready": False,
                 "warning_code": "missing_spatial_extent",
                 "suggested_action": "inspect_geometry_before_map_overlay",
-                "message": "空间范围缺失，不能确认是否可直接叠加到经纬度底图。",
+                "message": t("twm_service.data_foundation.crs_diagnostic.missing_spatial_extent"),
             }
         min_x, min_y, max_x, max_y = [float(value) for value in layer_bbox]
         is_lonlat = -180.0 <= min_x <= 180.0 and -180.0 <= max_x <= 180.0 and -90.0 <= min_y <= 90.0 and -90.0 <= max_y <= 90.0
@@ -3691,7 +3875,7 @@ class TerritoryWorldModelService:
                 "map_overlay_ready": True,
                 "warning_code": None,
                 "suggested_action": "ready_for_map_overlay",
-                "message": "坐标范围符合经纬度范围，可直接用于当前演示地图叠加。",
+                "message": t("twm_service.data_foundation.crs_diagnostic.wgs84_lonlat"),
             }
         return {
             "status": "projected_or_non_wgs84",
@@ -3699,7 +3883,7 @@ class TerritoryWorldModelService:
             "map_overlay_ready": False,
             "warning_code": "requires_crs_conversion",
             "suggested_action": "convert_to_wgs84_before_map_overlay",
-            "message": "坐标范围超出经纬度范围，直接叠加到当前地图前需要做 CRS 识别和转换。",
+            "message": t("twm_service.data_foundation.crs_diagnostic.projected_or_non_wgs84"),
         }
 
     def _data_foundation_map_overlay_readiness(self, layers: list[dict[str, Any]]) -> dict[str, Any]:
@@ -3717,11 +3901,11 @@ class TerritoryWorldModelService:
             "warning_codes": warning_codes,
             "suggested_action": "load_on_map" if layers and blocked_layer_count == 0 else "fix_crs_before_map_overlay" if blocked_layer_count else "add_spatial_layers",
             "message": (
-                "全部空间图层可直接叠加到当前地图。"
+                t("twm_service.data_foundation.map_overlay_readiness.all_ready")
                 if layers and blocked_layer_count == 0
-                else "部分或全部空间图层不是经纬度坐标，直接叠加前需要 CRS 转换。"
+                else t("twm_service.data_foundation.map_overlay_readiness.blocked")
                 if blocked_layer_count
-                else "未发现可预览空间图层。"
+                else t("twm_service.data_foundation.map_overlay_readiness.empty")
             ),
         }
 
@@ -3885,7 +4069,13 @@ class TerritoryWorldModelService:
         center = None
         bbox = overall_bbox if all(value is not None for value in overall_bbox) else None
         if selected_layer_path and not layers:
-            raise LookupError(f"data foundation spatial layer not found: {dataset_id}/{selected_layer_path}")
+            raise LookupError(
+                t(
+                    "twm_service.data_foundation.error.spatial_layer_not_found",
+                    dataset_id=dataset_id,
+                    layer_path=selected_layer_path,
+                )
+            )
         if bbox:
             center = [
                 (float(bbox[1]) + float(bbox[3])) / 2,
@@ -3897,8 +4087,8 @@ class TerritoryWorldModelService:
         return json.loads(_json({
             "schema": "territory_world_model.data_foundation_map_preview.v1",
             "dataset_id": dataset_id,
-            "label": spec.get("label"),
-            "positioning": spec.get("positioning"),
+            "label": t(f"twm_service.data_foundation.dataset.{dataset_id}.label"),
+            "positioning": t(f"twm_service.data_foundation.dataset.{dataset_id}.positioning"),
             "not_for_production": True,
             "max_features_per_layer": max_features,
             "delivery_mode": "full_geojson" if full_load else "sampled_geojson",
@@ -3920,22 +4110,40 @@ class TerritoryWorldModelService:
         dataset_id = compact_text(dataset_id)
         selected_layer_path = compact_text(layer_path)
         if not selected_layer_path:
-            raise LookupError("data foundation spatial layer path is required")
+            raise LookupError(t("twm_service.data_foundation.error.layer_path_required"))
         sample_count = max(1, min(safe_int(sample_limit, 5), 25))
         spec = next((item for item in TWM_DATA_FOUNDATION_DATASETS if item.get("id") == dataset_id), None)
         if spec is None:
-            raise LookupError(f"data foundation dataset not found: {dataset_id}")
+            raise LookupError(t("twm_service.data_foundation.error.dataset_not_found", dataset_id=dataset_id))
         files = dict(spec.get("files") or {})
         if files.get(selected_layer_path) != "feature" or not selected_layer_path.endswith(".geojson"):
-            raise LookupError(f"data foundation spatial layer not found: {dataset_id}/{selected_layer_path}")
+            raise LookupError(
+                t(
+                    "twm_service.data_foundation.error.spatial_layer_not_found",
+                    dataset_id=dataset_id,
+                    layer_path=selected_layer_path,
+                )
+            )
         root = self._repo_root() / str(spec["path"])
         path = root / selected_layer_path
         if not path.exists():
-            raise LookupError(f"data foundation spatial layer not found: {dataset_id}/{selected_layer_path}")
+            raise LookupError(
+                t(
+                    "twm_service.data_foundation.error.spatial_layer_not_found",
+                    dataset_id=dataset_id,
+                    layer_path=selected_layer_path,
+                )
+            )
         payload = read_json(path)
         features = payload.get("features") if isinstance(payload, dict) and payload.get("type") == "FeatureCollection" else None
         if not isinstance(features, list):
-            raise LookupError(f"data foundation spatial layer is not a FeatureCollection: {dataset_id}/{selected_layer_path}")
+            raise LookupError(
+                t(
+                    "twm_service.data_foundation.error.not_feature_collection",
+                    dataset_id=dataset_id,
+                    layer_path=selected_layer_path,
+                )
+            )
         layer_bbox: list[float | None] = [None, None, None, None]
         sample_records: list[dict[str, Any]] = []
         for idx, feature in enumerate(features):
@@ -3952,7 +4160,7 @@ class TerritoryWorldModelService:
         return json.loads(_json({
             "schema": "territory_world_model.data_foundation_layer_detail.v1",
             "dataset_id": dataset_id,
-            "dataset_label": spec.get("label"),
+            "dataset_label": t(f"twm_service.data_foundation.dataset.{dataset_id}.label"),
             "layer_path": selected_layer_path,
             "label": selected_layer_path.replace("synthetic_", "").replace(".geojson", ""),
             "unit": "feature",
@@ -3964,7 +4172,7 @@ class TerritoryWorldModelService:
             "sample_record_count": len(sample_records),
             "sample_records": sample_records,
             "delivery_mode": "properties_only",
-            "claim_boundary": "Layer detail is for data readiness, field inspection and evidence browsing; it is not production authority evidence by itself.",
+            "claim_boundary": t("twm_service.data_foundation.layer_detail.claim_boundary"),
         }))
 
     def _load_data_foundation_validation(self) -> dict[str, Any]:
@@ -4011,7 +4219,7 @@ class TerritoryWorldModelService:
             "files": files,
             "spatial_layer_catalog": spatial_layer_catalog,
             "map_overlay_readiness": self._data_foundation_map_overlay_readiness(spatial_layer_catalog),
-            "claim_boundary": "该数据包用于测试和适配验证；not_for_production=true 时不得作为真实治理结论依据。",
+            "claim_boundary": t("twm_service.data_foundation.dataset.claim_boundary"),
         }
 
     def _data_foundation_file_audit(self, path: Path) -> dict[str, Any]:
@@ -4213,7 +4421,7 @@ class TerritoryWorldModelService:
                 "source": rel.subject_object_id,
                 "target": rel.object_object_id,
                 "kind": "state_relation",
-                "label": compact_text(rel.relation_type or rel.predicate or "关联"),
+                "label": compact_text(rel.relation_type or rel.predicate or t("twm_service.state_graph.relation_fallback")),
                 "predicate": compact_text(rel.predicate or rel.relation_type),
                 "confidence": safe_float(rel.confidence, 0.0),
                 "metrics": jsonable(rel.metrics or {}),
@@ -4226,7 +4434,7 @@ class TerritoryWorldModelService:
                     "source": hit.subject_object_id,
                     "target": hit_node_id,
                     "kind": "rule_subject",
-                    "label": "触发规则判断",
+                    "label": t("twm_service.state_graph.edge.rule_subject"),
                     "severity": hit.severity,
                 })
             if hit.target_object_id and hit.target_object_id in node_ids:
@@ -4235,7 +4443,7 @@ class TerritoryWorldModelService:
                     "source": hit_node_id,
                     "target": hit.target_object_id,
                     "kind": "rule_target",
-                    "label": "涉及管控对象",
+                    "label": t("twm_service.state_graph.edge.rule_target"),
                     "severity": hit.severity,
                 })
             for item in support_by_hit.get(hit.id, []):
@@ -4244,7 +4452,7 @@ class TerritoryWorldModelService:
                     "source": f"support:{item.id}",
                     "target": hit_node_id,
                     "kind": "support_material",
-                    "label": "支撑判断",
+                    "label": t("twm_service.state_graph.edge.support_material"),
                     "support_type": item.evidence_type,
                 })
             for task in review_by_hit.get(hit.id, []):
@@ -4253,7 +4461,7 @@ class TerritoryWorldModelService:
                     "source": hit_node_id,
                     "target": f"review:{task.id}",
                     "kind": "review_task",
-                    "label": "形成复核任务",
+                    "label": t("twm_service.state_graph.edge.review_task"),
                     "status": task.status,
                 })
 
@@ -4294,9 +4502,9 @@ class TerritoryWorldModelService:
                 "edges": edges if include_full_graph else [],
             },
             "terminology": {
-                "support_material": "界面和汇报中使用“支撑材料/判断依据”，后端兼容字段仍可能叫 evidence。",
-                "simulator": "状态 + 动作 -> 下一状态摘要、约束风险、收益和可信度。",
-                "planner": "在模拟器评价的动作或候选方案中，按约束、收益、风险和支撑材料完整度选择下一步。",
+                "support_material": t("twm_service.state_graph.terminology.support_material"),
+                "simulator": t("twm_service.state_graph.terminology.simulator"),
+                "planner": t("twm_service.state_graph.terminology.planner"),
             },
         }
 
@@ -4406,7 +4614,7 @@ class TerritoryWorldModelService:
             "id": f"rule_hit:{hit.id}",
             "kind": "rule_hit",
             "role": "rule_hit",
-            "label": compact_text(hit.rule_id or "规则判断"),
+            "label": compact_text(hit.rule_id or t("twm_service.state_graph.node.rule_hit_fallback")),
             "severity": hit.severity,
             "risk_score": hit.risk_score,
             "status": hit.hit_status,
@@ -4420,7 +4628,7 @@ class TerritoryWorldModelService:
             "id": f"support:{item.id}",
             "kind": "support_material",
             "role": "support_material",
-            "label": compact_text(item.source_ref or item.evidence_type or "支撑材料"),
+            "label": compact_text(item.source_ref or item.evidence_type or t("twm_service.state_graph.node.support_material_fallback")),
             "support_type": item.evidence_type,
             "source_system": item.source_system,
             "source_ref": item.source_ref,
@@ -4434,7 +4642,7 @@ class TerritoryWorldModelService:
             "id": f"review:{task.id}",
             "kind": "review_task",
             "role": "review_task",
-            "label": compact_text(task.decision or task.status or "人工复核"),
+            "label": compact_text(task.decision or task.status or t("twm_service.state_graph.node.review_task_fallback")),
             "status": task.status,
             "summary": compact_text(task.comment),
             "map_stage": "risk",

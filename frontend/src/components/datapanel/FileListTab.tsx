@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getIconCategory, getFileIcon, formatSize } from './utils';
+import { getLocaleHeaders } from '../../i18n';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -36,6 +38,7 @@ interface PreviewInfo {
 // FileManager — full file browser with upload, folders, preview, delete
 // ---------------------------------------------------------------------------
 export function FileManager({ onFileClick }: { onFileClick: (name: string) => void }) {
+  const { t } = useTranslation('common');
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [currentPath, setCurrentPath] = useState('');
   const [parentPath, setParentPath] = useState<string | null>(null);
@@ -56,7 +59,10 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
     const targetPath = path !== undefined ? path : currentPath;
     if (showLoading) setLoading(true);
     try {
-      const resp = await fetch(`/api/user/files/browse?path=${encodeURIComponent(targetPath)}`, { credentials: 'include' });
+      const resp = await fetch(`/api/user/files/browse?path=${encodeURIComponent(targetPath)}`, {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       if (resp.ok) {
         const data = await resp.json();
         setEntries(data.entries || []);
@@ -79,7 +85,7 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
   const handleUpload = async (fileList: FileList | File[]) => {
     if (!fileList || fileList.length === 0) return;
     setUploading(true);
-    setUploadProgress(`上传 ${fileList.length} 个文件...`);
+    setUploadProgress(t('files.uploadingCount', { count: fileList.length }));
     const formData = new FormData();
     if (currentPath) formData.append('subfolder', currentPath);
     for (let i = 0; i < fileList.length; i++) {
@@ -87,18 +93,18 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
     }
     try {
       const resp = await fetch('/api/user/files/upload', {
-        method: 'POST', credentials: 'include', body: formData,
+        method: 'POST', credentials: 'include', headers: getLocaleHeaders(), body: formData,
       });
       const data = await resp.json();
       if (data.status === 'success') {
-        setUploadProgress(`已上传 ${data.count} 个文件`);
+        setUploadProgress(t('files.uploadedCount', { count: data.count }));
         fetchEntries();
         setTimeout(() => setUploadProgress(''), 2000);
       } else {
-        setUploadProgress(`上传失败: ${data.error || '未知错误'}`);
+        setUploadProgress(t('files.uploadFailed', { error: data.error || t('errors.unknown') }));
       }
     } catch (e) {
-      setUploadProgress('上传出错');
+      setUploadProgress(t('files.uploadError'));
     }
     finally { setUploading(false); }
   };
@@ -136,7 +142,10 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
     setPreviewLoading(true);
     setPreview(null);
     try {
-      const resp = await fetch(`/api/user/files/preview/${encodeURIComponent(path)}`, { credentials: 'include' });
+      const resp = await fetch(`/api/user/files/preview/${encodeURIComponent(path)}`, {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       if (resp.ok) setPreview(await resp.json());
     } catch { /* ignore */ }
     finally { setPreviewLoading(false); }
@@ -144,12 +153,12 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
 
   // --- Delete ---
   const handleDelete = async (entry: FileEntry) => {
-    const label = entry.type === 'folder' ? `文件夹 "${entry.name}" 及其所有内容` : `文件 "${entry.name}"`;
-    if (!confirm(`确定删除${label}？`)) return;
+    const confirmKey = entry.type === 'folder' ? 'files.deleteFolderConfirm' : 'files.deleteFileConfirm';
+    if (!confirm(t(confirmKey, { name: entry.name }))) return;
     try {
       await fetch('/api/user/files/delete', {
         method: 'DELETE', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({ path: entry.path }),
       });
       fetchEntries();
@@ -165,7 +174,7 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
     try {
       await fetch('/api/user/files/mkdir', {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({ path }),
       });
       setShowNewFolder(false);
@@ -181,7 +190,7 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
     try {
       const resp = await fetch('/api/user/files/download-url', {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({ url: downloadUrl, subfolder: currentPath }),
       });
       const data = await resp.json();
@@ -190,9 +199,9 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
         setDownloadUrl('');
         fetchEntries();
       } else {
-        alert(data.error || '下载失败');
+        alert(data.error || t('files.downloadFailed'));
       }
-    } catch { alert('下载出错'); }
+    } catch { alert(t('files.downloadError')); }
     finally { setDownloading(false); }
   };
 
@@ -209,10 +218,10 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
       {/* Toolbar */}
       <div className="fm-toolbar">
         <button className="fm-btn fm-btn-primary" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-          上传文件
+          {t('files.upload')}
         </button>
-        <button className="fm-btn" onClick={() => setShowNewFolder(true)}>新建文件夹</button>
-        <button className="fm-btn" onClick={() => setShowUrlDialog(true)}>URL下载</button>
+        <button className="fm-btn" onClick={() => setShowNewFolder(true)}>{t('files.newFolder')}</button>
+        <button className="fm-btn" onClick={() => setShowUrlDialog(true)}>{t('files.urlDownload')}</button>
         <input
           ref={fileInputRef} type="file" multiple style={{ display: 'none' }}
           onChange={e => { if (e.target.files) handleUpload(e.target.files); e.target.value = ''; }}
@@ -224,12 +233,12 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
       {showNewFolder && (
         <div className="fm-inline-dialog">
           <input
-            className="fm-input" placeholder="文件夹名称" autoFocus
+            className="fm-input" placeholder={t('files.folderName')} autoFocus
             value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleCreateFolder()}
           />
-          <button className="fm-btn fm-btn-sm" onClick={handleCreateFolder}>创建</button>
-          <button className="fm-btn fm-btn-sm" onClick={() => { setShowNewFolder(false); setNewFolderName(''); }}>取消</button>
+          <button className="fm-btn fm-btn-sm" onClick={handleCreateFolder}>{t('files.create')}</button>
+          <button className="fm-btn fm-btn-sm" onClick={() => { setShowNewFolder(false); setNewFolderName(''); }}>{t('files.cancel')}</button>
         </div>
       )}
 
@@ -242,15 +251,15 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
             onKeyDown={e => e.key === 'Enter' && handleDownloadUrl()}
           />
           <button className="fm-btn fm-btn-sm" onClick={handleDownloadUrl} disabled={downloading}>
-            {downloading ? '下载中...' : '下载'}
+            {downloading ? t('files.downloading') : t('files.download')}
           </button>
-          <button className="fm-btn fm-btn-sm" onClick={() => { setShowUrlDialog(false); setDownloadUrl(''); }}>取消</button>
+          <button className="fm-btn fm-btn-sm" onClick={() => { setShowUrlDialog(false); setDownloadUrl(''); }}>{t('files.cancel')}</button>
         </div>
       )}
 
       {/* Breadcrumb */}
       <div className="fm-breadcrumb">
-        <span className="fm-crumb" onClick={() => fetchEntries('', true)}>我的文件</span>
+        <span className="fm-crumb" onClick={() => fetchEntries('', true)}>{t('files.myFiles')}</span>
         {breadcrumbs.map((seg, i) => {
           const path = breadcrumbs.slice(0, i + 1).join('/');
           return (
@@ -265,7 +274,7 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
       {/* Drop zone overlay */}
       {dragOver && (
         <div className="fm-drop-overlay">
-          <div className="fm-drop-text">拖放文件到此处上传</div>
+          <div className="fm-drop-text">{t('files.dropToUpload')}</div>
         </div>
       )}
 
@@ -273,9 +282,9 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
       <div className="fm-content">
         <div className="fm-list">
           {loading ? (
-            <div className="empty-state">加载中...</div>
+            <div className="empty-state">{t('app.loading')}</div>
           ) : entries.length === 0 && !currentPath ? (
-            <div className="empty-state">暂无文件<br />点击"上传文件"或拖放文件到此处</div>
+            <div className="empty-state">{t('files.empty')}<br />{t('files.emptyHint')}</div>
           ) : (
             <>
               {parentPath !== null && (
@@ -300,7 +309,7 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
                   <span className="fm-entry-name" title={entry.name}>{entry.name}</span>
                   <span className="fm-entry-size">{entry.type !== 'folder' ? formatSize(entry.size) : ''}</span>
                   <button
-                    className="fm-entry-delete" title="删除"
+                    className="fm-entry-delete" title={t('files.delete')} aria-label={t('files.delete')}
                     onClick={e => { e.stopPropagation(); handleDelete(entry); }}
                   >&times;</button>
                 </div>
@@ -312,25 +321,25 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
         {/* Preview panel */}
         {(preview || previewLoading) && (
           <div className="fm-preview">
-            {previewLoading ? <div className="empty-state">加载预览...</div> : preview && (
+            {previewLoading ? <div className="empty-state">{t('files.loadingPreview')}</div> : preview && (
               <>
                 <div className="fm-preview-header">
                   <strong>{preview.name}</strong>
                   <span className="fm-preview-size">{formatSize(preview.size)}</span>
-                  <button className="fm-preview-close" onClick={() => setPreview(null)}>&times;</button>
+                  <button className="fm-preview-close" onClick={() => setPreview(null)} aria-label={t('files.closePreview')}>&times;</button>
                 </div>
                 {preview.preview_error && <div className="fm-preview-error">{preview.preview_error}</div>}
 
                 {/* Spatial info */}
                 {preview.crs && <div className="fm-preview-row"><span>CRS</span><span>{preview.crs}</span></div>}
-                {preview.feature_count !== undefined && <div className="fm-preview-row"><span>要素数</span><span>{preview.feature_count}</span></div>}
-                {preview.geometry_type && <div className="fm-preview-row"><span>几何类型</span><span>{preview.geometry_type}</span></div>}
-                {preview.bands !== undefined && <div className="fm-preview-row"><span>波段数</span><span>{preview.bands}</span></div>}
-                {preview.shape && <div className="fm-preview-row"><span>尺寸</span><span>{preview.shape[1]}×{preview.shape[0]}</span></div>}
-                {preview.resolution && <div className="fm-preview-row"><span>分辨率</span><span>{preview.resolution[0].toFixed(4)}°</span></div>}
+                {preview.feature_count !== undefined && <div className="fm-preview-row"><span>{t('files.featureCount')}</span><span>{preview.feature_count}</span></div>}
+                {preview.geometry_type && <div className="fm-preview-row"><span>{t('files.geometryType')}</span><span>{preview.geometry_type}</span></div>}
+                {preview.bands !== undefined && <div className="fm-preview-row"><span>{t('files.bandCount')}</span><span>{preview.bands}</span></div>}
+                {preview.shape && <div className="fm-preview-row"><span>{t('files.dimensions')}</span><span>{preview.shape[1]}×{preview.shape[0]}</span></div>}
+                {preview.resolution && <div className="fm-preview-row"><span>{t('files.resolution')}</span><span>{preview.resolution[0].toFixed(4)}°</span></div>}
                 {preview.bounds && (
                   <div className="fm-preview-row">
-                    <span>范围</span>
+                    <span>{t('files.extent')}</span>
                     <span className="fm-preview-bounds">
                       [{preview.bounds.map(b => typeof b === 'number' ? b.toFixed(4) : b).join(', ')}]
                     </span>
@@ -340,9 +349,9 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
                 {/* Fields */}
                 {(preview.fields || preview.columns) && (
                   <div className="fm-preview-fields">
-                    <div className="fm-preview-subtitle">字段 ({(preview.fields || preview.columns)!.length})</div>
+                    <div className="fm-preview-subtitle">{t('files.fields', { count: (preview.fields || preview.columns)!.length })}</div>
                     <table className="fm-preview-table">
-                      <thead><tr><th>名称</th><th>类型</th></tr></thead>
+                      <thead><tr><th>{t('files.name')}</th><th>{t('files.type')}</th></tr></thead>
                       <tbody>
                         {(preview.fields || preview.columns)!.map(f => (
                           <tr key={f.name}><td>{f.name}</td><td>{f.type}</td></tr>
@@ -355,7 +364,7 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
                 {/* Sample rows */}
                 {preview.sample && preview.sample.length > 0 && (
                   <div className="fm-preview-fields">
-                    <div className="fm-preview-subtitle">示例数据 ({preview.sample.length}行)</div>
+                    <div className="fm-preview-subtitle">{t('files.sampleRows', { count: preview.sample.length })}</div>
                     <div className="fm-preview-sample-scroll">
                       <table className="fm-preview-table">
                         <thead><tr>{Object.keys(preview.sample[0]).map(k => <th key={k}>{k}</th>)}</tr></thead>
@@ -375,7 +384,7 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
                     className="fm-btn fm-btn-primary fm-btn-sm"
                     href={`/api/user/files/${encodeURIComponent(preview.path)}`}
                     target="_blank" rel="noopener noreferrer"
-                  >下载</a>
+                  >{t('files.download')}</a>
                 </div>
               </>
             )}
@@ -390,8 +399,9 @@ export function FileManager({ onFileClick }: { onFileClick: (name: string) => vo
 // DataTable — keep existing export for backward compat
 // ---------------------------------------------------------------------------
 export function DataTable({ columns, data, loading }: { columns: string[]; data: any[]; loading: boolean }) {
-  if (loading) return <div className="empty-state">加载数据中...</div>;
-  if (columns.length === 0) return <div className="empty-state">暂无数据<br />分析完成后数据将在此显示</div>;
+  const { t } = useTranslation('common');
+  if (loading) return <div className="empty-state">{t('files.loadingData')}</div>;
+  if (columns.length === 0) return <div className="empty-state">{t('files.noData')}<br />{t('files.noDataHint')}</div>;
   return (
     <div className="data-table-container">
       <table className="data-table">

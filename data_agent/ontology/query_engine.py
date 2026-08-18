@@ -6,6 +6,7 @@ from collections import deque
 from datetime import UTC, datetime
 from typing import Any
 
+from ..i18n import t
 from .okf_bundle import okf_reference
 from .package_reader import DOMAIN_MODEL_KINDS
 from .query_contracts import OntologyQueryPlan, OntologyQueryType
@@ -66,14 +67,14 @@ class OntologyQueryEngine:
                     )
                 payload = self._relation_path(concept, target["concept"], plan)
             else:  # pragma: no cover - Pydantic enum makes this unreachable
-                raise ValueError("unsupported ontology query type")
+                raise ValueError(t("ontology_query.unsupported_type"))
 
         workspace = payload.pop("workspace_update", None) or {"tab": "ontology"}
         return self._envelope(plan, payload, workspace_update=workspace)
 
     def _resolve(self, reference: str, domain_id: str | None) -> dict[str, Any]:
         if not reference:
-            return {"status": "invalid_plan", "message": "subject concept is required"}
+            return {"status": "invalid_plan", "message": t("ontology_query.subject_required")}
         exact = self.service.get_concept(reference)
         if exact:
             return {"status": "resolved", "concept": exact}
@@ -100,9 +101,9 @@ class OntologyQueryEngine:
             return {"status": "resolved", "concept": items[0]}
         return {
             "status": "needs_disambiguation" if items else "not_found",
-            "message": "存在多个本体候选，请使用稳定 ID 指定概念。"
+            "message": t("ontology_query.needs_disambiguation")
             if items
-            else "未找到匹配的领域概念。",
+            else t("ontology_query.not_found"),
             "reference": reference,
             "candidates": [self._concept_summary(item) for item in items],
         }
@@ -139,8 +140,16 @@ class OntologyQueryEngine:
             "children": [row["other_concept"] for row in children],
             "relations": semantic_relations[: plan.limit],
             "answer_facts": [
-                f"{concept['pref_label']}是{concept.get('definition') or '尚待领域定义的概念'}",
-                f"直接上位类 {len(parents)} 个，直接下位类 {len(children)} 个。",
+                t(
+                    "ontology_query.fact.concept_definition",
+                    concept=concept["pref_label"],
+                    definition=concept.get("definition") or t("ontology_query.definition_pending"),
+                ),
+                t(
+                    "ontology_query.fact.hierarchy_counts",
+                    parents=len(parents),
+                    children=len(children),
+                ),
             ],
             "rdf_projection": projection,
             "warnings": [warning] if warning else [],
@@ -165,8 +174,12 @@ class OntologyQueryEngine:
             "root": self._concept_summary(concept, include_definition=True),
             "hierarchy": {**graph, "edges": edges, "edge_count": len(edges)},
             "answer_facts": [
-                f"以{concept['pref_label']}为中心返回 {graph.get('node_count', 0)} 个领域概念。",
-                "层级边采用 rdfs:subClassOf，方向为子类指向父类。",
+                t(
+                    "ontology_query.fact.hierarchy_center",
+                    concept=concept["pref_label"],
+                    count=graph.get("node_count", 0),
+                ),
+                t("ontology_query.fact.hierarchy_direction"),
             ],
             "rdf_projection": projection,
             "warnings": [warning] if warning else [],
@@ -206,10 +219,12 @@ class OntologyQueryEngine:
         )
         details["answer_facts"].insert(
             0,
-            (
-                f"{concept['pref_label']}"
-                + ("允许" if matches_target else "未注册为允许")
-                + f"转为{target_concept['pref_label']}。"
+            t(
+                "ontology_query.fact.transition_allowed"
+                if matches_target
+                else "ontology_query.fact.transition_not_allowed",
+                source=concept["pref_label"],
+                target=target_concept["pref_label"],
             ),
         )
         return details
@@ -279,11 +294,13 @@ class OntologyQueryEngine:
             "allowed_target_states": target_states,
             "semantic_requirements": requirements,
             "answer_facts": [
-                (
-                    f"{concept['pref_label']}允许 {len(source_states)} 类源状态和 "
-                    f"{len(target_states)} 类目标状态。"
+                t(
+                    "ontology_query.fact.process_states",
+                    concept=concept["pref_label"],
+                    sources=len(source_states),
+                    targets=len(target_states),
                 ),
-                "批准文件、法律依据等要求来自过程上位类的对象属性及发布包 SHACL 约束。",
+                t("ontology_query.fact.process_requirements"),
             ],
             "rdf_projection": projection,
             "warnings": [warning] if warning else [],
@@ -306,8 +323,11 @@ class OntologyQueryEngine:
                 "state_scope": [],
                 "processes": [],
                 "answer_facts": [
-                    f"{concept['pref_label']}尚未注册到土地利用状态类，因此没有可执行的转换规则。",
-                    "这不代表业务上绝对不存在转换，只表示当前发布本体没有形成受治理规则。",
+                    t(
+                        "ontology_query.fact.no_land_state",
+                        concept=concept["pref_label"],
+                    ),
+                    t("ontology_query.fact.no_land_state_scope"),
                 ],
                 "rdf_projection": None,
                 "warnings": [],
@@ -337,7 +357,10 @@ class OntologyQueryEngine:
                     "target_state_scope": [],
                     "processes": [],
                     "answer_facts": [
-                        f"{target_concept['pref_label']}尚未注册到土地利用状态类，无法形成受治理的目标状态过滤。"
+                        t(
+                            "ontology_query.fact.no_target_state",
+                            concept=target_concept["pref_label"],
+                        )
                     ],
                     "rdf_projection": None,
                     "warnings": [],
@@ -416,15 +439,16 @@ class OntologyQueryEngine:
             "target_state_scope": [self._concept_summary(item) for item in target_scope],
             "processes": processes,
             "answer_facts": [
-                (
-                    f"将{concept['pref_label']}按{state['pref_label']}解释，"
-                    + (
-                        f"以{target_label}为目标过滤后找到 {len(processes)} 个受治理转换过程。"
-                        if target_label
-                        else f"在其上下位状态范围内找到 {len(processes)} 个受治理转换过程。"
-                    )
+                t(
+                    "ontology_query.fact.processes_for_target"
+                    if target_label
+                    else "ontology_query.fact.processes_in_scope",
+                    concept=concept["pref_label"],
+                    state=state["pref_label"],
+                    target=target_label or "",
+                    count=len(processes),
                 ),
-                "每个过程分别给出允许源状态、允许目标状态及继承的审批/依据要求。",
+                t("ontology_query.fact.process_details"),
             ],
             "rdf_projection": projection,
             "warnings": [warning] if warning else [],
@@ -442,7 +466,7 @@ class OntologyQueryEngine:
         if not self.sparql.configured:
             return (
                 None,
-                "Fuseki RDF projection is not configured; authority/package result was used.",
+                t("ontology_query.rdf_not_configured"),
             )
         rows: list[dict[str, Any]] = []
         try:
@@ -464,7 +488,7 @@ class OntologyQueryEngine:
                     for row in result.rows
                 )
         except SparqlProjectionUnavailable as exc:
-            return None, f"RDF projection unavailable; governed fallback used: {exc}"
+            return None, t("ontology_query.rdf_unavailable", error=exc)
         return {
             "backend": "apache_jena_fuseki_tdb2",
             "template_id": "transition_rules_by_process",
@@ -603,8 +627,14 @@ class OntologyQueryEngine:
             "path": found or [],
             "visited_count": len(visited),
             "answer_facts": [
-                f"在最大 {plan.depth} 跳、{self.MAX_PATH_VISITS} 节点预算内"
-                + (f"找到 {len(found)} 跳语义路径。" if found else "未找到关系路径。")
+                t(
+                    "ontology_query.fact.path_found"
+                    if found
+                    else "ontology_query.fact.path_not_found",
+                    depth=plan.depth,
+                    budget=self.MAX_PATH_VISITS,
+                    hops=len(found) if found else 0,
+                )
             ],
             "workspace_update": {
                 "tab": "ontology",
@@ -615,7 +645,7 @@ class OntologyQueryEngine:
 
     def _schema_mapping(self, plan: OntologyQueryPlan) -> dict[str, Any]:
         if not plan.field_codes:
-            return {"status": "invalid_plan", "message": "field_codes is required"}
+            return {"status": "invalid_plan", "message": t("ontology_query.field_codes_required")}
         aligned = self.service.align_fields(
             [{"code": code, "name": code} for code in plan.field_codes],
             domain_id=plan.domain_id,
@@ -641,11 +671,11 @@ class OntologyQueryEngine:
             "field_alignment": aligned,
             "curated_application_mappings": curated,
             "answer_facts": [
-                (
-                    f"对 {len(plan.field_codes)} 个字段执行代码/名称确定性匹配；"
-                    "候选结果不会自动晋升为正式映射。"
+                t(
+                    "ontology_query.fact.field_matching",
+                    count=len(plan.field_codes),
                 ),
-                f"命中 {len(curated)} 条已版本化演示应用映射。",
+                t("ontology_query.fact.curated_mappings", count=len(curated)),
             ],
             "workspace_update": {"tab": "ontology", "view": "mappings"},
         }
@@ -662,7 +692,7 @@ class OntologyQueryEngine:
                 "status": "attestation_failed",
                 "scenario_result": result,
                 "answer_facts": [
-                    "场景执行证明未通过，业务结果和地图图层已阻止展示。"
+                    t("ontology_query.fact.attestation_failed")
                 ],
                 "workspace_update": {
                     "tab": "ontology_demo",
@@ -694,7 +724,7 @@ class OntologyQueryEngine:
         if not self.sparql.configured:
             return (
                 None,
-                "Fuseki RDF projection is not configured; authority/package result was used.",
+                t("ontology_query.rdf_not_configured"),
             )
         try:
             result = self.sparql.select(
@@ -709,7 +739,7 @@ class OntologyQueryEngine:
                 "rows": result.rows,
             }, None
         except SparqlProjectionUnavailable as exc:
-            return None, f"RDF projection unavailable; governed fallback used: {exc}"
+            return None, t("ontology_query.rdf_unavailable", error=exc)
 
     def _envelope(
         self,

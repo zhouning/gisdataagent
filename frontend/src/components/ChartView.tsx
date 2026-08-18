@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import ReactECharts from 'echarts-for-react';
 
 interface ChartViewProps {
@@ -10,6 +11,7 @@ interface ChartViewProps {
 }
 
 export default function ChartView({ option, chartId, height, compact, onReady }: ChartViewProps) {
+  const { t } = useTranslation();
   const chartRef = useRef<any>(null);
 
   useEffect(() => {
@@ -19,7 +21,7 @@ export default function ChartView({ option, chartId, height, compact, onReady }:
   }, [onReady]);
 
   if (!option || typeof option !== 'object') {
-    return <div className="chart-empty">无图表数据</div>;
+    return <div className="chart-empty">{t('chartView.empty')}</div>;
   }
 
   const style = {

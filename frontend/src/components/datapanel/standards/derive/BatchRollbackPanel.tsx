@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Plus, RotateCcw } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { formatNumber } from "../../../../i18n";
 import {
   rollbackDerivationsBatch,
   BatchRollbackResult,
@@ -19,20 +21,11 @@ const parseIds = (value: string) => Array.from(new Set(
 const messageOf = (value: unknown) =>
   value instanceof Error ? value.message : String(value);
 
-const summarizeStrategies = (item: BatchRollbackResult["rolled_back"][number]) => {
-  const entries = Object.entries(item.by_strategy);
-  if (entries.length === 0) return item.status;
-  return entries
-    .map(([strategy, summary]) =>
-      `${strategy}: links ${summary.links_marked}, downstream ${summary.downstream_marked}`,
-    )
-    .join("; ");
-};
-
 export default function BatchRollbackPanel({
   versionId,
   onRollbackComplete,
 }: Props) {
+  const { t } = useTranslation();
   const [idsText, setIdsText] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -41,6 +34,20 @@ export default function BatchRollbackPanel({
 
   const versionIds = useMemo(() => parseIds(idsText), [idsText]);
   const tooManyIds = versionIds.length > MAX_BATCH_ROLLBACK_IDS;
+
+  const summarizeStrategies = (item: BatchRollbackResult["rolled_back"][number]) => {
+    const entries = Object.entries(item.by_strategy);
+    if (entries.length === 0) {
+      return t(`standards.derive.rollback.status.${item.status}`, {defaultValue: item.status});
+    }
+    return entries
+      .map(([strategy, summary]) => t("standards.derive.rollback.strategySummary", {
+        strategy,
+        links: formatNumber(summary.links_marked),
+        downstream: formatNumber(summary.downstream_marked),
+      }))
+      .join("; ");
+  };
 
   const addCurrent = () => {
     if (!versionId) return;
@@ -62,7 +69,7 @@ export default function BatchRollbackPanel({
       setResult(r);
       onRollbackComplete();
     } catch (e) {
-      setError(`回滚失败: ${messageOf(e)}`);
+      setError(t("standards.derive.rollback.failed", {message: messageOf(e)}));
     } finally {
       setBusy(false);
     }
@@ -77,7 +84,7 @@ export default function BatchRollbackPanel({
         display: "flex", justifyContent: "space-between",
         gap: 8, alignItems: "center", marginBottom: 6,
       }}>
-        <div style={{fontSize: 12, fontWeight: 500}}>批量回滚</div>
+        <div style={{fontSize: 12, fontWeight: 500}}>{t("standards.derive.rollback.title")}</div>
         <button
           type="button"
           onClick={addCurrent}
@@ -91,14 +98,14 @@ export default function BatchRollbackPanel({
             whiteSpace: "nowrap",
           }}>
           <Plus size={12} aria-hidden="true" />
-          加入当前版本
+          {t("standards.derive.rollback.addCurrent")}
         </button>
       </div>
 
       <textarea
         value={idsText}
         onChange={e => setIdsText(e.currentTarget.value)}
-        placeholder="version ID，支持换行、逗号、分号或空白分隔"
+        placeholder={t("standards.derive.rollback.idsPlaceholder")}
         rows={4}
         disabled={busy}
         style={{
@@ -110,7 +117,7 @@ export default function BatchRollbackPanel({
       <input
         value={reason}
         onChange={e => setReason(e.currentTarget.value)}
-        placeholder="reason (optional)"
+        placeholder={t("standards.derive.rollback.reasonPlaceholder")}
         disabled={busy}
         style={{
           width: "100%", boxSizing: "border-box", marginTop: 6,
@@ -125,7 +132,10 @@ export default function BatchRollbackPanel({
             marginTop: 6, color: "#a33", lineHeight: 1.35,
             overflowWrap: "anywhere",
           }}>
-          最多支持 {MAX_BATCH_ROLLBACK_IDS} 个版本，当前 {versionIds.length} 个。
+          {t("standards.derive.rollback.tooMany", {
+            max: formatNumber(MAX_BATCH_ROLLBACK_IDS),
+            count: formatNumber(versionIds.length),
+          })}
         </div>
       )}
       <button
@@ -142,7 +152,9 @@ export default function BatchRollbackPanel({
             ? "not-allowed" : "pointer",
         }}>
         <RotateCcw size={12} aria-hidden="true" />
-        {busy ? "回滚中..." : `回滚 ${versionIds.length} 个版本`}
+        {busy
+          ? t("standards.derive.rollback.running")
+          : t("standards.derive.rollback.action", {count: formatNumber(versionIds.length)})}
       </button>
 
       {error && (
@@ -158,7 +170,10 @@ export default function BatchRollbackPanel({
       {result && (
         <div role="status" style={{marginTop: 8}}>
           <div style={{color: "#075", marginBottom: 4}}>
-            rolled_back {result.rolled_back.length} / skipped {result.skipped.length}
+            {t("standards.derive.rollback.result", {
+              rolledBack: formatNumber(result.rolled_back.length),
+              skipped: formatNumber(result.skipped.length),
+            })}
           </div>
           <div style={{
             maxHeight: 180, overflow: "auto", borderTop: "1px solid #e6e6e6",

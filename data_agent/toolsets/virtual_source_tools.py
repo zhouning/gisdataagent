@@ -6,6 +6,7 @@ from typing import Optional
 from google.adk.tools import FunctionTool
 from google.adk.tools.base_toolset import BaseToolset
 
+from ..i18n import t as translate
 from ..user_context import current_user_id
 
 
@@ -21,14 +22,17 @@ def _find_source(source_name: str):
     sources = list_virtual_sources(username)
     match = [s for s in sources if s["source_name"] == source_name]
     if not match:
-        return None, json.dumps({"status": "error", "message": f"未找到数据源 '{source_name}'"},
+        return None, json.dumps({"status": "error", "message": translate(
+                                    "virtual_source.not_found", name=source_name)},
                                 ensure_ascii=False)
     source = get_virtual_source(match[0]["id"], username)
     if not source:
-        return None, json.dumps({"status": "error", "message": "无法读取数据源详情"},
+        return None, json.dumps({"status": "error", "message": translate(
+                                    "virtual_source.details_unavailable")},
                                 ensure_ascii=False)
     if not source.get("enabled", True):
-        return None, json.dumps({"status": "error", "message": f"数据源 '{source_name}' 已禁用"},
+        return None, json.dumps({"status": "error", "message": translate(
+                                    "virtual_source.disabled", name=source_name)},
                                 ensure_ascii=False)
     return source, None
 
@@ -48,7 +52,11 @@ def list_virtual_sources_tool() -> str:
         username = current_user_id.get("")
         sources = list_virtual_sources(username, include_shared=True)
         if not sources:
-            return json.dumps({"status": "ok", "message": "暂无已注册的虚拟数据源", "sources": []},
+            return json.dumps({
+                "status": "ok",
+                "message": translate("virtual_source.none_registered"),
+                "sources": [],
+            },
                               ensure_ascii=False)
         summary = [{
             "id": s["id"], "name": s["source_name"], "type": s["source_type"],
@@ -59,7 +67,10 @@ def list_virtual_sources_tool() -> str:
         return json.dumps({"status": "ok", "count": len(summary), "sources": summary},
                           ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({
+            "status": "error",
+            "message": translate("virtual_source.list_failed", error=e),
+        }, ensure_ascii=False)
 
 
 async def query_virtual_source_tool(
@@ -111,7 +122,10 @@ async def query_virtual_source_tool(
                 "status": "ok",
                 "source": source_name,
                 "type": "wms",
-                "message": f"已将WMS图层 '{result.get('name', source_name)}' 添加到地图",
+                "message": translate(
+                    "virtual_source.wms_added",
+                    name=result.get("name", source_name),
+                ),
                 "map_update": map_update,
             }, ensure_ascii=False)
 
@@ -148,7 +162,8 @@ async def query_virtual_source_tool(
         }, ensure_ascii=False, default=str)
 
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e),
+        return json.dumps({"status": "error", "message": translate(
+                               "virtual_source.query_failed", error=e),
                            "trace": traceback.format_exc()[:500]}, ensure_ascii=False)
 
 
@@ -198,7 +213,10 @@ def register_virtual_source_tool(
 
         username = current_user_id.get("")
         if not username:
-            return json.dumps({"status": "error", "message": "未登录"}, ensure_ascii=False)
+            return json.dumps({
+                "status": "error",
+                "message": translate("virtual_source.login_required"),
+            }, ensure_ascii=False)
 
         auth_config = {}
         if auth_type and auth_type != "none":
@@ -224,10 +242,16 @@ def register_virtual_source_tool(
         )
         return json.dumps(result, ensure_ascii=False)
     except json.JSONDecodeError:
-        return json.dumps({"status": "error", "message": "query_config 不是合法的JSON"},
+        return json.dumps({
+            "status": "error",
+            "message": translate("virtual_source.invalid_query_config"),
+        },
                           ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({
+            "status": "error",
+            "message": translate("virtual_source.register_failed", error=e),
+        }, ensure_ascii=False)
 
 
 async def check_virtual_source_health_tool(source_name: str) -> str:
@@ -246,13 +270,17 @@ async def check_virtual_source_health_tool(source_name: str) -> str:
         sources = list_virtual_sources(username)
         match = [s for s in sources if s["source_name"] == source_name]
         if not match:
-            return json.dumps({"status": "error", "message": f"未找到数据源 '{source_name}'"},
+            return json.dumps({"status": "error", "message": translate(
+                                  "virtual_source.not_found", name=source_name)},
                               ensure_ascii=False)
 
         result = await check_source_health(match[0]["id"], username)
         return json.dumps(result, ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({
+            "status": "error",
+            "message": translate("virtual_source.health_failed", error=e),
+        }, ensure_ascii=False)
 
 
 async def discover_layers_tool(source_name: str) -> str:
@@ -272,7 +300,10 @@ async def discover_layers_tool(source_name: str) -> str:
         from ..connectors import ConnectorRegistry
         connector = ConnectorRegistry.get(source["source_type"])
         if not connector:
-            return json.dumps({"status": "error", "message": f"未知数据源类型: {source['source_type']}"},
+            return json.dumps({"status": "error", "message": translate(
+                                  "virtual_source.unknown_type",
+                                  source_type=source["source_type"],
+                              )},
                               ensure_ascii=False)
 
         caps = await connector.get_capabilities(
@@ -281,7 +312,10 @@ async def discover_layers_tool(source_name: str) -> str:
         )
         return json.dumps({"status": "ok", "source": source_name, **caps}, ensure_ascii=False, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({
+            "status": "error",
+            "message": translate("virtual_source.discovery_failed", error=e),
+        }, ensure_ascii=False)
 
 
 async def add_wms_layer_tool(
@@ -309,13 +343,17 @@ async def add_wms_layer_tool(
             return err
 
         if source["source_type"] != "wms":
-            return json.dumps({"status": "error", "message": f"数据源 '{source_name}' 不是WMS类型"},
+            return json.dumps({"status": "error", "message": translate(
+                                  "virtual_source.not_wms", name=source_name)},
                               ensure_ascii=False)
 
         qcfg = source.get("query_config", {})
         layers = layer_names or qcfg.get("layers", "")
         if not layers:
-            return json.dumps({"status": "error", "message": "请指定要显示的WMS图层名称 (layer_names)"},
+            return json.dumps({
+                "status": "error",
+                "message": translate("virtual_source.layer_name_required"),
+            },
                               ensure_ascii=False)
 
         is_transparent = transparent.lower() == "true" if isinstance(transparent, str) else bool(transparent)
@@ -343,11 +381,14 @@ async def add_wms_layer_tool(
             "status": "ok",
             "source": source_name,
             "type": "wms",
-            "message": f"已将WMS图层 '{layers}' 添加到地图",
+            "message": translate("virtual_source.wms_added", name=layers),
             "map_update": map_update,
         }, ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({
+            "status": "error",
+            "message": translate("virtual_source.add_wms_failed", error=e),
+        }, ensure_ascii=False)
 
 
 # ---------------------------------------------------------------------------

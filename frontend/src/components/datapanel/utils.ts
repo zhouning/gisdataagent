@@ -45,16 +45,6 @@ export function getAssetIcon(type: string): string {
   }
 }
 
-export function getPipelineLabel(type: string): string {
-  switch (type) {
-    case 'optimization': return '空间优化';
-    case 'governance': return '数据治理';
-    case 'general': return '通用分析';
-    case 'planner': return '动态规划';
-    default: return type;
-  }
-}
-
 export function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;

@@ -10,6 +10,7 @@ import os
 import uuid
 from typing import Optional, Union, List
 
+from .i18n import t
 from .user_context import get_user_upload_dir
 
 _BASE_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
@@ -847,7 +848,7 @@ def list_fgdb_layers(file_path: str) -> dict:
         path = _resolve_path(file_path)
         layers = fiona.listlayers(path)
         if not layers:
-            return {"status": "ok", "layers": [], "message": "GDB 为空"}
+            return {"status": "ok", "layers": [], "message": t("gis_processors.gdb_empty")}
         result = []
         for name in layers:
             try:
@@ -859,10 +860,20 @@ def list_fgdb_layers(file_path: str) -> dict:
                         "fields": list(src.schema.get("properties", {}).keys()),
                     })
             except Exception as e:
-                result.append({"name": name, "error": str(e)[:100]})
+                result.append({
+                    "name": name,
+                    "error": t("gis_processors.layer_failed", layer=name, error=str(e)[:100]),
+                })
         return {"status": "ok", "layer_count": len(result), "layers": result}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {
+            "status": "error",
+            "message": t(
+                "gis_processors.operation_failed",
+                operation=t("gis_processors.operation.list_fgdb"),
+                error=e,
+            ),
+        }
 
 
 def list_dxf_layers(file_path: str) -> dict:
@@ -890,7 +901,14 @@ def list_dxf_layers(file_path: str) -> dict:
         layers = sorted(layer_stats.values(), key=lambda x: x["count"], reverse=True)
         return {"status": "ok", "layer_count": len(layers), "layers": layers}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {
+            "status": "error",
+            "message": t(
+                "gis_processors.operation_failed",
+                operation=t("gis_processors.operation.list_dxf"),
+                error=e,
+            ),
+        }
 
 
 def check_field_standards(file_path: str, standard_schema: str = "") -> dict[str, any]:
@@ -912,12 +930,21 @@ def check_field_standards(file_path: str, standard_schema: str = "") -> dict[str
             schema = StandardRegistry.get_field_schema(std_id)
             standard_obj = StandardRegistry.get(std_id)
             if not schema:
-                return {"status": "error", "message": f"未找到标准定义: {standard_schema}"}
+                return {
+                    "status": "error",
+                    "message": t(
+                        "gis_processors.standard_not_found",
+                        standard=standard_schema,
+                    ),
+                }
         elif standard_schema:
             import json as _json
             schema = _json.loads(standard_schema)
         else:
-            return {"status": "error", "message": "请提供标准ID (如 'dltb_2023') 或 JSON schema"}
+            return {
+                "status": "error",
+                "message": t("gis_processors.standard_required"),
+            }
 
         gdf = gpd.read_file(_resolve_path(file_path))
         results = {
@@ -1004,7 +1031,14 @@ def check_field_standards(file_path: str, standard_schema: str = "") -> dict[str
         results["is_standard"] = not (results["missing_mandatory"] or results["invalid_values"])
         return results
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {
+            "status": "error",
+            "message": t(
+                "gis_processors.operation_failed",
+                operation=t("gis_processors.operation.field_standards"),
+                error=e,
+            ),
+        }
 
 
 def polygon_neighbors(file_path: str) -> str:
@@ -1018,7 +1052,7 @@ def polygon_neighbors(file_path: str) -> str:
     try:
         gdf = gpd.read_file(_resolve_path(file_path))
         if gdf.empty:
-            return "错误：数据为空"
+            return t("gis_processors.data_empty")
         # Project to planar CRS for accurate length measurement
         if gdf.crs and gdf.crs.is_geographic:
             gdf_proj = gdf.to_crs(epsg=3857)
@@ -1054,7 +1088,7 @@ def polygon_neighbors(file_path: str) -> str:
         result.to_csv(out_path, index=False, encoding='utf-8')
         return out_path
     except Exception as e:
-        return f"面邻域分析失败: {str(e)}"
+        return t("gis_processors.polygon_neighbors_failed", error=e)
 
 
 def add_field(file_path: str, field_name: str, field_type: str = "TEXT",
@@ -1080,7 +1114,7 @@ def add_field(file_path: str, field_name: str, field_type: str = "TEXT",
         gdf.to_file(out_path, encoding='utf-8')
         return out_path
     except Exception as e:
-        return f"添加字段失败: {str(e)}"
+        return t("gis_processors.add_field_failed", error=e)
 
 
 def add_join(target_file: str, join_file: str,
@@ -1109,15 +1143,19 @@ def add_join(target_file: str, join_file: str,
         result.to_file(out_path, encoding='utf-8')
         return out_path
     except FileNotFoundError as e:
-        return f"属性连接失败: {e}。Recovery: 请先调用 search_data_assets 或 list_user_files 检查可用文件"
+        return t(
+            "gis_processors.join_failed_with_recovery",
+            error=e,
+            recovery=t("gis_processors.recovery.check_assets"),
+        )
     except Exception as e:
         err = str(e)
         recovery = ""
         if "column" in err.lower() or "not in" in err.lower() or "KeyError" in err:
-            recovery = " Recovery: 连接字段不存在，请先调用 describe_geodataframe 查看可用字段列表"
+            recovery = t("gis_processors.recovery.check_fields")
         elif "CRS" in err or "crs" in err:
-            recovery = " Recovery: 两个数据集坐标系不一致，请先调用 reproject_spatial_data 统一坐标系"
-        return f"属性连接失败: {err}{recovery}"
+            recovery = t("gis_processors.recovery.reproject")
+        return t("gis_processors.join_failed", error=err, recovery=recovery)
 
 
 def calculate_field(file_path: str, field_name: str, expression: str) -> str:
@@ -1141,7 +1179,7 @@ def calculate_field(file_path: str, field_name: str, expression: str) -> str:
         gdf.to_file(out_path, encoding='utf-8')
         return out_path
     except Exception as e:
-        return f"字段计算失败: {str(e)}"
+        return t("gis_processors.calculate_field_failed", error=e)
 
 
 def summary_statistics(file_path: str, stats_fields: str,
@@ -1170,7 +1208,7 @@ def summary_statistics(file_path: str, stats_fields: str,
             field, stat = parts[0], parts[1].upper()
             agg_dict.setdefault(field, []).append(stat_map.get(stat, stat.lower()))
         if not agg_dict:
-            return "错误：未能解析统计规则，格式应为 'field1 SUM;field2 MEAN'"
+            return t("gis_processors.statistics_rules_invalid")
         if case_field:
             case_fields = [f.strip() for f in case_field.split(';')]
             result = df.groupby(case_fields).agg(agg_dict)
@@ -1185,4 +1223,4 @@ def summary_statistics(file_path: str, stats_fields: str,
         result.to_csv(out_path, index=False, encoding='utf-8')
         return out_path
     except Exception as e:
-        return f"汇总统计失败: {str(e)}"
+        return t("gis_processors.statistics_failed", error=e)

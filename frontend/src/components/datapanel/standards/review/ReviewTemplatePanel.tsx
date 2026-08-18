@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { formatNumber } from "../../../../i18n";
 import {
   ReviewTemplate,
   ReviewTemplateStepStatus,
@@ -9,13 +11,6 @@ interface Props {
   versionId: string;
   refreshKey: number;
 }
-
-const statusLabel: Record<ReviewTemplateStepStatus, string> = {
-  done: "已完成",
-  active: "当前",
-  blocked: "阻塞",
-  pending: "待开始",
-};
 
 const statusColor: Record<ReviewTemplateStepStatus, {
   bg: string; fg: string; border: string;
@@ -41,6 +36,7 @@ function Chip({label, value}: {label: string; value: React.ReactNode}) {
 }
 
 export default function ReviewTemplatePanel({versionId, refreshKey}: Props) {
+  const { t } = useTranslation();
   const [template, setTemplate] = useState<ReviewTemplate | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +50,7 @@ export default function ReviewTemplatePanel({versionId, refreshKey}: Props) {
       .catch((e: any) => {
         if (alive) {
           setTemplate(null);
-          setError(e?.message || "加载失败");
+          setError(e?.message || "");
         }
       })
       .finally(() => { if (alive) setLoading(false); });
@@ -66,7 +62,7 @@ export default function ReviewTemplatePanel({versionId, refreshKey}: Props) {
   if (loading && (!template || stale)) {
     return (
       <div style={panelStyle}>
-        <div style={{fontSize: 13, color: "#6b7280"}}>审定流模板加载中</div>
+        <div style={{fontSize: 13, color: "#6b7280"}}>{t("standards.review.template.loading")}</div>
       </div>
     );
   }
@@ -75,7 +71,7 @@ export default function ReviewTemplatePanel({versionId, refreshKey}: Props) {
     return (
       <div style={panelStyle}>
         <div style={{fontSize: 13, color: "#b91c1c"}}>
-          审定流模板加载失败: {error}
+          {t("standards.review.template.loadFailed", {message: error || t("errors.unknown")})}
         </div>
       </div>
     );
@@ -86,6 +82,12 @@ export default function ReviewTemplatePanel({versionId, refreshKey}: Props) {
   }
 
   const {summary} = template;
+  const roundStatus = (value: string | null) => value
+    ? t(`standards.review.round.status.${value}`, {defaultValue: value})
+    : "";
+  const roundOutcome = (value: string | null) => value
+    ? t(`standards.review.round.outcome.${value}`, {defaultValue: value})
+    : "";
   return (
     <div style={panelStyle}>
       <div style={{
@@ -93,23 +95,23 @@ export default function ReviewTemplatePanel({versionId, refreshKey}: Props) {
         gap: 12, marginBottom: 8,
       }}>
         <div style={{fontSize: 14, fontWeight: 650, color: "#111827"}}>
-          审定流模板
+          {t("standards.review.template.title")}
         </div>
         <div style={{
           display: "flex", flexWrap: "wrap", justifyContent: "flex-end",
           gap: 6,
         }}>
-          <Chip label="版本" value={template.version_status}/>
-          <Chip label="Round" value={
+          <Chip label={t("standards.review.template.version")} value={t(`standards.status.${template.version_status}`, {defaultValue: template.version_status})}/>
+          <Chip label={t("standards.review.template.round")} value={
             summary.open_round_id
-              ? `open ${summary.open_round_id.slice(0, 8)}`
+              ? t("standards.review.template.openRound", {id: summary.open_round_id.slice(0, 8)})
               : summary.latest_round_status
-                ? `${summary.latest_round_status} ${summary.latest_round_outcome || ""}`
-                : "无"
+                ? `${roundStatus(summary.latest_round_status)} ${roundOutcome(summary.latest_round_outcome)}`
+                : t("standards.review.template.none")
           }/>
-          <Chip label="Reviewer" value={summary.reviewer_user_id || "未指定"}/>
-          <Chip label="待审引用" value={summary.pending_refs}/>
-          <Chip label="未决意见" value={summary.open_comments}/>
+          <Chip label={t("standards.review.template.reviewer")} value={summary.reviewer_user_id || t("standards.review.template.unassigned")}/>
+          <Chip label={t("standards.review.template.pendingReferences")} value={formatNumber(summary.pending_refs)}/>
+          <Chip label={t("standards.review.template.openComments")} value={formatNumber(summary.open_comments)}/>
         </div>
       </div>
       <div style={{
@@ -144,7 +146,7 @@ export default function ReviewTemplatePanel({versionId, refreshKey}: Props) {
                   border: `1px solid ${colors.border}`, fontSize: 11,
                   lineHeight: "18px",
                 }}>
-                  {statusLabel[step.status]}
+                  {t(`standards.review.template.stepStatus.${step.status}`)}
                 </span>
               </div>
               <div style={{fontSize: 11, color: "#4b5563", lineHeight: 1.25}}>
@@ -160,7 +162,10 @@ export default function ReviewTemplatePanel({versionId, refreshKey}: Props) {
           border: "1px solid #fecaca", background: "#fef2f2",
           color: "#991b1b", fontSize: 12,
         }}>
-          当前阻塞: {summary.pending_refs} 条引用待审，{summary.open_comments} 条意见未决
+          {t("standards.review.template.blockedSummary", {
+            references: formatNumber(summary.pending_refs),
+            comments: formatNumber(summary.open_comments),
+          })}
         </div>
       )}
     </div>

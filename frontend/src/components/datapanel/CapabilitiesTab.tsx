@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { getLocaleHeaders, formatNumber } from '../../i18n';
 import PlatformCapabilitiesPanel from './PlatformCapabilitiesPanel';
 
 interface CapabilityItem {
@@ -16,34 +18,31 @@ interface CapabilityItem {
   model_tier?: string;
   is_shared?: boolean;
   depends_on?: number[];
+  author_username?: string;
+  tags?: string[];
 }
 
 type CapFilter = 'all' | 'builtin_skill' | 'custom_skill' | 'toolset' | 'user_tool' | 'bundle' | 'template';
 
 const TOOLSETS = [
-  { name: 'ExplorationToolset', label: '数据探查与质量审计' },
-  { name: 'GeoProcessingToolset', label: '缓冲区、叠加、裁剪' },
-  { name: 'LocationToolset', label: '地理编码、POI搜索' },
-  { name: 'AnalysisToolset', label: '空间统计与属性分析' },
-  { name: 'VisualizationToolset', label: '地图渲染、3D可视化' },
-  { name: 'DatabaseToolset', label: 'PostGIS查询与管理' },
-  { name: 'FileToolset', label: '文件读写与格式转换' },
-  { name: 'MemoryToolset', label: '空间记忆存储与检索' },
-  { name: 'AdminToolset', label: '用户管理与系统配置' },
-  { name: 'RemoteSensingToolset', label: '遥感影像与DEM下载' },
-  { name: 'SpatialStatisticsToolset', label: '空间自相关与热点' },
-  { name: 'SemanticLayerToolset', label: '语义目录浏览' },
-  { name: 'StreamingToolset', label: '流式输出与进度推送' },
-  { name: 'TeamToolset', label: '团队协作与资产共享' },
-  { name: 'DataLakeToolset', label: '数据湖资产注册' },
-  { name: 'McpHubToolset', label: 'MCP外部工具集成' },
-  { name: 'FusionToolset', label: '多源数据融合' },
-  { name: 'KnowledgeGraphToolset', label: '知识图谱构建' },
-  { name: 'KnowledgeBaseToolset', label: '知识库与RAG检索' },
-  { name: 'AdvancedAnalysisToolset', label: '时序、网络、假设分析' },
-  { name: 'SpatialAnalysisTier2Toolset', label: '高级空间分析' },
-  { name: 'WatershedToolset', label: '流域提取与水文分析' },
-  { name: 'UserToolset', label: '用户自定义工具' },
+  'ExplorationToolset', 'GeoProcessingToolset', 'LocationToolset', 'AnalysisToolset',
+  'VisualizationToolset', 'DatabaseToolset', 'FileToolset', 'MemoryToolset',
+  'AdminToolset', 'RemoteSensingToolset', 'SpatialStatisticsToolset',
+  'SemanticLayerToolset', 'StreamingToolset', 'TeamToolset', 'DataLakeToolset',
+  'McpHubToolset', 'FusionToolset', 'KnowledgeGraphToolset', 'KnowledgeBaseToolset',
+  'AdvancedAnalysisToolset', 'SpatialAnalysisTier2Toolset', 'WatershedToolset',
+  'UserToolset',
+] as const;
+
+const BUILTIN_TEMPLATE_KEYS: Array<{ key: string; tag: string }> = [
+  { key: 'dataQualityAudit', tag: 'topology' },
+  { key: 'landUsePlan', tag: 'fragmentation' },
+  { key: 'landUseAnalysis', tag: 'land-use' },
+  { key: 'spatialStatistics', tag: 'Moran' },
+  { key: 'dataFusion', tag: 'fusion' },
+  { key: 'changeDetection', tag: 'temporal' },
+  { key: 'urbanHeatIsland', tag: 'heat-island' },
+  { key: 'vegetationChange', tag: 'vegetation' },
 ];
 
 const EMPTY_SKILL_FORM = {
@@ -53,6 +52,7 @@ const EMPTY_SKILL_FORM = {
 };
 
 export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
+  const { t, i18n } = useTranslation('common');
   const [capabilityView, setCapabilityView] = useState<'platform' | 'skills'>('platform');
   const [items, setItems] = useState<CapabilityItem[]>([]);
   const [filter, setFilter] = useState<CapFilter>('all');
@@ -100,12 +100,13 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
   const fetchCapabilities = async () => {
     setLoading(true);
     try {
+      const localeHeaders = getLocaleHeaders();
       const [capResp, utResp, bundleResp, availResp, tmplResp] = await Promise.all([
-        fetch('/api/capabilities', { credentials: 'include' }),
-        fetch('/api/user-tools', { credentials: 'include' }),
-        fetch('/api/bundles', { credentials: 'include' }),
-        fetch('/api/bundles/available-tools', { credentials: 'include' }),
-        fetch('/api/templates', { credentials: 'include' }),
+        fetch('/api/capabilities', { credentials: 'include', headers: localeHeaders }),
+        fetch('/api/user-tools', { credentials: 'include', headers: localeHeaders }),
+        fetch('/api/bundles', { credentials: 'include', headers: localeHeaders }),
+        fetch('/api/bundles/available-tools', { credentials: 'include', headers: localeHeaders }),
+        fetch('/api/templates', { credentials: 'include', headers: localeHeaders }),
       ]);
       let builtin: CapabilityItem[] = [], custom: CapabilityItem[] = [], toolsets: CapabilityItem[] = [], userTools: CapabilityItem[] = [];
       if (capResp.ok) {
@@ -135,7 +136,7 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
         const tData = await tmplResp.json();
         templateItems = (tData.templates || []).map((t: any) => ({
           ...t, name: t.template_name, type: 'template' as const,
-          description: `[${t.category || '通用'}] ${t.description || ''}`,
+          description: t.description || '',
           domain: t.category,
         }));
       }
@@ -147,12 +148,12 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
 
   useEffect(() => {
     if (capabilityView === 'skills') void fetchCapabilities();
-  }, [capabilityView]);
+  }, [capabilityView, i18n.resolvedLanguage]);
 
   const handleDeleteSkill = async (id: number) => {
-    if (!confirm('确定删除此自定义技能？')) return;
+    if (!confirm(t('capabilities.confirm.deleteSkill'))) return;
     try {
-      const resp = await fetch(`/api/skills/${id}`, { method: 'DELETE', credentials: 'include' });
+      const resp = await fetch(`/api/skills/${id}`, { method: 'DELETE', credentials: 'include', headers: getLocaleHeaders() });
       if (resp.ok) fetchCapabilities();
     } catch { /* ignore */ }
   };
@@ -181,8 +182,8 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
 
   const handleSaveSkill = async () => {
     setFormError('');
-    if (!skillForm.skill_name.trim()) { setFormError('技能名称必填'); return; }
-    if (!skillForm.instruction.trim()) { setFormError('指令必填'); return; }
+    if (!skillForm.skill_name.trim()) { setFormError(t('capabilities.errors.skillNameRequired')); return; }
+    if (!skillForm.instruction.trim()) { setFormError(t('capabilities.errors.instructionRequired')); return; }
     setSaving(true);
     try {
       const body = {
@@ -198,7 +199,7 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
       const method = editingSkill ? 'PUT' : 'POST';
       const resp = await fetch(url, {
         method, credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify(body),
       });
       const data = await resp.json();
@@ -208,9 +209,9 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
         setSkillForm({ ...EMPTY_SKILL_FORM });
         fetchCapabilities();
       } else {
-        setFormError(data.error || '保存失败');
+        setFormError(data.error || t('capabilities.errors.saveFailed'));
       }
-    } catch { setFormError('网络错误'); }
+    } catch { setFormError(t('capabilities.errors.network')); }
     finally { setSaving(false); }
   };
 
@@ -238,21 +239,21 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
   };
 
   const handleAiGenerate = async () => {
-    if (!aiDesc.trim()) { setAiError('请描述你想创建的技能'); return; }
+    if (!aiDesc.trim()) { setAiError(t('capabilities.errors.aiDescriptionRequired')); return; }
     setAiGenerating(true); setAiError(''); setAiPreview(null);
     try {
       const resp = await fetch('/api/skills/generate', {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({ description: aiDesc.trim() }),
       });
       const data = await resp.json();
       if (resp.ok && (data.config || data.skill)) {
         setAiPreview(data.config || data.skill);
       } else {
-        setAiError(data.error || 'AI 生成失败，请重试');
+        setAiError(data.error || t('capabilities.errors.aiGenerateFailed'));
       }
-    } catch { setAiError('网络错误'); }
+    } catch { setAiError(t('capabilities.errors.network')); }
     finally { setAiGenerating(false); }
   };
 
@@ -262,7 +263,7 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
     try {
       const resp = await fetch('/api/skills', {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify(aiPreview),
       });
       const data = await resp.json();
@@ -270,9 +271,9 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
         setShowAiGen(false); setAiPreview(null); setAiDesc('');
         fetchCapabilities();
       } else {
-        setAiError(data.error || '保存失败');
+        setAiError(data.error || t('capabilities.errors.saveFailed'));
       }
-    } catch { setAiError('网络错误'); }
+    } catch { setAiError(t('capabilities.errors.network')); }
     finally { setAiSaving(false); }
   };
 
@@ -307,19 +308,19 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
   };
 
   const handleDeleteTool = async (id: number) => {
-    if (!confirm('确定删除此自定义工具？')) return;
+    if (!confirm(t('capabilities.confirm.deleteTool'))) return;
     try {
-      const resp = await fetch(`/api/user-tools/${id}`, { method: 'DELETE', credentials: 'include' });
+      const resp = await fetch(`/api/user-tools/${id}`, { method: 'DELETE', credentials: 'include', headers: getLocaleHeaders() });
       if (resp.ok) fetchCapabilities();
     } catch { /* ignore */ }
   };
 
   const handleSaveTool = async () => {
     setToolError('');
-    if (!toolForm.tool_name.trim()) { setToolError('工具名称必填'); return; }
+    if (!toolForm.tool_name.trim()) { setToolError(t('capabilities.errors.toolNameRequired')); return; }
     let configObj: any;
     try { configObj = JSON.parse(toolForm.template_config); }
-    catch { setToolError('模板配置必须是有效 JSON'); return; }
+    catch { setToolError(t('capabilities.errors.templateJson')); return; }
     setSavingTool(true);
     try {
       const body = {
@@ -334,15 +335,15 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
       const method = editingTool ? 'PUT' : 'POST';
       const resp = await fetch(url, {
         method, credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify(body),
       });
       const data = await resp.json();
       if (resp.ok) {
         setShowToolForm(false); setEditingTool(null);
         fetchCapabilities();
-      } else { setToolError(data.error || '保存失败'); }
-    } catch { setToolError('网络错误'); }
+      } else { setToolError(data.error || t('capabilities.errors.saveFailed')); }
+    } catch { setToolError(t('capabilities.errors.network')); }
     finally { setSavingTool(false); }
   };
 
@@ -354,12 +355,12 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
     try {
       const resp = await fetch(`/api/user-tools/${editingTool.id}/test`, {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({ params: testParams }),
       });
       const data = await resp.json();
       setTestResult(data.result || data.message || JSON.stringify(data));
-    } catch (e) { setTestResult('测试失败: ' + e); }
+    } catch (e) { setTestResult(t('capabilities.errors.testFailed', { error: String(e) })); }
     finally { setTesting(false); }
   };
 
@@ -381,20 +382,14 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
     setToolForm(f => ({ ...f, parameters: f.parameters.filter((_, i) => i !== idx) }));
   };
 
-  const TEMPLATE_TYPES = [
-    { value: 'http_call', label: 'HTTP 调用' },
-    { value: 'sql_query', label: 'SQL 查询' },
-    { value: 'file_transform', label: '文件转换' },
-    { value: 'chain', label: '链式组合' },
-    { value: 'python_sandbox', label: 'Python 沙箱' },
-  ];
+  const TEMPLATE_TYPES = ['http_call', 'sql_query', 'file_transform', 'chain', 'python_sandbox'] as const;
 
   const TEMPLATE_HINTS: Record<string, string> = {
     http_call: '{"method":"GET","url":"https://api.example.com/data","headers":{},"extract_path":"data.result"}',
     sql_query: '{"query":"SELECT * FROM parcels WHERE area > :min_area","readonly":true}',
     file_transform: '{"operations":[{"op":"filter","column":"area","condition":">","value":100}],"output_format":"geojson"}',
     chain: '{"steps":[{"tool_name":"my_query","param_map":{"x":"$input.x"}}]}',
-    python_sandbox: '{"python_code":"def tool_function(params):\\n    # 在此编写处理逻辑\\n    return {\\\"result\\\": params.get(\\\"input\\\", \\\"hello\\\")}","timeout":30}',
+    python_sandbox: '{"python_code":"def tool_function(params):\\n    # Add processing logic here\\n    return {\\\"result\\\": params.get(\\\"input\\\", \\\"hello\\\")}","timeout":30}',
   };
 
   const filtered = items.filter(item => {
@@ -407,85 +402,112 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
       || (item.intent_triggers || '').toLowerCase().includes(q);
   });
 
-  const domainMap: Record<string, string> = {
-    gis: 'GIS', governance: '治理', visualization: '可视化',
-    analysis: '分析', database: '数据库', fusion: '融合',
-    collaboration: '协作', general: '通用',
-  };
+  const domainLabel = (domain: string) => t(`capabilities.domains.${domain}`, { defaultValue: domain });
 
-  const typeLabel = (t: string) =>
-    t === 'builtin_skill' ? '内置技能' : t === 'custom_skill' ? '自定义技能' : t === 'user_tool' ? '自定义工具' : t === 'template' ? '行业模板' : '工具集';
+  const typeLabel = (type: string) =>
+    t(`capabilities.types.${type}`, { defaultValue: t('capabilities.types.toolset') });
 
   const typeClass = (t: string) =>
     t === 'builtin_skill' ? 'cap-type-builtin' : t === 'custom_skill' ? 'cap-type-custom' : t === 'user_tool' ? 'cap-type-usertool' : t === 'template' ? 'cap-type-template' : 'cap-type-toolset';
 
+  const builtinTemplateKey = (item: CapabilityItem) => item.author_username === 'system'
+    ? BUILTIN_TEMPLATE_KEYS.find(({ tag }) => item.tags?.includes(tag))?.key
+    : undefined;
+
+  const itemName = (item: CapabilityItem) => {
+    const templateKey = builtinTemplateKey(item);
+    return templateKey
+      ? t(`capabilities.builtinTemplates.${templateKey}.name`, { defaultValue: item.name })
+      : item.name;
+  };
+
+  const itemDescription = (item: CapabilityItem) => {
+    if (item.type === 'toolset') {
+      return t(`capabilities.toolsets.${item.name}.description`, { defaultValue: item.description });
+    }
+    if (item.type === 'builtin_skill') {
+      return t(`capabilities.builtinSkills.${item.name}.description`, { defaultValue: item.description });
+    }
+    const templateKey = builtinTemplateKey(item);
+    return templateKey
+      ? t(`capabilities.builtinTemplates.${templateKey}.description`, { defaultValue: item.description })
+      : item.description;
+  };
+
+  const itemDomain = (item: CapabilityItem) => {
+    const templateKey = builtinTemplateKey(item);
+    return templateKey
+      ? t(`capabilities.builtinTemplates.${templateKey}.category`, { defaultValue: item.domain || '' })
+      : domainLabel(item.domain || '');
+  };
+
   return (
     <div className="capabilities-view">
-      <div className="capability-view-switch" role="tablist" aria-label="能力视图">
+      <div className="capability-view-switch" role="tablist" aria-label={t('capabilities.views.aria')}>
         <button
           type="button"
           role="tab"
           aria-selected={capabilityView === 'platform'}
           className={capabilityView === 'platform' ? 'active' : ''}
           onClick={() => setCapabilityView('platform')}
-        >平台能力</button>
+        >{t('capabilities.views.platform')}</button>
         <button
           type="button"
           role="tab"
           aria-selected={capabilityView === 'skills'}
           className={capabilityView === 'skills' ? 'active' : ''}
           onClick={() => setCapabilityView('skills')}
-        >技能工具</button>
+        >{t('capabilities.views.skills')}</button>
       </div>
       {capabilityView === 'platform' ? (
         <PlatformCapabilitiesPanel userRole={userRole} />
       ) : (
         <>
       <div className="capabilities-summary">
-        <span>{(counts as any).builtin} 内置技能</span>
+        <span>{t('capabilities.summary.builtin', { count: formatNumber((counts as any).builtin) })}</span>
         <span className="cap-sep">/</span>
-        <span>{(counts as any).custom} 自定义</span>
+        <span>{t('capabilities.summary.custom', { count: formatNumber((counts as any).custom) })}</span>
         <span className="cap-sep">/</span>
-        <span>{(counts as any).toolset} 工具集</span>
+        <span>{t('capabilities.summary.toolset', { count: formatNumber((counts as any).toolset) })}</span>
         <span className="cap-sep">/</span>
-        <span>{(counts as any).userTool || 0} 自建工具</span>
-        <button className="btn-add-server" onClick={() => showSkillForm ? setShowSkillForm(false) : handleNewSkill()} title="新建自定义技能">+技能</button>
-        <button className="btn-add-server" onClick={handleOpenAiGen} title="AI 辅助生成技能" style={{ background: '#8b5cf6' }}>✨ AI生成</button>
-        <button className="btn-add-server" onClick={() => showToolForm ? setShowToolForm(false) : handleNewTool()} title="新建自定义工具">+工具</button>
+        <span>{t('capabilities.summary.userTool', { count: formatNumber((counts as any).userTool || 0) })}</span>
+        <button className="btn-add-server" onClick={() => showSkillForm ? setShowSkillForm(false) : handleNewSkill()} title={t('capabilities.actions.newSkillTitle')}>{t('capabilities.actions.newSkill')}</button>
+        <button className="btn-add-server" onClick={handleOpenAiGen} title={t('capabilities.actions.aiGenerateTitle')} style={{ background: '#8b5cf6' }}>{t('capabilities.actions.aiGenerate')}</button>
+        <button className="btn-add-server" onClick={() => showToolForm ? setShowToolForm(false) : handleNewTool()} title={t('capabilities.actions.newToolTitle')}>{t('capabilities.actions.newTool')}</button>
       </div>
 
       {/* AI Skill Generator Panel (v23.0) */}
       {showAiGen && (
         <div className="skill-add-form" style={{ borderColor: '#8b5cf6' }}>
-          <div className="skill-add-form-title" style={{ color: '#8b5cf6' }}>✨ AI 辅助创建技能</div>
+          <div className="skill-add-form-title" style={{ color: '#8b5cf6' }}>{t('capabilities.ai.title')}</div>
           {!aiPreview ? (
             <>
               <textarea
-                placeholder="用自然语言描述你想创建的技能，例如：&#10;• 分析城市热岛效应，自动计算地表温度并生成热力图&#10;• 批量校验地块数据的拓扑关系和字段规范&#10;• 下载卫星影像并计算 NDVI 植被指数变化趋势"
+                placeholder={t('capabilities.ai.placeholder')}
                 rows={4} maxLength={2000}
                 value={aiDesc} onChange={e => setAiDesc(e.target.value)}
                 style={{ fontSize: 13, lineHeight: 1.6 }}
               />
               {aiError && <div className="skill-add-error">{aiError}</div>}
               <div className="skill-add-actions">
-                <button className="btn-secondary btn-sm" onClick={() => setShowAiGen(false)}>取消</button>
+                <button className="btn-secondary btn-sm" onClick={() => setShowAiGen(false)}>{t('capabilities.actions.cancel')}</button>
                 <button className="btn-primary btn-sm" disabled={aiGenerating || !aiDesc.trim()}
                   onClick={handleAiGenerate}
                   style={{ background: '#8b5cf6' }}>
-                  {aiGenerating ? '生成中...' : '生成技能配置'}
+                  {aiGenerating ? t('capabilities.actions.generating') : t('capabilities.actions.generateConfig')}
                 </button>
               </div>
             </>
           ) : (
             <>
-              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>AI 已生成以下技能配置，请确认或编辑后保存：</div>
+              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>{t('capabilities.ai.generated')}</div>
               <div style={{ background: '#f8fafc', borderRadius: 6, padding: 10, fontSize: 12, lineHeight: 1.7 }}>
-                <div><b>名称:</b> {aiPreview.skill_name}</div>
-                <div><b>描述:</b> {aiPreview.description}</div>
-                <div><b>模型层级:</b> {aiPreview.model_tier}</div>
-                <div><b>工具集:</b> {(aiPreview.toolset_names || []).join(', ') || '无'}</div>
-                <div><b>触发词:</b> {(aiPreview.trigger_keywords || []).join(', ') || '无'}</div>
-                <div style={{ marginTop: 6 }}><b>指令:</b></div>
+                <div><b>{t('capabilities.ai.fields.name')}:</b> {aiPreview.skill_name}</div>
+                <div><b>{t('capabilities.ai.fields.description')}:</b> {aiPreview.description}</div>
+                <div><b>{t('capabilities.ai.fields.modelTier')}:</b> {aiPreview.model_tier}</div>
+                <div><b>{t('capabilities.ai.fields.toolsets')}:</b> {(aiPreview.toolset_names || []).join(', ') || t('capabilities.common.none')}</div>
+                <div><b>{t('capabilities.ai.fields.triggers')}:</b> {(aiPreview.trigger_keywords || []).join(', ') || t('capabilities.common.none')}</div>
+                <div style={{ marginTop: 6 }}><b>{t('capabilities.ai.fields.instruction')}:</b></div>
                 <pre style={{ whiteSpace: 'pre-wrap', fontSize: 11, color: '#374151', maxHeight: 150, overflow: 'auto',
                   background: '#fff', padding: 8, borderRadius: 4, border: '1px solid #e5e7eb' }}>
                   {aiPreview.instruction}
@@ -493,11 +515,11 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
               </div>
               {aiError && <div className="skill-add-error">{aiError}</div>}
               <div className="skill-add-actions">
-                <button className="btn-secondary btn-sm" onClick={() => { setAiPreview(null); setAiDesc(''); }}>重新生成</button>
-                <button className="btn-secondary btn-sm" onClick={handleAiEdit}>编辑后保存</button>
+                <button className="btn-secondary btn-sm" onClick={() => { setAiPreview(null); setAiDesc(''); }}>{t('capabilities.actions.regenerate')}</button>
+                <button className="btn-secondary btn-sm" onClick={handleAiEdit}>{t('capabilities.actions.editBeforeSave')}</button>
                 <button className="btn-primary btn-sm" disabled={aiSaving} onClick={handleAiSave}
                   style={{ background: '#8b5cf6' }}>
-                  {aiSaving ? '保存中...' : '直接保存'}
+                  {aiSaving ? t('capabilities.actions.saving') : t('capabilities.actions.saveDirectly')}
                 </button>
               </div>
             </>
@@ -507,42 +529,42 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
 
       {showSkillForm && (
         <div className="skill-add-form">
-          <div className="skill-add-form-title">{editingSkill ? `编辑: ${editingSkill.name}` : '新建自定义技能'}</div>
-          <input placeholder="技能名称 (必填，如: 土壤分析专家)" maxLength={100}
+          <div className="skill-add-form-title">{editingSkill ? t('capabilities.skillForm.editTitle', { name: editingSkill.name }) : t('capabilities.skillForm.newTitle')}</div>
+          <input placeholder={t('capabilities.skillForm.namePlaceholder')} maxLength={100}
             value={skillForm.skill_name} onChange={e => setSkillForm({ ...skillForm, skill_name: e.target.value })} />
-          <textarea placeholder="指令 (必填，描述技能的行为和专业知识，最多10000字)" rows={4} maxLength={10000}
+          <textarea placeholder={t('capabilities.skillForm.instructionPlaceholder')} rows={4} maxLength={10000}
             value={skillForm.instruction} onChange={e => setSkillForm({ ...skillForm, instruction: e.target.value })} />
-          <input placeholder="描述 (可选)" value={skillForm.description}
+          <input placeholder={t('capabilities.skillForm.descriptionPlaceholder')} value={skillForm.description}
             onChange={e => setSkillForm({ ...skillForm, description: e.target.value })} />
-          <div className="skill-section-label">选择工具集</div>
+          <div className="skill-section-label">{t('capabilities.skillForm.selectToolsets')}</div>
           <div className="skill-toolset-grid">
-            {TOOLSETS.map(t => (
-              <label key={t.name} className="skill-toolset-item">
-                <input type="checkbox" checked={skillForm.toolset_names.includes(t.name)}
-                  onChange={() => toggleToolset(t.name)} />
-                <span>{t.label}</span>
+            {TOOLSETS.map(toolset => (
+              <label key={toolset} className="skill-toolset-item">
+                <input type="checkbox" checked={skillForm.toolset_names.includes(toolset)}
+                  onChange={() => toggleToolset(toolset)} />
+                <span>{t(`capabilities.toolsets.${toolset}.label`, { defaultValue: toolset })}</span>
               </label>
             ))}
           </div>
-          <input placeholder="触发关键词 (逗号分隔，如: 土壤, 地质)" value={skillForm.trigger_keywords}
+          <input placeholder={t('capabilities.skillForm.triggersPlaceholder')} value={skillForm.trigger_keywords}
             onChange={e => setSkillForm({ ...skillForm, trigger_keywords: e.target.value })} />
           <div className="skill-row">
             <select value={skillForm.model_tier} onChange={e => setSkillForm({ ...skillForm, model_tier: e.target.value })}>
-              <option value="fast">快速 (fast)</option>
-              <option value="standard">标准 (standard)</option>
-              <option value="premium">高级 (premium)</option>
+              <option value="fast">{t('capabilities.modelTiers.fast')}</option>
+              <option value="standard">{t('capabilities.modelTiers.standard')}</option>
+              <option value="premium">{t('capabilities.modelTiers.premium')}</option>
             </select>
             <label className="skill-checkbox">
               <input type="checkbox" checked={skillForm.is_shared}
                 onChange={e => setSkillForm({ ...skillForm, is_shared: e.target.checked })} />
-              共享给其他用户
+              {t('capabilities.skillForm.share')}
             </label>
           </div>
           {formError && <div className="skill-add-error">{formError}</div>}
           <div className="skill-add-actions">
-            <button className="btn-secondary btn-sm" onClick={() => { setShowSkillForm(false); setEditingSkill(null); }}>取消</button>
+            <button className="btn-secondary btn-sm" onClick={() => { setShowSkillForm(false); setEditingSkill(null); }}>{t('capabilities.actions.cancel')}</button>
             <button className="btn-primary btn-sm" disabled={saving} onClick={handleSaveSkill}>
-              {saving ? '保存中...' : editingSkill ? '保存' : '创建'}
+              {saving ? t('capabilities.actions.saving') : editingSkill ? t('capabilities.actions.save') : t('capabilities.actions.create')}
             </button>
           </div>
         </div>
@@ -550,29 +572,29 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
 
       {showToolForm && (
         <div className="skill-add-form">
-          <div className="skill-add-form-title">{editingTool ? `编辑工具: ${editingTool.name}` : '新建自定义工具'}</div>
-          <input placeholder="工具名称 (必填，如: query_weather)" maxLength={100}
+          <div className="skill-add-form-title">{editingTool ? t('capabilities.toolForm.editTitle', { name: editingTool.name }) : t('capabilities.toolForm.newTitle')}</div>
+          <input placeholder={t('capabilities.toolForm.namePlaceholder')} maxLength={100}
             value={toolForm.tool_name} onChange={e => setToolForm({ ...toolForm, tool_name: e.target.value })} />
-          <input placeholder="描述 (给 LLM 看的工具说明)" value={toolForm.description}
+          <input placeholder={t('capabilities.toolForm.descriptionPlaceholder')} value={toolForm.description}
             onChange={e => setToolForm({ ...toolForm, description: e.target.value })} />
           <div className="skill-row">
             <select value={toolForm.template_type} onChange={e => {
               const tt = e.target.value;
               setToolForm({ ...toolForm, template_type: tt, template_config: TEMPLATE_HINTS[tt] || '{}' });
             }}>
-              {TEMPLATE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              {TEMPLATE_TYPES.map(templateType => <option key={templateType} value={templateType}>{t(`capabilities.templateTypes.${templateType}`)}</option>)}
             </select>
             <label className="skill-checkbox">
               <input type="checkbox" checked={toolForm.is_shared}
                 onChange={e => setToolForm({ ...toolForm, is_shared: e.target.checked })} />
-              共享
+              {t('capabilities.common.shared')}
             </label>
           </div>
 
-          <div className="skill-section-label">参数定义 <button className="param-add-btn" onClick={addParam}>+ 添加参数</button></div>
+          <div className="skill-section-label">{t('capabilities.toolForm.parameters')} <button className="param-add-btn" onClick={addParam}>{t('capabilities.actions.addParameter')}</button></div>
           {toolForm.parameters.map((p, idx) => (
             <div key={idx} className="param-row">
-              <input placeholder="参数名" value={p.name} className="param-name"
+              <input placeholder={t('capabilities.toolForm.parameterName')} value={p.name} className="param-name"
                 onChange={e => updateParam(idx, 'name', e.target.value)} />
               <select value={p.type} onChange={e => updateParam(idx, 'type', e.target.value)}>
                 <option value="string">string</option>
@@ -580,13 +602,13 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
                 <option value="integer">integer</option>
                 <option value="boolean">boolean</option>
               </select>
-              <input placeholder="说明" value={p.description} className="param-desc"
+              <input placeholder={t('capabilities.toolForm.parameterDescription')} value={p.description} className="param-desc"
                 onChange={e => updateParam(idx, 'description', e.target.value)} />
-              <button className="param-remove-btn" onClick={() => removeParam(idx)}>×</button>
+              <button className="param-remove-btn" onClick={() => removeParam(idx)} title={t('capabilities.actions.removeParameter')} aria-label={t('capabilities.actions.removeParameter')}>×</button>
             </div>
           ))}
 
-          <div className="skill-section-label">模板配置 (JSON)</div>
+          <div className="skill-section-label">{t('capabilities.toolForm.templateConfig')}</div>
           <textarea className="tool-config-editor" rows={5} value={toolForm.template_config}
             onChange={e => setToolForm({ ...toolForm, template_config: e.target.value })}
             placeholder={TEMPLATE_HINTS[toolForm.template_type] || '{}'} />
@@ -594,41 +616,43 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
           {toolError && <div className="skill-add-error">{toolError}</div>}
           {testResult && <div className="tool-test-result">{testResult}</div>}
           <div className="skill-add-actions">
-            <button className="btn-secondary btn-sm" onClick={() => { setShowToolForm(false); setEditingTool(null); }}>取消</button>
-            {editingTool?.id && <button className="btn-secondary btn-sm" disabled={testing} onClick={handleTestTool}>{testing ? '测试中...' : '测试'}</button>}
+            <button className="btn-secondary btn-sm" onClick={() => { setShowToolForm(false); setEditingTool(null); }}>{t('capabilities.actions.cancel')}</button>
+            {editingTool?.id && <button className="btn-secondary btn-sm" disabled={testing} onClick={handleTestTool}>{testing ? t('capabilities.actions.testing') : t('capabilities.actions.test')}</button>}
             <button className="btn-primary btn-sm" disabled={savingTool} onClick={handleSaveTool}>
-              {savingTool ? '保存中...' : editingTool ? '保存' : '创建'}
+              {savingTool ? t('capabilities.actions.saving') : editingTool ? t('capabilities.actions.save') : t('capabilities.actions.create')}
             </button>
           </div>
         </div>
       )}
 
-      <input className="capabilities-search" placeholder="搜索技能或工具集..."
+      <input className="capabilities-search" placeholder={t('capabilities.search.placeholder')}
         value={search} onChange={e => setSearch(e.target.value)} />
 
       <div className="capabilities-filters">
         {(['all', 'builtin_skill', 'custom_skill', 'toolset', 'user_tool', 'bundle', 'template'] as CapFilter[]).map(f => (
           <button key={f} className={`cap-filter-btn ${filter === f ? 'active' : ''}`}
             onClick={() => setFilter(f)}>
-            {f === 'all' ? '全部' : f === 'builtin_skill' ? '内置技能' : f === 'custom_skill' ? '自定义' : f === 'user_tool' ? '自建工具' : f === 'bundle' ? `技能包(${bundles.length})` : f === 'template' ? '行业模板' : '工具集'}
+            {f === 'bundle'
+              ? t('capabilities.filters.bundle', { count: formatNumber(bundles.length) })
+              : t(`capabilities.filters.${f}`)}
           </button>
         ))}
       </div>
 
       {loading && items.length === 0 ? (
-        <div className="empty-state">加载中...</div>
+        <div className="empty-state">{t('capabilities.states.loading')}</div>
       ) : filtered.length === 0 ? (
-        <div className="empty-state">暂无匹配项</div>
+        <div className="empty-state">{t('capabilities.states.empty')}</div>
       ) : (
         <div className="capabilities-list">
           {filtered.map((item, i) => (
             <div key={`${item.type}-${item.id || item.name}-${i}`} className="capability-card">
               <div className="cap-card-header">
-                <span className="cap-card-name">{item.name}</span>
+                <span className="cap-card-name">{itemName(item)}</span>
                 <span className={`cap-badge ${typeClass(item.type)}`}>{typeLabel(item.type)}</span>
-                {item.domain && <span className="cap-badge cap-domain">{domainMap[item.domain] || item.domain}</span>}
+                {item.domain && <span className="cap-badge cap-domain">{itemDomain(item)}</span>}
               </div>
-              {item.description && <div className="cap-card-desc">{item.description}</div>}
+              {item.description && <div className="cap-card-desc">{itemDescription(item)}</div>}
               {item.intent_triggers && (
                 <div className="cap-card-triggers">
                   {item.intent_triggers.split(',').map((t, j) => (
@@ -638,17 +662,17 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
               )}
               {item.type === 'custom_skill' && (
                 <div className="cap-card-footer">
-                  {item.owner_username && <span className="cap-owner">by {item.owner_username}</span>}
-                  {item.is_shared && <span className="cap-badge cap-shared">共享</span>}
+                  {item.owner_username && <span className="cap-owner">{t('capabilities.cards.by', { name: item.owner_username })}</span>}
+                  {item.is_shared && <span className="cap-badge cap-shared">{t('capabilities.common.shared')}</span>}
                   {item.depends_on && item.depends_on.length > 0 && (
-                    <span className="cap-badge cap-domain" title="依赖技能 ID">
-                      依赖: {item.depends_on.map((d: number) => `#${d}`).join(', ')}
+                    <span className="cap-badge cap-domain" title={t('capabilities.cards.dependenciesTitle')}>
+                      {t('capabilities.cards.dependencies', { ids: item.depends_on.map((d: number) => `#${d}`).join(', ') })}
                     </span>
                   )}
                   {item.id && (
                     <>
-                      <button className="cap-edit-btn" onClick={() => handleEditSkill(item)}>编辑</button>
-                      <button className="cap-delete-btn" onClick={() => handleDeleteSkill(item.id!)}>删除</button>
+                      <button className="cap-edit-btn" onClick={() => handleEditSkill(item)}>{t('capabilities.actions.edit')}</button>
+                      <button className="cap-delete-btn" onClick={() => handleDeleteSkill(item.id!)}>{t('capabilities.actions.delete')}</button>
                     </>
                   )}
                 </div>
@@ -656,12 +680,12 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
               {item.type === 'user_tool' && (
                 <div className="cap-card-footer">
                   <span className="cap-badge cap-template-type">{(item as any).template_type}</span>
-                  {item.owner_username && <span className="cap-owner">by {item.owner_username}</span>}
-                  {item.is_shared && <span className="cap-badge cap-shared">共享</span>}
+                  {item.owner_username && <span className="cap-owner">{t('capabilities.cards.by', { name: item.owner_username })}</span>}
+                  {item.is_shared && <span className="cap-badge cap-shared">{t('capabilities.common.shared')}</span>}
                   {item.id && (
                     <>
-                      <button className="cap-edit-btn" onClick={() => handleEditTool(item)}>编辑</button>
-                      <button className="cap-delete-btn" onClick={() => handleDeleteTool(item.id!)}>删除</button>
+                      <button className="cap-edit-btn" onClick={() => handleEditTool(item)}>{t('capabilities.actions.edit')}</button>
+                      <button className="cap-delete-btn" onClick={() => handleDeleteTool(item.id!)}>{t('capabilities.actions.delete')}</button>
                     </>
                   )}
                 </div>
@@ -675,19 +699,19 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
       {filter === 'bundle' && (
         <div className="capabilities-list">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ fontSize: 12, color: '#6b7280' }}>组合多个工具集+技能为可复用的技能包</span>
-            <button className="cap-add-btn" onClick={() => { setEditingBundle(null); setBundleForm({ bundle_name: '', description: '', toolset_names: [], skill_names: [], intent_triggers: '', is_shared: false }); setShowBundleForm(true); }}>+ 技能包</button>
+            <span style={{ fontSize: 12, color: '#6b7280' }}>{t('capabilities.bundles.description')}</span>
+            <button className="cap-add-btn" onClick={() => { setEditingBundle(null); setBundleForm({ bundle_name: '', description: '', toolset_names: [], skill_names: [], intent_triggers: '', is_shared: false }); setShowBundleForm(true); }}>{t('capabilities.actions.newBundle')}</button>
           </div>
 
           {showBundleForm && (
             <div className="cap-skill-form" style={{ marginBottom: 12 }}>
-              <h4>{editingBundle ? '编辑技能包' : '创建技能包'}</h4>
+              <h4>{editingBundle ? t('capabilities.bundles.editTitle') : t('capabilities.bundles.createTitle')}</h4>
               {bundleError && <div className="cap-form-error">{bundleError}</div>}
-              <input placeholder="技能包名称" value={bundleForm.bundle_name} onChange={e => setBundleForm(f => ({ ...f, bundle_name: e.target.value }))} />
-              <input placeholder="描述（可选）" value={bundleForm.description} onChange={e => setBundleForm(f => ({ ...f, description: e.target.value }))} />
-              <input placeholder="触发关键词（逗号分隔）" value={bundleForm.intent_triggers} onChange={e => setBundleForm(f => ({ ...f, intent_triggers: e.target.value }))} />
+              <input placeholder={t('capabilities.bundles.namePlaceholder')} value={bundleForm.bundle_name} onChange={e => setBundleForm(f => ({ ...f, bundle_name: e.target.value }))} />
+              <input placeholder={t('capabilities.bundles.descriptionPlaceholder')} value={bundleForm.description} onChange={e => setBundleForm(f => ({ ...f, description: e.target.value }))} />
+              <input placeholder={t('capabilities.bundles.triggersPlaceholder')} value={bundleForm.intent_triggers} onChange={e => setBundleForm(f => ({ ...f, intent_triggers: e.target.value }))} />
 
-              <div style={{ fontSize: 11, fontWeight: 600, marginTop: 8 }}>工具集</div>
+              <div style={{ fontSize: 11, fontWeight: 600, marginTop: 8 }}>{t('capabilities.bundles.toolsets')}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
                 {(availableTools.toolsets || []).map(ts => (
                   <label key={ts} style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -701,7 +725,7 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
                 ))}
               </div>
 
-              <div style={{ fontSize: 11, fontWeight: 600 }}>技能</div>
+              <div style={{ fontSize: 11, fontWeight: 600 }}>{t('capabilities.bundles.skills')}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
                 {(availableTools.skills || []).map(sk => (
                   <label key={sk} style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -717,24 +741,24 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
 
               <label style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <input type="checkbox" checked={bundleForm.is_shared} onChange={e => setBundleForm(f => ({ ...f, is_shared: e.target.checked }))} />
-                共享给其他用户
+                {t('capabilities.skillForm.share')}
               </label>
 
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                 <button className="cap-save-btn" disabled={savingBundle} onClick={async () => {
-                  if (!bundleForm.bundle_name.trim()) { setBundleError('名称不能为空'); return; }
-                  if (bundleForm.toolset_names.length === 0 && bundleForm.skill_names.length === 0) { setBundleError('至少选择一个工具集或技能'); return; }
+                  if (!bundleForm.bundle_name.trim()) { setBundleError(t('capabilities.errors.bundleNameRequired')); return; }
+                  if (bundleForm.toolset_names.length === 0 && bundleForm.skill_names.length === 0) { setBundleError(t('capabilities.errors.bundleSelectionRequired')); return; }
                   setSavingBundle(true); setBundleError('');
                   try {
                     const url = editingBundle ? `/api/bundles/${editingBundle.id}` : '/api/bundles';
                     const method = editingBundle ? 'PUT' : 'POST';
-                    const resp = await fetch(url, { method, credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bundleForm) });
-                    if (!resp.ok) { const d = await resp.json(); setBundleError(d.error || '保存失败'); return; }
+                    const resp = await fetch(url, { method, credentials: 'include', headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() }, body: JSON.stringify(bundleForm) });
+                    if (!resp.ok) { const d = await resp.json(); setBundleError(d.error || t('capabilities.errors.saveFailed')); return; }
                     setShowBundleForm(false); fetchCapabilities();
-                  } catch { setBundleError('网络错误'); }
+                  } catch { setBundleError(t('capabilities.errors.network')); }
                   finally { setSavingBundle(false); }
-                }}>{savingBundle ? '保存中...' : '保存'}</button>
-                <button className="cap-cancel-btn" onClick={() => setShowBundleForm(false)}>取消</button>
+                }}>{savingBundle ? t('capabilities.actions.saving') : t('capabilities.actions.save')}</button>
+                <button className="cap-cancel-btn" onClick={() => setShowBundleForm(false)}>{t('capabilities.actions.cancel')}</button>
               </div>
             </div>
           )}
@@ -742,29 +766,32 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
           {bundles.map(b => (
             <div key={b.id} className="capability-card">
               <div className="cap-card-header">
-                <span className="cap-type-badge cap-type-custom">技能包</span>
+                <span className="cap-type-badge cap-type-custom">{t('capabilities.types.bundle')}</span>
                 <span className="cap-name">{b.bundle_name}</span>
               </div>
               {b.description && <div className="cap-description">{b.description}</div>}
               <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
-                工具集: {(b.toolset_names || []).join(', ') || '无'} | 技能: {(b.skill_names || []).join(', ') || '无'}
+                {t('capabilities.bundles.contents', {
+                  toolsets: (b.toolset_names || []).join(', ') || t('capabilities.common.none'),
+                  skills: (b.skill_names || []).join(', ') || t('capabilities.common.none'),
+                })}
               </div>
-              {b.intent_triggers && <div style={{ fontSize: 11, color: '#9ca3af' }}>触发: {b.intent_triggers}</div>}
+              {b.intent_triggers && <div style={{ fontSize: 11, color: '#9ca3af' }}>{t('capabilities.bundles.triggers', { triggers: b.intent_triggers })}</div>}
               <div className="cap-card-actions">
-                {b.owner_username && <span className="cap-owner">by {b.owner_username}</span>}
-                {b.is_shared && <span className="cap-badge cap-shared">共享</span>}
-                <button className="cap-edit-btn" onClick={() => { setEditingBundle(b); setBundleForm({ bundle_name: b.bundle_name, description: b.description || '', toolset_names: b.toolset_names || [], skill_names: b.skill_names || [], intent_triggers: b.intent_triggers || '', is_shared: b.is_shared || false }); setShowBundleForm(true); }}>编辑</button>
+                {b.owner_username && <span className="cap-owner">{t('capabilities.cards.by', { name: b.owner_username })}</span>}
+                {b.is_shared && <span className="cap-badge cap-shared">{t('capabilities.common.shared')}</span>}
+                <button className="cap-edit-btn" onClick={() => { setEditingBundle(b); setBundleForm({ bundle_name: b.bundle_name, description: b.description || '', toolset_names: b.toolset_names || [], skill_names: b.skill_names || [], intent_triggers: b.intent_triggers || '', is_shared: b.is_shared || false }); setShowBundleForm(true); }}>{t('capabilities.actions.edit')}</button>
                 <button className="cap-delete-btn" onClick={async () => {
-                  if (!confirm(`确定删除技能包 "${b.bundle_name}"？`)) return;
-                  await fetch(`/api/bundles/${b.id}`, { method: 'DELETE', credentials: 'include' });
+                  if (!confirm(t('capabilities.confirm.deleteBundle', { name: b.bundle_name }))) return;
+                  await fetch(`/api/bundles/${b.id}`, { method: 'DELETE', credentials: 'include', headers: getLocaleHeaders() });
                   fetchCapabilities();
-                }}>删除</button>
+                }}>{t('capabilities.actions.delete')}</button>
               </div>
             </div>
           ))}
           {bundles.length === 0 && !showBundleForm && (
             <div style={{ textAlign: 'center', color: '#9ca3af', padding: 20, fontSize: 12 }}>
-              暂无技能包，点击 "+ 技能包" 创建
+              {t('capabilities.bundles.empty')}
             </div>
           )}
         </div>

@@ -14,6 +14,7 @@ import uuid
 from sqlalchemy import text
 
 from .db_engine import get_engine
+from .i18n import t as translate
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ def create_version_snapshot(asset_id: int, username: str, change_summary: str = 
     """Create a version snapshot of a data asset before update."""
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("version.db_unavailable")}
     try:
         with engine.connect() as conn:
             row = conn.execute(text(
@@ -38,7 +39,7 @@ def create_version_snapshot(asset_id: int, username: str, change_summary: str = 
                 f"FROM {T_DATA_CATALOG} WHERE id = :id"
             ), {"id": asset_id}).fetchone()
             if not row:
-                return {"status": "error", "message": "资产未找到"}
+                return {"status": "error", "message": translate("version.asset_not_found")}
 
             asset = row._mapping
             current_version = asset.get("version", 1) or 1
@@ -81,7 +82,7 @@ def create_version_snapshot(asset_id: int, username: str, change_summary: str = 
             "snapshot_path": snapshot_path,
         }
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("version.create_failed", error=e)}
 
 
 def list_versions(asset_id: int) -> list:
@@ -104,7 +105,7 @@ def rollback_version(asset_id: int, target_version: int, username: str) -> dict:
     """Rollback an asset to a previous version snapshot."""
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("version.db_unavailable")}
     try:
         with engine.connect() as conn:
             # Find target snapshot
@@ -113,18 +114,22 @@ def rollback_version(asset_id: int, target_version: int, username: str) -> dict:
                 WHERE asset_id = :a AND version = :v
             """), {"a": asset_id, "v": target_version}).fetchone()
             if not row or not row._mapping.get("snapshot_path"):
-                return {"status": "error", "message": f"版本 {target_version} 快照不存在"}
+                return {"status": "error", "message": translate(
+                    "version.snapshot_not_found", version=target_version
+                )}
 
             snap_path = row._mapping["snapshot_path"]
             if not os.path.exists(snap_path):
-                return {"status": "error", "message": f"快照文件已丢失: {snap_path}"}
+                return {"status": "error", "message": translate(
+                    "version.snapshot_missing", path=snap_path
+                )}
 
             # Get current path
             current = conn.execute(text(
                 f"SELECT local_path, version FROM {T_DATA_CATALOG} WHERE id = :id"
             ), {"id": asset_id}).fetchone()
             if not current:
-                return {"status": "error", "message": "资产未找到"}
+                return {"status": "error", "message": translate("version.asset_not_found")}
 
             current_path = current._mapping.get("local_path", "")
             current_version = current._mapping.get("version", 1)
@@ -150,7 +155,7 @@ def rollback_version(asset_id: int, target_version: int, username: str) -> dict:
 
         return {"status": "ok", "asset_id": asset_id, "rolled_back_to": target_version}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("version.rollback_failed", error=e)}
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +167,7 @@ def notify_asset_update(asset_id: int, asset_name: str, update_type: str = "vers
     """Create a notification for asset update."""
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("version.db_unavailable")}
     try:
         with engine.connect() as conn:
             conn.execute(text(f"""
@@ -176,7 +181,7 @@ def notify_asset_update(asset_id: int, asset_name: str, update_type: str = "vers
             conn.commit()
         return {"status": "ok"}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("version.notify_failed", error=e)}
 
 
 def get_notifications(username: str, unread_only: bool = True, limit: int = 20) -> list:
@@ -201,7 +206,7 @@ def get_notifications(username: str, unread_only: bool = True, limit: int = 20) 
 def mark_notification_read(notification_id: int) -> dict:
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("version.db_unavailable")}
     try:
         with engine.connect() as conn:
             conn.execute(text(f"""
@@ -210,7 +215,7 @@ def mark_notification_read(notification_id: int) -> dict:
             conn.commit()
         return {"status": "ok"}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("version.mark_read_failed", error=e)}
 
 
 # ---------------------------------------------------------------------------

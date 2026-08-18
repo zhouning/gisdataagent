@@ -1,2 +1,72 @@
-import {useEffect,useMemo,useState} from 'react';import {AlertTriangle,Map,RefreshCw,Shield} from 'lucide-react';type Row=Record<string,any>;const arr=<T,>(x:unknown):T[]=>Array.isArray(x)?x as T[]:[];
-export default function TraditionalLivabilitySafetyComfortPanel(){const [overview,setOverview]=useState<Row|null>(null),[admins,setAdmins]=useState<Row[]>([]),[sources,setSources]=useState<Row[]>([]),[map,setMap]=useState<Row|null>(null),[message,setMessage]=useState(''),[loading,setLoading]=useState(false);const load=async()=>{setLoading(true);setMessage('');try{const rs=await Promise.all(['/api/uwm/traditional-livability/safety-comfort/overview','/api/uwm/traditional-livability/safety-comfort/admin-units','/api/uwm/traditional-livability/safety-comfort/evidence-sources','/api/uwm/traditional-livability/safety-comfort/map'].map(url=>fetch(url,{credentials:'include'})));const d=await Promise.all(rs.map(r=>r.json()));if(rs.some(r=>!r.ok))throw new Error(d.find(x=>x.error)?.error||'安全舒适证据产品不可用');setOverview(d[0]);setAdmins(arr(d[1].admin_units));setSources(arr(d[2].evidence_sources));setMap(d[3])}catch(e:unknown){setMessage(e instanceof Error?e.message:'安全舒适证据产品不可用')}finally{setLoading(false)}};useEffect(()=>{load()},[]);const ranked=useMemo(()=>[...admins].sort((a,b)=>Number(a.relative_safety_comfort_evidence_gap_rank)-Number(b.relative_safety_comfort_evidence_gap_rank)).slice(0,10),[admins]);return <div className="traditional-panel"><div className="traditional-panel-title"><strong>安全与舒适证据诊断（需求10）</strong><button className="secondary-button" onClick={load} disabled={loading}><RefreshCw size={14}/>刷新</button></div><div className="traditional-message error"><Shield size={15}/>证据缺口排名不代表危险程度；温度上下文不等于热舒适；路网上下文不等于道路安全。</div>{message&&<div className="traditional-message error"><AlertTriangle size={15}/>{message}</div>}<div className="traditional-kpi-grid"><div className="traditional-kpi"><span>行政单元</span><strong>{overview?.summary?.admin_unit_count??'-'}</strong></div><div className="traditional-kpi"><span>环境参考点</span><strong>{overview?.summary?.environment_reference_row_count??'-'}</strong></div><div className="traditional-kpi"><span>环境连接</span><strong>{overview?.summary?.joined_environment_row_count??'-'}</strong></div><div className="traditional-kpi"><span>虚构值</span><strong>{overview?.fabricated_value_count??'-'}</strong></div></div><h4>证据源与粒度状态</h4><div className="traditional-source-grid">{sources.map(x=><div key={x.source_id}><span>{x.source_id}</span><strong>{x.join_status}</strong><small>{x.source_spatial_unit} · {x.source_spatial_unit_count}</small></div>)}</div><p>环境与消防设施当前为 reference_only，未按名称或质心连接。</p><div className="traditional-message error"><Shield size={15}/>事故、治安、照明、过街、遮荫、无障碍、热舒适、应急响应、安全路线和干预效果：数据未就绪。</div><h4>relative_safety_comfort_evidence_gap</h4><div className="traditional-table-wrap"><table className="traditional-table"><thead><tr><th>排名</th><th>行政单元</th><th>道路证据</th><th>环境证据</th><th>field_collection_priorities</th></tr></thead><tbody>{ranked.map(x=><tr key={x.admin_unit_id}><td>{x.relative_safety_comfort_evidence_gap_rank}</td><td>{x.county}{x.township}</td><td>{String(x.evidence_coverage?.mobility_present)}</td><td>{String(x.evidence_coverage?.meteorology_present)}</td><td>{arr<string>(x.field_collection_priorities).slice(0,3).join(' / ')}</td></tr>)}</tbody></table></div><button className="primary-button" disabled={!map} onClick={()=>window.__handleMapUpdate?.(map)}><Map size={14}/>发送独立证据图层到地图</button></div>}
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { AlertTriangle, Map, RefreshCw, Shield } from 'lucide-react';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
+
+type Row = Record<string, any>;
+const arrayOf = <T,>(value: unknown): T[] => Array.isArray(value) ? value as T[] : [];
+
+export default function TraditionalLivabilitySafetyComfortPanel() {
+  const { t, i18n } = useTranslation();
+  const [overview, setOverview] = useState<Row | null>(null);
+  const [admins, setAdmins] = useState<Row[]>([]);
+  const [sources, setSources] = useState<Row[]>([]);
+  const [mapPayload, setMapPayload] = useState<Row | null>(null);
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    setMessage('');
+    try {
+      const urls = [
+        '/api/uwm/traditional-livability/safety-comfort/overview',
+        '/api/uwm/traditional-livability/safety-comfort/admin-units',
+        '/api/uwm/traditional-livability/safety-comfort/evidence-sources',
+        '/api/uwm/traditional-livability/safety-comfort/map',
+      ];
+      const responses = await Promise.all(urls.map(url => fetch(url, { credentials: 'include', headers: getLocaleHeaders() })));
+      const data = await Promise.all(responses.map(response => response.json()));
+      if (responses.some(response => !response.ok)) {
+        throw new Error(data.find(item => item.error)?.error || t('traditionalPanels.safety.errors.unavailable'));
+      }
+      setOverview(data[0]);
+      setAdmins(arrayOf<Row>(data[1].admin_units));
+      setSources(arrayOf<Row>(data[2].evidence_sources));
+      setMapPayload(data[3]);
+    } catch (error: unknown) {
+      setMessage(error instanceof Error ? error.message : t('traditionalPanels.safety.errors.unavailable'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void load(); }, [i18n.resolvedLanguage]);
+  const ranked = useMemo(() => [...admins].sort((a, b) => Number(a.relative_safety_comfort_evidence_gap_rank) - Number(b.relative_safety_comfort_evidence_gap_rank)).slice(0, 10), [admins]);
+  const count = (value: unknown) => typeof value === 'number' ? formatNumber(value) : String(value ?? '-');
+  const statusLabel = (value: unknown) => {
+    const raw = String(value ?? '-');
+    return t(`statusLabels.${raw}`, { defaultValue: raw });
+  };
+
+  return (
+    <div className="traditional-panel">
+      <div className="traditional-panel-title"><strong>{t('traditionalPanels.safety.title')}</strong><button className="secondary-button" onClick={() => void load()} disabled={loading}><RefreshCw size={14} />{t('traditionalPanels.common.refresh')}</button></div>
+      <div className="traditional-message error"><Shield size={15} />{t('traditionalPanels.safety.warning')}</div>
+      {message && <div className="traditional-message error"><AlertTriangle size={15} />{message}</div>}
+      <div className="traditional-kpi-grid">
+        <div className="traditional-kpi"><span>{t('traditionalPanels.safety.kpis.units')}</span><strong>{count(overview?.summary?.admin_unit_count)}</strong></div>
+        <div className="traditional-kpi"><span>{t('traditionalPanels.safety.kpis.environmentRows')}</span><strong>{count(overview?.summary?.environment_reference_row_count)}</strong></div>
+        <div className="traditional-kpi"><span>{t('traditionalPanels.safety.kpis.joinedRows')}</span><strong>{count(overview?.summary?.joined_environment_row_count)}</strong></div>
+        <div className="traditional-kpi"><span>{t('traditionalPanels.safety.kpis.fabricated')}</span><strong>{count(overview?.fabricated_value_count)}</strong></div>
+      </div>
+      <h4>{t('traditionalPanels.safety.sections.sources')}</h4>
+      <div className="traditional-source-grid">{sources.map(source => <div key={source.source_id}><span>{source.source_id}</span><strong>{statusLabel(source.join_status)}</strong><small>{source.source_spatial_unit} · {source.source_spatial_unit_count}</small></div>)}</div>
+      <p>{t('traditionalPanels.safety.referenceOnly')}</p>
+      <div className="traditional-message error"><Shield size={15} />{t('traditionalPanels.safety.finalWarning')}</div>
+      <h4>{t('traditionalPanels.safety.sections.gap')}</h4>
+      <div className="traditional-table-wrap"><table className="traditional-table"><thead><tr><th>{t('traditionalPanels.safety.table.rank')}</th><th>{t('traditionalPanels.safety.table.unit')}</th><th>{t('traditionalPanels.safety.table.road')}</th><th>{t('traditionalPanels.safety.table.environment')}</th><th>{t('traditionalPanels.safety.table.priorities')}</th></tr></thead><tbody>{ranked.map(item => <tr key={item.admin_unit_id}><td>{item.relative_safety_comfort_evidence_gap_rank}</td><td>{item.county}{item.township}</td><td>{String(item.evidence_coverage?.mobility_present)}</td><td>{String(item.evidence_coverage?.meteorology_present)}</td><td>{arrayOf<string>(item.field_collection_priorities).slice(0, 3).join(' / ')}</td></tr>)}</tbody></table></div>
+      <button className="primary-button" disabled={!mapPayload} onClick={() => window.__handleMapUpdate?.(mapPayload)}><Map size={14} />{t('traditionalPanels.safety.actions.sendToMap')}</button>
+    </div>
+  );
+}

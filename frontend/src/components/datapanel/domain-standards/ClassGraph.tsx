@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactFlow, Background, Controls, type Node, type Edge } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { umlNodeTypes, INHERITS_EDGE_STYLE, ASSOCIATES_EDGE_STYLE } from './umlNodes';
+import { getLocaleHeaders } from '../../../i18n';
 
 interface Props {
   moduleId: string | null;
@@ -14,6 +16,7 @@ interface GraphData {
 }
 
 export default function ClassGraph({ moduleId, onClassClick }: Props) {
+  const { t, i18n } = useTranslation();
   const [graph, setGraph] = useState<GraphData>({ nodes: [], edges: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +28,10 @@ export default function ClassGraph({ moduleId, onClassClick }: Props) {
     }
     setLoading(true);
     setError(null);
-    fetch(`/api/xmi/graph?module_id=${encodeURIComponent(moduleId)}`, { credentials: 'include' })
+    fetch(`/api/xmi/graph?module_id=${encodeURIComponent(moduleId)}`, {
+      credentials: 'include',
+      headers: getLocaleHeaders(),
+    })
       .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
       .then((data: GraphData) => {
         // Apply edge styles based on type
@@ -38,7 +44,7 @@ export default function ClassGraph({ moduleId, onClassClick }: Props) {
       })
       .catch(err => setError(String(err)))
       .finally(() => setLoading(false));
-  }, [moduleId]);
+  }, [moduleId, i18n.resolvedLanguage]);
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     onClassClick(node.id);
@@ -50,7 +56,7 @@ export default function ClassGraph({ moduleId, onClassClick }: Props) {
         flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: '#9ca3af', fontSize: 13,
       }}>
-        请选择一个模块查看类关系图
+        {t('domainStandards.graph.selectModule')}
       </div>
     );
   }
@@ -61,7 +67,7 @@ export default function ClassGraph({ moduleId, onClassClick }: Props) {
         flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: '#6b7280', fontSize: 13,
       }}>
-        加载中...
+        {t('domainStandards.graph.loading')}
       </div>
     );
   }
@@ -72,7 +78,7 @@ export default function ClassGraph({ moduleId, onClassClick }: Props) {
         flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: '#ef4444', fontSize: 13,
       }}>
-        加载失败: {error}
+        {t('domainStandards.graph.loadError', { error })}
       </div>
     );
   }
@@ -94,17 +100,17 @@ export default function ClassGraph({ moduleId, onClassClick }: Props) {
       </ReactFlow>
       {/* Legend */}
       <div style={{
-        position: 'absolute', bottom: 40, right: 10,
+        position: 'absolute', bottom: 40, insetInlineEnd: 10,
         background: 'rgba(255,255,255,0.92)', border: '1px solid #e5e7eb',
         borderRadius: 6, padding: '6px 10px', fontSize: 11, zIndex: 5,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
           <div style={{ width: 24, height: 2, background: '#3b82f6' }} />
-          <span style={{ color: '#374151' }}>继承</span>
+          <span style={{ color: '#374151' }}>{t('domainStandards.relations.inheritance')}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div style={{ width: 24, height: 2, background: '#f59e0b', borderTop: '2px dashed #f59e0b' }} />
-          <span style={{ color: '#374151' }}>关联</span>
+          <span style={{ color: '#374151' }}>{t('domainStandards.relations.association')}</span>
         </div>
       </div>
     </div>

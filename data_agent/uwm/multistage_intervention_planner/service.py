@@ -16,6 +16,7 @@ from uuid import uuid4
 
 import numpy as np
 
+from data_agent.i18n import t
 from data_agent.uwm.offline_world_model_policy import (
     FEATURE_NAMES,
     TARGET_NAMES,
@@ -78,6 +79,25 @@ TARGET_DEFINITIONS = [
 ]
 
 
+_FEATURE_I18N_KEYS = {
+    item["name"]: f"uwm_service.feature.{item['name']}"
+    for item in FEATURE_DEFINITIONS
+}
+_TARGET_I18N_KEYS = {
+    item["name"]: f"uwm_service.target.{item['name']}"
+    for item in TARGET_DEFINITIONS
+}
+_GROUP_I18N_KEYS = {
+    "模型基准": "uwm_service.group.baseline",
+    "动作编码": "uwm_service.group.action_encoding",
+    "动作强度": "uwm_service.group.action_intensity",
+    "目标状态": "uwm_service.group.target_state",
+    "空间与交通上下文": "uwm_service.group.spatial_context",
+    "候选生成依据": "uwm_service.group.candidate_basis",
+    "时序上下文": "uwm_service.group.temporal_context",
+}
+
+
 class MultiStageInterventionPlannerService:
     def __init__(self, *, root: Path | None = None, run_root: Path | None = None) -> None:
         self.root = root or Path(__file__).resolve().parents[3]
@@ -99,11 +119,11 @@ class MultiStageInterventionPlannerService:
         return {
             "schema": OVERVIEW_SCHEMA,
             "scenario_id": "compound-livability-multistage-intervention",
-            "title": "高温、空气污染与公共服务短缺复合压力下的动态干预序列规划",
+            "title": t("uwm_service.overview.title"),
             "world_model_necessity": {
                 "functionally_required": True,
-                "reason": "第一步动作会更新目标及相邻行政单元状态，第二步必须在更新后的世界状态中重新排序；静态叠加和单步评分不能表达该闭环。",
-                "not_required_brand": "需求需要世界模型功能，不强制绑定某一品牌实现；本系统使用现有UWM资产落地。",
+                "reason": t("uwm_service.overview.world_model_reason"),
+                "not_required_brand": t("uwm_service.overview.not_required_brand"),
             },
             "data_foundation": {
                 "graph_node_count": int(graph_stats.get("node_count") or 0),
@@ -120,10 +140,7 @@ class MultiStageInterventionPlannerService:
                 "boundary_edge_count": int(source_graph_summary.get("edge_count") or 0),
                 "similarity_edge_count": int(similarity_summary.get("similarity_edge_count") or 0),
                 "data_layers": self._data_layer_overview(replay, inventory, graph, transitions),
-                "evidence_note": (
-                    "当前状态和空间关系来自已准备的重庆全域代理数据资产；6817条状态转移主要为模拟器回放，"
-                    "不是6817个真实政策项目。"
-                ),
+                "evidence_note": t("uwm_service.overview.evidence_note"),
             },
             "action_catalog": self._action_catalog_overview(inventory),
             "simulator_specification": self._simulator_specification(),
@@ -173,8 +190,9 @@ class MultiStageInterventionPlannerService:
                     "used_default": False,
                     "warning": "",
                 }
-            warning = (
-                f"未在UWM空间图中唯一解析区域：{normalized_county}{normalized_township}，已采用演示默认规划域。"
+            warning = t(
+                "uwm_service.focus.warning.unknown_area",
+                area=f"{normalized_county}{normalized_township}",
             )
             return self._default_focus_resolution(warning)
         if normalized_county:
@@ -188,12 +206,12 @@ class MultiStageInterventionPlannerService:
                     "display_name": normalized_county,
                     "county_filter": normalized_county,
                     "used_default": False,
-                    "warning": "区县级请求将使用该区县全部可行动作，不扩展街道邻域。",
+                    "warning": t("uwm_service.focus.warning.county_scope"),
                 }
             return self._default_focus_resolution(
-                f"未在UWM空间图中找到区县：{normalized_county}，已采用演示默认规划域。"
+                t("uwm_service.focus.warning.unknown_county", county=normalized_county)
             )
-        return self._default_focus_resolution("用户未指定区域，采用当前可见默认规划域。")
+        return self._default_focus_resolution(t("uwm_service.focus.warning.default_area"))
 
     def _default_focus_resolution(self, warning: str) -> dict[str, Any]:
         parts = DEFAULT_FOCUS_UNIT.split("|")
@@ -218,34 +236,34 @@ class MultiStageInterventionPlannerService:
         similarity = replay.get("source_geographic_similarity_kernel_summary") or {}
         return [
             {
-                "layer": "行政空间与几何",
-                "coverage": f"{len(graph.get('nodes') or [])}个乡镇街道单元",
-                "content": "行政几何、区县和街道乡镇名称",
-                "status": "完整" if len(graph.get("nodes") or []) == 1017 else "需复核",
+                "layer": t("uwm_service.layer.geometry.label"),
+                "coverage": t("uwm_service.layer.geometry.coverage", count=len(graph.get("nodes") or [])),
+                "content": t("uwm_service.layer.geometry.content"),
+                "status": t("uwm_service.status.complete") if len(graph.get("nodes") or []) == 1017 else t("uwm_service.status.review"),
             },
             {
-                "layer": "宜居性状态面板",
-                "coverage": f"{int(panel.get('joined_admin_count') or 0)}/1017单元已连接",
-                "content": "热风险、污染暴露、服务可达性、公平性、宜居性及交通上下文",
-                "status": "完整" if int(panel.get("service_missing_admin_count") or 0) == 0 else "存在缺失",
+                "layer": t("uwm_service.layer.livability.label"),
+                "coverage": t("uwm_service.layer.livability.coverage", count=int(panel.get("joined_admin_count") or 0)),
+                "content": t("uwm_service.layer.livability.content"),
+                "status": t("uwm_service.status.complete") if int(panel.get("service_missing_admin_count") or 0) == 0 else t("uwm_service.status.missing"),
             },
             {
-                "layer": "空间传播关系",
-                "coverage": f"{int(admin_graph.get('edge_count') or 0)}条边界邻接 + {int(similarity.get('similarity_edge_count') or 0)}条相似关系",
-                "content": "共享边界、地理配置相似度和传播权重计算基础",
-                "status": "可用",
+                "layer": t("uwm_service.layer.relations.label"),
+                "coverage": t("uwm_service.layer.relations.coverage", boundary=int(admin_graph.get("edge_count") or 0), similarity=int(similarity.get("similarity_edge_count") or 0)),
+                "content": t("uwm_service.layer.relations.content"),
+                "status": t("uwm_service.status.available"),
             },
             {
-                "layer": "候选动作目录",
-                "coverage": f"3类模板、{int((inventory.get('summary') or {}).get('available_action_count') or 0)}个空间动作实例",
-                "content": "按状态阈值为符合条件的空间单元生成候选动作",
-                "status": "情景候选，不是历史项目",
+                "layer": t("uwm_service.layer.catalog.label"),
+                "coverage": t("uwm_service.layer.catalog.coverage", actions=int((inventory.get("summary") or {}).get("available_action_count") or 0)),
+                "content": t("uwm_service.layer.catalog.content"),
+                "status": t("uwm_service.status.scenario"),
             },
             {
-                "layer": "Simulator学习样本",
-                "coverage": f"{len(transitions)}条状态—动作—下一状态转移",
-                "content": "用于训练动作条件状态转移模型和留出验证",
-                "status": "模拟器回放证据",
+                "layer": t("uwm_service.layer.training.label"),
+                "coverage": t("uwm_service.layer.training.coverage", count=len(transitions)),
+                "content": t("uwm_service.layer.training.content"),
+                "status": t("uwm_service.status.replay"),
             },
         ]
 
@@ -255,14 +273,13 @@ class MultiStageInterventionPlannerService:
         counts = summary.get("action_type_counts") or {}
         thresholds = summary.get("thresholds") or {}
         label_by_type = {
-            "increase_green_infrastructure": "增加绿色/降温基础设施",
-            "traffic_emission_control": "实施交通排放治理",
-            "add_community_service": "新增或改善社区公共服务",
+            action_type: t(f"uwm_service.action.{action_type}")
+            for action_type in DEFAULT_ACTION_TYPES
         }
         trigger_by_type = {
-            "increase_green_infrastructure": f"热风险 ≥ {thresholds.get('heat_risk', 0.7)}",
-            "traffic_emission_control": f"污染暴露 ≥ {thresholds.get('air_pollution_exposure', 0.6)}",
-            "add_community_service": f"服务可达性 ≤ {thresholds.get('service_accessibility', 0.5)}",
+            "increase_green_infrastructure": t("uwm_service.trigger.heat", threshold=thresholds.get("heat_risk", 0.7)),
+            "traffic_emission_control": t("uwm_service.trigger.pollution", threshold=thresholds.get("air_pollution_exposure", 0.6)),
+            "add_community_service": t("uwm_service.trigger.service", threshold=thresholds.get("service_accessibility", 0.5)),
         }
         grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for action in inventory.get("actions") or []:
@@ -294,8 +311,11 @@ class MultiStageInterventionPlannerService:
         return {
             "template_count": len(DEFAULT_ACTION_TYPES),
             "instance_count": int(summary.get("available_action_count") or 0),
-            "instance_definition": "一个动作实例 = 一类动作模板 × 一个满足触发阈值的空间单元；不是1137种不同政策。",
-            "intensity_definition": "当前目录中的动作强度统一为1.0，用于验证多阶段状态更新；生产系统应接入容量、成本和工期后扩展为多强度动作。",
+            "instance_definition": t(
+                "uwm_service.catalog.instance_definition",
+                count=int(summary.get("available_action_count") or 0),
+            ),
+            "intensity_definition": t("uwm_service.catalog.intensity_definition"),
             "historical_project_log": False,
             "rows": rows,
         }
@@ -305,25 +325,40 @@ class MultiStageInterventionPlannerService:
         for feature in FEATURE_DEFINITIONS:
             group_counts[str(feature["group"])] += 1
         return {
-            "model_class": "带L2正则的多输出线性岭回归",
+            "model_class": t("uwm_service.simulator.model_class"),
             "input_dimension": len(FEATURE_NAMES),
             "output_dimension": len(TARGET_NAMES),
             "coefficient_count": len(FEATURE_NAMES) * len(TARGET_NAMES),
             "coefficient_matrix_shape": [len(FEATURE_NAMES), len(TARGET_NAMES)],
             "extra_intercept_count": 0,
-            "parameter_explanation": (
-                "23维输入中已经包含1维常数偏置，因此参数矩阵为23×6=138个系数，"
-                "不再额外增加6个截距。136不是当前实现的参数量。"
-            ),
+            "parameter_explanation": t("uwm_service.simulator.parameter_explanation"),
             "input_groups": [
-                {"group": group, "dimension": count}
+                {
+                    "group": t(_GROUP_I18N_KEYS.get(group, "")) if _GROUP_I18N_KEYS.get(group) else group,
+                    "dimension": count,
+                }
                 for group, count in group_counts.items()
             ],
-            "input_features": FEATURE_DEFINITIONS,
-            "output_targets": TARGET_DEFINITIONS,
+            "input_features": [
+                {
+                    **feature,
+                    "label": t(_FEATURE_I18N_KEYS[feature["name"]] + ".label"),
+                    "meaning": t(_FEATURE_I18N_KEYS[feature["name"]] + ".meaning"),
+                    "group": t(_GROUP_I18N_KEYS.get(feature["group"], "")) if _GROUP_I18N_KEYS.get(feature["group"]) else feature["group"],
+                }
+                for feature in FEATURE_DEFINITIONS
+            ],
+            "output_targets": [
+                {
+                    **target,
+                    "label": t(_TARGET_I18N_KEYS[target["name"]] + ".label"),
+                    "meaning": t(_TARGET_I18N_KEYS[target["name"]] + ".meaning"),
+                }
+                for target in TARGET_DEFINITIONS
+            ],
             "formula": "ŷ = x(1×23) · W(23×6)",
-            "training_method": "使用5844条训练转移拟合W，973条留出转移验证；岭正则系数为0.001。",
-            "scope_note": "这是当前轻量Simulator的明确结构，不代表完整UWM只有23维；Renderer和Kernel还持有空间几何、图关系及邻域状态。",
+            "training_method": t("uwm_service.simulator.training_method"),
+            "scope_note": t("uwm_service.simulator.scope_note"),
         }
 
     def actions(
@@ -425,9 +460,13 @@ class MultiStageInterventionPlannerService:
             "schema": "uwm.multistage_intervention_state_inspection.v1",
             "scenario": {
                 "display_name": (
-                    f"{county}区县级多阶段干预场景"
+                    t("uwm_service.state.scenario.county", county=county)
                     if county and not focus_unit
-                    else f"{' · '.join(focus_unit.split('|')[:2])}及{neighborhood_hops}阶邻域"
+                    else t(
+                        "uwm_service.state.scenario.focus",
+                        area=" · ".join(focus_unit.split("|")[:2]),
+                        hops=neighborhood_hops,
+                    )
                 ),
                 "focus_unit": focus_unit,
                 "county": county,
@@ -438,11 +477,11 @@ class MultiStageInterventionPlannerService:
                 "units": rows,
                 "state_dimension_count": 5,
                 "state_dimensions": [
-                    "热风险",
-                    "空气污染暴露",
-                    "服务可达性",
-                    "公平性",
-                    "宜居性",
+                    t("uwm_service.dimension.heat_risk"),
+                    t("uwm_service.dimension.air_pollution_exposure"),
+                    t("uwm_service.dimension.service_accessibility"),
+                    t("uwm_service.dimension.equity"),
+                    t("uwm_service.dimension.livability"),
                 ],
             },
             "candidate_action_summary": self._candidate_summary(candidate_actions),
@@ -453,7 +492,7 @@ class MultiStageInterventionPlannerService:
                 "simulator_trained": False,
                 "future_rollout_executed": False,
                 "planner_executed": False,
-                "message": "当前仅检查输入状态；尚未训练Simulator，也未进行未来推演。",
+                "message": t("uwm_service.state.execution_not_run"),
             },
             "map_update": self._state_inspection_map(
                 admin_geojson=admin_geojson,
@@ -490,15 +529,15 @@ class MultiStageInterventionPlannerService:
                 "公平性": row["equity"],
                 "宜居性": row["livability"],
                 "候选动作数": row["candidate_action_count"],
-                "地图角色": "UWM推演前输入状态",
+                "地图角色": t("uwm_service.map.role.state_input"),
             }
             features.append(enriched)
         return {
             "schema": "map_update.v1",
-            "summary": {"title": "UWM推演前：当前城市状态与候选动作"},
+            "summary": {"title": t("uwm_service.map.state_title")},
             "layers": [
                 self._geojson_layer(
-                    "UWM当前输入状态（宜居性压力场景）",
+                    t("uwm_service.map.state_layer"),
                     features,
                     "#0ea5e9",
                     0.32,
@@ -509,7 +548,7 @@ class MultiStageInterventionPlannerService:
                 "view_mode": "uwm_state_inspection_before_rollout",
                 "future_rollout_executed": False,
                 "candidate_action_count": len(candidate_actions),
-                "narrative": "当前地图只展示输入UWM的状态快照，尚未执行任何未来推演。",
+                "narrative": t("uwm_service.map.state_narrative"),
             },
         }
 
@@ -539,7 +578,7 @@ class MultiStageInterventionPlannerService:
             allowed_units=allowed_units,
         )
         if len(candidate_actions) < config["horizon"]:
-            raise ValueError("筛选后的可行动作数少于规划时域，请放宽区域或动作类型筛选")
+            raise ValueError(t("uwm_service.error.insufficient_actions"))
 
         training_started = perf_counter()
         trained = self._train_dynamics(replay, config)
@@ -627,21 +666,17 @@ class MultiStageInterventionPlannerService:
                 "training_row_count": trained["summary"]["train_count"],
                 "holdout_row_count": trained["summary"]["holdout_count"],
                 "why_seconds_not_hours": (
-                    "当前是23维输入、6维输出、138个系数的轻量岭回归状态转移模型，"
-                    "在5844条训练记录上使用本地CPU闭式线性代数拟合，不是十亿参数神经网络。"
+                    t("uwm_service.training.why_seconds")
                 ),
-                "production_recommendation": (
-                    "生产系统应离线训练并版本化Simulator，在线只加载已验证模型并执行状态更新与规划；"
-                    "当前每次重拟合是为了演示训练证据和保证运行可复现。"
-                ),
+                "production_recommendation": t("uwm_service.training.production_recommendation"),
                 "deep_neural_world_model_claim": False,
             },
             "nl_scenario_parse": config.get("nl_scenario_parse") or {},
             "world_model_architecture": {
-                "renderer": "1017个真实乡镇级行政几何、状态特征与7932条图边",
-                "simulator": "6817条回放转移训练的动作条件岭回归动力学，加真实共享边界归一化邻域传播",
-                "planner": "有限时域折扣保守回报波束搜索，每一步写回状态后重新计算后续动作价值",
-                "kernel": "共享边界占比、目标需求、暴露相似度与源节点度衰减组成的全域有向传播核",
+                "renderer": t("uwm_service.architecture.renderer"),
+                "simulator": t("uwm_service.architecture.simulator"),
+                "planner": t("uwm_service.architecture.planner"),
+                "kernel": t("uwm_service.architecture.kernel"),
             },
             "candidate_action_summary": self._candidate_summary(candidate_actions),
             "planning_scope": {
@@ -1065,7 +1100,7 @@ class MultiStageInterventionPlannerService:
             "ranking_before_state_update": self._ranking_preview(before),
             "ranking_after_state_update": self._ranking_preview(after),
             "ranking_changes": self._ranking_changes(before, after),
-            "explanation": "固定第一步动作后，分别在原始t0状态和写回传播后的t1状态重新计算所有剩余动作，比较第二步排序。",
+            "explanation": t("uwm_service.decision.ranking_explanation"),
         }
 
     def _ranking_preview(self, ranking: list[dict[str, Any]], limit: int = 5) -> list[dict[str, Any]]:
@@ -1323,7 +1358,11 @@ class MultiStageInterventionPlannerService:
             if target:
                 layers.append(
                     self._geojson_layer(
-                        f"UWM a{index + 1} 目标：{self._action_label(action.get('action_type'))}",
+                        t(
+                            "uwm_service.map.action_target",
+                            step=index + 1,
+                            action=self._action_label(action.get("action_type")),
+                        ),
                         [self._enrich_feature(target, action, step, role="target", step_index=index + 1)],
                         colors[index % len(colors)],
                         0.48,
@@ -1341,7 +1380,7 @@ class MultiStageInterventionPlannerService:
             if neighbor_features:
                 layers.append(
                     self._geojson_layer(
-                        f"UWM a{index + 1} 邻域传播",
+                        t("uwm_service.map.action_propagation", step=index + 1),
                         neighbor_features,
                         colors[index % len(colors)],
                         0.16,
@@ -1349,7 +1388,7 @@ class MultiStageInterventionPlannerService:
                 )
         full_update = {
             "schema": "map_update.v1",
-            "summary": {"title": "UWM多阶段城市干预规划", "run_id": run_id},
+            "summary": {"title": t("uwm_service.map.plan_title"), "run_id": run_id},
             "layers": layers,
             "metadata": {
                 "run_id": run_id,
@@ -1374,6 +1413,7 @@ class MultiStageInterventionPlannerService:
                 "service_gap": state.get("service_gap"),
                 "livability": state.get("livability"),
                 "uwm_role": "t0_scope",
+                "uwm_role_label": t("uwm_service.map.role.t0_scope"),
             }
             scope_features.append(enriched)
         steps = selected.get("imagined_steps") or []
@@ -1391,11 +1431,11 @@ class MultiStageInterventionPlannerService:
             {},
         )
         alternative_target = self._feature_for_action(features_by_name, alternative_action)
-        t0_layers = [self._geojson_layer("t0 当前规划域", scope_features, "#475569", 0.12)]
+        t0_layers = [self._geojson_layer(t("uwm_service.map.t0_scope"), scope_features, "#475569", 0.12)]
         if first_target:
             t0_layers.append(
                 self._geojson_layer(
-                    "t0 第一候选动作目标",
+                    t("uwm_service.map.t0_first_target"),
                     [self._enrich_feature(first_target, first_step.get("action") or {}, first_step, role="t0_first_target", step_index=0)],
                     "#dc2626",
                     0.42,
@@ -1405,7 +1445,7 @@ class MultiStageInterventionPlannerService:
         branch_layers = []
         if alternative_target:
             alternative_layer = self._geojson_layer(
-                "不更新世界状态：原第二步首选",
+                t("uwm_service.map.branch_without_update"),
                 [self._enrich_feature(alternative_target, alternative_action, {}, role="baseline_second_action", step_index=2)],
                 "#f59e0b",
                 0.42,
@@ -1415,7 +1455,7 @@ class MultiStageInterventionPlannerService:
         if second_target:
             branch_layers.append(
                 self._geojson_layer(
-                    "UWM更新世界后：新第二步首选",
+                    t("uwm_service.map.branch_with_update"),
                     [self._enrich_feature(second_target, second_step.get("action") or {}, second_step, role="uwm_second_action", step_index=2)],
                     "#7c3aed",
                     0.55,
@@ -1424,10 +1464,10 @@ class MultiStageInterventionPlannerService:
         return {
             "full": full_update,
             "scenes": {
-                "t0": self._scene_update(run_id, "场景1：t0当前复合压力世界", t0_layers, "先查看当前状态和第一步候选。"),
-                "t1": self._scene_update(run_id, "场景2：a1执行并写回t1", t1_layers, "红色为第一步目标，浅红为真实行政邻接传播。"),
-                "branch": self._scene_update(run_id, "场景3：第二步未来分叉", branch_layers, "橙色虚线是不更新世界的旧选择，紫色是UWM写回状态后的新选择。"),
-                "t2": self._scene_update(run_id, "场景4：UWM两步干预轨迹", layers, "显示最终两步目标及各自空间传播。"),
+                "t0": self._scene_update(run_id, t("uwm_service.map.scene.t0.title"), t0_layers, t("uwm_service.map.scene.t0.narrative")),
+                "t1": self._scene_update(run_id, t("uwm_service.map.scene.t1.title"), t1_layers, t("uwm_service.map.scene.t1.narrative")),
+                "branch": self._scene_update(run_id, t("uwm_service.map.scene.branch.title"), branch_layers, t("uwm_service.map.scene.branch.narrative")),
+                "t2": self._scene_update(run_id, t("uwm_service.map.scene.t2.title"), layers, t("uwm_service.map.scene.t2.narrative")),
             },
         }
 
@@ -1479,25 +1519,25 @@ class MultiStageInterventionPlannerService:
         first = actions[0] if actions else {}
         second = actions[1] if len(actions) > 1 else {}
         return {
-            "headline": "世界状态更新改变了下一步决策",
+            "headline": t("uwm_service.decision.headline"),
             "first_action": {
                 "label": self._action_label(first.get("action_type")),
                 "target_unit_id": str((first.get("target_units") or [""])[0]),
             },
             "old_second_action": {
                 "action_id": dependency.get("top_second_action_without_state_update"),
-                "message": "如果把第一步当作互不影响的静态项目，系统会继续选择增绿。",
+                "message": t("uwm_service.decision.old_message"),
             },
             "new_second_action": {
                 "label": self._action_label(second.get("action_type")),
                 "target_unit_id": str((second.get("target_units") or [""])[0]),
-                "message": "UWM生成t1新世界后发现服务短板成为更优的下一步。",
+                "message": t("uwm_service.decision.new_message"),
             },
             "proof_points": [
-                f"第一步写回后影响{((selected.get('imagined_steps') or [{}])[0].get('propagation') or {}).get('affected_unit_count', 0)}个空间单元",
-                f"{dependency.get('changed_action_rank_count', 0)}个后续动作发生排名变化",
-                f"选中的第二步由第{dependency.get('selected_second_rank_without_state_update')}名升至第{dependency.get('selected_second_rank_after_state_update')}名",
-                f"规划器实际评估{search_summary.get('evaluated_imagined_action_count', 0)}次想象动作",
+                t("uwm_service.decision.proof_affected", count=((selected.get("imagined_steps") or [{}])[0].get("propagation") or {}).get("affected_unit_count", 0)),
+                t("uwm_service.decision.proof_ranks", count=dependency.get("changed_action_rank_count", 0)),
+                t("uwm_service.decision.proof_second", before=dependency.get("selected_second_rank_without_state_update"), after=dependency.get("selected_second_rank_after_state_update")),
+                t("uwm_service.decision.proof_evaluated", count=search_summary.get("evaluated_imagined_action_count", 0)),
             ],
         }
 
@@ -1532,13 +1572,23 @@ class MultiStageInterventionPlannerService:
             "区县": county,
             "街道乡镇": township,
             "显示名称": f"{county} · {township}",
-            "地图角色": {
-                "target": "干预目标",
-                "propagated_neighbor": "空间传播邻域",
-                "t0_first_target": "第一步候选目标",
-                "baseline_second_action": "不更新世界时的第二步",
-                "uwm_second_action": "UWM重规划后的第二步",
-            }.get(role, role),
+            "地图角色": (
+                t({
+                    "target": "uwm_service.map.role.target",
+                    "propagated_neighbor": "uwm_service.map.role.propagated_neighbor",
+                    "t0_first_target": "uwm_service.map.role.t0_first_target",
+                    "baseline_second_action": "uwm_service.map.role.baseline_second_action",
+                    "uwm_second_action": "uwm_service.map.role.uwm_second_action",
+                }[role])
+                if role in {
+                    "target",
+                    "propagated_neighbor",
+                    "t0_first_target",
+                    "baseline_second_action",
+                    "uwm_second_action",
+                }
+                else role
+            ),
             "规划步骤": step_index,
             "干预类型": self._action_label(action.get("action_type")),
             "传播权重": (edge or {}).get("spillover_factor"),
@@ -1566,23 +1616,21 @@ class MultiStageInterventionPlannerService:
         }
 
     def _action_label(self, action_type: Any) -> str:
-        return {
-            "increase_green_infrastructure": "增加绿色基础设施",
-            "traffic_emission_control": "交通减排治理",
-            "add_community_service": "补充社区公共服务",
-        }.get(str(action_type), str(action_type or "动作"))
+        key = str(action_type or "unknown")
+        value = t(f"uwm_service.action.{key}")
+        return t("uwm_service.action.unknown") if value == f"uwm_service.action.{key}" else value
 
     def _claim_boundary(self) -> dict[str, Any]:
         return {
             "max_claim_level": "bounded_same_scene_algorithmic_support",
-            "allowed_claim": "同一重庆全域代理场景内，动作条件多阶段规划相对静态与消融基线具有算法优势。",
+            "allowed_claim": t("uwm_service.claim.allowed"),
             "prohibited_claims": [
-                "真实政策因果效果",
-                "正式规划许可或投资决策",
-                "跨城市跨时间泛化优势",
-                "将归一化回报差解释为现实百分比收益",
+                t("uwm_service.claim.prohibited.causal"),
+                t("uwm_service.claim.prohibited.permission"),
+                t("uwm_service.claim.prohibited.generalization"),
+                t("uwm_service.claim.prohibited.percentage"),
             ],
-            "transition_evidence": "6817条转移主要是准备好的模拟器回放，不是6817个已实施政策项目。",
+            "transition_evidence": t("uwm_service.claim.transition_evidence"),
         }
 
     def _asset_paths(self) -> dict[str, str]:

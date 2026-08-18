@@ -134,4 +134,4 @@ def test_frontend_contract_dispatches_workspace_to_both_ontology_views():
     assert "detail.auto_run" in demo
     assert "run.attestation?.passed !== true" in demo
     assert "run.okf_reference?.resource" in demo
-    assert "OKF 0.2 计算证明通过" in demo
+    assert "ontologyDemo.results.okfPassed" in demo

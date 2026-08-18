@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
   Boxes,
@@ -27,6 +28,7 @@ import {
   type ResourceVersion,
   type ResourceVersionArchitecture,
 } from './platformControlApi';
+import { formatDate, formatNumber } from '../../i18n';
 
 const PAGE_SIZE = 30;
 const REVIEWABLE_STATUSES = new Set([
@@ -35,33 +37,6 @@ const REVIEWABLE_STATUSES = new Set([
   'schema_and_location_drift',
   'tombstoned',
 ]);
-
-const STATUS_LABELS: Record<string, string> = {
-  unobserved: '未观测',
-  unbound: '未绑定',
-  in_sync: '一致',
-  stale: '观测过期',
-  schema_drift: '结构漂移',
-  location_drift: '位置漂移',
-  schema_and_location_drift: '结构与位置漂移',
-  tombstoned: '源对象已删除',
-};
-
-const ACTION_LABELS: Record<string, string> = {
-  harvest_provider: '采集提供方架构证据',
-  register_architecture: '登记完整架构绑定',
-  refresh_observation: '刷新提供方观测',
-  review_schema_drift: '发起结构漂移复核',
-  review_location_drift: '发起位置漂移复核',
-  investigate_tombstone: '核查源对象删除事件',
-};
-
-const APPROVAL_STATUS_LABELS: Record<ApprovalCase['status'], string> = {
-  pending: '待审批',
-  approved: '已批准',
-  rejected: '已驳回',
-  cancelled: '已取消',
-};
 
 function resourceName(resourceUrn: string): string {
   const parts = resourceUrn.split('/');
@@ -73,11 +48,9 @@ function resourceKind(resourceUrn: string): string {
   return parts[parts.length - 2] || 'resource';
 }
 
-function formatDate(value?: string | null): string {
+function formatModelDate(value?: string | null): string {
   if (!value) return '-';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString('zh-CN', {
+  return formatDate(value, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -89,15 +62,6 @@ function formatDate(value?: string | null): string {
 function shortFingerprint(value?: string | null): string {
   if (!value) return '-';
   return value.length > 18 ? `${value.slice(0, 10)}...${value.slice(-6)}` : value;
-}
-
-function errorText(error: unknown): string {
-  if (error instanceof PlatformControlApiError) {
-    if (error.status === 401) return '登录状态已失效';
-    if (error.status === 403) return '当前角色无权访问平台模型';
-    return error.requestId ? `${error.message} (${error.requestId})` : error.message;
-  }
-  return error instanceof Error ? error.message : '平台模型暂不可用';
 }
 
 function statusTone(status?: string): string {
@@ -121,13 +85,16 @@ function ComponentFact({
   secondary: string;
   fingerprint?: string | null;
 }) {
+  const { t } = useTranslation('common');
   return (
     <article className={`model-component-fact ${present ? 'present' : 'missing'}`}>
       <div className="model-component-icon">{icon}</div>
       <div className="model-component-body">
         <div className="model-component-title">
           <strong>{title}</strong>
-          <span>{present ? '已登记' : '缺失'}</span>
+          <span>{present
+            ? t('dataModelWorkbench.components.registered')
+            : t('dataModelWorkbench.components.missing')}</span>
         </div>
         <div className="model-component-primary">{primary}</div>
         <div className="model-component-secondary">{secondary}</div>
@@ -142,6 +109,7 @@ function ComponentFact({
 }
 
 export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRole?: string }) {
+  const { t, i18n } = useTranslation('common');
   const canReadPlatform = userRole === 'admin' || userRole === 'platform_operator';
   const [versions, setVersions] = useState<ResourceVersion[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -160,6 +128,26 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
   const [reviewExpiryHours, setReviewExpiryHours] = useState(72);
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
+  const errorText = (error: unknown): string => {
+    if (error instanceof PlatformControlApiError) {
+      if (error.status === 401) return t('dataModelWorkbench.errors.unauthorized');
+      if (error.status === 403) return t('dataModelWorkbench.errors.forbidden');
+      return error.requestId ? `${error.message} (${error.requestId})` : error.message;
+    }
+    return error instanceof Error ? error.message : t('dataModelWorkbench.errors.unavailable');
+  };
+  const statusLabel = (status: string) => t(`dataModelWorkbench.status.${status}`, {
+    defaultValue: status,
+  });
+  const actionLabel = (action: string) => t(`dataModelWorkbench.actions.${action}`, {
+    defaultValue: action,
+  });
+  const objectStateLabel = (state: string) => t(`dataModelWorkbench.objectState.${state}`, {
+    defaultValue: state,
+  });
+  const approvalStatusLabel = (status: ApprovalCase['status']) => (
+    t(`dataModelWorkbench.approval.status.${status}`)
+  );
 
   useEffect(() => {
     if (!canReadPlatform) return;
@@ -185,7 +173,7 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
         if (!controller.signal.aborted) setListLoading(false);
       });
     return () => controller.abort();
-  }, [canReadPlatform, refreshToken]);
+  }, [canReadPlatform, refreshToken, i18n.resolvedLanguage]);
 
   useEffect(() => {
     if (!selectedId || !canReadPlatform) {
@@ -232,7 +220,7 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
         if (!controller.signal.aborted) setDetailLoading(false);
       });
     return () => controller.abort();
-  }, [canReadPlatform, selectedId, refreshToken]);
+  }, [canReadPlatform, selectedId, refreshToken, i18n.resolvedLanguage]);
 
   const filteredVersions = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -290,8 +278,8 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
     return (
       <div className="model-access-denied" role="alert">
         <ShieldCheck aria-hidden="true" />
-        <strong>平台角色权限不足</strong>
-        <span>数据模型控制面仅对平台管理员和平台操作员开放。</span>
+        <strong>{t('dataModelWorkbench.accessDeniedTitle')}</strong>
+        <span>{t('dataModelWorkbench.accessDeniedDescription')}</span>
       </div>
     );
   }
@@ -312,29 +300,31 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
         <div className="model-workbench-heading">
           <Boxes aria-hidden="true" />
           <div>
-            <strong>数据模型</strong>
-            <span>{versions.length} 个资源版本</span>
+            <strong>{t('dataModelWorkbench.title')}</strong>
+            <span>{t('dataModelWorkbench.resourceVersionCount', {
+              count: formatNumber(versions.length),
+            })}</span>
           </div>
         </div>
         <button
           className="model-icon-button"
           onClick={() => setRefreshToken(value => value + 1)}
           disabled={listLoading || detailLoading}
-          title="刷新模型状态"
-          aria-label="刷新模型状态"
+          title={t('dataModelWorkbench.refresh')}
+          aria-label={t('dataModelWorkbench.refresh')}
         >
           <RefreshCw className={listLoading || detailLoading ? 'spinning' : ''} />
         </button>
       </div>
 
       <div className="model-workbench-layout">
-        <aside className="model-version-browser" aria-label="资源版本">
+        <aside className="model-version-browser" aria-label={t('dataModelWorkbench.resourceVersionsAria')}>
           <label className="model-search">
             <Search aria-hidden="true" />
             <input
               value={search}
               onChange={event => setSearch(event.target.value)}
-              placeholder="搜索资源或版本"
+              placeholder={t('dataModelWorkbench.searchPlaceholder')}
             />
           </label>
 
@@ -354,18 +344,18 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
               >
                 <span className="model-version-kind">{resourceKind(version.resource_urn)}</span>
                 <strong title={version.resource_urn}>{resourceName(version.resource_urn)}</strong>
-                <small>{version.version_key} · {formatDate(version.created_at)}</small>
-                <ChevronRight aria-hidden="true" />
+                <small>{version.version_key} · {formatModelDate(version.created_at)}</small>
+                <ChevronRight className="rtl-flip" aria-hidden="true" />
               </button>
             ))}
             {!listLoading && filteredVersions.length === 0 && (
-              <div className="model-empty-state">暂无资源版本</div>
+              <div className="model-empty-state">{t('dataModelWorkbench.emptyVersions')}</div>
             )}
           </div>
 
           {hasMore && !search && (
             <button className="model-load-more" onClick={loadMore} disabled={listLoading}>
-              {listLoading ? '加载中...' : '加载更多'}
+              {listLoading ? t('dataModelWorkbench.loading') : t('dataModelWorkbench.loadMore')}
             </button>
           )}
         </aside>
@@ -374,7 +364,7 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
           {detailLoading && !architecture && (
             <div className="model-detail-loading">
               <RefreshCw className="spinning" aria-hidden="true" />
-              <span>正在读取架构权威视图...</span>
+              <span>{t('dataModelWorkbench.loadingArchitecture')}</span>
             </div>
           )}
 
@@ -394,67 +384,83 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
                   <code title={selectedVersion.resource_urn}>{selectedVersion.resource_urn}</code>
                 </div>
                 <span className={`model-status-badge ${statusTone(currentStatus)}`}>
-                  {STATUS_LABELS[currentStatus] || currentStatus}
+                  {statusLabel(currentStatus)}
                 </span>
               </header>
 
-              <section className="model-summary" aria-label="模型状态摘要">
+              <section className="model-summary" aria-label={t('dataModelWorkbench.summaryAria')}>
                 <div>
-                  <span>架构就绪</span>
+                  <span>{t('dataModelWorkbench.summary.architectureReady')}</span>
                   <strong className={architecture.architecture_ready ? 'healthy' : 'warning'}>
-                    {architecture.architecture_ready ? '是' : '否'}
+                    {architecture.architecture_ready
+                      ? t('dataModelWorkbench.boolean.yes')
+                      : t('dataModelWorkbench.boolean.no')}
                   </strong>
                 </div>
                 <div>
-                  <span>组件完整度</span>
-                  <strong>{4 - architecture.missing_components.length}/4</strong>
+                  <span>{t('dataModelWorkbench.summary.componentCompleteness')}</span>
+                  <strong>{formatNumber(4 - architecture.missing_components.length)}/{formatNumber(4)}</strong>
                 </div>
                 <div>
-                  <span>结构一致</span>
-                  <strong>{reconciliation.schema_matches == null ? '-' : reconciliation.schema_matches ? '是' : '否'}</strong>
+                  <span>{t('dataModelWorkbench.summary.schemaMatches')}</span>
+                  <strong>{reconciliation.schema_matches == null
+                    ? '-'
+                    : reconciliation.schema_matches
+                      ? t('dataModelWorkbench.boolean.yes')
+                      : t('dataModelWorkbench.boolean.no')}</strong>
                 </div>
                 <div>
-                  <span>位置一致</span>
-                  <strong>{reconciliation.location_matches == null ? '-' : reconciliation.location_matches ? '是' : '否'}</strong>
+                  <span>{t('dataModelWorkbench.summary.locationMatches')}</span>
+                  <strong>{reconciliation.location_matches == null
+                    ? '-'
+                    : reconciliation.location_matches
+                      ? t('dataModelWorkbench.boolean.yes')
+                      : t('dataModelWorkbench.boolean.no')}</strong>
                 </div>
               </section>
 
               <section className="model-detail-section">
                 <div className="model-section-heading">
                   <Database aria-hidden="true" />
-                  <h4>架构组件</h4>
-                  <span>{architecture.missing_components.length ? `${architecture.missing_components.length} 项缺失` : '绑定完整'}</span>
+                  <h4>{t('dataModelWorkbench.components.title')}</h4>
+                  <span>{architecture.missing_components.length
+                    ? t('dataModelWorkbench.components.missingCount', {
+                      count: formatNumber(architecture.missing_components.length),
+                    })
+                    : t('dataModelWorkbench.components.complete')}</span>
                 </div>
                 <div className="model-component-list">
                   <ComponentFact
                     icon={<Database aria-hidden="true" />}
-                    title="技术结构"
+                    title={t('dataModelWorkbench.components.technicalStructure')}
                     present={Boolean(schema)}
-                    primary={schema ? `${schema.authority_system} · ${schema.schema_format}` : '未登记 SchemaVersion'}
+                    primary={schema ? `${schema.authority_system} · ${schema.schema_format}` : t('dataModelWorkbench.components.schemaNotRegistered')}
                     secondary={schema ? `${schema.authority_namespace} / ${schema.authority_object_id} · ${schema.authority_version_ref}` : 'schema_version'}
                     fingerprint={schema?.schema_sha256}
                   />
                   <ComponentFact
                     icon={<FileCheck2 aria-hidden="true" />}
-                    title="数据契约"
+                    title={t('dataModelWorkbench.components.dataContract')}
                     present={Boolean(contract)}
-                    primary={contract ? `${contract.contract_kind} · ${contract.enforcement_mode}` : '未登记 DataContractVersion'}
+                    primary={contract ? `${contract.contract_kind} · ${contract.enforcement_mode}` : t('dataModelWorkbench.components.contractNotRegistered')}
                     secondary={contract ? `${contract.authority_system} · ${contract.authority_namespace} / ${contract.authority_object_id}` : 'data_contract_version'}
                     fingerprint={contract?.contract_sha256}
                   />
                   <ComponentFact
                     icon={<HardDrive aria-hidden="true" />}
-                    title="物理位置"
+                    title={t('dataModelWorkbench.components.physicalLocation')}
                     present={Boolean(location)}
-                    primary={location ? `${location.provider_system} · ${location.location_kind}` : '未登记 PhysicalLocation'}
+                    primary={location ? `${location.provider_system} · ${location.location_kind}` : t('dataModelWorkbench.components.locationNotRegistered')}
                     secondary={location ? `${location.provider_namespace} / ${location.provider_locator} · ${location.snapshot_ref || location.revision_ref}` : 'physical_location'}
                     fingerprint={location?.location_sha256}
                   />
                   <ComponentFact
                     icon={<Fingerprint aria-hidden="true" />}
-                    title="架构绑定"
+                    title={t('dataModelWorkbench.components.architectureBinding')}
                     present={Boolean(binding)}
-                    primary={binding ? `绑定于 ${formatDate(binding.bound_at)}` : '未登记 ArchitectureBinding'}
+                    primary={binding
+                      ? t('dataModelWorkbench.components.boundAt', { date: formatModelDate(binding.bound_at) })
+                      : t('dataModelWorkbench.components.bindingNotRegistered')}
                     secondary={binding ? binding.bound_by : 'architecture_binding'}
                     fingerprint={binding?.binding_sha256}
                   />
@@ -464,19 +470,19 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
               <section className="model-detail-section model-reconciliation-section">
                 <div className="model-section-heading">
                   <RefreshCw aria-hidden="true" />
-                  <h4>运行态对账</h4>
-                  <span>{formatDate(reconciliation.evaluated_at)}</span>
+                  <h4>{t('dataModelWorkbench.reconciliation.title')}</h4>
+                  <span>{formatModelDate(reconciliation.evaluated_at)}</span>
                 </div>
                 {observation ? (
                   <dl className="model-observation-grid">
-                    <div><dt>提供方</dt><dd>{observation.provider_system}</dd></div>
-                    <div><dt>对象状态</dt><dd>{observation.object_state}</dd></div>
-                    <div><dt>观测时间</dt><dd>{formatDate(observation.observed_at)}</dd></div>
-                    <div><dt>有效期至</dt><dd>{formatDate(observation.fresh_until)}</dd></div>
-                    <div className="wide"><dt>对象</dt><dd>{observation.provider_namespace} / {observation.provider_object_id}</dd></div>
+                    <div><dt>{t('dataModelWorkbench.reconciliation.provider')}</dt><dd>{observation.provider_system}</dd></div>
+                    <div><dt>{t('dataModelWorkbench.reconciliation.objectState')}</dt><dd>{objectStateLabel(observation.object_state)}</dd></div>
+                    <div><dt>{t('dataModelWorkbench.reconciliation.observedAt')}</dt><dd>{formatModelDate(observation.observed_at)}</dd></div>
+                    <div><dt>{t('dataModelWorkbench.reconciliation.validUntil')}</dt><dd>{formatModelDate(observation.fresh_until)}</dd></div>
+                    <div className="wide"><dt>{t('dataModelWorkbench.reconciliation.object')}</dt><dd>{observation.provider_namespace} / {observation.provider_object_id}</dd></div>
                   </dl>
                 ) : (
-                  <div className="model-no-observation">尚无提供方观测</div>
+                  <div className="model-no-observation">{t('dataModelWorkbench.reconciliation.noObservation')}</div>
                 )}
               </section>
 
@@ -484,13 +490,15 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
                 <section className="model-detail-section model-actions-section">
                   <div className="model-section-heading">
                     <AlertTriangle aria-hidden="true" />
-                    <h4>必需治理动作</h4>
-                    <span>{reconciliation.required_actions.length} 项</span>
+                    <h4>{t('dataModelWorkbench.requiredActions')}</h4>
+                    <span>{t('dataModelWorkbench.itemCount', {
+                      count: formatNumber(reconciliation.required_actions.length),
+                    })}</span>
                   </div>
                   <ol>
                     {reconciliation.required_actions.map(action => (
                       <li key={action}>
-                        <span>{ACTION_LABELS[action] || action}</span>
+                        <span>{actionLabel(action)}</span>
                         <code>{action}</code>
                       </li>
                     ))}
@@ -507,14 +515,16 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
                     <div className={`model-approval-state ${approvalCase.status} ${approvalExpired ? 'expired' : ''}`}>
                       <div className="model-approval-state-heading">
                         <ClipboardCheck aria-hidden="true" />
-                        <strong>{approvalExpired ? '审批已过期' : APPROVAL_STATUS_LABELS[approvalCase.status]}</strong>
+                        <strong>{approvalExpired
+                          ? t('dataModelWorkbench.approval.expired')
+                          : approvalStatusLabel(approvalCase.status)}</strong>
                         <span>v{approvalCase.state_version}</span>
                       </div>
                       <code title={approvalCase.approval_case_ref}>{approvalCase.approval_case_ref}</code>
                       <dl>
-                        <div><dt>发起人</dt><dd>{approvalCase.requester_subject}</dd></div>
-                        <div><dt>有效期至</dt><dd>{formatDate(approvalCase.expires_at)}</dd></div>
-                        {approvalCase.decided_by && <div><dt>审批人</dt><dd>{approvalCase.decided_by}</dd></div>}
+                        <div><dt>{t('dataModelWorkbench.approval.requester')}</dt><dd>{approvalCase.requester_subject}</dd></div>
+                        <div><dt>{t('dataModelWorkbench.approval.expiresAt')}</dt><dd>{formatModelDate(approvalCase.expires_at)}</dd></div>
+                        {approvalCase.decided_by && <div><dt>{t('dataModelWorkbench.approval.decider')}</dt><dd>{approvalCase.decided_by}</dd></div>}
                       </dl>
                     </div>
                   )}
@@ -525,32 +535,33 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
                       onClick={() => setReviewFormOpen(true)}
                     >
                       <ClipboardCheck aria-hidden="true" />
-                      <span>发起架构变更评审</span>
+                      <span>{t('dataModelWorkbench.review.open')}</span>
                     </button>
                   )}
 
                   {canRequestReview && !approvalCase && reviewFormOpen && (
                     <div className="model-review-form">
                       <label>
-                        <span>评审原因</span>
+                        <span>{t('dataModelWorkbench.review.reason')}</span>
                         <textarea
                           value={reviewReason}
                           onChange={event => setReviewReason(event.target.value)}
                           maxLength={512}
                           rows={3}
                           autoFocus
+                          placeholder={t('dataModelWorkbench.review.reasonPlaceholder')}
                         />
                       </label>
                       <div className="model-review-form-footer">
                         <label>
-                          <span>有效期</span>
+                          <span>{t('dataModelWorkbench.review.expiry')}</span>
                           <select
                             value={reviewExpiryHours}
                             onChange={event => setReviewExpiryHours(Number(event.target.value))}
                           >
-                            <option value={24}>24 小时</option>
-                            <option value={72}>72 小时</option>
-                            <option value={168}>7 天</option>
+                            <option value={24}>{t('dataModelWorkbench.review.hours', { count: formatNumber(24) })}</option>
+                            <option value={72}>{t('dataModelWorkbench.review.hours', { count: formatNumber(72) })}</option>
+                            <option value={168}>{t('dataModelWorkbench.review.days', { count: formatNumber(7) })}</option>
                           </select>
                         </label>
                         <div>
@@ -561,8 +572,8 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
                               setReviewReason('');
                             }}
                             disabled={reviewSubmitting}
-                            title="取消"
-                            aria-label="取消"
+                            title={t('dataModelWorkbench.review.cancel')}
+                            aria-label={t('dataModelWorkbench.review.cancel')}
                           >
                             <X aria-hidden="true" />
                           </button>
@@ -574,7 +585,9 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
                             {reviewSubmitting
                               ? <RefreshCw className="spinning" aria-hidden="true" />
                               : <Send aria-hidden="true" />}
-                            <span>{reviewSubmitting ? '提交中...' : '提交评审'}</span>
+                            <span>{reviewSubmitting
+                              ? t('dataModelWorkbench.review.submitting')
+                              : t('dataModelWorkbench.review.submit')}</span>
                           </button>
                         </div>
                       </div>
@@ -586,7 +599,7 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
               {reconciliation.status === 'in_sync' && (
                 <div className="model-synchronized">
                   <CheckCircle2 aria-hidden="true" />
-                  <span>权威绑定与最新提供方证据一致</span>
+                  <span>{t('dataModelWorkbench.synchronized')}</span>
                 </div>
               )}
             </>

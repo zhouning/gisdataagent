@@ -123,11 +123,11 @@
 .nr-demo-table-wrap td:nth-child(2) { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 .nr-demo-table-wrap td button { border: 0; background: transparent; color: var(--nr-green); cursor: pointer; padding: 4px; }
 .nr-demo-status, .nr-demo-unresolved { display: inline-flex; border-radius: 3px; padding: 3px 5px; font-size: 8px; white-space: nowrap; font-weight: 600; }
-.status-空间冲突 { background: #feeceb; color: #a51f17; }
-.status-材料待补, .nr-demo-unresolved { background: #fff1dc; color: #a35400; }
-.status-条件复核 { background: #fff8cc; color: #776600; }
-.status-初筛通过 { background: #e5f5ea; color: #14733a; }
-.status-待分析 { background: var(--surface-elevated); color: var(--text-secondary); }
+.status-spatialConflict { background: #feeceb; color: #a51f17; }
+.status-materialMissing, .nr-demo-unresolved { background: #fff1dc; color: #a35400; }
+.status-conditionReview { background: #fff8cc; color: #776600; }
+.status-screenedPass { background: #e5f5ea; color: #14733a; }
+.status-pending { background: var(--surface-elevated); color: var(--text-secondary); }
 .nr-demo-disclaimer { margin-top: 10px; display: flex; align-items: center; gap: 5px; color: var(--nr-muted); font-size: 9px; }
 
 .nr-demo-structure { margin-top: 14px; }

@@ -1,2 +1,66 @@
-import {useEffect,useMemo,useState} from 'react';import {AlertTriangle,Map,RefreshCw,Shield} from 'lucide-react';type Row=Record<string,any>;type View='building_morphology_context'|'population_context'|'housing_evidence_readiness';const arr=<T,>(x:unknown):T[]=>Array.isArray(x)?x as T[]:[];
-export default function TraditionalLivabilityHousingCommunityPanel(){const [view,setView]=useState<View>('housing_evidence_readiness'),[overview,setOverview]=useState<Row|null>(null),[admins,setAdmins]=useState<Row[]>([]),[map,setMap]=useState<Row|null>(null),[message,setMessage]=useState(''),[loading,setLoading]=useState(false);const load=async()=>{setLoading(true);setMessage('');try{const q=`?view=${view}`,rs=await Promise.all([fetch('/api/uwm/traditional-livability/housing-community/overview',{credentials:'include'}),fetch('/api/uwm/traditional-livability/housing-community/admin-units'+q,{credentials:'include'}),fetch('/api/uwm/traditional-livability/housing-community/map'+q,{credentials:'include'})]),d=await Promise.all(rs.map(r=>r.json()));if(rs.some(r=>!r.ok))throw new Error(d.find(x=>x.error)?.error||'需求13产品不可用');setOverview(d[0]);setAdmins(arr(d[1].admin_units));setMap(d[2])}catch(e:unknown){setMessage(e instanceof Error?e.message:'需求13产品不可用')}finally{setLoading(false)}};useEffect(()=>{load()},[view]);const ranked=useMemo(()=>[...admins].sort((a,b)=>Number(a.relative_housing_community_evidence_gap_rank)-Number(b.relative_housing_community_evidence_gap_rank)).slice(0,10),[admins]);return <div className="traditional-panel"><div className="traditional-panel-title"><strong>住房与社区构成证据（需求13）</strong><button className="secondary-button" onClick={load} disabled={loading}><RefreshCw size={14}/>刷新</button></div><div className="traditional-tag-list">{(['building_morphology_context','population_context','housing_evidence_readiness'] as View[]).map(x=><button key={x} className={view===x?'primary-button':'secondary-button'} onClick={()=>setView(x)}>{x}</button>)}</div><div className="traditional-message error"><Shield size={15}/>建筑数量不等于住房套数；楼层代理不等于住宅面积；下推人口不是人口普查微观数据；相对证据缺口不等于住房短缺。</div>{message&&<div className="traditional-message error"><AlertTriangle size={15}/>{message}</div>}<div className="traditional-kpi-grid"><div className="traditional-kpi"><span>行政单元</span><strong>{overview?.summary?.admin_unit_count??'-'}</strong></div><div className="traditional-kpi"><span>形态精确匹配</span><strong>{overview?.summary?.exact_morphology_match_count??'-'}</strong></div><div className="traditional-kpi"><span>人口代理匹配</span><strong>{overview?.summary?.exact_population_proxy_match_count??'-'}</strong></div><div className="traditional-kpi"><span>区县统计连接</span><strong>{overview?.summary?.aggregate_district_match_count??'-'}</strong></div></div><div className="traditional-message error"><Shield size={15}/>住房类型、套数、住宅面积、空置、价格租金、可负担性、产权租赁、家庭构成、拥挤、职住邻近、混合使用和政策因果效果均未就绪。</div><h4>relative_housing_community_evidence_gap</h4><div className="traditional-table-wrap"><table className="traditional-table"><thead><tr><th>排名</th><th>区县/街镇</th><th>建筑</th><th>下推人口</th><th>缺口原因</th></tr></thead><tbody>{ranked.map(x=><tr key={x.admin_unit_id}><td>{x.relative_housing_community_evidence_gap_rank}</td><td>{x.county}/{x.township}</td><td>{x.building_morphology_context?.building_count??'-'}</td><td>{x.population_proxy_context?.downscaled_population?.toFixed?.(0)??'-'}</td><td>{arr<string>(x.evidence_gap_reasons).join(',')||'-'}</td></tr>)}</tbody></table></div><button className="primary-button" disabled={!map} onClick={()=>window.__handleMapUpdate?.(map)}><Map size={14}/>发送当前证据视图到地图</button></div>}
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { AlertTriangle, Map, RefreshCw, Shield } from 'lucide-react';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
+
+type Row = Record<string, any>;
+type View = 'building_morphology_context' | 'population_context' | 'housing_evidence_readiness';
+const arrayOf = <T,>(value: unknown): T[] => Array.isArray(value) ? value as T[] : [];
+
+export default function TraditionalLivabilityHousingCommunityPanel() {
+  const { t, i18n } = useTranslation();
+  const [view, setView] = useState<View>('housing_evidence_readiness');
+  const [overview, setOverview] = useState<Row | null>(null);
+  const [admins, setAdmins] = useState<Row[]>([]);
+  const [mapPayload, setMapPayload] = useState<Row | null>(null);
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    setMessage('');
+    try {
+      const suffix = '?view=' + view;
+      const urls = [
+        '/api/uwm/traditional-livability/housing-community/overview',
+        '/api/uwm/traditional-livability/housing-community/admin-units' + suffix,
+        '/api/uwm/traditional-livability/housing-community/map' + suffix,
+      ];
+      const responses = await Promise.all(urls.map(url => fetch(url, { credentials: 'include', headers: getLocaleHeaders() })));
+      const data = await Promise.all(responses.map(response => response.json()));
+      if (responses.some(response => !response.ok)) {
+        throw new Error(data.find(item => item.error)?.error || t('traditionalPanels.housing.errors.unavailable'));
+      }
+      setOverview(data[0]);
+      setAdmins(arrayOf<Row>(data[1].admin_units));
+      setMapPayload(data[2]);
+    } catch (error: unknown) {
+      setMessage(error instanceof Error ? error.message : t('traditionalPanels.housing.errors.unavailable'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void load(); }, [view, i18n.resolvedLanguage]);
+  const ranked = useMemo(() => [...admins].sort((a, b) => Number(a.relative_housing_community_evidence_gap_rank) - Number(b.relative_housing_community_evidence_gap_rank)).slice(0, 10), [admins]);
+  const count = (value: unknown) => typeof value === 'number' ? formatNumber(value) : String(value ?? '-');
+
+  return (
+    <div className="traditional-panel">
+      <div className="traditional-panel-title"><strong>{t('traditionalPanels.housing.title')}</strong><button className="secondary-button" onClick={() => void load()} disabled={loading}><RefreshCw size={14} />{t('traditionalPanels.common.refresh')}</button></div>
+      <div className="traditional-tag-list">{(['building_morphology_context', 'population_context', 'housing_evidence_readiness'] as View[]).map(item => <button key={item} className={view === item ? 'primary-button' : 'secondary-button'} onClick={() => setView(item)}>{t('traditionalPanels.housing.views.' + item)}</button>)}</div>
+      <div className="traditional-message error"><Shield size={15} />{t('traditionalPanels.housing.warning')}</div>
+      {message && <div className="traditional-message error"><AlertTriangle size={15} />{message}</div>}
+      <div className="traditional-kpi-grid">
+        <div className="traditional-kpi"><span>{t('traditionalPanels.housing.kpis.units')}</span><strong>{count(overview?.summary?.admin_unit_count)}</strong></div>
+        <div className="traditional-kpi"><span>{t('traditionalPanels.housing.kpis.morphology')}</span><strong>{count(overview?.summary?.exact_morphology_match_count)}</strong></div>
+        <div className="traditional-kpi"><span>{t('traditionalPanels.housing.kpis.population')}</span><strong>{count(overview?.summary?.exact_population_proxy_match_count)}</strong></div>
+        <div className="traditional-kpi"><span>{t('traditionalPanels.housing.kpis.districtMatch')}</span><strong>{count(overview?.summary?.aggregate_district_match_count)}</strong></div>
+      </div>
+      <div className="traditional-message error"><Shield size={15} />{t('traditionalPanels.housing.finalWarning')}</div>
+      <h4>{t('traditionalPanels.housing.sections.gap')}</h4>
+      <div className="traditional-table-wrap"><table className="traditional-table"><thead><tr><th>{t('traditionalPanels.housing.table.rank')}</th><th>{t('traditionalPanels.housing.table.area')}</th><th>{t('traditionalPanels.housing.table.buildings')}</th><th>{t('traditionalPanels.housing.table.population')}</th><th>{t('traditionalPanels.housing.table.reasons')}</th></tr></thead><tbody>{ranked.map(item => <tr key={item.admin_unit_id}><td>{item.relative_housing_community_evidence_gap_rank}</td><td>{item.county}/{item.township}</td><td>{item.building_morphology_context?.building_count ?? '-'}</td><td>{item.population_proxy_context?.downscaled_population != null ? formatNumber(Math.round(item.population_proxy_context.downscaled_population)) : '-'}</td><td>{arrayOf<string>(item.evidence_gap_reasons).join(',') || '-'}</td></tr>)}</tbody></table></div>
+      <button className="primary-button" disabled={!mapPayload} onClick={() => window.__handleMapUpdate?.(mapPayload)}><Map size={14} />{t('traditionalPanels.housing.actions.sendToMap')}</button>
+    </div>
+  );
+}

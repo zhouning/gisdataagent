@@ -10,6 +10,7 @@ from sqlalchemy import text
 
 from .db_engine import get_engine
 from .database_tools import _inject_user_context, T_USER_MEMORIES
+from .i18n import t
 from .user_context import current_user_id
 
 VALID_MEMORY_TYPES = ("region", "viz_preference", "analysis_result", "custom", "analysis_perspective", "auto_extract")
@@ -66,16 +67,18 @@ def save_memory(memory_type: str, key: str, value: str, description: str = "") -
         操作结果 dict
     """
     if memory_type not in VALID_MEMORY_TYPES:
-        return {"status": "error", "message": f"无效的记忆类型 '{memory_type}'，可选: {', '.join(VALID_MEMORY_TYPES)}"}
+        return {"status": "error", "message": t(
+            "memory.invalid_type", memory_type=memory_type, types=", ".join(VALID_MEMORY_TYPES)
+        )}
 
     try:
         parsed_value = json.loads(value)
     except (json.JSONDecodeError, TypeError):
-        return {"status": "error", "message": "value 必须是合法的 JSON 字符串"}
+        return {"status": "error", "message": t("memory.invalid_json")}
 
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置，无法保存记忆"}
+        return {"status": "error", "message": t("memory.db_save_unavailable")}
 
     username = current_user_id.get()
     try:
@@ -89,9 +92,11 @@ def save_memory(memory_type: str, key: str, value: str, description: str = "") -
             """), {"u": username, "t": memory_type, "k": key,
                    "v": json.dumps(parsed_value, ensure_ascii=False), "d": description})
             conn.commit()
-        return {"status": "success", "message": f"已保存记忆: [{memory_type}] {key}"}
+        return {"status": "success", "message": t(
+            "memory.saved", memory_type=memory_type, key=key
+        )}
     except Exception as e:
-        return {"status": "error", "message": f"保存记忆失败: {e}"}
+        return {"status": "error", "message": t("memory.save_failed", error=e)}
 
 
 def recall_memories(memory_type: str = "", keyword: str = "") -> dict:
@@ -106,7 +111,7 @@ def recall_memories(memory_type: str = "", keyword: str = "") -> dict:
     """
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置"}
+        return {"status": "error", "message": t("memory.db_unavailable")}
 
     username = current_user_id.get()
     try:
@@ -141,10 +146,10 @@ def recall_memories(memory_type: str = "", keyword: str = "") -> dict:
             return {
                 "status": "success",
                 "memories": memories,
-                "message": f"找到 {len(memories)} 条记忆" if memories else "未找到匹配的记忆",
+                "message": t("memory.found", count=len(memories)) if memories else t("memory.not_found"),
             }
     except Exception as e:
-        return {"status": "error", "message": f"检索记忆失败: {e}"}
+        return {"status": "error", "message": t("memory.recall_failed", error=e)}
 
 
 def list_memories() -> dict:
@@ -167,13 +172,13 @@ def delete_memory(memory_id: str) -> dict:
     """
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置"}
+        return {"status": "error", "message": t("memory.db_unavailable")}
 
     username = current_user_id.get()
     try:
         mid = int(memory_id)
     except (ValueError, TypeError):
-        return {"status": "error", "message": "memory_id 必须是数字"}
+        return {"status": "error", "message": t("memory.id_invalid")}
 
     try:
         with engine.connect() as conn:
@@ -183,11 +188,11 @@ def delete_memory(memory_id: str) -> dict:
             ), {"id": mid, "u": username})
             conn.commit()
             if result.rowcount > 0:
-                return {"status": "success", "message": f"已删除记忆 (ID={mid})"}
+                return {"status": "success", "message": t("memory.deleted", id=mid)}
             else:
-                return {"status": "error", "message": f"未找到 ID={mid} 的记忆（可能不存在或不属于当前用户）"}
+                return {"status": "error", "message": t("memory.id_not_found", id=mid)}
     except Exception as e:
-        return {"status": "error", "message": f"删除记忆失败: {e}"}
+        return {"status": "error", "message": t("memory.delete_failed", error=e)}
 
 
 # --- Internal helpers (not registered as ADK tools) ---
@@ -487,7 +492,7 @@ def save_auto_extract_memories(facts: list[dict]) -> dict:
 
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置"}
+        return {"status": "error", "message": t("memory.db_unavailable")}
 
     username = current_user_id.get()
     try:
@@ -522,7 +527,7 @@ def save_auto_extract_memories(facts: list[dict]) -> dict:
             conn.commit()
         return {"status": "success", "saved": saved}
     except Exception as e:
-        return {"status": "error", "message": f"保存自动记忆失败: {e}"}
+        return {"status": "error", "message": t("memory.auto_save_failed", error=e)}
 
 
 def list_auto_extract_memories() -> dict:
@@ -533,7 +538,7 @@ def list_auto_extract_memories() -> dict:
     """
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置"}
+        return {"status": "error", "message": t("memory.db_unavailable")}
 
     username = current_user_id.get()
     try:
@@ -557,4 +562,4 @@ def list_auto_extract_memories() -> dict:
                 })
             return {"status": "success", "memories": memories}
     except Exception as e:
-        return {"status": "error", "message": f"查询自动记忆失败: {e}"}
+        return {"status": "error", "message": t("memory.auto_recall_failed", error=e)}

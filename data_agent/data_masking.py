@@ -13,6 +13,8 @@ from typing import Optional
 import geopandas as gpd
 import pandas as pd
 
+from .i18n import t as translate
+
 logger = logging.getLogger(__name__)
 
 
@@ -104,7 +106,10 @@ def mask_sensitive_fields(file_path: str, field_rules: str) -> str:
         # Validate fields exist
         valid_rules = {k: v for k, v in rules.items() if k in gdf.columns}
         if not valid_rules:
-            return json.dumps({"status": "error", "message": "指定字段不存在"},
+            return json.dumps({
+                "status": "error",
+                "message": translate("masking.fields_not_found"),
+            },
                               ensure_ascii=False)
 
         masked = mask_dataframe(gdf, valid_rules)
@@ -118,7 +123,11 @@ def mask_sensitive_fields(file_path: str, field_rules: str) -> str:
             "row_count": len(masked),
         }, ensure_ascii=False)
     except json.JSONDecodeError:
-        return json.dumps({"status": "error", "message": "field_rules 不是合法的JSON"},
+        return json.dumps({
+            "status": "error",
+            "message": translate("masking.invalid_rules_json"),
+        },
                           ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "masking.failed", error=e)}, ensure_ascii=False)

@@ -4,7 +4,7 @@ Intent Router — Semantic classification of user queries into pipeline categori
 Extracted from app.py (S-1 refactoring). Uses Gemini 2.0 Flash by default,
 but falls back to any LiteLLM-supported model (Ollama / vLLM / OpenAI-
 compatible) when ROUTER_MODEL points at a non-Gemini backend. v14.3 adds
-multi-language detection (zh/en/ja); v25.x adds local-LLM routing.
+multi-language detection (zh/en/ja/ar); v25.x adds local-LLM routing.
 """
 import logging
 import os
@@ -110,7 +110,8 @@ def _route_via_litellm(prompt: str, model_name: str, image_paths=None) -> tuple[
 def detect_language(text: str) -> str:
     """Detect input language from character distribution.
 
-    Returns: 'zh' (Chinese), 'en' (English), 'ja' (Japanese), or 'zh' as default.
+    Returns: 'zh' (Chinese), 'en' (English), 'ja' (Japanese), 'ar' (Arabic),
+    or 'zh' as default.
     """
     if not text:
         return "zh"
@@ -118,6 +119,7 @@ def detect_language(text: str) -> str:
     cjk = 0
     hiragana_katakana = 0
     latin = 0
+    arabic = 0
     for ch in text:
         cp = ord(ch)
         if 0x4E00 <= cp <= 0x9FFF or 0x3400 <= cp <= 0x4DBF:
@@ -126,12 +128,22 @@ def detect_language(text: str) -> str:
             hiragana_katakana += 1
         elif 0x0041 <= cp <= 0x007A:
             latin += 1
+        elif (
+            0x0600 <= cp <= 0x06FF
+            or 0x0750 <= cp <= 0x077F
+            or 0x08A0 <= cp <= 0x08FF
+            or 0xFB50 <= cp <= 0xFDFF
+            or 0xFE70 <= cp <= 0xFEFF
+        ):
+            arabic += 1
 
-    total = cjk + hiragana_katakana + latin
+    total = cjk + hiragana_katakana + latin + arabic
     if total == 0:
         return "zh"
     if hiragana_katakana / max(total, 1) > 0.1:
         return "ja"
+    if arabic / max(total, 1) > 0.3:
+        return "ar"
     if latin / max(total, 1) > 0.7:
         return "en"
     return "zh"
@@ -141,6 +153,7 @@ _LANG_HINTS = {
     "zh": "请用中文回复。",
     "en": "Please respond in English.",
     "ja": "日本語で回答してください。",
+    "ar": "يرجى الرد باللغة العربية.",
 }
 
 
@@ -243,7 +256,7 @@ def classify_intent(text: str, previous_pipeline: str = None,
     Supports multimodal input: images are embedded directly, PDF text is appended to prompt.
     Returns: (intent, reason, router_tokens, tool_categories, language) where intent is
     'OPTIMIZATION', 'GOVERNANCE', 'ONTOLOGY', 'GENERAL', 'WORKFLOW', or 'AMBIGUOUS',
-    and language is 'zh'/'en'/'ja'.
+    and language is 'zh'/'en'/'ja'/'ar'.
     """
     lang = detect_language(text)
     import time as _time

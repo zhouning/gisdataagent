@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import DeckGL from '@deck.gl/react';
 import { GeoJsonLayer, ScatterplotLayer, ArcLayer, ColumnLayer } from '@deck.gl/layers';
 import { MVTLayer } from '@deck.gl/geo-layers';
 import { Map } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { formatNumber, getLocaleHeaders } from '../i18n';
 
 interface MapLayer {
   name: string;
@@ -94,6 +96,10 @@ const BASEMAP_STYLES: Record<string, any> = {
   },
 };
 
+const MAP_LAYER_LABEL_KEYS: Record<string, string> = {
+  'S2 可选真实地块': 'map.layerNames.s2SelectableParcel',
+};
+
 function hexToRgba(hex: string, alpha = 200): [number, number, number, number] {
   const h = hex.replace('#', '');
   const r = parseInt(h.substring(0, 2), 16) || 100;
@@ -140,6 +146,11 @@ function rasterBasemapStyle(
 export default function Map3DView({
   layers, center, zoom, basemap, basemaps, basemapMetadata,
 }: Map3DViewProps) {
+  const { t } = useTranslation();
+  const mapLayerLabel = useCallback((name: string) => {
+    const key = MAP_LAYER_LABEL_KEYS[name];
+    return key ? t(key, { defaultValue: name }) : name;
+  }, [t]);
   const [layerData, setLayerData] = useState<Record<string, any>>({});
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
@@ -209,7 +220,7 @@ export default function Map3DView({
           try {
             const { deserialize } = await import('flatgeobuf/lib/mjs/geojson.js');
             const fgbUrl = `/api/user/files/${layer.fgb}`;
-            const resp = await fetch(fgbUrl, { credentials: 'include' });
+            const resp = await fetch(fgbUrl, { credentials: 'include', headers: getLocaleHeaders() });
             if (!resp.ok) {
               console.warn(`[Map3DView] FGB fetch failed ${layer.fgb}: HTTP ${resp.status}`);
               continue;
@@ -223,7 +234,7 @@ export default function Map3DView({
           }
         } else if (layer.geojson) {
           try {
-            const resp = await fetch(`/api/user/files/${layer.geojson}`, { credentials: 'include' });
+            const resp = await fetch(`/api/user/files/${layer.geojson}`, { credentials: 'include', headers: getLocaleHeaders() });
             if (resp.ok) {
               newData[layer.name] = await resp.json();
             }
@@ -520,7 +531,7 @@ export default function Map3DView({
         initialViewState={initialViewState}
         controller={true}
         layers={deckLayers}
-        style={{ position: 'absolute', top: '0', left: '0', width: '100%', height: '100%' }}
+        style={{ position: 'absolute', inset: '0', width: '100%', height: '100%' }}
       >
         <Map
           mapStyle={mapStyle}
@@ -540,14 +551,14 @@ export default function Map3DView({
 
       {/* 3D Layer Control Panel (v14.0) */}
       {layers.length > 0 && (
-        <div style={{ position: 'absolute', top: 54, right: 12, zIndex: 1000 }}>
+        <div style={{ position: 'absolute', top: 54, insetInlineEnd: 12, zIndex: 1000 }}>
           <button onClick={() => setShowLayerPanel(!showLayerPanel)}
             style={{
               background: showLayerPanel ? '#1e3a5f' : 'rgba(0,0,0,0.6)',
               color: '#e0e0e0', border: '1px solid #444', borderRadius: 4,
               padding: '4px 8px', cursor: 'pointer', fontSize: 12,
             }}>
-            图层
+            {t('map3D.layers')}
           </button>
           {showLayerPanel && (
             <div style={{
@@ -565,8 +576,8 @@ export default function Map3DView({
                       ...prev, [l.name]: prev[l.name] === false ? true : false
                     }))}
                   />
-                  {l.name}
-                  <span style={{ marginLeft: 'auto', fontSize: 10, color: '#888' }}>{l.type}</span>
+                  {mapLayerLabel(l.name)}
+                  <span style={{ marginInlineStart: 'auto', fontSize: 10, color: '#888' }}>{l.type}</span>
                 </label>
               ))}
             </div>
@@ -577,7 +588,7 @@ export default function Map3DView({
       {/* Legend for categorized layers */}
       {layers.some(l => isCategorizedLegendLayer(l) && layerVisibility[l.name] !== false) && (
         <div style={{
-          position: 'absolute', bottom: 24, left: 12, zIndex: 1000,
+          position: 'absolute', bottom: 24, insetInlineStart: 12, zIndex: 1000,
           background: 'rgba(0,0,0,0.85)', border: '1px solid #333', borderRadius: 6,
           padding: '8px 12px', maxWidth: 220, maxHeight: 300, overflowY: 'auto',
         }}>
@@ -593,7 +604,7 @@ export default function Map3DView({
               return (
                 <div key={layer.name} style={{ marginBottom: 6 }}>
                   <div style={{ color: '#e0e0e0', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
-                    {layer.legend_title || layer.name}
+                    {layer.legend_title || mapLayerLabel(layer.name)}
                   </div>
                   {entries.map(([val, color]) => (
                     <div key={val} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '1px 0' }}>
@@ -614,7 +625,7 @@ export default function Map3DView({
       {/* Legend for choropleth layers */}
       {layers.some(l => isChoroplethLegendLayer(l) && layerVisibility[l.name] !== false) && (
         <div style={{
-          position: 'absolute', bottom: 24, left: 12, zIndex: 1000,
+          position: 'absolute', bottom: 24, insetInlineStart: 12, zIndex: 1000,
           background: 'rgba(0,0,0,0.85)', border: '1px solid #333', borderRadius: 6,
           padding: '8px 12px', maxWidth: 240, maxHeight: 300, overflowY: 'auto',
         }}>
@@ -625,7 +636,7 @@ export default function Map3DView({
               return (
                 <div key={layer.name} style={{ marginBottom: 6 }}>
                   <div style={{ color: '#e0e0e0', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
-                    {layer.legend_title || layer.value_column || layer.name}
+                    {layer.legend_title || layer.value_column || mapLayerLabel(layer.name)}
                   </div>
                   {(layer.breaks || []).map((b, i) => (
                     <div key={`${layer.name}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '1px 0' }}>
@@ -685,8 +696,10 @@ function rgbaToCss(color: [number, number, number, number]): string {
 
 function formatLegendNumber(value: number): string {
   if (!Number.isFinite(value)) return '—';
-  if (value !== 0 && Math.abs(value) < 0.001) return value.toExponential(1);
-  if (Math.abs(value) >= 1000) return value.toFixed(0);
-  if (Math.abs(value) >= 10) return value.toFixed(1);
-  return value.toFixed(2);
+  if (value !== 0 && Math.abs(value) < 0.001) {
+    return formatNumber(value, { notation: 'scientific', maximumFractionDigits: 1 });
+  }
+  if (Math.abs(value) >= 1000) return formatNumber(value, { maximumFractionDigits: 0 });
+  if (Math.abs(value) >= 10) return formatNumber(value, { maximumFractionDigits: 1 });
+  return formatNumber(value, { maximumFractionDigits: 2 });
 }

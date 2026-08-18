@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n, { getLocale, getLocaleHeaders } from '../../i18n';
 import ReactECharts from 'echarts-for-react';
 import {
   AlertTriangle,
@@ -46,7 +48,7 @@ interface ResourceControls {
 
 const PRESETS: Record<PresetKey, { label: string; weights: ObjectiveWeights }> = {
   balanced: {
-    label: '均衡',
+    label: 'balanced',
     weights: {
       public_cost: 1,
       resident_housing_cost: 0.15,
@@ -56,7 +58,7 @@ const PRESETS: Record<PresetKey, { label: string; weights: ObjectiveWeights }> =
     },
   },
   fiscal: {
-    label: '财政',
+    label: 'fiscal',
     weights: {
       public_cost: 1,
       resident_housing_cost: 0.05,
@@ -66,7 +68,7 @@ const PRESETS: Record<PresetKey, { label: string; weights: ObjectiveWeights }> =
     },
   },
   commute: {
-    label: '通勤',
+    label: 'commute',
     weights: {
       public_cost: 0.35,
       resident_housing_cost: 0.1,
@@ -76,7 +78,7 @@ const PRESETS: Record<PresetKey, { label: string; weights: ObjectiveWeights }> =
     },
   },
   resident: {
-    label: '居住成本',
+    label: 'resident',
     weights: {
       public_cost: 0.2,
       resident_housing_cost: 1,
@@ -100,45 +102,47 @@ const COLORS = {
   amber: '#d97706',
   red: '#dc2626',
 };
+const SOURCE_ZONE_ID_KEY = '\u7a7a\u95f4\u5355\u5143\u6807\u8bc6';
+const mapProperty = (key: string) => i18n.t(`population.map.properties.${key}`);
 
 const EVIDENCE_LABELS: Record<string, string> = {
-  population_total: '人口总量',
-  population_groups: '人群分组',
-  housing_capacity: '住房容量',
-  transport_impedance: '交通阻抗',
-  service_capacity: '公共服务容量',
-  costs: '成本参数',
+  population_total: 'population_total',
+  population_groups: 'population_groups',
+  housing_capacity: 'housing_capacity',
+  transport_impedance: 'transport_impedance',
+  service_capacity: 'service_capacity',
+  costs: 'costs',
 };
 
 const EVIDENCE_STATUS_LABELS: Record<string, string> = {
-  fitted_proxy: '拟合代理值',
-  scenario_assumption: '情景假设',
+  fitted_proxy: 'fitted_proxy',
+  scenario_assumption: 'scenario_assumption',
 };
 
 const HOUSING_TYPE_LABELS: Record<string, string> = {
-  standard: '普通住房',
-  rental: '租赁住房',
-  accessible: '适老住房',
+  standard: 'standard',
+  rental: 'rental',
+  accessible: 'accessible',
 };
 
 const AUDIT_CATEGORY_LABELS: Record<string, string> = {
-  population_conservation: '人口守恒',
-  housing_capacity: '住房容量',
-  housing_activation: '住房启用联动',
-  public_service_capacity: '公共服务容量',
-  fiscal: '公共预算',
-  relocation: '跨区配置上限',
+  population_conservation: 'population_conservation',
+  housing_capacity: 'housing_capacity',
+  housing_activation: 'housing_activation',
+  public_service_capacity: 'public_service_capacity',
+  fiscal: 'fiscal',
+  relocation: 'relocation',
 };
 
 const AUDIT_ID_LABELS: Record<string, string> = {
-  group_balance: '家庭组守恒',
-  housing_capacity: '住房容量',
-  housing_activation: '住房启用上限',
-  housing_activation_lower: '住房启用下限',
-  service_capacity: '公共服务容量',
-  public_budget: '公共预算',
-  global_relocation_cap: '全局跨区上限',
-  group_relocation_cap: '家庭组跨区上限',
+  group_balance: 'group_balance',
+  housing_capacity: 'housing_capacity',
+  housing_activation: 'housing_activation',
+  housing_activation_lower: 'housing_activation_lower',
+  service_capacity: 'service_capacity',
+  public_budget: 'public_budget',
+  global_relocation_cap: 'global_relocation_cap',
+  group_relocation_cap: 'group_relocation_cap',
 };
 
 function clone<T>(value: T): T {
@@ -148,22 +152,22 @@ function clone<T>(value: T): T {
 function formatNumber(value: unknown, maximumFractionDigits = 0): string {
   const number = Number(value);
   if (!Number.isFinite(number)) return '-';
-  return new Intl.NumberFormat('zh-CN', { maximumFractionDigits }).format(number);
+  return new Intl.NumberFormat(getLocale(), { maximumFractionDigits }).format(number);
 }
 
 function formatCost(value: unknown): string {
   const number = Number(value);
   if (!Number.isFinite(number)) return '-';
-  if (Math.abs(number) >= 100_000_000) return `${formatNumber(number / 100_000_000, 2)} 亿单位`;
-  if (Math.abs(number) >= 10_000) return `${formatNumber(number / 10_000, 2)} 万单位`;
-  return `${formatNumber(number, 2)} 单位`;
+  if (Math.abs(number) >= 100_000_000) return `${formatNumber(number / 100_000_000, 2)} ${i18n.t('population.units.hundredMillion')}`;
+  if (Math.abs(number) >= 10_000) return `${formatNumber(number / 10_000, 2)} ${i18n.t('population.units.tenThousand')}`;
+  return `${formatNumber(number, 2)} ${i18n.t('population.units.unit')}`;
 }
 
 function formatCompact(value: unknown): string {
   const number = Number(value);
   if (!Number.isFinite(number)) return '-';
-  if (Math.abs(number) >= 100_000_000) return `${formatNumber(number / 100_000_000, 1)} 亿`;
-  if (Math.abs(number) >= 10_000) return `${formatNumber(number / 10_000, 1)} 万`;
+  if (Math.abs(number) >= 100_000_000) return `${formatNumber(number / 100_000_000, 1)} ${i18n.t('population.units.hundredMillionShort')}`;
+  if (Math.abs(number) >= 10_000) return `${formatNumber(number / 10_000, 1)} ${i18n.t('population.units.tenThousandShort')}`;
   return formatNumber(number);
 }
 
@@ -178,42 +182,42 @@ function deltaPercent(current: unknown, reference: unknown): number | null {
 
 function statusText(status?: string): string {
   const labels: Record<string, string> = {
-    optimal: '最优解',
-    feasible_limit_reached: '时限内可行解',
-    infeasible: '不可行',
-    limit_reached_without_solution: '时限内未找到解',
+    optimal: i18n.t('population.status.optimal'),
+    feasible_limit_reached: i18n.t('population.status.feasible'),
+    infeasible: i18n.t('population.status.infeasible'),
+    limit_reached_without_solution: i18n.t('population.status.noSolution'),
   };
-  return status ? labels[status] || '未知状态' : '未运行';
+  return status ? labels[status] || i18n.t('population.status.unknown') : i18n.t('population.status.notRun');
 }
 
 function categoryText(category: unknown): string {
-  return AUDIT_CATEGORY_LABELS[String(category || '')] || '其他约束';
+  return i18n.t(`population.auditCategories.${AUDIT_CATEGORY_LABELS[String(category || '')] || 'other'}`);
 }
 
 function constraintText(row: RecordValue, input: RecordValue): string {
   const [prefix, identity = ''] = String(row.constraint_id || '').split('::');
-  const label = AUDIT_ID_LABELS[prefix] || '约束项';
+  const label = i18n.t(`population.auditIds.${AUDIT_ID_LABELS[prefix] || 'other'}`);
   if (!identity) return label;
   const group = (input.population_groups || []).find((item: RecordValue) => item.group_id === identity);
   if (group) return `${label}：${group.group_name}`;
   const housing = (input.housing_options || []).find((item: RecordValue) => item.housing_option_id === identity);
   if (housing) {
     const zone = (input.zones || []).find((item: RecordValue) => item.zone_id === housing.zone_id);
-    return `${label}：${zone?.zone_name || housing.zone_id} ${HOUSING_TYPE_LABELS[housing.housing_type] || '住房'}`;
+    return `${label}: ${zone?.zone_name || housing.zone_id} ${i18n.t(`population.housingTypes.${HOUSING_TYPE_LABELS[housing.housing_type] || 'other'}`)}`;
   }
   const zone = (input.zones || []).find((item: RecordValue) => item.zone_id === identity);
-  return `${label}：${zone?.zone_name || '场景对象'}`;
+  return `${label}: ${zone?.zone_name || i18n.t('population.sceneObject')}`;
 }
 
 async function fetchJson(url: string, init?: RequestInit): Promise<RecordValue> {
   let response: Response;
   try {
-    response = await fetch(url, { credentials: 'include', ...init });
+    response = await fetch(url, { ...init, credentials: 'include', headers: { ...getLocaleHeaders(), ...(init?.headers || {}) } });
   } catch {
-    throw new Error('无法连接人口住房分析服务，请确认后端已启动且当前会话有效');
+    throw new Error(i18n.t('population.errors.connection'));
   }
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || `请求失败（${response.status}）`);
+  if (!response.ok) throw new Error(data.error || i18n.t('population.errors.request', { status: response.status }));
   return data;
 }
 
@@ -243,20 +247,20 @@ function buildMapUpdate(
   const upper = values[Math.floor(values.length * 2 / 3)] || 0;
   const focusIds = focus ? new Set([String(focus.origin_zone_id), String(focus.destination_zone_id)]) : null;
   const boundaryFeatures = (context.boundary_geojson?.features || [])
-    .filter((feature: RecordValue) => !focusIds || focusIds.has(String(feature.properties?.['空间单元标识'])))
+    .filter((feature: RecordValue) => !focusIds || focusIds.has(String(feature.properties?.[SOURCE_ZONE_ID_KEY])))
     .map((feature: RecordValue) => {
       const copied = clone(feature);
-      const zoneId = String(copied.properties?.['空间单元标识']);
+      const zoneId = String(copied.properties?.[SOURCE_ZONE_ID_KEY]);
       const households = assigned.get(zoneId) || 0;
-      const band = households <= lower ? '较低' : households <= upper ? '中等' : '较高';
+      const band = households <= lower ? 'low' : households <= upper ? 'medium' : 'high';
       copied.properties = {
         ...copied.properties,
-        方案: profileLabel,
-        配置家庭数: Math.round(households),
-        新增住房代理套数: Math.round(newUnits.get(zoneId) || 0),
-        公共服务扩容代理: Number((service.get(zoneId) || 0).toFixed(2)),
-        配置强度: band,
-        证据边界: '聚合代理情景，不是政策建议或个人分配',
+        [mapProperty('plan')]: profileLabel,
+        [mapProperty('households')]: Math.round(households),
+        [mapProperty('newHousing')]: Math.round(newUnits.get(zoneId) || 0),
+        [mapProperty('serviceExpansion')]: Number((service.get(zoneId) || 0).toFixed(2)),
+        [mapProperty('intensity')]: i18n.t(`population.map.intensity.${band}`),
+        [mapProperty('evidenceBoundary')]: i18n.t('population.map.evidenceBoundary'),
       };
       return copied;
     });
@@ -281,12 +285,12 @@ function buildMapUpdate(
         ],
       },
       properties: {
-        方案: profileLabel,
-        起点: origin.zone_name || originId,
-        目标区: destination.zone_name || destinationId,
-        跨区配置家庭数: Math.round(households),
-        箭头说明: '箭头由起点指向目标区',
-        流向含义: '模型聚合配置关系，不是实际搬迁路线或道路路径',
+        [mapProperty('plan')]: profileLabel,
+        [mapProperty('origin')]: origin.zone_name || originId,
+        [mapProperty('destination')]: destination.zone_name || destinationId,
+        [mapProperty('relocatedHouseholds')]: Math.round(households),
+        [mapProperty('arrowMeaning')]: i18n.t('population.map.arrowMeaning'),
+        [mapProperty('flowMeaning')]: i18n.t('population.map.flowMeaning'),
       },
     };
   });
@@ -306,7 +310,7 @@ function buildMapUpdate(
   return {
     schema: 'map_update.v1',
     summary: {
-      title: context.display?.scenario_name || '人口与住房空间配置优化',
+      title: context.display?.scenario_name || i18n.t('population.title'),
       profile: profileLabel,
       status: result.status,
       zone_count: boundaryFeatures.length,
@@ -317,22 +321,22 @@ function buildMapUpdate(
     zoom,
     layers: [
       {
-        name: `${profileLabel}行政区配置`,
+        name: `${profileLabel}${i18n.t('population.map.zoneAllocation')}`,
         type: 'categorized',
-        category_column: '配置强度',
-        category_labels: { 较低: '配置家庭较低', 中等: '配置家庭中等', 较高: '配置家庭较高' },
+        category_column: mapProperty('intensity'),
+        category_labels: { low: i18n.t('population.map.intensity.low'), medium: i18n.t('population.map.intensity.medium'), high: i18n.t('population.map.intensity.high') },
         style_map: {
-          较低: { fillColor: '#dbeafe', color: '#1d4ed8' },
-          中等: { fillColor: '#86efac', color: '#15803d' },
-          较高: { fillColor: '#fbbf24', color: '#a16207' },
+          low: { fillColor: '#dbeafe', color: '#1d4ed8' },
+          medium: { fillColor: '#86efac', color: '#15803d' },
+          high: { fillColor: '#fbbf24', color: '#a16207' },
         },
         style: { weight: 1.5, fillOpacity: 0.58, opacity: 0.9 },
         geojsonData: { type: 'FeatureCollection', features: boundaryFeatures },
       },
       {
-        name: `${profileLabel}跨区配置流`,
+        name: `${profileLabel}${i18n.t('population.map.relocationFlow')}`,
         type: 'line',
-        legend_title: '聚合配置流向',
+        legend_title: i18n.t('population.map.flowLegend'),
         style: {
           color: '#dc2626',
           weight: focus ? 4 : 3,
@@ -390,12 +394,13 @@ function RangeControl({
 
 function MetricDelta({ current, reference }: { current: unknown; reference: unknown }) {
   const delta = deltaPercent(current, reference);
-  if (delta === null) return <small>均衡基准不可比</small>;
+  if (delta === null) return <small>{i18n.t('population.metricDelta.incomparable')}</small>;
   const className = Math.abs(delta) < 0.0005 ? 'neutral' : delta > 0 ? 'up' : 'down';
-  return <small className={className}>{delta > 0 ? '+' : ''}{delta.toFixed(2)}%（相对均衡基准）</small>;
+  return <small className={className}>{delta > 0 ? '+' : ''}{delta.toFixed(2)}% ({i18n.t('population.metricDelta.reference')})</small>;
 }
 
 export default function PopulationHousingOptimizationTab() {
+  const { t } = useTranslation();
   const [catalog, setCatalog] = useState<RecordValue | null>(null);
   const [baseInput, setBaseInput] = useState<RecordValue | null>(null);
   const [mapContext, setMapContext] = useState<RecordValue | null>(null);
@@ -433,7 +438,7 @@ export default function PopulationHousingOptimizationTab() {
         setReferencePortfolio(portfolioPayload);
         setMapContext(mapPayload);
       } catch (loadError: unknown) {
-        if (!cancelled) setError(loadError instanceof Error ? loadError.message : '人口住房产品不可用');
+        if (!cancelled) setError(loadError instanceof Error ? loadError.message : t('population.errors.unavailable'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -460,9 +465,9 @@ export default function PopulationHousingOptimizationTab() {
   const sendMap = (mode: MapMode = mapMode, focus?: RecordValue, resultOverride?: RecordValue) => {
     const target = resultOverride || (mode === 'frozen' ? frozenResult : result);
     if (!mapContext || !target || !['optimal', 'feasible_limit_reached'].includes(target.status)) return;
-    const label = mode === 'frozen' ? '均衡基准方案' : '当前方案';
+    const label = mode === 'frozen' ? t('population.map.frozenPlan') : t('population.map.currentPlan');
     (window as any).__handleMapUpdate?.(buildMapUpdate(mapContext, target, label, focus));
-    setMapNotice(focus ? '已在主地图聚焦该配置关系' : `已发送${label}到主地图`);
+    setMapNotice(focus ? t('population.map.focused') : t('population.map.sent', { label }));
   };
 
   const reset = () => {
@@ -522,7 +527,7 @@ export default function PopulationHousingOptimizationTab() {
       });
       setValidation(validationPayload);
       if (!validationPayload.valid) {
-        throw new Error((validationPayload.errors || []).join('；') || '输入校验失败');
+        throw new Error((validationPayload.errors || []).join('; ') || t('population.errors.validation'));
       }
 
       const solved = await fetchJson('/api/uwm/population-housing/solve', {
@@ -539,7 +544,7 @@ export default function PopulationHousingOptimizationTab() {
         sendMap('current', undefined, solvedResult);
       }
     } catch (solveError: unknown) {
-      setError(solveError instanceof Error ? solveError.message : '求解请求失败');
+      setError(solveError instanceof Error ? solveError.message : t('population.errors.solve'));
     } finally {
       setSolving(false);
     }
@@ -569,12 +574,12 @@ export default function PopulationHousingOptimizationTab() {
       },
       yAxis: {
         type: 'category',
-        data: types.map((type) => HOUSING_TYPE_LABELS[type] || '其他住房'),
+        data: types.map((type) => i18n.t(`population.housingTypes.${HOUSING_TYPE_LABELS[type] || 'other'}`)),
         axisTick: { show: false },
       },
       series: [
-        { name: '配置户数', type: 'bar', data: types.map((type) => byType.get(type)?.occupied), barMaxWidth: 22 },
-        { name: '新增住房', type: 'bar', data: types.map((type) => byType.get(type)?.newUnits), barMaxWidth: 22 },
+        { name: i18n.t('population.charts.occupiedUnits'), type: 'bar', data: types.map((type) => byType.get(type)?.occupied), barMaxWidth: 22 },
+        { name: i18n.t('population.charts.newUnits'), type: 'bar', data: types.map((type) => byType.get(type)?.newUnits), barMaxWidth: 22 },
       ],
     };
   }, [result]);
@@ -594,10 +599,10 @@ export default function PopulationHousingOptimizationTab() {
         label: { show: false },
         emphasis: { label: { show: true, formatter: '{b}\n{d}%', fontSize: 10 } },
         data: [
-          { name: '配置成本', value: Number(costs.public_assignment_cost) },
-          { name: '住房行动', value: Number(costs.housing_action_public_cost) },
-          { name: '服务扩容', value: Number(costs.service_action_public_cost) },
-          { name: '跨区配置', value: Number(costs.relocation_cost) },
+          { name: i18n.t('population.costs.assignment'), value: Number(costs.public_assignment_cost) },
+          { name: i18n.t('population.costs.housingAction'), value: Number(costs.housing_action_public_cost) },
+          { name: i18n.t('population.costs.serviceAction'), value: Number(costs.service_action_public_cost) },
+          { name: i18n.t('population.costs.relocation'), value: Number(costs.relocation_cost) },
         ],
       }],
     };
@@ -619,15 +624,15 @@ export default function PopulationHousingOptimizationTab() {
   }, [result]);
 
   if (loading) {
-    return <div className="pho-loading"><RefreshCw size={20} className="spin" /><span>载入已验证的基准方案</span></div>;
+    return <div className="pho-loading"><RefreshCw size={20} className="spin" /><span>{t('population.loading')}</span></div>;
   }
 
   if (!baseInput || !catalog || !mapContext) {
     return (
       <div className="pho-fatal">
         <FileWarning size={24} />
-        <strong>人口住房优化产品不可用</strong>
-        <span>{error || '缺少已验证的默认输入或行政区边界'}</span>
+        <strong>{t('population.unavailable')}</strong>
+        <span>{error || t('population.missingInput')}</span>
       </div>
     );
   }
@@ -638,11 +643,11 @@ export default function PopulationHousingOptimizationTab() {
   const display = baseInput.display || catalog.product?.display || {};
   const zoneCount = Number(catalog.scope?.zones || mapContext.boundary_source?.matched_feature_count || 0);
   const title = display.city_name
-    ? `${display.city_name}人口与住房空间配置优化`
-    : '人口与住房空间配置优化';
-  const boundaryKindLabel = display.boundary_kind_label || '行政区边界';
+    ? `${display.city_name}${t('population.title')}`
+    : t('population.title');
+  const boundaryKindLabel = display.boundary_kind_label || t('population.boundary');
   const scopeDescription = display.scope_description
-    || `${zoneCount} 个${boundaryKindLabel}的聚合代理情景配置与硬约束审计`;
+    || t('population.scopeDescription', { count: zoneCount, boundary: boundaryKindLabel });
 
   return (
     <div className="traditional-livability-tab pho-workbench" data-testid="population-housing-workbench">
@@ -652,51 +657,51 @@ export default function PopulationHousingOptimizationTab() {
           <p>{scopeDescription}</p>
         </div>
         <div className="traditional-header-actions">
-          <button className="btn-secondary" onClick={reset} title="恢复均衡基准方案" disabled={solving}>
-            <RotateCcw size={14} />恢复
+          <button className="btn-secondary" onClick={reset} title={t('population.actions.resetTitle')} disabled={solving}>
+            <RotateCcw size={14} />{t('population.actions.reset')}
           </button>
           <button className="btn-primary" onClick={() => sendMap()} disabled={!isFeasible}>
-            <MapIcon size={14} />发送到地图
+            <MapIcon size={14} />{t('population.actions.sendMap')}
           </button>
         </div>
       </div>
 
       <div className="pho-status-row">
-        <span><ShieldCheck size={14} />冻结哈希已验证</span>
-        <span><Scale size={14} />代理情景，非政策建议</span>
-        <span><MapIcon size={14} />{mapContext.boundary_source?.matched_feature_count} 个{boundaryKindLabel}</span>
+        <span><ShieldCheck size={14} />{t('population.status.frozenHash')}</span>
+        <span><Scale size={14} />{t('population.status.proxyScenario')}</span>
+        <span><MapIcon size={14} />{t('population.status.boundaryCount', { count: mapContext.boundary_source?.matched_feature_count, boundary: boundaryKindLabel })}</span>
       </div>
 
       <section className="traditional-panel pho-controls">
         <div className="traditional-panel-title">
           <SlidersHorizontal size={15} />
-          <strong>情景参数</strong>
+          <strong>{t('population.controls.scenarioParams')}</strong>
         </div>
         <div className="pho-control-grid">
           <fieldset className="pho-fieldset">
-            <legend>目标预设</legend>
+            <legend>{t('population.controls.objectivePreset')}</legend>
             <div className="pho-segments">
               {(Object.keys(PRESETS) as PresetKey[]).map((key) => (
                 <button key={key} className={preset === key ? 'active' : ''} onClick={() => applyPreset(key)} disabled={solving}>
-                  {PRESETS[key].label}
+                  {t(`population.presets.${PRESETS[key].label}`)}
                 </button>
               ))}
             </div>
             <div className="pho-range-grid">
-              <RangeControl label="公共成本" value={weights.public_cost} min={0} max={2} step={0.05} onChange={(value) => updateWeight('public_cost', value)} />
-              <RangeControl label="居民住房成本" value={weights.resident_housing_cost} min={0} max={1.5} step={0.05} onChange={(value) => updateWeight('resident_housing_cost', value)} />
-              <RangeControl label="通勤成本" value={weights.commute_cost} min={0} max={4} step={0.1} onChange={(value) => updateWeight('commute_cost', value)} />
-              <RangeControl label="跨区配置成本" value={weights.relocation_cost} min={0} max={3} step={0.1} onChange={(value) => updateWeight('relocation_cost', value)} />
+              <RangeControl label={t('population.controls.publicCost')} value={weights.public_cost} min={0} max={2} step={0.05} onChange={(value) => updateWeight('public_cost', value)} />
+              <RangeControl label={t('population.controls.residentHousingCost')} value={weights.resident_housing_cost} min={0} max={1.5} step={0.05} onChange={(value) => updateWeight('resident_housing_cost', value)} />
+              <RangeControl label={t('population.controls.commuteCost')} value={weights.commute_cost} min={0} max={4} step={0.1} onChange={(value) => updateWeight('commute_cost', value)} />
+              <RangeControl label={t('population.controls.relocationCost')} value={weights.relocation_cost} min={0} max={3} step={0.1} onChange={(value) => updateWeight('relocation_cost', value)} />
             </div>
           </fieldset>
 
           <fieldset className="pho-fieldset">
-            <legend>资源与约束</legend>
+            <legend>{t('population.controls.resources')}</legend>
             <div className="pho-range-grid">
-              <RangeControl label="公共预算" value={resources.budget} min={35} max={125} step={5} suffix="%" onChange={(value) => updateResource('budget', value)} />
-              <RangeControl label="最大新增住房" value={resources.supply} min={0} max={125} step={5} suffix="%" onChange={(value) => updateResource('supply', value)} />
-              <RangeControl label="服务扩容能力" value={resources.service} min={0} max={125} step={5} suffix="%" onChange={(value) => updateResource('service', value)} />
-              <RangeControl label="全局跨区上限" value={resources.relocation} min={0} max={20} step={0.5} suffix="%" onChange={(value) => updateResource('relocation', value)} />
+              <RangeControl label={t('population.controls.publicBudget')} value={resources.budget} min={35} max={125} step={5} suffix="%" onChange={(value) => updateResource('budget', value)} />
+              <RangeControl label={t('population.controls.maxNewHousing')} value={resources.supply} min={0} max={125} step={5} suffix="%" onChange={(value) => updateResource('supply', value)} />
+              <RangeControl label={t('population.controls.serviceExpansion')} value={resources.service} min={0} max={125} step={5} suffix="%" onChange={(value) => updateResource('service', value)} />
+              <RangeControl label={t('population.controls.globalRelocationCap')} value={resources.relocation} min={0} max={20} step={0.5} suffix="%" onChange={(value) => updateResource('relocation', value)} />
             </div>
           </fieldset>
         </div>
@@ -704,22 +709,22 @@ export default function PopulationHousingOptimizationTab() {
         <div className="pho-control-actions">
           <button className="btn-primary pho-run-button" onClick={runScenario} disabled={solving}>
             {solving ? <RefreshCw size={15} className="spin" /> : <Play size={15} />}
-            {solving ? '校验并求解' : '运行配置方案'}
+            {solving ? t('population.actions.validateSolve') : t('population.actions.runPlan')}
           </button>
           <label className="pho-toggle">
             <input type="checkbox" checked={autoMap} onChange={(event) => setAutoMap(event.target.checked)} />
-            求解后自动更新地图
+            {t('population.actions.autoMap')}
           </label>
-          <div className="pho-map-mode" aria-label="地图方案">
-            <button className={mapMode === 'current' ? 'active' : ''} onClick={() => { setMapMode('current'); sendMap('current'); }}>当前结果</button>
-            <button className={mapMode === 'frozen' ? 'active' : ''} onClick={() => { setMapMode('frozen'); sendMap('frozen'); }}>均衡基准</button>
+          <div className="pho-map-mode" aria-label={t('population.map.planAria')}>
+            <button className={mapMode === 'current' ? 'active' : ''} onClick={() => { setMapMode('current'); sendMap('current'); }}>{t('population.map.current')}</button>
+            <button className={mapMode === 'frozen' ? 'active' : ''} onClick={() => { setMapMode('frozen'); sendMap('frozen'); }}>{t('population.map.frozen')}</button>
           </div>
         </div>
 
         <div className="pho-run-meta">
-          <span><Database size={13} />{catalog.scope?.zones} 个空间单元，{formatNumber(catalog.scope?.modeled_households)} 户</span>
-          {elapsedMs !== null && <span><Clock3 size={13} />端到端 {formatNumber(elapsedMs, 0)} 毫秒</span>}
-          {validation?.valid && <span><CheckCircle2 size={13} />输入契约通过</span>}
+          <span><Database size={13} />{t('population.meta.scope', { zones: catalog.scope?.zones, households: formatNumber(catalog.scope?.modeled_households) })}</span>
+          {elapsedMs !== null && <span><Clock3 size={13} />{t('population.meta.elapsed', { ms: formatNumber(elapsedMs, 0) })}</span>}
+          {validation?.valid && <span><CheckCircle2 size={13} />{t('population.meta.contractPassed')}</span>}
           {mapNotice && <span><MapIcon size={13} />{mapNotice}</span>}
         </div>
       </section>
@@ -729,42 +734,42 @@ export default function PopulationHousingOptimizationTab() {
       <section className={`traditional-panel pho-solve-status ${isFeasible ? 'feasible' : 'infeasible'}`}>
         <div className="traditional-panel-title">
           {isFeasible ? <CheckCircle2 size={17} /> : <AlertTriangle size={17} />}
-          <strong>求解状态：{statusText(result?.status)}</strong>
+          <strong>{t('population.solveStatus')}: {statusText(result?.status)}</strong>
         </div>
         <div className="pho-solver-facts">
-          <span>{result?.solver?.variable_count || 258} 个变量</span>
-          <span>{result?.solver?.constraint_count || 98} 条约束</span>
-          <span>整数规划相对间隙 {result?.solver?.mip_gap ?? '-'}</span>
+          <span>{t('population.solverFacts.variables', { count: result?.solver?.variable_count || 258 })}</span>
+          <span>{t('population.solverFacts.constraints', { count: result?.solver?.constraint_count || 98 })}</span>
+          <span>{t('population.solverFacts.gap', { value: result?.solver?.mip_gap ?? '-' })}</span>
         </div>
       </section>
 
       {!isFeasible ? (
         <section className="traditional-panel pho-infeasible-state">
           <Gauge size={30} />
-          <h4>当前资源组合不可行</h4>
+          <h4>{t('population.infeasible.title')}</h4>
           <div className="pho-resource-snapshot">
-            <span>预算 {resources.budget}%</span>
-            <span>新增住房 {resources.supply}%</span>
-            <span>服务扩容 {resources.service}%</span>
-            <span>跨区上限 {resources.relocation}%</span>
+            <span>{t('population.controls.publicBudget')} {resources.budget}%</span>
+            <span>{t('population.controls.maxNewHousing')} {resources.supply}%</span>
+            <span>{t('population.controls.serviceExpansion')} {resources.service}%</span>
+            <span>{t('population.controls.globalRelocationCap')} {resources.relocation}%</span>
           </div>
         </section>
       ) : (
         <>
           <div className="traditional-kpi-grid pho-kpi-grid">
-            <div className="traditional-kpi"><span>配置家庭</span><strong>{formatNumber(metrics.assigned_households)}</strong><small>{formatNumber(metrics.modeled_people)} 人</small></div>
-            <div className="traditional-kpi"><span>跨区配置</span><strong>{formatNumber(metrics.relocated_households)}</strong><MetricDelta current={metrics.relocated_households} reference={reference?.relocated_households} /></div>
-            <div className="traditional-kpi"><span>新增住房</span><strong>{formatNumber(metrics.new_units)}</strong><MetricDelta current={metrics.new_units} reference={reference?.new_units} /></div>
-            <div className="traditional-kpi"><span>服务扩容</span><strong>{formatNumber(metrics.service_expansion, 1)}</strong><MetricDelta current={metrics.service_expansion} reference={reference?.service_expansion} /></div>
-            <div className="traditional-kpi"><span>约束审计</span><strong>{result?.constraint_summary?.passed}/{result?.constraint_summary?.constraint_count}</strong><small className="down">全部通过</small></div>
+            <div className="traditional-kpi"><span>{t('population.kpis.assigned')}</span><strong>{formatNumber(metrics.assigned_households)}</strong><small>{t('population.kpis.people', { count: formatNumber(metrics.modeled_people) })}</small></div>
+            <div className="traditional-kpi"><span>{t('population.kpis.relocated')}</span><strong>{formatNumber(metrics.relocated_households)}</strong><MetricDelta current={metrics.relocated_households} reference={reference?.relocated_households} /></div>
+            <div className="traditional-kpi"><span>{t('population.kpis.newHousing')}</span><strong>{formatNumber(metrics.new_units)}</strong><MetricDelta current={metrics.new_units} reference={reference?.new_units} /></div>
+            <div className="traditional-kpi"><span>{t('population.kpis.serviceExpansion')}</span><strong>{formatNumber(metrics.service_expansion, 1)}</strong><MetricDelta current={metrics.service_expansion} reference={reference?.service_expansion} /></div>
+            <div className="traditional-kpi"><span>{t('population.kpis.audit')}</span><strong>{result?.constraint_summary?.passed}/{result?.constraint_summary?.constraint_count}</strong><small className="down">{t('population.kpis.allPassed')}</small></div>
           </div>
 
-          <nav className="pho-result-tabs" aria-label="结果视图">
+          <nav className="pho-result-tabs" aria-label={t('population.resultViews')}>
             {([
-              ['overview', '概览', BarChart3],
-              ['allocations', '配置明细', Home],
-              ['audit', '约束审计', ShieldCheck],
-              ['evidence', '证据边界', FileWarning],
+              ['overview', t('population.views.overview'), BarChart3],
+              ['allocations', t('population.views.allocations'), Home],
+              ['audit', t('population.views.audit'), ShieldCheck],
+              ['evidence', t('population.views.evidence'), FileWarning],
             ] as const).map(([key, label, Icon]) => (
               <button key={key} className={activeView === key ? 'active' : ''} onClick={() => setActiveView(key)}>
                 <Icon size={14} />{label}
@@ -775,22 +780,22 @@ export default function PopulationHousingOptimizationTab() {
           {activeView === 'overview' && (
             <div className="pho-overview">
               <div className="pho-cost-strip">
-                <div><CircleDollarSign size={15} /><span>公共成本代理</span><strong>{formatCost(costs.public_cost)}</strong><MetricDelta current={costs.public_cost} reference={reference?.public_cost} /></div>
-                <div><Home size={15} /><span>居民住房成本代理</span><strong>{formatCost(costs.resident_housing_cost)}</strong><MetricDelta current={costs.resident_housing_cost} reference={reference?.resident_housing_cost} /></div>
-                <div><Route size={15} /><span>通勤成本代理</span><strong>{formatCost(costs.commute_generalized_cost)}</strong><MetricDelta current={costs.commute_generalized_cost} reference={reference?.commute_generalized_cost} /></div>
+                <div><CircleDollarSign size={15} /><span>{t('population.costs.public')}</span><strong>{formatCost(costs.public_cost)}</strong><MetricDelta current={costs.public_cost} reference={reference?.public_cost} /></div>
+                <div><Home size={15} /><span>{t('population.costs.housing')}</span><strong>{formatCost(costs.resident_housing_cost)}</strong><MetricDelta current={costs.resident_housing_cost} reference={reference?.resident_housing_cost} /></div>
+                <div><Route size={15} /><span>{t('population.costs.commute')}</span><strong>{formatCost(costs.commute_generalized_cost)}</strong><MetricDelta current={costs.commute_generalized_cost} reference={reference?.commute_generalized_cost} /></div>
               </div>
               <div className="traditional-message success pho-map-message">
                 <MapIcon size={16} />
-                <span>主地图展示 {zoneCount} 个{boundaryKindLabel}和跨区配置流；箭头指向配置目标区，流线不是实际搬迁路线。</span>
-                <button className="btn-secondary" onClick={() => sendMap()}><MapIcon size={14} />刷新地图</button>
+                <span>{t('population.map.message', { count: zoneCount, boundary: boundaryKindLabel })}</span>
+                <button className="btn-secondary" onClick={() => sendMap()}><MapIcon size={14} />{t('population.actions.refreshMap')}</button>
               </div>
               <div className="pho-viz-grid">
                 <section className="traditional-panel pho-viz">
-                  <div className="traditional-panel-title"><Building2 size={15} /><strong>住房类型配置</strong><small>单位：户</small></div>
+                  <div className="traditional-panel-title"><Building2 size={15} /><strong>{t('population.charts.housingTypes')}</strong><small>{t('population.charts.householdUnit')}</small></div>
                   <ReactECharts option={housingOption} style={{ height: 250 }} notMerge />
                 </section>
                 <section className="traditional-panel pho-viz">
-                  <div className="traditional-panel-title"><CircleDollarSign size={15} /><strong>公共成本代理构成</strong><small>规划成本单位</small></div>
+                  <div className="traditional-panel-title"><CircleDollarSign size={15} /><strong>{t('population.charts.costComposition')}</strong><small>{t('population.charts.planningCostUnit')}</small></div>
                   <ReactECharts option={costOption} style={{ height: 250 }} notMerge />
                 </section>
               </div>
@@ -799,27 +804,27 @@ export default function PopulationHousingOptimizationTab() {
 
           {activeView === 'allocations' && (
             <section className="traditional-panel pho-table-section">
-              <div className="traditional-panel-title"><Home size={15} /><strong>家庭组到住房选项</strong><small>{result.assignments?.length || 0} 条非零配置</small></div>
+              <div className="traditional-panel-title"><Home size={15} /><strong>{t('population.allocations.title')}</strong><small>{t('population.allocations.count', { count: result.assignments?.length || 0 })}</small></div>
               <div className="pho-table-wrap traditional-table-wrap">
                 <table className="traditional-table">
-                  <thead><tr><th>家庭组</th><th>起点</th><th>目标区</th><th>住房类型</th><th>家庭数</th><th>通勤</th><th>跨区</th></tr></thead>
+                  <thead><tr><th>{t('population.allocations.group')}</th><th>{t('population.allocations.origin')}</th><th>{t('population.allocations.destination')}</th><th>{t('population.allocations.housingType')}</th><th>{t('population.allocations.households')}</th><th>{t('population.allocations.commute')}</th><th>{t('population.allocations.relocated')}</th></tr></thead>
                   <tbody>
                     {(result.assignments || []).map((row: RecordValue, index: number) => (
                       <tr
                         key={`${row.group_id}-${row.housing_option_id}-${index}`}
                         className="pho-map-row"
                         tabIndex={0}
-                        title="在主地图聚焦该配置关系"
+                        title={t('population.allocations.focusMap')}
                         onClick={() => sendMap('current', row)}
                         onKeyDown={(event) => { if (event.key === 'Enter') sendMap('current', row); }}
                       >
-                        <td>{row.group_name || '未命名家庭组'}</td>
-                        <td>{String(row.origin_zone_id).split('|')[1] || '未标注起点'}</td>
-                        <td>{row.destination_zone_name || '未标注目标区'}</td>
-                        <td>{HOUSING_TYPE_LABELS[row.housing_type] || '其他住房'}</td>
+                        <td>{row.group_name || t('population.allocations.unnamedGroup')}</td>
+                        <td>{String(row.origin_zone_id).split('|')[1] || t('population.allocations.unknownOrigin')}</td>
+                        <td>{row.destination_zone_name || t('population.allocations.unknownDestination')}</td>
+                        <td>{i18n.t(`population.housingTypes.${HOUSING_TYPE_LABELS[row.housing_type] || 'other'}`)}</td>
                         <td>{formatNumber(row.households)}</td>
-                        <td>{formatNumber(row.commute_minutes, 1)} 分钟</td>
-                        <td>{row.relocated ? <span className="pho-relocated">是</span> : '否'}</td>
+                        <td>{t('population.allocations.minutes', { value: formatNumber(row.commute_minutes, 1) })}</td>
+                        <td>{row.relocated ? <span className="pho-relocated">{t('population.common.yes')}</span> : t('population.common.no')}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -835,19 +840,19 @@ export default function PopulationHousingOptimizationTab() {
                   <div className="traditional-kpi" key={row.category}>
                     <span>{categoryText(row.category)}</span>
                     <strong>{row.passed}/{row.total}</strong>
-                    <small>{row.binding} 项触界</small>
+                    <small>{t('population.audit.binding', { count: row.binding })}</small>
                   </div>
                 ))}
               </div>
               <div className="pho-table-wrap traditional-table-wrap audit">
                 <table className="traditional-table">
-                  <thead><tr><th>约束项</th><th>类别</th><th>左侧计算值</th><th>下界</th><th>上界</th><th>结果</th></tr></thead>
+                  <thead><tr><th>{t('population.audit.constraint')}</th><th>{t('population.audit.category')}</th><th>{t('population.audit.lhs')}</th><th>{t('population.audit.lower')}</th><th>{t('population.audit.upper')}</th><th>{t('population.audit.result')}</th></tr></thead>
                   <tbody>
                     {(result.constraint_audit || []).map((row: RecordValue) => (
                       <tr key={row.constraint_id}>
                         <td>{constraintText(row, baseInput)}</td><td>{categoryText(row.category)}</td>
                         <td>{formatNumber(row.lhs, 3)}</td><td>{formatNumber(row.lower, 3)}</td><td>{formatNumber(row.upper, 3)}</td>
-                        <td><span className={row.pass ? 'pho-pass' : 'pho-fail'}>{row.pass ? '通过' : '失败'}</span></td>
+                        <td><span className={row.pass ? 'pho-pass' : 'pho-fail'}>{row.pass ? t('population.common.passed') : t('population.common.failed')}</span></td>
                       </tr>
                     ))}
                   </tbody>
@@ -860,23 +865,23 @@ export default function PopulationHousingOptimizationTab() {
             <section className="traditional-panel pho-evidence-view">
               <div className="pho-boundary-banner">
                 <Scale size={22} />
-                <div><strong>最高可支持结论</strong><span>聚合代理情景优化概念验证</span></div>
+                <div><strong>{t('population.evidence.maxClaim')}</strong><span>{t('population.evidence.proxyProof')}</span></div>
               </div>
               <div className="pho-evidence-grid">
                 {(baseInput.synthetic_flags || []).map((row: RecordValue) => (
                   <div className="traditional-kpi" key={row.field_group}>
-                    <span>{EVIDENCE_LABELS[row.field_group] || '其他数据通道'}</span>
-                    <strong>{EVIDENCE_STATUS_LABELS[row.status] || '未标注'}</strong>
+                    <span>{t(`population.evidenceFields.${EVIDENCE_LABELS[row.field_group] || 'other'}`)}</span>
+                    <strong>{t(`population.evidenceStatus.${EVIDENCE_STATUS_LABELS[row.status] || 'other'}`)}</strong>
                   </div>
                 ))}
               </div>
               <div className="pho-limitations">
-                <h4>阻断结论</h4>
+                <h4>{t('population.evidence.blockedClaims')}</h4>
                 <ul>
-                  <li>真实政策最优与财政节省</li>
-                  <li>城市总体代表性与因果效果</li>
-                  <li>个人或具名家庭住房分配</li>
-                  <li>观测现状基线与福利改善</li>
+                  <li>{t('population.evidence.limitations.policy')}</li>
+                  <li>{t('population.evidence.limitations.representativeness')}</li>
+                  <li>{t('population.evidence.limitations.individual')}</li>
+                  <li>{t('population.evidence.limitations.welfare')}</li>
                 </ul>
               </div>
             </section>

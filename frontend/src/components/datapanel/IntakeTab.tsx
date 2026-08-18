@@ -1,14 +1,6 @@
-import { useState, useEffect } from 'react';
-
-interface IntakeJob {
-  id: number;
-  source_type: string;
-  source_ref: string;
-  status: string;
-  tables_found: number;
-  started_at: string;
-  finished_at: string | null;
-}
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
 
 interface DatasetProfile {
   id: number;
@@ -20,265 +12,110 @@ interface DatasetProfile {
   created_at: string;
 }
 
-interface SemanticDraft {
-  id: number;
-  table_name: string;
-  version: number;
-  display_name: string;
-  description: string;
-  confidence: number;
-  status: string;
-  columns_draft: any[];
-  join_candidates: any[];
-  reviewed_by: string | null;
-}
-
 export default function IntakeTab() {
-  const [jobs, setJobs] = useState<IntakeJob[]>([]);
+  const { t, i18n } = useTranslation();
   const [profiles, setProfiles] = useState<DatasetProfile[]>([]);
-  const [selectedProfile, setSelectedProfile] = useState<number | null>(null);
-  const [draft, setDraft] = useState<SemanticDraft | null>(null);
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<any>(null);
   const [activating, setActivating] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageError, setMessageError] = useState(false);
+
+  const feedback = (value: string, error = false) => { setMessage(value); setMessageError(error); };
 
   const fetchProfiles = async () => {
     setLoading(true);
     try {
-      const r = await fetch('/api/intake/profiles?schema=public&latest=1', { credentials: 'include' });
-      if (r.ok) { const d = await r.json(); setProfiles(d.profiles || []); }
-    } catch { /* ignore */ }
+      const response = await fetch('/api/intake/profiles?schema=public&latest=1', { credentials: 'include', headers: getLocaleHeaders() });
+      if (response.ok) { const data = await response.json(); setProfiles(data.profiles || []); }
+      else feedback(t('intakeTab.messages.requestException', { error: response.statusText }), true);
+    } catch (error: any) { feedback(t('intakeTab.messages.requestException', { error: error?.message || t('intakeTab.unknownError') }), true); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchProfiles(); }, []);
+  useEffect(() => { void fetchProfiles(); }, [i18n.resolvedLanguage]);
 
   const handleScan = async () => {
-    setScanning(true);
-    setMessage('');
+    setScanning(true); setValidationResult(null); setMessage('');
     try {
-      const r = await fetch('/api/intake/scan', {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ schema: 'public' }),
-      });
-      const d = await r.json();
-      if (d.status === 'ok') {
-        setMessage(`扫描完成：发现 ${d.tables_found} 张表`);
-        fetchProfiles();
-      } else {
-        setMessage(`扫描失败：${d.error || '未知错误'}`);
-      }
-    } catch (e: any) { setMessage(`扫描异常：${e.message}`); }
+      const response = await fetch('/api/intake/scan', { method: 'POST', credentials: 'include', headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ schema: 'public' }) });
+      const data = await response.json();
+      if (data.status === 'ok') { feedback(t('intakeTab.messages.scanComplete', { count: formatNumber(Number(data.tables_found || 0)) })); void fetchProfiles(); }
+      else feedback(t('intakeTab.messages.scanFailed', { error: data.error || t('intakeTab.unknownError') }), true);
+    } catch (error: any) { feedback(t('intakeTab.messages.scanException', { error: error?.message || t('intakeTab.unknownError') }), true); }
     finally { setScanning(false); }
   };
 
   const handleGenerateDraft = async (profileId: number) => {
     setMessage('');
     try {
-      const r = await fetch(`/api/intake/${profileId}/draft`, {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ use_llm: true }),
-      });
-      const d = await r.json();
-      if (d.status === 'ok') {
-        setMessage(`草稿生成完成：${d.table_name} v${d.version} (置信度 ${d.confidence})`);
-        fetchProfiles();
-      } else {
-        setMessage(`草稿生成失败：${d.error || '未知错误'}`);
-      }
-    } catch (e: any) { setMessage(`异常：${e.message}`); }
+      const response = await fetch(`/api/intake/${profileId}/draft`, { method: 'POST', credentials: 'include', headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ use_llm: true }) });
+      const data = await response.json();
+      if (data.status === 'ok') { feedback(t('intakeTab.messages.draftComplete', { table: data.table_name, version: data.version, confidence: formatNumber(Number(data.confidence || 0), { style: 'percent', maximumFractionDigits: 0 }) })); void fetchProfiles(); }
+      else feedback(t('intakeTab.messages.draftFailed', { error: data.error || t('intakeTab.unknownError') }), true);
+    } catch (error: any) { feedback(t('intakeTab.messages.requestException', { error: error?.message || t('intakeTab.unknownError') }), true); }
   };
 
   const handleValidate = async (profileId: number) => {
-    setValidating(true);
-    setValidationResult(null);
-    setMessage('');
+    setValidating(true); setValidationResult(null); setMessage('');
     try {
-      const r = await fetch(`/api/intake/${profileId}/validate`, {
-        method: 'POST', credentials: 'include',
-      });
-      const d = await r.json();
-      setValidationResult(d);
-      if (d.passed) {
-        setMessage(`验证通过：${d.table_name} 得分 ${(d.eval_score * 100).toFixed(0)}%`);
-      } else {
-        setMessage(`验证未通过：得分 ${(d.eval_score * 100).toFixed(0)}% (需要 ≥80%)`);
-      }
-      fetchProfiles();
-    } catch (e: any) { setMessage(`验证异常：${e.message}`); }
+      const response = await fetch(`/api/intake/${profileId}/validate`, { method: 'POST', credentials: 'include', headers: getLocaleHeaders() });
+      const data = await response.json(); setValidationResult(data);
+      const score = formatNumber(Number(data.eval_score || 0), { style: 'percent', maximumFractionDigits: 0 });
+      feedback(data.passed ? t('intakeTab.messages.validationPassed', { table: data.table_name, score }) : t('intakeTab.messages.validationFailed', { score }), !data.passed);
+      void fetchProfiles();
+    } catch (error: any) { feedback(t('intakeTab.messages.validationException', { error: error?.message || t('intakeTab.unknownError') }), true); }
     finally { setValidating(false); }
   };
 
   const handleActivate = async (draftId: number, evalScore: number) => {
-    setActivating(true);
-    setMessage('');
+    setActivating(true); setMessage('');
     try {
-      const r = await fetch(`/api/intake/${draftId}/activate`, {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eval_score: evalScore }),
-      });
-      const d = await r.json();
-      if (d.status === 'ok') {
-        setMessage(`已激活：${d.table_name} v${d.version}`);
-        fetchProfiles();
-      } else {
-        setMessage(`激活失败：${d.error || '未知错误'}`);
-      }
-    } catch (e: any) { setMessage(`激活异常：${e.message}`); }
+      const response = await fetch(`/api/intake/${draftId}/activate`, { method: 'POST', credentials: 'include', headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ eval_score: evalScore }) });
+      const data = await response.json();
+      if (data.status === 'ok') { feedback(t('intakeTab.messages.activated', { table: data.table_name, version: data.version })); void fetchProfiles(); }
+      else feedback(t('intakeTab.messages.activateFailed', { error: data.error || t('intakeTab.unknownError') }), true);
+    } catch (error: any) { feedback(t('intakeTab.messages.activateException', { error: error?.message || t('intakeTab.unknownError') }), true); }
     finally { setActivating(false); }
   };
 
   const handleRollback = async (datasetId: number) => {
     setMessage('');
     try {
-      const r = await fetch(`/api/intake/${datasetId}/rollback`, {
-        method: 'POST', credentials: 'include',
-      });
-      const d = await r.json();
-      setMessage(d.status === 'ok' ? '已回滚' : `回滚失败：${d.error}`);
-      fetchProfiles();
-    } catch (e: any) { setMessage(`回滚异常：${e.message}`); }
+      const response = await fetch(`/api/intake/${datasetId}/rollback`, { method: 'POST', credentials: 'include', headers: getLocaleHeaders() });
+      const data = await response.json();
+      if (data.status === 'ok') feedback(t('intakeTab.messages.rollbackComplete')); else feedback(t('intakeTab.messages.rollbackFailed', { error: data.error || t('intakeTab.unknownError') }), true);
+      void fetchProfiles();
+    } catch (error: any) { feedback(t('intakeTab.messages.rollbackException', { error: error?.message || t('intakeTab.unknownError') }), true); }
   };
 
-  const statusColor = (s: string) => {
-    switch (s) {
-      case 'active': return '#22c55e';
-      case 'validated': return '#3b82f6';
-      case 'reviewed': return '#f59e0b';
-      case 'drafted': return '#a78bfa';
-      default: return '#94a3b8';
-    }
+  const activateValidated = async (profileId: number) => {
+    try {
+      const response = await fetch(`/api/intake/${profileId}/draft`, { credentials: 'include', headers: getLocaleHeaders() });
+      if (!response.ok) { feedback(t('intakeTab.messages.draftFetchFailed'), true); return; }
+      const draft = await response.json();
+      await handleActivate(draft.id, validationResult?.eval_score ?? 0.85);
+    } catch (error: any) { feedback(t('intakeTab.messages.activateException', { error: error?.message || t('intakeTab.unknownError') }), true); }
   };
 
-  return (
-    <div style={{ padding: '12px', fontSize: '13px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h3 style={{ margin: 0, fontSize: '14px' }}>数据接入管理</h3>
-        <button
-          onClick={handleScan}
-          disabled={scanning}
-          style={{ padding: '4px 12px', fontSize: '12px', cursor: scanning ? 'wait' : 'pointer',
-                   background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4 }}
-        >
-          {scanning ? '扫描中...' : '扫描新表'}
-        </button>
-      </div>
+  const statusColor = (status: string) => ({ active: '#22c55e', validated: '#3b82f6', reviewed: '#f59e0b', drafted: '#a78bfa' }[status] || '#94a3b8');
+  const statusLabel = (status: string) => t(`intakeTab.statuses.${status}`, { defaultValue: status });
 
-      {message && (
-        <div style={{ padding: '6px 10px', marginBottom: 10, borderRadius: 4,
-                       background: message.includes('失败') || message.includes('异常') ? '#fef2f2' : '#f0fdf4',
-                       color: message.includes('失败') || message.includes('异常') ? '#dc2626' : '#16a34a',
-                       fontSize: '12px' }}>
-          {message}
-        </div>
-      )}
-
-      {loading ? <div>加载中...</div> : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
-              <th style={{ padding: '6px 4px' }}>Schema</th>
-              <th style={{ padding: '6px 4px' }}>表名</th>
-              <th style={{ padding: '6px 4px' }}>行数</th>
-              <th style={{ padding: '6px 4px' }}>几何</th>
-              <th style={{ padding: '6px 4px' }}>状态</th>
-              <th style={{ padding: '6px 4px' }}>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {profiles.map(p => (
-              <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '6px 4px', fontFamily: 'monospace', color: '#64748b' }}>{p.schema_name}</td>
-                <td style={{ padding: '6px 4px', fontFamily: 'monospace' }}>{p.table_name}</td>
-                <td style={{ padding: '6px 4px' }}>{p.row_count?.toLocaleString()}</td>
-                <td style={{ padding: '6px 4px' }}>{p.geometry_type || '—'}</td>
-                <td style={{ padding: '6px 4px' }}>
-                  <span style={{ padding: '2px 6px', borderRadius: 3, fontSize: '11px',
-                                  background: statusColor(p.status) + '22', color: statusColor(p.status) }}>
-                    {p.status}
-                  </span>
-                </td>
-                <td style={{ padding: '6px 4px' }}>
-                  {p.status === 'discovered' && (
-                    <button onClick={() => handleGenerateDraft(p.id)}
-                            style={{ fontSize: '11px', padding: '2px 8px', cursor: 'pointer',
-                                     background: '#a78bfa', color: '#fff', border: 'none', borderRadius: 3 }}>
-                      生成草稿
-                    </button>
-                  )}
-                  {p.status === 'drafted' && (
-                    <button onClick={() => handleValidate(p.id)}
-                            disabled={validating}
-                            style={{ fontSize: '11px', padding: '2px 8px', cursor: 'pointer',
-                                     background: '#f59e0b', color: '#fff', border: 'none', borderRadius: 3 }}>
-                      {validating ? '验证中...' : '验证'}
-                    </button>
-                  )}
-                  {p.status === 'reviewed' && (
-                    <button onClick={() => handleValidate(p.id)}
-                            disabled={validating}
-                            style={{ fontSize: '11px', padding: '2px 8px', cursor: 'pointer',
-                                     background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 3 }}>
-                      {validating ? '验证中...' : '验证并激活'}
-                    </button>
-                  )}
-                  {p.status === 'validated' && (
-                    <button onClick={async () => {
-                              try {
-                                const dr = await fetch(`/api/intake/${p.id}/draft`, { credentials: 'include' });
-                                if (!dr.ok) { setMessage('获取草稿失败'); return; }
-                                const dd = await dr.json();
-                                const draftId = dd.id;
-                                const score = validationResult?.eval_score ?? 0.85;
-                                handleActivate(draftId, score);
-                              } catch (e: any) { setMessage(`激活异常：${e.message}`); }
-                            }}
-                            disabled={activating}
-                            style={{ fontSize: '11px', padding: '2px 8px', cursor: 'pointer',
-                                     background: '#22c55e', color: '#fff', border: 'none', borderRadius: 3 }}>
-                      {activating ? '激活中...' : '激活'}
-                    </button>
-                  )}
-                  {p.status === 'active' && (
-                    <button onClick={() => handleRollback(p.id)}
-                            style={{ fontSize: '11px', padding: '2px 8px', cursor: 'pointer',
-                                     background: '#ef4444', color: '#fff', border: 'none', borderRadius: 3 }}>
-                      回滚
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {profiles.length === 0 && (
-              <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#94a3b8' }}>
-                暂无数据集。点击"扫描新表"开始接入。
-              </td></tr>
-            )}
-          </tbody>
-        </table>
-      )}
-
-      {validationResult && (
-        <div style={{ marginTop: 12, padding: 10, background: '#f8fafc', borderRadius: 4, fontSize: '12px' }}>
-          <strong>验证结果：{validationResult.table_name}</strong>
-          <span style={{ marginLeft: 8, color: validationResult.passed ? '#16a34a' : '#dc2626' }}>
-            {(validationResult.eval_score * 100).toFixed(0)}% ({validationResult.passed_count}/{validationResult.total})
-          </span>
-          <div style={{ marginTop: 6 }}>
-            {(validationResult.details || []).map((d: any, i: number) => (
-              <div key={i} style={{ padding: '2px 0', color: d.passed ? '#16a34a' : '#dc2626' }}>
-                {d.passed ? '✓' : '✗'} [{d.type}] {d.question?.substring(0, 60)}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  return <div style={{ padding: '12px', fontSize: '13px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}><h3 style={{ margin: 0, fontSize: '14px' }}>{t('intakeTab.title')}</h3><button onClick={() => void handleScan()} disabled={scanning} style={{ padding: '4px 12px', fontSize: '12px', cursor: scanning ? 'wait' : 'pointer', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4 }}>{scanning ? t('intakeTab.actions.scanning') : t('intakeTab.actions.scanNewTable')}</button></div>
+    {message && <div style={{ padding: '6px 10px', marginBottom: 10, borderRadius: 4, background: messageError ? '#fef2f2' : '#f0fdf4', color: messageError ? '#dc2626' : '#16a34a', fontSize: '12px' }}>{message}</div>}
+    {loading ? <div>{t('intakeTab.actions.loading')}</div> : <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}><thead><tr style={{ borderBottom: '1px solid #e2e8f0', textAlign: 'start' }}><th style={{ padding: '6px 4px' }}>{t('intakeTab.columns.schema')}</th><th style={{ padding: '6px 4px' }}>{t('intakeTab.columns.tableName')}</th><th style={{ padding: '6px 4px' }}>{t('intakeTab.columns.rows')}</th><th style={{ padding: '6px 4px' }}>{t('intakeTab.columns.geometry')}</th><th style={{ padding: '6px 4px' }}>{t('intakeTab.columns.status')}</th><th style={{ padding: '6px 4px' }}>{t('intakeTab.columns.actions')}</th></tr></thead><tbody>
+      {profiles.map((profile) => <tr key={profile.id} style={{ borderBottom: '1px solid #f1f5f9' }}><td style={{ padding: '6px 4px', fontFamily: 'monospace', color: '#64748b' }}>{profile.schema_name}</td><td style={{ padding: '6px 4px', fontFamily: 'monospace' }}>{profile.table_name}</td><td style={{ padding: '6px 4px' }}>{formatNumber(Number(profile.row_count || 0))}</td><td style={{ padding: '6px 4px' }}>{profile.geometry_type || t('intakeTab.noValue')}</td><td style={{ padding: '6px 4px' }}><span style={{ padding: '2px 6px', borderRadius: 3, fontSize: '11px', background: `${statusColor(profile.status)}22`, color: statusColor(profile.status) }}>{statusLabel(profile.status)}</span></td><td style={{ padding: '6px 4px' }}>
+        {profile.status === 'discovered' && <button onClick={() => void handleGenerateDraft(profile.id)} style={{ fontSize: '11px', padding: '2px 8px', cursor: 'pointer', background: '#a78bfa', color: '#fff', border: 'none', borderRadius: 3 }}>{t('intakeTab.actions.generateDraft')}</button>}
+        {profile.status === 'drafted' && <button onClick={() => void handleValidate(profile.id)} disabled={validating} style={{ fontSize: '11px', padding: '2px 8px', cursor: 'pointer', background: '#f59e0b', color: '#fff', border: 'none', borderRadius: 3 }}>{validating ? t('intakeTab.actions.validating') : t('intakeTab.actions.validate')}</button>}
+        {profile.status === 'reviewed' && <button onClick={() => void handleValidate(profile.id)} disabled={validating} style={{ fontSize: '11px', padding: '2px 8px', cursor: 'pointer', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 3 }}>{validating ? t('intakeTab.actions.validating') : t('intakeTab.actions.validateActivate')}</button>}
+        {profile.status === 'validated' && <button onClick={() => void activateValidated(profile.id)} disabled={activating} style={{ fontSize: '11px', padding: '2px 8px', cursor: 'pointer', background: '#22c55e', color: '#fff', border: 'none', borderRadius: 3 }}>{activating ? t('intakeTab.actions.activating') : t('intakeTab.actions.activate')}</button>}
+        {profile.status === 'active' && <button onClick={() => void handleRollback(profile.id)} style={{ fontSize: '11px', padding: '2px 8px', cursor: 'pointer', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 3 }}>{t('intakeTab.actions.rollback')}</button>}
+      </td></tr>)}
+      {profiles.length === 0 && <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#94a3b8' }}>{t('intakeTab.empty')}</td></tr>}
+    </tbody></table>}
+    {validationResult && <div style={{ marginTop: 12, padding: 10, background: '#f8fafc', borderRadius: 4, fontSize: '12px' }}><strong>{t('intakeTab.validationResult', { table: validationResult.table_name })}</strong><span style={{ marginInlineStart: 8, color: validationResult.passed ? '#16a34a' : '#dc2626' }}>{formatNumber(Number(validationResult.eval_score || 0), { style: 'percent', maximumFractionDigits: 0 })} ({validationResult.passed_count}/{validationResult.total})</span><div style={{ marginTop: 6 }}><div style={{ fontWeight: 600, marginBottom: 4 }}>{t('intakeTab.details')}</div>{(validationResult.details || []).map((detail: any, index: number) => <div key={index} style={{ padding: '2px 0', color: detail.passed ? '#16a34a' : '#dc2626' }}>{detail.passed ? '✓' : '✗'} [{detail.type}] {detail.question?.substring(0, 60)}</div>)}</div></div>}
+  </div>;
 }

@@ -8,6 +8,8 @@ import geopandas as gpd
 import pandas as pd
 from sqlalchemy import text
 
+from ..i18n import t as translate
+
 
 def discover_database_schema(table_pattern: str = "") -> str:
     """发现数据库中的表结构（表名、列名、列类型、中文描述）。
@@ -75,7 +77,7 @@ def discover_database_schema(table_pattern: str = "") -> str:
 
         if df.empty:
             return json.dumps(
-                {"tables": [], "message": "未找到匹配的表"},
+                {"tables": [], "message": translate("nl2sql.no_matching_tables")},
                 ensure_ascii=False,
             )
 
@@ -103,13 +105,15 @@ def discover_database_schema(table_pattern: str = "") -> str:
             {
                 "tables": tables,
                 "count": len(tables),
-                "message": f"发现 {len(tables)} 个表",
+                "message": translate("nl2sql.tables_found", count=len(tables)),
             },
             ensure_ascii=False,
         )
 
     except Exception as e:
-        return json.dumps({"error": str(e)}, ensure_ascii=False)
+        return json.dumps({
+            "error": translate("nl2sql.schema_failed", error=e),
+        }, ensure_ascii=False)
 
 
 def execute_safe_sql(
@@ -144,13 +148,13 @@ def execute_safe_sql(
         forbidden = ["INSERT", "UPDATE", "DELETE", "DROP", "CREATE", "ALTER", "TRUNCATE", "GRANT", "REVOKE"]
         if any(kw in sql_upper for kw in forbidden):
             return json.dumps(
-                {"error": "安全检查失败：仅允许 SELECT 查询"},
+                {"error": translate("nl2sql.select_only")},
                 ensure_ascii=False,
             )
 
         if not (sql_upper.startswith("SELECT") or sql_upper.startswith("WITH")):
             return json.dumps(
-                {"error": "安全检查失败：SQL 必须以 SELECT 开头"},
+                {"error": translate("nl2sql.select_or_with_required")},
                 ensure_ascii=False,
             )
 
@@ -221,11 +225,16 @@ def execute_safe_sql(
                 "rows": len(df),
                 "columns": df.columns.tolist(),
                 "data": df.head(100).to_dict(orient="records"),  # Only return first 100 for display
-                "message": f"查询成功，返回 {len(df)} 行" + (f"（仅显示前 100 行）" if len(df) > 100 else ""),
+                "message": translate(
+                    "nl2sql.query_rows_truncated" if len(df) > 100 else "nl2sql.query_rows",
+                    count=len(df),
+                ),
             }, ensure_ascii=False, default=str)
 
     except Exception as e:
-        return json.dumps({"error": str(e)}, ensure_ascii=False)
+        return json.dumps({
+            "error": translate("nl2sql.query_failed", error=e),
+        }, ensure_ascii=False)
 
 
 def execute_spatial_query(
@@ -264,12 +273,16 @@ def execute_spatial_query(
             try:
                 filter_dict = json.loads(filters)
             except json.JSONDecodeError:
-                return json.dumps({"error": f"filters 格式错误，应为 JSON 字符串: {filters}"}, ensure_ascii=False)
+                return json.dumps({
+                    "error": translate("nl2sql.filters_invalid", filters=filters),
+                }, ensure_ascii=False)
         import os
 
         # Validate table name (防止 SQL 注入)
         if not re.match(r'^[a-zA-Z0-9_]+$', table_name):
-            return json.dumps({"error": "Invalid table name"}, ensure_ascii=False)
+            return json.dumps({
+                "error": translate("nl2sql.invalid_table_name"),
+            }, ensure_ascii=False)
 
         engine = get_engine()
 
@@ -304,7 +317,7 @@ def execute_spatial_query(
             if gdf is None or gdf.empty:
                 return json.dumps({
                     "status": "ok",
-                    "message": "查询成功但无数据",
+                    "message": translate("nl2sql.spatial_empty"),
                     "features": 0,
                 }, ensure_ascii=False)
 
@@ -332,7 +345,7 @@ def execute_spatial_query(
                 "layers": [{
                     "type": "geojson",
                     "geojson": fname,
-                    "name": f"{table_name} 查询结果",
+                    "name": translate("nl2sql.result_layer", table_name=table_name),
                     "style": {"color": "#3388ff", "weight": 2, "fillOpacity": 0.3},
                 }],
                 "center": [center_lat, center_lng],
@@ -341,14 +354,16 @@ def execute_spatial_query(
 
             return json.dumps({
                 "status": "ok",
-                "message": f"查询成功，返回 {len(gdf)} 个要素",
+                "message": translate("nl2sql.spatial_success", count=len(gdf)),
                 "features": len(gdf),
                 "geojson_path": fpath,
                 "map_config": map_config,
             }, ensure_ascii=False)
 
     except Exception as e:
-        return json.dumps({"error": str(e)}, ensure_ascii=False)
+        return json.dumps({
+            "error": translate("nl2sql.spatial_failed", error=e),
+        }, ensure_ascii=False)
 
 
 # Register tools

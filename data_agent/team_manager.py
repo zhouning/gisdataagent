@@ -12,6 +12,7 @@ from .database_tools import (
 )
 from .user_context import current_user_id, current_user_role
 from .audit_logger import record_audit, ACTION_TEAM_CREATE, ACTION_TEAM_INVITE, ACTION_TEAM_REMOVE, ACTION_TEAM_DELETE
+from .i18n import t
 
 VALID_TEAM_ROLES = ("owner", "admin", "member", "viewer")
 
@@ -98,16 +99,16 @@ def create_team(team_name: str, description: str = "") -> dict:
         操作结果 dict
     """
     if not team_name or len(team_name.strip()) < 2 or len(team_name.strip()) > 50:
-        return {"status": "error", "message": "团队名称需要2-50个字符"}
+        return {"status": "error", "message": t("team.name_length")}
 
     username = current_user_id.get()
     role = current_user_role.get("analyst")
     if role == "viewer":
-        return {"status": "error", "message": "查看者角色无权创建团队"}
+        return {"status": "error", "message": t("team.viewer_create_denied")}
 
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置"}
+        return {"status": "error", "message": t("team.db_unavailable")}
 
     team_name = team_name.strip()
     try:
@@ -130,11 +131,11 @@ def create_team(team_name: str, description: str = "") -> dict:
             )
             conn.commit()
         record_audit(username, ACTION_TEAM_CREATE, "success", details={"team_name": team_name})
-        return {"status": "success", "message": f"团队「{team_name}」创建成功，你是团队所有者", "team_name": team_name}
+        return {"status": "success", "message": t("team.created", team_name=team_name), "team_name": team_name}
     except Exception as e:
         if "unique" in str(e).lower() or "duplicate" in str(e).lower():
-            return {"status": "error", "message": f"团队名称「{team_name}」已存在"}
-        return {"status": "error", "message": f"创建团队失败: {e}"}
+            return {"status": "error", "message": t("team.exists", team_name=team_name)}
+        return {"status": "error", "message": t("team.create_failed", error=e)}
 
 
 def list_my_teams() -> dict:
@@ -147,7 +148,7 @@ def list_my_teams() -> dict:
     username = current_user_id.get()
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置"}
+        return {"status": "error", "message": t("team.db_unavailable")}
 
     try:
         with engine.connect() as conn:
@@ -173,7 +174,7 @@ def list_my_teams() -> dict:
                 })
             return {"status": "success", "teams": teams, "count": len(teams)}
     except Exception as e:
-        return {"status": "error", "message": f"查询团队列表失败: {e}"}
+        return {"status": "error", "message": t("team.list_failed", error=e)}
 
 
 def invite_to_team(team_name: str, username: str, role: str = "member") -> dict:
@@ -188,22 +189,22 @@ def invite_to_team(team_name: str, username: str, role: str = "member") -> dict:
         操作结果 dict
     """
     if role not in ("admin", "member", "viewer"):
-        return {"status": "error", "message": f"无效角色 '{role}'，可选: admin, member, viewer"}
+        return {"status": "error", "message": t("team.invalid_role", role=role)}
 
     current_user = current_user_id.get()
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置"}
+        return {"status": "error", "message": t("team.db_unavailable")}
 
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
             team_id, owner = _get_team_id(conn, team_name)
             if team_id is None:
-                return {"status": "error", "message": f"团队「{team_name}」不存在"}
+                return {"status": "error", "message": t("team.not_found", team_name=team_name)}
 
             if not _is_team_admin(conn, team_id, current_user, owner):
-                return {"status": "error", "message": "只有团队所有者或管理员可以邀请成员"}
+                return {"status": "error", "message": t("team.invite_denied")}
 
             # Check max members
             count = conn.execute(
@@ -215,7 +216,7 @@ def invite_to_team(team_name: str, username: str, role: str = "member") -> dict:
                 {"tid": team_id},
             ).fetchone()[0]
             if count >= max_members:
-                return {"status": "error", "message": f"团队已达上限（{max_members}人）"}
+                return {"status": "error", "message": t("team.max_members", max_members=max_members)}
 
             conn.execute(
                 text(f"INSERT INTO {T_TEAM_MEMBERS} (team_id, username, team_role) VALUES (:tid, :u, :r)"),
@@ -224,11 +225,13 @@ def invite_to_team(team_name: str, username: str, role: str = "member") -> dict:
             conn.commit()
         record_audit(current_user, ACTION_TEAM_INVITE, "success",
                      details={"team_name": team_name, "invited_user": username, "role": role})
-        return {"status": "success", "message": f"已邀请 {username} 加入团队「{team_name}」，角色: {role}"}
+        return {"status": "success", "message": t(
+            "team.invited", username=username, team_name=team_name, role=role
+        )}
     except Exception as e:
         if "unique" in str(e).lower() or "duplicate" in str(e).lower():
-            return {"status": "error", "message": f"{username} 已是团队成员"}
-        return {"status": "error", "message": f"邀请失败: {e}"}
+            return {"status": "error", "message": t("team.already_member", username=username)}
+        return {"status": "error", "message": t("team.invite_failed", error=e)}
 
 
 def remove_from_team(team_name: str, username: str) -> dict:
@@ -244,20 +247,20 @@ def remove_from_team(team_name: str, username: str) -> dict:
     current_user = current_user_id.get()
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置"}
+        return {"status": "error", "message": t("team.db_unavailable")}
 
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
             team_id, owner = _get_team_id(conn, team_name)
             if team_id is None:
-                return {"status": "error", "message": f"团队「{team_name}」不存在"}
+                return {"status": "error", "message": t("team.not_found", team_name=team_name)}
 
             if username == owner:
-                return {"status": "error", "message": "不能移除团队所有者"}
+                return {"status": "error", "message": t("team.remove_owner")}
 
             if not _is_team_admin(conn, team_id, current_user, owner):
-                return {"status": "error", "message": "只有团队所有者或管理员可以移除成员"}
+                return {"status": "error", "message": t("team.remove_denied")}
 
             result = conn.execute(
                 text(f"DELETE FROM {T_TEAM_MEMBERS} WHERE team_id = :tid AND username = :u"),
@@ -265,12 +268,14 @@ def remove_from_team(team_name: str, username: str) -> dict:
             )
             conn.commit()
             if result.rowcount == 0:
-                return {"status": "error", "message": f"{username} 不是团队成员"}
+                return {"status": "error", "message": t("team.not_member", username=username)}
         record_audit(current_user, ACTION_TEAM_REMOVE, "success",
                      details={"team_name": team_name, "removed_user": username})
-        return {"status": "success", "message": f"已将 {username} 从团队「{team_name}」移除"}
+        return {"status": "success", "message": t(
+            "team.removed", username=username, team_name=team_name
+        )}
     except Exception as e:
-        return {"status": "error", "message": f"移除成员失败: {e}"}
+        return {"status": "error", "message": t("team.remove_failed", error=e)}
 
 
 def list_team_members(team_name: str) -> dict:
@@ -285,20 +290,20 @@ def list_team_members(team_name: str) -> dict:
     current_user = current_user_id.get()
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置"}
+        return {"status": "error", "message": t("team.db_unavailable")}
 
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
             team_id, owner = _get_team_id(conn, team_name)
             if team_id is None:
-                return {"status": "error", "message": f"团队「{team_name}」不存在"}
+                return {"status": "error", "message": t("team.not_found", team_name=team_name)}
 
             # Check membership
             my_role = _get_member_role(conn, team_id, current_user)
             sys_role = current_user_role.get("analyst")
             if my_role is None and sys_role != "admin":
-                return {"status": "error", "message": "你不是该团队成员"}
+                return {"status": "error", "message": t("team.not_member_self")}
 
             rows = conn.execute(text(f"""
                 SELECT username, team_role, joined_at
@@ -312,7 +317,7 @@ def list_team_members(team_name: str) -> dict:
             members = [{"username": r[0], "role": r[1], "joined_at": str(r[2])} for r in rows]
             return {"status": "success", "team_name": team_name, "members": members, "count": len(members)}
     except Exception as e:
-        return {"status": "error", "message": f"查询成员列表失败: {e}"}
+        return {"status": "error", "message": t("team.list_members_failed", error=e)}
 
 
 def list_team_resources(team_name: str, resource_type: str = "all") -> dict:
@@ -327,24 +332,26 @@ def list_team_resources(team_name: str, resource_type: str = "all") -> dict:
     """
     valid_types = ("tables", "templates", "memories", "all")
     if resource_type not in valid_types:
-        return {"status": "error", "message": f"无效资源类型，可选: {', '.join(valid_types)}"}
+        return {"status": "error", "message": t(
+            "team.invalid_resource_type", types=", ".join(valid_types)
+        )}
 
     current_user = current_user_id.get()
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置"}
+        return {"status": "error", "message": t("team.db_unavailable")}
 
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
             team_id, owner = _get_team_id(conn, team_name)
             if team_id is None:
-                return {"status": "error", "message": f"团队「{team_name}」不存在"}
+                return {"status": "error", "message": t("team.not_found", team_name=team_name)}
 
             my_role = _get_member_role(conn, team_id, current_user)
             sys_role = current_user_role.get("analyst")
             if my_role is None and sys_role != "admin":
-                return {"status": "error", "message": "你不是该团队成员"}
+                return {"status": "error", "message": t("team.not_member_self")}
 
             # Get all team member usernames
             member_rows = conn.execute(
@@ -402,7 +409,7 @@ def list_team_resources(team_name: str, resource_type: str = "all") -> dict:
 
             return {"status": "success", "team_name": team_name, "resources": resources}
     except Exception as e:
-        return {"status": "error", "message": f"查询团队资源失败: {e}"}
+        return {"status": "error", "message": t("team.resources_failed", error=e)}
 
 
 def leave_team(team_name: str) -> dict:
@@ -417,17 +424,17 @@ def leave_team(team_name: str) -> dict:
     current_user = current_user_id.get()
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置"}
+        return {"status": "error", "message": t("team.db_unavailable")}
 
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
             team_id, owner = _get_team_id(conn, team_name)
             if team_id is None:
-                return {"status": "error", "message": f"团队「{team_name}」不存在"}
+                return {"status": "error", "message": t("team.not_found", team_name=team_name)}
 
             if current_user == owner:
-                return {"status": "error", "message": "团队所有者不能退出团队，请先转让所有权或删除团队"}
+                return {"status": "error", "message": t("team.owner_cannot_leave")}
 
             result = conn.execute(
                 text(f"DELETE FROM {T_TEAM_MEMBERS} WHERE team_id = :tid AND username = :u"),
@@ -435,10 +442,10 @@ def leave_team(team_name: str) -> dict:
             )
             conn.commit()
             if result.rowcount == 0:
-                return {"status": "error", "message": "你不是该团队成员"}
-        return {"status": "success", "message": f"已退出团队「{team_name}」"}
+                return {"status": "error", "message": t("team.not_member_self")}
+        return {"status": "success", "message": t("team.left", team_name=team_name)}
     except Exception as e:
-        return {"status": "error", "message": f"退出团队失败: {e}"}
+        return {"status": "error", "message": t("team.leave_failed", error=e)}
 
 
 def delete_team(team_name: str) -> dict:
@@ -453,22 +460,22 @@ def delete_team(team_name: str) -> dict:
     current_user = current_user_id.get()
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置"}
+        return {"status": "error", "message": t("team.db_unavailable")}
 
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
             team_id, owner = _get_team_id(conn, team_name)
             if team_id is None:
-                return {"status": "error", "message": f"团队「{team_name}」不存在"}
+                return {"status": "error", "message": t("team.not_found", team_name=team_name)}
 
             sys_role = current_user_role.get("analyst")
             if current_user != owner and sys_role != "admin":
-                return {"status": "error", "message": "只有团队所有者或系统管理员可以删除团队"}
+                return {"status": "error", "message": t("team.delete_denied")}
 
             conn.execute(text(f"DELETE FROM {T_TEAMS} WHERE id = :tid"), {"tid": team_id})
             conn.commit()
         record_audit(current_user, ACTION_TEAM_DELETE, "success", details={"team_name": team_name})
-        return {"status": "success", "message": f"团队「{team_name}」已删除"}
+        return {"status": "success", "message": t("team.deleted", team_name=team_name)}
     except Exception as e:
-        return {"status": "error", "message": f"删除团队失败: {e}"}
+        return {"status": "error", "message": t("team.delete_failed", error=e)}

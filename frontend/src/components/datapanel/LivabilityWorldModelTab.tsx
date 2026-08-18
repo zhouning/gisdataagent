@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Activity,
   AlertTriangle,
@@ -14,6 +15,7 @@ import {
 import UwmLivabilityS2Panel from './UwmLivabilityS2Panel';
 import UwmLivabilityEnvironmentalKernelPanel from './UwmLivabilityEnvironmentalKernelPanel';
 import UwmLivabilityDemand7Panel from './UwmLivabilityDemand7Panel';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
 
 type AnyRecord = Record<string, any>;
 
@@ -27,35 +29,27 @@ function asArray<T = AnyRecord>(value: unknown): T[] {
 
 function fmt(value: unknown, digits = 6): string {
   const num = Number(value);
-  return Number.isFinite(num) ? num.toFixed(digits) : '-';
+  return Number.isFinite(num)
+    ? formatNumber(num, { minimumFractionDigits: digits, maximumFractionDigits: digits })
+    : '-';
 }
 
 function fmtInt(value: unknown): string {
   const num = Number(value);
-  return Number.isFinite(num) ? String(Math.round(num)) : '-';
+  return Number.isFinite(num)
+    ? formatNumber(Math.round(num), { maximumFractionDigits: 0 })
+    : '-';
 }
 
 function fmtP(value: unknown): string {
   const num = Number(value);
-  return Number.isFinite(num) ? num.toFixed(6) : '-';
-}
-
-function actionLabel(actionType: unknown): string {
-  const text = String(actionType || '');
-  const labels: Record<string, string> = {
-    increase_green_infrastructure: '增加绿色基础设施',
-    add_community_service: '补充社区公共服务',
-    traffic_emission_control: '交通减排治理',
-    building_cooling_retrofit: '建筑降温改造',
-  };
-  return labels[text] || text || '-';
-}
-
-function unitLabel(value: unknown): string {
-  return String(value || '-').replace(/\|/g, ' · ');
+  return Number.isFinite(num)
+    ? formatNumber(num, { minimumFractionDigits: 6, maximumFractionDigits: 6 })
+    : '-';
 }
 
 export default function LivabilityWorldModelTab() {
+  const { t, i18n } = useTranslation('common');
   const [payload, setPayload] = useState<AnyRecord | null>(null);
   const [catalogPayload, setCatalogPayload] = useState<AnyRecord | null>(null);
   const [syncResult, setSyncResult] = useState<AnyRecord | null>(null);
@@ -70,25 +64,27 @@ export default function LivabilityWorldModelTab() {
       const [decisionResp, catalogResp] = await Promise.all([
         fetch('/api/uwm/livability-decision', {
           credentials: 'include',
+          headers: getLocaleHeaders(),
         }),
         fetch('/api/uwm/livability-data-catalog', {
           credentials: 'include',
+          headers: getLocaleHeaders(),
         }),
       ]);
       const decisionData = await decisionResp.json();
       const catalogData = await catalogResp.json();
       if (!decisionResp.ok || decisionData.error) {
-        setError(decisionData.error || 'UWM 宜居性决策包加载失败');
+        setError(decisionData.error || t('uwmLivability.errors.decision'));
         return;
       }
       if (!catalogResp.ok || catalogData.error) {
-        setError(catalogData.error || 'UWM 宜居性数据目录加载失败');
+        setError(catalogData.error || t('uwmLivability.errors.catalog'));
         return;
       }
       setPayload(decisionData);
       setCatalogPayload(catalogData);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'UWM 宜居性决策包加载失败');
+      setError(err instanceof Error ? err.message : t('uwmLivability.errors.decision'));
     } finally {
       setLoading(false);
     }
@@ -101,16 +97,17 @@ export default function LivabilityWorldModelTab() {
       const resp = await fetch('/api/uwm/livability-data-catalog/sync', {
         method: 'POST',
         credentials: 'include',
+        headers: getLocaleHeaders(),
       });
       const data = await resp.json();
       if (!resp.ok || data.error) {
-        setError(data.error || 'UWM 统一资产目录同步失败');
+        setError(data.error || t('uwmLivability.errors.sync'));
         return;
       }
       setSyncResult(data);
       await loadDecision();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'UWM 统一资产目录同步失败');
+      setError(err instanceof Error ? err.message : t('uwmLivability.errors.sync'));
     } finally {
       setSyncing(false);
     }
@@ -118,7 +115,7 @@ export default function LivabilityWorldModelTab() {
 
   useEffect(() => {
     loadDecision();
-  }, []);
+  }, [i18n.resolvedLanguage]);
 
   const decision = isRecord(payload?.decision_package) ? payload.decision_package : {};
   const fullAdminDecision = isRecord(payload?.full_admin_decision_package)
@@ -217,6 +214,20 @@ export default function LivabilityWorldModelTab() {
   const actions = asArray<AnyRecord>(actionPortfolio.actions);
   const observedClaim = Boolean(payload?.observed_policy_outcome_superiority_claim);
   const plannerGovernanceBindingReady = Boolean(payload?.planner_governance_binding_ready);
+  const actionLabel = (actionType: unknown) => {
+    const key = String(actionType || '');
+    return key ? t(`uwmLivability.actions.${key}`, { defaultValue: key }) : '-';
+  };
+  const booleanLabel = (value: unknown) =>
+    t(`uwmLivability.boolean.${Boolean(value) ? 'true' : 'false'}`);
+  const unitLabel = (value: unknown) => {
+    const raw = String(value || '-');
+    if ((i18n.resolvedLanguage || i18n.language).startsWith('zh')) return raw.replace(/\|/g, ' · ');
+    const parts = raw.split('|');
+    return parts.length > 1
+      ? t('uwmLivability.labels.unitId', { id: parts[parts.length - 1] })
+      : raw;
+  };
 
   return (
     <div className="uwm-livability-tab">
@@ -225,31 +236,31 @@ export default function LivabilityWorldModelTab() {
       <UwmLivabilityS2Panel />
       <div className="datapanel-section-header">
         <div>
-          <h3>城市宜居性分析（UWM）</h3>
-          <p>同一数据基础上的 renderer / simulator / planner 反事实决策包。</p>
+          <h3>{t('uwmLivability.header.title')}</h3>
+          <p>{t('uwmLivability.header.subtitle')}</p>
         </div>
         <button className="secondary-button" onClick={loadDecision} disabled={loading}>
           <RefreshCw size={14} />
-          刷新
+          {t('uwmLivability.header.refresh')}
         </button>
       </div>
 
       {error && <div className="uwm-livability-message error"><AlertTriangle size={15} />{error}</div>}
-      {loading && !payload && <div className="uwm-livability-empty">正在加载 UWM 决策包...</div>}
+      {loading && !payload && <div className="uwm-livability-empty">{t('uwmLivability.header.loading')}</div>}
 
       {payload && (
         <>
           <div className="uwm-livability-kpi-grid">
             <div className="uwm-livability-kpi">
-              <span>推荐动作</span>
+              <span>{t('uwmLivability.kpis.recommendedActions')}</span>
               <strong>{fmtInt(actionPortfolio.action_count)}</strong>
             </div>
             <div className="uwm-livability-kpi">
-              <span>目标单元</span>
+              <span>{t('uwmLivability.kpis.targetUnits')}</span>
               <strong>{fmtInt(actionPortfolio.target_unit_count)}</strong>
             </div>
             <div className="uwm-livability-kpi">
-              <span>风险校正收益</span>
+              <span>{t('uwmLivability.kpis.riskAdjustedBenefit')}</span>
               <strong>{fmt(comparison.risk_adjusted_advantage_over_static)}</strong>
             </div>
             <div className="uwm-livability-kpi">
@@ -261,13 +272,13 @@ export default function LivabilityWorldModelTab() {
           <div className="uwm-livability-panel">
             <div className="uwm-livability-panel-title">
               <Brain size={15} />
-              <strong>世界模型链路</strong>
+              <strong>{t('uwmLivability.sections.worldModelChain')}</strong>
             </div>
             <div className="uwm-component-row">
               {['renderer', 'simulator', 'planner'].map(component => (
                 <div key={component} className={components.includes(component) ? 'active' : ''}>
                   <span>{component}</span>
-                  <strong>{components.includes(component) ? '已使用' : '未使用'}</strong>
+                  <strong>{t(`uwmLivability.component.${components.includes(component) ? 'used' : 'unused'}`)}</strong>
                 </div>
               ))}
             </div>
@@ -277,7 +288,7 @@ export default function LivabilityWorldModelTab() {
             <div className="uwm-livability-panel">
               <div className="uwm-livability-panel-title">
                 <GitBranch size={15} />
-                <strong>Full-admin 最终决策包</strong>
+                <strong>{t('uwmLivability.sections.fullAdmin')}</strong>
               </div>
               <div className="uwm-evidence-grid">
                 <div>
@@ -318,20 +329,20 @@ export default function LivabilityWorldModelTab() {
             <div className="uwm-livability-panel">
               <div className="uwm-livability-panel-title">
                 <Shield size={15} />
-                <strong>生产治理绑定门控</strong>
+                <strong>{t('uwmLivability.sections.governanceGate')}</strong>
               </div>
               <div className="uwm-boundary-grid">
                 <div>
                   <span>production_governance_binding_evidence</span>
-                  <strong>{String(Boolean(governanceBinding.production_governance_binding_gate_ready))}</strong>
+                  <strong>{booleanLabel(governanceBinding.production_governance_binding_gate_ready)}</strong>
                 </div>
                 <div>
                   <span>planner_governance_binding_ready</span>
-                  <strong>{String(plannerGovernanceBindingReady)}</strong>
+                  <strong>{booleanLabel(plannerGovernanceBindingReady)}</strong>
                 </div>
                 <div>
                   <span>production_planner_binding_blocked</span>
-                  <strong>{String(Boolean(governanceBinding.production_planner_binding_blocked))}</strong>
+                  <strong>{booleanLabel(governanceBinding.production_planner_binding_blocked)}</strong>
                 </div>
                 <div>
                   <span>production_governance_binding_blocking_gate_count</span>
@@ -351,20 +362,20 @@ export default function LivabilityWorldModelTab() {
             <div className="uwm-livability-panel">
               <div className="uwm-livability-panel-title">
                 <Brain size={15} />
-                <strong>空间因果问题契约</strong>
+                <strong>{t('uwmLivability.sections.spatialCausalContract')}</strong>
               </div>
               <div className="uwm-boundary-grid">
                 <div>
                   <span>spatial_causal_question_registry_evidence</span>
-                  <strong>{String(Boolean(spatialCausalRegistry.spatial_causal_question_registry_ready))}</strong>
+                  <strong>{booleanLabel(spatialCausalRegistry.spatial_causal_question_registry_ready)}</strong>
                 </div>
                 <div>
                   <span>world_model_evidence_readiness.spatial_causal_questions</span>
-                  <strong>{String(Boolean(spatialCausalReadiness.ready))}</strong>
+                  <strong>{booleanLabel(spatialCausalReadiness.ready)}</strong>
                 </div>
                 <div>
                   <span>spatial_causal_question_registry_ready</span>
-                  <strong>{String(Boolean(spatialCausalRegistry.spatial_causal_question_registry_ready))}</strong>
+                  <strong>{booleanLabel(spatialCausalRegistry.spatial_causal_question_registry_ready)}</strong>
                 </div>
                 <div>
                   <span>active_causal_question_count</span>
@@ -384,11 +395,11 @@ export default function LivabilityWorldModelTab() {
                 </div>
                 <div>
                   <span>policy_outcome_claim</span>
-                  <strong>{String(Boolean(spatialCausalReadiness.policy_outcome_claim))}</strong>
+                  <strong>{booleanLabel(spatialCausalReadiness.policy_outcome_claim)}</strong>
                 </div>
                 <div>
                   <span>full_admin_action_inventory_evidence</span>
-                  <strong>{String(Boolean(fullAdminActionInventory.full_admin_action_inventory_ready))}</strong>
+                  <strong>{booleanLabel(fullAdminActionInventory.full_admin_action_inventory_ready)}</strong>
                 </div>
                 <div>
                   <span>spatial_causal_feasible_action_count</span>
@@ -418,23 +429,23 @@ export default function LivabilityWorldModelTab() {
             <div className="uwm-livability-panel">
               <div className="uwm-livability-panel-title">
                 <BarChart3 size={15} />
-                <strong>同一数据对照</strong>
+                <strong>{t('uwmLivability.sections.sameDataComparison')}</strong>
               </div>
               <div className="uwm-compare-grid">
                 <div>
-                  <span>场景</span>
+                  <span>{t('uwmLivability.labels.scene')}</span>
                   <strong>{shared.scene_id || '-'}</strong>
                 </div>
                 <div>
-                  <span>行政单元</span>
+                  <span>{t('uwmLivability.labels.adminUnits')}</span>
                   <strong>{fmtInt(shared.admin_unit_count)}</strong>
                 </div>
                 <div>
-                  <span>传统最终输出</span>
+                  <span>{t('uwmLivability.labels.traditionalOutput')}</span>
                   <strong>{traditional.final_output_type || '-'}</strong>
                 </div>
                 <div>
-                  <span>UWM 最终输出</span>
+                  <span>{t('uwmLivability.labels.uwmOutput')}</span>
                   <strong>{uwm.final_output_type || '-'}</strong>
                 </div>
               </div>
@@ -443,7 +454,7 @@ export default function LivabilityWorldModelTab() {
             <div className="uwm-livability-panel">
               <div className="uwm-livability-panel-title">
                 <Activity size={15} />
-                <strong>强于传统方法的证据</strong>
+                <strong>{t('uwmLivability.sections.comparativeEvidence')}</strong>
               </div>
               <div className="uwm-evidence-grid">
                 <div>
@@ -469,7 +480,7 @@ export default function LivabilityWorldModelTab() {
           <div className="uwm-livability-panel">
             <div className="uwm-livability-panel-title">
               <Target size={15} />
-              <strong>推荐行动序列</strong>
+              <strong>{t('uwmLivability.sections.recommendedSequence')}</strong>
             </div>
             <div className="uwm-action-list">
               {actions.map((action, index) => (
@@ -477,7 +488,7 @@ export default function LivabilityWorldModelTab() {
                   <b>{index + 1}</b>
                   <div>
                     <strong>{actionLabel(action.action_type)}</strong>
-                    <span>{asArray<string>(action.target_units).map(unitLabel).join('；') || '-'}</span>
+                    <span>{asArray<string>(action.target_units).map(unitLabel).join(t('uwmLivability.listSeparator')) || '-'}</span>
                   </div>
                   <em>{fmt(action.intensity, 2)}</em>
                 </div>
@@ -488,14 +499,14 @@ export default function LivabilityWorldModelTab() {
           <div className="uwm-livability-panel">
             <div className="uwm-livability-panel-title">
               <Brain size={15} />
-              <strong>动作因果契约</strong>
+              <strong>{t('uwmLivability.sections.actionCausalContract')}</strong>
             </div>
             <div className="uwm-priority-table-wrap">
               <table className="uwm-priority-table">
                 <thead>
                   <tr>
-                    <th>序列</th>
-                    <th>动作</th>
+                    <th>{t('uwmLivability.labels.sequence')}</th>
+                    <th>{t('uwmLivability.labels.action')}</th>
                     <th>causal_question_id</th>
                     <th>primary_outcome</th>
                     <th>identification_status</th>
@@ -512,7 +523,7 @@ export default function LivabilityWorldModelTab() {
                       <td>{action.causal_question_id || '-'}</td>
                       <td>{action.primary_outcome || '-'}</td>
                       <td>{action.identification_status || '-'}</td>
-                      <td>{String(Boolean(action.policy_outcome_claim_allowed))}</td>
+                      <td>{booleanLabel(action.policy_outcome_claim_allowed)}</td>
                       <td>{asArray<string>(action.required_authoritative_tables).join(', ') || '-'}</td>
                       <td>{action.causal_query || '-'}</td>
                     </tr>
@@ -525,17 +536,17 @@ export default function LivabilityWorldModelTab() {
           <div className="uwm-livability-panel">
             <div className="uwm-livability-panel-title">
               <Network size={15} />
-              <strong>反事实状态变化与空间外溢</strong>
+              <strong>{t('uwmLivability.sections.counterfactualSpillover')}</strong>
             </div>
             <div className="uwm-priority-table-wrap">
               <table className="uwm-priority-table">
                 <thead>
                   <tr>
-                    <th>行政单元</th>
-                    <th>宜居变化</th>
-                    <th>公平性变化</th>
-                    <th>污染暴露变化</th>
-                    <th>服务变化</th>
+                    <th>{t('uwmLivability.labels.adminUnit')}</th>
+                    <th>{t('uwmLivability.labels.livabilityDelta')}</th>
+                    <th>{t('uwmLivability.labels.equityDelta')}</th>
+                    <th>{t('uwmLivability.labels.pollutionDelta')}</th>
+                    <th>{t('uwmLivability.labels.serviceDelta')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -556,12 +567,12 @@ export default function LivabilityWorldModelTab() {
           <div className="uwm-livability-panel">
             <div className="uwm-livability-panel-title">
               <Network size={15} />
-              <strong>数据校准空间传播核</strong>
+              <strong>{t('uwmLivability.sections.spatialKernel')}</strong>
             </div>
             <div className="uwm-evidence-grid">
               <div>
                 <span>data_calibrated_spatial_spillover_kernel</span>
-                <strong>{String(Boolean(spatialKernel.ready))}</strong>
+                <strong>{booleanLabel(spatialKernel.ready)}</strong>
               </div>
               <div>
                 <span>directional_edge_count</span>
@@ -581,15 +592,15 @@ export default function LivabilityWorldModelTab() {
               </div>
               <div>
                 <span>uses_shared_boundary_length</span>
-                <strong>{String(Boolean(spatialKernel.uses_shared_boundary_length))}</strong>
+                <strong>{booleanLabel(spatialKernel.uses_shared_boundary_length)}</strong>
               </div>
               <div>
                 <span>uses_admin_livability_need</span>
-                <strong>{String(Boolean(spatialKernel.uses_admin_livability_need))}</strong>
+                <strong>{booleanLabel(spatialKernel.uses_admin_livability_need)}</strong>
               </div>
               <div>
                 <span>uses_admin_exposure_priority</span>
-                <strong>{String(Boolean(spatialKernel.uses_admin_exposure_priority))}</strong>
+                <strong>{booleanLabel(spatialKernel.uses_admin_exposure_priority)}</strong>
               </div>
             </div>
           </div>
@@ -597,12 +608,12 @@ export default function LivabilityWorldModelTab() {
           <div className="uwm-livability-panel">
             <div className="uwm-livability-panel-title">
               <Brain size={15} />
-              <strong>Dyna-Q 训练证据</strong>
+              <strong>{t('uwmLivability.sections.dynaQ')}</strong>
             </div>
             <div className="uwm-evidence-grid">
               <div>
                 <span>rl_training_evidence</span>
-                <strong>{String(Boolean(rlTraining.ready))}</strong>
+                <strong>{booleanLabel(rlTraining.ready)}</strong>
               </div>
               <div>
                 <span>algorithm</span>
@@ -638,12 +649,12 @@ export default function LivabilityWorldModelTab() {
           <div className="uwm-livability-panel">
             <div className="uwm-livability-panel-title">
               <Brain size={15} />
-              <strong>GraphDQN 神经价值网络</strong>
+              <strong>{t('uwmLivability.sections.graphDqn')}</strong>
             </div>
             <div className="uwm-evidence-grid">
               <div>
                 <span>graph_drl_training_evidence</span>
-                <strong>{String(Boolean(graphDrl.ready))}</strong>
+                <strong>{booleanLabel(graphDrl.ready)}</strong>
               </div>
               <div>
                 <span>algorithm</span>
@@ -651,15 +662,15 @@ export default function LivabilityWorldModelTab() {
               </div>
               <div>
                 <span>is_deep_rl</span>
-                <strong>{String(Boolean(graphDrl.is_deep_rl))}</strong>
+                <strong>{booleanLabel(graphDrl.is_deep_rl)}</strong>
               </div>
               <div>
                 <span>uses_graph_message_passing</span>
-                <strong>{String(Boolean(graphDrl.uses_graph_message_passing))}</strong>
+                <strong>{booleanLabel(graphDrl.uses_graph_message_passing)}</strong>
               </div>
               <div>
                 <span>policy_or_value_network_trained</span>
-                <strong>{String(Boolean(graphDrl.policy_or_value_network_trained))}</strong>
+                <strong>{booleanLabel(graphDrl.policy_or_value_network_trained)}</strong>
               </div>
               <div>
                 <span>training_sample_count</span>
@@ -684,7 +695,7 @@ export default function LivabilityWorldModelTab() {
             <div className="uwm-livability-panel">
               <div className="uwm-livability-panel-title">
                 <GitBranch size={15} />
-                <strong>UWM-only 输出</strong>
+                <strong>{t('uwmLivability.sections.uwmOnly')}</strong>
               </div>
               <div className="uwm-capability-tags">
                 {asArray<string>(capability.uwm_only_outputs).map(item => (
@@ -696,16 +707,16 @@ export default function LivabilityWorldModelTab() {
             <div className="uwm-livability-panel">
               <div className="uwm-livability-panel-title">
                 <Shield size={15} />
-                <strong>证据边界</strong>
+                <strong>{t('uwmLivability.sections.evidenceBoundary')}</strong>
               </div>
               <div className="uwm-boundary-grid">
                 <div>
-                  <span>claim level</span>
+                  <span>{t('uwmLivability.labels.claimLevel')}</span>
                   <strong>{claim.max_claim_level || '-'}</strong>
                 </div>
                 <div>
                   <span>observed_policy_outcome_superiority_claim</span>
-                <strong>{String(observedClaim)}</strong>
+                <strong>{booleanLabel(observedClaim)}</strong>
                 </div>
               </div>
             </div>
@@ -714,10 +725,10 @@ export default function LivabilityWorldModelTab() {
           <div className="uwm-livability-panel">
             <div className="uwm-livability-panel-title">
               <Database size={15} />
-              <strong>数据治理与训练边界</strong>
+              <strong>{t('uwmLivability.sections.dataGovernance')}</strong>
               <button className="secondary-button" onClick={syncCatalog} disabled={syncing}>
                 <GitBranch size={14} />
-                同步统一目录
+                {t('uwmLivability.actionsUi.syncCatalog')}
               </button>
             </div>
             <div className="uwm-evidence-grid">
@@ -727,7 +738,7 @@ export default function LivabilityWorldModelTab() {
               </div>
               <div>
                 <span>shadow_catalog</span>
-                <strong>{String(Boolean(catalogIntegration.shadow_catalog))}</strong>
+                <strong>{booleanLabel(catalogIntegration.shadow_catalog)}</strong>
               </div>
               <div>
                 <span>registration_plan.asset_count</span>
@@ -739,7 +750,7 @@ export default function LivabilityWorldModelTab() {
               </div>
               <div>
                 <span>complete_mmfe_managed_pipeline</span>
-                <strong>{String(Boolean(mmfe.complete_mmfe_managed_pipeline))}</strong>
+                <strong>{booleanLabel(mmfe.complete_mmfe_managed_pipeline)}</strong>
               </div>
               <div>
                 <span>mmfe_state_input_asset_count</span>
@@ -747,19 +758,19 @@ export default function LivabilityWorldModelTab() {
               </div>
               <div>
                 <span>model_based_rl_training_completed</span>
-                <strong>{String(Boolean(rlBoundary.model_based_rl_training_completed))}</strong>
+                <strong>{booleanLabel(rlBoundary.model_based_rl_training_completed)}</strong>
               </div>
               <div>
                 <span>trained_model_based_q_agent_completed</span>
-                <strong>{String(Boolean(rlBoundary.trained_model_based_q_agent_completed))}</strong>
+                <strong>{booleanLabel(rlBoundary.trained_model_based_q_agent_completed)}</strong>
               </div>
               <div>
                 <span>policy_or_value_network_trained</span>
-                <strong>{String(Boolean(rlBoundary.policy_or_value_network_trained))}</strong>
+                <strong>{booleanLabel(rlBoundary.policy_or_value_network_trained)}</strong>
               </div>
               <div>
                 <span>graph_policy_or_value_network_trained</span>
-                <strong>{String(Boolean(rlBoundary.graph_policy_or_value_network_trained))}</strong>
+                <strong>{booleanLabel(rlBoundary.graph_policy_or_value_network_trained)}</strong>
               </div>
               <div>
                 <span>current_planning_mode</span>

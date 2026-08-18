@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, CircleDot, RefreshCw, Route, ShieldAlert } from 'lucide-react';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
 
 type EvidenceLevel = 'observed' | 'proxy' | 'simulated' | 'contract_only' | 'unsupported';
 type UncertaintyLevel = 'low' | 'medium' | 'high' | 'not_assessed';
@@ -59,13 +61,13 @@ type ReadinessPayload = {
 };
 
 const ROUTE_LABELS: Record<string, string> = {
-  traditional_livability: '城市宜居性（传统方法）',
-  uwm_livability: '城市宜居性（UWM）',
-  planning_land: '城市规划与土地',
-  infrastructure_assets: '基础设施与资产',
-  population_demand: '人口与需求',
-  economy_investment: '经济与投资',
-  impact_implementation: '影响与实施决策',
+  traditional_livability: 'traditional_livability',
+  uwm_livability: 'uwm_livability',
+  planning_land: 'planning_land',
+  infrastructure_assets: 'infrastructure_assets',
+  population_demand: 'population_demand',
+  economy_investment: 'economy_investment',
+  impact_implementation: 'impact_implementation',
 };
 
 const cellStyle = { verticalAlign: 'top' as const, whiteSpace: 'normal' as const };
@@ -179,13 +181,13 @@ async function parseReadinessResponse(response: Response): Promise<unknown> {
     try {
       data = JSON.parse(responseBody) as unknown;
     } catch {
-      throw new Error(`HTTP ${response.status}: 响应不是有效 JSON`);
+      throw new Error(`HTTP ${response.status}: Invalid JSON response`);
     }
   }
   if (!response.ok) {
     const serverMessage = isRecord(data) && typeof data.error === 'string'
       ? data.error
-      : response.statusText || '请求失败';
+      : response.statusText || 'Request failed';
     throw new Error(`HTTP ${response.status}: ${serverMessage}`);
   }
   return data;
@@ -200,21 +202,22 @@ function listText(values: string[], emptyText: string): string {
 }
 
 function RequirementTable({ title, rows }: { title: string; rows: RequirementRow[] }) {
+  const { t } = useTranslation();
   return (
     <section className="uwm-livability-panel">
       <div className="uwm-livability-panel-title">{title}</div>
       <div className="uwm-priority-table-wrap">
         <table className="uwm-priority-table">
-          <caption>{title}的技术归属、证据边界、实施状态与生产阻塞项</caption>
+          <caption>{t('aiDemandReadiness.table.caption', { title })}</caption>
           <thead>
             <tr>
-              <th scope="col">ID / 需求</th>
-              <th scope="col">主技术路线</th>
-              <th scope="col">实施与数据状态</th>
-              <th scope="col">真实实施状态</th>
-              <th scope="col">证据与最大主张</th>
-              <th scope="col">已实现产出</th>
-              <th scope="col">生产阻塞项 / 下一步</th>
+              <th scope="col">{t('aiDemandReadiness.table.requirement')}</th>
+              <th scope="col">{t('aiDemandReadiness.table.route')}</th>
+              <th scope="col">{t('aiDemandReadiness.table.implementation')}</th>
+              <th scope="col">{t('aiDemandReadiness.table.status')}</th>
+              <th scope="col">{t('aiDemandReadiness.table.evidence')}</th>
+              <th scope="col">{t('aiDemandReadiness.table.outputs')}</th>
+              <th scope="col">{t('aiDemandReadiness.table.blockers')}</th>
             </tr>
           </thead>
           <tbody>
@@ -225,29 +228,29 @@ function RequirementTable({ title, rows }: { title: string; rows: RequirementRow
                   <div>{row.required_method}</div>
                 </td>
                 <td style={cellStyle}>
-                  <strong>{ROUTE_LABELS[row.primary_route] || row.primary_route}</strong>
+                    <strong>{t(`aiDemandReadiness.routeLabels.${ROUTE_LABELS[row.primary_route] || row.primary_route}`, { defaultValue: row.primary_route })}</strong>
                   <div>primary_route: {row.primary_route}</div>
-                  <div>route_availability: {row.route_availability}</div>
+                  <div>{t('aiDemandReadiness.labels.routeAvailability')}: {row.route_availability}</div>
                 </td>
                 <td style={cellStyle}>
-                  <div>implementation_level: {row.implementation_level}</div>
-                  <div>data_support: {row.data_support}</div>
+                  <div>{t('aiDemandReadiness.labels.implementationLevel')}: {row.implementation_level}</div>
+                  <div>{t('aiDemandReadiness.labels.dataSupport')}: {row.data_support}</div>
                 </td>
                 <td style={cellStyle}>
-                  <strong>{row.implementation_status}</strong>
-                  <div>状态依据：{row.status_basis}</div>
+                  <strong>{t(`statusLabels.${row.implementation_status}`, { defaultValue: row.implementation_status })}</strong>
+                  <div>{t('aiDemandReadiness.labels.statusBasis')}: {row.status_basis}</div>
                 </td>
                 <td style={cellStyle}>
-                  <div>evidence_level: {row.evidence_level}</div>
-                  <div>uncertainty: {row.uncertainty}</div>
-                  <div>max_claim_level: {row.max_claim_level}</div>
-                  <div>max_supported_claim: {row.max_supported_claim}</div>
-                  <div>evidence_artifacts: {listText(row.evidence_artifacts, '无已验证证据文件')}</div>
+                  <div>{t('aiDemandReadiness.labels.evidenceLevel')}: {row.evidence_level}</div>
+                  <div>{t('aiDemandReadiness.labels.uncertainty')}: {row.uncertainty}</div>
+                  <div>{t('aiDemandReadiness.labels.maxClaimLevel')}: {row.max_claim_level}</div>
+                  <div>{t('aiDemandReadiness.labels.maxSupportedClaim')}: {row.max_supported_claim}</div>
+                  <div>{t('aiDemandReadiness.labels.evidenceArtifacts')}: {listText(row.evidence_artifacts, t('aiDemandReadiness.empty.noVerifiedArtifacts'))}</div>
                 </td>
-                <td style={cellStyle}>{listText(row.implemented_outputs, '尚无已验证产出')}</td>
+                <td style={cellStyle}>{listText(row.implemented_outputs, t('aiDemandReadiness.empty.noVerifiedOutputs'))}</td>
                 <td style={cellStyle}>
-                  <div>{listText(row.production_blockers, '当前无登记 blocker')}</div>
-                  <div>下一步：{listText(row.next_actions, '无')}</div>
+                  <div>{listText(row.production_blockers, t('aiDemandReadiness.empty.noBlockers'))}</div>
+                  <div>{t('aiDemandReadiness.labels.nextActions')}: {listText(row.next_actions, t('aiDemandReadiness.empty.none'))}</div>
                 </td>
               </tr>
             ))}
@@ -259,6 +262,7 @@ function RequirementTable({ title, rows }: { title: string; rows: RequirementRow
 }
 
 export default function AiDemandReadinessTab() {
+  const { t, i18n } = useTranslation();
   const [payload, setPayload] = useState<ReadinessPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -276,26 +280,27 @@ export default function AiDemandReadinessTab() {
     try {
       const response = await fetch('/api/uwm/ai-demand-readiness', {
         credentials: 'include',
+        headers: getLocaleHeaders(),
         signal: controller.signal,
       });
       const data = await parseReadinessResponse(response);
       if (requestId !== requestIdRef.current) return;
       if (!isReadinessPayload(data)) {
-        throw new Error(`HTTP ${response.status}: 响应结构不符合 readiness contract`);
+        throw new Error(`HTTP ${response.status}: ${t('aiDemandReadiness.errors.invalidContract')}`);
       }
       setPayload(data);
     } catch (loadError: unknown) {
       if (loadError instanceof Error && loadError.name === 'AbortError') return;
       if (requestId !== requestIdRef.current) return;
       setPayload(null);
-      setError(loadError instanceof Error ? loadError.message : 'AI 应用需求矩阵加载失败');
+      setError(loadError instanceof Error ? loadError.message : t('aiDemandReadiness.errors.load'));
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false);
         if (abortControllerRef.current === controller) abortControllerRef.current = null;
       }
     }
-  }, []);
+  }, [t, i18n.resolvedLanguage]);
 
   useEffect(() => {
     loadReadiness();
@@ -312,11 +317,11 @@ export default function AiDemandReadinessTab() {
     <div className="uwm-livability-tab" aria-live="polite" aria-busy={loading}>
       <div className="datapanel-section-header">
         <div>
-          <h3>AI应用需求矩阵</h3>
-          <p>两份客户需求文档的唯一技术归属、实施状态、数据基础与生产阻塞项。</p>
+          <h3>{t('aiDemandReadiness.title')}</h3>
+          <p>{t('aiDemandReadiness.subtitle')}</p>
         </div>
         <button className="secondary-button" onClick={loadReadiness} disabled={loading}>
-          <RefreshCw size={14} /> {loading ? '加载中' : '刷新'}
+          <RefreshCw size={14} /> {loading ? t('aiDemandReadiness.actions.loading') : t('aiDemandReadiness.actions.refresh')}
         </button>
       </div>
 
@@ -338,9 +343,9 @@ export default function AiDemandReadinessTab() {
         >
           <AlertTriangle size={18} />
           <div>
-            <strong>注册不等于实现。</strong>
+            <strong>{t('aiDemandReadiness.claimBoundary.title')}</strong>
             <div>
-              本页只声明需求所有权与 readiness；observed_policy_outcome_superiority_claim =
+              {t('aiDemandReadiness.claimBoundary.description')} observed_policy_outcome_superiority_claim =
               {' '}{String(claimBoundary.observed_policy_outcome_superiority_claim)}。
             </div>
           </div>
@@ -351,34 +356,34 @@ export default function AiDemandReadinessTab() {
         <>
           <div className="uwm-livability-kpi-grid">
             <div className="uwm-livability-kpi">
-              <span>宜居性专项</span>
-              <strong>{payload.livability_scenarios.length} 个宜居性场景</strong>
+              <span>{t('aiDemandReadiness.kpis.livability')}</span>
+              <strong>{t('aiDemandReadiness.kpis.livabilityValue', { count: formatNumber(payload.livability_scenarios.length) })}</strong>
             </div>
             <div className="uwm-livability-kpi">
-              <span>客户应用</span>
-              <strong>{payload.customer_ai_demands.length} 项客户需求</strong>
+              <span>{t('aiDemandReadiness.kpis.customer')}</span>
+              <strong>{t('aiDemandReadiness.kpis.customerValue', { count: formatNumber(payload.customer_ai_demands.length) })}</strong>
             </div>
             <div className="uwm-livability-kpi">
-              <span>唯一归属</span>
-              <strong>{payload.primary_routes.length} 条主技术路线</strong>
+              <span>{t('aiDemandReadiness.kpis.routes')}</span>
+              <strong>{t('aiDemandReadiness.kpis.routesValue', { count: formatNumber(payload.primary_routes.length) })}</strong>
             </div>
             <div className="uwm-livability-kpi">
-              <span>已验证或证据受限实现</span>
-              <strong>{summary.verified_or_bounded_count}</strong>
+              <span>{t('aiDemandReadiness.kpis.verified')}</span>
+              <strong>{formatNumber(summary.verified_or_bounded_count)}</strong>
             </div>
           </div>
 
           <section className="uwm-livability-panel">
-            <div className="uwm-livability-panel-title">五级真实实施状态</div>
-            <div>production_verified：{summary.implementation_status_counts.production_verified}</div>
-            <div>implemented_evidence_bounded：{summary.implementation_status_counts.implemented_evidence_bounded}</div>
-            <div>data_query_only：{summary.implementation_status_counts.data_query_only}</div>
-            <div>contract_only：{summary.implementation_status_counts.contract_only}</div>
-            <div>not_implemented：{summary.implementation_status_counts.not_implemented}</div>
+            <div className="uwm-livability-panel-title">{t('aiDemandReadiness.status.title')}</div>
+            <div>production_verified：{formatNumber(summary.implementation_status_counts.production_verified)}</div>
+            <div>implemented_evidence_bounded：{formatNumber(summary.implementation_status_counts.implemented_evidence_bounded)}</div>
+            <div>data_query_only：{formatNumber(summary.implementation_status_counts.data_query_only)}</div>
+            <div>contract_only：{formatNumber(summary.implementation_status_counts.contract_only)}</div>
+            <div>not_implemented：{formatNumber(summary.implementation_status_counts.not_implemented)}</div>
           </section>
 
           <section className="uwm-livability-panel">
-            <div className="uwm-livability-panel-title"><Route size={16} /> 主技术路线</div>
+            <div className="uwm-livability-panel-title"><Route size={16} /> {t('aiDemandReadiness.routes.title')}</div>
             <ul className="ai-demand-route-list" style={routeListStyle}>
               {payload.primary_routes.map(routeRow => (
                 <li className="ai-demand-route-card" style={routeCardStyle} key={routeRow.route}>
@@ -386,11 +391,11 @@ export default function AiDemandReadinessTab() {
                     ? <CircleDot size={15} />
                     : <ShieldAlert size={15} />}
                   <div>
-                    <strong>{ROUTE_LABELS[routeRow.route] || routeRow.route}</strong>
+                    <strong>{t(`aiDemandReadiness.routeLabels.${ROUTE_LABELS[routeRow.route] || routeRow.route}`, { defaultValue: routeRow.route })}</strong>
                     <div>
                       {routeRow.route} · {routeRow.availability === 'existing'
-                        ? '产品页面已存在（不代表需求能力完成）'
-                        : '产品页面规划中'}
+                        ? t('aiDemandReadiness.routes.existing')
+                        : t('aiDemandReadiness.routes.planned')}
                     </div>
                   </div>
                 </li>
@@ -399,26 +404,26 @@ export default function AiDemandReadinessTab() {
           </section>
 
           <section className="uwm-livability-panel">
-            <div className="uwm-livability-panel-title">需求来源</div>
+            <div className="uwm-livability-panel-title">{t('aiDemandReadiness.sources.title')}</div>
             <div className="uwm-capability-tags">
               {payload.source_documents.map(documentId => (
                 <span key={documentId}>{documentName(documentId)}</span>
               ))}
             </div>
-            <div>原始路径与详细 provenance 仅在服务端审计报告保存。</div>
+            <div>{t('aiDemandReadiness.sources.description')}</div>
           </section>
 
           <RequirementTable
-            title={`${payload.livability_scenarios.length} 个宜居性场景`}
+            title={t('aiDemandReadiness.kpis.livabilityValue', { count: formatNumber(payload.livability_scenarios.length) })}
             rows={payload.livability_scenarios}
           />
           <RequirementTable
-            title={`${payload.customer_ai_demands.length} 项客户需求`}
+            title={t('aiDemandReadiness.kpis.customerValue', { count: formatNumber(payload.customer_ai_demands.length) })}
             rows={payload.customer_ai_demands}
           />
         </>
       ) : !loading && !error ? (
-        <div className="uwm-livability-empty">暂无 AI 应用需求 readiness 数据。</div>
+        <div className="uwm-livability-empty">{t('aiDemandReadiness.empty.data')}</div>
       ) : null}
     </div>
   );

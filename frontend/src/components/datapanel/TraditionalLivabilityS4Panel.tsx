@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Map, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { getLocaleHeaders } from '../../i18n';
 
 type Row = Record<string, any>;
 type UseRow = { clientKey: string; useId: string; useName: string; rawUseType: string; useDescription: string; gfa: string };
@@ -8,9 +10,12 @@ type ConfirmationDraft = { selectedCandidateId: string; reviewerReason: string; 
 const rows = (value: unknown): Row[] => Array.isArray(value) ? value : [];
 const record = (value: unknown): Row => value && typeof value === 'object' && !Array.isArray(value) ? value as Row : {};
 const text = (value: unknown): string => value === null || value === undefined || value === '' ? '-' : String(value);
+const statusText = (value: unknown, t: (key: string, options?: Record<string, unknown>) => string): string => {
+  const raw = text(value);
+  return raw === '-' ? raw : t(`traditionalLivability.s4.statuses.${raw}`, { defaultValue: raw });
+};
 const makeId = (): string => crypto.randomUUID();
 const newUse = (): UseRow => ({ clientKey: makeId(), useId: `use-${makeId()}`, useName: '', rawUseType: '', useDescription: '', gfa: '' });
-const evidenceLabels = { not_assessed: '需求未评估', preliminary: '初步对齐分析，需人工复核' };
 const candidateAuditFields = ['standard_class_id', 'standard_class_label', 'authority_level', 'match_method', 'confidence', 'dictionary_version', 'rule_version', 'human_confirmation_required', 'human_confirmed', 'evidence'] as const;
 
 function replayCandidateAudit(candidate: Row): Row {
@@ -42,10 +47,12 @@ function errorMessages(payload: Row, fallback: string): string[] {
 }
 
 function EvidenceTable({ title, data }: { title: string; data: Row[] }) {
-  return <details><summary>{title}（{data.length}）</summary><div className="traditional-table-wrap"><table className="traditional-table"><thead><tr><th>对象</th><th>状态/类别</th><th>距离</th><th>规则/来源</th></tr></thead><tbody>{data.length ? data.map((item, index) => <tr key={item.resource_id || item.facility_id || item.rule_id || index}><td>{text(item.resource_id || item.facility_id || item.rule_id || item.standard_class_id)}</td><td>{text(item.status || item.planning_status || item.mapping_status || item.relationship || item.standard_class_label)}</td><td>{text(item.nearest_distance_m)}</td><td>{text(item.source_record_id || item.source_dataset_id || item.interpretation_evidence || item.reason)}</td></tr>) : <tr><td colSpan={4}>-</td></tr>}</tbody></table></div></details>;
+  const { t } = useTranslation();
+  return <details><summary>{t('traditionalLivability.s4.table.summary', { title, count: data.length })}</summary><div className="traditional-table-wrap"><table className="traditional-table"><thead><tr><th>{t('traditionalLivability.s4.table.object')}</th><th>{t('traditionalLivability.s4.table.statusClass')}</th><th>{t('traditionalLivability.s4.table.distance')}</th><th>{t('traditionalLivability.s4.table.ruleSource')}</th></tr></thead><tbody>{data.length ? data.map((item, index) => <tr key={item.resource_id || item.facility_id || item.rule_id || index}><td>{text(item.resource_id || item.facility_id || item.rule_id || item.standard_class_id)}</td><td>{statusText(item.status || item.planning_status || item.mapping_status || item.relationship || item.standard_class_label, t)}</td><td>{text(item.nearest_distance_m)}</td><td>{text(item.source_record_id || item.source_dataset_id || item.interpretation_evidence || item.reason)}</td></tr>) : <tr><td colSpan={4}>-</td></tr>}</tbody></table></div></details>;
 }
 
 export default function TraditionalLivabilityS4Panel() {
+  const { t } = useTranslation();
   const [resources, setResources] = useState<Row>({});
   const [resourcesError, setResourcesError] = useState<string[]>([]);
   const [reloadToken, setReloadToken] = useState(0);
@@ -62,16 +69,16 @@ export default function TraditionalLivabilityS4Panel() {
 
   useEffect(() => {
     let stale = false;
-    fetch('/api/uwm/traditional-livability/s4/resources', { credentials: 'include' })
+    fetch('/api/uwm/traditional-livability/s4/resources', { credentials: 'include', headers: getLocaleHeaders() })
       .then(async response => ({ response, payload: await response.json() }))
       .then(({ response, payload }) => {
         if (stale) return;
-        if (!response.ok) throw Object.assign(new Error('S4 资源加载失败'), { payload });
+        if (!response.ok) throw Object.assign(new Error(t('traditionalLivability.s4.errors.resources')), { payload });
         setResources(payload); setResourcesError([]);
         const firstArea = String(rows(payload.planning_parcels)[0]?.analysis_area_id || '');
         setAnalysisAreaId(current => current || firstArea);
       })
-      .catch(loadError => { if (!stale) setResourcesError(errorMessages(record(loadError?.payload), loadError instanceof Error ? loadError.message : 'S4 资源加载失败')); });
+      .catch(loadError => { if (!stale) setResourcesError(errorMessages(record(loadError?.payload), loadError instanceof Error ? loadError.message : t('traditionalLivability.s4.errors.resources'))); });
     return () => { stale = true; };
   }, [reloadToken]);
 
@@ -86,13 +93,13 @@ export default function TraditionalLivabilityS4Panel() {
   const assessmentsByUseId = useMemo(() => Object.fromEntries(rows(result?.use_assessments).map(item => [String(item.use_id), item])), [result]);
 
   const validationError = useMemo(() => {
-    if (!projectName.trim()) return '请输入项目名称';
-    if (!analysisAreaId) return '请选择规划区域';
-    if (!selectedParcel) return '请选择规划地块';
+    if (!projectName.trim()) return t('traditionalLivability.s4.validation.projectName');
+    if (!analysisAreaId) return t('traditionalLivability.s4.validation.area');
+    if (!selectedParcel) return t('traditionalLivability.s4.validation.parcel');
     for (const use of uses) {
       const gfa = Number(use.gfa);
-      if (!use.useName.trim() || !use.rawUseType.trim() || !use.useDescription.trim()) return '请完整填写每个业态';
-      if (!(Number.isFinite(gfa) && gfa > 0)) return 'GFA 必须为有限正数';
+      if (!use.useName.trim() || !use.rawUseType.trim() || !use.useDescription.trim()) return t('traditionalLivability.s4.validation.useFields');
+      if (!(Number.isFinite(gfa) && gfa > 0)) return t('traditionalLivability.s4.validation.gfa');
     }
     return '';
   }, [analysisAreaId, projectName, selectedParcel, uses]);
@@ -124,16 +131,16 @@ export default function TraditionalLivabilityS4Panel() {
         };
       });
       const response = await fetch('/api/uwm/traditional-livability/s4/analyze', {
-        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
+        method: 'POST', credentials: 'include', headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' }, signal: controller.signal,
         body: JSON.stringify({ analysis_area_id: analysisAreaId, planning_parcel_id: parcelId, project_name: projectName.trim(), project_description: projectDescription.trim(), uses: payloadUses }),
       });
       const payload = await response.json();
       if (controller.signal.aborted) return;
-      if (!response.ok) { setErrors(errorMessages(payload, 'S4 分析失败')); return; }
+      if (!response.ok) { setErrors(errorMessages(payload, t('traditionalLivability.s4.errors.analyze'))); return; }
       setResult(payload);
     } catch (requestError) {
       if (controller.signal.aborted) return;
-      setErrors([requestError instanceof Error ? requestError.message : 'S4 分析失败']);
+      setErrors([requestError instanceof Error ? requestError.message : t('traditionalLivability.s4.errors.analyze')]);
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
@@ -142,58 +149,58 @@ export default function TraditionalLivabilityS4Panel() {
   const sendMap = () => {
     const geojson = record(result?.geojson);
     const layer = (name: string, geojsonData: unknown) => geojsonData && typeof geojsonData === 'object' ? { name, type: 'geojson', geojsonData } : null;
-    window.__handleMapUpdate?.({ schema: 'map_update.v1', summary: { title: 'S4 项目证据图层' }, layers: [
-      layer('S4 目标项目地块', geojson.proposed_geometry), layer('S4 150 米空间初筛', geojson.screening_buffer),
-      layer('S4 地块及邻近规划资源', geojson.planning_resource_hits), layer('S4 邻近现状设施', geojson.current_facility_hits),
-      layer('S4 语义未解析规划资源', geojson.unresolved_planning_resources), layer('S4 语义未解析现状设施', geojson.unresolved_current_facilities),
+    window.__handleMapUpdate?.({ schema: 'map_update.v1', summary: { title: t('traditionalLivability.s4.map.title') }, layers: [
+      layer(t('traditionalLivability.s4.map.proposed'), geojson.proposed_geometry), layer(t('traditionalLivability.s4.map.buffer'), geojson.screening_buffer),
+      layer(t('traditionalLivability.s4.map.planningHits'), geojson.planning_resource_hits), layer(t('traditionalLivability.s4.map.currentHits'), geojson.current_facility_hits),
+      layer(t('traditionalLivability.s4.map.unresolvedPlanning'), geojson.unresolved_planning_resources), layer(t('traditionalLivability.s4.map.unresolvedCurrent'), geojson.unresolved_current_facilities),
     ].filter(Boolean) });
   };
 
   const summary = record(result?.project_summary);
   return <div className="traditional-panel">
-    <div className="traditional-panel-title"><Map size={15} /><strong>S4 项目宜居性评估</strong></div>
-    <p>初次分析不指定任意类别；根据服务端语义候选确认后再提交。结果为{evidenceLabels.preliminary}，S1 缺少权威标准时显示“{evidenceLabels.not_assessed}”。</p>
-    <button className="secondary-button" onClick={() => setReloadToken(value => value + 1)}><RefreshCw size={14} />刷新 S4 资源</button>
+    <div className="traditional-panel-title"><Map size={15} /><strong>{t('traditionalLivability.s4.title')}</strong></div>
+    <p>{t('traditionalLivability.s4.description', { preliminary: t('traditionalLivability.s4.evidence.preliminary'), notAssessed: t('traditionalLivability.s4.evidence.notAssessed') })}</p>
+    <button className="secondary-button" onClick={() => setReloadToken(value => value + 1)}><RefreshCw size={14} />{t('traditionalLivability.s4.actions.refresh')}</button>
     {[...resourcesError, ...errors].map((message, index) => <div className="traditional-message error" key={`${message}-${index}`}><AlertTriangle size={15} />{message}</div>)}
     <div className="traditional-two-col"><div className="traditional-panel">
-      <label>项目名称<input value={projectName} onChange={event => setProjectName(event.target.value)} /></label>
-      <label>项目说明<textarea value={projectDescription} onChange={event => setProjectDescription(event.target.value)} /></label>
-      <label>规划区域<select value={analysisAreaId} onChange={event => { setAnalysisAreaId(event.target.value); setParcelId(''); }}><option value="">请选择</option>{analysisAreas.map(area => <option key={area} value={area}>{area}</option>)}</select></label>
-      <label>规划地块<select value={parcelId} onChange={event => setParcelId(event.target.value)}><option value="">请选择</option>{filteredParcels.map(parcel => <option key={parcel.planning_parcel_id} value={parcel.planning_parcel_id}>{parcel.raw_land_use_name || parcel.planning_parcel_id}</option>)}</select></label>
-      {uses.map((use, index) => <div className="traditional-panel" key={use.clientKey}><strong>业态 {index + 1}</strong>
-        <label>业态名称<input value={use.useName} onChange={event => setUses(current => current.map(item => item.clientKey === use.clientKey ? { ...item, useName: event.target.value } : item))} /></label>
-        <label>原始业态类型<input value={use.rawUseType} onChange={event => setUses(current => current.map(item => item.clientKey === use.clientKey ? { ...item, rawUseType: event.target.value } : item))} /></label>
-        <label>用途说明<textarea value={use.useDescription} onChange={event => setUses(current => current.map(item => item.clientKey === use.clientKey ? { ...item, useDescription: event.target.value } : item))} /></label>
+      <label>{t('traditionalLivability.s4.controls.projectName')}<input value={projectName} onChange={event => setProjectName(event.target.value)} /></label>
+      <label>{t('traditionalLivability.s4.controls.projectDescription')}<textarea value={projectDescription} onChange={event => setProjectDescription(event.target.value)} /></label>
+      <label>{t('traditionalLivability.s4.controls.area')}<select value={analysisAreaId} onChange={event => { setAnalysisAreaId(event.target.value); setParcelId(''); }}><option value="">{t('traditionalLivability.s4.controls.select')}</option>{analysisAreas.map(area => <option key={area} value={area}>{area}</option>)}</select></label>
+      <label>{t('traditionalLivability.s4.controls.parcel')}<select value={parcelId} onChange={event => setParcelId(event.target.value)}><option value="">{t('traditionalLivability.s4.controls.select')}</option>{filteredParcels.map(parcel => <option key={parcel.planning_parcel_id} value={parcel.planning_parcel_id}>{parcel.raw_land_use_name || parcel.planning_parcel_id}</option>)}</select></label>
+      {uses.map((use, index) => <div className="traditional-panel" key={use.clientKey}><strong>{t('traditionalLivability.s4.controls.use', { count: index + 1 })}</strong>
+        <label>{t('traditionalLivability.s4.controls.useName')}<input value={use.useName} onChange={event => setUses(current => current.map(item => item.clientKey === use.clientKey ? { ...item, useName: event.target.value } : item))} /></label>
+        <label>{t('traditionalLivability.s4.controls.rawUseType')}<input value={use.rawUseType} onChange={event => setUses(current => current.map(item => item.clientKey === use.clientKey ? { ...item, rawUseType: event.target.value } : item))} /></label>
+        <label>{t('traditionalLivability.s4.controls.useDescription')}<textarea value={use.useDescription} onChange={event => setUses(current => current.map(item => item.clientKey === use.clientKey ? { ...item, useDescription: event.target.value } : item))} /></label>
         <label>GFA (m²)<input type="number" value={use.gfa} onChange={event => setUses(current => current.map(item => item.clientKey === use.clientKey ? { ...item, gfa: event.target.value } : item))} /></label>
-        <button className="secondary-button" disabled={uses.length === 1} onClick={() => setUses(current => current.filter(item => item.clientKey !== use.clientKey))}><Trash2 size={14} />删除业态</button>
+        <button className="secondary-button" disabled={uses.length === 1} onClick={() => setUses(current => current.filter(item => item.clientKey !== use.clientKey))}><Trash2 size={14} />{t('traditionalLivability.s4.actions.removeUse')}</button>
       </div>)}
-      <button className="secondary-button" onClick={() => setUses(current => [...current, newUse()])}><Plus size={14} />新增业态</button>
-      <button className="primary-button" disabled={loading || Boolean(validationError)} onClick={analyze}>{loading ? '分析中…' : '执行 / 重新提交 S4 分析'}</button>
-      {validationError && <p>{validationError}；客户端快速校验，服务端验证为准。</p>}
+      <button className="secondary-button" onClick={() => setUses(current => [...current, newUse()])}><Plus size={14} />{t('traditionalLivability.s4.actions.addUse')}</button>
+      <button className="primary-button" disabled={loading || Boolean(validationError)} onClick={analyze}>{loading ? t('traditionalLivability.s4.actions.analyzing') : t('traditionalLivability.s4.actions.analyze')}</button>
+      {validationError && <p>{validationError}；{t('traditionalLivability.s4.validation.clientHint')}</p>}
     </div><div className="traditional-panel">
-      <h4>初步状态与 GFA 证据构成</h4><div className="traditional-boundary-grid"><div><span>状态</span><strong>{text(result?.status)}</strong></div><div><span>max_claim</span><strong>{text(record(result?.claim_boundary).max_claim)}</strong></div><div><span>总 GFA</span><strong>{text(summary.total_gfa_m2)}</strong></div><div><span>project_blockers</span><strong>{rows(result?.project_blockers).join(' / ') || '-'}</strong></div></div>
-      <EvidenceTable title="GFA 证据构成" data={rows(summary.gfa_by_status)} />
+      <h4>{t('traditionalLivability.s4.results.title')}</h4><div className="traditional-boundary-grid"><div><span>{t('traditionalLivability.s4.results.status')}</span><strong>{statusText(result?.status, t)}</strong></div><div><span>max_claim</span><strong>{text(record(result?.claim_boundary).max_claim)}</strong></div><div><span>{t('traditionalLivability.s4.results.totalGfa')}</span><strong>{text(summary.total_gfa_m2)}</strong></div><div><span>project_blockers</span><strong>{rows(result?.project_blockers).join(' / ') || '-'}</strong></div></div>
+      <EvidenceTable title={t('traditionalLivability.s4.results.gfaEvidence')} data={rows(summary.gfa_by_status)} />
       {rows(result?.use_assessments).map(use => {
         const semantic = record(use.semantic_evidence); const direct = record(use.parcel_direct_evidence); const neighborhood = record(use.neighborhood_evidence); const duplicate = record(use.duplicate_supply_evidence); const draft = confirmationsByUseId[use.use_id] || { selectedCandidateId: '', reviewerReason: '', humanSelected: false };
         const semanticCandidates = rows(semantic.candidates); const candidateChoices = semantic.resolution_status === 'unresolved' && dictionaryReady ? facilityClasses : semanticCandidates;
-        return <details key={use.use_id} open><summary>{use.use_name} · {text(use.gfa_m2)} m² · {text(use.status)}</summary>
-          <h4>语义证据与人工确认</h4><p>{text(semantic.resolution_status)} · {text(semantic.original_input_digest)}</p>
-          {candidateChoices.map(candidate => <label key={candidate.standard_class_id || candidate.class_id}><input type="radio" name={`s4-${use.use_id}`} checked={draft.selectedCandidateId === (candidate.standard_class_id || candidate.class_id)} onChange={() => setConfirmationsByUseId(current => ({ ...current, [use.use_id]: { ...draft, selectedCandidateId: candidate.standard_class_id || candidate.class_id, humanSelected: !candidate.standard_class_id } }))} />{candidate.standard_class_label || candidate.label} · {candidate.match_method || '人工字典选择'}</label>)}
-          {draft.selectedCandidateId && <label>审查理由<textarea value={draft.reviewerReason} onChange={event => setConfirmationsByUseId(current => ({ ...current, [use.use_id]: { ...draft, reviewerReason: event.target.value } }))} /></label>}
-          <h4>S1 需求证据</h4><pre>{JSON.stringify(record(use.demand_evidence), null, 2)}</pre>
-          <h4>重复供给证据</h4><pre>{JSON.stringify(duplicate, null, 2)}</pre>
-          <EvidenceTable title="地块直接关系：规划资源" data={rows(record(use.parcel_direct_evidence).planning_resources)} />
-          <EvidenceTable title="地块直接关系：现状设施" data={rows(record(use.parcel_direct_evidence).current_facilities)} />
-          <EvidenceTable title="150 米空间初筛：规划资源" data={rows(record(use.neighborhood_evidence).planning_resources)} />
-          <EvidenceTable title="150 米空间初筛：现状设施" data={rows(record(use.neighborhood_evidence).current_facilities)} />
-          <EvidenceTable title="语义未解析规划资源" data={rows(neighborhood.unresolved_planning_resources)} />
-          <EvidenceTable title="语义未解析现状设施" data={rows(neighborhood.unresolved_current_facilities)} />
-          <EvidenceTable title="已应用规则 IDs" data={[...rows(direct.applied_rules), ...rows(neighborhood.applied_rules), ...rows(duplicate.applied_rules)]} />
-          <EvidenceTable title="不适用规则 IDs / non_applicable" data={[...rows(direct.non_applicable_rules), ...rows(neighborhood.non_applicable_rules)]} />
-          <p>validation_blockers：{rows(use.blockers).join(' / ') || '-'}</p><p>S6 空间证据：{text(use.s6_status)}</p>
+        return <details key={use.use_id} open><summary>{use.use_name} · {text(use.gfa_m2)} m² · {statusText(use.status, t)}</summary>
+          <h4>{t('traditionalLivability.s4.results.semanticEvidence')}</h4><p>{statusText(semantic.resolution_status, t)} · {text(semantic.original_input_digest)}</p>
+          {candidateChoices.map(candidate => <label key={candidate.standard_class_id || candidate.class_id}><input type="radio" name={`s4-${use.use_id}`} checked={draft.selectedCandidateId === (candidate.standard_class_id || candidate.class_id)} onChange={() => setConfirmationsByUseId(current => ({ ...current, [use.use_id]: { ...draft, selectedCandidateId: candidate.standard_class_id || candidate.class_id, humanSelected: !candidate.standard_class_id } }))} />{candidate.standard_class_label || candidate.label} · {candidate.match_method || t('traditionalLivability.s4.results.manualDictionary')}</label>)}
+          {draft.selectedCandidateId && <label>{t('traditionalLivability.s4.results.reviewReason')}<textarea value={draft.reviewerReason} onChange={event => setConfirmationsByUseId(current => ({ ...current, [use.use_id]: { ...draft, reviewerReason: event.target.value } }))} /></label>}
+          <h4>S1 {t('traditionalLivability.s4.results.demandEvidence')}</h4><pre>{JSON.stringify(record(use.demand_evidence), null, 2)}</pre>
+          <h4>{t('traditionalLivability.s4.results.duplicateEvidence')}</h4><pre>{JSON.stringify(duplicate, null, 2)}</pre>
+          <EvidenceTable title={t('traditionalLivability.s4.results.directPlanning')} data={rows(record(use.parcel_direct_evidence).planning_resources)} />
+          <EvidenceTable title={t('traditionalLivability.s4.results.directCurrent')} data={rows(record(use.parcel_direct_evidence).current_facilities)} />
+          <EvidenceTable title={t('traditionalLivability.s4.results.neighborhoodPlanning')} data={rows(record(use.neighborhood_evidence).planning_resources)} />
+          <EvidenceTable title={t('traditionalLivability.s4.results.neighborhoodCurrent')} data={rows(record(use.neighborhood_evidence).current_facilities)} />
+          <EvidenceTable title={t('traditionalLivability.s4.results.unresolvedPlanning')} data={rows(neighborhood.unresolved_planning_resources)} />
+          <EvidenceTable title={t('traditionalLivability.s4.results.unresolvedCurrent')} data={rows(neighborhood.unresolved_current_facilities)} />
+          <EvidenceTable title={t('traditionalLivability.s4.results.appliedRules')} data={[...rows(direct.applied_rules), ...rows(neighborhood.applied_rules), ...rows(duplicate.applied_rules)]} />
+          <EvidenceTable title={t('traditionalLivability.s4.results.nonApplicable')} data={[...rows(direct.non_applicable_rules), ...rows(neighborhood.non_applicable_rules)]} />
+          <p>validation_blockers：{rows(use.blockers).join(' / ') || '-'}</p><p>S6 {t('traditionalLivability.s4.results.spatialEvidence')}：{statusText(use.s6_status, t)}</p>
         </details>;
       })}
-      <button className="secondary-button" disabled={!result?.geojson} onClick={sendMap}><Map size={14} />发送引擎 GeoJSON 图层</button>
+      <button className="secondary-button" disabled={!result?.geojson} onClick={sendMap}><Map size={14} />{t('traditionalLivability.s4.actions.sendMap')}</button>
     </div></div>
   </div>;
 }

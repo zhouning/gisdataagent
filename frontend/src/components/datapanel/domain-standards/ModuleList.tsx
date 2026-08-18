@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatNumber, getLocaleHeaders } from '../../../i18n';
 
 interface ModuleItem {
   module_id: string;
@@ -19,6 +21,7 @@ interface Props {
 }
 
 export default function ModuleList({ onModuleSelect, onClassSelect, selectedModuleId }: Props) {
+  const { t, i18n } = useTranslation();
   const [modules, setModules] = useState<ModuleItem[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loadingModules, setLoadingModules] = useState(false);
@@ -27,18 +30,21 @@ export default function ModuleList({ onModuleSelect, onClassSelect, selectedModu
 
   useEffect(() => {
     setLoadingModules(true);
-    fetch('/api/xmi/modules', { credentials: 'include' })
+    fetch('/api/xmi/modules', { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => setModules(data.modules || data || []))
       .catch(() => setModules([]))
       .finally(() => setLoadingModules(false));
-  }, []);
+  }, [i18n.resolvedLanguage]);
 
   const handleModuleClick = (mod: ModuleItem) => {
     onModuleSelect(mod.module_id);
     setSelectedClassId(null);
     setLoadingClasses(true);
-    fetch(`/api/xmi/classes?module_id=${encodeURIComponent(mod.module_id)}`, { credentials: 'include' })
+    fetch(`/api/xmi/classes?module_id=${encodeURIComponent(mod.module_id)}`, {
+      credentials: 'include',
+      headers: getLocaleHeaders(),
+    })
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => setClasses(data.classes || data || []))
       .catch(() => setClasses([]))
@@ -51,13 +57,13 @@ export default function ModuleList({ onModuleSelect, onClassSelect, selectedModu
   };
 
   if (loadingModules) {
-    return <div style={{ padding: 12, color: '#6b7280', fontSize: 12 }}>加载模块...</div>;
+    return <div style={{ padding: 12, color: '#6b7280', fontSize: 12 }}>{t('domainStandards.modules.loading')}</div>;
   }
 
   if (modules.length === 0) {
     return (
       <div style={{ padding: 12, color: '#9ca3af', fontSize: 12, textAlign: 'center' }}>
-        暂无已编译的领域标准模块
+        {t('domainStandards.modules.empty')}
       </div>
     );
   }
@@ -75,7 +81,7 @@ export default function ModuleList({ onModuleSelect, onClassSelect, selectedModu
                 padding: '8px 12px',
                 cursor: 'pointer',
                 background: isSelected ? '#eff6ff' : 'transparent',
-                borderLeft: isSelected ? '3px solid #3b82f6' : '3px solid transparent',
+                borderInlineStart: isSelected ? '3px solid #3b82f6' : '3px solid transparent',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -93,9 +99,9 @@ export default function ModuleList({ onModuleSelect, onClassSelect, selectedModu
               <span style={{
                 background: '#dbeafe', color: '#1d4ed8',
                 borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 600,
-                flexShrink: 0, marginLeft: 6,
+                flexShrink: 0, marginInlineStart: 6,
               }}>
-                {mod.class_count}
+                {formatNumber(mod.class_count)}
               </span>
             </div>
 
@@ -103,16 +109,16 @@ export default function ModuleList({ onModuleSelect, onClassSelect, selectedModu
             {isSelected && (
               <div style={{ background: '#f8fafc' }}>
                 {loadingClasses ? (
-                  <div style={{ padding: '6px 20px', color: '#9ca3af', fontSize: 11 }}>加载类...</div>
+                  <div style={{ padding: '6px 20px', color: '#9ca3af', fontSize: 11 }}>{t('domainStandards.classes.loading')}</div>
                 ) : classes.length === 0 ? (
-                  <div style={{ padding: '6px 20px', color: '#9ca3af', fontSize: 11 }}>无类定义</div>
+                  <div style={{ padding: '6px 20px', color: '#9ca3af', fontSize: 11 }}>{t('domainStandards.classes.empty')}</div>
                 ) : (
                   classes.map(cls => (
                     <div
                       key={cls.class_id}
                       onClick={() => handleClassClick(cls)}
                       style={{
-                        padding: '5px 12px 5px 24px',
+                        paddingBlock: 5, paddingInlineEnd: 12, paddingInlineStart: 24,
                         cursor: 'pointer',
                         background: selectedClassId === cls.class_id ? '#dbeafe' : 'transparent',
                         borderBottom: '1px solid #f3f4f6',

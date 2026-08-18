@@ -1,3 +1,5 @@
+import { formatNumber } from '../../i18n';
+
 export type AbuDhabiModelId = 'geosos_flus' | 'geospatial_kernel' | 'paper58';
 export type AbuDhabiTrack = 'historical' | 'planning';
 
@@ -136,9 +138,9 @@ export const MODEL_LABELS: Record<AbuDhabiModelId, string> = {
 };
 
 export const SCENARIO_LABELS: Record<string, string> = {
-  compact: '紧凑增长',
-  ecological_priority: '生态优先',
-  outward_growth: '外延增长',
+  compact: 'compact',
+  ecological_priority: 'ecological_priority',
+  outward_growth: 'outward_growth',
 };
 
 export function rasterUrl(
@@ -162,13 +164,13 @@ export function runtimeRasterUrl(runId: string, year: number) {
 }
 
 export function formatMetric(value: number | null | undefined, digits = 4) {
-  return typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '-';
+  return typeof value === 'number' && Number.isFinite(value) ? formatNumber(value, { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '-';
 }
 
 export function formatPercent(value: number | null | undefined, digits = 2) {
-  return typeof value === 'number' && Number.isFinite(value) ? `${(value * 100).toFixed(digits)}%` : '-';
+  return typeof value === 'number' && Number.isFinite(value) ? `${formatNumber(value * 100, { minimumFractionDigits: digits, maximumFractionDigits: digits })}%` : '-';
 }
 
 export function formatCount(value: number | null | undefined) {
-  return typeof value === 'number' && Number.isFinite(value) ? Math.round(value).toLocaleString('zh-CN') : '-';
+  return typeof value === 'number' && Number.isFinite(value) ? formatNumber(Math.round(value)) : '-';
 }

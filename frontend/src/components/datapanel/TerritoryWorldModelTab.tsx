@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
   BarChart3,
@@ -17,6 +18,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import TwmExecutiveDemoPanel from './TwmExecutiveDemoPanel';
+import i18n, { formatNumber, getLocale, getLocaleHeaders } from '../../i18n';
 
 type RunKey =
   | 'status'
@@ -506,6 +508,7 @@ interface TwmResearchClaimMatrix {
     claim_id: string;
     claim: string;
     business_need?: string;
+    minimum_data?: string[];
     core_technology?: string;
     baseline?: string;
     current_status?: string;
@@ -518,8 +521,20 @@ interface TwmResearchClaimMatrix {
     };
     metrics?: Array<{ name: string; direction?: string; minimum_pass?: number; maximum_pass?: number }>;
   }>;
-  baselines?: Array<{ baseline_id: string; label: string; why_needed?: string }>;
-  next_experiments?: Array<{ priority?: string; experiment: string; question?: string; decision?: string }>;
+  baselines?: Array<{
+    baseline_id: string;
+    label: string;
+    tests?: string;
+    minimum_output?: string[];
+    why_needed?: string;
+  }>;
+  next_experiments?: Array<{
+    priority?: string;
+    experiment: string;
+    question?: string;
+    required_data?: string[];
+    decision?: string;
+  }>;
   mentor_answer?: string;
 }
 
@@ -558,7 +573,7 @@ interface TwmBaselineExportValidationReport {
   schema?: string;
   status?: string;
   claim?: { claim_id?: string; baseline_id?: string };
-  export_spec?: { export_type?: string; baseline_id?: string; label?: string };
+  export_spec?: { export_type?: string; baseline_id?: string; label?: string; expected_source?: string };
   sources?: {
     twm?: { source?: string; row_count?: number; error?: string | null };
     baseline?: { source?: string; row_count?: number; error?: string | null };
@@ -615,6 +630,7 @@ interface TwmBaselineExportTemplate {
   baseline_id?: string;
   export_type?: string;
   label?: string;
+  export_spec?: { export_type?: string; baseline_id?: string; label?: string; expected_source?: string };
   business_question?: string;
   same_case_join_key?: string;
   twm_filename?: string;
@@ -709,76 +725,92 @@ interface TwmScenarioCard {
 const FALLBACK_BUSINESS_SCENARIOS: TwmBusinessScenario[] = [
   {
     id: 'farmland_protection_review',
-    label: '耕地保护与占补平衡审查',
-    decision_question: '拟建或调整项目是否触碰永久基本农田、生态红线，或造成耕地保护目标风险？',
-    operator_goal: '在审查前暴露项目合规风险、依据缺口和可替代空间方案。',
+    label: 'Farmland protection and balance review',
+    decision_question: 'Does the proposal conflict with farmland protection constraints?',
+    operator_goal: 'Surface compliance risks, evidence gaps, and spatial alternatives before review.',
     primary_roles: ['project', 'parcel', 'permanent_basic_farmland', 'eco_redline', 'planning_zone'],
-    required_evidence: ['项目范围', '现状地类图斑', '永久基本农田', '生态保护红线', '审批/补正记录'],
+    required_evidence: ['Project boundary', 'Current land parcels', 'Permanent basic farmland', 'Ecological redline', 'Approval records'],
     default_action_type: 'protect',
     default_target_role: 'project',
     default_scenario: 'farmland_protection_review',
     default_evidence_coverage: 0.78,
     default_horizon: 3,
-    decision_outputs: ['风险命中优先级', '依据核查包', '合法可行备选方案'],
-    guardrails: ['硬约束命中不直接给通过建议', '合成数据只能作为演示和回归依据'],
+    decision_outputs: ['Prioritized risk hits', 'Evidence review package', 'Legally feasible alternatives'],
+    guardrails: ['A hard-constraint hit cannot receive an automatic approval recommendation', 'Synthetic data is limited to demos and regression evidence'],
   },
   {
     id: 'construction_project_compliance',
-    label: '建设项目用地合规预审',
-    decision_question: '项目选址、规模和审批状态是否与用途管制分区、城镇开发边界和已有审查意见一致？',
-    operator_goal: '把项目落地前的用地冲突、补正事项和审批一致性风险前置给业务人员。',
+    label: 'Construction project compliance screening',
+    decision_question: 'Is the project consistent with planning, approval, and control boundaries?',
+    operator_goal: 'Surface land conflicts, correction items, and approval consistency risks before implementation.',
     primary_roles: ['project', 'parcel', 'planning_zone', 'urban_boundary', 'review_task'],
-    required_evidence: ['建设项目范围', '用途管制分区', '城镇开发边界', '审查意见', '历史审批状态'],
+    required_evidence: ['Project boundary', 'Land-use control zones', 'Urban development boundary', 'Review opinions', 'Approval history'],
     default_action_type: 'inspect',
     default_target_role: 'project',
     default_scenario: 'construction_project_compliance',
     default_evidence_coverage: 0.72,
     default_horizon: 2,
-    decision_outputs: ['审批一致性风险', '补正依据清单', '人工复核任务'],
-    guardrails: ['缺少审批记录时只给复核建议', '边界外建设风险必须保留人工审查'],
+    decision_outputs: ['Approval consistency risks', 'Correction evidence checklist', 'Human review tasks'],
+    guardrails: ['Missing approval records allow review recommendations only', 'Construction outside the boundary always requires human review'],
   },
   {
     id: 'territorial_plan_adjustment',
-    label: '国土空间用途调整推演',
-    decision_question: '用途调整或空间优化方案会怎样影响保护约束、规划效用和后续监管压力？',
-    operator_goal: '在方案比选阶段比较调整收益、约束风险和可解释依据，而不是只输出最优数值。',
+    label: 'Territorial land-use adjustment simulation',
+    decision_question: 'How do adjustment options affect constraints, planning utility, and oversight pressure?',
+    operator_goal: 'Compare benefits, constraint risks, and explainable evidence instead of returning only an optimum.',
     primary_roles: ['scenario', 'parcel', 'planning_zone', 'project', 'control_boundary'],
-    required_evidence: ['现状空间格局', '规划分区', '硬约束边界', '候选调整方案', '历史监管样本'],
+    required_evidence: ['Current spatial pattern', 'Planning zones', 'Hard-constraint boundaries', 'Candidate adjustments', 'Historical oversight samples'],
     default_action_type: 'convert',
     default_target_role: 'scenario',
     default_scenario: 'territorial_plan_adjustment',
     default_evidence_coverage: 0.68,
     default_horizon: 5,
-    decision_outputs: ['方案效用/风险排序', '反事实推演摘要', '不可推荐方案原因'],
-    guardrails: ['硬约束方案不得进入推荐集', '预测结论必须带依据完整度和不确定性'],
+    decision_outputs: ['Option utility and risk ranking', 'Counterfactual simulation summary', 'Reasons for excluding options'],
+    guardrails: ['Options that violate hard constraints cannot be recommended', 'Forecasts must include evidence completeness and uncertainty'],
   },
 ];
 
 const FALLBACK_RESEARCH_POSITIONING: TwmResearchPositioning = {
-  research_question: '面向治理的国土空间世界模型，能否把分层 GIS 状态、政策约束、依据来源和行动条件预测放进同一条可审计决策链路，从而改进国土空间规划审查？',
+  research_question: 'Can a governance-oriented geospatial world model improve territorial planning decisions by coupling hierarchical GIS state, policy constraints, evidence provenance and action-conditioned forecast in one auditable loop?',
   core_technology: [
     {
-      name: '分层 GIS 对象-关系-规则-依据状态',
-      claim: '把图斑、项目、管控边界、规划分区、审批材料和规则作为同一个可追溯状态，而不是扁平图层集合。',
+      name: 'Hierarchical GIS object-relation-rule-evidence state',
+      claim: 'TWM represents parcels, projects, control boundaries, planning zones, approvals, evidence and rules as a linked state rather than as a flat feature table.',
     },
     {
-      name: '行动条件国土空间动态预测',
-      claim: '围绕复核、保护、转换、恢复等治理动作预测约束风险、规划效用、不确定性和可行动作。',
+      name: 'Action-conditioned multi-head territorial dynamics',
+      claim: 'TWM forecasts a multi-dimensional hierarchical future-state latent, constraint-risk, planning utility, uncertainty and action-mask feasibility conditional on review/protect/convert/restore actions; the latent is decoded into state summaries and does not generate full parcel geometry.',
     },
     {
-      name: '依据门控与因果校准主张阶梯',
-      claim: '依据不足或因果不可识别时降级为人工复核，不把合成数据结果包装成生产结论。',
+      name: 'Evidence-gated and causally calibrated claim ladder',
+      claim: 'TWM separates deterministic rule evidence, observational causal calibration and validation gates before upgrading any operational claim.',
+    },
+  ],
+  innovation_hypotheses: [
+    {
+      hypothesis: 'The novelty is architectural integration, not that GIS simulation itself is new.',
+      test: 'Compare against land-use simulators, GIS rule engines and optimization tools on whether they jointly expose action-conditioned forecast, policy evidence and audit-ready claim boundaries.',
+    },
+    {
+      hypothesis: 'Object-relation-rule-evidence state reduces missed compliance conflicts compared with layer-by-layer manual review.',
+      test: 'Measure hard-constraint conflict recall and false review burden on held-out real approval/review cases.',
+    },
+    {
+      hypothesis: 'Evidence-gated forecasts improve decision defensibility compared with black-box planning scores.',
+      test: 'Audit whether every recommended or rejected option carries source evidence, rule clause, uncertainty and human-review reason.',
     },
   ],
   unmet_need_hypotheses: [
-    '空间叠加、政策核查、审批材料和方案比选仍常分散在不同工具链中。',
-    '传统土地利用模拟更关注格局转移，业务审查更需要动作后果、规则有效性和审计边界。',
+    'Planning and land-use review workflows still fragment spatial overlays, policy checks, approval evidence and scenario comparison across separate tools.',
+    'Existing land-use simulators emphasize spatial pattern transition, while operational review needs action consequences, rule validity and audit boundaries.',
+    'Optimization tools can rank candidates, but often do not preserve why a candidate is illegal, under-evidenced or only reviewable rather than approvable.',
   ],
   falsification_conditions: [
-    '如果真实业务访谈显示这些决策已被现有工具很好解决，TWM 应收窄或停止。',
-    '如果不能优于单纯规则或人工基线，创新主张不成立。',
+    'If real workflow interviews show the target decisions are already well solved by existing tools, TWM should be narrowed or stopped.',
+    'If TWM does not improve hard-constraint conflict recall, evidence completeness or audit-trail quality over baselines, the claimed contribution is not supported.',
+    'If action-conditioned dynamics cannot be validated beyond synthetic fixtures, TWM must remain a review scaffold rather than a production decision model.',
   ],
-  claim_boundary: '当前 TWM 是严谨的原型和复核脚手架；生产级预测主张必须依赖真实观察历史、明确基线对比和外部验证。',
+  claim_boundary: 'Current TWM is a rigorous prototype and review scaffold. Its defensible near-term claim is auditable decision support for territorial governance workflows; production-grade predictive claims require real observed histories, baseline comparisons and external validation.',
 };
 
 const FALLBACK_DATA_FOUNDATION: TwmDataFoundationAssessment = {
@@ -956,16 +988,16 @@ const FALLBACK_CLAIM_MATRIX: TwmResearchClaimMatrix = {
   claims: [
     {
       claim_id: 'C1_state_conflict_recall',
-      claim: '对象-关系-规则-依据状态相比逐图层人工 GIS 审查，能够减少硬约束冲突漏检。',
+      claim: 'Object-relation-rule-evidence state reduces missed hard-constraint conflicts compared with layer-by-layer manual GIS review.',
       baseline: 'manual_gis_overlay_checklist',
       current_status: 'engineering_supported_production_unvalidated',
-      current_evidence: '合成样例验证了链路行为；真实冲突召回率尚未验证。',
+      current_evidence: 'Synthetic fixtures verify pipeline behavior, but real conflict recall remains unvalidated.',
       gate: { status: 'review', claim_level: 'prototype_scaffold', missing: ['production_observed_history', 'named_real_workflow_baseline'] },
       metrics: [{ name: 'hard_constraint_conflict_recall', minimum_pass: 0.95 }],
     },
     {
       claim_id: 'C2_audit_defensibility',
-      claim: '依据门控复核相比单纯空间合规规则引擎，能够提升审计可辩护性。',
+      claim: 'Evidence-gated review improves audit defensibility compared with rule-only spatial compliance engines.',
       baseline: 'rule_only_spatial_compliance_engine',
       current_status: 'scaffold_supported_real_audit_unvalidated',
       gate: { status: 'review', claim_level: 'prototype_scaffold', missing: ['production_observed_history', 'named_real_workflow_baseline'] },
@@ -973,38 +1005,90 @@ const FALLBACK_CLAIM_MATRIX: TwmResearchClaimMatrix = {
     },
     {
       claim_id: 'C3_action_conditioned_triage',
-      claim: '行动条件动态推演相比模拟器或单纯优化排序，能够改进方案预筛和解释。',
+      claim: 'Action-conditioned dynamics improves plan-option triage compared with land-use simulators or optimization-only candidate ranking.',
       baseline: 'land_use_simulator_or_optimization_only_ranking',
       current_status: 'experimental_synthetic_only',
       gate: { status: 'review', claim_level: 'prototype_scaffold', missing: ['production_observed_history', 'production_policy_action_labels'] },
       metrics: [{ name: 'legal_feasible_topk_precision', minimum_pass: 0.8 }],
     },
   ],
-  next_experiments: [
-    { priority: 'P0', experiment: '历史审批回放', question: '在真实历史项目上是否优于人工或单纯规则基线？' },
-    { priority: 'P0', experiment: '操作员流程访谈与耗时测量', question: '目标业务是否真有未满足需求？' },
+  baselines: [
+    {
+      baseline_id: 'manual_gis_overlay_checklist',
+      label: 'Manual GIS overlay plus checklist review',
+      tests: 'Whether the current workflow can already detect hard-constraint conflicts reliably through manual overlay and checklist review.',
+      minimum_output: ['Manual hit list', 'Evidence screenshot or layer record', 'Review opinion', 'Final disposition'],
+      why_needed: 'If the manual workflow already has high recall and a complete audit trail, TWM must show incremental value in efficiency, evidence completeness, or review burden.',
+    },
+    {
+      baseline_id: 'rule_only_spatial_compliance_engine',
+      label: 'Rule-only spatial compliance engine',
+      tests: 'Whether rule overlay alone already detects the risks, and whether TWM adds evidence gates and explicit audit boundaries.',
+      minimum_output: ['Rule hits', 'Severity', 'Spatial relation', 'Clause citation'],
+      why_needed: 'Prevents capabilities already solved by a rule engine from being presented as world-model innovation.',
+    },
+    {
+      baseline_id: 'land_use_simulator_or_optimization_only_ranking',
+      label: 'Land-use simulator or optimization-only ranking',
+      tests: 'Whether conventional simulation or optimization can already rank plans, and whether TWM better explains illegal, under-evidenced, and review-only options.',
+      minimum_output: ['Candidate ranking', 'Spatial-change forecast or optimization score', 'Constraint-hit results'],
+      why_needed: 'Prevents existing land-use simulation or optimization capabilities from being reimplemented and claimed as a new method.',
+    },
+    {
+      baseline_id: 'ad_hoc_layer_mapping',
+      label: 'Ad hoc layer and field mapping',
+      tests: 'Whether role contracts genuinely reduce onboarding errors instead of only adding configuration complexity.',
+      minimum_output: ['Field-mapping table', 'Value-domain check results', 'Manual correction log'],
+      why_needed: 'Validates the practical data-onboarding benefit of the TWM state contract.',
+    },
   ],
-  mentor_answer: 'TWM 的创新性不能靠列举模型组件来证明，必须绑定真实业务问题、简单基线、数据门槛和可证伪指标。',
+  next_experiments: [
+    {
+      priority: 'P0',
+      experiment: 'Retrospective approval replay',
+      question: 'Does TWM miss fewer hard-constraint conflicts and produce a more complete evidence chain than manual or rule-only baselines on real or sanitized historical projects?',
+      decision: 'C1/C2 can move from scaffold to retrospective evidence only after this passes.',
+    },
+    {
+      priority: 'P0',
+      experiment: 'Operator workflow interview and task timing',
+      question: 'Is there a real unmet need, and does TWM reduce evidence-gathering time or review rework?',
+      decision: 'If existing tools already solve the need well, narrow or stop the corresponding scenario.',
+    },
+    {
+      priority: 'P1',
+      experiment: 'Plan-option triage benchmark',
+      question: 'Does TWM explain illegal, under-evidenced, and review-only outcomes better than optimization-only ranking on real candidate plans?',
+      decision: 'The C3 action-conditioned dynamics claim can be upgraded only after this passes.',
+    },
+    {
+      priority: 'P1',
+      experiment: 'Cross-region standard ingestion audit',
+      question: 'Do role contracts reduce onboarding errors and rework across regions and standard samples?',
+      decision: 'The C4 standard-adaptation claim can be upgraded only after this passes.',
+    },
+  ],
+  mentor_answer: 'TWM novelty must be tied to a real business problem, a simpler baseline, data gates, and falsifiable metrics.',
 };
 
 const DEMO_BUNDLES = [
   {
     key: 'bishan',
-    label: '璧山演示',
+    label: 'Bishan demo',
     bundleDir: 'data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion',
     optimizationDir: 'data_agent/test_data/twm_bishan_demo/optimization',
     regionCode: '500227',
   },
   {
     key: 'multi_admin',
-    label: '璧山多行政单元',
+    label: 'Bishan multi-admin',
     bundleDir: 'data_agent/test_data/twm_bishan_multi_admin_eval',
     optimizationDir: 'data_agent/test_data/twm_bishan_multi_admin_eval/optimization',
     regionCode: '500227',
   },
   {
     key: 'one_map',
-    label: '一张图村庄',
+    label: 'One Map village',
     bundleDir: 'data_agent/test_data/twm_one_map_village_standard_sample',
     optimizationDir: 'data_agent/test_data/twm_one_map_village_standard_sample/optimization',
     regionCode: '500227',
@@ -1015,21 +1099,7 @@ const DEFAULT_DEMO_BUNDLE = DEMO_BUNDLES[1];
 
 const TWM_DEMO_MAP_CENTER: [number, number] = [29.7771813765, 106.2598609625];
 
-const TWM_MAP_STAGE_LABELS: Record<TwmMapStage | 'none', string> = {
-  none: '未联动',
-  locate: '审查区定位',
-  risk: '风险命中',
-  plan: '推荐方案',
-};
-
-const TWM_SUB_TABS: Array<{ id: TwmSubTab; label: string; summary: string }> = [
-  { id: 'briefing', label: '汇报演示', summary: '结论、证据和能力边界' },
-  { id: 'overview', label: '总览地图', summary: '先看范围和空间联动' },
-  { id: 'data', label: '数据依据', summary: '主张、数据和基线' },
-  { id: 'operate', label: '操作推演', summary: '规则、预测和方案' },
-  { id: 'graph', label: '状态图谱', summary: '全量关系和地图联动' },
-  { id: 'payload', label: '技术载荷', summary: '给技术人员复核' },
-];
+const TWM_SUB_TABS: TwmSubTab[] = ['briefing', 'overview', 'data', 'operate', 'graph', 'payload'];
 
 function bboxRing(minLng: number, minLat: number, maxLng: number, maxLat: number) {
   return [[
@@ -1048,7 +1118,7 @@ function twmMapFeature(id: string, name: string, role: string, coordinates: numb
       id,
       name,
       role,
-      数据性质: '演示/非生产',
+      _twm_data_nature: i18n.t('territoryWorldModelDynamicMapExtras.dataNatureDemo'),
       ...extra,
     },
     geometry: {
@@ -1062,109 +1132,154 @@ function featureCollection(features: any[]) {
   return { type: 'FeatureCollection', features };
 }
 
-const TWM_MAP_FEATURES = {
-  reviewArea: twmMapFeature(
-    'twm_review_area',
-    '璧山多行政单元审查区',
-    '审查范围',
-    bboxRing(106.152182211, 29.667518609, 106.367539714, 29.886844144),
-    { 说明: '对应璧山多行政单元评估样例的空间范围，用于演示 TWM 如何把项目、图斑、管控边界和规则放进同一审查范围。' },
-  ),
-  project: twmMapFeature(
-    'project_demo_01',
-    '拟建项目范围',
-    '项目',
-    bboxRing(106.215, 29.745, 106.245, 29.775),
-    { 说明: '演示项目范围，用于触发耕地保护与管控边界审查。' },
-  ),
-  pbf: twmMapFeature(
-    'pbf_demo_01',
-    '永久基本农田保护边界',
-    '硬约束边界',
-    bboxRing(106.205, 29.728, 106.250, 29.800),
-    { 规则: '永久基本农田占用需严格审查' },
-  ),
-  eco: twmMapFeature(
-    'eco_demo_01',
-    '生态保护红线演示区',
-    '硬约束边界',
-    bboxRing(106.250, 29.748, 106.310, 29.825),
-    { 规则: '生态保护红线内建设活动需重点复核' },
-  ),
-  hardConflict: twmMapFeature(
-    'risk_hit_hard_01',
-    '硬约束冲突',
-    '规则命中',
-    bboxRing(106.220, 29.752, 106.238, 29.770),
-    { 风险等级: '高', 命中规则: '永久基本农田占用风险', 建议动作: '保护/复核' },
-  ),
-  evidenceGap: twmMapFeature(
-    'risk_hit_evidence_01',
-    '依据不足复核区',
-    '规则命中',
-    bboxRing(106.245, 29.760, 106.262, 29.780),
-    { 风险等级: '中', 命中规则: '依据完整度不足', 建议动作: '补正材料' },
-  ),
-  recommended: twmMapFeature(
-    'candidate_recommended_01',
-    '推荐调整方案',
-    '推荐方案',
-    bboxRing(106.180, 29.695, 106.205, 29.720),
-    { 规划收益: '较高', 约束风险: '较低', 说明: '避开硬约束边界，进入推荐集。' },
-  ),
-  blocked: twmMapFeature(
-    'candidate_blocked_01',
-    '阻断候选方案',
-    '阻断方案',
-    bboxRing(106.232, 29.758, 106.255, 29.782),
-    { 阻断原因: '触碰永久基本农田/生态红线复核区', 说明: '硬约束未通过，不能进入推荐集。' },
-  ),
-};
+function twmMapFeatures() {
+  const text = (key: string) => i18n.t(`territoryWorldModelDynamicMapExtras.${key}`);
+  return {
+    reviewArea: twmMapFeature(
+      'twm_review_area',
+      text('reviewAreaName'),
+      text('reviewAreaRole'),
+      bboxRing(106.152182211, 29.667518609, 106.367539714, 29.886844144),
+      { _twm_description: text('reviewAreaDescription') },
+    ),
+    project: twmMapFeature(
+      'project_demo_01',
+      text('projectName'),
+      text('projectRole'),
+      bboxRing(106.215, 29.745, 106.245, 29.775),
+      { _twm_description: text('projectDescription') },
+    ),
+    pbf: twmMapFeature(
+      'pbf_demo_01',
+      text('pbfName'),
+      text('hardConstraintRole'),
+      bboxRing(106.205, 29.728, 106.250, 29.800),
+      { _twm_rule: text('pbfRule') },
+    ),
+    eco: twmMapFeature(
+      'eco_demo_01',
+      text('ecoName'),
+      text('hardConstraintRole'),
+      bboxRing(106.250, 29.748, 106.310, 29.825),
+      { _twm_rule: text('ecoRule') },
+    ),
+    hardConflict: twmMapFeature(
+      'risk_hit_hard_01',
+      text('hardConflictName'),
+      text('ruleHitRole'),
+      bboxRing(106.220, 29.752, 106.238, 29.770),
+      {
+        _twm_risk_level: i18n.t('territoryWorldModel.status.high'),
+        _twm_matched_rule: text('hardConflictRule'),
+        _twm_suggested_action: text('actionProtectReview'),
+      },
+    ),
+    evidenceGap: twmMapFeature(
+      'risk_hit_evidence_01',
+      text('evidenceGapName'),
+      text('ruleHitRole'),
+      bboxRing(106.245, 29.760, 106.262, 29.780),
+      {
+        _twm_risk_level: i18n.t('territoryWorldModel.status.medium'),
+        _twm_matched_rule: text('evidenceGapRule'),
+        _twm_suggested_action: text('actionSupplementMaterials'),
+      },
+    ),
+    recommended: twmMapFeature(
+      'candidate_recommended_01',
+      text('recommendedName'),
+      text('recommendedRole'),
+      bboxRing(106.180, 29.695, 106.205, 29.720),
+      {
+        _twm_planning_benefit: text('planningBenefitHigh'),
+        _twm_constraint_risk: text('constraintRiskLow'),
+        _twm_description: text('recommendedDescription'),
+      },
+    ),
+    blocked: twmMapFeature(
+      'candidate_blocked_01',
+      text('blockedName'),
+      text('blockedRole'),
+      bboxRing(106.232, 29.758, 106.255, 29.782),
+      {
+        _twm_block_reason: text('blockedReason'),
+        _twm_description: text('blockedDescription'),
+      },
+    ),
+  };
+}
 
 function twmMapLayers(stage: TwmMapStage) {
+  const features = twmMapFeatures();
+  const text = (key: string) => i18n.t(`territoryWorldModelDynamicMapExtras.${key}`);
+  const tooltipLabels = {
+    name: text('tooltipName'),
+    role: text('tooltipRole'),
+    _twm_data_nature: text('tooltipDataNature'),
+    _twm_description: text('tooltipDescription'),
+    _twm_rule: text('tooltipRule'),
+    _twm_risk_level: text('tooltipRiskLevel'),
+    _twm_matched_rule: text('tooltipMatchedRule'),
+    _twm_suggested_action: text('tooltipSuggestedAction'),
+    _twm_planning_benefit: text('tooltipPlanningBenefit'),
+    _twm_constraint_risk: text('tooltipConstraintRisk'),
+    _twm_block_reason: text('tooltipBlockReason'),
+  };
   const layers: any[] = [
     {
-      name: 'TWM 审查范围',
+      name: text('reviewAreaLayer'),
       type: 'polygon',
-      geojsonData: featureCollection([TWM_MAP_FEATURES.reviewArea]),
+      geojsonData: featureCollection([features.reviewArea]),
       style: { color: '#38bdf8', fillColor: '#38bdf8', fillOpacity: 0.08, weight: 2 },
+      tooltip_fields: ['name', 'role', '_twm_data_nature', '_twm_description'],
+      tooltip_labels: tooltipLabels,
     },
     {
-      name: '拟建项目范围',
+      name: text('projectLayer'),
       type: 'polygon',
-      geojsonData: featureCollection([TWM_MAP_FEATURES.project]),
+      geojsonData: featureCollection([features.project]),
       style: { color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.25, weight: 2 },
+      tooltip_fields: ['name', 'role', '_twm_data_nature', '_twm_description'],
+      tooltip_labels: tooltipLabels,
     },
     {
-      name: '硬约束边界',
+      name: text('constraintsLayer'),
       type: 'polygon',
-      geojsonData: featureCollection([TWM_MAP_FEATURES.pbf, TWM_MAP_FEATURES.eco]),
+      geojsonData: featureCollection([features.pbf, features.eco]),
       style: { color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.12, weight: 2 },
+      tooltip_fields: ['name', 'role', '_twm_data_nature', '_twm_rule'],
+      tooltip_labels: tooltipLabels,
     },
   ];
 
   if (stage === 'risk' || stage === 'plan') {
     layers.push({
-      name: '规则命中风险',
+      name: text('riskLayer'),
       type: 'polygon',
-      geojsonData: featureCollection([TWM_MAP_FEATURES.hardConflict, TWM_MAP_FEATURES.evidenceGap]),
+      geojsonData: featureCollection([features.hardConflict, features.evidenceGap]),
       style: { color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.38, weight: 2 },
+      tooltip_fields: ['name', 'role', '_twm_data_nature', '_twm_risk_level', '_twm_matched_rule', '_twm_suggested_action'],
+      tooltip_labels: tooltipLabels,
     });
   }
 
   if (stage === 'plan') {
     layers.push(
       {
-        name: '推荐方案',
+        name: text('recommendedLayer'),
         type: 'polygon',
-        geojsonData: featureCollection([TWM_MAP_FEATURES.recommended]),
+        geojsonData: featureCollection([features.recommended]),
         style: { color: '#0ea5e9', fillColor: '#22c55e', fillOpacity: 0.36, weight: 3 },
+        tooltip_fields: ['name', 'role', '_twm_data_nature', '_twm_planning_benefit', '_twm_constraint_risk', '_twm_description'],
+        tooltip_labels: tooltipLabels,
       },
       {
-        name: '阻断方案',
+        name: text('blockedLayer'),
         type: 'polygon',
-        geojsonData: featureCollection([TWM_MAP_FEATURES.blocked]),
+        geojsonData: featureCollection([features.blocked]),
         style: { color: '#dc2626', fillColor: '#dc2626', fillOpacity: 0.18, weight: 3 },
+        tooltip_fields: ['name', 'role', '_twm_data_nature', '_twm_block_reason', '_twm_description'],
+        tooltip_labels: tooltipLabels,
       },
     );
   }
@@ -1207,7 +1322,10 @@ function fmt(value: any, digits = 2) {
   if (value === null || typeof value === 'undefined' || value === '') return '-';
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) return '-';
-    return Math.abs(value) >= 1000 ? value.toLocaleString() : value.toFixed(digits);
+    return formatNumber(value, {
+      minimumFractionDigits: Math.abs(value) >= 1000 ? 0 : digits,
+      maximumFractionDigits: digits,
+    });
   }
   return String(value);
 }
@@ -1219,60 +1337,6 @@ function statusClass(status?: string) {
   if (['review', 'warning', 'draft', 'open', 'pending', 'partial', 'action_required', 'requires_conversion', 'required'].includes(normalized)) return 'warning';
   return 'proposed';
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  ready: '就绪',
-  loading: '加载中',
-  unknown: '未知',
-  review: '需复核',
-  warning: '需关注',
-  draft: '草稿',
-  open: '待处理',
-  pending: '待处理',
-  pass: '通过',
-  ok: '正常',
-  success: '成功',
-  complete: '完成',
-  completed: '完成',
-  partial: '部分完成',
-  candidate: '候选',
-  built: '已构建',
-  legal_feasible: '合法可行',
-  blocked: '阻断',
-  error: '错误',
-  failed: '失败',
-  failure: '失败',
-  proposed: '待验证',
-  none: '无',
-  high: '高',
-  critical: '严重',
-  medium: '中',
-  low: '低',
-  info: '提示',
-  blocking: '阻断',
-  prototype_scaffold: '原型脚手架',
-  prototype_complete_review_only: '原型完成，生产需复核',
-  action_required: '需要处理',
-  requires_conversion: '需转换',
-  required: '必需',
-  recommended: '建议',
-  no_spatial_layers: '无空间图层',
-  template_ready_review_only: '模板就绪，生产需复核',
-};
-
-const ACTION_LABELS: Record<string, string> = {
-  inspect: '检查',
-  protect: '保护',
-  allocate: '配置',
-  convert: '转换',
-  restore: '恢复',
-};
-
-const ROLE_LABELS: Record<string, string> = {
-  project: '项目',
-  parcel: '图斑',
-  scenario: '方案',
-};
 
 const DISPLAY_LABELS: Record<string, string> = {
   'Can a governance-oriented geospatial world model improve territorial planning decisions by coupling hierarchical GIS state, policy constraints, evidence provenance and action-conditioned forecast in one auditable loop?':
@@ -1507,49 +1571,711 @@ const DISPLAY_LABELS: Record<string, string> = {
   'keep the claim at prototype scaffold level': '将主张保持在原型脚手架级别',
 };
 
-function labelFor(value: any, labels: Record<string, string>, fallback = '-') {
-  const text = String(value || '').trim();
-  if (!text) return fallback;
-  return labels[text.toLowerCase()] || text;
-}
+const SOURCE_DISPLAY_LABELS = Object.fromEntries(
+  Object.entries(DISPLAY_LABELS).map(([source, chinese]) => [chinese, source]),
+) as Record<string, string>;
+
+const DYNAMIC_LABEL_KEYS: Record<string, string> = {
+  'Can a governance-oriented geospatial world model improve territorial planning decisions by coupling hierarchical GIS state, policy constraints, evidence provenance and action-conditioned forecast in one auditable loop?': 'question',
+  'Hierarchical GIS object-relation-rule-evidence state': 'coreStateName',
+  'TWM represents parcels, projects, control boundaries, planning zones, approvals, evidence and rules as a linked state rather than as a flat feature table.': 'coreStateClaim',
+  'Action-conditioned multi-head territorial dynamics': 'coreDynamicsName',
+  'TWM forecasts a multi-dimensional hierarchical future-state latent, constraint-risk, planning utility, uncertainty and action-mask feasibility conditional on review/protect/convert/restore actions; the latent is decoded into state summaries and does not generate full parcel geometry.': 'coreDynamicsClaim',
+  'Evidence-gated and causally calibrated claim ladder': 'coreEvidenceName',
+  'TWM separates deterministic rule evidence, observational causal calibration and validation gates before upgrading any operational claim.': 'coreEvidenceClaim',
+  'The novelty is architectural integration, not that GIS simulation itself is new.': 'innovationArchitecture',
+  'Compare against land-use simulators, GIS rule engines and optimization tools on whether they jointly expose action-conditioned forecast, policy evidence and audit-ready claim boundaries.': 'innovationArchitectureTest',
+  'Object-relation-rule-evidence state reduces missed compliance conflicts compared with layer-by-layer manual review.': 'innovationConflict',
+  'Measure hard-constraint conflict recall and false review burden on held-out real approval/review cases.': 'innovationConflictTest',
+  'Evidence-gated forecasts improve decision defensibility compared with black-box planning scores.': 'innovationDefensibility',
+  'Audit whether every recommended or rejected option carries source evidence, rule clause, uncertainty and human-review reason.': 'innovationDefensibilityTest',
+  'Planning and land-use review workflows still fragment spatial overlays, policy checks, approval evidence and scenario comparison across separate tools.': 'unmetFragmented',
+  'Existing land-use simulators emphasize spatial pattern transition, while operational review needs action consequences, rule validity and audit boundaries.': 'unmetSimulation',
+  'Optimization tools can rank candidates, but often do not preserve why a candidate is illegal, under-evidenced or only reviewable rather than approvable.': 'unmetOptimization',
+  'If real workflow interviews show the target decisions are already well solved by existing tools, TWM should be narrowed or stopped.': 'falsificationSolved',
+  'If TWM does not improve hard-constraint conflict recall, evidence completeness or audit-trail quality over baselines, the claimed contribution is not supported.': 'falsificationNoLift',
+  'If action-conditioned dynamics cannot be validated beyond synthetic fixtures, TWM must remain a review scaffold rather than a production decision model.': 'falsificationSynthetic',
+  'Current TWM is a rigorous prototype and review scaffold. Its defensible near-term claim is auditable decision support for territorial governance workflows; production-grade predictive claims require real observed histories, baseline comparisons and external validation.': 'claimBoundary',
+  'Retrospective approval replay': 'experimentRetrospective',
+  '历史审批回放': 'experimentRetrospective',
+  'Does TWM miss fewer hard-constraint conflicts and produce a more complete evidence chain than manual or rule-only baselines on real or sanitized historical projects?': 'experimentRetrospectiveQuestion',
+  '在真实或脱敏历史项目上，TWM 是否比 manual/rule-only baseline 少漏掉硬约束冲突，并生成更完整证据链？': 'experimentRetrospectiveQuestion',
+  '在真实历史项目上是否优于人工或单纯规则基线？': 'experimentRetrospectiveQuestion',
+  'Operator workflow interview and task timing': 'experimentOperator',
+  '操作员流程访谈与耗时测量': 'experimentOperator',
+  'Is there a real unmet need, and does TWM reduce evidence-gathering time or review rework?': 'experimentOperatorQuestion',
+  '目标业务是否真有未满足需求，TWM 是否减少查证时间或复核返工？': 'experimentOperatorQuestion',
+  '目标业务是否真有未满足需求？': 'experimentOperatorQuestion',
+  'Plan-option triage benchmark': 'experimentPlanTriage',
+  'Does TWM explain illegal, under-evidenced, and review-only outcomes better than optimization-only ranking on real candidate plans?': 'experimentPlanTriageQuestion',
+  '在真实候选方案上，TWM 是否比优化-only ranking 更能解释非法、证据不足和 review-only 原因？': 'experimentPlanTriageQuestion',
+  'Cross-region standard ingestion audit': 'experimentCrossRegion',
+  '角色契约在多个地区/标准样例上是否减少接入错误和返工？': 'experimentCrossRegionQuestion',
+  'Do role contracts reduce onboarding errors and rework across regions and standard samples?': 'experimentCrossRegionQuestion',
+  '通过后才能把 C1/C2 从 scaffold 提升到 retrospective evidence。': 'experimentDecisionC12',
+  'C1/C2 can move from scaffold to retrospective evidence only after this passes.': 'experimentDecisionC12',
+  '如果需求已被现有工具很好解决，应收窄或停止对应场景。': 'experimentDecisionOperator',
+  'If existing tools already solve the need well, narrow or stop the corresponding scenario.': 'experimentDecisionOperator',
+  '通过后才允许升级 C3 的 action-conditioned dynamics claim。': 'experimentDecisionC3',
+  'The C3 action-conditioned dynamics claim can be upgraded only after this passes.': 'experimentDecisionC3',
+  '通过后才允许升级 C4 的标准适配 claim。': 'experimentDecisionC4',
+  'The C4 standard-adaptation claim can be upgraded only after this passes.': 'experimentDecisionC4',
+};
+
+const DYNAMIC_DATA_FOUNDATION_KEYS: Record<string, string> = {
+  '当前数据基础足以支撑 TWM 工程化原型、规则/证据/审计链路和合成实验验证；不足以支撑生产级审批结论、真实预测效果或真实因果改进声明。': 'verdict',
+  '当前数据基础足以支撑 TWM 工程原型、规则/依据/审计链路和合成实验验证；不足以支撑生产级审批结论、真实预测效果或真实因果改进声明。': 'verdict',
+  '生产可用观察历史行数为 0': 'blockerObservedHistory',
+  '生产政策动作历史未提供': 'blockerPolicyHistory',
+  '关键审批、复核、规则评价和项目样本主要为 synthetic/not-for-production': 'blockerSyntheticRecords',
+  '关键治理记录为合成或非生产数据': 'blockerSyntheticRecords',
+  '尚缺真实 workflow baseline 对比来证明未满足需求与改进幅度': 'blockerWorkflowBaseline',
+  'Bishan demo engineering fixture': 'datasetDemo',
+  '璧山演示工程样例': 'datasetDemo',
+  'Bishan multi-admin evaluation fixture': 'datasetMultiAdmin',
+  '璧山多行政单元评估样例': 'datasetMultiAdmin',
+  'One Map village standard sample': 'datasetOneMap',
+  '一张图村庄规划标准样例': 'datasetOneMap',
+  '工程 MVP 与回归测试主数据包；含真实 Sentinel-2 影像，但项目、PBF、生态红线、审批/复核等治理对象为合成或 not-for-production。': 'datasetDemoPositioning',
+  '工程原型与回归测试主数据包；含真实 Sentinel-2 影像，但关键治理对象为合成或非生产数据。': 'datasetDemoPositioning',
+  '多行政单元压力测试与数据基础体检主对象；结构覆盖更宽，但关键业务历史仍为 synthetic/not-for-production。': 'datasetMultiAdminPositioning',
+  '多行政单元压力测试与数据基础体检主对象；关键业务历史仍为合成或非生产数据。': 'datasetMultiAdminPositioning',
+  '用于验证自然资源一张图村规划样例能否按 TWM 角色契约接入；所有数据均 not-for-production。': 'datasetOneMapPositioning',
+  '验证自然资源一张图村规划样例能否按 TWM 角色契约接入；所有数据均为非生产数据。': 'datasetOneMapPositioning',
+  '工程 MVP 与回归测试': 'supportEngineering',
+  '可验证项目创建、状态构建、角色绑定、规则评价、证据链、审计报告、前端 TWM 工作流是否跑通。': 'supportEngineeringDetail',
+  '验证状态构建、角色绑定、规则评价、依据链、审计报告和 TWM 前端工作流。': 'supportEngineeringDetail',
+  '业务审查脚手架': 'supportReview',
+  '可模拟耕地保护、生态红线、用途管制、审批一致性、复核任务等对象之间的关系和风险暴露逻辑。': 'supportReviewDetail',
+  '模拟耕地保护、生态红线、用途管制、审批一致性和复核任务风险暴露。': 'supportReviewDetail',
+  '优化/规划消费者链路': 'supportPlanning',
+  '可测试候选方案载入、硬约束过滤、beam ranking、action-mask 安全头和验证口径是否按证据门控降级。': 'supportPlanningDetail',
+  '测试候选方案载入、硬约束过滤、beam ranking 和 action-mask 安全头。': 'supportPlanningDetail',
+  '一张图标准适配': 'supportOneMap',
+  '可检查字段别名、角色契约、值域、图斑/分区/管控边界等标准结构能否被 TWM 状态模型消费。': 'supportOneMapDetail',
+  '目前 TWM 靠谱的部分是工程和研究假设验证，不是生产落地证明。数据基础能说明 TWM 的对象-关系-规则-证据框架可跑通，也能暴露哪些业务问题需要真实数据继续验证；但在真实审批历史和政策动作标签缺失前，不能声称它已经解决真实国土治理决策。': 'mentorShort',
+  '目前 TWM 靠谱的部分是工程和研究假设验证，不是生产落地证明。': 'mentorShort',
+  '下一阶段应把研究问题收敛到真实未满足需求：跨图层规则审查、证据链完整性、审查任务优先级和方案不可行原因解释。这些问题需要用真实或脱敏业务样本与 manual/rule-only/simulator/optimizer baseline 对比。': 'mentorJudgment',
+  '下一阶段应把研究问题收敛到真实未满足需求，并用真实或脱敏业务样本与 manual/rule-only/simulator/optimizer baseline 对比。': 'mentorJudgment',
+  '生产级审批结论': 'unsupportedApproval',
+  '当前审批、复核、执法、规则命中和项目样本主要为 synthetic/not-for-production，不能替代真实业务责任链。': 'unsupportedApprovalReason',
+  '审批、复核、执法和规则命中记录主要为合成或非生产数据。': 'unsupportedApprovalReason',
+  '真实治理效果预测或因果改进': 'unsupportedGovernance',
+  '尚无非合成的生产观察历史、真实 treated/control 样本、真实政策动作可行性标签和跨期审批结果。': 'unsupportedGovernanceReason',
+  '尚无非合成生产观察历史、真实 treated/control 样本和政策动作标签。': 'unsupportedGovernanceReason',
+  '行动条件动态模型已被真实数据验证': 'unsupportedDynamics',
+  '结构性和合成实验门通过的是管线与诊断能力，默认证据门仍为 review，不能升级为生产准确性证明。': 'unsupportedDynamicsReason',
+  'TWM 已证明优于现有业务工具': 'unsupportedOutperforms',
+  '仍缺真实工作流基线对比，如 manual GIS overlay、rule-only engine、土地利用模拟或优化工具的同题评测。': 'unsupportedOutperformsReason',
+  '真实或脱敏的项目审批/复核/补正/执法历史': 'nextApprovalHistory',
+  '生产观察历史、业务效果评估、人工审查负担和漏检风险基线。': 'nextApprovalHistoryUnlocks',
+  '生产观察历史、业务效果评估和真实基线对比。': 'nextApprovalHistoryUnlocks',
+  '权威管控边界与规划约束版本': 'nextAuthoritativeConstraints',
+  '真实硬约束冲突判断、规则条款追溯、跨版本政策动作可行性验证。': 'nextAuthoritativeConstraintsUnlocks',
+  '真实硬约束冲突判断和规则条款追溯。': 'nextAuthoritativeConstraintsUnlocks',
+  '真实 action-mask/政策可行性标签': 'nextActionLabels',
+  '动作可行性安全头、未见地区/政策泛化、方案推荐边界。': 'nextActionLabelsUnlocks',
+  '真实时序状态快照与遥感/变更证据': 'nextTemporalEvidence',
+  '行动条件动态、反事实推演、预测不确定性和证据覆盖校准。': 'nextTemporalEvidenceUnlocks',
+  '耕地保护与占补平衡审查': 'fitFarmland',
+  '图斑、PBF、生态红线、项目、规则命中和证据链结构齐备，但关键边界和审批记录仍非生产数据。': 'fitFarmlandWhy',
+  '图斑、永久基本农田、生态红线、项目、规则命中和依据链结构齐备，但关键边界和审批记录仍非生产数据。': 'fitFarmlandWhy',
+  '风险暴露、证据缺口、人工复核任务和候选方案审计。': 'fitFarmlandSafe',
+  '风险暴露、依据缺口、人工复核任务和候选方案审计。': 'fitFarmlandSafe',
+  '自动审批通过/不通过或真实政策效果承诺。': 'fitFarmlandUnsafe',
+  '建设项目用地合规预审': 'fitConstruction',
+  '可模拟项目-分区-边界-复核任务关系，但缺真实项目流转、补正、处置和监管闭环历史。': 'fitConstructionWhy',
+  '合规预审工作流原型和审查清单。': 'fitConstructionSafe',
+  '生产级项目合规结论。': 'fitConstructionUnsafe',
+  '国土空间用途调整推演': 'fitAdjustment',
+  '合成多期样本可测动作条件动态和 planner consumer，但缺真实跨期状态和政策动作标签。': 'fitAdjustmentWhy',
+  '反事实推演管线、action-mask 和 beam-plan 方法验证。': 'fitAdjustmentSafe',
+  '反事实推演管线、动作可行性掩码和方案比选方法验证。': 'fitAdjustmentSafe',
+  '真实区域规划效果预测。': 'fitAdjustmentUnsafe',
+  experimental: 'fitExperimental',
+};
+
+const DYNAMIC_DATA_FOUNDATION_DETAIL_KEYS: Record<string, string> = {
+  '真实审批结论': 'missingApprovalOutcome',
+  '真实复核记录': 'missingReviewRecords',
+  '真实政策动作标签': 'missingPolicyActionLabels',
+  '外部因果校准材料只能作为方法参考，不能替代 TWM 生产审批历史验证。': 'externalSupportBoundary',
+  'Paper7 可作为因果校准分支外部支持，但不能替代 TWM 生产审批历史验证。': 'paper7SupportBoundary',
+};
+
+const DYNAMIC_DATA_GOVERNANCE_KEYS: Record<string, string> = {
+  '可用于字段、空间范围和链路回归核查；not_for_production 数据不得作为生产治理结论。': 'reviewOnlyReadiness',
+  '缺失文件需先补齐后才能进入数据基础核查。': 'missingFileReadiness',
+  '候选权威来源仍需人工验收数据版本、来源证明和权限边界。': 'candidateAuthorityReadiness',
+  '每个待处理空间图层必须先确认 source CRS，不能仅凭 bbox 猜测直接转换。': 'confirmSourceCrs',
+  '转换后 bbox 必须落入 EPSG:4326 经纬度范围，且要素数量与源文件一致。': 'validateConvertedBbox',
+  '输出文件必须保留源文件、源 CRS、目标 CRS、转换时间和工具版本 lineage。': 'preserveConversionLineage',
+  'not-for-production 数据仅可用于演示和回归；CRS 转换不会提升其生产权威性。': 'conversionDoesNotUpgradeAuthority',
+};
+
+const DYNAMIC_AUTHORITATIVE_TEMPLATE_KEYS: Record<string, string> = {
+  parcel_current_authoritative: 'templateParcel',
+  'Current land parcel authoritative layer': 'templateParcel',
+  planning_zone_authoritative: 'templatePlanningZone',
+  'Territorial planning zone authoritative layer': 'templatePlanningZone',
+  approval_records_authoritative: 'templateApprovalHistory',
+  'Approval and review history authoritative table': 'templateApprovalHistory',
+  policy_action_history_authoritative: 'templatePolicyAction',
+  'Policy action feasibility authoritative table': 'templatePolicyAction',
+  evidence_index_authoritative: 'templateEvidenceIndex',
+  'Evidence document and media index authoritative table': 'templateEvidenceIndex',
+  rule_evaluation_authoritative: 'templateRuleEvaluation',
+  'Rule evaluation authoritative table': 'templateRuleEvaluation',
+  feature: 'unitFeature',
+  row: 'unitRow',
+  parcel: 'roleParcel',
+  planning_zone: 'rolePlanningZone',
+  approval_record: 'roleApprovalRecord',
+  policy_action_history: 'rolePolicyActionHistory',
+  evidence_item: 'roleEvidenceItem',
+  rule_evaluation: 'roleRuleEvaluation',
+  'GeoPackage layer': 'formatGeoPackage',
+  'GeoJSON after approved CRS conversion': 'formatGeoJson',
+  'PostGIS table': 'formatPostGis',
+  CSV: 'formatCsv',
+  Parquet: 'formatParquet',
+  'database view': 'formatDatabaseView',
+  state_object_build_and_rule_overlay: 'useStateRuleOverlay',
+  policy_constraint_and_action_mask: 'usePolicyActionMask',
+  claim_gate_observed_history_and_same_case_baseline: 'useClaimObservedBaseline',
+  action_conditioned_dynamics_validation_and_planner_evaluation: 'useDynamicsPlanner',
+  audit_trail_and_evidence_gate: 'useAuditEvidence',
+  hard_constraint_recall_and_audit_defensibility_metrics: 'useConflictAuditMetrics',
+  custodian_signoff: 'gateCustodianSignoff',
+  not_for_production_flag_clearance: 'gateProductionFlag',
+  same_case_join_keys: 'gateSameCaseKeys',
+  crs_and_geometry_acceptance: 'gateCrsGeometry',
+  'each authoritative source has named custodian, sign-off id, source version and permission scope': 'custodianRequired',
+  'templates defined; no production custodian sign-off loaded': 'custodianCurrent',
+  'production datasets must explicitly set not_for_production=false after governance approval': 'productionFlagRequired',
+  'demo fixtures remain not-for-production': 'productionFlagCurrent',
+  'case_id/project_id/action_id keys join across approval, action, evidence and rule tables': 'joinKeysRequired',
+  'template contract only': 'joinKeysCurrent',
+  'known CRS, validated geometry and EPSG:4326 map-overlay derivative where needed': 'crsGeometryRequired',
+  'CRS remediation plan exists; production ETL not implemented': 'crsGeometryCurrent',
+  known_crs: 'qualityKnownCrs',
+  valid_geometry: 'qualityValidGeometry',
+  unique_parcel_id: 'qualityUniqueParcel',
+  area_positive: 'qualityPositiveArea',
+  zone_type_domain_check: 'qualityZoneDomain',
+  unique_case_id: 'qualityUniqueCase',
+  final_decision_domain_check: 'qualityDecisionDomain',
+  decision_time_order: 'qualityDecisionOrder',
+  case_action_key_unique: 'qualityUniqueCaseAction',
+  action_allowed_boolean: 'qualityActionBoolean',
+  blocking_rule_traceable: 'qualityBlockingTrace',
+  content_hash_present: 'qualityContentHash',
+  permission_scope_present: 'qualityPermissionScope',
+  case_link_valid: 'qualityCaseLink',
+  rule_code_versioned: 'qualityVersionedRule',
+  severity_domain_check: 'qualitySeverityDomain',
+  hit_status_domain_check: 'qualityHitStatusDomain',
+  'Authoritative templates support production data onboarding planning and review. They do not by themselves certify authority, data rights, model performance or production deployment readiness.': 'claimBoundary',
+};
+
+const DYNAMIC_CRS_WORKFLOW_KEYS: Record<string, string> = {
+  verify_declared_crs: 'verifyDeclaredCrs',
+  preserve_source_layer: 'preserveSourceLayer',
+  identify_source_crs: 'identifySourceCrs',
+  reproject_to_target_crs: 'reprojectTargetCrs',
+  validate_bbox_and_geometry: 'validateBboxGeometry',
+  write_lineage_preserving_output: 'writeLineageOutput',
+  no_conversion_required: 'noConversionRequired',
+  convert_to_wgs84_before_map_overlay: 'convertWgs84',
+  unknown_projected_or_non_wgs84: 'unknownProjectedCrs',
+  load_on_map: 'loadOnMap',
+  fix_crs_before_map_overlay: 'fixCrsFirst',
+  add_spatial_layers: 'addSpatialLayers',
+  ready_for_map_overlay: 'readyForOverlay',
+  inspect_geometry_before_map_overlay: 'inspectGeometryFirst',
+  '空间范围缺失，不能确认是否可直接叠加到经纬度底图。': 'messageMissingExtent',
+  '坐标范围符合经纬度范围，可直接用于当前演示地图叠加。': 'messageReady',
+  '坐标范围超出经纬度范围，直接叠加到当前地图前需要做 CRS 识别和转换。': 'messageConversionRequired',
+  '全部空间图层可直接叠加到当前地图。': 'messageAllReady',
+  '部分或全部空间图层不是经纬度坐标，直接叠加前需要 CRS 转换。': 'messagePartiallyBlocked',
+  '未发现可预览空间图层。': 'messageNoLayers',
+  'This CRS remediation plan is an onboarding and map-overlay readiness artifact. It does not transform geometries in the API response, certify source authority, or support production decision claims.': 'claimBoundary',
+};
+
+const DYNAMIC_LINEAGE_KEYS: Record<string, string> = {
+  authoritative_source_lineage: 'gateAuthoritativeLineage',
+  production_observed_history: 'gateObservedHistory',
+  production_policy_action_labels: 'gatePolicyLabels',
+  map_overlay_crs: 'gateMapCrs',
+  spatial_layer: 'roleSpatialLayer',
+  auxiliary_table: 'roleAuxiliaryTable',
+  supporting_file: 'roleSupportingFile',
+  'source authority, data version, update time, permission boundary and custodian sign-off for each production layer/table': 'requiredAuthority',
+  'real or sanitized approval/review/remediation/enforcement history with final outcomes': 'requiredObservedHistory',
+  'authoritative policy/action feasibility labels for TWM action-conditioned validation': 'requiredPolicyLabels',
+  'all spatial layers have known CRS and can be converted to the map display CRS': 'requiredMapCrs',
+  'Lineage report supports source review, field mapping, CRS readiness and production onboarding planning; it does not upgrade not-for-production datasets into authoritative evidence.': 'claimBoundary',
+};
+
+const DYNAMIC_TWM_STATUS_KEYS: Record<string, string> = {
+  review_not_for_production: 'reviewNotForProduction',
+  candidate_authoritative: 'candidateAuthoritative',
+  external_reference_only: 'externalReferenceOnly',
+  not_provided: 'notProvided',
+  missing_required_columns: 'missingRequiredColumns',
+  ready_for_pilot_validation: 'readyForPilotValidation',
+  missing: 'missing',
+};
+
+const DYNAMIC_CLAIM_KEYS: Record<string, string> = {
+  C1_state_conflict_recall: 'c1Title',
+  C2_audit_defensibility: 'c2Title',
+  C3_action_conditioned_triage: 'c3Title',
+  C4_standard_contract_ingestion: 'c4Title',
+  'Object-relation-rule-evidence state reduces missed hard-constraint conflicts compared with layer-by-layer manual GIS review.': 'c1Claim',
+  'Evidence-gated review improves audit defensibility compared with rule-only spatial compliance engines.': 'c2Claim',
+  'Action-conditioned dynamics improves plan-option triage compared with land-use simulators or optimization-only candidate ranking.': 'c3Claim',
+  'Role-contract based ingestion reduces standard-data onboarding errors compared with ad hoc layer mapping.': 'c4Claim',
+  manual_gis_overlay_checklist: 'baselineManual',
+  rule_only_spatial_compliance_engine: 'baselineRuleOnly',
+  land_use_simulator_or_optimization_only_ranking: 'baselineSimulation',
+  ad_hoc_layer_mapping: 'baselineAdHoc',
+  production_observed_history: 'missingObservedHistory',
+  named_real_workflow_baseline: 'missingWorkflowBaseline',
+  production_policy_action_labels: 'missingPolicyLabels',
+  hard_constraint_conflict_recall: 'metricConflictRecall',
+  audit_trail_completeness: 'metricAuditCompleteness',
+  candidate_rejection_reason_coverage: 'metricRejectionCoverage',
+  legal_feasible_topk_precision: 'metricLegalTopK',
+  role_binding_accuracy: 'metricRoleBinding',
+};
+
+const DYNAMIC_RESEARCH_DATA_KEYS: Record<string, string> = {
+  '项目几何、申请/决定日期、审批结果、复核任务、规则命中、证据链接、最终处置结果。': 'nextApprovalMinimum',
+  '永久基本农田、生态保护红线、城镇开发边界、用途管制分区、规划版本与生效时间。': 'nextBoundaryMinimum',
+  'action_type、policy_code、allowed/blocked/conditional 标签、region、period、人工复核原因。': 'nextActionLabelMinimum',
+  '多期图斑、年度变更、项目落地结果、遥感证据索引和证据质量标注。': 'nextTemporalMinimum',
+  '现有工具链基线结果': 'nextBaselineData',
+  '人工叠加清单、rule-only 输出、土地利用模拟/优化工具输出、耗时和错误记录。': 'nextBaselineMinimum',
+  '证明 TWM 是否真正解决未满足需求，而不是技术堆砌。': 'nextBaselineUnlocks',
+  '项目用地预审需要同时看项目范围、现状图斑、PBF、生态红线、用途分区、审批证据和规则条款；分散叠加容易漏掉冲突或证据缺口。': 'c1BusinessNeed',
+  '真实或脱敏项目几何': 'c1ProjectGeometry',
+  '权威 PBF/生态红线/用途管制边界版本': 'c1BoundaryVersions',
+  '人工审查清单或历史规则命中': 'c1ReviewBaseline',
+  '业务人员不仅要知道命中了哪条规则，还要知道证据来源、缺口、人工复核原因和为什么不能自动给审批结论。': 'c2BusinessNeed',
+  '真实规则条款和版本': 'c2RuleVersions',
+  '规则命中证据链接': 'c2EvidenceLinks',
+  '复核任务与补正记录': 'c2ReviewCorrections',
+  '审计抽查结论': 'c2AuditConclusion',
+  '方案比选要解释候选方案为什么非法、证据不足、只能复核或可继续推进，而不只是给空间格局转移或单一优化分数。': 'c3BusinessNeed',
+  '多期真实状态快照': 'c3TemporalSnapshots',
+  '候选方案与实际处置结果': 'c3CandidatesOutcome',
+  'action_type 与政策可行性标签': 'c3PolicyLabels',
+  '方案审查意见和后续监管结果': 'c3ReviewOutcome',
+  '自然资源一张图、村规划样例和地方业务字段常存在别名、值域和角色差异，手工映射容易造成语义错配。': 'c4BusinessNeed',
+  '多个地区的一张图/村规划样例': 'c4RegionalSamples',
+  '字段别名与值域标准': 'c4FieldStandards',
+  '人工验收记录': 'c4AcceptanceRecords',
+  '映射错误和修复日志': 'c4FixLogs',
+  '最终处置结果': 'finalDispositionOutcome',
+  '项目几何': 'experimentProjectGeometry',
+  '权威边界版本': 'experimentBoundaryVersions',
+  '候选方案': 'experimentCandidatePlan',
+  'action feasibility labels': 'experimentActionFeasibilityLabels',
+  '审查意见': 'experimentReviewOpinion',
+  '字段别名': 'experimentFieldAliases',
+  '审批/复核结果': 'experimentApprovalOutcomes',
+  '人工基线输出': 'experimentManualBaseline',
+  '操作员流程记录': 'experimentOperatorRecords',
+  '任务耗时': 'experimentTaskTime',
+  '补正/返工原因': 'experimentReworkReasons',
+  '现有工具输出': 'experimentToolOutputs',
+  '监管结果': 'experimentOversightOutcomes',
+  '多地区一张图样例': 'experimentRegionalSamples',
+  '值域标准': 'experimentValueStandards',
+  '验收记录': 'experimentAcceptanceRecords',
+};
+
+const DYNAMIC_TWM_RUNTIME_KEYS: Record<string, string> = {
+  '临界': 'boundaryThreshold',
+  '贴边': 'boundaryContact',
+  'TWM 的创新性不能靠列举模型组件来证明。当前应把每个主张绑定到真实业务问题、简单基线、数据门槛和可证伪指标；在生产历史和 baseline 对比缺失前，TWM 只能主张工程原型和审查脚手架，不能主张生产级 world model。': 'mentorAnswer',
+  '该数据包用于测试和适配验证；not_for_production=true 时不得作为真实治理结论依据。': 'dataPackageBoundary',
+  '触发规则判断': 'edgeTriggersRule',
+  '涉及管控对象': 'edgeControlledObject',
+  '支撑判断': 'edgeSupportsDecision',
+  '形成复核任务': 'edgeCreatesReviewTask',
+  '界面和汇报中使用“支撑材料/判断依据”，后端兼容字段仍可能叫 evidence。': 'supportMaterialTerminology',
+  '状态 + 动作 -> 下一状态摘要、约束风险、收益和可信度。': 'simulatorTerminology',
+  '在模拟器评价的动作或候选方案中，按约束、收益、风险和支撑材料完整度选择下一步。': 'plannerTerminology',
+  '规则判断': 'ruleDecision',
+  '支撑材料': 'supportMaterial',
+};
+
+const DYNAMIC_BASELINE_DETAIL_KEYS: Record<string, string> = {
+  '脱敏后的稳定同案 ID，TWM 与 baseline 必须一致。': 'c1CaseIdDescription',
+  '用不可逆匿名 ID 替代真实项目编号。': 'c1CaseIdSanitization',
+  '由最终处置、复核结论或专家复标确认的硬约束冲突真值。': 'c1TruthDescription',
+  '仅保留布尔标签，不导出敏感原文。': 'c1TruthSanitization',
+  'TWM 或人工叠加清单是否在审查阶段发现该冲突。': 'c1DetectedDescription',
+  '仅保留布尔标签。': 'booleanLabelOnly',
+  '是否能追溯到图层版本、规则条款、截图或审查证据。': 'c1EvidenceDescription',
+  '证据链接应指向内部脱敏索引，不导出原始文件路径。': 'c1EvidenceSanitization',
+  '系统是否在证据不足或硬约束未解时仍给出推进性建议。': 'c1UnsupportedDescription',
+  '仅保留布尔标签和脱敏原因。': 'c1UnsupportedSanitization',
+  'TWM 在同案数据上召回率高于人工 baseline，并达到 claim threshold。': 'c1RecallSupports',
+  'TWM 漏检率低于人工 baseline，并低于允许上限。': 'c1MissedSupports',
+  'TWM 给出的风险能稳定连接到证据和规则版本。': 'c1EvidenceSupports',
+  '从同一批历史项目抽取项目几何、权威边界版本、最终处置和人工叠加清单结果。': 'c1CollectSource',
+  '先由业务或复核人员确定 ground_truth_conflict，再分别导出 TWM 和人工 baseline 检出结果。': 'c1CollectTruth',
+  '保持 case_id 在两份 CSV 中一致；不一致的项目不得进入 baseline comparison。': 'c1CollectJoin',
+  '先调用 baseline_export_validation_report，通过后再调用 baseline_evidence_pipeline_report。': 'c1CollectValidate',
+  '脱敏后的稳定审查案件 ID。': 'c2CaseIdDescription',
+  '不可逆匿名化；同一案件在两份 CSV 中保持一致。': 'c2CaseIdSanitization',
+  '规则命中是否可追溯到证据包、图层版本和条款。': 'c2EvidenceDescription',
+  '仅导出 evidence_uri 或证据索引，不导出原始涉密附件。': 'c2EvidenceSanitization',
+  '是否在缺少证据、存在硬约束或需要人工复核时仍输出通过/推进建议。': 'c2UnsupportedDescription',
+  '仅导出布尔值和脱敏处置类别。': 'c2UnsupportedSanitization',
+  '系统是否创建或建议人工复核任务。': 'c2ReviewTaskDescription',
+  '仅导出布尔标签。': 'c2BooleanLabelOnly',
+  '复核任务是否被业务人员确认必要。': 'c2ReviewConfirmedDescription',
+  '只导出确认结果，不导出人员姓名。': 'c2ReviewConfirmedSanitization',
+  'TWM 证据链完整率高于 rule-only baseline。': 'c2AuditSupports',
+  'TWM 更少在证据不足时给出推进性建议。': 'c2SafetySupports',
+  'TWM 触发的复核任务更接近业务人员确认的必要复核。': 'c2ReviewPrecisionSupports',
+  '锁定同一批审查案件和同一套规则版本，分别运行 TWM evidence gate 与 rule-only baseline。': 'c2CollectRun',
+  '由业务复核人员确认 review_task_true_positive 和 audit_reviewer_disposition。': 'c2CollectConfirm',
+  '确保 evidence_uri 指向可审计但已脱敏的证据索引。': 'c2CollectEvidence',
+  '先通过 export validation，再把完整指标提交给 baseline comparison。': 'c2CollectValidate',
+  '脱敏后的候选方案 ID，TWM 与 baseline 必须一致。': 'c3CandidateIdDescription',
+  '不可逆匿名化；保留同一候选方案跨系统一致性。': 'c3CandidateIdSanitization',
+  '候选方案排序，数值越小优先级越高。': 'c3RankDescription',
+  '不包含真实地块或主体名称。': 'c3RankSanitization',
+  '该候选方案是否进入推荐或 top-k 集合。': 'c3SelectedDescription',
+  '候选方案在当前硬约束和证据条件下是否合法可行。': 'c3LegalDescription',
+  '仅导出布尔标签和脱敏原因。': 'c3LegalSanitization',
+  '相对人工/专家 oracle 的效用损失。': 'c3RegretDescription',
+  '导出归一化差值，不导出敏感收益测算细节。': 'c3RegretSanitization',
+  '非法、证据不足或 review-only 的脱敏原因。': 'c3RejectionDescription',
+  '使用标准原因枚举，不导出原始审查意见全文。': 'c3RejectionSanitization',
+  'TWM 对被阻断或只能复核的候选方案提供更完整原因。': 'c3RejectionSupports',
+  'TWM 推荐集中的合法可行比例高于优化-only baseline。': 'c3LegalSupports',
+  'TWM 相对人工 oracle 的平均 regret 更低。': 'c3RegretSupports',
+  '为同一批候选方案保留稳定 candidate_id，并记录 action_type、排序、推荐集和人工/专家 oracle。': 'c3CollectCandidates',
+  '用同一规则版本和同一证据截面分别运行 TWM action-conditioned triage 与模拟/优化-only baseline。': 'c3CollectRun',
+  '把非法、证据不足和 review-only 原因归一到标准枚举，避免导出原始敏感审查文本。': 'c3CollectNormalize',
+  '先确认 candidate_id overlap，再比较 top-k precision、reason coverage 和 regret。': 'c3CollectValidate',
+};
+
+const DYNAMIC_BASELINE_KEYS: Record<string, string> = {
+  'Manual GIS overlay plus checklist review': 'manualLabel',
+  '当前业务是否已能通过人工叠加和清单审查稳定解决硬约束冲突发现。': 'manualTests',
+  'Whether the current workflow can already detect hard-constraint conflicts reliably through manual overlay and checklist review.': 'manualTests',
+  '人工命中清单': 'manualHitList',
+  'Manual hit list': 'manualHitList',
+  '证据截图或图层记录': 'evidenceRecord',
+  'Evidence screenshot or layer record': 'evidenceRecord',
+  '复核意见': 'reviewOpinion',
+  'Review opinion': 'reviewOpinion',
+  '最终处置': 'finalDisposition',
+  'Final disposition': 'finalDisposition',
+  '如果人工流程已经高召回且审计完整，TWM 的增量价值必须体现在效率、证据完整性或复核负担上。': 'manualWhy',
+  'If the manual workflow already has high recall and a complete audit trail, TWM must show incremental value in efficiency, evidence completeness, or review burden.': 'manualWhy',
+  'Rule-only spatial compliance engine': 'ruleOnlyLabel',
+  '规则叠加本身是否已经足以发现风险；TWM 是否额外提供证据门控和审计边界。': 'ruleOnlyTests',
+  'Whether rule overlay alone already detects the risks, and whether TWM adds evidence gates and explicit audit boundaries.': 'ruleOnlyTests',
+  '规则命中': 'ruleHits',
+  'Rule hits': 'ruleHits',
+  '严重级别': 'severity',
+  Severity: 'severity',
+  '空间关系': 'spatialRelation',
+  'Spatial relation': 'spatialRelation',
+  '条款引用': 'clauseCitation',
+  'Clause citation': 'clauseCitation',
+  '防止把 rule engine 能解决的问题包装成 world model 创新。': 'ruleOnlyWhy',
+  'Prevents capabilities already solved by a rule engine from being presented as world-model innovation.': 'ruleOnlyWhy',
+  'Land-use simulator or optimization-only ranking': 'simulationLabel',
+  '传统模拟/优化能否完成方案排序；TWM 是否更好解释非法、证据不足和 review-only 方案。': 'simulationTests',
+  'Whether conventional simulation or optimization can already rank plans, and whether TWM better explains illegal, under-evidenced, and review-only options.': 'simulationTests',
+  '候选方案排序': 'candidateRanking',
+  'Candidate ranking': 'candidateRanking',
+  '空间变化预测或优化分数': 'spatialForecastScore',
+  'Spatial-change forecast or optimization score': 'spatialForecastScore',
+  '约束命中结果': 'constraintHitResults',
+  'Constraint-hit results': 'constraintHitResults',
+  '防止把已有土地利用模拟或优化能力重复实现为新方法。': 'simulationWhy',
+  'Prevents existing land-use simulation or optimization capabilities from being reimplemented and claimed as a new method.': 'simulationWhy',
+  'Ad hoc layer and field mapping': 'adHocLabel',
+  '角色契约是否真正减少接入错误，而不是只增加配置复杂度。': 'adHocTests',
+  'Whether role contracts genuinely reduce onboarding errors instead of only adding configuration complexity.': 'adHocTests',
+  '字段映射表': 'fieldMappingTable',
+  'Field-mapping table': 'fieldMappingTable',
+  '值域检查结果': 'valueDomainChecks',
+  'Value-domain check results': 'valueDomainChecks',
+  '人工修复记录': 'manualCorrectionLog',
+  'Manual correction log': 'manualCorrectionLog',
+  '验证 TWM 状态契约对数据落地的实际收益。': 'adHocWhy',
+  'Validates the practical data-onboarding benefit of the TWM state contract.': 'adHocWhy',
+  '人工叠加清单、审查记录、证据截图/图层版本和最终处置结果的脱敏同案导出。': 'expectedManualSource',
+  '规则引擎在同一批项目/图斑上的规则命中、空间关系、严重级别和条款引用导出。': 'expectedRuleSource',
+  '同一批候选方案的模拟/优化排序、可行性、被拒原因和人工/专家排序结果。': 'expectedSimulationSource',
+  'Manual GIS overlay plus checklist export': 'exportManualLabel',
+  'Rule-only spatial compliance engine export': 'exportRuleOnlyLabel',
+  'Land-use simulator or optimization-only ranking export': 'exportSimulationLabel',
+  'C1 same-case hard-constraint conflict recall export': 'templateC1Label',
+  'C2 evidence-gated audit defensibility export': 'templateC2Label',
+  'C3 action-conditioned plan-option triage export': 'templateC3Label',
+  '同一批历史项目中，TWM 是否比人工叠加清单更少漏掉永久基本农田、生态红线、用途管制等硬约束冲突？': 'questionC1',
+  '同一批审查案件中，TWM 是否比 rule-only 空间合规引擎提供更完整、可复核、不过度承诺的审计证据？': 'questionC2',
+  '同一批候选方案中，TWM 是否比模拟/优化-only 排序更能把合法可行、非法、证据不足和 review-only 方案区分清楚？': 'questionC3',
+  '用于 same-case overlap；没有它不能证明两边比较的是同一批项目。': 'metricCaseOverlap',
+  '作为 hard_constraint_conflict_recall 和 missed_blocking_conflict_rate 的分母。': 'metricTruthDenominator',
+  '与 ground_truth_conflict 组合计算召回和漏检率。': 'metricRecall',
+  '计算 evidence_link_completeness，防止只报风险不报依据。': 'metricEvidenceCompleteness',
+  '作为证据门控的安全反例；C1/C2 都需要压低该值。': 'metricUnsupportedSafety',
+  '用于 same-case audit comparison。': 'metricAuditOverlap',
+  '计算 audit_trail_completeness。': 'metricAuditCompleteness',
+  '计算 unsupported_recommendation_rate。': 'metricUnsupportedRate',
+  '与 review_task_true_positive 组合计算 review_task_precision。': 'metricReviewPrecision',
+  '为 review_task_precision 提供人工确认标签。': 'metricReviewLabel',
+  'C3 same-case comparison 的主 join key。': 'metricCandidateJoin',
+  '用于确定 top-k 方案集合。': 'metricTopKSet',
+  '与 legal_feasible 组合计算 legal_feasible_topk_precision。': 'metricLegalPrecision',
+  '判断推荐集是否包含非法或只能复核的方案。': 'metricIllegalReviewOnly',
+  '越低说明排序越接近人工可接受方案。': 'metricOracleRegret',
+  '计算 candidate_rejection_reason_coverage。': 'metricReasonCoverage',
+  '100 行只是早期回放门槛；论文或试点结论还需要按地区、时间和冲突类型做 power/sensitivity analysis。': 'noteC1',
+  '必须包含真实或脱敏复核结论；只有规则命中日志不足以证明审计可辩护性。': 'noteC2',
+  'C3 必须有真实或脱敏 action feasibility labels 和人工/专家排序；只有优化分数不足以验证 action-conditioned dynamics。': 'noteC3',
+  'Replace real project, parcel, candidate, organization and person identifiers with stable anonymous IDs.': 'sanitizeIds',
+  'Keep the same anonymous join key across TWM and baseline exports; otherwise the comparison is invalid.': 'sanitizeJoinKey',
+  'Use evidence_uri as an internal sanitized evidence index instead of raw file paths or sensitive text.': 'sanitizeEvidenceUri',
+  'Set not_for_production=true unless the export has passed internal data-governance release review.': 'sanitizeProductionFlag',
+  'Preserve rule_version, boundary_version and source_system because metric results are not interpretable without lineage.': 'sanitizeLineage',
+};
+
+const DYNAMIC_ROADMAP_KEYS: Record<string, string> = {
+  'Current TWM is a rigorous prototype: demo-complete and engineering-reviewable, but production, prediction and causal claims remain review-only until real observed history, policy labels and same-case baselines pass.': 'claimBoundary',
+  'Natural resources demo closure': 'phaseDemo',
+  'Auditable TWM engineering scaffold': 'phaseEngineering',
+  'Data foundation productization': 'phaseData',
+  'Trusted pilot validation': 'phasePilot',
+  'Production and air-gapped deployment': 'phaseProduction',
+  production_observed_history: 'blockerObservedHistory',
+  policy_action_history: 'blockerPolicyHistory',
+  service_decomposition: 'blockerServiceDecomposition',
+  full_flus_and_holdout_baselines: 'blockerBaselines',
+  'one pilot region with multi-year observed approval/review history': 'targetObservedHistory',
+  'authoritative policy/action feasibility labels': 'targetPolicyLabels',
+  'large facade service': 'currentFacade',
+  'state, dynamics, calibration, planner, evidence/audit and readiness services': 'targetServices',
+  'public benchmark and simplified/direct adapters': 'currentBaselines',
+  'same-case full FLUS/GeoSOS baseline plus cross-region/cross-year holdout': 'targetBaselines',
+  'secure real or sanitized observed history and policy/action labels for one pilot region': 'actionSecureHistory',
+  'freeze and manually accept the current natural-resources demo workflow': 'actionFreezeDemo',
+  'split the TWM facade service along state/dynamics/calibration/planner/evidence boundaries': 'actionSplitService',
+  'finish vector tiles or chunked preview, production CRS conversion ETL, and production lineage ingestion templates': 'actionFinishData',
+};
+
+const DYNAMIC_ROADMAP_DETAIL_KEYS: Record<string, string> = {
+  'Chinese-first TWM frontend tabs are implemented': 'frontendImplemented',
+  'data foundation map preview and bbox-aligned overview map are implemented': 'mapPreviewImplemented',
+  'automated E2E evidence exists for the demo workflow': 'e2eEvidence',
+  'manual acceptance and demo freeze before external presentation': 'manualAcceptance',
+  'state/rule/evidence/audit pipeline': 'auditPipeline',
+  'forecast, counterfactual rollout, validation ladder and beam planning consumer': 'forecastConsumer',
+  'trainable dynamics candidates and observational causal calibration reports': 'dynamicsReports',
+  'dynamics model registry release gate report is implemented': 'registryGate',
+  'persistent model registry/version rollback is implemented in service, repository, API and Agent tools': 'persistentRegistry',
+  'state snapshot lakehouse manifest maps TWM state, rule, evidence and registry layers to Iceberg/GeoParquet/Parquet storage': 'lakehouseManifest',
+  'state snapshot lakehouse materializer writes local Parquet/GeoParquet-compatible artifacts through service, API and Agent tools': 'lakehouseMaterializer',
+  'Iceberg/Sedona publish plan generates table DDL, artifact publish specs and geohash spatial index jobs': 'icebergPublishPlan',
+  'Spark executor contract validates Iceberg snapshot ids, row counts and Sedona spatial index job results': 'sparkExecutorContract',
+  'spark-submit execution bundle writes a production Spark/Sedona/Iceberg plan file and command package': 'sparkExecutionBundle',
+  'service decomposition': 'serviceDecomposition',
+  'credentialed production Spark run and external Iceberg audit acceptance': 'sparkAuditAcceptance',
+  'demo dataset catalog, CRS diagnostics and map overlay readiness are exposed': 'catalogExposed',
+  'full GeoJSON preview is available for the current demo scale': 'geojsonPreview',
+  'lineage and field drilldown reports are exposed through API, tools and frontend': 'lineageExposed',
+  'CRS remediation plan is exposed through API, tools and frontend': 'crsPlanExposed',
+  'authoritative production data templates are exposed through API, tools and frontend': 'templatesExposed',
+  'vector tiles or server-side chunking': 'vectorTiles',
+  'production CRS conversion ETL': 'productionCrs',
+  'production lineage ingestion templates': 'lineageTemplates',
+  'public Dynamic World and GeoSOS/FLUS benchmark evidence exists': 'benchmarkEvidence',
+  'claim ladder and baseline comparison contracts exist': 'claimContracts',
+  'real observed approval/review history': 'realHistory',
+  'policy/action feasibility labels': 'policyLabels',
+  'same-case baseline and holdout evaluation': 'sameCaseEvaluation',
+  'air-gapped deployment strategy exists': 'airGapStrategy',
+  'offline deployment package': 'offlinePackage',
+  'permissioned audit trail': 'permissionedAudit',
+  'model/rule/version comparison': 'versionComparison',
+  'sanitized diagnostic export': 'diagnosticExport',
+};
+
+const DYNAMIC_PILOT_KEYS: Record<string, string> = {
+  'Data foundation': 'dimensionData',
+  'Policy rules': 'dimensionPolicy',
+  Simulator: 'dimensionSimulator',
+  Planner: 'dimensionPlanner',
+  'Evidence and audit': 'dimensionAudit',
+  'keep demo and synthetic fixtures explicitly marked not-for-production': 'dataKeepMarked',
+  'add boundary-case fixture rows for CRS, geometry validity and layer role binding': 'dataBoundaryCases',
+  'authoritative rule clause to executable rule acceptance records': 'policyAcceptanceMissing',
+  'positive, negative and boundary fixtures for each production rule code': 'policyFixturesMissing',
+  'add one pass, one violation and one boundary-touching feature set per hard-constraint rule': 'policyAddCases',
+  'add stale/re-derived spatial-policy-rule fixtures linked to standard versions': 'policyAddVersionedFixtures',
+  'real temporal holdout from observed approval/review history': 'simulatorTemporalMissing',
+  'policy/action feasibility labels for action-mask validation': 'simulatorLabelsMissing',
+  'same-case full FLUS/GeoSOS or manual baseline evidence': 'simulatorBaselineMissing',
+  'extend synthetic false-allow and false-block cases without changing production gate status': 'simulatorStressCases',
+  'add same-case baseline export fixtures with train/holdout split metadata': 'simulatorAddBaselineFixtures',
+  'real candidate-plan source and human review outcomes': 'plannerCandidatesMissing',
+  'planner regret and legal-feasible top-k metrics against same-case baselines': 'plannerMetricsMissing',
+  'add candidate bundles where the highest utility candidate is infeasible and must be blocked': 'plannerAddBlockedBundle',
+  'add baseline replay fixtures for manual GIS, rule-only and optimizer outputs': 'plannerAddReplayFixtures',
+  'production human-review completion evidence': 'auditCompletionMissing',
+  'row-level evidence material lineage from authoritative systems': 'auditLineageMissing',
+  'add evidence-component fixtures for missing-document, conflicting-source and resolved-review cases': 'auditAddEvidenceFixtures',
+  'add audit export fixtures that prove raw geometries remain excluded from sanitized bundles': 'auditAddExportFixtures',
+  same_case_baseline_holdout_evidence: 'productionBaselineMissing',
+  'prepare authoritative observed-history intake template for custodian-provided rows': 'productionPrepareHistory',
+  'prepare authoritative policy/action feasibility template with allowed and blocked examples': 'productionPrepareLabels',
+};
+
+const DYNAMIC_RULE_COVERAGE_KEYS: Record<string, string> = {
+  '永久基本农田占用审查': 'farmlandRule',
+  '生态保护红线触碰审查': 'ecoRule',
+  '用途管制分区一致性审查': 'planningRule',
+  '城镇开发边界内外审查': 'urbanRule',
+  positive_violation: 'positiveViolation',
+  negative_pass: 'negativePass',
+  boundary_case: 'boundaryCase',
+};
 
 function statusText(value: any, fallback = '-') {
-  return labelFor(value, STATUS_LABELS, fallback);
+  const text = String(value || '').trim();
+  if (!text) return fallback;
+  const key = text.toLowerCase();
+  const translationKey = `territoryWorldModel.status.${key}`;
+  if (key === 'monitor') return i18n.t('territoryWorldModelDynamicPilotExtras.statusMonitor');
+  if (DYNAMIC_TWM_STATUS_KEYS[key]) return i18n.t(`territoryWorldModelDynamicStatusExtras.${DYNAMIC_TWM_STATUS_KEYS[key]}`);
+  return i18n.exists(translationKey) ? i18n.t(translationKey) : text;
 }
 
 function yesNo(value: any) {
-  return value ? '是' : '否';
+  return i18n.t(`territoryWorldModel.common.${value ? 'yes' : 'no'}`);
 }
 
 function mapOverlayReadinessText(value?: string) {
   const normalized = String(value || '').toLowerCase();
-  if (normalized === 'ready') return '可直接叠加';
-  if (normalized === 'blocked') return '需 CRS 转换';
-  if (normalized === 'empty') return '无空间图层';
-  return statusText(value, '未检测');
+  if (normalized === 'ready') return i18n.t('territoryWorldModel.dataBrowser.overlayReady');
+  if (normalized === 'blocked') return i18n.t('territoryWorldModel.dataBrowser.crsConversionRequired');
+  if (normalized === 'empty') return i18n.t('territoryWorldModel.status.no_spatial_layers');
+  return statusText(value, i18n.t('territoryWorldModel.dataBrowser.notChecked'));
 }
 
 function crsDiagnosticText(value?: string) {
   const normalized = String(value || '').toLowerCase();
-  if (normalized === 'wgs84_lonlat') return 'WGS84 经纬度';
-  if (normalized === 'projected_or_non_wgs84') return '需 CRS 转换';
-  if (normalized === 'lonlat_degrees') return '经纬度';
-  if (normalized === 'projected_or_large_numeric') return '投影/大数坐标';
-  return statusText(value, '未检测');
+  if (normalized === 'wgs84_lonlat') return i18n.t('territoryWorldModel.dataBrowser.wgs84Coordinates');
+  if (normalized === 'projected_or_non_wgs84') return i18n.t('territoryWorldModel.dataBrowser.crsConversionRequired');
+  if (normalized === 'lonlat_degrees') return i18n.t('territoryWorldModel.dataBrowser.lonLatCoordinates');
+  if (normalized === 'projected_or_large_numeric') return i18n.t('territoryWorldModel.dataBrowser.projectedCoordinates');
+  return statusText(value, i18n.t('territoryWorldModel.dataBrowser.notChecked'));
 }
 
 function displayText(value: any, fallback = '-') {
   const text = String(value || '').trim();
   if (!text) return fallback;
-  const mapped = DISPLAY_LABELS[text] || STATUS_LABELS[text.toLowerCase()] || text;
-  return mapped
-    .replace(/synthetic\/not-for-production/g, '合成或非生产数据')
-    .replace(/not-for-production/g, '非生产数据')
-    .replace(/rule-only/g, '单纯规则')
-    .replace(/manual GIS overlay/g, '人工 GIS 叠加')
-    .replace(/optimization-only/g, '单纯优化')
-    .replace(/beam ranking/g, '方案比选排序')
-    .replace(/action-mask/g, '动作可行性掩码');
+  const observedHistoryShortfall = text.match(/^生产可用观察历史行数仍不足：(\d+)$/);
+  if (observedHistoryShortfall) {
+    return i18n.t('territoryWorldModelDynamicDataGovernanceExtras.observedHistoryShortfall', { count: Number(observedHistoryShortfall[1]) });
+  }
+  const policyHistoryShortfall = text.match(/^生产政策动作历史仍不足：(\d+)$/);
+  if (policyHistoryShortfall) {
+    return i18n.t('territoryWorldModelDynamicDataGovernanceExtras.policyHistoryShortfall', { count: Number(policyHistoryShortfall[1]) });
+  }
+  const lineageCounts = text.match(/^(\d+) not-for-production records; (\d+) synthetic records$/);
+  if (lineageCounts) {
+    return i18n.t('territoryWorldModelDynamicLineageExtras.recordCounts', {
+      nonProduction: Number(lineageCounts[1]),
+      synthetic: Number(lineageCounts[2]),
+    });
+  }
+  const pilotRows = text.match(/^(production_observed_history_rows|production_policy_history_rows)=(\d+)$/);
+  if (pilotRows) {
+    const key = pilotRows[1] === 'production_observed_history_rows' ? 'observedRows' : 'policyRows';
+    return i18n.t(`territoryWorldModelDynamicPilotExtras.${key}`, { count: Number(pilotRows[2]) });
+  }
+  const statusKey = `territoryWorldModel.status.${text.toLowerCase()}`;
+  if (i18n.exists(statusKey)) return i18n.t(statusKey);
+  const sourceText = SOURCE_DISPLAY_LABELS[text] || text;
+  const dynamicKey = DYNAMIC_LABEL_KEYS[sourceText];
+  if (dynamicKey) {
+    const namespace = /^(experimentCrossRegion|experimentDecision)/.test(dynamicKey)
+      ? 'territoryWorldModelDynamicResearchExperimentDetails'
+      : dynamicKey.startsWith('experiment')
+        ? 'territoryWorldModelDynamicResearchExtras'
+        : 'territoryWorldModel.dynamicResearch';
+    return i18n.t(`${namespace}.${dynamicKey}`);
+  }
+  const dataFoundationKey = DYNAMIC_DATA_FOUNDATION_KEYS[text] || DYNAMIC_DATA_FOUNDATION_KEYS[sourceText];
+  if (dataFoundationKey) {
+    const namespace = dataFoundationKey.startsWith('fit')
+      ? 'territoryWorldModelDynamicDataFoundationExtras'
+      : 'territoryWorldModel.dynamicDataFoundation';
+    return i18n.t(`${namespace}.${dataFoundationKey}`);
+  }
+  const dataFoundationDetailKey = DYNAMIC_DATA_FOUNDATION_DETAIL_KEYS[text] || DYNAMIC_DATA_FOUNDATION_DETAIL_KEYS[sourceText];
+  if (dataFoundationDetailKey) return i18n.t(`territoryWorldModelDynamicDataFoundationDetails.${dataFoundationDetailKey}`);
+  const dataGovernanceKey = DYNAMIC_DATA_GOVERNANCE_KEYS[text] || DYNAMIC_DATA_GOVERNANCE_KEYS[sourceText];
+  if (dataGovernanceKey) return i18n.t(`territoryWorldModelDynamicDataGovernanceExtras.${dataGovernanceKey}`);
+  const authoritativeTemplateKey = DYNAMIC_AUTHORITATIVE_TEMPLATE_KEYS[text] || DYNAMIC_AUTHORITATIVE_TEMPLATE_KEYS[sourceText];
+  if (authoritativeTemplateKey) return i18n.t(`territoryWorldModelDynamicAuthoritativeTemplateExtras.${authoritativeTemplateKey}`);
+  const crsWorkflowKey = DYNAMIC_CRS_WORKFLOW_KEYS[text] || DYNAMIC_CRS_WORKFLOW_KEYS[sourceText];
+  if (crsWorkflowKey) {
+    const namespace = crsWorkflowKey === 'claimBoundary'
+      ? 'territoryWorldModelDynamicCrsBoundaryExtras'
+      : 'territoryWorldModelDynamicCrsWorkflowExtras';
+    return i18n.t(`${namespace}.${crsWorkflowKey}`);
+  }
+  const lineageKey = DYNAMIC_LINEAGE_KEYS[text] || DYNAMIC_LINEAGE_KEYS[sourceText];
+  if (lineageKey) return i18n.t(`territoryWorldModelDynamicLineageExtras.${lineageKey}`);
+  const roadmapKey = DYNAMIC_ROADMAP_KEYS[sourceText];
+  if (roadmapKey) return i18n.t(`territoryWorldModelDynamicRoadmapExtras.${roadmapKey}`);
+  const roadmapDetailKey = DYNAMIC_ROADMAP_DETAIL_KEYS[sourceText];
+  if (roadmapDetailKey) return i18n.t(`territoryWorldModelDynamicRoadmapDetails.${roadmapDetailKey}`);
+  const pilotKey = DYNAMIC_PILOT_KEYS[sourceText];
+  if (pilotKey) return i18n.t(`territoryWorldModelDynamicPilotExtras.${pilotKey}`);
+  const ruleCoverageKey = DYNAMIC_RULE_COVERAGE_KEYS[text] || DYNAMIC_RULE_COVERAGE_KEYS[sourceText];
+  if (ruleCoverageKey) return i18n.t(`territoryWorldModelDynamicRuleCoverageExtras.${ruleCoverageKey}`);
+  const claimKey = DYNAMIC_CLAIM_KEYS[sourceText];
+  if (claimKey) return i18n.t(`territoryWorldModelDynamicClaimExtras.${claimKey}`);
+  const researchDataKey = DYNAMIC_RESEARCH_DATA_KEYS[text] || DYNAMIC_RESEARCH_DATA_KEYS[sourceText];
+  if (researchDataKey) return i18n.t(`territoryWorldModelDynamicResearchDataExtras.${researchDataKey}`);
+  const runtimeKey = DYNAMIC_TWM_RUNTIME_KEYS[text] || DYNAMIC_TWM_RUNTIME_KEYS[sourceText];
+  if (runtimeKey) return i18n.t(`territoryWorldModelDynamicRuntimeExtras.${runtimeKey}`);
+  const baselineDetailKey = DYNAMIC_BASELINE_DETAIL_KEYS[text] || DYNAMIC_BASELINE_DETAIL_KEYS[sourceText];
+  if (baselineDetailKey) return i18n.t(`territoryWorldModelDynamicBaselineDetailExtras.${baselineDetailKey}`);
+  const baselineKey = DYNAMIC_BASELINE_KEYS[text] || DYNAMIC_BASELINE_KEYS[sourceText];
+  if (baselineKey) {
+    const namespace = /^(template|export)/.test(baselineKey)
+      ? 'territoryWorldModelDynamicBaselineLabelExtras'
+      : /^(question|metric|note|sanitize)/.test(baselineKey)
+        ? 'territoryWorldModelDynamicBaselineTemplateExtras'
+        : 'territoryWorldModelDynamicBaselineExtras';
+    return i18n.t(`${namespace}.${baselineKey}`);
+  }
+  const localized = getLocale() === 'zh-CN' ? (DISPLAY_LABELS[sourceText] || sourceText) : sourceText;
+  return localized
+    .replace(/synthetic\/not-for-production/g, i18n.t('territoryWorldModel.runtime.replacements.syntheticNonProduction'))
+    .replace(/not-for-production/g, i18n.t('territoryWorldModel.runtime.replacements.nonProduction'))
+    .replace(/rule-only/g, i18n.t('territoryWorldModel.runtime.replacements.ruleOnly'))
+    .replace(/manual GIS overlay/g, i18n.t('territoryWorldModel.runtime.replacements.manualGisOverlay'))
+    .replace(/optimization-only/g, i18n.t('territoryWorldModel.runtime.replacements.optimizationOnly'))
+    .replace(/beam ranking/g, i18n.t('territoryWorldModel.runtime.replacements.beamRanking'))
+    .replace(/action-mask/g, i18n.t('territoryWorldModel.runtime.replacements.actionMask'));
 }
 
 function parseError(data: any, fallback: string) {
@@ -1578,17 +2304,17 @@ function clampRatio(value: any, fallback = 0.72) {
   return Math.max(0, Math.min(1, num));
 }
 
-function compactList(values: any[] | undefined, fallback = '无') {
+function compactList(values: any[] | undefined, fallback = i18n.t('territoryWorldModel.common.none')) {
   const rows = (values || []).filter(Boolean).map(String);
   return rows.length ? rows.slice(0, 4).join(', ') : fallback;
 }
 
-function compactDisplayList(values: any[] | undefined, fallback = '无') {
+function compactDisplayList(values: any[] | undefined, fallback = i18n.t('territoryWorldModel.common.none')) {
   const rows = (values || []).filter(Boolean).map(item => displayText(item));
   return rows.length ? rows.slice(0, 4).join(', ') : fallback;
 }
 
-function compactBbox(value: any, fallback = '无范围') {
+function compactBbox(value: any, fallback = i18n.t('territoryWorldModel.dataBrowser.noExtent')) {
   if (!Array.isArray(value) || value.length !== 4) return fallback;
   return value.map(item => {
     const num = Number(item);
@@ -1611,8 +2337,8 @@ const TWM_PROPERTY_FIELD_PRIORITY = [
 ];
 
 function compactSamplePropertyValue(value: any) {
-  if (value === null || value === undefined || value === '') return '空';
-  if (typeof value === 'boolean') return value ? '是' : '否';
+  if (value === null || value === undefined || value === '') return i18n.t('territoryWorldModel.dataBrowser.emptyValue');
+  if (typeof value === 'boolean') return yesNo(value);
   if (typeof value === 'number') return Number.isInteger(value) ? fmt(value, 0) : String(Number(value.toFixed(3)));
   const text = String(value);
   return text.length > 18 ? `${text.slice(0, 18)}...` : text;
@@ -1620,17 +2346,21 @@ function compactSamplePropertyValue(value: any) {
 
 function compactPropertyFieldNames(fields?: TwmDataFoundationPropertyField[], totalCount?: number) {
   const names = (fields || []).map(field => field.name).filter(Boolean);
-  if (!names.length) return '无字段';
+  if (!names.length) return i18n.t('territoryWorldModel.dataBrowser.noFields');
   const priority = TWM_PROPERTY_FIELD_PRIORITY.filter(name => names.includes(name));
   const ranked = [...priority, ...names.filter(name => !priority.includes(name))].slice(0, 5);
   const count = Number(totalCount || names.length);
-  return `${fmt(count, 0)} 个：${ranked.join('、')}${count > ranked.length ? ' 等' : ''}`;
+  return i18n.t('territoryWorldModel.dataBrowser.fieldSummary', {
+    count: fmt(count, 0),
+    fields: ranked.join(', '),
+    more: count > ranked.length ? i18n.t('territoryWorldModel.dataBrowser.andMore') : '',
+  });
 }
 
 function compactSampleProperties(sample?: Record<string, any>) {
   const source = sample || {};
   const entries = Object.entries(source);
-  if (!entries.length) return '无样例属性';
+  if (!entries.length) return i18n.t('territoryWorldModel.dataBrowser.noSampleProperties');
   const priorityEntries = TWM_PROPERTY_FIELD_PRIORITY
     .filter(name => Object.prototype.hasOwnProperty.call(source, name))
     .map(name => [name, source[name]] as [string, any]);
@@ -1659,11 +2389,11 @@ function stateGraphNodeClass(node: TwmStateGraphNode) {
 
 function stateGraphSummaryText(node: TwmStateGraphNode) {
   const summary = node.summary;
-  if (!summary) return displayText(node.role || node.kind || '节点');
+  if (!summary) return displayText(node.role || node.kind || i18n.t('territoryWorldModel.runtime.node'));
   if (typeof summary === 'string') return displayText(summary);
   const entries = Object.entries(summary).slice(0, 3);
-  if (!entries.length) return displayText(node.role || node.kind || '节点');
-  return entries.map(([key, value]) => `${displayText(key)}=${compactSamplePropertyValue(value)}`).join('；');
+  if (!entries.length) return displayText(node.role || node.kind || i18n.t('territoryWorldModel.runtime.node'));
+  return entries.map(([key, value]) => `${displayText(key)}=${compactSamplePropertyValue(value)}`).join(i18n.t('territoryWorldModel.common.listSeparator'));
 }
 
 function stateGraphLayout(nodes: TwmStateGraphNode[], edges: TwmStateGraphEdge[]) {
@@ -1702,6 +2432,7 @@ function stateGraphLayout(nodes: TwmStateGraphNode[], edges: TwmStateGraphEdge[]
 }
 
 export default function TerritoryWorldModelTab() {
+  const { t, i18n: i18nInstance } = useTranslation();
   const [status, setStatus] = useState<TwmStatus | null>(null);
   const [businessScenarios, setBusinessScenarios] = useState<TwmBusinessScenario[]>(FALLBACK_BUSINESS_SCENARIOS);
   const [selectedBusinessScenarioId, setSelectedBusinessScenarioId] = useState(FALLBACK_BUSINESS_SCENARIOS[0].id);
@@ -1731,15 +2462,15 @@ export default function TerritoryWorldModelTab() {
   const [crsRemediationPlan, setCrsRemediationPlan] = useState<TwmDataFoundationCrsRemediationPlan | null>(null);
   const [authoritativeTemplates, setAuthoritativeTemplates] = useState<TwmDataFoundationAuthoritativeTemplates | null>(null);
 
-  const [projectName, setProjectName] = useState('TWM 璧山多行政单元工作空间');
+  const [projectName, setProjectName] = useState(() => t('territoryWorldModel.workspace.defaultProjectName'));
   const [regionCode, setRegionCode] = useState(DEFAULT_DEMO_BUNDLE.regionCode);
   const [bundleDir, setBundleDir] = useState(DEFAULT_DEMO_BUNDLE.bundleDir);
   const [optimizationDir, setOptimizationDir] = useState(DEFAULT_DEMO_BUNDLE.optimizationDir);
-  const [stateLabel, setStateLabel] = useState(DEFAULT_DEMO_BUNDLE.label);
+  const [stateLabel, setStateLabel] = useState(() => t(`territoryWorldModel.workspace.presets.${DEFAULT_DEMO_BUNDLE.key}`));
   const [includeAuxiliary, setIncludeAuxiliary] = useState(true);
   const [actionType, setActionType] = useState('protect');
   const [targetRole, setTargetRole] = useState('project');
-  const [scenario, setScenario] = useState(FALLBACK_BUSINESS_SCENARIOS[0].label);
+  const [scenario, setScenario] = useState(FALLBACK_BUSINESS_SCENARIOS[0].default_scenario || FALLBACK_BUSINESS_SCENARIOS[0].id);
   const [evidenceCoverage, setEvidenceCoverage] = useState(FALLBACK_BUSINESS_SCENARIOS[0].default_evidence_coverage || 0.78);
   const [horizon, setHorizon] = useState(FALLBACK_BUSINESS_SCENARIOS[0].default_horizon || 3);
 
@@ -1769,6 +2500,17 @@ export default function TerritoryWorldModelTab() {
   const selectedBusinessScenario = (
     businessScenarios.find(item => item.id === selectedBusinessScenarioId) || businessScenarios[0] || FALLBACK_BUSINESS_SCENARIOS[0]
   );
+  const businessScenarioText = (item: TwmBusinessScenario, field: 'label' | 'decisionQuestion' | 'operatorGoal') => {
+    const translationKey = `territoryWorldModel.businessScenarios.${item.id}.${field}`;
+    const fallback = field === 'label' ? item.label : field === 'decisionQuestion' ? item.decision_question : item.operator_goal;
+    return i18nInstance.exists(translationKey) ? t(translationKey) : (fallback || '-');
+  };
+  const businessScenarioList = (item: TwmBusinessScenario, field: 'requiredEvidence' | 'outputs' | 'guardrails') => {
+    const translationKey = `territoryWorldModel.businessScenarios.${item.id}.${field}`;
+    const translated = i18nInstance.exists(translationKey) ? t(translationKey, { returnObjects: true }) : null;
+    const fallback = field === 'requiredEvidence' ? item.required_evidence : field === 'outputs' ? item.decision_outputs : item.guardrails;
+    return Array.isArray(translated) ? translated.map(String) : (fallback || []);
+  };
   const selectedProject = projects.find(item => item.id === selectedProjectId) || null;
   const selectedState = states.find(item => item.id === selectedStateId) || null;
   const latestResult = stateGraph || beamResult || validationResult || forecastResult || auditResult || ruleResult || stateDetail;
@@ -1807,12 +2549,12 @@ export default function TerritoryWorldModelTab() {
   const readiness = useMemo(() => {
     const repository = status?.repository || {};
     return [
-      { label: '项目', value: repository.project_count ?? projects.length },
-      { label: '状态', value: repository.state_version_count ?? states.length },
-      { label: '规则', value: repository.policy_rule_count ?? '-' },
-      { label: '命中', value: repository.rule_hit_count ?? hits.length },
+      { id: 'projects', label: t('territoryWorldModel.kpi.projects'), value: repository.project_count ?? projects.length },
+      { id: 'states', label: t('territoryWorldModel.kpi.states'), value: repository.state_version_count ?? states.length },
+      { id: 'rules', label: t('territoryWorldModel.kpi.rules'), value: repository.policy_rule_count ?? '-' },
+      { id: 'hits', label: t('territoryWorldModel.kpi.hits'), value: repository.rule_hit_count ?? hits.length },
     ];
-  }, [status, projects.length, states.length, hits.length]);
+  }, [status, projects.length, states.length, hits.length, t, i18nInstance.language]);
 
   const withRun = async <T,>(key: RunKey, task: () => Promise<T>): Promise<T | null> => {
     setRunning(key);
@@ -1820,7 +2562,7 @@ export default function TerritoryWorldModelTab() {
     try {
       return await task();
     } catch (e: any) {
-      setError(e?.message || '请求失败');
+      setError(e?.message || t('territoryWorldModel.errors.requestFailed'));
       return null;
     } finally {
       setRunning(null);
@@ -1830,6 +2572,7 @@ export default function TerritoryWorldModelTab() {
   const api = async (url: string, init?: RequestInit) => {
     const headers = {
       Accept: 'application/json',
+      ...getLocaleHeaders(),
       ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
       ...(init?.headers || {}),
     };
@@ -1844,17 +2587,17 @@ export default function TerritoryWorldModelTab() {
     if (!looksLikeJson) {
       const isHtml = /<!doctype html/i.test(text) || /<html[\s>]/i.test(text);
       const detail = isHtml
-        ? '当前后端返回了前端 HTML，通常表示 8000 端口运行的是旧后端、静态前端服务，或 TWM API 路由尚未挂载。请重启包含最新代码的 Chainlit/FastAPI 后端后再刷新。'
-        : `返回内容不是 JSON: ${previewText(text) || contentType || 'empty response'}`;
-      throw new Error(`TWM API 响应格式错误（${url}）。${detail}`);
+        ? t('territoryWorldModel.errors.htmlResponse')
+        : t('territoryWorldModel.errors.nonJsonResponse', { detail: previewText(text) || contentType || 'empty response' });
+      throw new Error(t('territoryWorldModel.errors.invalidApiResponse', { url, detail }));
     }
     let data: any = {};
     try {
       data = text ? JSON.parse(text) : {};
     } catch (e: any) {
-      throw new Error(`TWM API JSON 解析失败（${url}）: ${e?.message || 'invalid JSON'}`);
+      throw new Error(t('territoryWorldModel.errors.jsonParseFailed', { url, message: e?.message || 'invalid JSON' }));
     }
-    if (!resp.ok || data.error) throw new Error(parseError(data, `请求失败: ${url}`));
+    if (!resp.ok || data.error) throw new Error(parseError(data, t('territoryWorldModel.errors.requestUrlFailed', { url })));
     return data;
   };
 
@@ -2054,17 +2797,17 @@ export default function TerritoryWorldModelTab() {
     setBundleDir(preset.bundleDir);
     setOptimizationDir(preset.optimizationDir);
     setRegionCode(preset.regionCode);
-    setStateLabel(preset.label);
-    setProjectName(`TWM ${preset.label}工作空间`);
+    setStateLabel(t(`territoryWorldModel.workspace.presets.${preset.key}`));
+    setProjectName(t('territoryWorldModel.workspace.projectNameFromPreset', { name: t(`territoryWorldModel.workspace.presets.${preset.key}`) }));
   };
 
   const applyBusinessScenario = (scenarioId: string) => {
     const item = businessScenarios.find(entry => entry.id === scenarioId) || FALLBACK_BUSINESS_SCENARIOS[0];
     setSelectedBusinessScenarioId(item.id);
-    setProjectName(`TWM ${item.label}`);
+    setProjectName(t('territoryWorldModel.workspace.projectNameFromScenario', { name: businessScenarioText(item, 'label') }));
     setActionType(item.default_action_type || 'inspect');
     setTargetRole(item.default_target_role || 'project');
-    setScenario(item.label || item.default_scenario || item.id);
+    setScenario(item.default_scenario || item.id);
     setEvidenceCoverage(clampRatio(item.default_evidence_coverage, 0.72));
     setHorizon(Math.max(1, Math.min(12, Number(item.default_horizon || 3))));
   };
@@ -2106,7 +2849,7 @@ export default function TerritoryWorldModelTab() {
           layers: [
             ...twmMapLayers(stage),
             {
-              name: `状态图谱 · ${stateGraphNodeLabel(node)}`,
+              name: t('territoryWorldModel.runtime.stateGraphLayer', { name: stateGraphNodeLabel(node) }),
               type: 'polygon',
               geojsonData: featureCollection([
                 twmMapFeature(
@@ -2114,10 +2857,12 @@ export default function TerritoryWorldModelTab() {
                   stateGraphNodeLabel(node),
                   displayText(node.role || node.kind),
                   bboxRing(minLng, minLat, maxLng, maxLat),
-                  { 说明: stateGraphSummaryText(node) },
+                  { _twm_description: stateGraphSummaryText(node) },
                 ),
               ]),
               style: { color: '#0f766e', fillColor: '#14b8a6', fillOpacity: 0.28, weight: 3 },
+              tooltip_fields: ['_twm_description'],
+              tooltip_labels: { _twm_description: t('territoryWorldModel.runtime.description') },
             },
           ],
         });
@@ -2128,7 +2873,7 @@ export default function TerritoryWorldModelTab() {
   };
 
   const loadStateGraph = async (focusNodeId = stateGraphFocusNodeId) => {
-    if (!selectedStateId) return setError('请先构建或选择状态');
+    if (!selectedStateId) return setError(t('territoryWorldModel.runtime.selectOrBuildState'));
     await withRun('stateGraph', async () => {
       const params = new URLSearchParams({
         include_full_graph: 'false',
@@ -2157,14 +2902,14 @@ export default function TerritoryWorldModelTab() {
     return (data.layers || [])
       .filter((layer: TwmDataFoundationMapPreviewLayer) => visible.has(dataFoundationLayerKey(layer)))
       .map((layer: TwmDataFoundationMapPreviewLayer) => ({
-        name: `数据基础 · ${displayText(layer.name || layer.path)}`,
+        name: t('territoryWorldModel.runtime.dataFoundationLayer', { name: displayText(layer.name || layer.path) }),
         type: 'polygon',
         geojsonData: layer.geojson,
         style: dataFoundationLayerStyle(layer.name || layer.path || ''),
         tooltip_fields: ['_twm_source_file', '_twm_dataset_id'],
         tooltip_labels: {
-          _twm_source_file: '来源文件',
-          _twm_dataset_id: '数据包',
+          _twm_source_file: t('territoryWorldModel.runtime.sourceFile'),
+          _twm_dataset_id: t('territoryWorldModel.runtime.dataset'),
         },
       }));
   };
@@ -2190,7 +2935,7 @@ export default function TerritoryWorldModelTab() {
     const canOverlay = !readiness || (readiness.status === 'ready' && Number(readiness.blocked_layer_count || 0) === 0);
     if (!canOverlay) {
       setVisibleDataMapLayerNames([]);
-      setDataMapPreviewSummary(`未联动：${readiness?.message || '空间图层坐标不是经纬度范围，直接叠加前需要 CRS 识别和转换。'}`);
+      setDataMapPreviewSummary(t('territoryWorldModel.runtime.mapNotLinked', { message: displayText(readiness?.message, t('territoryWorldModel.runtime.coordinateConversionRequired')) }));
       return;
     }
     const layerNames = (data.layers || []).map(dataFoundationLayerKey).filter(Boolean);
@@ -2202,10 +2947,10 @@ export default function TerritoryWorldModelTab() {
     }, 0);
     const readinessText = mapOverlayReadinessText(readiness?.status);
     if (summaryMode === 'layer') {
-      setDataMapPreviewSummary(`已联动图层 ${layerPath}，${fmt(loadedCount, 0)} 个空间要素；坐标诊断：${readinessText}；源数据仍为演示/非生产。`);
+      setDataMapPreviewSummary(t('territoryWorldModel.runtime.layerLinked', { layer: layerPath, count: fmt(loadedCount, 0), readiness: readinessText }));
       return;
     }
-    setDataMapPreviewSummary(`已全量联动 ${mapLayers.length} 个空间图层、${fmt(loadedCount, 0)} 个空间要素；坐标诊断：${readinessText}；源数据仍为演示/非生产。`);
+    setDataMapPreviewSummary(t('territoryWorldModel.runtime.allLayersLinked', { layers: fmt(mapLayers.length, 0), count: fmt(loadedCount, 0), readiness: readinessText }));
   };
 
   const toggleDataFoundationMapLayer = (layerName: string) => {
@@ -2221,12 +2966,12 @@ export default function TerritoryWorldModelTab() {
     }
     setVisibleDataMapLayerNames(next);
     pushDataFoundationPreviewToMap(dataMapPreview, next);
-    setDataMapPreviewSummary(`当前显示 ${next.length}/${allLayerNames.length} 个空间图层；可继续用图层开关聚焦查看。`);
+    setDataMapPreviewSummary(t('territoryWorldModel.runtime.visibleLayers', { visible: fmt(next.length, 0), total: fmt(allLayerNames.length, 0) }));
   };
 
   const syncDataFoundationMapPreview = async () => {
     if (!selectedDataPackage) {
-      setError('没有可预览的数据包');
+      setError(t('territoryWorldModel.runtime.noDatasetToPreview'));
       return;
     }
     setDataMapPreviewLoading(true);
@@ -2235,7 +2980,7 @@ export default function TerritoryWorldModelTab() {
       const data = await api(`/api/twm/data-foundation-map-preview/${encodeURIComponent(selectedDataPackage.id)}?max_features_per_layer=all`);
       applyDataFoundationMapPreview(data, 'full');
     } catch (e: any) {
-      setError(e?.message || '空间数据预览失败');
+      setError(e?.message || t('territoryWorldModel.runtime.spatialPreviewFailed'));
     } finally {
       setDataMapPreviewLoading(false);
     }
@@ -2243,12 +2988,12 @@ export default function TerritoryWorldModelTab() {
 
   const syncDataFoundationLayerMapPreview = async (layerPath: string) => {
     if (!selectedDataPackage) {
-      setError('没有可预览的数据包');
+      setError(t('territoryWorldModel.runtime.noDatasetToPreview'));
       return;
     }
     const normalizedLayerPath = String(layerPath || '').trim();
     if (!normalizedLayerPath) {
-      setError('没有可预览的空间图层');
+      setError(t('territoryWorldModel.runtime.noSpatialLayerToPreview'));
       return;
     }
     setDataMapPreviewLoading(true);
@@ -2259,7 +3004,7 @@ export default function TerritoryWorldModelTab() {
       );
       applyDataFoundationMapPreview(data, 'layer', normalizedLayerPath);
     } catch (e: any) {
-      setError(e?.message || '空间图层预览失败');
+      setError(e?.message || t('territoryWorldModel.runtime.layerPreviewFailed'));
     } finally {
       setDataMapPreviewLoading(false);
     }
@@ -2267,12 +3012,12 @@ export default function TerritoryWorldModelTab() {
 
   const loadDataFoundationLayerDetail = async (layerPath: string) => {
     if (!selectedDataPackage) {
-      setError('没有可查看的数据包');
+      setError(t('territoryWorldModel.runtime.noDatasetToView'));
       return;
     }
     const normalizedLayerPath = String(layerPath || '').trim();
     if (!normalizedLayerPath) {
-      setError('没有可查看的空间图层');
+      setError(t('territoryWorldModel.runtime.noSpatialLayerToView'));
       return;
     }
     setSelectedLayerDetailPath(normalizedLayerPath);
@@ -2287,7 +3032,7 @@ export default function TerritoryWorldModelTab() {
 
   const loadDataFoundationLineage = async () => {
     if (!selectedDataPackage) {
-      setError('没有可查看 lineage 的数据包');
+      setError(t('territoryWorldModel.runtime.noDatasetForLineage'));
       return;
     }
     await withRun('lineage', async () => {
@@ -2299,7 +3044,7 @@ export default function TerritoryWorldModelTab() {
 
   const loadDataFoundationCrsRemediation = async () => {
     if (!selectedDataPackage) {
-      setError('没有可查看 CRS 方案的数据包');
+      setError(t('territoryWorldModel.runtime.noDatasetForCrs'));
       return;
     }
     await withRun('crsRemediation', async () => {
@@ -2342,12 +3087,12 @@ export default function TerritoryWorldModelTab() {
           name: projectName,
           region_code: regionCode,
           business_scenario: selectedBusinessScenario.id,
-          description: selectedBusinessScenario.decision_question || '',
+          description: businessScenarioText(selectedBusinessScenario, 'decisionQuestion'),
           metadata: {
-            decision_question: selectedBusinessScenario.decision_question,
-            operator_goal: selectedBusinessScenario.operator_goal,
-            required_evidence: selectedBusinessScenario.required_evidence || [],
-            decision_outputs: selectedBusinessScenario.decision_outputs || [],
+            decision_question: businessScenarioText(selectedBusinessScenario, 'decisionQuestion'),
+            operator_goal: businessScenarioText(selectedBusinessScenario, 'operatorGoal'),
+            required_evidence: businessScenarioList(selectedBusinessScenario, 'requiredEvidence'),
+            decision_outputs: businessScenarioList(selectedBusinessScenario, 'outputs'),
           },
         }),
       });
@@ -2358,7 +3103,7 @@ export default function TerritoryWorldModelTab() {
   };
 
   const buildState = async () => {
-    if (!selectedProjectId) return setError('请先创建或选择项目');
+    if (!selectedProjectId) return setError(t('territoryWorldModel.runtime.selectOrCreateProject'));
     await withRun('build', async () => {
       const data = await api(`/api/twm/projects/${encodeURIComponent(selectedProjectId)}/build-state`, {
         method: 'POST',
@@ -2378,7 +3123,7 @@ export default function TerritoryWorldModelTab() {
   };
 
   const evaluateRules = async () => {
-    if (!selectedStateId) return setError('请先构建或选择状态');
+    if (!selectedStateId) return setError(t('territoryWorldModel.runtime.selectOrBuildState'));
     await withRun('evaluate', async () => {
       const data = await api(`/api/twm/states/${encodeURIComponent(selectedStateId)}/evaluate-rules`, {
         method: 'POST',
@@ -2393,7 +3138,7 @@ export default function TerritoryWorldModelTab() {
   };
 
   const runForecast = async () => {
-    if (!selectedStateId) return setError('请先构建或选择状态');
+    if (!selectedStateId) return setError(t('territoryWorldModel.runtime.selectOrBuildState'));
     await withRun('forecast', async () => {
       const data = await api(`/api/twm/states/${encodeURIComponent(selectedStateId)}/forecast`, {
         method: 'POST',
@@ -2405,7 +3150,7 @@ export default function TerritoryWorldModelTab() {
           evidence_coverage: evidenceCoverage,
           treatment: 'causal_calibrated',
           auto_action_mask: true,
-          scenario_context: selectedBusinessScenario.decision_question || selectedBusinessScenario.label,
+          scenario_context: businessScenarioText(selectedBusinessScenario, 'decisionQuestion'),
         }),
       });
       setForecastResult(data);
@@ -2414,7 +3159,7 @@ export default function TerritoryWorldModelTab() {
   };
 
   const runValidation = async () => {
-    if (!selectedStateId) return setError('请先构建或选择状态');
+    if (!selectedStateId) return setError(t('territoryWorldModel.runtime.selectOrBuildState'));
     await withRun('validation', async () => {
       const data = await api(`/api/twm/states/${encodeURIComponent(selectedStateId)}/validation-report`, {
         method: 'POST',
@@ -2425,7 +3170,7 @@ export default function TerritoryWorldModelTab() {
           treatment: 'causal_calibrated',
           action_type: actionType,
           target_role: targetRole,
-          scenario_context: selectedBusinessScenario.decision_question || selectedBusinessScenario.label,
+          scenario_context: businessScenarioText(selectedBusinessScenario, 'decisionQuestion'),
         }),
       });
       setValidationResult(data);
@@ -2434,7 +3179,7 @@ export default function TerritoryWorldModelTab() {
   };
 
   const runAudit = async () => {
-    if (!selectedStateId) return setError('请先构建或选择状态');
+    if (!selectedStateId) return setError(t('territoryWorldModel.runtime.selectOrBuildState'));
     await withRun('audit', async () => {
       const data = await api(`/api/twm/states/${encodeURIComponent(selectedStateId)}/audit-report`);
       setAuditResult(data);
@@ -2443,7 +3188,7 @@ export default function TerritoryWorldModelTab() {
   };
 
   const loadCandidates = async () => {
-    if (!selectedStateId) return setError('请先构建或选择状态');
+    if (!selectedStateId) return setError(t('territoryWorldModel.runtime.selectOrBuildState'));
     await withRun('candidates', async () => {
       const data = await api(`/api/twm/states/${encodeURIComponent(selectedStateId)}/farmland-layout-candidates`, {
         method: 'POST',
@@ -2455,7 +3200,7 @@ export default function TerritoryWorldModelTab() {
   };
 
   const runBeam = async () => {
-    if (!selectedStateId) return setError('请先构建或选择状态');
+    if (!selectedStateId) return setError(t('territoryWorldModel.runtime.selectOrBuildState'));
     await withRun('beam', async () => {
       const data = await api(`/api/twm/states/${encodeURIComponent(selectedStateId)}/farmland-layout-optimization-beam-plan`, {
         method: 'POST',
@@ -2501,7 +3246,7 @@ export default function TerritoryWorldModelTab() {
   const runBaselineExportValidation = async () => {
     const claims = claimMatrix.claims || [];
     const selectedClaim = claims.find(item => item.claim_id === selectedClaimId) || claims[0];
-    if (!selectedClaim) return setError('没有可校验的研究主张');
+    if (!selectedClaim) return setError(t('territoryWorldModel.runtime.noClaimToValidate'));
     await withRun('baselineExport', async () => {
       const data = await api('/api/twm/baseline-export-validation-report', {
         method: 'POST',
@@ -2525,7 +3270,7 @@ export default function TerritoryWorldModelTab() {
     if (!file) return;
     const claims = claimMatrix.claims || [];
     const selectedClaim = claims.find(item => item.claim_id === selectedClaimId) || claims[0];
-    if (!selectedClaim) return setError('没有可导入的研究主张');
+    if (!selectedClaim) return setError(t('territoryWorldModel.runtime.noClaimToImport'));
     await withRun('baselineImport', async () => {
       const content = await file.text();
       const data = await api('/api/twm/baseline-export-import', {
@@ -2551,7 +3296,7 @@ export default function TerritoryWorldModelTab() {
   const runBaselinePipeline = async () => {
     const claims = claimMatrix.claims || [];
     const selectedClaim = claims.find(item => item.claim_id === selectedClaimId) || claims[0];
-    if (!selectedClaim) return setError('没有可运行的研究主张');
+    if (!selectedClaim) return setError(t('territoryWorldModel.runtime.noClaimToRun'));
     await withRun('baselinePipeline', async () => {
       const data = await api('/api/twm/baseline-evidence-pipeline-report', {
         method: 'POST',
@@ -2578,7 +3323,7 @@ export default function TerritoryWorldModelTab() {
   const runBaselineComparison = async () => {
     const claims = claimMatrix.claims || [];
     const selectedClaim = claims.find(item => item.claim_id === selectedClaimId) || claims[0];
-    if (!selectedClaim) return setError('没有可对比的研究主张');
+    if (!selectedClaim) return setError(t('territoryWorldModel.runtime.noClaimToCompare'));
     const twmMetrics: Record<string, number> = {};
     const baselineMetrics: Record<string, number> = {};
     const useMetricFiles = twmMetricsPath.trim() || baselineMetricsPath.trim();
@@ -2623,16 +3368,16 @@ export default function TerritoryWorldModelTab() {
         <div className="twm-title">
           <ShieldCheck size={16} />
           <div>
-            <strong>国土空间世界模型（TWM）</strong>
-            <span>围绕国土业务决策组织规则依据、预测验证和方案比选</span>
+            <strong>{t('territoryWorldModel.title')}</strong>
+            <span>{t('territoryWorldModel.subtitle')}</span>
           </div>
         </div>
-        <button type="button" className="twm-icon-button" onClick={refreshAll} disabled={busy} title="刷新 TWM 状态">
+        <button type="button" className="twm-icon-button" onClick={refreshAll} disabled={busy} title={t('territoryWorldModel.actions.refreshTitle')}>
           <RefreshCw size={13} />
-          刷新
+          {t('territoryWorldModel.actions.refresh')}
         </button>
         <span className={`status-badge ${statusClass(status?.status)}`}>
-          {running === 'status' ? '检测中' : statusText(status?.status, '未知')}
+          {running === 'status' ? t('territoryWorldModel.common.checking') : statusText(status?.status, t('territoryWorldModel.common.unknown'))}
         </span>
       </div>
 
@@ -2640,30 +3385,30 @@ export default function TerritoryWorldModelTab() {
 
       <div className="twm-kpi-grid">
         {readiness.map(item => (
-          <div className="twm-kpi" key={item.label}>
+          <div className="twm-kpi" key={item.id}>
             <span>{item.label}</span>
             <strong>{fmt(item.value, 0)}</strong>
           </div>
         ))}
       </div>
 
-      <div className="twm-subtabs" role="tablist" aria-label="TWM 功能分区">
-        {TWM_SUB_TABS.map(item => {
-          const active = activeSubTab === item.id;
+      <div className="twm-subtabs" role="tablist" aria-label={t('territoryWorldModel.tabs.ariaLabel')}>
+        {TWM_SUB_TABS.map(tabId => {
+          const active = activeSubTab === tabId;
           return (
             <button
-              key={item.id}
+              key={tabId}
               type="button"
               role="tab"
-              id={`twm-subtab-control-${item.id}`}
-              aria-label={item.label}
+              id={`twm-subtab-control-${tabId}`}
+              aria-label={t(`territoryWorldModel.tabs.${tabId}.label`)}
               aria-selected={active}
-              aria-controls={`twm-subtab-${item.id}`}
+              aria-controls={`twm-subtab-${tabId}`}
               className={`twm-subtab ${active ? 'active' : ''}`}
-              onClick={() => setActiveSubTab(item.id)}
+              onClick={() => setActiveSubTab(tabId)}
             >
-              <strong>{item.label}</strong>
-              <span>{item.summary}</span>
+              <strong>{t(`territoryWorldModel.tabs.${tabId}.label`)}</strong>
+              <span>{t(`territoryWorldModel.tabs.${tabId}.summary`)}</span>
             </button>
           );
         })}
@@ -2690,64 +3435,66 @@ export default function TerritoryWorldModelTab() {
       <section className="twm-section twm-map-story">
         <div className="twm-section-head">
           <MapPin size={14} />
-          <h4>地图联动</h4>
+          <h4>{t('territoryWorldModel.map.title')}</h4>
           <span className={`status-badge ${mapStage === 'none' ? 'proposed' : 'success'}`}>
-            {mapStage === 'none' ? '未联动' : `已联动：${TWM_MAP_STAGE_LABELS[mapStage]}`}
+            {mapStage === 'none'
+              ? t('territoryWorldModel.map.notLinked')
+              : t('territoryWorldModel.map.linked', { stage: t(`territoryWorldModel.map.stages.${mapStage}`) })}
           </span>
         </div>
         <p className="twm-map-story-copy">
-          先在中间地图看位置，再回到右侧看规则、依据和方案。当前图层为演示空间图层，用于说明 TWM 如何把“看图、查规则、推演、比选”串成一条业务链。
+          {t('territoryWorldModel.map.description')}
         </p>
         <div className="twm-map-story-actions">
           <button type="button" className="twm-secondary-action" onClick={() => syncTwmMap('locate')} disabled={busy}>
             <MapPin size={13} />
-            定位审查区
+            {t('territoryWorldModel.map.actions.locate')}
           </button>
           <button type="button" className="twm-secondary-action" onClick={() => syncTwmMap('risk')} disabled={busy}>
             <AlertTriangle size={13} />
-            展示风险命中
+            {t('territoryWorldModel.map.actions.risk')}
           </button>
           <button type="button" className="twm-secondary-action" onClick={() => syncTwmMap('plan')} disabled={busy}>
             <Route size={13} />
-            展示推荐方案
+            {t('territoryWorldModel.map.actions.plan')}
           </button>
         </div>
         <div className="twm-map-story-legend">
-          <span><i className="review" />审查范围/项目</span>
-          <span><i className="constraint" />硬约束边界</span>
-          <span><i className="risk" />风险命中</span>
-          <span><i className="plan" />推荐/阻断方案</span>
+          <span><i className="review" />{t('territoryWorldModel.map.legend.review')}</span>
+          <span><i className="constraint" />{t('territoryWorldModel.map.legend.constraint')}</span>
+          <span><i className="risk" />{t('territoryWorldModel.map.legend.risk')}</span>
+          <span><i className="plan" />{t('territoryWorldModel.map.legend.plan')}</span>
         </div>
       </section>
 
       <section className="twm-section twm-business-section">
         <div className="twm-section-head">
           <ShieldCheck size={14} />
-          <h4>业务任务</h4>
-          <span className="status-badge proposed">{running === 'scenarios' ? '加载中' : selectedBusinessScenario.label}</span>
+          <h4>{t('territoryWorldModel.businessTask.title')}</h4>
+          <span className="status-badge proposed">{running === 'scenarios' ? t('territoryWorldModel.status.loading') : businessScenarioText(selectedBusinessScenario, 'label')}</span>
         </div>
         <div className="twm-business-grid">
           <label className="twm-field">
-            <span>业务场景</span>
+            <span>{t('territoryWorldModel.businessTask.scenario')}</span>
             <select value={selectedBusinessScenario.id} onChange={e => applyBusinessScenario(e.target.value)} disabled={busy}>
               {businessScenarios.map(item => (
-                <option value={item.id} key={item.id}>{item.label}</option>
+                <option value={item.id} key={item.id}>{businessScenarioText(item, 'label')}</option>
               ))}
             </select>
           </label>
           <div className="twm-business-question">
-            <span>决策问题</span>
-            <strong>{selectedBusinessScenario.decision_question || '-'}</strong>
+            <span>{t('territoryWorldModel.businessTask.decisionQuestion')}</span>
+            <strong>{businessScenarioText(selectedBusinessScenario, 'decisionQuestion')}</strong>
           </div>
         </div>
         <div className="twm-business-grid">
           <div className="twm-business-list">
-            <span>关键依据</span>
-            <div>{(selectedBusinessScenario.required_evidence || []).map(item => <code key={item}>{item}</code>)}</div>
+            <span>{t('territoryWorldModel.businessTask.requiredEvidence')}</span>
+            <div>{businessScenarioList(selectedBusinessScenario, 'requiredEvidence').map(item => <code key={item}>{item}</code>)}</div>
           </div>
           <div className="twm-business-list">
-            <span>交付结果</span>
-            <div>{(selectedBusinessScenario.decision_outputs || []).map(item => <code key={item}>{item}</code>)}</div>
+            <span>{t('territoryWorldModel.businessTask.outputs')}</span>
+            <div>{businessScenarioList(selectedBusinessScenario, 'outputs').map(item => <code key={item}>{item}</code>)}</div>
           </div>
         </div>
       </section>
@@ -2764,53 +3511,53 @@ export default function TerritoryWorldModelTab() {
       <section className="twm-section twm-roadmap-status-panel">
         <div className="twm-section-head">
           <GitBranch size={14} />
-          <h4>路线图状态</h4>
+          <h4>{t('territoryWorldModel.roadmap.title')}</h4>
           <span className={`status-badge ${statusClass(roadmapStatus?.overall_status)}`}>
-            {running === 'roadmapStatus' ? '加载中' : statusText(roadmapStatus?.overall_status, '待加载')}
+            {running === 'roadmapStatus' ? t('territoryWorldModel.status.loading') : statusText(roadmapStatus?.overall_status, t('territoryWorldModel.common.pendingLoad'))}
           </span>
         </div>
         <div className="twm-roadmap-boundary">
-          <strong>当前完成情况</strong>
-          <p>{displayText(roadmapStatus?.claim_boundary || '当前 TWM 是严谨的原型和复核脚手架；生产级预测主张必须依赖真实观察历史、明确基线对比和外部验证。')}</p>
+          <strong>{t('territoryWorldModel.roadmap.currentProgress')}</strong>
+          <p>{roadmapStatus?.claim_boundary ? displayText(roadmapStatus.claim_boundary) : t('territoryWorldModel.roadmap.defaultBoundary')}</p>
         </div>
         <div className="twm-roadmap-kpis">
-          <div><span>平均完成度</span><strong>{fmt(roadmapCompletion * 100, 0)}%</strong></div>
-          <div><span>已完成阶段</span><strong>{fmt(roadmapCompleteCount, 0)}</strong></div>
-          <div><span>推进中</span><strong>{fmt(roadmapProgressCount, 0)}</strong></div>
-          <div><span>阻断阶段</span><strong>{fmt(roadmapBlockedCount, 0)}</strong></div>
+          <div><span>{t('territoryWorldModel.roadmap.averageCompletion')}</span><strong>{fmt(roadmapCompletion * 100, 0)}%</strong></div>
+          <div><span>{t('territoryWorldModel.roadmap.completedPhases')}</span><strong>{fmt(roadmapCompleteCount, 0)}</strong></div>
+          <div><span>{t('territoryWorldModel.roadmap.inProgress')}</span><strong>{fmt(roadmapProgressCount, 0)}</strong></div>
+          <div><span>{t('territoryWorldModel.roadmap.blockedPhases')}</span><strong>{fmt(roadmapBlockedCount, 0)}</strong></div>
         </div>
         <div className="twm-roadmap-phase-list">
           {roadmapPhases.map(phase => (
             <article key={phase.id}>
               <div>
-                <span className={`status-badge ${statusClass(phase.status)}`}>{statusText(phase.status, '待复核')}</span>
+                <span className={`status-badge ${statusClass(phase.status)}`}>{statusText(phase.status, t('territoryWorldModel.status.review'))}</span>
                 <strong>{displayText(phase.label || phase.id)}</strong>
                 <em>{fmt(clampRatio(phase.completion_ratio, 0) * 100, 0)}%</em>
               </div>
-              <p>已具备：{compactDisplayList(phase.evidence, '暂无依据')}</p>
-              <p>剩余：{compactDisplayList(phase.remaining, '暂无剩余项')}</p>
+              <p>{t('territoryWorldModel.roadmap.available', { items: compactDisplayList(phase.evidence, t('territoryWorldModel.roadmap.noEvidence')) })}</p>
+              <p>{t('territoryWorldModel.roadmap.remaining', { items: compactDisplayList(phase.remaining, t('territoryWorldModel.roadmap.nothingRemaining')) })}</p>
             </article>
           ))}
-          {!roadmapPhases.length && <div className="twm-empty">路线图状态尚未加载</div>}
+          {!roadmapPhases.length && <div className="twm-empty">{t('territoryWorldModel.roadmap.empty')}</div>}
         </div>
         <div className="twm-roadmap-bottom">
           <article>
-            <strong>关键阻断</strong>
+            <strong>{t('territoryWorldModel.roadmap.keyBlockers')}</strong>
             {(roadmapStatus?.blockers || []).slice(0, 4).map(item => (
               <p key={`roadmap-blocker-${item.id}`}>
-                {item.priority ? `${item.priority} · ` : ''}{displayText(item.id)}：{statusText(item.status, '待处理')}，当前 {typeof item.current_value === 'number' ? fmt(item.current_value, 0) : displayText(item.current_value)}；目标 {displayText(item.required_value)}
+                {t('territoryWorldModel.roadmap.blockerSummary', { priority: item.priority ? `${item.priority} · ` : '', id: displayText(item.id), status: statusText(item.status, t('territoryWorldModel.status.pending')), current: typeof item.current_value === 'number' ? fmt(item.current_value, 0) : displayText(item.current_value), target: displayText(item.required_value) })}
               </p>
             ))}
-            {!(roadmapStatus?.blockers || []).length && <p>暂无阻断项</p>}
+            {!(roadmapStatus?.blockers || []).length && <p>{t('territoryWorldModel.roadmap.noBlockers')}</p>}
           </article>
           <article>
-            <strong>下一步动作</strong>
+            <strong>{t('territoryWorldModel.roadmap.nextActions')}</strong>
             {(roadmapStatus?.next_actions || []).slice(0, 4).map(item => (
               <p key={`roadmap-action-${item.priority}-${item.action}`}>
                 {item.priority ? `${item.priority} · ` : ''}{displayText(item.action)}
               </p>
             ))}
-            {!(roadmapStatus?.next_actions || []).length && <p>暂无下一步动作</p>}
+            {!(roadmapStatus?.next_actions || []).length && <p>{t('territoryWorldModel.roadmap.noNextActions')}</p>}
           </article>
         </div>
       </section>
@@ -2818,13 +3565,13 @@ export default function TerritoryWorldModelTab() {
       <section className="twm-section twm-data-browser-panel">
         <div className="twm-section-head">
           <FileCheck2 size={14} />
-          <h4>数据基础浏览器</h4>
+          <h4>{t('territoryWorldModel.dataBrowser.title')}</h4>
           <span className={`status-badge ${statusClass(dataReadiness.status || dataFoundation.status)}`}>
-            {statusText(dataReadiness.status || dataFoundation.status, '需复核')}
+            {statusText(dataReadiness.status || dataFoundation.status, t('territoryWorldModel.status.review'))}
           </span>
         </div>
         <div className="twm-data-browser-verdict">
-          <strong>当前结论</strong>
+          <strong>{t('territoryWorldModel.dataBrowser.currentVerdict')}</strong>
           <p>{displayText(dataReadiness.verdict)}</p>
         </div>
         <div className="twm-data-package-switcher">
@@ -2832,57 +3579,57 @@ export default function TerritoryWorldModelTab() {
             <button
               type="button"
               key={dataset.id}
-              aria-label={`浏览 ${displayText(dataset.label)}`}
+              aria-label={t('territoryWorldModel.dataBrowser.browseDataset', { name: displayText(dataset.label) })}
               className={selectedDataPackage?.id === dataset.id ? 'active' : ''}
               onClick={() => selectDataPackage(dataset.id)}
             >
               <strong>{displayText(dataset.label)}</strong>
-              <span>{fmt(dataset.total_count, 0)} 条 · {dataset.not_for_production ? '演示/非生产' : '生产候选'}</span>
+              <span>{t('territoryWorldModel.dataBrowser.datasetSummary', { count: fmt(dataset.total_count, 0), status: dataset.not_for_production ? t('territoryWorldModel.dataBrowser.demoNonProduction') : t('territoryWorldModel.dataBrowser.productionCandidate') })}</span>
             </button>
           ))}
         </div>
         <div className="twm-data-browser-actions">
           <button type="button" className="twm-secondary-action" onClick={syncDataFoundationMapPreview} disabled={dataMapPreviewLoading || !selectedDataPackage}>
             {dataMapPreviewLoading ? <Loader2 size={13} className="twm-spin" /> : <MapPin size={13} />}
-            全量加载空间数据
+            {t('territoryWorldModel.dataBrowser.loadSpatialData')}
           </button>
           <button type="button" className="twm-secondary-action" onClick={loadDataFoundationLineage} disabled={busy || !selectedDataPackage}>
             {running === 'lineage' ? <Loader2 size={13} className="twm-spin" /> : <GitBranch size={13} />}
-            lineage 报告
+            {t('territoryWorldModel.dataBrowser.lineageReport')}
           </button>
           <button type="button" className="twm-secondary-action" onClick={loadDataFoundationCrsRemediation} disabled={busy || !selectedDataPackage}>
             {running === 'crsRemediation' ? <Loader2 size={13} className="twm-spin" /> : <RefreshCw size={13} />}
-            CRS 方案
+            {t('territoryWorldModel.dataBrowser.crsPlan')}
           </button>
           <button type="button" className="twm-secondary-action" onClick={loadDataFoundationAuthoritativeTemplates} disabled={busy}>
             {running === 'authoritativeTemplates' ? <Loader2 size={13} className="twm-spin" /> : <ShieldCheck size={13} />}
-            权威模板
+            {t('territoryWorldModel.dataBrowser.authoritativeTemplates')}
           </button>
-          <span>{dataMapPreviewSummary || '将选中数据包的 GeoJSON 空间图层全量联动到中间地图；大图层由 3D 渲染路径承载。'}</span>
+          <span>{dataMapPreviewSummary || t('territoryWorldModel.dataBrowser.mapPreviewHint')}</span>
         </div>
         {visibleDataLineage && (
           <div className="twm-lineage-panel">
             <div className="twm-lineage-head">
               <div>
-                <strong>lineage 报告</strong>
+                <strong>{t('territoryWorldModel.dataBrowser.lineageReport')}</strong>
                 <span>{displayText(visibleDataLineage.dataset_label)} · <code>{visibleDataLineage.dataset_root}</code></span>
               </div>
               <span className={`status-badge ${statusClass(visibleDataLineage.lineage_coverage?.status)}`}>
-                {statusText(visibleDataLineage.lineage_coverage?.status, '需复核')}
+                {statusText(visibleDataLineage.lineage_coverage?.status, t('territoryWorldModel.status.review'))}
               </span>
             </div>
             <div className="twm-lineage-kpis">
-              <div><span>文件</span><strong>{fmt(visibleDataLineage.file_count, 0)}</strong></div>
-              <div><span>空间图层</span><strong>{fmt(visibleDataLineage.spatial_layer_count, 0)}</strong></div>
-              <div><span>表格</span><strong>{fmt(visibleDataLineage.table_count, 0)}</strong></div>
-              <div><span>非生产记录</span><strong>{fmt(visibleDataLineage.not_for_production_record_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.dataBrowser.files')}</span><strong>{fmt(visibleDataLineage.file_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.dataBrowser.spatialLayers')}</span><strong>{fmt(visibleDataLineage.spatial_layer_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.dataBrowser.tables')}</span><strong>{fmt(visibleDataLineage.table_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.dataBrowser.nonProductionRecords')}</span><strong>{fmt(visibleDataLineage.not_for_production_record_count, 0)}</strong></div>
             </div>
             <div className="twm-lineage-gates">
               {(visibleDataLineage.readiness_gates || []).slice(0, 4).map(gate => (
                 <article key={`lineage-gate-${gate.id}`}>
-                  <span className={`status-badge ${statusClass(gate.status)}`}>{statusText(gate.status, '待处理')}</span>
+                  <span className={`status-badge ${statusClass(gate.status)}`}>{statusText(gate.status, t('territoryWorldModel.status.pending'))}</span>
                   <strong>{displayText(gate.id)}</strong>
-                  <p>当前：{typeof gate.current_value === 'number' ? fmt(gate.current_value, 0) : displayText(gate.current_value)}；目标：{displayText(gate.required_value)}</p>
+                  <p>{t('territoryWorldModel.dataBrowser.currentTarget', { current: typeof gate.current_value === 'number' ? fmt(gate.current_value, 0) : displayText(gate.current_value), target: displayText(gate.required_value) })}</p>
                 </article>
               ))}
             </div>
@@ -2891,10 +3638,10 @@ export default function TerritoryWorldModelTab() {
                 <article key={`lineage-file-${file.path}`}>
                   <div>
                     <code>{file.path}</code>
-                    <span className={`status-badge ${statusClass(file.lineage_status)}`}>{statusText(file.lineage_status, '需复核')}</span>
+                    <span className={`status-badge ${statusClass(file.lineage_status)}`}>{statusText(file.lineage_status, t('territoryWorldModel.status.review'))}</span>
                   </div>
-                  <p>{displayText(file.source_role)} · {fmt(file.count, 0)} {file.unit || '条'} · 合成 {fmt(file.synthetic_count, 0)} · 非生产 {fmt(file.not_for_production_count, 0)}</p>
-                  {file.crs_diagnostic && <p>CRS：{crsDiagnosticText(file.crs_diagnostic.status)} · 字段 {fmt(file.property_field_count, 0)}</p>}
+                  <p>{t('territoryWorldModel.dataBrowser.fileSummary', { role: displayText(file.source_role), count: fmt(file.count, 0), unit: displayText(file.unit, t('territoryWorldModel.dataBrowser.rows')), synthetic: fmt(file.synthetic_count, 0), nonProduction: fmt(file.not_for_production_count, 0) })}</p>
+                  {file.crs_diagnostic && <p>{t('territoryWorldModel.dataBrowser.crsFieldSummary', { crs: crsDiagnosticText(file.crs_diagnostic.status), fields: fmt(file.property_field_count, 0) })}</p>}
                 </article>
               ))}
             </div>
@@ -2905,18 +3652,18 @@ export default function TerritoryWorldModelTab() {
           <div className="twm-crs-remediation-panel">
             <div className="twm-crs-remediation-head">
               <div>
-                <strong>CRS 方案</strong>
-                <span>{displayText(visibleCrsRemediationPlan.dataset_label)} · 目标 {visibleCrsRemediationPlan.target_crs || 'EPSG:4326'}</span>
+                <strong>{t('territoryWorldModel.dataBrowser.crsPlan')}</strong>
+                <span>{t('territoryWorldModel.dataBrowser.targetCrs', { dataset: displayText(visibleCrsRemediationPlan.dataset_label), crs: visibleCrsRemediationPlan.target_crs || 'EPSG:4326' })}</span>
               </div>
               <span className={`status-badge ${statusClass(visibleCrsRemediationPlan.status)}`}>
-                {statusText(visibleCrsRemediationPlan.status, '需复核')}
+                {statusText(visibleCrsRemediationPlan.status, t('territoryWorldModel.status.review'))}
               </span>
             </div>
             <div className="twm-crs-remediation-kpis">
-              <div><span>图层</span><strong>{fmt(visibleCrsRemediationPlan.layer_count, 0)}</strong></div>
-              <div><span>可叠加</span><strong>{fmt(visibleCrsRemediationPlan.ready_layer_count, 0)}</strong></div>
-              <div><span>需转换</span><strong>{fmt(visibleCrsRemediationPlan.blocked_layer_count, 0)}</strong></div>
-              <div><span>输出策略</span><strong>{visibleCrsRemediationPlan.execution_policy?.default_output_suffix || '_wgs84.geojson'}</strong></div>
+              <div><span>{t('territoryWorldModel.dataBrowser.layers')}</span><strong>{fmt(visibleCrsRemediationPlan.layer_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.dataBrowser.overlayReady')}</span><strong>{fmt(visibleCrsRemediationPlan.ready_layer_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.dataBrowser.needsConversion')}</span><strong>{fmt(visibleCrsRemediationPlan.blocked_layer_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.dataBrowser.outputPolicy')}</span><strong>{visibleCrsRemediationPlan.execution_policy?.default_output_suffix || '_wgs84.geojson'}</strong></div>
             </div>
             <div className="twm-crs-remediation-layer-list">
               {(visibleCrsRemediationPlan.layers || []).slice(0, 8).map(layer => (
@@ -2924,29 +3671,27 @@ export default function TerritoryWorldModelTab() {
                   <div>
                     <code>{layer.path}</code>
                     <span className={`status-badge ${statusClass(layer.status)}`}>
-                      {statusText(layer.status, '需复核')}
+                      {statusText(layer.status, t('territoryWorldModel.status.review'))}
                     </span>
                   </div>
                   <p>
-                    源 CRS：{displayText(layer.source_crs_assumption)}
-                    {' · '}目标：{layer.target_crs || visibleCrsRemediationPlan.target_crs || 'EPSG:4326'}
-                    {' · '}要素 {fmt(layer.feature_count, 0)}
+                    {t('territoryWorldModel.dataBrowser.layerCrsSummary', { source: displayText(layer.source_crs_assumption), target: layer.target_crs || visibleCrsRemediationPlan.target_crs || 'EPSG:4326', count: fmt(layer.feature_count, 0) })}
                   </p>
                   <p>
-                    输出：{layer.output_policy?.write_new_file
+                    {t('territoryWorldModel.dataBrowser.output')}: {layer.output_policy?.write_new_file
                       ? `${layer.path.replace(/\.geojson$/i, '')}${layer.output_policy?.suffix || '_wgs84.geojson'}`
-                      : '源图层可直接叠加'}
+                      : t('territoryWorldModel.dataBrowser.sourceOverlayReady')}
                   </p>
                   <div>
                     {(layer.conversion_steps || []).slice(0, 4).map((step, idx) => (
                       <span key={`crs-step-${layer.path}-${step.action}-${idx}`}>
-                        {idx + 1}. {displayText(step.action)} · {statusText(step.status, '待处理')}
+                        {idx + 1}. {displayText(step.action)} · {statusText(step.status, t('territoryWorldModel.status.pending'))}
                       </span>
                     ))}
                   </div>
                 </article>
               ))}
-              {!(visibleCrsRemediationPlan.layers || []).length && <div className="twm-empty">暂无空间图层需要处理</div>}
+              {!(visibleCrsRemediationPlan.layers || []).length && <div className="twm-empty">{t('territoryWorldModel.dataBrowser.noLayersToProcess')}</div>}
             </div>
             <div className="twm-crs-remediation-criteria">
               {(visibleCrsRemediationPlan.acceptance_criteria || []).slice(0, 4).map(item => (
@@ -2960,25 +3705,25 @@ export default function TerritoryWorldModelTab() {
           <div className="twm-authoritative-template-panel">
             <div className="twm-authoritative-template-head">
               <div>
-                <strong>权威模板</strong>
-                <span>生产数据接入字段、lineage 和质量门禁模板</span>
+                <strong>{t('territoryWorldModel.dataBrowser.authoritativeTemplates')}</strong>
+                <span>{t('territoryWorldModel.dataBrowser.templateDescription')}</span>
               </div>
               <span className={`status-badge ${statusClass(authoritativeTemplates.status)}`}>
-                {statusText(authoritativeTemplates.status, '需复核')}
+                {statusText(authoritativeTemplates.status, t('territoryWorldModel.status.review'))}
               </span>
             </div>
             <div className="twm-authoritative-template-kpis">
-              <div><span>模板</span><strong>{fmt(authoritativeTemplates.template_count, 0)}</strong></div>
-              <div><span>生产部署</span><strong>{yesNo(authoritativeTemplates.production_deployment_supported)}</strong></div>
-              <div><span>lineage 字段</span><strong>{fmt(authoritativeTemplates.shared_lineage_fields?.length, 0)}</strong></div>
-              <div><span>门禁</span><strong>{fmt(authoritativeTemplates.readiness_gates?.length, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.dataBrowser.templates')}</span><strong>{fmt(authoritativeTemplates.template_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.dataBrowser.productionDeployment')}</span><strong>{yesNo(authoritativeTemplates.production_deployment_supported)}</strong></div>
+              <div><span>{t('territoryWorldModel.dataBrowser.lineageFields')}</span><strong>{fmt(authoritativeTemplates.shared_lineage_fields?.length, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.dataBrowser.gates')}</span><strong>{fmt(authoritativeTemplates.readiness_gates?.length, 0)}</strong></div>
             </div>
             <div className="twm-authoritative-gates">
               {(authoritativeTemplates.readiness_gates || []).slice(0, 4).map(gate => (
                 <article key={`authoritative-gate-${gate.id}`}>
-                  <span className={`status-badge ${statusClass(gate.status)}`}>{statusText(gate.status, '待处理')}</span>
+                  <span className={`status-badge ${statusClass(gate.status)}`}>{statusText(gate.status, t('territoryWorldModel.status.pending'))}</span>
                   <strong>{displayText(gate.id)}</strong>
-                  <p>当前：{displayText(gate.current_value)}；目标：{displayText(gate.required_value)}</p>
+                  <p>{t('territoryWorldModel.dataBrowser.currentTarget', { current: displayText(gate.current_value), target: displayText(gate.required_value) })}</p>
                 </article>
               ))}
             </div>
@@ -2986,12 +3731,12 @@ export default function TerritoryWorldModelTab() {
               {(authoritativeTemplates.templates || []).slice(0, 6).map(template => (
                 <article key={`authoritative-template-${template.template_id}`}>
                   <div>
-                    <strong>{displayText(template.template_id)}</strong>
-                    <code>{template.role || '-'}</code>
+                    <strong>{displayText(template.label || template.template_id)}</strong>
+                    <code>{displayText(template.role)}</code>
                   </div>
-                  <p>{displayText(template.production_use)} · {displayText(template.unit)} · {compactDisplayList(template.accepted_formats, '未限定格式')}</p>
-                  <p>必填：{compactDisplayList((template.required_fields || []).slice(0, 8), '无')}</p>
-                  <p>门禁：{compactDisplayList((template.minimum_quality_gates || []).slice(0, 4), '无')}</p>
+                  <p>{displayText(template.production_use)} · {displayText(template.unit)} · {compactDisplayList(template.accepted_formats, t('territoryWorldModel.dataBrowser.anyFormat'))}</p>
+                  <p>{t('territoryWorldModel.dataBrowser.requiredFields', { fields: compactDisplayList((template.required_fields || []).slice(0, 8), t('territoryWorldModel.common.none')) })}</p>
+                  <p>{t('territoryWorldModel.dataBrowser.qualityGates', { gates: compactDisplayList((template.minimum_quality_gates || []).slice(0, 4), t('territoryWorldModel.common.none')) })}</p>
                 </article>
               ))}
             </div>
@@ -3007,18 +3752,18 @@ export default function TerritoryWorldModelTab() {
           <div className="twm-crs-diagnostic-panel">
             <div className="twm-crs-diagnostic-head">
               <div>
-                <strong>坐标诊断</strong>
-                <span>{dataMapPreview.map_overlay_readiness?.message || '已读取空间图层坐标范围。'}</span>
+                <strong>{t('territoryWorldModel.dataBrowser.coordinateDiagnostics')}</strong>
+                <span>{displayText(dataMapPreview.map_overlay_readiness?.message, t('territoryWorldModel.dataBrowser.extentRead'))}</span>
               </div>
               <span className={`status-badge ${statusClass(dataMapPreview.map_overlay_readiness?.status)}`}>
                 {mapOverlayReadinessText(dataMapPreview.map_overlay_readiness?.status)}
               </span>
             </div>
             <div className="twm-crs-diagnostic-kpis">
-              <div><span>可叠加图层</span><strong>{fmt(dataMapPreview.map_overlay_readiness?.ready_layer_count, 0)}</strong></div>
-              <div><span>需处理图层</span><strong>{fmt(dataMapPreview.map_overlay_readiness?.blocked_layer_count, 0)}</strong></div>
-              <div><span>空间要素</span><strong>{fmt(dataMapPreview.total_preview_feature_count, 0)}</strong></div>
-              <div><span>处理建议</span><strong>{displayText(dataMapPreview.map_overlay_readiness?.suggested_action)}</strong></div>
+              <div><span>{t('territoryWorldModel.dataBrowser.overlayLayers')}</span><strong>{fmt(dataMapPreview.map_overlay_readiness?.ready_layer_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.dataBrowser.layersToProcess')}</span><strong>{fmt(dataMapPreview.map_overlay_readiness?.blocked_layer_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.dataBrowser.spatialFeatures')}</span><strong>{fmt(dataMapPreview.total_preview_feature_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.dataBrowser.suggestedAction')}</span><strong>{displayText(dataMapPreview.map_overlay_readiness?.suggested_action)}</strong></div>
             </div>
             <div className="twm-crs-layer-list">
               {(dataMapPreview.layers || []).slice(0, 8).map(layer => {
@@ -3030,17 +3775,17 @@ export default function TerritoryWorldModelTab() {
                     <span className={`status-badge ${layer.crs_diagnostic?.map_overlay_ready ? 'success' : 'error'}`}>
                       {crsDiagnosticText(layer.crs_diagnostic?.status)}
                     </span>
-                    <span>{fmt(layer.preview_feature_count, 0)} / {fmt(layer.source_feature_count, 0)} 要素</span>
+                    <span>{t('territoryWorldModel.dataBrowser.featureRatio', { preview: fmt(layer.preview_feature_count, 0), source: fmt(layer.source_feature_count, 0) })}</span>
                     <button
                       type="button"
                       className={`twm-layer-visibility-toggle ${visible ? 'active' : ''}`}
                       onClick={() => toggleDataFoundationMapLayer(layerName)}
                       disabled={!layerName}
-                      aria-label={`${visible ? '隐藏' : '显示'}图层 ${layerName}`}
-                      title={visible ? '从地图隐藏该图层' : '在地图显示该图层'}
+                      aria-label={visible ? t('territoryWorldModel.dataBrowser.hideLayerAria', { name: layerName }) : t('territoryWorldModel.dataBrowser.showLayerAria', { name: layerName })}
+                      title={visible ? t('territoryWorldModel.dataBrowser.hideLayerTitle') : t('territoryWorldModel.dataBrowser.showLayerTitle')}
                     >
                       {visible ? <Eye size={12} /> : <EyeOff size={12} />}
-                      <span>{visible ? '隐藏' : '显示'}</span>
+                      <span>{visible ? t('territoryWorldModel.dataBrowser.hide') : t('territoryWorldModel.dataBrowser.show')}</span>
                     </button>
                   </div>
                 );
@@ -3052,19 +3797,19 @@ export default function TerritoryWorldModelTab() {
           <div className="twm-data-browser-body">
             <div className="twm-data-browser-summary">
               <div>
-                <span>数据包 ID</span>
+                <span>{t('territoryWorldModel.dataBrowser.datasetId')}</span>
                 <strong>{selectedDataPackage.id}</strong>
               </div>
               <div>
-                <span>总量</span>
+                <span>{t('territoryWorldModel.dataBrowser.total')}</span>
                 <strong>{fmt(selectedDataPackage.total_count, 0)}</strong>
               </div>
               <div>
-                <span>文件</span>
+                <span>{t('territoryWorldModel.dataBrowser.files')}</span>
                 <strong>{fmt(selectedDataPackage.file_count || selectedDataPackage.files?.length, 0)}</strong>
               </div>
               <div>
-                <span>非生产</span>
+                <span>{t('territoryWorldModel.dataBrowser.nonProduction')}</span>
                 <strong>{fmt(selectedDataPackage.not_for_production_count, 0)}</strong>
               </div>
             </div>
@@ -3075,8 +3820,8 @@ export default function TerritoryWorldModelTab() {
               <div className="twm-spatial-catalog-panel">
                 <div className="twm-spatial-catalog-head">
                   <div>
-                    <strong>空间图层目录</strong>
-                    <span>不加载完整几何，也能先核查每个空间图层的范围和坐标状态。</span>
+                    <strong>{t('territoryWorldModel.dataBrowser.spatialCatalog')}</strong>
+                    <span>{t('territoryWorldModel.dataBrowser.spatialCatalogDescription')}</span>
                   </div>
                   <span className={`status-badge ${statusClass(selectedDataPackage.map_overlay_readiness?.status)}`}>
                     {mapOverlayReadinessText(selectedDataPackage.map_overlay_readiness?.status)}
@@ -3094,34 +3839,34 @@ export default function TerritoryWorldModelTab() {
                             className="twm-spatial-catalog-action"
                             onClick={() => syncDataFoundationLayerMapPreview(layerPath)}
                             disabled={dataMapPreviewLoading || !layerPath}
-                            aria-label={`上图 ${layerPath}`}
-                            title="加载该图层到地图"
+                            aria-label={t('territoryWorldModel.dataBrowser.addToMapAria', { name: layerPath })}
+                            title={t('territoryWorldModel.dataBrowser.addToMapTitle')}
                           >
                             <MapPin size={12} />
-                            <span>上图</span>
+                            <span>{t('territoryWorldModel.dataBrowser.addToMap')}</span>
                           </button>
                           <button
                             type="button"
                             className="twm-spatial-catalog-action secondary"
                             onClick={() => loadDataFoundationLayerDetail(layerPath)}
                             disabled={busy || !layerPath}
-                            aria-label={`字段明细 ${layerPath}`}
-                            title="查看字段明细和样例记录"
+                            aria-label={t('territoryWorldModel.dataBrowser.fieldDetailsAria', { name: layerPath })}
+                            title={t('territoryWorldModel.dataBrowser.fieldDetailsTitle')}
                           >
                             {detailLoading ? <Loader2 size={12} className="twm-spin" /> : <FileCheck2 size={12} />}
-                            <span>字段明细</span>
+                            <span>{t('territoryWorldModel.dataBrowser.fieldDetails')}</span>
                           </button>
                         </div>
                         <div className="twm-spatial-catalog-main">
                           <code>{layerPath}</code>
-                          <span>{fmt(layer.source_feature_count ?? layer.feature_count, 0)} 要素</span>
+                          <span>{t('territoryWorldModel.dataBrowser.featureCount', { count: fmt(layer.source_feature_count ?? layer.feature_count, 0) })}</span>
                           <span>{compactBbox(layer.bbox)}</span>
                           <span className={`status-badge ${layer.crs_diagnostic?.map_overlay_ready ? 'success' : 'error'}`}>
                             {crsDiagnosticText(layer.crs_diagnostic?.status)}
                           </span>
                           <div className="twm-spatial-catalog-attributes">
-                            <span>字段 {compactPropertyFieldNames(layer.property_fields, layer.property_field_count)}</span>
-                            <span>样例 {compactSampleProperties(layer.sample_properties)}</span>
+                            <span>{t('territoryWorldModel.dataBrowser.fieldsInline', { fields: compactPropertyFieldNames(layer.property_fields, layer.property_field_count) })}</span>
+                            <span>{t('territoryWorldModel.dataBrowser.sampleInline', { sample: compactSampleProperties(layer.sample_properties) })}</span>
                           </div>
                         </div>
                       </div>
@@ -3132,18 +3877,18 @@ export default function TerritoryWorldModelTab() {
                   <div className="twm-layer-detail-panel">
                     <div className="twm-layer-detail-head">
                       <div>
-                        <strong>字段明细</strong>
+                        <strong>{t('territoryWorldModel.dataBrowser.fieldDetails')}</strong>
                         <span>{displayText(visibleLayerDetail.dataset_label)} · <code>{visibleLayerDetail.layer_path}</code></span>
                       </div>
                       <span className={`status-badge ${visibleLayerDetail.not_for_production ? 'warning' : 'success'}`}>
-                        {visibleLayerDetail.not_for_production ? '演示/非生产' : '生产候选'}
+                        {visibleLayerDetail.not_for_production ? t('territoryWorldModel.dataBrowser.demoNonProduction') : t('territoryWorldModel.dataBrowser.productionCandidate')}
                       </span>
                     </div>
                     <div className="twm-layer-detail-kpis">
-                      <div><span>要素数</span><strong>{fmt(visibleLayerDetail.feature_count, 0)}</strong></div>
-                      <div><span>字段数</span><strong>{fmt(visibleLayerDetail.property_field_count, 0)}</strong></div>
-                      <div><span>样例记录</span><strong>{fmt(visibleLayerDetail.sample_record_count, 0)}</strong></div>
-                      <div><span>坐标</span><strong>{crsDiagnosticText(visibleLayerDetail.crs_diagnostic?.status)}</strong></div>
+                      <div><span>{t('territoryWorldModel.dataBrowser.featureCountLabel')}</span><strong>{fmt(visibleLayerDetail.feature_count, 0)}</strong></div>
+                      <div><span>{t('territoryWorldModel.dataBrowser.fieldCount')}</span><strong>{fmt(visibleLayerDetail.property_field_count, 0)}</strong></div>
+                      <div><span>{t('territoryWorldModel.dataBrowser.sampleRecords')}</span><strong>{fmt(visibleLayerDetail.sample_record_count, 0)}</strong></div>
+                      <div><span>{t('territoryWorldModel.dataBrowser.coordinates')}</span><strong>{crsDiagnosticText(visibleLayerDetail.crs_diagnostic?.status)}</strong></div>
                     </div>
                     <div className="twm-layer-detail-fields">
                       {(visibleLayerDetail.property_fields || []).slice(0, 14).map(field => (
@@ -3152,7 +3897,7 @@ export default function TerritoryWorldModelTab() {
                           {displayText(field.value_type, 'unknown')} · {fmt(field.observed_count, 0)}
                         </span>
                       ))}
-                      {!(visibleLayerDetail.property_fields || []).length && <div className="twm-empty">暂无字段明细</div>}
+                      {!(visibleLayerDetail.property_fields || []).length && <div className="twm-empty">{t('territoryWorldModel.dataBrowser.noFieldDetails')}</div>}
                     </div>
                     <div className="twm-layer-detail-records">
                       {(visibleLayerDetail.sample_records || []).slice(0, 5).map(record => (
@@ -3161,24 +3906,24 @@ export default function TerritoryWorldModelTab() {
                           <p>{compactSampleProperties(record.properties)}</p>
                         </article>
                       ))}
-                      {!(visibleLayerDetail.sample_records || []).length && <div className="twm-empty">暂无样例记录</div>}
+                      {!(visibleLayerDetail.sample_records || []).length && <div className="twm-empty">{t('territoryWorldModel.dataBrowser.noSampleRecords')}</div>}
                     </div>
                     <p className="twm-layer-detail-boundary">{displayText(visibleLayerDetail.claim_boundary)}</p>
                   </div>
                 )}
               </div>
             )}
-            <div className="twm-data-browser-table" role="table" aria-label="数据基础文件清单">
+            <div className="twm-data-browser-table" role="table" aria-label={t('territoryWorldModel.dataBrowser.fileListAria')}>
               <div role="row" className="head">
-                <span role="columnheader">文件</span>
-                <span role="columnheader">数量</span>
-                <span role="columnheader">合成</span>
-                <span role="columnheader">非生产</span>
+                <span role="columnheader">{t('territoryWorldModel.dataBrowser.files')}</span>
+                <span role="columnheader">{t('territoryWorldModel.dataBrowser.quantity')}</span>
+                <span role="columnheader">{t('territoryWorldModel.dataBrowser.synthetic')}</span>
+                <span role="columnheader">{t('territoryWorldModel.dataBrowser.nonProduction')}</span>
               </div>
               {(selectedDataPackage.files || []).map(file => (
                 <div role="row" key={`${selectedDataPackage.id}-browser-${file.path}`}>
                   <code role="cell">{file.path}</code>
-                  <span role="cell">{fmt(file.count, 0)} {file.unit || '条'}</span>
+                  <span role="cell">{fmt(file.count, 0)} {displayText(file.unit, t('territoryWorldModel.dataBrowser.rows'))}</span>
                   <span role="cell">{fmt(file.synthetic_count, 0)}</span>
                   <span role="cell">{fmt(file.not_for_production_count, 0)}</span>
                 </div>
@@ -3186,39 +3931,39 @@ export default function TerritoryWorldModelTab() {
             </div>
             <div className="twm-data-browser-columns">
               <article>
-                <strong>能支撑</strong>
+                <strong>{t('territoryWorldModel.dataBrowser.supports')}</strong>
                 {(dataFoundation.supported_problems || []).slice(0, 4).map(item => (
-                  <p key={`browser-support-${item.problem}`}>{displayText(item.problem)}：{displayText(item.support)}</p>
+                  <p key={`browser-support-${item.problem}`}>{displayText(item.problem)}{t('territoryWorldModel.common.keyValueSeparator')}{displayText(item.support)}</p>
                 ))}
               </article>
               <article>
-                <strong>不能承诺</strong>
+                <strong>{t('territoryWorldModel.dataBrowser.cannotClaim')}</strong>
                 {(dataFoundation.unsupported_claims || []).slice(0, 4).map(item => (
-                  <p key={`browser-unsupported-${item.claim}`}>{displayText(item.claim)}：{displayText(item.reason)}</p>
+                  <p key={`browser-unsupported-${item.claim}`}>{displayText(item.claim)}{t('territoryWorldModel.common.keyValueSeparator')}{displayText(item.reason)}</p>
                 ))}
               </article>
               <article>
-                <strong>下一步权威数据</strong>
+                <strong>{t('territoryWorldModel.dataBrowser.nextAuthoritativeData')}</strong>
                 {(dataFoundation.required_next_data || []).slice(0, 4).map(item => (
-                  <p key={`browser-next-${item.data}`}>{item.priority ? `${item.priority} · ` : ''}{displayText(item.data)}：{displayText(item.unlocks || item.minimum)}</p>
+                  <p key={`browser-next-${item.data}`}>{item.priority ? `${item.priority} · ` : ''}{displayText(item.data)}{t('territoryWorldModel.common.keyValueSeparator')}{displayText(item.unlocks || item.minimum)}</p>
                 ))}
               </article>
             </div>
           </div>
         ) : (
-          <div className="twm-empty">暂无可浏览的数据包</div>
+          <div className="twm-empty">{t('territoryWorldModel.dataBrowser.noDatasets')}</div>
         )}
       </section>
 
       <details className="twm-section twm-research-panel" open>
         <summary>
-          <span>研究边界</span>
-          <code>{running === 'positioning' ? '加载中' : '原型验证主张'}</code>
+          <span>{t('territoryWorldModel.research.boundary')}</span>
+          <code>{running === 'positioning' ? t('territoryWorldModel.status.loading') : t('territoryWorldModel.research.prototypeClaim')}</code>
         </summary>
         <div className="twm-research-question">{displayText(researchPositioning.research_question)}</div>
         <div className="twm-research-grid">
           <div>
-            <span>核心技术</span>
+            <span>{t('territoryWorldModel.research.coreTechnology')}</span>
             {(researchPositioning.core_technology || []).slice(0, 3).map(item => (
               <article key={item.name}>
                 <strong>{displayText(item.name)}</strong>
@@ -3227,7 +3972,7 @@ export default function TerritoryWorldModelTab() {
             ))}
           </div>
           <div>
-            <span>待验证主张</span>
+            <span>{t('territoryWorldModel.research.claimsToValidate')}</span>
             {(researchPositioning.innovation_hypotheses || []).slice(0, 3).map(item => (
               <article key={item.hypothesis}>
                 <strong>{displayText(item.hypothesis)}</strong>
@@ -3236,17 +3981,17 @@ export default function TerritoryWorldModelTab() {
             ))}
             {!(researchPositioning.innovation_hypotheses || []).length && (
               <article>
-                <strong>创新性必须经基线方法验证</strong>
+                <strong>{t('territoryWorldModel.research.baselineRequired')}</strong>
                 <p>{displayText(researchPositioning.claim_boundary)}</p>
               </article>
             )}
           </div>
           <div>
-            <span>未满足需求假设</span>
+            <span>{t('territoryWorldModel.research.unmetNeeds')}</span>
             <ul>{(researchPositioning.unmet_need_hypotheses || []).slice(0, 4).map(item => <li key={item}>{displayText(item)}</li>)}</ul>
           </div>
           <div>
-            <span>反证条件</span>
+            <span>{t('territoryWorldModel.research.falsification')}</span>
             <ul>{(researchPositioning.falsification_conditions || []).slice(0, 4).map(item => <li key={item}>{displayText(item)}</li>)}</ul>
           </div>
         </div>
@@ -3255,26 +4000,32 @@ export default function TerritoryWorldModelTab() {
       <section className="twm-section twm-claim-matrix-panel">
         <div className="twm-section-head">
           <GitBranch size={14} />
-          <h4>主张矩阵</h4>
+          <h4>{t('territoryWorldModel.research.claimMatrix')}</h4>
           <span className={`status-badge ${statusClass(claimMatrix.status)}`}>
-            {running === 'claimMatrix' ? '加载中' : statusText(claimMatrix.status, '需复核')}
+            {running === 'claimMatrix' ? t('territoryWorldModel.status.loading') : statusText(claimMatrix.status, t('territoryWorldModel.status.review'))}
           </span>
         </div>
         <div className="twm-claim-boundary">{displayText(claimMatrix.claim_boundary)}</div>
         <div className="twm-data-kpis">
-          <div><span>真实历史</span><strong>{fmt(claimDataGate.production_ready_observed_history_rows, 0)}</strong></div>
-          <div><span>动作标签</span><strong>{fmt(claimDataGate.production_policy_history_row_count, 0)}</strong></div>
-          <div><span>生产声明</span><strong>{yesNo(claimDataGate.production_deployment_supported)}</strong></div>
-          <div><span>预测/因果</span><strong>{yesNo(claimDataGate.predictive_or_causal_claim_supported)}</strong></div>
+          <div><span>{t('territoryWorldModel.research.realHistory')}</span><strong>{fmt(claimDataGate.production_ready_observed_history_rows, 0)}</strong></div>
+          <div><span>{t('territoryWorldModel.research.actionLabels')}</span><strong>{fmt(claimDataGate.production_policy_history_row_count, 0)}</strong></div>
+          <div><span>{t('territoryWorldModel.research.productionClaim')}</span><strong>{yesNo(claimDataGate.production_deployment_supported)}</strong></div>
+          <div><span>{t('territoryWorldModel.research.predictiveCausal')}</span><strong>{yesNo(claimDataGate.predictive_or_causal_claim_supported)}</strong></div>
         </div>
         <div className="twm-claim-grid">
           {(claimMatrix.claims || []).slice(0, 4).map(item => (
             <article className="twm-claim-card" key={item.claim_id}>
               <div>
                 <strong>{displayText(item.claim_id)}</strong>
-                <span className={`status-badge ${statusClass(item.gate?.status)}`}>{statusText(item.gate?.claim_level || item.gate?.status, '需复核')}</span>
+                <span className={`status-badge ${statusClass(item.gate?.status)}`}>{statusText(item.gate?.claim_level || item.gate?.status, t('territoryWorldModel.status.review'))}</span>
               </div>
               <p>{displayText(item.claim)}</p>
+              {item.business_need && (
+                <p><span className="twm-research-detail-label">{t('territoryWorldModelDynamicResearchDataExtras.businessNeedLabel')}</span>{displayText(item.business_need)}</p>
+              )}
+              {!!item.minimum_data?.length && (
+                <p><span className="twm-research-detail-label">{t('territoryWorldModelDynamicResearchDataExtras.minimumDataLabel')}</span>{compactDisplayList(item.minimum_data)}</p>
+              )}
               <div className="twm-claim-tags">
                 <code>{displayText(item.baseline)}</code>
                 {(item.gate?.missing || []).slice(0, 3).map(missing => <code key={`${item.claim_id}-${missing}`}>{displayText(missing)}</code>)}
@@ -3283,17 +4034,36 @@ export default function TerritoryWorldModelTab() {
             </article>
           ))}
         </div>
+        {!!(claimMatrix.baselines || []).length && (
+          <div className="twm-baseline-methods">
+            <span className="twm-baseline-methods-title">{t('territoryWorldModelDynamicBaselineExtras.sectionTitle')}</span>
+            <div>
+              {(claimMatrix.baselines || []).slice(0, 4).map(item => (
+                <article key={item.baseline_id}>
+                  <strong>{displayText(item.label || item.baseline_id)}</strong>
+                  <p><span>{t('territoryWorldModelDynamicBaselineExtras.testsLabel')}</span>{displayText(item.tests)}</p>
+                  <p><span>{t('territoryWorldModelDynamicBaselineExtras.minimumOutputLabel')}</span>{compactDisplayList(item.minimum_output)}</p>
+                  <p><span>{t('territoryWorldModelDynamicBaselineExtras.whyNeededLabel')}</span>{displayText(item.why_needed)}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="twm-claim-experiments">
-          {(claimMatrix.next_experiments || []).slice(0, 3).map(item => (
+          {(claimMatrix.next_experiments || []).slice(0, 4).map(item => (
             <article key={item.experiment}>
               <strong>{item.priority ? `${item.priority} · ${displayText(item.experiment)}` : displayText(item.experiment)}</strong>
               <p>{displayText(item.question || item.decision)}</p>
+              {!!item.required_data?.length && (
+                <p><span className="twm-research-detail-label">{t('territoryWorldModelDynamicResearchDataExtras.requiredDataLabel')}</span>{compactDisplayList(item.required_data)}</p>
+              )}
+              {item.question && item.decision && <span>{displayText(item.decision)}</span>}
             </article>
           ))}
         </div>
         <div className="twm-baseline-inputs">
           <label>
-            <span>研究主张</span>
+            <span>{t('territoryWorldModel.baseline.researchClaim')}</span>
             <select value={selectedClaimId} onChange={e => applyClaimFixture(e.target.value)} disabled={busy}>
               {(claimMatrix.claims || []).map(item => (
                 <option key={item.claim_id} value={item.claim_id}>{displayText(item.claim_id)}</option>
@@ -3301,87 +4071,110 @@ export default function TerritoryWorldModelTab() {
             </select>
           </label>
           <label>
-            <span>TWM 指标文件</span>
+            <span>{t('territoryWorldModel.baseline.twmMetricsFile')}</span>
             <input value={twmMetricsPath} onChange={e => setTwmMetricsPath(e.target.value)} disabled={busy} />
           </label>
           <label>
-            <span>基线指标文件</span>
+            <span>{t('territoryWorldModel.baseline.baselineMetricsFile')}</span>
             <input value={baselineMetricsPath} onChange={e => setBaselineMetricsPath(e.target.value)} disabled={busy} />
           </label>
           <label>
-            <span>TWM 样本输出</span>
+            <span>{t('territoryWorldModel.baseline.twmCaseOutput')}</span>
             <input value={twmCaseOutputPath} onChange={e => setTwmCaseOutputPath(e.target.value)} disabled={busy} />
           </label>
           <label>
-            <span>基线样本输出</span>
+            <span>{t('territoryWorldModel.baseline.baselineCaseOutput')}</span>
             <input value={baselineCaseOutputPath} onChange={e => setBaselineCaseOutputPath(e.target.value)} disabled={busy} />
           </label>
         </div>
         <div className="twm-baseline-template-panel">
           <div className="twm-baseline-template-head">
             <div>
-              <strong>脱敏导出模板</strong>
-              <span>{displayText(selectedBaselineTemplate?.label || selectedClaimId, '无模板')}</span>
+              <strong>{t('territoryWorldModel.baseline.sanitizedTemplate')}</strong>
+              <span>{displayText(selectedBaselineTemplate?.label || selectedClaimId, t('territoryWorldModel.baseline.noTemplate'))}</span>
             </div>
             <span className={`status-badge ${selectedBaselineTemplate ? 'warning' : 'proposed'}`}>
-              {running === 'baselineTemplates' ? '加载中' : selectedBaselineTemplate?.same_case_join_key ? `关联 ${selectedBaselineTemplate.same_case_join_key}` : '模板'}
+              {running === 'baselineTemplates' ? t('territoryWorldModel.status.loading') : selectedBaselineTemplate?.same_case_join_key ? t('territoryWorldModel.baseline.joinKey', { key: selectedBaselineTemplate.same_case_join_key }) : t('territoryWorldModel.baseline.template')}
             </span>
             <button type="button" className="twm-card-detail-toggle" onClick={loadBaselineTemplates} disabled={busy}>
-              刷新
+              {t('territoryWorldModel.actions.refresh')}
             </button>
           </div>
           {selectedBaselineTemplate ? (
             <>
-              <div className="twm-baseline-template-question">{selectedBaselineTemplate.business_question || '-'}</div>
+              <div className="twm-baseline-template-question">{displayText(selectedBaselineTemplate.business_question)}</div>
               <div className="twm-baseline-template-grid">
                 <article>
                   <span>TWM CSV</span>
                   <code>{selectedBaselineTemplate.csv_header?.twm || (selectedBaselineTemplate.headers?.twm || []).join(',')}</code>
                 </article>
                 <article>
-                  <span>基线 CSV</span>
+                  <span>{t('territoryWorldModel.baseline.baselineCsv')}</span>
                   <code>{selectedBaselineTemplate.csv_header?.baseline || (selectedBaselineTemplate.headers?.baseline || []).join(',')}</code>
                 </article>
                 <article>
-                  <span>必填字段</span>
+                  <span>{t('territoryWorldModel.baseline.requiredColumns')}</span>
                   <p>{compactList(selectedBaselineTemplate.required_columns)}</p>
                 </article>
                 <article>
-                  <span>真实数据门槛</span>
+                  <span>{t('territoryWorldModel.baseline.realDataGate')}</span>
                   <p>
-                    {fmt(selectedBaselineTemplate.minimum_real_data_gate?.minimum_real_rows ?? selectedBaselineTemplate.production_collection?.minimum_real_rows, 0)} 行 · 重叠率 {fmt(selectedBaselineTemplate.minimum_real_data_gate?.minimum_overlap_ratio ?? 0.8, 2)}
+                    {t('territoryWorldModel.baseline.realDataSummary', { rows: fmt(selectedBaselineTemplate.minimum_real_data_gate?.minimum_real_rows ?? selectedBaselineTemplate.production_collection?.minimum_real_rows, 0), ratio: fmt(selectedBaselineTemplate.minimum_real_data_gate?.minimum_overlap_ratio ?? 0.8, 2) })}
                   </p>
                 </article>
+                {selectedBaselineTemplate.export_spec?.expected_source && (
+                  <article>
+                    <span>{t('territoryWorldModelDynamicBaselineExtras.expectedSourceLabel')}</span>
+                    <p>{displayText(selectedBaselineTemplate.export_spec.expected_source)}</p>
+                  </article>
+                )}
               </div>
               <div className="twm-baseline-template-metrics">
                 {(selectedBaselineTemplate.metric_column_map || []).slice(0, 3).map(item => (
                   <article key={`${selectedBaselineTemplate.claim_id}-${item.metric}`}>
                     <strong>{displayText(item.metric)}</strong>
-                    <p>{compactList(item.columns, '无字段')}</p>
+                    <p>{compactList(item.columns, t('territoryWorldModel.dataBrowser.noFields'))}</p>
+                    {item.supports_claim_when && (
+                      <p><span className="twm-research-detail-label">{t('territoryWorldModelDynamicBaselineDetailExtras.supportsClaimLabel')}</span>{displayText(item.supports_claim_when)}</p>
+                    )}
                   </article>
                 ))}
               </div>
               <details className="twm-baseline-template-details">
-                <summary>字段与脱敏约束</summary>
+                <summary>{t('territoryWorldModel.baseline.fieldConstraints')}</summary>
                 <div>
                   {(selectedBaselineTemplate.field_descriptions || []).slice(0, 5).map(field => (
                     <article key={`${selectedBaselineTemplate.claim_id}-${field.name}`}>
-                      <span>{field.required ? '必填' : '可选'}</span>
+                      <span>{field.required ? t('territoryWorldModel.baseline.required') : t('territoryWorldModel.baseline.optional')}</span>
                       <strong>{field.name}</strong>
-                      <p>{displayText(field.metric_use || field.description)}</p>
+                      {field.description && (
+                        <p><span className="twm-research-detail-label">{t('territoryWorldModelDynamicBaselineDetailExtras.descriptionLabel')}</span>{displayText(field.description)}</p>
+                      )}
+                      {field.metric_use && (
+                        <p><span className="twm-research-detail-label">{t('territoryWorldModelDynamicBaselineDetailExtras.metricUseLabel')}</span>{displayText(field.metric_use)}</p>
+                      )}
+                      {field.sanitization && (
+                        <p><span className="twm-research-detail-label">{t('territoryWorldModelDynamicBaselineDetailExtras.sanitizationLabel')}</span>{displayText(field.sanitization)}</p>
+                      )}
                     </article>
                   ))}
                 </div>
-                <p>{(baselineTemplates?.global_sanitization_rules || []).slice(0, 2).join(' · ') || selectedBaselineTemplate.production_collection?.notes || '-'}</p>
+                {!!selectedBaselineTemplate.collection_steps?.length && (
+                  <p><span className="twm-research-detail-label">{t('territoryWorldModelDynamicBaselineDetailExtras.collectionStepsLabel')}</span>{compactDisplayList(selectedBaselineTemplate.collection_steps)}</p>
+                )}
+                <p>{compactDisplayList(
+                  (baselineTemplates?.global_sanitization_rules || []).slice(0, 2),
+                  displayText(selectedBaselineTemplate.production_collection?.notes),
+                )}</p>
               </details>
             </>
           ) : (
-            <div className="twm-empty">当前研究主张尚未加载导出模板</div>
+            <div className="twm-empty">{t('territoryWorldModel.baseline.templateEmpty')}</div>
           )}
         </div>
         <div className="twm-baseline-imports">
           <label className="twm-file-upload">
-            <span>导入 TWM CSV</span>
+            <span>{t('territoryWorldModel.baseline.importTwmCsv')}</span>
             <input
               type="file"
               accept=".csv,text/csv"
@@ -3391,10 +4184,10 @@ export default function TerritoryWorldModelTab() {
                 e.currentTarget.value = '';
               }}
             />
-            <strong><FileCheck2 size={13} />选择 CSV 文件</strong>
+            <strong><FileCheck2 size={13} />{t('territoryWorldModel.baseline.selectCsv')}</strong>
           </label>
           <label className="twm-file-upload">
-            <span>导入基线 CSV</span>
+            <span>{t('territoryWorldModel.baseline.importBaselineCsv')}</span>
             <input
               type="file"
               accept=".csv,text/csv"
@@ -3404,53 +4197,53 @@ export default function TerritoryWorldModelTab() {
                 e.currentTarget.value = '';
               }}
             />
-            <strong><FileCheck2 size={13} />选择 CSV 文件</strong>
+            <strong><FileCheck2 size={13} />{t('territoryWorldModel.baseline.selectCsv')}</strong>
           </label>
           {baselineImport && (
             <div className="twm-baseline-import-summary">
-              <span className={`status-badge ${statusClass(baselineImport.status)}`}>{statusText(baselineImport.source_role || baselineImport.status, '导入')}</span>
+              <span className={`status-badge ${statusClass(baselineImport.status)}`}>{statusText(baselineImport.source_role || baselineImport.status, t('territoryWorldModel.baseline.import'))}</span>
               <strong>{baselineImport.filename || baselineImport.path || '-'}</strong>
-              <p>{fmt(baselineImport.row_count, 0)} 行 · {(baselineImport.columns || []).slice(0, 4).join(', ') || '无字段'}</p>
+              <p>{t('territoryWorldModel.baseline.importSummary', { rows: fmt(baselineImport.row_count, 0), columns: (baselineImport.columns || []).slice(0, 4).join(', ') || t('territoryWorldModel.dataBrowser.noFields') })}</p>
             </div>
           )}
         </div>
         <div className="twm-baseline-actions">
           <button type="button" className="twm-secondary-action" onClick={runBaselineExportValidation} disabled={busy}>
             {running === 'baselineExport' || running === 'baselineImport' ? <Loader2 size={13} className="twm-spin" /> : <FileCheck2 size={13} />}
-            导出校验
+            {t('territoryWorldModel.baseline.exportValidation')}
           </button>
           <button type="button" className="twm-secondary-action" onClick={runBaselinePipeline} disabled={busy}>
             {running === 'baselinePipeline' ? <Loader2 size={13} className="twm-spin" /> : <Route size={13} />}
-            依据流水线
+            {t('territoryWorldModel.baseline.evidencePipeline')}
           </button>
           <button type="button" className="twm-secondary-action" onClick={runBaselineComparison} disabled={busy}>
             {running === 'baselineCompare' ? <Loader2 size={13} className="twm-spin" /> : <BarChart3 size={13} />}
-            基线对比
+            {t('territoryWorldModel.baseline.comparison')}
           </button>
         </div>
         {baselinePipeline && (
           <div className="twm-baseline-report twm-baseline-pipeline-report">
             <div>
-              <span className={`status-badge ${statusClass(baselinePipeline.status)}`}>{statusText(baselinePipeline.status, '需复核')}</span>
+              <span className={`status-badge ${statusClass(baselinePipeline.status)}`}>{statusText(baselinePipeline.status, t('territoryWorldModel.status.review'))}</span>
               <strong>{displayText(baselinePipeline.pipeline_decision)}</strong>
-              <p>{displayText(baselinePipeline.claim_id)} 对比 {displayText(baselinePipeline.baseline_id)}</p>
+              <p>{t('territoryWorldModel.baseline.compares', { claim: displayText(baselinePipeline.claim_id), baseline: displayText(baselinePipeline.baseline_id) })}</p>
             </div>
             <div className="twm-baseline-export-gates">
               <article>
-                <span>导出校验</span>
+                <span>{t('territoryWorldModel.baseline.exportValidation')}</span>
                 <p>{statusText(baselinePipeline.steps?.export_validation?.status)}</p>
               </article>
               <article>
-                <span>基线对比</span>
+                <span>{t('territoryWorldModel.baseline.comparison')}</span>
                 <p>{displayText(baselinePipeline.steps?.baseline_comparison?.status || baselinePipeline.steps?.baseline_comparison?.skipped_reason)}</p>
               </article>
               <article>
-                <span>运行卡片</span>
+                <span>{t('territoryWorldModel.baseline.runCards')}</span>
                 <p>
                   {[
-                    baselinePipeline.steps?.export_validation?.scenario_card?.scenario_id ? '校验' : '',
-                    baselinePipeline.steps?.baseline_comparison?.scenario_card?.scenario_id ? '对比' : '',
-                  ].filter(Boolean).join(', ') || '无'}
+                    baselinePipeline.steps?.export_validation?.scenario_card?.scenario_id ? t('territoryWorldModel.baseline.validation') : '',
+                    baselinePipeline.steps?.baseline_comparison?.scenario_card?.scenario_id ? t('territoryWorldModel.baseline.comparisonShort') : '',
+                  ].filter(Boolean).join(', ') || t('territoryWorldModel.common.none')}
                 </p>
               </article>
             </div>
@@ -3460,48 +4253,48 @@ export default function TerritoryWorldModelTab() {
         {baselineExportValidation && (
           <div className="twm-baseline-report twm-baseline-export-report">
             <div>
-              <span className={`status-badge ${statusClass(baselineExportValidation.status)}`}>{statusText(baselineExportValidation.status, '需复核')}</span>
-              <strong>{displayText(baselineExportValidation.export_spec?.label || baselineExportValidation.export_spec?.export_type, '基线导出')}</strong>
-              <p>{displayText(baselineExportValidation.claim?.claim_id)} · 关联键 {baselineExportValidation.column_inventory?.join_key || '-'}</p>
+              <span className={`status-badge ${statusClass(baselineExportValidation.status)}`}>{statusText(baselineExportValidation.status, t('territoryWorldModel.status.review'))}</span>
+              <strong>{displayText(baselineExportValidation.export_spec?.label || baselineExportValidation.export_spec?.export_type, t('territoryWorldModel.baseline.baselineExport'))}</strong>
+              <p>{t('territoryWorldModel.baseline.claimJoinKey', { claim: displayText(baselineExportValidation.claim?.claim_id), key: baselineExportValidation.column_inventory?.join_key || '-' })}</p>
             </div>
             <div className="twm-baseline-sources">
               <article>
-                <span>重叠样本</span>
+                <span>{t('territoryWorldModel.baseline.overlapSamples')}</span>
                 <strong>{fmt(baselineExportValidation.coverage?.overlap_count, 0)}</strong>
-                <p>覆盖率 {fmt(baselineExportValidation.coverage?.coverage_ratio, 3)}</p>
+                <p>{t('territoryWorldModel.baseline.coverageRatio', { ratio: fmt(baselineExportValidation.coverage?.coverage_ratio, 3) })}</p>
               </article>
               <article>
-                <span>TWM 行数</span>
+                <span>{t('territoryWorldModel.baseline.twmRows')}</span>
                 <strong>{fmt(baselineExportValidation.column_inventory?.twm?.row_count, 0)}</strong>
-                <p>{fmt(baselineExportValidation.column_inventory?.twm?.unique_join_id_count, 0)} 个唯一键</p>
+                <p>{t('territoryWorldModel.baseline.uniqueKeys', { count: fmt(baselineExportValidation.column_inventory?.twm?.unique_join_id_count, 0) })}</p>
               </article>
               <article>
-                <span>基线行数</span>
+                <span>{t('territoryWorldModel.baseline.baselineRows')}</span>
                 <strong>{fmt(baselineExportValidation.column_inventory?.baseline?.row_count, 0)}</strong>
-                <p>{fmt(baselineExportValidation.column_inventory?.baseline?.unique_join_id_count, 0)} 个唯一键</p>
+                <p>{t('territoryWorldModel.baseline.uniqueKeys', { count: fmt(baselineExportValidation.column_inventory?.baseline?.unique_join_id_count, 0) })}</p>
               </article>
               <article>
-                <span>可比指标</span>
+                <span>{t('territoryWorldModel.baseline.comparableMetrics')}</span>
                 <strong>{fmt(baselineExportValidation.parser_compatibility?.comparable_metrics?.length, 0)}</strong>
                 <p>{compactDisplayList((baselineExportValidation.parser_compatibility?.comparable_metrics || []).slice(0, 2))}</p>
               </article>
             </div>
             <div className="twm-baseline-export-gates">
               <article>
-                <span>阻断项</span>
+                <span>{t('territoryWorldModel.baseline.blockers')}</span>
                 <p>{compactDisplayList((baselineExportValidation.blocking_errors || []).slice(0, 4))}</p>
               </article>
               <article>
-                <span>缺失字段</span>
+                <span>{t('territoryWorldModel.baseline.missingFields')}</span>
                 <p>
                   {[...(baselineExportValidation.column_inventory?.missing_required?.twm || []), ...(baselineExportValidation.column_inventory?.missing_required?.baseline || [])]
                     .slice(0, 6)
                     .map(item => displayText(item))
-                    .join(', ') || '无'}
+                    .join(', ') || t('territoryWorldModel.common.none')}
                 </p>
               </article>
               <article>
-                <span>提醒</span>
+                <span>{t('territoryWorldModel.baseline.warnings')}</span>
                 <p>{compactDisplayList((baselineExportValidation.warnings || []).slice(0, 4))}</p>
               </article>
             </div>
@@ -3511,63 +4304,63 @@ export default function TerritoryWorldModelTab() {
         {baselineComparison && (
           <div className="twm-baseline-report">
             <div>
-              <span className={`status-badge ${statusClass(baselineComparison.status)}`}>{statusText(baselineComparison.status, '需复核')}</span>
+              <span className={`status-badge ${statusClass(baselineComparison.status)}`}>{statusText(baselineComparison.status, t('territoryWorldModel.status.review'))}</span>
               <strong>{displayText(baselineComparison.upgrade_decision)}</strong>
-              <p>{displayText(baselineComparison.claim?.claim_id)} 对比 {displayText(baselineComparison.baseline?.baseline_id)}</p>
+              <p>{t('territoryWorldModel.baseline.compares', { claim: displayText(baselineComparison.claim?.claim_id), baseline: displayText(baselineComparison.baseline?.baseline_id) })}</p>
             </div>
             <div className="twm-baseline-metrics">
               {(baselineComparison.metric_comparisons || []).slice(0, 4).map(metric => (
                 <article key={metric.name}>
                   <span className={`status-badge ${statusClass(metric.status)}`}>{statusText(metric.status)}</span>
                   <strong>{displayText(metric.name)}</strong>
-                  <p>TWM {fmt(metric.twm_value, 3)} · 基线 {fmt(metric.baseline_value, 3)} · 差值 {fmt(metric.delta, 3)}</p>
+                  <p>{t('territoryWorldModel.baseline.metricValues', { twm: fmt(metric.twm_value, 3), baseline: fmt(metric.baseline_value, 3), delta: fmt(metric.delta, 3) })}</p>
                 </article>
               ))}
             </div>
             <div className="twm-baseline-sources">
               <article>
-                <span>TWM 指标</span>
-                <strong>{displayText(baselineComparison.inputs?.twm_metrics_source, '无')}</strong>
-                <p>{fmt(baselineComparison.inputs?.twm_metric_count, 0)} 个指标</p>
+                <span>{t('territoryWorldModel.baseline.twmMetrics')}</span>
+                <strong>{displayText(baselineComparison.inputs?.twm_metrics_source, t('territoryWorldModel.common.none'))}</strong>
+                <p>{t('territoryWorldModel.baseline.metricCount', { count: fmt(baselineComparison.inputs?.twm_metric_count, 0) })}</p>
               </article>
               <article>
-                <span>基线指标</span>
-                <strong>{displayText(baselineComparison.inputs?.baseline_metrics_source, '无')}</strong>
-                <p>{fmt(baselineComparison.inputs?.baseline_metric_count, 0)} 个指标</p>
+                <span>{t('territoryWorldModel.baseline.baselineMetrics')}</span>
+                <strong>{displayText(baselineComparison.inputs?.baseline_metrics_source, t('territoryWorldModel.common.none'))}</strong>
+                <p>{t('territoryWorldModel.baseline.metricCount', { count: fmt(baselineComparison.inputs?.baseline_metric_count, 0) })}</p>
               </article>
               <article>
-                <span>TWM 样本</span>
-                <strong>{displayText(baselineComparison.inputs?.twm_case_source, '无')}</strong>
-                <p>{fmt(baselineComparison.inputs?.twm_case_count, 0)} 行</p>
+                <span>{t('territoryWorldModel.baseline.twmCases')}</span>
+                <strong>{displayText(baselineComparison.inputs?.twm_case_source, t('territoryWorldModel.common.none'))}</strong>
+                <p>{t('territoryWorldModel.baseline.rowCount', { count: fmt(baselineComparison.inputs?.twm_case_count, 0) })}</p>
               </article>
               <article>
-                <span>基线样本</span>
-                <strong>{displayText(baselineComparison.inputs?.baseline_case_source, '无')}</strong>
-                <p>{fmt(baselineComparison.inputs?.baseline_case_count, 0)} 行</p>
+                <span>{t('territoryWorldModel.baseline.baselineCases')}</span>
+                <strong>{displayText(baselineComparison.inputs?.baseline_case_source, t('territoryWorldModel.common.none'))}</strong>
+                <p>{t('territoryWorldModel.baseline.rowCount', { count: fmt(baselineComparison.inputs?.baseline_case_count, 0) })}</p>
               </article>
             </div>
             {Object.entries(baselineComparison.inputs?.metric_source_errors || {}).some(([, value]) => Boolean(value)) && (
               <p>
-                解析错误：{Object.entries(baselineComparison.inputs?.metric_source_errors || {})
+                {t('territoryWorldModel.baseline.parseErrors')}: {Object.entries(baselineComparison.inputs?.metric_source_errors || {})
                   .filter(([, value]) => Boolean(value))
                   .map(([key, value]) => `${displayText(key)}=${displayText(value)}`)
                   .join(', ')}
               </p>
             )}
             {baselineComparison.scenario_card?.scenario_id && (
-              <p>运行卡片：{baselineComparison.scenario_card.scenario_id} · {statusText(baselineComparison.scenario_card.status, '需复核')}</p>
+              <p>{t('territoryWorldModel.baseline.runCardSummary', { id: baselineComparison.scenario_card.scenario_id, status: statusText(baselineComparison.scenario_card.status, t('territoryWorldModel.status.review')) })}</p>
             )}
-            <p>{compactDisplayList((baselineComparison.evidence_gate?.missing || []).slice(0, 4), '无依据要求缺口')}</p>
+            <p>{compactDisplayList((baselineComparison.evidence_gate?.missing || []).slice(0, 4), t('territoryWorldModel.baseline.noEvidenceGaps'))}</p>
           </div>
         )}
         <div className="twm-baseline-cards">
           <div className="twm-baseline-cards-head">
             <div>
-              <strong>已保存运行卡片</strong>
-              <span>{running === 'baselineCards' ? '加载中' : `${filteredBaselineCards.length}/${baselineCards.length}`}</span>
+              <strong>{t('territoryWorldModel.baseline.savedRunCards')}</strong>
+              <span>{running === 'baselineCards' ? t('territoryWorldModel.status.loading') : `${fmt(filteredBaselineCards.length, 0)}/${fmt(baselineCards.length, 0)}`}</span>
             </div>
             <select value={baselineCardFilter} onChange={e => setBaselineCardFilter(e.target.value)} disabled={busy || !baselineCards.length}>
-              <option value="all">全部主张</option>
+              <option value="all">{t('territoryWorldModel.baseline.allClaims')}</option>
               {(claimMatrix.claims || []).map(item => (
                 <option key={`card-filter-${item.claim_id}`} value={item.claim_id}>{displayText(item.claim_id)}</option>
               ))}
@@ -3586,41 +4379,41 @@ export default function TerritoryWorldModelTab() {
               return (
                 <article key={card.id}>
                   <div>
-                    <span className={`status-badge ${statusClass(card.status || meta.upgrade_decision)}`}>{displayText(card.status || meta.upgrade_decision, '需复核')}</span>
+                    <span className={`status-badge ${statusClass(card.status || meta.upgrade_decision)}`}>{displayText(card.status || meta.upgrade_decision, t('territoryWorldModel.status.review'))}</span>
                     <strong>{displayText(claimId)}</strong>
                     <button
                       type="button"
                       className="twm-card-detail-toggle"
                       onClick={() => setExpandedBaselineCardId(expanded ? '' : card.id)}
                     >
-                      {expanded ? '收起' : '详情'}
+                      {expanded ? t('territoryWorldModel.baseline.collapse') : t('territoryWorldModel.baseline.details')}
                     </button>
                   </div>
                   <p>{displayText(baselineId)}</p>
                   <div className="twm-baseline-card-kpis">
                     <span>TWM {fmt(sources.twm_case_count ?? validationSources.twm?.row_count, 0)}</span>
-                    <span>基线 {fmt(sources.baseline_case_count ?? validationSources.baseline?.row_count, 0)}</span>
-                    <span>{isExportValidation ? `重叠 ${fmt(meta.coverage?.overlap_count, 0)}` : errors.length ? `${errors.length} 个解析错误` : '解析正常'}</span>
+                    <span>{t('territoryWorldModel.baseline.baselineCount', { count: fmt(sources.baseline_case_count ?? validationSources.baseline?.row_count, 0) })}</span>
+                    <span>{isExportValidation ? t('territoryWorldModel.baseline.overlapCount', { count: fmt(meta.coverage?.overlap_count, 0) }) : errors.length ? t('territoryWorldModel.baseline.parseErrorCount', { count: fmt(errors.length, 0) }) : t('territoryWorldModel.baseline.parseOk')}</span>
                   </div>
-                  <p>{isExportValidation ? `关联 ${meta.column_inventory?.join_key || '-'} · ${fmt(meta.coverage?.coverage_ratio, 3)}` : compactDisplayList((meta.evidence_gate?.missing || []).slice(0, 3), '无依据要求缺口')}</p>
+                  <p>{isExportValidation ? t('territoryWorldModel.baseline.joinCoverage', { key: meta.column_inventory?.join_key || '-', ratio: fmt(meta.coverage?.coverage_ratio, 3) }) : compactDisplayList((meta.evidence_gate?.missing || []).slice(0, 3), t('territoryWorldModel.baseline.noEvidenceGaps'))}</p>
                   {expanded && (
                     <div className="twm-baseline-card-detail">
                       {isExportValidation ? (
                         <>
                           <div>
-                            <span>覆盖</span>
+                            <span>{t('territoryWorldModel.baseline.coverage')}</span>
                             <strong>{fmt(meta.coverage?.overlap_count, 0)} · {fmt(meta.coverage?.coverage_ratio, 3)}</strong>
                           </div>
                           <div>
-                            <span>缺失字段</span>
+                            <span>{t('territoryWorldModel.baseline.missingFields')}</span>
                             <p>{compactDisplayList([...(meta.column_inventory?.missing_required?.twm || []), ...(meta.column_inventory?.missing_required?.baseline || []), ...(meta.column_inventory?.missing_required?.claim_parser || [])])}</p>
                           </div>
                           <div>
-                            <span>可比指标</span>
+                            <span>{t('territoryWorldModel.baseline.comparableMetrics')}</span>
                             <p>{compactDisplayList(meta.parser_compatibility?.comparable_metrics)}</p>
                           </div>
                           <div>
-                            <span>阻断/提醒</span>
+                            <span>{t('territoryWorldModel.baseline.blockersWarnings')}</span>
                             <p>{compactDisplayList([...(meta.blocking_errors || []), ...(meta.warnings || [])])}</p>
                           </div>
                         </>
@@ -3630,12 +4423,12 @@ export default function TerritoryWorldModelTab() {
                             <div key={`${card.id}-${metric.name}`}>
                               <span>{displayText(metric.name)}</span>
                               <strong>{statusText(metric.status)}</strong>
-                              <p>TWM {fmt(metric.twm_value, 3)} · 基线 {fmt(metric.baseline_value, 3)} · 差值 {fmt(metric.delta, 3)}</p>
+                              <p>{t('territoryWorldModel.baseline.metricValues', { twm: fmt(metric.twm_value, 3), baseline: fmt(metric.baseline_value, 3), delta: fmt(metric.delta, 3) })}</p>
                             </div>
                           ))}
                           <div>
-                            <span>依据要求</span>
-                            <p>{compactDisplayList(meta.evidence_gate?.missing, '无依据要求缺口')}</p>
+                            <span>{t('territoryWorldModel.baseline.evidenceRequirements')}</span>
+                            <p>{compactDisplayList(meta.evidence_gate?.missing, t('territoryWorldModel.baseline.noEvidenceGaps'))}</p>
                           </div>
                         </>
                       )}
@@ -3645,7 +4438,7 @@ export default function TerritoryWorldModelTab() {
               );
             })}
             {!filteredBaselineCards.length && (
-              <div className="twm-empty">{selectedProjectId ? '暂无已保存运行卡片' : '请选择项目后加载运行卡片'}</div>
+              <div className="twm-empty">{selectedProjectId ? t('territoryWorldModel.baseline.noSavedCards') : t('territoryWorldModel.baseline.selectProjectForCards')}</div>
             )}
           </div>
         </div>
@@ -3654,27 +4447,27 @@ export default function TerritoryWorldModelTab() {
       <section className="twm-section twm-data-foundation-panel">
         <div className="twm-section-head">
           <FileCheck2 size={14} />
-          <h4>数据基础</h4>
+          <h4>{t('territoryWorldModel.dataFoundation.title')}</h4>
           <span className={`status-badge ${statusClass(dataReadiness.status || dataFoundation.status)}`}>
-            {running === 'dataFoundation' ? '加载中' : statusText(dataReadiness.status || dataFoundation.status, '需复核')}
+            {running === 'dataFoundation' ? t('territoryWorldModel.status.loading') : statusText(dataReadiness.status || dataFoundation.status, t('territoryWorldModel.status.review'))}
           </span>
         </div>
         <div className="twm-data-verdict">{displayText(dataReadiness.verdict)}</div>
         <div className="twm-data-kpis">
-          <div><span>生产观察历史</span><strong>{fmt(validationSnapshot.production_ready_observed_history_rows, 0)}</strong></div>
-          <div><span>政策动作历史</span><strong>{fmt(validationSnapshot.production_policy_history_row_count, 0)}</strong></div>
-          <div><span>结构样例</span><strong>{fmt(validationSnapshot.structural_fixture?.row_count, 0)}</strong></div>
-          <div><span>合成实验</span><strong>{fmt(validationSnapshot.synthetic_experiment?.row_count, 0)}</strong></div>
+          <div><span>{t('territoryWorldModel.dataFoundation.productionHistory')}</span><strong>{fmt(validationSnapshot.production_ready_observed_history_rows, 0)}</strong></div>
+          <div><span>{t('territoryWorldModel.dataFoundation.policyHistory')}</span><strong>{fmt(validationSnapshot.production_policy_history_row_count, 0)}</strong></div>
+          <div><span>{t('territoryWorldModel.dataFoundation.structuralFixture')}</span><strong>{fmt(validationSnapshot.structural_fixture?.row_count, 0)}</strong></div>
+          <div><span>{t('territoryWorldModel.dataFoundation.syntheticExperiment')}</span><strong>{fmt(validationSnapshot.synthetic_experiment?.row_count, 0)}</strong></div>
         </div>
         <div className="twm-data-layout">
           <div className="twm-data-card">
-            <span>测试数据包</span>
+            <span>{t('territoryWorldModel.dataFoundation.testDatasets')}</span>
             {(dataFoundation.datasets || []).map(dataset => (
               <article key={dataset.id}>
                 <strong>{displayText(dataset.label)}</strong>
                 <p>{displayText(dataset.positioning || dataset.nature)}</p>
                 <div>
-                  <code>{dataset.not_for_production ? '演示/回归数据' : '生产候选数据'}</code>
+                  <code>{dataset.not_for_production ? t('territoryWorldModel.dataFoundation.demoRegressionData') : t('territoryWorldModel.dataFoundation.productionCandidateData')}</code>
                   {(dataset.files || []).map(file => (
                     <code key={`${dataset.id}-${file.path}`}>{file.path}: {fmt(file.count, 0)}</code>
                   ))}
@@ -3683,7 +4476,7 @@ export default function TerritoryWorldModelTab() {
             ))}
           </div>
           <div className="twm-data-card">
-            <span>能支撑的问题</span>
+            <span>{t('territoryWorldModel.dataFoundation.supportedProblems')}</span>
             {(dataFoundation.supported_problems || []).map(item => (
               <article key={item.problem}>
                 <strong>{displayText(item.problem)}</strong>
@@ -3692,7 +4485,7 @@ export default function TerritoryWorldModelTab() {
             ))}
           </div>
           <div className="twm-data-card">
-            <span>不能支撑的落地声明</span>
+            <span>{t('territoryWorldModel.dataFoundation.unsupportedClaims')}</span>
             {(dataFoundation.unsupported_claims || []).map(item => (
               <article key={item.claim}>
                 <strong>{displayText(item.claim)}</strong>
@@ -3701,7 +4494,7 @@ export default function TerritoryWorldModelTab() {
             ))}
           </div>
           <div className="twm-data-card">
-            <span>下一步真实数据</span>
+            <span>{t('territoryWorldModel.dataFoundation.nextRealData')}</span>
             {(dataFoundation.required_next_data || []).map(item => (
               <article key={item.data}>
                 <strong>{item.priority ? `${item.priority} · ${displayText(item.data)}` : displayText(item.data)}</strong>
@@ -3712,8 +4505,8 @@ export default function TerritoryWorldModelTab() {
         </div>
         <div className="twm-data-detail-section">
           <div className="twm-data-detail-head">
-            <strong>关键阻断项</strong>
-            <span>为什么当前只能演示原型，不能声明生产结论</span>
+            <strong>{t('territoryWorldModel.dataFoundation.keyBlockers')}</strong>
+            <span>{t('territoryWorldModel.dataFoundation.blockersDescription')}</span>
           </div>
           <div className="twm-data-blocker-list">
             {(dataReadiness.key_blockers || []).map(item => (
@@ -3722,13 +4515,13 @@ export default function TerritoryWorldModelTab() {
                 <span>{displayText(item)}</span>
               </article>
             ))}
-            {!(dataReadiness.key_blockers || []).length && <div className="twm-empty">暂无阻断项</div>}
+            {!(dataReadiness.key_blockers || []).length && <div className="twm-empty">{t('territoryWorldModel.roadmap.noBlockers')}</div>}
           </div>
         </div>
         <div className="twm-data-detail-section">
           <div className="twm-data-detail-head">
-            <strong>完整数据清单</strong>
-            <span>{fmt((dataFoundation.datasets || []).length, 0)} 个数据包，逐项展示文件和计数</span>
+            <strong>{t('territoryWorldModel.dataFoundation.fullInventory')}</strong>
+            <span>{t('territoryWorldModel.dataFoundation.inventorySummary', { count: fmt((dataFoundation.datasets || []).length, 0) })}</span>
           </div>
           <div className="twm-data-dataset-list">
             {(dataFoundation.datasets || []).map(dataset => (
@@ -3739,14 +4532,14 @@ export default function TerritoryWorldModelTab() {
                     <code>{dataset.id}</code>
                   </div>
                   <span className={`status-badge ${dataset.not_for_production ? 'warning' : 'success'}`}>
-                    {dataset.not_for_production ? '演示/非生产' : '生产候选'}
+                    {dataset.not_for_production ? t('territoryWorldModel.dataBrowser.demoNonProduction') : t('territoryWorldModel.dataBrowser.productionCandidate')}
                   </span>
                 </div>
                 <p>{displayText(dataset.positioning || dataset.nature || dataset.path)}</p>
                 <div className="twm-data-dataset-kpis">
-                  <span>总量 {fmt(dataset.total_count, 0)}</span>
-                  <span>合成 {fmt(dataset.synthetic_count, 0)}</span>
-                  <span>非生产 {fmt(dataset.not_for_production_count, 0)}</span>
+                  <span>{t('territoryWorldModel.dataFoundation.totalCount', { count: fmt(dataset.total_count, 0) })}</span>
+                  <span>{t('territoryWorldModel.dataFoundation.syntheticCount', { count: fmt(dataset.synthetic_count, 0) })}</span>
+                  <span>{t('territoryWorldModel.dataFoundation.nonProductionCount', { count: fmt(dataset.not_for_production_count, 0) })}</span>
                   {dataset.path && <span>{dataset.path}</span>}
                 </div>
                 <div className="twm-data-file-grid">
@@ -3754,11 +4547,11 @@ export default function TerritoryWorldModelTab() {
                     <div key={`${dataset.id}-detail-${file.path}`}>
                       <code>{file.path}</code>
                       <span>
-                        {fmt(file.count, 0)} {file.unit || '条'} · 合成 {fmt(file.synthetic_count, 0)} · 非生产 {fmt(file.not_for_production_count, 0)}
+                        {t('territoryWorldModel.dataFoundation.fileCounts', { count: fmt(file.count, 0), unit: displayText(file.unit, t('territoryWorldModel.dataBrowser.rows')), synthetic: fmt(file.synthetic_count, 0), nonProduction: fmt(file.not_for_production_count, 0) })}
                       </span>
                     </div>
                   ))}
-                  {!(dataset.files || []).length && <div className="twm-empty">暂无文件明细</div>}
+                  {!(dataset.files || []).length && <div className="twm-empty">{t('territoryWorldModel.dataFoundation.noFileDetails')}</div>}
                 </div>
               </article>
             ))}
@@ -3766,68 +4559,68 @@ export default function TerritoryWorldModelTab() {
         </div>
         <div className="twm-data-detail-section">
           <div className="twm-data-detail-head">
-            <strong>完整验证快照</strong>
-            <span>把生产历史、结构样例、合成实验和外部支持分开说明</span>
+            <strong>{t('territoryWorldModel.dataFoundation.validationSnapshot')}</strong>
+            <span>{t('territoryWorldModel.dataFoundation.validationDescription')}</span>
           </div>
           <div className="twm-data-evidence-grid">
             <article>
-              <span>生产观察历史</span>
+              <span>{t('territoryWorldModel.dataFoundation.productionHistory')}</span>
               <strong>{fmt(validationSnapshot.production_ready_observed_history_rows, 0)}</strong>
-              <p>{statusText(validationSnapshot.production_policy_history_status, '未提供')} · 政策动作 {fmt(validationSnapshot.production_policy_history_row_count, 0)}</p>
+              <p>{t('territoryWorldModel.dataFoundation.policyActionsSummary', { status: statusText(validationSnapshot.production_policy_history_status, t('territoryWorldModel.dataFoundation.notProvided')), count: fmt(validationSnapshot.production_policy_history_row_count, 0) })}</p>
             </article>
             <article>
-              <span>政策动作掩码</span>
+              <span>{t('territoryWorldModel.dataFoundation.policyActionMask')}</span>
               <strong>{fmt(validationSnapshot.production_policy_allowed_count, 0)} / {fmt(validationSnapshot.production_policy_blocked_count, 0)}</strong>
-              <p>允许 / 阻断</p>
+              <p>{t('territoryWorldModel.dataFoundation.allowedBlocked')}</p>
             </article>
             <article>
-              <span>结构样例</span>
+              <span>{t('territoryWorldModel.dataFoundation.structuralFixture')}</span>
               <strong>{fmt(validationSnapshot.structural_fixture?.row_count, 0)}</strong>
-              <p>{fmt(validationSnapshot.structural_fixture?.pair_count, 0)} 对 · {statusText(validationSnapshot.structural_fixture?.structural_status)}</p>
+              <p>{t('territoryWorldModel.dataFoundation.pairStatus', { count: fmt(validationSnapshot.structural_fixture?.pair_count, 0), status: statusText(validationSnapshot.structural_fixture?.structural_status) })}</p>
             </article>
             <article>
-              <span>合成实验</span>
+              <span>{t('territoryWorldModel.dataFoundation.syntheticExperiment')}</span>
               <strong>{fmt(validationSnapshot.synthetic_experiment?.row_count, 0)}</strong>
-              <p>{fmt(validationSnapshot.synthetic_experiment?.region_count, 0)} 区域 · {fmt(validationSnapshot.synthetic_experiment?.period_count, 0)} 期</p>
+              <p>{t('territoryWorldModel.dataFoundation.regionPeriods', { regions: fmt(validationSnapshot.synthetic_experiment?.region_count, 0), periods: fmt(validationSnapshot.synthetic_experiment?.period_count, 0) })}</p>
             </article>
             <article>
-              <span>本地观察历史</span>
-              <strong>{statusText(validationSnapshot.local_observed_history?.status, '未提供')}</strong>
-              <p>{compactDisplayList(validationSnapshot.local_observed_history?.missing, '无缺失项')} · 邻接边 {fmt(validationSnapshot.local_observed_history?.relation_neighbor_edge_count, 0)}</p>
+              <span>{t('territoryWorldModel.dataFoundation.localHistory')}</span>
+              <strong>{statusText(validationSnapshot.local_observed_history?.status, t('territoryWorldModel.dataFoundation.notProvided'))}</strong>
+              <p>{t('territoryWorldModel.dataFoundation.localHistorySummary', { missing: compactDisplayList(validationSnapshot.local_observed_history?.missing, t('territoryWorldModel.dataFoundation.noMissingItems')), edges: fmt(validationSnapshot.local_observed_history?.relation_neighbor_edge_count, 0) })}</p>
             </article>
             <article>
-              <span>项目审查上下文</span>
-              <strong>{fmt(validationSnapshot.project_review_context?.project_count, 0)} 项目</strong>
-              <p>规则 {fmt(validationSnapshot.project_review_context?.rule_eval_count, 0)} · 复核任务 {fmt(validationSnapshot.project_review_context?.review_task_count, 0)}</p>
+              <span>{t('territoryWorldModel.dataFoundation.reviewContext')}</span>
+              <strong>{t('territoryWorldModel.dataFoundation.projectCount', { count: fmt(validationSnapshot.project_review_context?.project_count, 0) })}</strong>
+              <p>{t('territoryWorldModel.dataFoundation.reviewSummary', { rules: fmt(validationSnapshot.project_review_context?.rule_eval_count, 0), tasks: fmt(validationSnapshot.project_review_context?.review_task_count, 0) })}</p>
             </article>
             <article>
-              <span>外部支持</span>
-              <strong>{statusText(validationSnapshot.external_support?.paper7_caliper_matched_status, '参考')}</strong>
-              <p>{fmt(validationSnapshot.external_support?.paper7_caliper_matched_pair_count, 0)} 对 · {displayText(validationSnapshot.external_support?.boundary)}</p>
+              <span>{t('territoryWorldModel.dataFoundation.externalSupport')}</span>
+              <strong>{statusText(validationSnapshot.external_support?.paper7_caliper_matched_status, t('territoryWorldModel.dataFoundation.reference'))}</strong>
+              <p>{t('territoryWorldModel.dataFoundation.pairBoundary', { count: fmt(validationSnapshot.external_support?.paper7_caliper_matched_pair_count, 0), boundary: displayText(validationSnapshot.external_support?.boundary) })}</p>
             </article>
             <article>
-              <span>合成实验划分</span>
-              <strong>{Object.entries(validationSnapshot.synthetic_experiment?.split_counts || {}).map(([key, value]) => `${displayText(key)} ${fmt(value, 0)}`).join(' · ') || '无'}</strong>
-              <p>动作允许 {fmt(validationSnapshot.synthetic_experiment?.action_mask_allowed_count, 0)} · 阻断 {fmt(validationSnapshot.synthetic_experiment?.action_mask_blocked_count, 0)}</p>
+              <span>{t('territoryWorldModel.dataFoundation.syntheticSplit')}</span>
+              <strong>{Object.entries(validationSnapshot.synthetic_experiment?.split_counts || {}).map(([key, value]) => `${displayText(key)} ${fmt(value, 0)}`).join(' · ') || t('territoryWorldModel.common.none')}</strong>
+              <p>{t('territoryWorldModel.dataFoundation.actionMaskSummary', { allowed: fmt(validationSnapshot.synthetic_experiment?.action_mask_allowed_count, 0), blocked: fmt(validationSnapshot.synthetic_experiment?.action_mask_blocked_count, 0) })}</p>
             </article>
           </div>
         </div>
         <div className="twm-data-detail-section">
           <div className="twm-data-detail-head">
-            <strong>问题-数据适配</strong>
-            <span>哪些问题可以安全演示，哪些输出不能越界</span>
+            <strong>{t('territoryWorldModel.dataFoundation.problemDataFit')}</strong>
+            <span>{t('territoryWorldModel.dataFoundation.fitDescription')}</span>
           </div>
           <div className="twm-data-fit-list">
             {(dataFoundation.problem_data_fit || []).map(item => (
               <article key={item.business_problem}>
                 <div>
                   <strong>{displayText(item.business_problem)}</strong>
-                  <span className="status-badge proposed">{displayText(item.current_fit, '待评估')}</span>
+                  <span className="status-badge proposed">{displayText(item.current_fit, t('territoryWorldModel.dataFoundation.pendingAssessment'))}</span>
                 </div>
                 <p>{displayText(item.why)}</p>
                 <div>
-                  <span>安全输出：{displayText(item.safe_output)}</span>
-                  <span>不能承诺：{displayText(item.unsafe_output)}</span>
+                  <span>{t('territoryWorldModel.dataFoundation.safeOutput', { output: displayText(item.safe_output) })}</span>
+                  <span>{t('territoryWorldModel.dataFoundation.unsafeOutput', { output: displayText(item.unsafe_output) })}</span>
                 </div>
               </article>
             ))}
@@ -3835,8 +4628,8 @@ export default function TerritoryWorldModelTab() {
         </div>
         <div className="twm-data-detail-section">
           <div className="twm-data-detail-head">
-            <strong>来源报告</strong>
-            <span>演示数据基础的可追溯文件</span>
+            <strong>{t('territoryWorldModel.dataFoundation.sourceReports')}</strong>
+            <span>{t('territoryWorldModel.dataFoundation.sourceDescription')}</span>
           </div>
           <div className="twm-data-source-list">
             {Object.entries(dataFoundation.source_reports || {}).map(([key, value]) => (
@@ -3845,12 +4638,12 @@ export default function TerritoryWorldModelTab() {
                 <code>{value}</code>
               </article>
             ))}
-            {!Object.keys(dataFoundation.source_reports || {}).length && <div className="twm-empty">暂无来源报告</div>}
+            {!Object.keys(dataFoundation.source_reports || {}).length && <div className="twm-empty">{t('territoryWorldModel.dataFoundation.noSourceReports')}</div>}
           </div>
         </div>
         {(dataFoundation.mentor_answer?.short_answer || dataFoundation.mentor_answer?.research_judgment) && (
           <div className="twm-data-mentor-note">
-            <strong>数据基础判断</strong>
+            <strong>{t('territoryWorldModel.dataFoundation.judgment')}</strong>
             <p>{displayText(dataFoundation.mentor_answer?.short_answer)}</p>
             <p>{displayText(dataFoundation.mentor_answer?.research_judgment)}</p>
           </div>
@@ -3860,37 +4653,37 @@ export default function TerritoryWorldModelTab() {
       <section className="twm-section twm-pilot-readiness-panel">
         <div className="twm-section-head">
           <CheckCircle2 size={14} />
-          <h4>试点就绪矩阵</h4>
+          <h4>{t('territoryWorldModel.pilot.title')}</h4>
           <span className={`status-badge ${statusClass(pilotReadinessMatrix?.overall_status)}`}>
-            {running === 'pilotReadiness' ? '加载中' : statusText(pilotReadinessMatrix?.overall_status, '待加载')}
+            {running === 'pilotReadiness' ? t('territoryWorldModel.status.loading') : statusText(pilotReadinessMatrix?.overall_status, t('territoryWorldModel.common.pendingLoad'))}
           </span>
         </div>
         <div className="twm-data-kpis">
           <div>
-            <span>维度</span>
+            <span>{t('territoryWorldModel.pilot.dimensions')}</span>
             <strong>{fmt(pilotReadinessDimensions.length, 0)}</strong>
           </div>
           <div>
-            <span>生产门槛</span>
-            <strong>{statusText(pilotReadinessDimensions.find(item => item.id === 'production_gate')?.status, '待加载')}</strong>
+            <span>{t('territoryWorldModel.pilot.productionGate')}</span>
+            <strong>{statusText(pilotReadinessDimensions.find(item => item.id === 'production_gate')?.status, t('territoryWorldModel.common.pendingLoad'))}</strong>
           </div>
           <div>
-            <span>合成替代生产</span>
+            <span>{t('territoryWorldModel.pilot.syntheticSubstitution')}</span>
             <strong>{yesNo(pilotReadinessMatrix?.strict_policy?.synthetic_data_can_satisfy_production_gate)}</strong>
           </div>
           <div>
-            <span>测试数据计划</span>
-            <strong>{statusText(pilotReadinessMatrix?.test_data_plan?.status, '待加载')}</strong>
+            <span>{t('territoryWorldModel.pilot.testDataPlan')}</span>
+            <strong>{statusText(pilotReadinessMatrix?.test_data_plan?.status, t('territoryWorldModel.common.pendingLoad'))}</strong>
           </div>
         </div>
         <div className="twm-data-fit-list">
           {pilotReadinessDimensions.map(item => (
             <article key={`pilot-readiness-${item.id}`}>
               <div>
-                <strong>{item.id === 'production_gate' ? '生产门槛' : displayText(item.label || item.id)}</strong>
-                <span className={`status-badge ${statusClass(item.status)}`}>{statusText(item.status, '需复核')}</span>
+                <strong>{item.id === 'production_gate' ? t('territoryWorldModel.pilot.productionGate') : displayText(item.label || item.id)}</strong>
+                <span className={`status-badge ${statusClass(item.status)}`}>{statusText(item.status, t('territoryWorldModel.status.review'))}</span>
               </div>
-              <p>score {fmt(item.score, 2)} · {compactDisplayList((item.missing || []).slice(0, 3), '无缺口')}</p>
+              <p>{t('territoryWorldModel.pilot.scoreSummary', { score: fmt(item.score, 2), gaps: compactDisplayList((item.missing || []).slice(0, 3), t('territoryWorldModel.pilot.noGaps')) })}</p>
               <div>
                 {(item.test_data_work || []).slice(0, 2).map(work => (
                   <span key={`pilot-readiness-${item.id}-${work}`}>{displayText(work)}</span>
@@ -3898,33 +4691,33 @@ export default function TerritoryWorldModelTab() {
               </div>
             </article>
           ))}
-          {!pilotReadinessDimensions.length && <div className="twm-empty">试点就绪矩阵尚未加载</div>}
+          {!pilotReadinessDimensions.length && <div className="twm-empty">{t('territoryWorldModel.pilot.empty')}</div>}
         </div>
       </section>
 
       <section className="twm-section twm-rule-fixture-panel">
         <div className="twm-section-head">
           <ShieldCheck size={14} />
-          <h4>规则样例覆盖</h4>
+          <h4>{t('territoryWorldModel.ruleCoverage.title')}</h4>
           <span className={`status-badge ${statusClass(ruleFixtureCoverageMatrix?.overall_status)}`}>
-            {running === 'ruleFixtureCoverage' ? '加载中' : statusText(ruleFixtureCoverageMatrix?.overall_status, '待加载')}
+            {running === 'ruleFixtureCoverage' ? t('territoryWorldModel.status.loading') : statusText(ruleFixtureCoverageMatrix?.overall_status, t('territoryWorldModel.common.pendingLoad'))}
           </span>
         </div>
         <div className="twm-data-kpis">
           <div>
-            <span>硬规则</span>
+            <span>{t('territoryWorldModel.ruleCoverage.hardRules')}</span>
             <strong>{fmt(ruleFixtureCoverageMatrix?.summary?.hard_rule_count, 0)}</strong>
           </div>
           <div>
-            <span>boundary_case 缺口</span>
+            <span>{t('territoryWorldModel.ruleCoverage.boundaryGaps')}</span>
             <strong>{fmt(ruleFixtureCoverageMatrix?.summary?.rules_with_boundary_gap, 0)}</strong>
           </div>
           <div>
-            <span>生产样例</span>
+            <span>{t('territoryWorldModel.ruleCoverage.productionFixtures')}</span>
             <strong>{fmt(ruleFixtureCoverageMatrix?.summary?.production_ready_fixture_count, 0)}</strong>
           </div>
           <div>
-            <span>合成可验收</span>
+            <span>{t('territoryWorldModel.ruleCoverage.syntheticAccepted')}</span>
             <strong>{yesNo(ruleFixtureCoverageMatrix?.coverage_policy?.synthetic_fixture_can_satisfy_production_acceptance)}</strong>
           </div>
         </div>
@@ -3934,12 +4727,12 @@ export default function TerritoryWorldModelTab() {
             return (
               <div key={`rule-fixture-${rule.rule_code}`}>
                 <code>{rule.rule_code}</code>
-                <span>{displayText(rule.rule_name_zh || rule.status)} · 缺口 {compactDisplayList(rule.missing_categories, '无')}</span>
-                <span>{categories.map(([name, item]) => `${name}=${item.covered ? fmt(item.fixture_count, 0) : '缺'}`).join(' · ')}</span>
+                <span>{t('territoryWorldModel.ruleCoverage.ruleGaps', { rule: displayText(rule.rule_name_zh || rule.status), gaps: compactDisplayList(rule.missing_categories, t('territoryWorldModel.common.none')) })}</span>
+                <span>{categories.map(([name, item]) => `${displayText(name)}=${item.covered ? fmt(item.fixture_count, 0) : t('territoryWorldModel.ruleCoverage.missing')}`).join(' · ')}</span>
               </div>
             );
           })}
-          {!ruleFixtureRows.length && <div className="twm-empty">规则样例覆盖矩阵尚未加载</div>}
+          {!ruleFixtureRows.length && <div className="twm-empty">{t('territoryWorldModel.ruleCoverage.empty')}</div>}
         </div>
       </section>
         </div>
@@ -3956,7 +4749,7 @@ export default function TerritoryWorldModelTab() {
         <section className="twm-section">
           <div className="twm-section-head">
             <Layers3 size={14} />
-            <h4>工作空间</h4>
+            <h4>{t('territoryWorldModel.workspace.title')}</h4>
           </div>
 
           <div className="twm-preset-row">
@@ -3968,31 +4761,31 @@ export default function TerritoryWorldModelTab() {
                 disabled={busy}
                 className={bundleDir === item.bundleDir ? 'active' : ''}
               >
-                {item.label}
+                {t(`territoryWorldModel.workspace.presets.${item.key}`, { defaultValue: item.label })}
               </button>
             ))}
           </div>
 
           <div className="twm-form-grid">
             <label>
-              <span>项目名</span>
+              <span>{t('territoryWorldModel.workspace.projectName')}</span>
               <input value={projectName} onChange={e => setProjectName(e.target.value)} disabled={busy} />
             </label>
             <label>
-              <span>行政区代码</span>
+              <span>{t('territoryWorldModel.workspace.regionCode')}</span>
               <input value={regionCode} onChange={e => setRegionCode(e.target.value)} disabled={busy} />
             </label>
           </div>
 
           <button type="button" className="twm-primary-action" onClick={createProject} disabled={busy || !projectName.trim()}>
             {running === 'create' ? <Loader2 size={13} className="twm-spin" /> : <FileCheck2 size={13} />}
-            创建项目
+            {t('territoryWorldModel.workspace.createProject')}
           </button>
 
           <label className="twm-field">
-            <span>选择项目</span>
+            <span>{t('territoryWorldModel.workspace.selectProject')}</span>
             <select value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} disabled={busy || !projects.length}>
-              <option value="">未选择</option>
+              <option value="">{t('territoryWorldModel.common.notSelected')}</option>
               {projects.map(project => (
                 <option value={project.id} key={project.id}>{project.name || project.id}</option>
               ))}
@@ -4008,30 +4801,30 @@ export default function TerritoryWorldModelTab() {
           )}
 
           <label className="twm-field">
-            <span>MMFE / TWM 数据包</span>
+            <span>{t('territoryWorldModel.workspace.bundle')}</span>
             <input value={bundleDir} onChange={e => setBundleDir(e.target.value)} disabled={busy} />
           </label>
           <label className="twm-field">
-            <span>状态标签</span>
+            <span>{t('territoryWorldModel.workspace.stateLabel')}</span>
             <input value={stateLabel} onChange={e => setStateLabel(e.target.value)} disabled={busy} />
           </label>
           <label className="twm-check">
             <input type="checkbox" checked={includeAuxiliary} onChange={e => setIncludeAuxiliary(e.target.checked)} disabled={busy} />
-            包含辅助表
+            {t('territoryWorldModel.workspace.includeAuxiliary')}
           </label>
 
           <button type="button" className="twm-primary-action" onClick={buildState} disabled={busy || !selectedProjectId || !bundleDir.trim()}>
             {running === 'build' ? <Loader2 size={13} className="twm-spin" /> : <Play size={13} />}
-            构建状态
+            {t('territoryWorldModel.workspace.buildState')}
           </button>
 
           <label className="twm-field">
-            <span>选择状态</span>
+            <span>{t('territoryWorldModel.workspace.selectState')}</span>
             <select value={selectedStateId} onChange={e => setSelectedStateId(e.target.value)} disabled={busy || !states.length}>
-              <option value="">未选择</option>
+              <option value="">{t('territoryWorldModel.common.notSelected')}</option>
               {states.map(state => (
                 <option value={state.id} key={state.id}>
-                  {state.label || state.id} · {fmt(state.object_count, 0)} 个对象
+                  {t('territoryWorldModel.workspace.stateOption', { label: state.label || state.id, count: fmt(state.object_count, 0) })}
                 </option>
               ))}
             </select>
@@ -4041,57 +4834,57 @@ export default function TerritoryWorldModelTab() {
         <section className="twm-section">
           <div className="twm-section-head">
             <SlidersHorizontal size={14} />
-            <h4>业务推演</h4>
+            <h4>{t('territoryWorldModel.simulation.title')}</h4>
           </div>
 
           <div className="twm-state-summary">
             <div>
-              <span>状态</span>
+              <span>{t('territoryWorldModel.simulation.state')}</span>
               <strong>{selectedState?.label || selectedStateId || '-'}</strong>
             </div>
             <div>
-              <span>对象</span>
+              <span>{t('territoryWorldModel.simulation.objects')}</span>
               <strong>{fmt(selectedState?.object_count ?? stateDetail?.state_version?.object_count, 0)}</strong>
             </div>
             <div>
-              <span>关系</span>
+              <span>{t('territoryWorldModel.simulation.relations')}</span>
               <strong>{fmt(selectedState?.relation_count ?? stateDetail?.state_version?.relation_count, 0)}</strong>
             </div>
           </div>
 
           <button type="button" className="twm-secondary-action" onClick={evaluateRules} disabled={busy || !selectedStateId}>
             {running === 'evaluate' ? <Loader2 size={13} className="twm-spin" /> : <ShieldCheck size={13} />}
-            检查业务规则
+            {t('territoryWorldModel.simulation.checkRules')}
           </button>
 
           <div className="twm-result-strip">
-            <div><span>命中</span><strong>{fmt(summary.hit_count ?? hits.length, 0)}</strong></div>
-            <div><span>依据</span><strong>{fmt(summary.evidence_item_count ?? auditResult?.evidence_gate_summary?.evidence_item_count, 0)}</strong></div>
-            <div><span>数据风险</span><strong>{fmt(summary.data_quality_hit_count, 0)}</strong></div>
-            <div><span>审批风险</span><strong>{fmt(summary.approval_consistency_hit_count, 0)}</strong></div>
+            <div><span>{t('territoryWorldModel.simulation.hits')}</span><strong>{fmt(summary.hit_count ?? hits.length, 0)}</strong></div>
+            <div><span>{t('territoryWorldModel.simulation.evidence')}</span><strong>{fmt(summary.evidence_item_count ?? auditResult?.evidence_gate_summary?.evidence_item_count, 0)}</strong></div>
+            <div><span>{t('territoryWorldModel.simulation.dataRisk')}</span><strong>{fmt(summary.data_quality_hit_count, 0)}</strong></div>
+            <div><span>{t('territoryWorldModel.simulation.approvalRisk')}</span><strong>{fmt(summary.approval_consistency_hit_count, 0)}</strong></div>
           </div>
 
           <div className="twm-form-grid">
             <label>
-              <span>动作</span>
+              <span>{t('territoryWorldModel.simulation.action')}</span>
               <select value={actionType} onChange={e => setActionType(e.target.value)} disabled={busy}>
-                <option value="inspect">{ACTION_LABELS.inspect}</option>
-                <option value="protect">{ACTION_LABELS.protect}</option>
-                <option value="allocate">{ACTION_LABELS.allocate}</option>
-                <option value="convert">{ACTION_LABELS.convert}</option>
-                <option value="restore">{ACTION_LABELS.restore}</option>
+                <option value="inspect">{t('territoryWorldModel.actions.types.inspect')}</option>
+                <option value="protect">{t('territoryWorldModel.actions.types.protect')}</option>
+                <option value="allocate">{t('territoryWorldModel.actions.types.allocate')}</option>
+                <option value="convert">{t('territoryWorldModel.actions.types.convert')}</option>
+                <option value="restore">{t('territoryWorldModel.actions.types.restore')}</option>
               </select>
             </label>
             <label>
-              <span>目标角色</span>
+              <span>{t('territoryWorldModel.simulation.targetRole')}</span>
               <select value={targetRole} onChange={e => setTargetRole(e.target.value)} disabled={busy}>
-                <option value="project">{ROLE_LABELS.project}</option>
-                <option value="parcel">{ROLE_LABELS.parcel}</option>
-                <option value="scenario">{ROLE_LABELS.scenario}</option>
+                <option value="project">{t('territoryWorldModel.roles.project')}</option>
+                <option value="parcel">{t('territoryWorldModel.roles.parcel')}</option>
+                <option value="scenario">{t('territoryWorldModel.roles.scenario')}</option>
               </select>
             </label>
             <label>
-              <span>依据完整度</span>
+              <span>{t('territoryWorldModel.simulation.evidenceCoverage')}</span>
               <input
                 type="number"
                 min={0}
@@ -4103,7 +4896,7 @@ export default function TerritoryWorldModelTab() {
               />
             </label>
             <label>
-              <span>验证期数</span>
+              <span>{t('territoryWorldModel.simulation.horizon')}</span>
               <input
                 type="number"
                 min={1}
@@ -4116,68 +4909,68 @@ export default function TerritoryWorldModelTab() {
           </div>
 
           <label className="twm-field">
-            <span>情景</span>
+            <span>{t('territoryWorldModel.simulation.scenario')}</span>
             <input value={scenario} onChange={e => setScenario(e.target.value)} disabled={busy} />
           </label>
 
           <div className="twm-action-grid">
             <button type="button" className="twm-secondary-action" onClick={runForecast} disabled={busy || !selectedStateId}>
               {running === 'forecast' ? <Loader2 size={13} className="twm-spin" /> : <GitBranch size={13} />}
-              风险预测
+              {t('territoryWorldModel.simulation.forecast')}
             </button>
             <button type="button" className="twm-secondary-action" onClick={runValidation} disabled={busy || !selectedStateId}>
               {running === 'validation' ? <Loader2 size={13} className="twm-spin" /> : <CheckCircle2 size={13} />}
-              验证口径
+              {t('territoryWorldModel.simulation.validate')}
             </button>
             <button type="button" className="twm-secondary-action" onClick={runAudit} disabled={busy || !selectedStateId}>
               {running === 'audit' ? <Loader2 size={13} className="twm-spin" /> : <FileCheck2 size={13} />}
-              依据核查
+              {t('territoryWorldModel.simulation.audit')}
             </button>
           </div>
 
           <label className="twm-field">
-            <span>优化数据包</span>
+            <span>{t('territoryWorldModel.simulation.optimizationBundle')}</span>
             <input value={optimizationDir} onChange={e => setOptimizationDir(e.target.value)} disabled={busy} />
           </label>
           <div className="twm-action-grid">
             <button type="button" className="twm-secondary-action" onClick={loadCandidates} disabled={busy || !selectedStateId || !optimizationDir.trim()}>
               {running === 'candidates' ? <Loader2 size={13} className="twm-spin" /> : <BarChart3 size={13} />}
-              载入候选
+              {t('territoryWorldModel.simulation.loadCandidates')}
             </button>
             <button type="button" className="twm-primary-action" onClick={runBeam} disabled={busy || !selectedStateId || !optimizationDir.trim()}>
               {running === 'beam' ? <Loader2 size={13} className="twm-spin" /> : <Route size={13} />}
-              方案比选
+              {t('territoryWorldModel.simulation.comparePlans')}
             </button>
           </div>
 
           {multiHorizonTrajectories.length > 0 && (
             <div className="twm-multi-horizon-comparison" data-testid="twm-multi-horizon-comparison">
               <div className="twm-multi-horizon-summary">
-                <strong>合法方案多期状态转移</strong>
-                <span>{fmt(multiHorizonComparison.legal_candidate_count, 0)} 个方案 × {fmt(multiHorizonComparison.horizon, 0)} 期</span>
-                <span>{fmt(executionAccounting.simulator_call_count, 0)} 次状态转移计算</span>
-                <span>{fmt(executionAccounting.hard_constraint_recomputation_count, 0)} 次硬约束重算</span>
-                <span>{spatialSimulatorBackend.learned_dynamics ? '学习型动力学' : 'GIS / 规则机制后端'}</span>
+                <strong>{t('territoryWorldModel.simulation.multiHorizon.title')}</strong>
+                <span>{t('territoryWorldModel.simulation.multiHorizon.planPeriods', { plans: fmt(multiHorizonComparison.legal_candidate_count, 0), periods: fmt(multiHorizonComparison.horizon, 0) })}</span>
+                <span>{t('territoryWorldModel.simulation.multiHorizon.transitionCalls', { count: fmt(executionAccounting.simulator_call_count, 0) })}</span>
+                <span>{t('territoryWorldModel.simulation.multiHorizon.constraintRecomputations', { count: fmt(executionAccounting.hard_constraint_recomputation_count, 0) })}</span>
+                <span>{spatialSimulatorBackend.learned_dynamics ? t('territoryWorldModel.simulation.multiHorizon.learnedDynamics') : t('territoryWorldModel.simulation.multiHorizon.ruleBackend')}</span>
                 <span>
                   {spatialSimulatorBackend.execution_mode === 'online_recursive_transition_loop'
                     && spatialSimulatorBackend.precomputed_period_states_consumed === false
-                    ? 'Simulator 在线递归执行'
-                    : '执行链需复核'}
+                    ? t('territoryWorldModel.simulation.multiHorizon.onlineExecution')
+                    : t('territoryWorldModel.simulation.multiHorizon.executionReview')}
                 </span>
               </div>
               <div className="twm-multi-horizon-boundary">
-                每期由 Simulator 消费上一期写回状态和本期动作增量，重新计算空间状态、关系、硬约束与目标；不读取预计算时期状态做选优。尚未用真实业务闭环历史验证政策效果预测。
+                {t('territoryWorldModel.simulation.multiHorizon.boundary')}
               </div>
               <div className="twm-multi-horizon-table-wrap">
                 <table className="twm-multi-horizon-table">
                   <thead>
                     <tr>
-                      <th>排序</th>
-                      <th>候选方案</th>
-                      <th>逐期空间状态</th>
-                      <th>累计效用</th>
-                      <th>全过程风险</th>
-                      <th>最低可信度</th>
+                      <th>{t('territoryWorldModel.simulation.multiHorizon.rank')}</th>
+                      <th>{t('territoryWorldModel.simulation.multiHorizon.candidate')}</th>
+                      <th>{t('territoryWorldModel.simulation.multiHorizon.periodStates')}</th>
+                      <th>{t('territoryWorldModel.simulation.multiHorizon.utility')}</th>
+                      <th>{t('territoryWorldModel.simulation.multiHorizon.risk')}</th>
+                      <th>{t('territoryWorldModel.simulation.multiHorizon.confidence')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -4194,12 +4987,12 @@ export default function TerritoryWorldModelTab() {
                               <span
                                 key={`${trajectory.candidate_id}-${period.period}`}
                                 className={(period.constraint_recheck || {}).passed ? 'pass' : 'blocked'}
-                                title={`父状态 ${(period.state_writeback || {}).from_state_sha256 || '-'}；当前状态 ${period.state_sha256 || '-'}；几何 ${period.geometry_sha256 || '-'}`}
+                                title={t('territoryWorldModel.simulation.multiHorizon.periodTitle', { parent: (period.state_writeback || {}).from_state_sha256 || '-', current: period.state_sha256 || '-', geometry: period.geometry_sha256 || '-' })}
                               >
-                                第{fmt(period.period, 0)}期<br />
-                                {fmt(period.action_count, 0)} 个动作<br />
-                                目标 {fmt((period.outcome_metrics || {}).spatial_objective_score, 3)}<br />
-                                {(period.constraint_recheck || {}).passed ? '约束通过' : '约束阻断'}
+                                {t('territoryWorldModel.simulation.multiHorizon.period', { period: fmt(period.period, 0) })}<br />
+                                {t('territoryWorldModel.simulation.multiHorizon.actions', { count: fmt(period.action_count, 0) })}<br />
+                                {t('territoryWorldModel.simulation.multiHorizon.objective', { value: fmt((period.outcome_metrics || {}).spatial_objective_score, 3) })}<br />
+                                {(period.constraint_recheck || {}).passed ? t('territoryWorldModel.simulation.multiHorizon.constraintPassed') : t('territoryWorldModel.simulation.multiHorizon.constraintBlocked')}
                               </span>
                             ))}
                           </div>
@@ -4221,8 +5014,8 @@ export default function TerritoryWorldModelTab() {
         <section className="twm-section">
           <div className="twm-section-head">
             <AlertTriangle size={14} />
-            <h4>规则命中</h4>
-            <span className={`status-badge ${hits.length ? 'warning' : 'success'}`}>{hits.length ? `${hits.length} 条待处理` : '无'}</span>
+            <h4>{t('territoryWorldModel.results.ruleHits')}</h4>
+            <span className={`status-badge ${hits.length ? 'warning' : 'success'}`}>{hits.length ? t('territoryWorldModel.results.pendingHits', { count: fmt(hits.length, 0) }) : t('territoryWorldModel.common.none')}</span>
           </div>
           <div className="twm-hit-list">
             {topHits(hits).map(hit => (
@@ -4235,24 +5028,24 @@ export default function TerritoryWorldModelTab() {
                 <code>{fmt(hit.risk_score, 3)}</code>
               </div>
             ))}
-            {!hits.length && <div className="twm-empty">尚未加载规则命中</div>}
+            {!hits.length && <div className="twm-empty">{t('territoryWorldModel.results.noRuleHits')}</div>}
           </div>
         </section>
 
         <section className="twm-section">
           <div className="twm-section-head">
             <CheckCircle2 size={14} />
-            <h4>主张与方案</h4>
+            <h4>{t('territoryWorldModel.results.claimsAndPlans')}</h4>
             <span className={`status-badge ${statusClass(validationResult?.overall_status || beamResult?.status)}`}>
-              {statusText(validationResult?.overall_status || beamResult?.status, '未运行')}
+              {statusText(validationResult?.overall_status || beamResult?.status, t('territoryWorldModel.common.notRun'))}
             </span>
           </div>
 
           <div className="twm-result-strip">
-            <div><span>主张等级</span><strong>{statusText(claim.current_level)}</strong></div>
-            <div><span>规划收益</span><strong>{fmt(forecast.planning_utility_delta ?? beamSelected.utility, 3)}</strong></div>
-            <div><span>约束风险</span><strong>{fmt(forecast.constraint_violation_probability ?? beamSelected.risk, 3)}</strong></div>
-            <div><span>可信度</span><strong>{fmt(forecast.uncertainty?.confidence ?? beamSelected.confidence, 3)}</strong></div>
+            <div><span>{t('territoryWorldModel.results.claimLevel')}</span><strong>{statusText(claim.current_level)}</strong></div>
+            <div><span>{t('territoryWorldModel.results.planningBenefit')}</span><strong>{fmt(forecast.planning_utility_delta ?? beamSelected.utility, 3)}</strong></div>
+            <div><span>{t('territoryWorldModel.results.constraintRisk')}</span><strong>{fmt(forecast.constraint_violation_probability ?? beamSelected.risk, 3)}</strong></div>
+            <div><span>{t('territoryWorldModel.results.confidence')}</span><strong>{fmt(forecast.uncertainty?.confidence ?? beamSelected.confidence, 3)}</strong></div>
           </div>
 
           {validationResult?.stages && (
@@ -4268,10 +5061,10 @@ export default function TerritoryWorldModelTab() {
           )}
 
           <div className="twm-result-strip">
-            <div><span>候选方案</span><strong>{fmt(candidateSummary.candidate_count, 0)}</strong></div>
-            <div><span>合法可行</span><strong>{fmt(candidateSummary.legal_feasible_count, 0)}</strong></div>
-            <div><span>阻断方案</span><strong>{fmt(candidateSummary.blocked_count, 0)}</strong></div>
-            <div><span>推荐方案</span><strong>{beamSelected.candidate_id || '-'}</strong></div>
+            <div><span>{t('territoryWorldModel.results.candidates')}</span><strong>{fmt(candidateSummary.candidate_count, 0)}</strong></div>
+            <div><span>{t('territoryWorldModel.results.legalFeasible')}</span><strong>{fmt(candidateSummary.legal_feasible_count, 0)}</strong></div>
+            <div><span>{t('territoryWorldModel.results.blockedPlans')}</span><strong>{fmt(candidateSummary.blocked_count, 0)}</strong></div>
+            <div><span>{t('territoryWorldModel.results.recommendedPlan')}</span><strong>{beamSelected.candidate_id || '-'}</strong></div>
           </div>
         </section>
       </div>
@@ -4288,40 +5081,44 @@ export default function TerritoryWorldModelTab() {
           <section className="twm-section twm-state-graph-panel">
             <div className="twm-section-head">
               <GitBranch size={14} />
-              <h4>状态图谱</h4>
+              <h4>{t('territoryWorldModel.graph.title')}</h4>
               <span className={`status-badge ${stateGraph?.graph_store?.full_graph_persisted ? 'success' : 'proposed'}`}>
-                {stateGraph?.graph_store?.full_graph_persisted ? '全量图谱已入库' : '待加载'}
+                {stateGraph?.graph_store?.full_graph_persisted ? t('territoryWorldModel.graph.persisted') : t('territoryWorldModel.common.pendingLoad')}
               </span>
             </div>
             <div className="twm-state-graph-actions">
               <button type="button" className="twm-primary-action" onClick={() => loadStateGraph('')} disabled={busy || !selectedStateId}>
                 {running === 'stateGraph' ? <Loader2 size={13} className="twm-spin" /> : <GitBranch size={13} />}
-                加载全量图谱
+                {t('territoryWorldModel.graph.loadFull')}
               </button>
               <span>
-                后端从全量 TWM 状态对象、关系、规则判断、支撑材料和复核任务生成图谱；浏览器只渲染可读的聚焦子图。
+                {t('territoryWorldModel.graph.description')}
               </span>
             </div>
 
             <div className="twm-state-graph-kpis">
-              <div><span>全量节点</span><strong>{fmt(stateGraphCounts.total_node_count, 0)}</strong></div>
-              <div><span>全量关系</span><strong>{fmt(stateGraphCounts.total_edge_count, 0)}</strong></div>
-              <div><span>状态对象</span><strong>{fmt(stateGraphCounts.state_object_count, 0)}</strong></div>
-              <div><span>状态关系</span><strong>{fmt(stateGraphCounts.state_relation_count, 0)}</strong></div>
-              <div><span>规则判断</span><strong>{fmt(stateGraphCounts.rule_hit_count, 0)}</strong></div>
-              <div><span>支撑材料</span><strong>{fmt(stateGraphCounts.support_material_count, 0)}</strong></div>
-              <div><span>复核任务</span><strong>{fmt(stateGraphCounts.review_task_count, 0)}</strong></div>
-              <div><span>浏览器载荷</span><strong>{stateGraphFullLoaded ? '完整载荷' : '聚焦子图'}</strong></div>
+              <div><span>{t('territoryWorldModel.graph.fullNodes')}</span><strong>{fmt(stateGraphCounts.total_node_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.graph.fullEdges')}</span><strong>{fmt(stateGraphCounts.total_edge_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.graph.stateObjects')}</span><strong>{fmt(stateGraphCounts.state_object_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.graph.stateRelations')}</span><strong>{fmt(stateGraphCounts.state_relation_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.graph.ruleDecisions')}</span><strong>{fmt(stateGraphCounts.rule_hit_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.graph.supportMaterials')}</span><strong>{fmt(stateGraphCounts.support_material_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.graph.reviewTasks')}</span><strong>{fmt(stateGraphCounts.review_task_count, 0)}</strong></div>
+              <div><span>{t('territoryWorldModel.graph.browserPayload')}</span><strong>{stateGraphFullLoaded ? t('territoryWorldModel.graph.fullPayload') : t('territoryWorldModel.graph.focusedSubgraph')}</strong></div>
             </div>
 
             {stateGraph && (
               <div className="twm-state-graph-layout">
                 <div className="twm-state-graph-canvas">
                   <div className="twm-state-graph-canvas-head">
-                    <strong>地图-图谱联动视图</strong>
+                    <strong>{t('territoryWorldModel.graph.linkedView')}</strong>
                     <span>
-                      当前渲染 {fmt(stateGraphRenderPolicy.rendered_node_count, 0)}/{fmt(stateGraphRenderPolicy.full_graph_node_count, 0)} 个节点，
-                      {fmt(stateGraphRenderPolicy.rendered_edge_count, 0)}/{fmt(stateGraphRenderPolicy.full_graph_edge_count, 0)} 条关系
+                      {t('territoryWorldModel.graph.renderedSummary', {
+                        renderedNodes: fmt(stateGraphRenderPolicy.rendered_node_count, 0),
+                        fullNodes: fmt(stateGraphRenderPolicy.full_graph_node_count, 0),
+                        renderedEdges: fmt(stateGraphRenderPolicy.rendered_edge_count, 0),
+                        fullEdges: fmt(stateGraphRenderPolicy.full_graph_edge_count, 0),
+                      })}
                     </span>
                   </div>
                   <svg
@@ -4329,7 +5126,7 @@ export default function TerritoryWorldModelTab() {
                     viewBox={`0 0 ${stateGraphPositioned.width} ${stateGraphPositioned.height}`}
                     height={stateGraphPositioned.height}
                     role="img"
-                    aria-label="TWM 状态图谱"
+                    aria-label={t('territoryWorldModel.graph.ariaLabel')}
                   >
                     {stateGraphPositioned.edges.map((edge: any) => (
                       <g key={edge.id || `${edge.source}-${edge.target}`}>
@@ -4379,45 +5176,47 @@ export default function TerritoryWorldModelTab() {
                     ))}
                   </svg>
                   <div className="twm-state-graph-legend">
-                    <span><i className="project" />项目/对象</span>
-                    <span><i className="constraint" />管控边界</span>
-                    <span><i className="risk" />规则判断</span>
-                    <span><i className="support" />支撑材料</span>
-                    <span><i className="review" />复核任务</span>
+                    <span><i className="project" />{t('territoryWorldModel.graph.legend.project')}</span>
+                    <span><i className="constraint" />{t('territoryWorldModel.graph.legend.constraint')}</span>
+                    <span><i className="risk" />{t('territoryWorldModel.graph.legend.risk')}</span>
+                    <span><i className="support" />{t('territoryWorldModel.graph.legend.support')}</span>
+                    <span><i className="review" />{t('territoryWorldModel.graph.legend.review')}</span>
                   </div>
                 </div>
 
                 <div className="twm-state-graph-side">
                   <article>
-                    <strong>图谱数据库口径</strong>
-                    <p>{displayText(stateGraph.graph_store?.production_policy || '全量状态图已持久化；浏览器按焦点渲染。')}</p>
+                    <strong>{t('territoryWorldModel.graph.databasePolicy')}</strong>
+                    <p>{stateGraph.graph_store?.production_policy
+                      ? displayText(stateGraph.graph_store.production_policy)
+                      : t('territoryWorldModel.graph.defaultPolicy')}</p>
                     <code>{stateGraph.graph_store?.backend || 'twm_repository_state_graph'}</code>
                   </article>
                   <article>
-                    <strong>对象角色</strong>
+                    <strong>{t('territoryWorldModel.graph.objectRoles')}</strong>
                     {Object.entries(stateGraph.object_counts_by_role || {}).slice(0, 8).map(([role, count]) => (
                       <p key={`graph-role-${role}`}><span>{displayText(role)}</span><em>{fmt(count, 0)}</em></p>
                     ))}
                   </article>
                   <article>
-                    <strong>关系类型</strong>
+                    <strong>{t('territoryWorldModel.graph.relationTypes')}</strong>
                     {Object.entries(stateGraph.relation_counts_by_type || {}).slice(0, 8).map(([relation, count]) => (
                       <p key={`graph-relation-${relation}`}><span>{displayText(relation)}</span><em>{fmt(count, 0)}</em></p>
                     ))}
                   </article>
                   <article>
-                    <strong>支撑材料类型</strong>
+                    <strong>{t('territoryWorldModel.graph.supportTypes')}</strong>
                     {Object.entries(stateGraph.support_material_counts_by_type || {}).slice(0, 6).map(([kind, count]) => (
                       <p key={`graph-support-${kind}`}><span>{displayText(kind)}</span><em>{fmt(count, 0)}</em></p>
                     ))}
-                    {!Object.keys(stateGraph.support_material_counts_by_type || {}).length && <p><span>尚未生成支撑材料</span><em>0</em></p>}
+                    {!Object.keys(stateGraph.support_material_counts_by_type || {}).length && <p><span>{t('territoryWorldModel.graph.noSupportMaterials')}</span><em>0</em></p>}
                   </article>
                 </div>
               </div>
             )}
 
             {!stateGraph && (
-              <div className="twm-empty">尚未加载状态图谱。先在“操作推演”构建状态，再加载全量图谱。</div>
+              <div className="twm-empty">{t('territoryWorldModel.graph.empty')}</div>
             )}
           </section>
         </div>
@@ -4431,7 +5230,7 @@ export default function TerritoryWorldModelTab() {
           aria-labelledby="twm-subtab-control-payload"
         >
       <details className="twm-json-panel">
-        <summary>最新技术载荷</summary>
+        <summary>{t('territoryWorldModel.payload.latest')}</summary>
         <pre>{JSON.stringify(latestResult || status || {}, null, 2)}</pre>
       </details>
         </div>

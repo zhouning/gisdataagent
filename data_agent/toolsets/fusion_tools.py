@@ -16,6 +16,7 @@ from google.adk.tools.base_toolset import BaseToolset
 
 from .. import fusion_engine
 from ..gis_processors import _resolve_path
+from ..i18n import t as translate
 
 
 # ---------------------------------------------------------------------------
@@ -33,7 +34,7 @@ async def profile_fusion_sources(file_paths: str) -> str:
     """
     paths = [p.strip() for p in file_paths.split(",") if p.strip()]
     if not paths:
-        return "Error: 请提供至少一个文件路径。"
+        return translate("fusion.file_required")
 
     def _run():
         profiles = []
@@ -64,7 +65,7 @@ async def profile_fusion_sources(file_paths: str) -> str:
         return json.dumps(profiles, ensure_ascii=False, indent=2, default=str)
     except Exception as e:
         traceback.print_exc()
-        return f"Error: {e}"
+        return translate("fusion.profile_failed", error=e)
 
 
 async def assess_fusion_compatibility(
@@ -85,7 +86,7 @@ async def assess_fusion_compatibility(
     """
     paths = [p.strip() for p in file_paths.split(",") if p.strip()]
     if len(paths) < 2:
-        return "Error: 至少需要2个数据源进行兼容性评估。"
+        return translate("fusion.assessment_sources_required")
 
     embed = use_embedding.lower() == "true"
     llm_schema = use_llm_schema.lower() == "true"
@@ -112,7 +113,7 @@ async def assess_fusion_compatibility(
         return json.dumps(result, ensure_ascii=False, indent=2, default=str)
     except Exception as e:
         traceback.print_exc()
-        return f"Error: {e}"
+        return translate("fusion.assessment_failed", error=e)
 
 
 async def fuse_datasets(
@@ -159,7 +160,7 @@ async def fuse_datasets(
     """
     paths = [p.strip() for p in file_paths.split(",") if p.strip()]
     if len(paths) < 2:
-        return "Error: 至少需要2个数据源进行融合。"
+        return translate("fusion.sources_required")
 
     params = {"spatial_predicate": spatial_predicate}
     if join_column:
@@ -173,7 +174,7 @@ async def fuse_datasets(
         try:
             document_context_payload = json.loads(document_context)
         except json.JSONDecodeError as e:
-            return f"Error: invalid document_context JSON: {e}"
+            return translate("fusion.invalid_document_context", error=e)
 
     def _run():
         sources = []
@@ -282,14 +283,14 @@ async def fuse_datasets(
         err = str(e)
         recovery = ""
         if "No such file" in err or "not found" in err.lower() or "does not exist" in err:
-            recovery = " Recovery: 请先调用 search_data_assets 或 list_user_files 检查可用文件"
+            recovery = translate("fusion.recovery_files")
         elif "CRS" in err or "crs" in err or "坐标" in err:
-            recovery = " Recovery: 两个数据源坐标系不一致，请先调用 reproject_spatial_data 统一坐标系"
+            recovery = translate("fusion.recovery_crs")
         elif "column" in err.lower() or "KeyError" in err or "字段" in err:
-            recovery = " Recovery: 连接字段不存在，请先调用 describe_geodataframe 查看可用字段"
+            recovery = translate("fusion.recovery_column")
         elif "empty" in err.lower() or "0 records" in err:
-            recovery = " Recovery: 数据为空，请检查输入文件或筛选条件是否过于严格"
-        return f"Error: {e}{recovery}"
+            recovery = translate("fusion.recovery_empty")
+        return translate("fusion.fuse_failed", error=e, recovery=recovery)
 
 
 async def validate_fusion_quality(file_path: str) -> str:
@@ -315,11 +316,11 @@ async def validate_fusion_quality(file_path: str) -> str:
             suggestions = []
             for w in quality["warnings"]:
                 if "null" in w.lower():
-                    suggestions.append("考虑使用 fillna 或插值填补空值")
+                    suggestions.append(translate("fusion.suggest_fill_nulls"))
                 if "invalid geometr" in w.lower():
-                    suggestions.append("使用 buffer(0) 修复无效几何")
+                    suggestions.append(translate("fusion.suggest_fix_geometry"))
                 if "empty" in w.lower():
-                    suggestions.append("检查输入数据的空间范围是否重叠")
+                    suggestions.append(translate("fusion.suggest_check_overlap"))
             result["suggestions"] = suggestions
         return result
 
@@ -328,7 +329,7 @@ async def validate_fusion_quality(file_path: str) -> str:
         return json.dumps(result, ensure_ascii=False, indent=2)
     except Exception as e:
         traceback.print_exc()
-        return f"Error: {e}"
+        return translate("fusion.quality_failed", error=e)
 
 
 # ---------------------------------------------------------------------------
@@ -369,7 +370,10 @@ async def standardize_timestamps(
         result = await asyncio.to_thread(_run)
         return json.dumps(result, ensure_ascii=False, indent=2, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)})
+        return json.dumps({
+            "status": "error",
+            "message": translate("fusion.temporal_standardize_failed", error=e),
+        }, ensure_ascii=False)
 
 
 async def validate_temporal_consistency(
@@ -393,7 +397,10 @@ async def validate_temporal_consistency(
         if not time_column:
             detected = ta.detect_temporal_columns(gdf)
             if not detected:
-                return {"status": "error", "message": "未检测到时间列"}
+                return {
+                    "status": "error",
+                    "message": translate("fusion.temporal_column_missing"),
+                }
             col = detected[0]
         else:
             col = time_column
@@ -407,7 +414,10 @@ async def validate_temporal_consistency(
         result = await asyncio.to_thread(_run)
         return json.dumps(result, ensure_ascii=False, indent=2, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)})
+        return json.dumps({
+            "status": "error",
+            "message": translate("fusion.temporal_validate_failed", error=e),
+        }, ensure_ascii=False)
 
 
 # ---------------------------------------------------------------------------
@@ -433,7 +443,10 @@ async def inject_document_context(
     """
     paths = [p.strip() for p in document_paths.split(",") if p.strip()]
     if not paths:
-        return json.dumps({"status": "error", "message": "请提供至少一个文档路径"})
+        return json.dumps({
+            "status": "error",
+            "message": translate("fusion.document_required"),
+        }, ensure_ascii=False)
 
     async def _extract_and_analyze():
         from ..gis_processors import _resolve_path
@@ -454,19 +467,30 @@ async def inject_document_context(
                         doc = docx.Document(resolved)
                         text = "\n".join(para.text for para in doc.paragraphs if para.text.strip())
                     except Exception:
-                        text = f"[无法解析Word文档: {os.path.basename(resolved)}]"
+                        text = translate(
+                            "fusion.word_unreadable",
+                            file=os.path.basename(resolved),
+                        )
                 elif ext in (".xlsx", ".xls"):
                     import pandas as pd
                     df = pd.read_excel(resolved, nrows=20)
-                    text = f"列名: {list(df.columns)}\n前5行:\n{df.head().to_string()}"
+                    text = translate(
+                        "fusion.tabular_preview",
+                        columns=list(df.columns),
+                        preview=df.head().to_string(),
+                    )
                 elif ext == ".csv":
                     import pandas as pd
                     df = pd.read_csv(resolved, nrows=20)
-                    text = f"列名: {list(df.columns)}\n前5行:\n{df.head().to_string()}"
+                    text = translate(
+                        "fusion.tabular_preview",
+                        columns=list(df.columns),
+                        preview=df.head().to_string(),
+                    )
                 else:
-                    text = f"[不支持的文档格式: {ext}]"
+                    text = translate("fusion.unsupported_document", extension=ext)
             except Exception as e:
-                text = f"[读取失败: {e}]"
+                text = translate("fusion.document_read_failed", error=e)
 
             # Truncate to 1500 chars per document
             if len(text) > 1500:
@@ -482,29 +506,19 @@ async def inject_document_context(
         # Use Gemini Flash to extract structured metadata from documents
         combined_text = ""
         for ds in doc_summaries:
-            combined_text += f"\n--- 文档: {ds['file']} ({ds['format']}) ---\n{ds['full_text']}\n"
+            combined_text += translate(
+                "fusion.document_section",
+                file=ds["file"],
+                format=ds["format"],
+                content=ds["full_text"],
+            )
 
-        task_context = f"融合任务: {fusion_task}" if fusion_task else "通用数据融合"
-
-        prompt = f"""请从以下文档内容中提取与地理空间数据融合相关的结构化元数据。
-
-{task_context}
-
-{combined_text}
-
-请以JSON格式返回，每个文档一条记录，包含以下字段（如信息不存在则标记为null）：
-- file: 文件名
-- data_source: 数据来源机构/系统
-- description: 数据内容简述（50字以内）
-- time_range: 数据时间范围（如 "2020-2024"）
-- crs_info: 坐标系信息（如 "CGCS2000/EPSG:4490"）
-- field_definitions: 关键字段含义列表（最多10个）
-- quality_notes: 数据质量声明
-- timeliness: 时效性评分 0-1（越新越高）
-- precision: 精度评分 0-1
-- completeness: 完整性评分 0-1
-
-仅返回JSON数组，不要其他文字。"""
+        task_context = fusion_task or translate("fusion.general_task")
+        prompt = translate(
+            "fusion.document_prompt",
+            task_context=task_context,
+            content=combined_text,
+        )
 
         try:
             import google.genai as genai
@@ -543,8 +557,7 @@ async def inject_document_context(
             "status": "ok",
             "document_count": len(paths),
             "source_metadata": metadata,
-            "usage_hint": "将 source_metadata 中的 timeliness/precision/completeness "
-                         "用于融合时的冲突解决权重。",
+            "usage_hint": translate("fusion.document_usage_hint"),
         }
 
     try:
@@ -552,7 +565,10 @@ async def inject_document_context(
         return json.dumps(result, ensure_ascii=False, indent=2, default=str)
     except Exception as e:
         traceback.print_exc()
-        return json.dumps({"status": "error", "message": str(e)})
+        return json.dumps({
+            "status": "error",
+            "message": translate("fusion.document_context_failed", error=e),
+        }, ensure_ascii=False)
 
 
 # ---------------------------------------------------------------------------
@@ -681,10 +697,12 @@ async def plan_semantic_product_publish(
         }
         return json.dumps(result, ensure_ascii=False, indent=2, default=str)
     except ValueError as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+        return json.dumps({"status": "error", "message": translate(
+                              "fusion.operation_failed", error=e)}, ensure_ascii=False, indent=2)
     except Exception as e:
         traceback.print_exc()
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+        return json.dumps({"status": "error", "message": translate(
+                              "fusion.operation_failed", error=e)}, ensure_ascii=False, indent=2)
 
 
 async def preflight_mmfe_lakehouse_infrastructure(
@@ -728,10 +746,12 @@ async def preflight_mmfe_lakehouse_infrastructure(
         }
         return json.dumps(result, ensure_ascii=False, indent=2, default=str)
     except ValueError as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+        return json.dumps({"status": "error", "message": translate(
+                              "fusion.operation_failed", error=e)}, ensure_ascii=False, indent=2)
     except Exception as e:
         traceback.print_exc()
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+        return json.dumps({"status": "error", "message": translate(
+                              "fusion.operation_failed", error=e)}, ensure_ascii=False, indent=2)
 
 
 async def export_semantic_product_okf(
@@ -765,10 +785,12 @@ async def export_semantic_product_okf(
         )
         return json.dumps({"status": "ok", **result}, ensure_ascii=False, indent=2, default=str)
     except ValueError as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+        return json.dumps({"status": "error", "message": translate(
+                              "fusion.operation_failed", error=e)}, ensure_ascii=False, indent=2)
     except Exception as e:
         traceback.print_exc()
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+        return json.dumps({"status": "error", "message": translate(
+                              "fusion.operation_failed", error=e)}, ensure_ascii=False, indent=2)
 
 
 async def build_twm_state_input(
@@ -803,10 +825,12 @@ async def build_twm_state_input(
         )
         return json.dumps({"status": "ok", **result}, ensure_ascii=False, indent=2, default=str)
     except ValueError as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+        return json.dumps({"status": "error", "message": translate(
+                              "fusion.operation_failed", error=e)}, ensure_ascii=False, indent=2)
     except Exception as e:
         traceback.print_exc()
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+        return json.dumps({"status": "error", "message": translate(
+                              "fusion.operation_failed", error=e)}, ensure_ascii=False, indent=2)
 
 
 async def build_mmfe_semantic_ontology(
@@ -841,10 +865,12 @@ async def build_mmfe_semantic_ontology(
         )
         return json.dumps({"status": "ok", **result}, ensure_ascii=False, indent=2, default=str)
     except ValueError as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+        return json.dumps({"status": "error", "message": translate(
+                              "fusion.operation_failed", error=e)}, ensure_ascii=False, indent=2)
     except Exception as e:
         traceback.print_exc()
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+        return json.dumps({"status": "error", "message": translate(
+                              "fusion.operation_failed", error=e)}, ensure_ascii=False, indent=2)
 
 
 async def query_semantic_vectors(
@@ -932,10 +958,12 @@ async def query_semantic_vectors(
         )
         return json.dumps({"status": "ok", **result}, ensure_ascii=False, indent=2, default=str)
     except ValueError as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+        return json.dumps({"status": "error", "message": translate(
+                              "fusion.operation_failed", error=e)}, ensure_ascii=False, indent=2)
     except Exception as e:
         traceback.print_exc()
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+        return json.dumps({"status": "error", "message": translate(
+                              "fusion.operation_failed", error=e)}, ensure_ascii=False, indent=2)
 
 
 async def trace_mmfe_semantics(
@@ -984,10 +1012,12 @@ async def trace_mmfe_semantics(
         return json.dumps({"status": "ok", **result}, ensure_ascii=False, indent=2, default=str)
     except (ValueError, KeyError) as e:
         message = e.args[0] if getattr(e, "args", None) else str(e)
-        return json.dumps({"status": "error", "message": str(message)}, ensure_ascii=False, indent=2)
+        return json.dumps({"status": "error", "message": translate(
+                              "fusion.operation_failed", error=message)}, ensure_ascii=False, indent=2)
     except Exception as e:
         traceback.print_exc()
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+        return json.dumps({"status": "error", "message": translate(
+                              "fusion.operation_failed", error=e)}, ensure_ascii=False, indent=2)
 
 
 async def diagnose_mmfe_semantic_product(
@@ -1021,10 +1051,12 @@ async def diagnose_mmfe_semantic_product(
         )
         return json.dumps({"status": "ok", **result}, ensure_ascii=False, indent=2, default=str)
     except ValueError as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+        return json.dumps({"status": "error", "message": translate(
+                              "fusion.operation_failed", error=e)}, ensure_ascii=False, indent=2)
     except Exception as e:
         traceback.print_exc()
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False, indent=2)
+        return json.dumps({"status": "error", "message": translate(
+                              "fusion.operation_failed", error=e)}, ensure_ascii=False, indent=2)
 
 
 def _load_semantic_manifest(manifest_json: str, manifest_path: str) -> dict:

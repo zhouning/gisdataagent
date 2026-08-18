@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import pytest
 from starlette.requests import Request
 
+from data_agent.i18n import get_language, set_language
 from data_agent.territory_world_model import (
     StateBuildResult,
     TerritoryWorldModelAction,
@@ -37,6 +38,16 @@ MULTI_ADMIN_OPTIMIZATION_DIR = Path("data_agent/test_data/twm_bishan_multi_admin
 def _build_service():
     repo = TwmRepository(engine=None, persist_to_db=False)
     return TerritoryWorldModelService(repository=repo)
+
+
+@contextmanager
+def _test_language(language: str):
+    previous = get_language()
+    set_language(language)
+    try:
+        yield
+    finally:
+        set_language(previous)
 
 
 def _build_project_and_state(service: TerritoryWorldModelService):
@@ -8400,7 +8411,8 @@ def test_business_scenarios_route_returns_json(monkeypatch):
 
 def test_research_positioning_states_core_claims_and_falsification_conditions():
     svc = _build_service()
-    positioning = svc.research_positioning()
+    with _test_language("en"):
+        positioning = svc.research_positioning()
 
     core_names = {item["name"] for item in positioning["core_technology"]}
     assert "Hierarchical GIS object-relation-rule-evidence state" in core_names
@@ -8419,7 +8431,8 @@ def test_research_positioning_route_returns_json(monkeypatch):
     monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
     monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
 
-    response = asyncio.run(routes.twm_research_positioning(_fake_request()))
+    with _test_language("en"):
+        response = asyncio.run(routes.twm_research_positioning(_fake_request()))
     body = json.loads(response.body)
 
     assert response.status_code == 200
@@ -8428,7 +8441,8 @@ def test_research_positioning_route_returns_json(monkeypatch):
 
 def test_roadmap_status_report_summarizes_completion_and_blockers():
     svc = _build_service()
-    report = svc.roadmap_status_report()
+    with _test_language("en"):
+        report = svc.roadmap_status_report()
 
     assert report["schema"] == "territory_world_model.roadmap_status_report.v1"
     assert report["overall_status"] == "prototype_complete_review_only"
@@ -8445,7 +8459,8 @@ def test_roadmap_status_report_summarizes_completion_and_blockers():
 
 def test_roadmap_status_report_reflects_lineage_and_registry_gate_progress():
     svc = _build_service()
-    report = svc.roadmap_status_report()
+    with _test_language("en"):
+        report = svc.roadmap_status_report()
     phases = {item["id"]: item for item in report["phases"]}
 
     engineering = phases["engineering_scaffold"]
@@ -8480,7 +8495,8 @@ def test_roadmap_status_report_reflects_lineage_and_registry_gate_progress():
 
 def test_pilot_readiness_matrix_blocks_without_authoritative_history():
     svc = _build_service()
-    report = svc.pilot_readiness_matrix_report()
+    with _test_language("en"):
+        report = svc.pilot_readiness_matrix_report()
 
     assert report["schema"] == "territory_world_model.pilot_readiness_matrix.v1"
     assert report["overall_status"] == "blocked"
@@ -8509,7 +8525,8 @@ def test_pilot_readiness_matrix_blocks_without_authoritative_history():
 
 def test_rule_fixture_coverage_matrix_flags_boundary_fixture_gaps():
     svc = _build_service()
-    report = svc.rule_fixture_coverage_matrix_report()
+    with _test_language("en"):
+        report = svc.rule_fixture_coverage_matrix_report()
 
     assert report["schema"] == "territory_world_model.rule_fixture_coverage_matrix.v1"
     assert report["overall_status"] == "action_required"
@@ -8534,7 +8551,8 @@ def test_roadmap_status_route_returns_json(monkeypatch):
     monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
     monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
 
-    response = asyncio.run(routes.twm_roadmap_status(_fake_request()))
+    with _test_language("en"):
+        response = asyncio.run(routes.twm_roadmap_status(_fake_request()))
     body = json.loads(response.body)
 
     assert response.status_code == 200
@@ -8653,6 +8671,7 @@ def test_baseline_export_templates_define_real_sanitized_collection_contracts():
     assert "case_id,project_id,region_code" in c1["csv_header"]["twm"]
     assert c1["sample_rows"]["twm"][0]["sanitization_level"] == "real_sanitized"
     assert c1["validation_payload_template"]["claim_id"] == "C1_state_conflict_recall"
+    assert c1["export_spec"]["expected_source"].startswith("人工叠加清单")
 
     c2 = by_claim["C2_audit_defensibility"]
     assert {"case_id", "evidence_linked", "unsupported_recommendation", "review_task_predicted"}.issubset(c2["headers"]["baseline"])

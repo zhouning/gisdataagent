@@ -8,6 +8,8 @@ from google.adk.tools.base_toolset import BaseToolset
 
 from .. import knowledge_base as kb_engine
 from ..gis_processors import _resolve_path
+from ..i18n import t as translate
+from ..user_context import current_user_id
 
 
 # ---------------------------------------------------------------------------
@@ -36,16 +38,19 @@ def create_knowledge_base(name: str, description: str = "") -> str:
     try:
         kb_id = kb_engine.create_knowledge_base(name, description)
         if kb_id is None:
-            return json.dumps({"status": "error", "message": "创建失败（可能已达上限或名称重复）"})
+            return json.dumps({
+                "status": "error",
+                "message": translate("knowledge_base.create_limit_or_duplicate"),
+            }, ensure_ascii=False)
         return json.dumps({
             "status": "success",
             "kb_id": kb_id,
             "name": name,
-            "message": f"知识库 '{name}' 创建成功",
+            "message": translate("knowledge_base.created", name=name),
         }, ensure_ascii=False)
     except Exception as e:
         traceback.print_exc()
-        return f"Error: {e}"
+        return translate("knowledge_base.create_failed", error=e)
 
 
 def add_document_to_kb(kb_name: str, file_path: str) -> str:
@@ -63,36 +68,52 @@ def add_document_to_kb(kb_name: str, file_path: str) -> str:
     try:
         resolved = _resolve_path(file_path)
         if not os.path.isfile(resolved):
-            return json.dumps({"status": "error", "message": f"文件不存在: {file_path}"})
+            return json.dumps({
+                "status": "error",
+                "message": translate("knowledge_base.file_not_found", path=file_path),
+            }, ensure_ascii=False)
 
         # Resolve KB by name
         from ..db_engine import get_engine
         from ..user_context import current_user_id
         engine = get_engine()
         if not engine:
-            return json.dumps({"status": "error", "message": "数据库未连接"})
+            return json.dumps({
+                "status": "error",
+                "message": translate("knowledge_base.db_unavailable"),
+            }, ensure_ascii=False)
 
         username = current_user_id.get()
         with engine.connect() as conn:
             kb_id = kb_engine._resolve_kb_id(conn, username, kb_name=kb_name)
         if not kb_id:
-            return json.dumps({"status": "error", "message": f"知识库 '{kb_name}' 不存在"})
+            return json.dumps({
+                "status": "error",
+                "message": translate("knowledge_base.not_found", name=kb_name),
+            }, ensure_ascii=False)
 
         filename = os.path.basename(resolved)
         doc_id = kb_engine.add_document(kb_id, filename, resolved)
         if doc_id is None:
-            return json.dumps({"status": "error", "message": "添加失败（内容为空或已达上限）"})
+            return json.dumps({
+                "status": "error",
+                "message": translate("knowledge_base.document_add_limit_or_empty"),
+            }, ensure_ascii=False)
 
         return json.dumps({
             "status": "success",
             "doc_id": doc_id,
             "filename": filename,
             "kb_name": kb_name,
-            "message": f"文档 '{filename}' 已添加到知识库 '{kb_name}'",
+            "message": translate(
+                "knowledge_base.document_added",
+                filename=filename,
+                name=kb_name,
+            ),
         }, ensure_ascii=False)
     except Exception as e:
         traceback.print_exc()
-        return f"Error: {e}"
+        return translate("knowledge_base.document_add_failed", error=e)
 
 
 def search_knowledge_base(query: str, kb_name: str = "", top_k: str = "5") -> str:
@@ -117,7 +138,7 @@ def search_knowledge_base(query: str, kb_name: str = "", top_k: str = "5") -> st
             return json.dumps({
                 "status": "success",
                 "results": [],
-                "message": "未找到相关内容",
+                "message": translate("knowledge_base.no_results"),
             }, ensure_ascii=False)
 
         return json.dumps({
@@ -128,7 +149,7 @@ def search_knowledge_base(query: str, kb_name: str = "", top_k: str = "5") -> st
         }, ensure_ascii=False, default=str)
     except Exception as e:
         traceback.print_exc()
-        return f"Error: {e}"
+        return translate("knowledge_base.search_failed", error=e)
 
 
 def get_kb_context(query: str, kb_name: str = "") -> str:
@@ -149,7 +170,7 @@ def get_kb_context(query: str, kb_name: str = "") -> str:
         return context
     except Exception as e:
         traceback.print_exc()
-        return f"Error: {e}"
+        return translate("knowledge_base.context_failed", error=e)
 
 
 def list_knowledge_bases() -> str:
@@ -167,7 +188,7 @@ def list_knowledge_bases() -> str:
         }, ensure_ascii=False, default=str)
     except Exception as e:
         traceback.print_exc()
-        return f"Error: {e}"
+        return translate("knowledge_base.list_failed", error=e)
 
 
 def delete_knowledge_base(kb_name: str) -> str:
@@ -184,24 +205,33 @@ def delete_knowledge_base(kb_name: str) -> str:
         from ..user_context import current_user_id
         engine = get_engine()
         if not engine:
-            return json.dumps({"status": "error", "message": "数据库未连接"})
+            return json.dumps({
+                "status": "error",
+                "message": translate("knowledge_base.db_unavailable"),
+            }, ensure_ascii=False)
 
         username = current_user_id.get()
         with engine.connect() as conn:
             kb_id = kb_engine._resolve_kb_id(conn, username, kb_name=kb_name)
         if not kb_id:
-            return json.dumps({"status": "error", "message": f"知识库 '{kb_name}' 不存在"})
+            return json.dumps({
+                "status": "error",
+                "message": translate("knowledge_base.not_found", name=kb_name),
+            }, ensure_ascii=False)
 
         ok = kb_engine.delete_knowledge_base(kb_id)
         if ok:
             return json.dumps({
                 "status": "success",
-                "message": f"知识库 '{kb_name}' 已删除",
+                "message": translate("knowledge_base.deleted", name=kb_name),
             }, ensure_ascii=False)
-        return json.dumps({"status": "error", "message": "删除失败"})
+        return json.dumps({
+            "status": "error",
+            "message": translate("knowledge_base.delete_failed"),
+        }, ensure_ascii=False)
     except Exception as e:
         traceback.print_exc()
-        return f"Error: {e}"
+        return translate("knowledge_base.delete_exception", error=e)
 
 
 # ---------------------------------------------------------------------------
@@ -220,8 +250,6 @@ def graph_rag_search_tool(query: str, kb_name: str = "", top_k: str = "5",
     """
     try:
         from ..graph_rag import graph_rag_search
-        from .. import knowledge_base as kb_engine
-
         kb_id = None
         if kb_name:
             username = current_user_id.get("")
@@ -241,7 +269,10 @@ def graph_rag_search_tool(query: str, kb_name: str = "", top_k: str = "5",
         return json.dumps({"status": "ok", "results": results,
                           "count": len(results)}, ensure_ascii=False, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)})
+        return json.dumps({
+            "status": "error",
+            "message": translate("knowledge_base.graph_search_failed", error=e),
+        }, ensure_ascii=False)
 
 
 def build_kb_graph_tool(kb_name: str) -> str:
@@ -252,8 +283,6 @@ def build_kb_graph_tool(kb_name: str) -> str:
     """
     try:
         from ..graph_rag import build_kb_graph
-        from .. import knowledge_base as kb_engine
-
         kbs = kb_engine.list_knowledge_bases()
         kb_id = None
         for kb in kbs:
@@ -261,12 +290,18 @@ def build_kb_graph_tool(kb_name: str) -> str:
                 kb_id = kb["id"]
                 break
         if kb_id is None:
-            return json.dumps({"status": "error", "message": f"知识库 '{kb_name}' 不存在"})
+            return json.dumps({
+                "status": "error",
+                "message": translate("knowledge_base.not_found", name=kb_name),
+            }, ensure_ascii=False)
 
         result = build_kb_graph(kb_id, use_llm=False)
         return json.dumps(result, ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)})
+        return json.dumps({
+            "status": "error",
+            "message": translate("knowledge_base.graph_build_failed", error=e),
+        }, ensure_ascii=False)
 
 
 def get_kb_entity_graph_tool(kb_name: str) -> str:
@@ -277,8 +312,6 @@ def get_kb_entity_graph_tool(kb_name: str) -> str:
     """
     try:
         from ..graph_rag import get_entity_graph
-        from .. import knowledge_base as kb_engine
-
         kbs = kb_engine.list_knowledge_bases()
         kb_id = None
         for kb in kbs:
@@ -286,12 +319,18 @@ def get_kb_entity_graph_tool(kb_name: str) -> str:
                 kb_id = kb["id"]
                 break
         if kb_id is None:
-            return json.dumps({"status": "error", "message": f"知识库 '{kb_name}' 不存在"})
+            return json.dumps({
+                "status": "error",
+                "message": translate("knowledge_base.not_found", name=kb_name),
+            }, ensure_ascii=False)
 
         result = get_entity_graph(kb_id)
         return json.dumps(result, ensure_ascii=False, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)})
+        return json.dumps({
+            "status": "error",
+            "message": translate("knowledge_base.entity_graph_failed", error=e),
+        }, ensure_ascii=False)
 
 
 # ---------------------------------------------------------------------------

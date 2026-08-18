@@ -21,6 +21,7 @@ from google.adk.tools.base_toolset import BaseToolset
 
 from ..utils import _load_spatial_data
 from ..gis_processors import _resolve_path
+from ..i18n import t as translate
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,8 @@ def check_gaps(file_path: str, tolerance: float = 0.001) -> dict:
         }
     except Exception as e:
         logger.exception("check_gaps failed")
-        return {"status": "error", "error_message": str(e)}
+        return {"status": "error", "error_message": translate(
+            "governance.operation_failed", error=e)}
 
 
 def check_completeness(file_path: str, required_fields: list = None) -> dict:
@@ -141,7 +143,8 @@ def check_completeness(file_path: str, required_fields: list = None) -> dict:
         }
     except Exception as e:
         logger.exception("check_completeness failed")
-        return {"status": "error", "error_message": str(e)}
+        return {"status": "error", "error_message": translate(
+            "governance.operation_failed", error=e)}
 
 
 def check_attribute_range(file_path: str, range_rules: dict) -> dict:
@@ -163,7 +166,8 @@ def check_attribute_range(file_path: str, range_rules: dict) -> dict:
         for col, rules in range_rules.items():
             if col not in gdf.columns:
                 violations[col] = {"count": len(gdf), "samples": [], "total": len(gdf),
-                                   "error": f"字段 {col} 不存在"}
+                                   "error": translate(
+                                       "governance.field_not_found", field=col)}
                 total_checks += len(gdf)
                 total_violations += len(gdf)
                 continue
@@ -180,7 +184,8 @@ def check_attribute_range(file_path: str, range_rules: dict) -> dict:
                     numeric_series = series.astype(float)
                 except (ValueError, TypeError):
                     violations[col] = {"count": col_total, "samples": series.head(5).tolist(),
-                                       "total": col_total, "error": "无法转换为数值"}
+                                       "total": col_total, "error": translate(
+                                           "governance.numeric_conversion_failed")}
                     total_violations += col_total
                     continue
 
@@ -221,7 +226,8 @@ def check_attribute_range(file_path: str, range_rules: dict) -> dict:
         }
     except Exception as e:
         logger.exception("check_attribute_range failed")
-        return {"status": "error", "error_message": str(e)}
+        return {"status": "error", "error_message": translate(
+            "governance.operation_failed", error=e)}
 
 
 def check_duplicates(file_path: str, check_geometry: bool = True, check_fields: list = None) -> dict:
@@ -290,7 +296,8 @@ def check_duplicates(file_path: str, check_geometry: bool = True, check_fields: 
         }
     except Exception as e:
         logger.exception("check_duplicates failed")
-        return {"status": "error", "error_message": str(e)}
+        return {"status": "error", "error_message": translate(
+            "governance.operation_failed", error=e)}
 
 
 def check_crs_consistency(file_path: str, expected_epsg: int = 4490) -> dict:
@@ -314,7 +321,7 @@ def check_crs_consistency(file_path: str, expected_epsg: int = 4490) -> dict:
                 "current_epsg": None,
                 "expected_epsg": expected_epsg,
                 "is_compliant": False,
-                "recommendation": "数据缺少坐标参考系，请先指定 CRS（如 EPSG:4490）。",
+                "recommendation": translate("governance.crs_missing"),
             }
 
         current_epsg = current_crs.to_epsg()
@@ -324,16 +331,18 @@ def check_crs_consistency(file_path: str, expected_epsg: int = 4490) -> dict:
         is_cgcs2000_family = current_epsg in _CGCS2000_EPSGS if current_epsg else False
 
         if is_compliant:
-            recommendation = "CRS 符合要求。"
+            recommendation = translate("governance.crs_compliant")
         elif is_cgcs2000_family:
-            recommendation = (
-                f"当前为 CGCS2000 投影带 (EPSG:{current_epsg})，"
-                f"建议确认是否需要转换至 EPSG:{expected_epsg}。"
+            recommendation = translate(
+                "governance.crs_family",
+                current=current_epsg,
+                expected=expected_epsg,
             )
         else:
-            recommendation = (
-                f"当前 CRS (EPSG:{current_epsg}) 不符合要求，"
-                f"建议重投影至 EPSG:{expected_epsg}。"
+            recommendation = translate(
+                "governance.crs_noncompliant",
+                current=current_epsg,
+                expected=expected_epsg,
             )
 
         status = "pass" if is_compliant else "fail"
@@ -348,7 +357,8 @@ def check_crs_consistency(file_path: str, expected_epsg: int = 4490) -> dict:
         }
     except Exception as e:
         logger.exception("check_crs_consistency failed")
-        return {"status": "error", "error_message": str(e)}
+        return {"status": "error", "error_message": translate(
+            "governance.operation_failed", error=e)}
 
 
 def governance_score(audit_results: dict) -> dict:
@@ -419,12 +429,12 @@ def governance_score(audit_results: dict) -> dict:
 
         # Radar data for ECharts
         radar_data = [
-            {"name": "拓扑", "value": topo_score},
-            {"name": "间隙", "value": gap_score},
-            {"name": "完整性", "value": comp_score},
-            {"name": "属性有效性", "value": attr_score},
-            {"name": "重复", "value": dup_score},
-            {"name": "坐标系", "value": crs_score},
+            {"name": translate("governance.dimension_topology"), "value": topo_score},
+            {"name": translate("governance.dimension_gaps"), "value": gap_score},
+            {"name": translate("governance.dimension_completeness"), "value": comp_score},
+            {"name": translate("governance.dimension_attributes"), "value": attr_score},
+            {"name": translate("governance.dimension_duplicates"), "value": dup_score},
+            {"name": translate("governance.dimension_crs"), "value": crs_score},
         ]
 
         return {
@@ -436,7 +446,8 @@ def governance_score(audit_results: dict) -> dict:
         }
     except Exception as e:
         logger.exception("governance_score failed")
-        return {"status": "error", "error_message": str(e)}
+        return {"status": "error", "error_message": translate(
+            "governance.operation_failed", error=e)}
 
 
 def governance_summary(file_path: str, audit_results: dict, score: dict) -> dict:
@@ -463,26 +474,30 @@ def governance_summary(file_path: str, audit_results: dict, score: dict) -> dict
         if topo.get("status") == "fail":
             errors = topo.get("errors", {})
             if "self_intersections" in errors:
-                critical_issues.append(
-                    f"发现 {errors['self_intersections']['count']} 个自相交要素"
-                )
+                critical_issues.append(translate(
+                    "governance.self_intersections",
+                    count=errors["self_intersections"]["count"],
+                ))
             if "overlaps" in errors:
-                critical_issues.append(
-                    f"发现 {errors['overlaps']['count']} 处多边形重叠"
-                )
+                critical_issues.append(translate(
+                    "governance.overlaps",
+                    count=errors["overlaps"]["count"],
+                ))
             if "multi_part" in errors:
-                warnings.append(
-                    f"存在 {errors['multi_part']['count']} 个多部件几何，建议打散为单部件"
-                )
+                warnings.append(translate(
+                    "governance.multipart",
+                    count=errors["multi_part"]["count"],
+                ))
 
         # Gap issues
         gaps = audit_results.get("gaps", {})
         if gaps.get("status") == "fail":
-            critical_issues.append(
-                f"多边形间存在 {gaps.get('gap_count', 0)} 处间隙，"
-                f"总面积 {gaps.get('total_gap_area', 0)}"
-            )
-            recommendations.append("使用缝隙填充工具消除多边形间隙")
+            critical_issues.append(translate(
+                "governance.gap_summary",
+                count=gaps.get("gap_count", 0),
+                area=gaps.get("total_gap_area", 0),
+            ))
+            recommendations.append(translate("governance.fill_gaps"))
 
         # Completeness issues
         comp = audit_results.get("completeness", {})
@@ -491,26 +506,32 @@ def governance_summary(file_path: str, audit_results: dict, score: dict) -> dict
                 f for f, pct in comp.get("fields", {}).items() if pct < 80
             ]
             if low_fields:
-                msg = f"以下字段完整率低于 80%: {', '.join(low_fields[:5])}"
+                msg = translate(
+                    "governance.low_completeness",
+                    fields=", ".join(low_fields[:5]),
+                )
                 if comp.get("status") == "fail":
                     critical_issues.append(msg)
                 else:
                     warnings.append(msg)
-            recommendations.append("补充缺失属性值或删除不完整记录")
+            recommendations.append(translate("governance.fix_incomplete"))
 
         geom_comp = comp.get("geometry_completeness", 100)
         if geom_comp < 100:
-            warnings.append(f"几何完整率 {geom_comp}%，存在空几何要素")
-            recommendations.append("删除或修复空几何要素")
+            warnings.append(translate(
+                "governance.geometry_completeness", percent=geom_comp))
+            recommendations.append(translate("governance.fix_empty_geometry"))
 
         # Attribute range issues
         attr = audit_results.get("attribute_range", {})
         if attr.get("status") in ("warn", "fail"):
             for col, info in attr.get("violations", {}).items():
-                warnings.append(
-                    f"字段 {col} 存在 {info.get('count', 0)} 个越界值"
-                )
-            recommendations.append("检查并修正属性值越界问题")
+                warnings.append(translate(
+                    "governance.range_violations",
+                    field=col,
+                    count=info.get("count", 0),
+                ))
+            recommendations.append(translate("governance.fix_ranges"))
 
         # Duplicate issues
         dups = audit_results.get("duplicates", {})
@@ -518,10 +539,12 @@ def governance_summary(file_path: str, audit_results: dict, score: dict) -> dict
             geom_dups = dups.get("geometry_duplicates", 0)
             attr_dups = dups.get("attribute_duplicates", 0)
             if geom_dups:
-                warnings.append(f"发现 {geom_dups} 组几何重复要素")
+                warnings.append(translate(
+                    "governance.geometry_duplicates", count=geom_dups))
             if attr_dups:
-                warnings.append(f"发现 {attr_dups} 组属性重复要素")
-            recommendations.append("使用去重工具删除重复要素")
+                warnings.append(translate(
+                    "governance.attribute_duplicates", count=attr_dups))
+            recommendations.append(translate("governance.remove_duplicates"))
 
         # CRS issues
         crs = audit_results.get("crs", {})
@@ -529,21 +552,22 @@ def governance_summary(file_path: str, audit_results: dict, score: dict) -> dict
             rec = crs.get("recommendation", "")
             if rec:
                 critical_issues.append(rec)
-            recommendations.append(
-                f"重投影至 EPSG:{crs.get('expected_epsg', 4490)}"
-            )
+            recommendations.append(translate(
+                "governance.reproject",
+                epsg=crs.get("expected_epsg", 4490),
+            ))
 
         # Build summary text
         summary_lines = [
-            f"数据治理审计报告 — {file_path}",
-            f"综合评分: {total} / 100 (等级: {grade})",
-            f"关键问题: {len(critical_issues)} 项",
-            f"警告: {len(warnings)} 项",
-            f"建议: {len(recommendations)} 项",
+            translate("governance.report_title", path=file_path),
+            translate("governance.report_score", score=total, grade=grade),
+            translate("governance.report_critical", count=len(critical_issues)),
+            translate("governance.report_warnings", count=len(warnings)),
+            translate("governance.report_recommendations", count=len(recommendations)),
         ]
 
         if not critical_issues and not warnings:
-            summary_lines.append("数据质量良好，可直接用于分析。")
+            summary_lines.append(translate("governance.quality_good"))
 
         return {
             "status": "success",
@@ -555,7 +579,8 @@ def governance_summary(file_path: str, audit_results: dict, score: dict) -> dict
         }
     except Exception as e:
         logger.exception("governance_summary failed")
-        return {"status": "error", "error_message": str(e)}
+        return {"status": "error", "error_message": translate(
+            "governance.operation_failed", error=e)}
 
 
 # ---------------------------------------------------------------------------
@@ -573,12 +598,17 @@ def list_data_standards() -> str:
         from ..standard_registry import StandardRegistry
         standards = StandardRegistry.list_standards()
         if not standards:
-            return json.dumps({"status": "ok", "message": "暂无已注册的数据标准", "standards": []},
+            return json.dumps({
+                "status": "ok",
+                "message": translate("governance.no_standards"),
+                "standards": [],
+            },
                               ensure_ascii=False)
         return json.dumps({"status": "ok", "count": len(standards), "standards": standards},
                           ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "governance.operation_failed", error=e)}, ensure_ascii=False)
 
 
 def validate_against_standard(file_path: str, standard_id: str) -> str:
@@ -597,7 +627,8 @@ def validate_against_standard(file_path: str, standard_id: str) -> str:
         result = check_field_standards(file_path, standard_id)
         return json.dumps(result, ensure_ascii=False, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "governance.operation_failed", error=e)}, ensure_ascii=False)
 
 
 def validate_field_formulas(file_path: str, standard_id: str = "", formulas: str = "") -> str:
@@ -623,7 +654,10 @@ def validate_field_formulas(file_path: str, standard_id: str = "", formulas: str
             if std and std.formulas:
                 formula_list = std.formulas
         if not formula_list:
-            return json.dumps({"status": "error", "message": "请提供公式或标准ID（含内置公式）"},
+            return json.dumps({
+                "status": "error",
+                "message": translate("governance.formula_required"),
+            },
                               ensure_ascii=False)
 
         gdf = gpd.read_file(_resolve_path(file_path))
@@ -633,7 +667,11 @@ def validate_field_formulas(file_path: str, standard_id: str = "", formulas: str
             tol = f.get("tolerance", 0.01)
             desc = f.get("description", expr)
             if "=" not in expr:
-                results.append({"expr": expr, "status": "error", "message": "公式格式错误，需包含 '='"})
+                results.append({
+                    "expr": expr,
+                    "status": "error",
+                    "message": translate("governance.formula_invalid"),
+                })
                 continue
             lhs, rhs = expr.split("=", 1)
             lhs = lhs.strip()
@@ -657,13 +695,19 @@ def validate_field_formulas(file_path: str, standard_id: str = "", formulas: str
                     "max_diff": round(float(diff.max()), 4) if violations > 0 else 0,
                 })
             except Exception as calc_err:
-                results.append({"expr": expr, "status": "error", "message": str(calc_err)[:200]})
+                results.append({
+                    "expr": expr,
+                    "status": "error",
+                    "message": translate(
+                        "governance.formula_calc_failed", error=str(calc_err)[:200]),
+                })
 
         all_pass = all(r.get("status") == "pass" for r in results if r.get("status") != "skip")
         return json.dumps({"status": "ok", "all_pass": all_pass, "results": results},
                           ensure_ascii=False, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "governance.operation_failed", error=e)}, ensure_ascii=False)
 
 
 def generate_gap_matrix(file_path: str, standard_id: str) -> str:
@@ -682,7 +726,10 @@ def generate_gap_matrix(file_path: str, standard_id: str) -> str:
 
         std = StandardRegistry.get(standard_id)
         if not std:
-            return json.dumps({"status": "error", "message": f"未找到标准: {standard_id}"},
+            return json.dumps({"status": "error", "message": translate(
+                                  "governance.standard_not_found",
+                                  standard_id=standard_id,
+                              )},
                               ensure_ascii=False)
 
         gdf = gpd.read_file(_resolve_path(file_path))
@@ -749,7 +796,8 @@ def generate_gap_matrix(file_path: str, standard_id: str) -> str:
         return json.dumps({"status": "ok", "standard": standard_id, "matrix": matrix, "summary": summary},
                           ensure_ascii=False, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "governance.operation_failed", error=e)}, ensure_ascii=False)
 
 
 def generate_governance_plan(file_path: str, standard_id: str) -> str:
@@ -792,7 +840,8 @@ def generate_governance_plan(file_path: str, standard_id: str) -> str:
         if missing_m:
             steps.append({
                 "priority": priority, "tool": "add_missing_fields",
-                "action": f"补齐 {len(missing_m)} 个缺失必填字段",
+                "action": translate(
+                    "governance.plan_add_fields", count=len(missing_m)),
                 "params": {"standard_id": standard_id},
                 "fields": missing_m,
             })
@@ -803,7 +852,12 @@ def generate_governance_plan(file_path: str, standard_id: str) -> str:
         for ti in type_issues:
             steps.append({
                 "priority": priority, "tool": "cast_field_type",
-                "action": f"字段 {ti['field']} 类型转换: {ti['actual']} → {ti['expected']}",
+                "action": translate(
+                    "governance.plan_cast_field",
+                    field=ti["field"],
+                    actual=ti["actual"],
+                    expected=ti["expected"],
+                ),
                 "params": {"field": ti["field"], "target_type": ti["expected"]},
             })
             priority += 1
@@ -813,7 +867,11 @@ def generate_governance_plan(file_path: str, standard_id: str) -> str:
         for iv in invalid:
             steps.append({
                 "priority": priority, "tool": "map_field_codes",
-                "action": f"字段 {iv['field']} 有 {iv['count']} 个非法值需映射",
+                "action": translate(
+                    "governance.plan_map_values",
+                    field=iv["field"],
+                    count=iv["count"],
+                ),
                 "params": {"field": iv["field"]},
                 "sample_issues": iv.get("sample", [])[:3],
             })
@@ -824,7 +882,11 @@ def generate_governance_plan(file_path: str, standard_id: str) -> str:
         for mn in m_nulls:
             steps.append({
                 "priority": priority, "tool": "fill_null_values",
-                "action": f"必填字段 {mn['field']} 有 {mn['null_count']} 个空值需填充",
+                "action": translate(
+                    "governance.plan_fill_nulls",
+                    field=mn["field"],
+                    count=mn["null_count"],
+                ),
                 "params": {"field": mn["field"], "strategy": "mode"},
             })
             priority += 1
@@ -833,7 +895,10 @@ def generate_governance_plan(file_path: str, standard_id: str) -> str:
         if not gdf.crs or "4490" not in str(gdf.crs):
             steps.append({
                 "priority": priority, "tool": "standardize_crs",
-                "action": f"坐标系从 {gdf.crs or '未定义'} 统一为 EPSG:4490 (CGCS2000)",
+                "action": translate(
+                    "governance.plan_standardize_crs",
+                    source=gdf.crs or translate("governance.undefined"),
+                ),
                 "params": {"target_crs": "EPSG:4490"},
             })
             priority += 1
@@ -842,7 +907,12 @@ def generate_governance_plan(file_path: str, standard_id: str) -> str:
         for lv in std_result.get("length_violations", []):
             steps.append({
                 "priority": priority, "tool": "clip_outliers",
-                "action": f"字段 {lv['field']} 有 {lv['violation_count']} 个值超长 (限{lv['max_length']}字符)",
+                "action": translate(
+                    "governance.plan_length_violations",
+                    field=lv["field"],
+                    count=lv["violation_count"],
+                    max_length=lv["max_length"],
+                ),
                 "params": {"field": lv["field"]},
             })
             priority += 1
@@ -856,10 +926,12 @@ def generate_governance_plan(file_path: str, standard_id: str) -> str:
             "compliance_rate": std_result.get("compliance_rate", 0),
             "governance_steps": steps,
             "step_count": len(steps),
-            "estimated_actions": f"需执行 {len(steps)} 步治理操作",
+            "estimated_actions": translate(
+                "governance.plan_actions", count=len(steps)),
         }, ensure_ascii=False, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "governance.operation_failed", error=e)}, ensure_ascii=False)
 
 
 # ---------------------------------------------------------------------------
@@ -916,7 +988,8 @@ def check_logic_consistency(file_path: str, rules: str = "") -> str:
         }
         return json.dumps(result, ensure_ascii=False, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "governance.operation_failed", error=e)}, ensure_ascii=False)
 
 
 def check_temporal_validity(file_path: str, date_field: str, valid_range: str = "") -> str:
@@ -933,7 +1006,9 @@ def check_temporal_validity(file_path: str, date_field: str, valid_range: str = 
         gdf = gpd.read_file(file_path)
 
         if date_field not in gdf.columns:
-            return json.dumps({"status": "error", "message": f"字段 '{date_field}' 不存在"}, ensure_ascii=False)
+            return json.dumps({"status": "error", "message": translate(
+                                  "governance.field_not_found", field=date_field)},
+                              ensure_ascii=False)
 
         dates = pd.to_datetime(gdf[date_field], errors="coerce")
         null_count = int(dates.isna().sum())
@@ -961,7 +1036,8 @@ def check_temporal_validity(file_path: str, date_field: str, valid_range: str = 
         }
         return json.dumps(result, ensure_ascii=False, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "governance.operation_failed", error=e)}, ensure_ascii=False)
 
 
 def check_naming_convention(file_path: str, standard_id: str = "gb_t_24356") -> str:
@@ -986,9 +1062,15 @@ def check_naming_convention(file_path: str, standard_id: str = "gb_t_24356") -> 
             if f == "geometry":
                 continue
             if not re.match(r'^[A-Za-z_\u4e00-\u9fff][A-Za-z0-9_\u4e00-\u9fff]*$', f):
-                issues.append({"field": f, "issue": "字段名含非法字符"})
+                issues.append({
+                    "field": f,
+                    "issue": translate("governance.name_invalid_chars"),
+                })
             if len(f) > 30:
-                issues.append({"field": f, "issue": "字段名超过30字符"})
+                issues.append({
+                    "field": f,
+                    "issue": translate("governance.name_too_long"),
+                })
 
         # Check against standard field names if available
         standard_fields = []
@@ -998,7 +1080,11 @@ def check_naming_convention(file_path: str, standard_id: str = "gb_t_24356") -> 
                 # Case-insensitive match
                 matched = any(af.upper() == sf.upper() for af in actual_fields)
                 if not matched and any(af.upper().startswith(sf[:3].upper()) for af in actual_fields):
-                    issues.append({"field": sf, "issue": f"疑似命名不规范（标准名: {sf}）"})
+                    issues.append({
+                        "field": sf,
+                        "issue": translate(
+                            "governance.name_nonstandard", standard_name=sf),
+                    })
 
         result = {
             "status": "pass" if not issues else "warn",
@@ -1009,7 +1095,8 @@ def check_naming_convention(file_path: str, standard_id: str = "gb_t_24356") -> 
         }
         return json.dumps(result, ensure_ascii=False, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "governance.operation_failed", error=e)}, ensure_ascii=False)
 
 
 def classify_defects(file_path: str, standard_id: str = "gb_t_24356") -> str:
@@ -1109,7 +1196,8 @@ def classify_defects(file_path: str, standard_id: str = "gb_t_24356") -> str:
         }
         return json.dumps(result, ensure_ascii=False, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "governance.operation_failed", error=e)}, ensure_ascii=False)
 
 
 # ---------------------------------------------------------------------------
@@ -1176,7 +1264,10 @@ def grid_anonymize(
         gdf = _load_spatial_data(resolved)
 
         if gdf.empty:
-            return json.dumps({"status": "error", "message": "输入数据为空"}, ensure_ascii=False)
+            return json.dumps({
+                "status": "error",
+                "message": translate("governance.input_empty"),
+            }, ensure_ascii=False)
 
         actual_grid_size = _LEVEL_GRID_SIZE.get(level, grid_size_m)
 
@@ -1218,7 +1309,10 @@ def grid_anonymize(
         if cols_count * rows_count > 500_000:
             return json.dumps({
                 "status": "error",
-                "message": f"格网数过多({cols_count * rows_count})，请增大 grid_size_m 或缩小范围",
+                "message": translate(
+                    "governance.too_many_grids",
+                    count=cols_count * rows_count,
+                ),
             }, ensure_ascii=False)
 
         grid_cells = []
@@ -1282,7 +1376,10 @@ def grid_anonymize(
             agg_results.append(row_data)
 
         if not agg_results:
-            return json.dumps({"status": "error", "message": "格网聚合结果为空"}, ensure_ascii=False)
+            return json.dumps({
+                "status": "error",
+                "message": translate("governance.grid_result_empty"),
+            }, ensure_ascii=False)
 
         # --- 5. Build output GeoDataFrame ---
         result_df = gpd.GeoDataFrame(agg_results)
@@ -1308,16 +1405,23 @@ def grid_anonymize(
             "stripped_sensitive_fields": sorted(stripped_sensitive),
             "agg_strategy": agg_strategy,
             "random_offset_applied": random_offset,
-            "note": (
-                f"脱密等级 {level}：定位精度约 {actual_grid_size / 2:.0f}m，"
-                f"{'可公开发布' if actual_grid_size >= 250 else '仅限内部使用'}"
+            "note": translate(
+                "governance.anonymize_note",
+                level=level,
+                precision=f"{actual_grid_size / 2:.0f}",
+                access=translate(
+                    "governance.access_public"
+                    if actual_grid_size >= 250
+                    else "governance.access_internal"
+                ),
             ),
         }
         return json.dumps(output, ensure_ascii=False, default=str)
 
     except Exception as e:
         logger.exception("grid_anonymize failed")
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "governance.operation_failed", error=e)}, ensure_ascii=False)
 
 
 _ALL_FUNCS = [
@@ -1354,7 +1458,8 @@ def classify_data_sensitivity(file_path: str) -> str:
         result = classify_asset(file_path)
         return json.dumps(result, ensure_ascii=False, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "governance.operation_failed", error=e)}, ensure_ascii=False)
 
 
 def recommend_data_model(file_path: str, standard_id: str = "") -> str:
@@ -1401,21 +1506,28 @@ def recommend_data_model(file_path: str, standard_id: str = "") -> str:
                 if missing:
                     transforms.append({
                         "step": "add_missing_fields",
-                        "description": f"补齐 {len(missing)} 个缺失字段",
+                        "description": translate(
+                            "governance.recommend_add_fields", count=len(missing)),
                         "tool": "add_missing_fields",
                         "fields": missing[:10],
                     })
                 if type_mismatches:
                     transforms.append({
                         "step": "cast_field_types",
-                        "description": f"转换 {len(type_mismatches)} 个类型不匹配字段",
+                        "description": translate(
+                            "governance.recommend_cast_fields",
+                            count=len(type_mismatches),
+                        ),
                         "tool": "cast_field_type",
                         "fields": type_mismatches[:10],
                     })
                 if extra:
                     transforms.append({
                         "step": "review_extra_fields",
-                        "description": f"审查 {len(extra)} 个标准外字段（保留或移除）",
+                        "description": translate(
+                            "governance.recommend_review_fields",
+                            count=len(extra),
+                        ),
                         "fields": extra[:10],
                     })
 
@@ -1423,13 +1535,15 @@ def recommend_data_model(file_path: str, standard_id: str = "") -> str:
                 recommendation["gap_summary"] = summary
                 recommendation["recommended_transforms"] = transforms
                 recommendation["estimated_effort"] = (
-                    "低" if len(transforms) <= 1 else
-                    "中" if len(transforms) <= 3 else "高"
+                    translate("governance.effort_low") if len(transforms) <= 1 else
+                    translate("governance.effort_medium") if len(transforms) <= 3 else
+                    translate("governance.effort_high")
                 )
 
         return json.dumps(recommendation, ensure_ascii=False, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "governance.operation_failed", error=e)}, ensure_ascii=False)
 
 
 def grid_anonymize_pg(
@@ -1485,7 +1599,8 @@ def grid_anonymize_pg(
         return json.dumps(result, ensure_ascii=False, default=str)
     except Exception as e:
         logger.exception("grid_anonymize_pg wrapper failed")
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "governance.operation_failed", error=e)}, ensure_ascii=False)
 
 
 def verify_anonymization(
@@ -1515,7 +1630,8 @@ def verify_anonymization(
         return json.dumps(result, ensure_ascii=False, default=str)
     except Exception as e:
         logger.exception("verify_anonymization wrapper failed")
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "governance.operation_failed", error=e)}, ensure_ascii=False)
 
 
 def poi_grid_aggregate_pg(
@@ -1564,7 +1680,8 @@ def poi_grid_aggregate_pg(
         return json.dumps(result, ensure_ascii=False, default=str)
     except Exception as e:
         logger.exception("poi_grid_aggregate_pg wrapper failed")
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "governance.operation_failed", error=e)}, ensure_ascii=False)
 
 
 _ALL_FUNCS_FINAL = _ALL_FUNCS + [

@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatDate, formatNumber, getLocaleHeaders } from '../../i18n';
 
 interface FileInfo {
   name: string;
@@ -14,6 +16,7 @@ interface FilePickerDialogProps {
 }
 
 export default function FilePickerDialog({ open, onSelect, onCancel }: FilePickerDialogProps) {
+  const { t } = useTranslation();
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -23,7 +26,7 @@ export default function FilePickerDialog({ open, onSelect, onCancel }: FilePicke
   const fetchFiles = async () => {
     setLoading(true);
     try {
-      const resp = await fetch('/api/user/files', { credentials: 'include' });
+      const resp = await fetch('/api/user/files', { credentials: 'include', headers: getLocaleHeaders() });
       if (resp.ok) {
         const data = await resp.json();
         setFiles(data || []);
@@ -50,7 +53,7 @@ export default function FilePickerDialog({ open, onSelect, onCancel }: FilePicke
     try {
       const resp = await fetch('/api/user/files', {
         method: 'POST',
-        credentials: 'include',
+        credentials: 'include', headers: getLocaleHeaders(),
         body: formData,
       });
       if (resp.ok) {
@@ -58,10 +61,10 @@ export default function FilePickerDialog({ open, onSelect, onCancel }: FilePicke
         await fetchFiles();
         setSelected(data.path);
       } else {
-        alert('上传失败');
+        alert(t('filePicker.errors.upload'));
       }
     } catch {
-      alert('上传失败');
+      alert(t('filePicker.errors.upload'));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -87,8 +90,8 @@ export default function FilePickerDialog({ open, onSelect, onCancel }: FilePicke
         display: 'flex', flexDirection: 'column', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
       }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>选择数据文件</h3>
-          <button onClick={onCancel} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#9ca3af' }}>×</button>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{t('filePicker.title')}</h3>
+          <button onClick={onCancel} aria-label={t('filePicker.actions.cancel')} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#9ca3af' }}>×</button>
         </div>
 
         <div style={{ padding: 16, borderBottom: '1px solid #e5e7eb' }}>
@@ -107,15 +110,15 @@ export default function FilePickerDialog({ open, onSelect, onCancel }: FilePicke
               background: '#fff', cursor: uploading ? 'not-allowed' : 'pointer', fontSize: 13,
             }}
           >
-            {uploading ? '上传中...' : '📁 上传新文件'}
+            {uploading ? t('filePicker.actions.uploading') : t('filePicker.actions.upload')}
           </button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
           {loading ? (
-            <div style={{ textAlign: 'center', color: '#9ca3af', padding: 20 }}>加载中...</div>
+            <div style={{ textAlign: 'center', color: '#9ca3af', padding: 20 }}>{t('filePicker.loading')}</div>
           ) : files.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#9ca3af', padding: 20 }}>暂无文件，请上传</div>
+            <div style={{ textAlign: 'center', color: '#9ca3af', padding: 20 }}>{t('filePicker.empty')}</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {files.map((f, i) => (
@@ -136,7 +139,7 @@ export default function FilePickerDialog({ open, onSelect, onCancel }: FilePicke
                     }}>{f.type}</span>
                   </div>
                   <div style={{ fontSize: 11, color: '#9ca3af' }}>
-                    {(f.size / 1024 / 1024).toFixed(2)} MB · {new Date(f.modified * 1000).toLocaleString('zh-CN')}
+                    {formatNumber(f.size / 1024 / 1024, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MB · {formatDate(f.modified * 1000, { dateStyle: 'medium', timeStyle: 'short', hour12: false })}
                   </div>
                 </div>
               ))}
@@ -148,7 +151,7 @@ export default function FilePickerDialog({ open, onSelect, onCancel }: FilePicke
           <button onClick={onCancel} style={{
             padding: '8px 16px', borderRadius: 4, border: '1px solid #d1d5db',
             background: '#fff', cursor: 'pointer', fontSize: 13,
-          }}>取消</button>
+          }}>{t('filePicker.actions.cancel')}</button>
           <button
             onClick={handleConfirm}
             disabled={!selected}
@@ -157,7 +160,7 @@ export default function FilePickerDialog({ open, onSelect, onCancel }: FilePicke
               background: selected ? '#1a73e8' : '#d1d5db', color: '#fff',
               cursor: selected ? 'pointer' : 'not-allowed', fontSize: 13, fontWeight: 500,
             }}
-          >确定</button>
+          >{t('filePicker.actions.confirm')}</button>
         </div>
       </div>
     </div>

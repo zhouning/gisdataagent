@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from sqlalchemy import text
 
 from .db_engine import get_engine
+from .i18n import t as translate
 
 logger = logging.getLogger(__name__)
 
@@ -55,21 +56,25 @@ def create_rule(rule_name: str, rule_type: str, config: dict,
                 owner: str, standard_id: str = None,
                 severity: str = "HIGH", is_shared: bool = False) -> dict:
     if not rule_name or len(rule_name) > 200:
-        return {"status": "error", "message": "规则名称不能为空且不超过200字符"}
+        return {"status": "error", "message": translate("quality.rule_name_invalid")}
     if rule_type not in VALID_RULE_TYPES:
-        return {"status": "error", "message": f"rule_type 必须是 {sorted(VALID_RULE_TYPES)} 之一"}
+        return {"status": "error", "message": translate(
+            "quality.rule_type_invalid", types=", ".join(sorted(VALID_RULE_TYPES))
+        )}
     if severity not in VALID_SEVERITIES:
         severity = "HIGH"
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("quality.db_unavailable")}
     try:
         with engine.connect() as conn:
             count = conn.execute(text(
                 f"SELECT COUNT(*) FROM {T_QUALITY_RULES} WHERE owner_username = :o"
             ), {"o": owner}).scalar() or 0
             if count >= MAX_RULES_PER_USER:
-                return {"status": "error", "message": f"每用户最多 {MAX_RULES_PER_USER} 条规则"}
+                return {"status": "error", "message": translate(
+                    "quality.max_rules", max_rules=MAX_RULES_PER_USER
+                )}
             conn.execute(text(f"""
                 INSERT INTO {T_QUALITY_RULES}
                 (rule_name, rule_type, config, owner_username, standard_id, severity, is_shared)
@@ -83,7 +88,7 @@ def create_rule(rule_name: str, rule_type: str, config: dict,
         return {"status": "ok", "id": rid, "rule_name": rule_name}
     except Exception as e:
         logger.warning("create_rule failed: %s", e)
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("quality.create_failed", error=e)}
 
 
 def list_rules(owner: str, include_shared: bool = True) -> list:
@@ -128,12 +133,12 @@ def update_rule(rule_id: int, owner: str, **kwargs) -> dict:
     allowed = {"rule_name", "rule_type", "config", "standard_id", "severity", "enabled", "is_shared"}
     updates = {k: v for k, v in kwargs.items() if k in allowed and v is not None}
     if not updates:
-        return {"status": "error", "message": "无可更新字段"}
+        return {"status": "error", "message": translate("quality.no_updates")}
     if "config" in updates and isinstance(updates["config"], dict):
         updates["config"] = json.dumps(updates["config"], ensure_ascii=False)
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("quality.db_unavailable")}
     try:
         set_clause = ", ".join(f"{k} = :{k}" for k in updates)
         updates["id"] = rule_id
@@ -145,16 +150,16 @@ def update_rule(rule_id: int, owner: str, **kwargs) -> dict:
             """), updates)
             conn.commit()
             if result.rowcount == 0:
-                return {"status": "error", "message": "规则未找到或无权限"}
+                return {"status": "error", "message": translate("quality.not_found_or_denied")}
         return {"status": "ok"}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("quality.update_failed", error=e)}
 
 
 def delete_rule(rule_id: int, owner: str) -> dict:
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("quality.db_unavailable")}
     try:
         with engine.connect() as conn:
             result = conn.execute(text(f"""
@@ -162,10 +167,10 @@ def delete_rule(rule_id: int, owner: str) -> dict:
             """), {"id": rule_id, "o": owner})
             conn.commit()
             if result.rowcount == 0:
-                return {"status": "error", "message": "规则未找到"}
+                return {"status": "error", "message": translate("quality.not_found")}
         return {"status": "ok"}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("quality.delete_failed", error=e)}
 
 
 # ---------------------------------------------------------------------------
@@ -200,10 +205,12 @@ def execute_rule(rule: dict, file_path: str) -> dict:
             return check_completeness(file_path)
 
         else:
-            return {"status": "error", "message": f"不支持的规则类型: {rule_type}"}
+            return {"status": "error", "message": translate(
+                "quality.unsupported_type", rule_type=rule_type
+            )}
 
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("quality.execute_failed", error=e)}
 
 
 def execute_rules_batch(file_path: str, rule_ids: list = None, owner: str = "") -> dict:
@@ -252,7 +259,7 @@ def record_trend(asset_name: str, standard_id: str, score: float,
                  rule_results: dict, run_by: str) -> dict:
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("quality.db_unavailable")}
     try:
         with engine.connect() as conn:
             conn.execute(text(f"""
@@ -269,7 +276,7 @@ def record_trend(asset_name: str, standard_id: str, score: float,
             conn.commit()
         return {"status": "ok"}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("quality.trend_failed", error=e)}
 
 
 def get_trends(asset_name: str = None, days: int = 30) -> list:
@@ -304,7 +311,7 @@ def get_resource_overview(owner: str = None) -> dict:
     """Aggregate data resource statistics for the overview dashboard."""
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("quality.db_unavailable")}
     try:
         with engine.connect() as conn:
             # Asset counts by type
@@ -347,4 +354,4 @@ def get_resource_overview(owner: str = None) -> dict:
         }
     except Exception as e:
         logger.warning("get_resource_overview failed: %s", e)
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("quality.overview_failed", error=e)}

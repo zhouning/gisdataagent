@@ -21,6 +21,7 @@ from urllib.parse import quote
 from sqlalchemy import bindparam, text
 
 from ..db_engine import get_engine
+from ..i18n import t
 from .contracts import ONTOLOGY_KEY, sha256_json, stable_token
 from .registry import OntologyProfile, get_ontology_profile
 
@@ -740,7 +741,7 @@ def validate_model_state(
                 "code": "stale_baseline",
                 "severity": "error",
                 "path": "draft.base_content_sha256",
-                "message": "活动本体已变化，请基于最新活动版本重新建立草稿",
+                "message": t("ontology_draft.validation.stale_baseline"),
             }
         )
 
@@ -767,7 +768,7 @@ def validate_model_state(
                         "path": f"{entity_type}.{entity_id}.code",
                         "entity_type": entity_type,
                         "entity_id": entity_id,
-                        "message": "领域对象必须有稳定技术代码",
+                        "message": t("ontology_draft.validation.missing_code"),
                     }
                 )
             elif actual_id != expected_id or entity_id != expected_id:
@@ -778,7 +779,7 @@ def validate_model_state(
                         "path": f"{entity_type}.{entity_id}",
                         "entity_type": entity_type,
                         "entity_id": entity_id,
-                        "message": "实体 ID 必须由稳定代码推导",
+                        "message": t("ontology_draft.validation.unstable_entity_id"),
                     }
                 )
             uri = str(entity.get("uri") or "")
@@ -795,7 +796,7 @@ def validate_model_state(
                         "path": f"{entity_type}.{entity_id}.uri",
                         "entity_type": entity_type,
                         "entity_id": entity_id,
-                        "message": "URI 不属于 GIS Data Agent 稳定命名空间",
+                        "message": t("ontology_draft.validation.unstable_uri"),
                     }
                 )
             if uri in uri_owners:
@@ -806,7 +807,10 @@ def validate_model_state(
                         "path": f"{entity_type}.{entity_id}.uri",
                         "entity_type": entity_type,
                         "entity_id": entity_id,
-                        "message": f"URI 已由 {uri_owners[uri][1]} 使用",
+                        "message": t(
+                            "ontology_draft.validation.duplicate_uri",
+                            entity_id=uri_owners[uri][1],
+                        ),
                     }
                 )
             else:
@@ -821,7 +825,7 @@ def validate_model_state(
                     "path": f"property.{property_id}.owner_concept_id",
                     "entity_type": "property",
                     "entity_id": property_id,
-                    "message": "属性所属类不存在",
+                    "message": t("ontology_draft.validation.property_owner_missing"),
                 }
             )
         elif state["concept"][prop["owner_concept_id"]].get("lifecycle_status") == "deprecated":
@@ -832,7 +836,7 @@ def validate_model_state(
                     "path": f"property.{property_id}.owner_concept_id",
                     "entity_type": "property",
                     "entity_id": property_id,
-                    "message": "属性不能挂在已弃用的领域类上",
+                    "message": t("ontology_draft.validation.property_owner_deprecated"),
                 }
             )
         min_count = prop.get("min_count")
@@ -858,7 +862,7 @@ def validate_model_state(
                     "path": f"property.{property_id}.cardinality",
                     "entity_type": "property",
                     "entity_id": property_id,
-                    "message": "属性基数无效",
+                    "message": t("ontology_draft.validation.invalid_cardinality"),
                 }
             )
         for field, maximum in (
@@ -880,7 +884,10 @@ def validate_model_state(
                         "path": f"property.{property_id}.{field}",
                         "entity_type": "property",
                         "entity_id": property_id,
-                        "message": f"{field} 必须是合法非负整数",
+                        "message": t(
+                            "ontology_draft.validation.invalid_facet",
+                            field=field,
+                        ),
                     }
                 )
         if (
@@ -895,7 +902,7 @@ def validate_model_state(
                     "path": f"property.{property_id}.scale_value",
                     "entity_type": "property",
                     "entity_id": property_id,
-                    "message": "scale_value 不能大于 precision_value",
+                    "message": t("ontology_draft.validation.scale_exceeds_precision"),
                 }
             )
         if prop.get("datatype") not in DATATYPES:
@@ -906,7 +913,7 @@ def validate_model_state(
                     "path": f"property.{property_id}.datatype",
                     "entity_type": "property",
                     "entity_id": property_id,
-                    "message": "属性数据类型不在受治理的数据类型集合中",
+                    "message": t("ontology_draft.validation.unsupported_datatype"),
                 }
             )
 
@@ -925,7 +932,7 @@ def validate_model_state(
                     "path": f"relation.{relation_id}",
                     "entity_type": "relation",
                     "entity_id": relation_id,
-                    "message": "关系记录的技术 ID 与模型索引不一致",
+                    "message": t("ontology_draft.validation.unstable_relation_id"),
                 }
             )
         provenance = relation.get("provenance") or {}
@@ -961,7 +968,10 @@ def validate_model_state(
                     "path": f"relation.{relation_id}",
                     "entity_type": "relation",
                     "entity_id": relation_id,
-                    "message": f"关系技术身份与 {relation_identities[identity]} 重复",
+                    "message": t(
+                        "ontology_draft.validation.duplicate_relation",
+                        relation_id=relation_identities[identity],
+                    ),
                 }
             )
         else:
@@ -975,7 +985,7 @@ def validate_model_state(
                         "path": f"relation.{relation_id}.{field}",
                         "entity_type": "relation",
                         "entity_id": relation_id,
-                        "message": "关系端点不存在",
+                        "message": t("ontology_draft.validation.relation_endpoint_missing"),
                     }
                 )
             elif state["concept"][relation[field]].get("lifecycle_status") == "deprecated":
@@ -986,7 +996,7 @@ def validate_model_state(
                         "path": f"relation.{relation_id}.{field}",
                         "entity_type": "relation",
                         "entity_id": relation_id,
-                        "message": "活动关系不能指向已弃用的领域类",
+                        "message": t("ontology_draft.validation.relation_endpoint_deprecated"),
                     }
                 )
         if not relation_type or not RELATION_TYPE_RE.fullmatch(relation_type):
@@ -997,7 +1007,7 @@ def validate_model_state(
                     "path": f"relation.{relation_id}.relation_type",
                     "entity_type": "relation",
                     "entity_id": relation_id,
-                    "message": "关系类型不符合受治理命名规则",
+                    "message": t("ontology_draft.validation.invalid_relation_type"),
                 }
             )
 
@@ -1019,7 +1029,10 @@ def validate_model_state(
                         "path": f"{entity_type}.{entity_id}.code",
                         "entity_type": entity_type,
                         "entity_id": entity_id,
-                        "message": f"技术代码与 {seen_codes[code]} 重复",
+                        "message": t(
+                            "ontology_draft.validation.duplicate_code",
+                            entity_id=seen_codes[code],
+                        ),
                     }
                 )
             else:
@@ -1034,7 +1047,7 @@ def validate_model_state(
                 "path": "relation.subClassOf",
                 "entity_type": "relation",
                 "entity_id": " -> ".join(cycle),
-                "message": "继承关系形成环",
+                "message": t("ontology_draft.validation.subclass_cycle"),
             }
         )
 

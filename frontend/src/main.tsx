@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { RecoilRoot } from 'recoil';
 import { ChainlitAPI, ChainlitContext } from '@chainlit/react-client';
+import './i18n';
 import App from './App';
 import { PlatformBrandingProvider } from './platformBranding';
 import './styles/layout.css';

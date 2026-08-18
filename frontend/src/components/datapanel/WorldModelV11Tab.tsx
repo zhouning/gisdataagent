@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, BarChart3, CheckCircle2, Layers, ListChecks, Map, PlayCircle, RefreshCw, ShieldCheck } from 'lucide-react';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
 import AbuDhabiLandUseModelTab from './AbuDhabiLandUseModelTab';
 
 type MetricValue = string | number | null | undefined;
@@ -119,30 +122,40 @@ interface RuntimeRun {
   error?: string;
 }
 
-const areaMetricLabels: Record<string, string> = {
-  change_f1: '变化 F1',
-  fom: 'FoM',
-  transition_accuracy: '转换准确率',
-  allocation_disagreement: '分配分歧',
+const areaMetricLabelKeys: Record<string, string> = {
+  change_f1: 'changeF1',
+  fom: 'fom',
+  transition_accuracy: 'transitionAccuracy',
+  allocation_disagreement: 'allocationDisagreement',
 };
 
-const methodMetricLabels: Record<string, string> = {
-  mean_change_f1: '变化 F1',
-  mean_fom: 'FoM',
-  mean_transition_accuracy: '转换准确率',
-  mean_allocation_disagreement: '分配分歧',
+const methodMetricLabelKeys: Record<string, string> = {
+  mean_change_f1: 'changeF1',
+  mean_fom: 'fom',
+  mean_transition_accuracy: 'transitionAccuracy',
+  mean_allocation_disagreement: 'allocationDisagreement',
 };
 
 const BOUNDARY_DEFAULTS: Paper58Evidence = {
   status: 'missing',
-  claim_scope: '仅支持外部基准证据',
-  runtime_dependency: '无运行依赖',
   geofm_runtime_allowed: false,
-  twm_generator_role: '不是运行时生成器',
-  primary_twm_route: '世界模型原生生成与规划流程',
   blocks_validation: false,
   can_promote_claim_ladder: false,
-  claim_boundary: 'Paper58 仅作为外部基准证据，不作为世界模型运行时生成器。',
+};
+
+const DEFAULT_VISUALIZATION_LAYER_KEYS = [
+  'paper58Start',
+  'paper58End',
+  'baselineEnd',
+  'differenceEnd',
+] as const;
+
+const DEFAULT_RUNTIME_STAGE_KEYS: Record<string, string> = {
+  validate_inputs: 'validateInputs',
+  paper58: 'paper58',
+  geosos_flus: 'geososFlus',
+  metrics: 'metrics',
+  layers: 'layers',
 };
 
 const EMPTY_VISUALIZATION: Paper58Visualization = {
@@ -156,12 +169,7 @@ const EMPTY_VISUALIZATION: Paper58Visualization = {
   selected_area_metrics: { paper58: {}, baseline: {}, deltas: {}, winner_by_metric: {} },
   visualization: {
     map_action: 'POST /api/twm/paper58-visualization/map',
-    available_layers: [
-      'Paper58 土地利用 2020',
-      'Paper58 土地利用 2021',
-      'GeoSOS-FLUS 土地利用 2021',
-      'Paper58 与 GeoSOS-FLUS 差异 2021',
-    ],
+    available_layers: [],
     display_crs: 'local_same_grid_normalized',
     georeferenced: false,
     georef_source: null,
@@ -448,22 +456,22 @@ function normalizeVisualization(raw: unknown): Paper58Visualization {
   };
 }
 
-function formatValue(value: unknown) {
+function formatDisplayValue(value: unknown, t: TFunction) {
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) return '-';
-    return value.toFixed(4);
+    return formatNumber(value, { minimumFractionDigits: 4, maximumFractionDigits: 4 });
   }
-  if (typeof value === 'boolean') return value ? '是' : '否';
+  if (typeof value === 'boolean') return t(value ? 'worldModelV11.common.yes' : 'worldModelV11.common.no');
   if (value === null || typeof value === 'undefined' || value === '') return '-';
   return String(value);
 }
 
-function formatCount(value: unknown) {
+function formatDisplayCount(value: unknown, t: TFunction) {
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) return '-';
-    return Number.isInteger(value) ? String(value) : value.toFixed(2);
+    return formatNumber(value, Number.isInteger(value) ? { maximumFractionDigits: 0 } : { maximumFractionDigits: 2 });
   }
-  return formatValue(value);
+  return formatDisplayValue(value, t);
 }
 
 function statusBadgeClass(status?: string) {
@@ -473,36 +481,48 @@ function statusBadgeClass(status?: string) {
   return 'status-badge dismissed';
 }
 
-function statusText(status?: string) {
-  const labels: Record<string, string> = {
-    ready: '就绪',
-    missing: '缺少数据',
-    supporting_evidence: '证据可用',
-    review: '需复核',
-    blocked: '已阻断',
-    error: '错误',
+function formatStatusText(status: string | undefined, t: TFunction) {
+  const keys: Record<string, string> = {
+    ready: 'ready',
+    missing: 'missing',
+    supporting_evidence: 'supportingEvidence',
+    review: 'review',
+    blocked: 'blocked',
+    error: 'error',
+    pending: 'pending',
+    running: 'running',
+    completed: 'completed',
+    failed: 'failed',
   };
-  return labels[status || ''] || status || '未知';
+  const key = keys[status || ''];
+  return key ? t(`worldModelV11.status.${key}`) : status || t('worldModelV11.common.unknown');
 }
 
-function formatMethodLabel(value: unknown) {
-  if (typeof value !== 'string' || !value) return formatValue(value);
-  const labels: Record<string, string> = {
-    paper58_spatial_demand_ratio_claim_robustness_v4: 'Paper58 空间需求比例（稳健性 v4）',
-    geosos_flus_console: 'GeoSOS-FLUS 控制台基线',
+function formatDisplayMethod(value: unknown, t: TFunction) {
+  if (typeof value !== 'string' || !value) return formatDisplayValue(value, t);
+  const keys: Record<string, string> = {
+    paper58_spatial_demand_ratio_claim_robustness_v4: 'paper58RobustnessV4',
+    geosos_flus_console: 'geososFlusBaseline',
   };
-  return labels[value] || value;
+  const key = keys[value];
+  return key ? t(`worldModelV11.methods.${key}`) : value;
 }
 
 function MetricValueText({ value }: { value: unknown }) {
+  const { t } = useTranslation();
   return (
     <strong className="v11-value-text">
-      {formatValue(value)}
+      {formatDisplayValue(value, t)}
     </strong>
   );
 }
 
 function LegacyWorldModelV11Tab() {
+  const { t } = useTranslation();
+  const formatValue = (value: unknown) => formatDisplayValue(value, t);
+  const formatCount = (value: unknown) => formatDisplayCount(value, t);
+  const statusText = (status?: string) => formatStatusText(status, t);
+  const formatMethodLabel = (value: unknown) => formatDisplayMethod(value, t);
   const [viewMode, setViewMode] = useState<'results' | 'runtime'>('results');
   const [visualization, setVisualization] = useState<Paper58Visualization>(() => normalizeVisualization(null));
   const [evidence, setEvidence] = useState<Paper58Evidence>(() => normalizeEvidence(null));
@@ -524,14 +544,14 @@ function LegacyWorldModelV11Tab() {
     const paper58 = visualization.selected_area_metrics?.paper58 || {};
     const baseline = visualization.selected_area_metrics?.baseline || {};
     const deltas = visualization.selected_area_metrics?.deltas || {};
-    return Object.keys(areaMetricLabels).map(key => ({
+    return Object.keys(areaMetricLabelKeys).map(key => ({
       key,
-      label: areaMetricLabels[key],
+      label: t(`worldModelV11.metrics.${areaMetricLabelKeys[key]}`),
       paper58: paper58[key],
       baseline: baseline[key],
       delta: deltas[key],
     }));
-  }, [visualization]);
+  }, [t, visualization]);
 
   const selectedAreaRecord = useMemo(
     () => visualization.areas.find(area => area.area === selectedArea) || visualization.areas[0],
@@ -546,13 +566,13 @@ function LegacyWorldModelV11Tab() {
   const runtimeMetricRows = useMemo(() => {
     const paper58 = runtimeRun?.metrics?.paper58 || {};
     const geososFlus = runtimeRun?.metrics?.geosos_flus || {};
-    return Object.keys(areaMetricLabels).map(key => ({
+    return Object.keys(areaMetricLabelKeys).map(key => ({
       key,
-      label: areaMetricLabels[key],
+      label: t(`worldModelV11.metrics.${areaMetricLabelKeys[key]}`),
       paper58: paper58[key],
       geososFlus: geososFlus[key],
     }));
-  }, [runtimeRun]);
+  }, [runtimeRun, t]);
 
   const loadVisualization = async (area = selectedArea, method = selectedMethod) => {
     setLoading(true);
@@ -563,10 +583,13 @@ function LegacyWorldModelV11Tab() {
       if (area) params.set('area', area);
       if (method) params.set('method', method);
       const suffix = params.toString() ? `?${params.toString()}` : '';
-      const resp = await fetch(`/api/twm/paper58-visualization${suffix}`, { credentials: 'include' });
+      const resp = await fetch(`/api/twm/paper58-visualization${suffix}`, {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       const data = normalizeVisualization(await resp.json());
       if (!resp.ok || data.error) {
-        const message = data.error || 'Paper58 可视化加载失败';
+        const message = data.error || t('worldModelV11.errors.visualization');
         setVisualization(normalizeVisualization({ error: message }));
         setError(message);
         return;
@@ -576,7 +599,7 @@ function LegacyWorldModelV11Tab() {
       if (data.selected_method) setSelectedMethod(data.selected_method);
     } catch (err: unknown) {
       setVisualization(normalizeVisualization(null));
-      setError(err instanceof Error ? err.message : 'Paper58 可视化加载失败');
+      setError(err instanceof Error ? err.message : t('worldModelV11.errors.visualization'));
     } finally {
       setLoading(false);
     }
@@ -584,7 +607,10 @@ function LegacyWorldModelV11Tab() {
 
   const loadEvidence = async () => {
     try {
-      const resp = await fetch('/api/twm/paper58-benchmark', { credentials: 'include' });
+      const resp = await fetch('/api/twm/paper58-benchmark', {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       const data = normalizeEvidence(await resp.json());
       setEvidence(data);
     } catch {
@@ -594,7 +620,10 @@ function LegacyWorldModelV11Tab() {
 
   const loadRuntimeCases = async () => {
     try {
-      const resp = await fetch('/api/twm/world-model-v11/runtime/cases', { credentials: 'include' });
+      const resp = await fetch('/api/twm/world-model-v11/runtime/cases', {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       const data = normalizeRuntimeCatalog(await resp.json());
       setRuntimeCatalog(data);
       if (data.cases[0] && !selectedRuntimeArea) setSelectedRuntimeArea(data.cases[0].area);
@@ -612,18 +641,18 @@ function LegacyWorldModelV11Tab() {
       const resp = await fetch('/api/twm/paper58-benchmark/refresh', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
       const data = normalizeEvidence(await resp.json());
       if (!resp.ok || data.error) {
-        const message = data.error || 'Paper58 证据刷新失败';
+        const message = data.error || t('worldModelV11.errors.evidenceRefresh');
         setError(message);
         return;
       }
       setEvidence(data);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Paper58 证据刷新失败');
+      setError(err instanceof Error ? err.message : t('worldModelV11.errors.evidenceRefresh'));
     } finally {
       setRefreshing(false);
     }
@@ -637,24 +666,27 @@ function LegacyWorldModelV11Tab() {
       const resp = await fetch('/api/twm/paper58-visualization/map', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ area: selectedArea, method: selectedMethod }),
       });
       const data = await resp.json();
       if (!resp.ok || data.error || data.map_update_queued === false) {
-        setError(data.error || 'Paper58 地图更新失败');
+        setError(data.error || t('worldModelV11.errors.mapUpdate'));
         return;
       }
-      const mapResp = await fetch('/api/map/pending', { credentials: 'include' });
+      const mapResp = await fetch('/api/map/pending', {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       const mapData = await mapResp.json();
       const mapUpdate = mapData.map_update || data.map_update;
       (window as any).__twmLastMapUpdate = mapUpdate;
       if (mapUpdate && (window as any).__handleMapUpdate) {
         (window as any).__handleMapUpdate(mapUpdate);
       }
-      setMapMessage('已发送 Paper58 与 GeoSOS-FLUS 对比图层到地图。');
+      setMapMessage(t('worldModelV11.messages.comparisonMapSent'));
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Paper58 地图更新失败');
+      setError(err instanceof Error ? err.message : t('worldModelV11.errors.mapUpdate'));
     } finally {
       setPushingMap(false);
     }
@@ -663,7 +695,7 @@ function LegacyWorldModelV11Tab() {
   const startRuntimeRun = async () => {
     const area = selectedRuntimeArea || selectedRuntimeCase?.area;
     if (!area) {
-      setError('请选择样本区域后再运行。');
+      setError(t('worldModelV11.errors.selectArea'));
       return;
     }
     setRunningRuntime(true);
@@ -673,19 +705,19 @@ function LegacyWorldModelV11Tab() {
       const resp = await fetch('/api/twm/world-model-v11/runtime/runs', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ area, method: selectedRuntimeMethod }),
       });
       const data = normalizeRuntimeRun(await resp.json());
       if (!resp.ok || data.error) {
-        setError(data.error || '全流程运行失败');
+        setError(data.error || t('worldModelV11.errors.runtime'));
         setRuntimeRun(data);
         return;
       }
       setRuntimeRun(data);
-      setMapMessage('全流程运行已完成，可以加载运行结果到地图。');
+      setMapMessage(t('worldModelV11.messages.runtimeComplete'));
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : '全流程运行失败');
+      setError(err instanceof Error ? err.message : t('worldModelV11.errors.runtime'));
     } finally {
       setRunningRuntime(false);
     }
@@ -693,7 +725,7 @@ function LegacyWorldModelV11Tab() {
 
   const pushRuntimeRunToMap = async () => {
     if (!runtimeRun?.run_id) {
-      setError('没有可加载的运行结果。');
+      setError(t('worldModelV11.errors.noRuntimeResult'));
       return;
     }
     setPushingRuntimeMap(true);
@@ -703,24 +735,27 @@ function LegacyWorldModelV11Tab() {
       const resp = await fetch(`/api/twm/world-model-v11/runtime/runs/${runtimeRun.run_id}/map`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
       const data = await resp.json();
       if (!resp.ok || data.error || data.map_update_queued === false) {
-        setError(data.error || '运行结果地图加载失败');
+        setError(data.error || t('worldModelV11.errors.runtimeMap'));
         return;
       }
-      const mapResp = await fetch('/api/map/pending', { credentials: 'include' });
+      const mapResp = await fetch('/api/map/pending', {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       const mapData = await mapResp.json();
       const mapUpdate = mapData.map_update || data.map_update;
       (window as any).__twmLastMapUpdate = mapUpdate;
       if (mapUpdate && (window as any).__handleMapUpdate) {
         (window as any).__handleMapUpdate(mapUpdate);
       }
-      setMapMessage('已加载全流程运行结果到地图。');
+      setMapMessage(t('worldModelV11.messages.runtimeMapLoaded'));
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : '运行结果地图加载失败');
+      setError(err instanceof Error ? err.message : t('worldModelV11.errors.runtimeMap'));
     } finally {
       setPushingRuntimeMap(false);
     }
@@ -735,7 +770,24 @@ function LegacyWorldModelV11Tab() {
   const sourceFiles = isRecord(evidence.source_files) ? evidence.source_files : {};
   const readErrors = Array.isArray(evidence.read_errors) ? evidence.read_errors : [];
   const missingEvidence = Array.isArray(evidence.missing) ? evidence.missing : [];
-  const visualLayers = visualization.visualization?.available_layers || EMPTY_VISUALIZATION.visualization?.available_layers || [];
+  const years = visualization.years || EMPTY_VISUALIZATION.years || [];
+  const startYear = formatCount(years[0] ?? 2020);
+  const endYear = formatCount(years[years.length - 1] ?? 2021);
+  const rawVisualLayers = visualization.visualization?.available_layers || [];
+  const visualLayers = (rawVisualLayers.length ? rawVisualLayers : DEFAULT_VISUALIZATION_LAYER_KEYS).map((layer, index) => {
+    const key = DEFAULT_VISUALIZATION_LAYER_KEYS[index];
+    if (!key) return layer;
+    return t(`worldModelV11.layers.${key}`, { year: index === 0 ? startYear : endYear });
+  });
+  const runtimeStages = (runtimeRun?.stages?.length
+    ? runtimeRun.stages
+    : Object.keys(DEFAULT_RUNTIME_STAGE_KEYS).map(key => ({ key, label: undefined, status: 'pending' })))
+    .map(stage => ({
+      ...stage,
+      label: stage.key && DEFAULT_RUNTIME_STAGE_KEYS[stage.key]
+        ? t(`worldModelV11.stages.${DEFAULT_RUNTIME_STAGE_KEYS[stage.key]}`)
+        : stage.label || stage.key,
+    }));
   const status = visualization.status || 'missing';
   const georeferenced = visualization.visualization?.georeferenced === true;
   const displayCrs = visualization.visualization?.display_crs || '-';
@@ -745,8 +797,8 @@ function LegacyWorldModelV11Tab() {
     <div className="datapanel-section world-model-v11-tab">
       <div className="datapanel-section-header">
         <div>
-          <h3>世界模型 v1.1</h3>
-          <p>Paper58 与 GeoSOS-FLUS 同栅格结果</p>
+          <h3>{t('worldModelV11.title')}</h3>
+          <p>{t('worldModelV11.subtitle')}</p>
         </div>
         <span className={statusBadgeClass(status)}>{statusText(status)}</span>
       </div>
@@ -765,14 +817,14 @@ function LegacyWorldModelV11Tab() {
         </div>
       )}
 
-      <div className="v11-mode-switch" aria-label="世界模型 v1.1 模式">
+      <div className="v11-mode-switch" aria-label={t('worldModelV11.modes.aria')}>
         <button
           type="button"
           className={viewMode === 'results' ? 'active' : ''}
           onClick={() => setViewMode('results')}
         >
           <BarChart3 size={14} />
-          结果查看
+          {t('worldModelV11.modes.results')}
         </button>
         <button
           type="button"
@@ -780,7 +832,7 @@ function LegacyWorldModelV11Tab() {
           onClick={() => setViewMode('runtime')}
         >
           <PlayCircle size={14} />
-          全流程运行
+          {t('worldModelV11.modes.runtime')}
         </button>
       </div>
 
@@ -789,11 +841,11 @@ function LegacyWorldModelV11Tab() {
           <section className="v11-panel v11-control-panel">
             <div className="v11-panel-header">
               <ListChecks size={16} />
-              <strong>Paper58 与 GeoSOS-FLUS 全流程运行</strong>
+              <strong>{t('worldModelV11.sections.runtime')}</strong>
             </div>
             <div className="v11-controls">
               <label className="v11-field">
-                <span>样本区域</span>
+                <span>{t('worldModelV11.controls.area')}</span>
                 <select
                   value={selectedRuntimeArea}
                   disabled={runningRuntime || runtimeCatalog.cases.length === 0}
@@ -801,14 +853,17 @@ function LegacyWorldModelV11Tab() {
                 >
                   {runtimeCatalog.cases.map(item => (
                     <option key={item.area} value={item.area}>
-                      {item.display_name || item.area} · {formatCount(item.valid_pixels)} 有效像元
+                      {t('worldModelV11.options.validPixels', {
+                        name: item.display_name || item.area,
+                        count: formatCount(item.valid_pixels),
+                      })}
                     </option>
                   ))}
                 </select>
               </label>
 
               <label className="v11-field">
-                <span>Paper58 方法</span>
+                <span>{t('worldModelV11.controls.paper58Method')}</span>
                 <select
                   value={selectedRuntimeMethod}
                   disabled={runningRuntime}
@@ -823,35 +878,35 @@ function LegacyWorldModelV11Tab() {
               <div className="v11-actions">
                 <button className="primary-button" type="button" onClick={startRuntimeRun} disabled={runningRuntime || runtimeCatalog.cases.length === 0}>
                   <PlayCircle size={14} />
-                  {runningRuntime ? '运行中' : '运行并生成图层'}
+                  {runningRuntime ? t('worldModelV11.actions.running') : t('worldModelV11.actions.runWithLayers')}
                 </button>
                 <button className="secondary-button" type="button" onClick={loadRuntimeCases} disabled={runningRuntime}>
                   <RefreshCw size={14} />
-                  刷新样本
+                  {t('worldModelV11.actions.refreshCases')}
                 </button>
               </div>
             </div>
 
             <div className={runtimeCatalog.engines?.geosos_flus?.available ? 'v11-crs-note ready' : 'v11-crs-note warning'}>
-              <span>{runtimeCatalog.engines?.geosos_flus?.available ? 'GeoSOS-FLUS 可运行' : 'GeoSOS-FLUS 未检测到可执行程序'}</span>
-              {runtimeCatalog.engines?.geosos_flus?.path && <span title={runtimeCatalog.engines.geosos_flus.path}>来源：{runtimeCatalog.engines.geosos_flus.path.split('/').slice(-3).join('/')}</span>}
+              <span>{runtimeCatalog.engines?.geosos_flus?.available
+                ? t('worldModelV11.engine.available')
+                : t('worldModelV11.engine.unavailable')}</span>
+              {runtimeCatalog.engines?.geosos_flus?.path && (
+                <span title={runtimeCatalog.engines.geosos_flus.path}>
+                  {t('worldModelV11.engine.source', { path: runtimeCatalog.engines.geosos_flus.path.split('/').slice(-3).join('/') })}
+                </span>
+              )}
             </div>
           </section>
 
           <section className="v11-panel">
             <div className="v11-panel-header">
               <ListChecks size={16} />
-              <strong>运行阶段</strong>
+              <strong>{t('worldModelV11.sections.stages')}</strong>
               <span className={statusBadgeClass(runtimeRun?.status)}>{statusText(runtimeRun?.status)}</span>
             </div>
             <div className="v11-stage-list">
-              {(runtimeRun?.stages?.length ? runtimeRun.stages : [
-                { key: 'validate_inputs', label: '输入检查', status: 'pending' },
-                { key: 'paper58', label: 'Paper58 运行', status: 'pending' },
-                { key: 'geosos_flus', label: 'GeoSOS-FLUS 运行', status: 'pending' },
-                { key: 'metrics', label: '指标计算', status: 'pending' },
-                { key: 'layers', label: '图层生成', status: 'pending' },
-              ]).map(stage => (
+              {runtimeStages.map(stage => (
                 <div className={`v11-stage-item ${stage.status || 'pending'}`} key={stage.key || stage.label}>
                   <span className="v11-stage-dot" />
                   <strong>{stage.label}</strong>
@@ -864,12 +919,12 @@ function LegacyWorldModelV11Tab() {
           <section className="v11-panel">
             <div className="v11-panel-header">
               <BarChart3 size={16} />
-              <strong>运行指标</strong>
+              <strong>{t('worldModelV11.sections.runtimeMetrics')}</strong>
             </div>
             <div className="v11-table-wrap">
               <table className="data-table compact-table">
                 <thead>
-                  <tr><th>指标</th><th>Paper58</th><th>GeoSOS-FLUS</th></tr>
+                  <tr><th>{t('worldModelV11.table.metric')}</th><th>Paper58</th><th>GeoSOS-FLUS</th></tr>
                 </thead>
                 <tbody>
                   {runtimeMetricRows.map(row => (
@@ -887,7 +942,7 @@ function LegacyWorldModelV11Tab() {
           <section className="v11-panel">
             <div className="v11-panel-header">
               <Layers size={16} />
-              <strong>运行图层</strong>
+              <strong>{t('worldModelV11.sections.runtimeLayers')}</strong>
             </div>
             <div className="v11-layer-list">
               {(runtimeRun?.layers || []).map((layer, index) => (
@@ -900,7 +955,7 @@ function LegacyWorldModelV11Tab() {
             <div className="v11-actions">
               <button className="primary-button" type="button" onClick={pushRuntimeRunToMap} disabled={pushingRuntimeMap || runtimeRun?.status !== 'completed'}>
                 <Layers size={14} />
-                {pushingRuntimeMap ? '加载中' : '加载运行结果到地图'}
+                {pushingRuntimeMap ? t('worldModelV11.actions.loading') : t('worldModelV11.actions.loadRuntimeMap')}
               </button>
             </div>
           </section>
@@ -912,11 +967,11 @@ function LegacyWorldModelV11Tab() {
       <section className="v11-panel v11-control-panel">
         <div className="v11-panel-header">
           <Map size={16} />
-          <strong>Paper58 与 GeoSOS-FLUS 对比结果</strong>
+          <strong>{t('worldModelV11.sections.comparison')}</strong>
         </div>
         <div className="v11-controls">
           <label className="v11-field">
-            <span>样本区域</span>
+            <span>{t('worldModelV11.controls.area')}</span>
             <select
               value={selectedArea}
               disabled={loading || visualization.areas.length === 0}
@@ -928,14 +983,17 @@ function LegacyWorldModelV11Tab() {
             >
               {visualization.areas.map(area => (
                 <option key={area.area} value={area.area}>
-                  {area.display_name || area.area} · {formatCount(area.n_pixels)} 像元
+                  {t('worldModelV11.options.pixels', {
+                    name: area.display_name || area.area,
+                    count: formatCount(area.n_pixels),
+                  })}
                 </option>
               ))}
             </select>
           </label>
 
           <label className="v11-field">
-            <span>Paper58 方法</span>
+            <span>{t('worldModelV11.controls.paper58Method')}</span>
             <select
               value={selectedMethod}
               disabled={loading || visualization.method_summary.length === 0}
@@ -956,37 +1014,39 @@ function LegacyWorldModelV11Tab() {
           <div className="v11-actions">
             <button className="primary-button" type="button" onClick={pushVisualizationToMap} disabled={pushingMap || loading || !selectedArea || !selectedMethod}>
               <Layers size={14} />
-              {pushingMap ? '发送中' : '发送到地图'}
+              {pushingMap ? t('worldModelV11.actions.sending') : t('worldModelV11.actions.sendMap')}
             </button>
             <button className="secondary-button" type="button" onClick={() => loadVisualization(selectedArea, selectedMethod)} disabled={loading}>
               <RefreshCw size={14} />
-              {loading ? '加载中' : '刷新'}
+              {loading ? t('worldModelV11.actions.loading') : t('worldModelV11.actions.refresh')}
             </button>
           </div>
         </div>
 
         <div className={georeferenced ? 'v11-crs-note ready' : 'v11-crs-note warning'}>
-          <span>{georeferenced ? `地理坐标：${displayCrs}` : `局部网格坐标：${displayCrs}`}</span>
-          {georefSource && <span title={georefSource}>来源：{georefSource.split('/').slice(-3).join('/')}</span>}
+          <span>{georeferenced
+            ? t('worldModelV11.coordinates.geographic', { crs: displayCrs })
+            : t('worldModelV11.coordinates.local', { crs: displayCrs })}</span>
+          {georefSource && <span title={georefSource}>{t('worldModelV11.engine.source', { path: georefSource.split('/').slice(-3).join('/') })}</span>}
         </div>
       </section>
 
       <div className="v11-kpi-grid">
-        <div className="v11-kpi"><span>区域数</span><strong>{formatCount(visualization.areas.length)}</strong></div>
-        <div className="v11-kpi"><span>当前样本</span><MetricValueText value={selectedAreaRecord?.display_name || selectedAreaRecord?.area} /></div>
-        <div className="v11-kpi"><span>像元数</span><strong>{formatCount(selectedAreaRecord?.n_pixels)}</strong></div>
-        <div className="v11-kpi"><span>对比基线</span><strong>{formatMethodLabel(visualization.baseline_method)}</strong></div>
+        <div className="v11-kpi"><span>{t('worldModelV11.kpis.areas')}</span><strong>{formatCount(visualization.areas.length)}</strong></div>
+        <div className="v11-kpi"><span>{t('worldModelV11.kpis.currentCase')}</span><MetricValueText value={selectedAreaRecord?.display_name || selectedAreaRecord?.area} /></div>
+        <div className="v11-kpi"><span>{t('worldModelV11.kpis.pixels')}</span><strong>{formatCount(selectedAreaRecord?.n_pixels)}</strong></div>
+        <div className="v11-kpi"><span>{t('worldModelV11.kpis.baseline')}</span><strong>{formatMethodLabel(visualization.baseline_method)}</strong></div>
       </div>
 
       <section className="v11-panel">
         <div className="v11-panel-header">
           <BarChart3 size={16} />
-          <strong>选中区域指标</strong>
+          <strong>{t('worldModelV11.sections.areaMetrics')}</strong>
         </div>
         <div className="v11-table-wrap">
           <table className="data-table compact-table">
             <thead>
-              <tr><th>指标</th><th>Paper58</th><th>GeoSOS-FLUS</th><th>差值</th></tr>
+              <tr><th>{t('worldModelV11.table.metric')}</th><th>Paper58</th><th>GeoSOS-FLUS</th><th>{t('worldModelV11.table.delta')}</th></tr>
             </thead>
             <tbody>
               {areaMetricRows.map(row => (
@@ -1005,7 +1065,7 @@ function LegacyWorldModelV11Tab() {
       <section className="v11-panel">
         <div className="v11-panel-header">
           <Layers size={16} />
-          <strong>地图图层</strong>
+          <strong>{t('worldModelV11.sections.mapLayers')}</strong>
         </div>
         <div className="v11-layer-list">
           {visualLayers.map((layer, index) => (
@@ -1020,14 +1080,16 @@ function LegacyWorldModelV11Tab() {
       <section className="v11-panel">
         <div className="v11-panel-header">
           <BarChart3 size={16} />
-          <strong>方法对比</strong>
+          <strong>{t('worldModelV11.sections.methodComparison')}</strong>
         </div>
         <div className="v11-table-wrap">
           <table className="data-table compact-table">
             <thead>
               <tr>
-                <th>方法</th>
-                {Object.values(methodMetricLabels).map(label => <th key={label}>{label}</th>)}
+                <th>{t('worldModelV11.table.method')}</th>
+                {Object.values(methodMetricLabelKeys).map(key => (
+                  <th key={key}>{t(`worldModelV11.metrics.${key}`)}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -1048,22 +1110,22 @@ function LegacyWorldModelV11Tab() {
       <details className="v11-panel v11-boundary">
         <summary className="v11-panel-header">
           <ShieldCheck size={16} />
-          <strong>证据边界</strong>
+          <strong>{t('worldModelV11.sections.evidence')}</strong>
           <span className={statusBadgeClass(evidence.status)}>{statusText(evidence.status)}</span>
         </summary>
         <div className="v11-boundary-grid">
-          <div><span>声明范围</span><MetricValueText value={evidence.claim_scope} /></div>
-          <div><span>运行依赖</span><MetricValueText value={evidence.runtime_dependency} /></div>
-          <div><span>是否允许作为 GeoFM 运行时</span><MetricValueText value={evidence.geofm_runtime_allowed} /></div>
-          <div><span>生成器角色</span><MetricValueText value={evidence.twm_generator_role || BOUNDARY_DEFAULTS.twm_generator_role} /></div>
-          <div><span>主运行路径</span><MetricValueText value={evidence.primary_twm_route} /></div>
-          <div><span>是否提升声明等级</span><MetricValueText value={evidence.can_promote_claim_ladder} /></div>
+          <div><span>{t('worldModelV11.boundary.claimScope')}</span><MetricValueText value={evidence.claim_scope || t('worldModelV11.defaults.claimScope')} /></div>
+          <div><span>{t('worldModelV11.boundary.runtimeDependency')}</span><MetricValueText value={evidence.runtime_dependency || t('worldModelV11.defaults.runtimeDependency')} /></div>
+          <div><span>{t('worldModelV11.boundary.geofmRuntime')}</span><MetricValueText value={evidence.geofm_runtime_allowed} /></div>
+          <div><span>{t('worldModelV11.boundary.generatorRole')}</span><MetricValueText value={evidence.twm_generator_role || t('worldModelV11.defaults.generatorRole')} /></div>
+          <div><span>{t('worldModelV11.boundary.primaryRoute')}</span><MetricValueText value={evidence.primary_twm_route || t('worldModelV11.defaults.primaryRoute')} /></div>
+          <div><span>{t('worldModelV11.boundary.promoteClaim')}</span><MetricValueText value={evidence.can_promote_claim_ladder} /></div>
         </div>
-        <p className="v11-muted">{evidence.claim_boundary || BOUNDARY_DEFAULTS.claim_boundary}</p>
+        <p className="v11-muted">{evidence.claim_boundary || t('worldModelV11.defaults.claimBoundary')}</p>
         <div className="v11-actions compact">
           <button className="secondary-button" type="button" onClick={refreshEvidence} disabled={refreshing || loading}>
             <RefreshCw size={14} />
-            {refreshing ? '刷新中' : '刷新证据'}
+            {refreshing ? t('worldModelV11.actions.refreshing') : t('worldModelV11.actions.refreshEvidence')}
           </button>
         </div>
         <div className="v11-source-grid">
@@ -1072,8 +1134,8 @@ function LegacyWorldModelV11Tab() {
           <div><span>metrics_by_method.csv</span><MetricValueText value={sourceFiles.metrics_by_method} /></div>
           <div><span>manifest.json</span><MetricValueText value={sourceFiles.manifest} /></div>
         </div>
-        {missingEvidence.length > 0 && <p className="v11-muted">缺失文件：{missingEvidence.join(', ')}</p>}
-        {readErrors.length > 0 && <p className="v11-muted">读取错误：{readErrors.map(item => item.error || item.path).join('; ')}</p>}
+        {missingEvidence.length > 0 && <p className="v11-muted">{t('worldModelV11.evidence.missingFiles', { files: missingEvidence.join(', ') })}</p>}
+        {readErrors.length > 0 && <p className="v11-muted">{t('worldModelV11.evidence.readErrors', { errors: readErrors.map(item => item.error || item.path).join('; ') })}</p>}
       </details>
         </>
       )}
@@ -1082,16 +1144,17 @@ function LegacyWorldModelV11Tab() {
 }
 
 export default function WorldModelV11Tab() {
+  const { t } = useTranslation();
   const [scope, setScope] = useState<'abu_dhabi' | 'external'>('abu_dhabi');
 
   return (
     <div className="world-model-v11-scope">
-      <div className="v11-mode-switch abu-v11-scope-switch" aria-label="Paper58 数据范围">
+      <div className="v11-mode-switch abu-v11-scope-switch" aria-label={t('worldModelV11.scope.aria')}>
         <button type="button" className={scope === 'abu_dhabi' ? 'active' : ''} onClick={() => setScope('abu_dhabi')}>
-          阿布扎比冻结实验
+          {t('worldModelV11.scope.abuDhabi')}
         </button>
         <button type="button" className={scope === 'external' ? 'active' : ''} onClick={() => setScope('external')}>
-          历史外部基准
+          {t('worldModelV11.scope.external')}
         </button>
       </div>
       {scope === 'abu_dhabi' ? <AbuDhabiLandUseModelTab modelId="paper58" /> : <LegacyWorldModelV11Tab />}

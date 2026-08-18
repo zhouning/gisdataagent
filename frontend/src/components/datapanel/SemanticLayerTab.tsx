@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
 
 interface SourceMeta {
   table_name: string;
@@ -51,6 +53,7 @@ const EMPTY_COL_FORM = {
 };
 
 export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
+  const { t } = useTranslation();
   const canEdit = userRole === 'admin' || userRole === 'analyst';
 
   const [sources, setSources] = useState<SourceMeta[]>([]);
@@ -85,10 +88,13 @@ export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
 
   async function api<T = any>(path: string, opts: RequestInit = {}): Promise<{ ok: boolean; data: T; status: number }> {
     try {
+      const headers = opts.body
+        ? { ...getLocaleHeaders(), 'Content-Type': 'application/json', ...(opts.headers || {}) }
+        : { ...getLocaleHeaders(), ...(opts.headers || {}) };
       const resp = await fetch(path, {
-        credentials: 'include',
-        headers: opts.body ? { 'Content-Type': 'application/json', ...(opts.headers || {}) } : (opts.headers || {}),
         ...opts,
+        credentials: 'include',
+        headers,
       });
       const data = await resp.json().catch(() => ({}));
       return { ok: resp.ok, data: data as T, status: resp.status };
@@ -143,17 +149,17 @@ export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
     });
     setSaving(false);
     if (r.ok) { setEditingSrc(false); await selectTable(selected); await refreshAll(); }
-    else setError(r.data?.error || '保存失败');
+    else setError(r.data?.error || t('semanticLayer.errors.save'));
   }
 
   async function deleteSource(name: string) {
-    if (!confirm(`确定删除 ${name} 的所有语义标注？此操作不可逆。`)) return;
+    if (!confirm(t('semanticLayer.confirm.deleteSource', { name }))) return;
     const r = await api(`/api/semantic/sources/${encodeURIComponent(name)}`, { method: 'DELETE' });
     if (r.ok) {
       setSelected(null); setDetail(null);
-      setInfo(`已删除 ${name}`);
+      setInfo(t('semanticLayer.messages.sourceDeleted', { name }));
       await refreshAll();
-    } else setError(r.data?.error || '删除失败');
+    } else setError(r.data?.error || t('semanticLayer.errors.delete'));
   }
 
   function beginEditCol(col: ColumnAnnotation) {
@@ -181,42 +187,46 @@ export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
     );
     setSaving(false);
     if (r.ok) { setEditingCol(null); await selectTable(selected); }
-    else setError(r.data?.error || '保存失败');
+    else setError(r.data?.error || t('semanticLayer.errors.save'));
   }
 
   async function deleteCol(colName: string) {
     if (!selected) return;
-    if (!confirm(`删除 ${selected}.${colName} 的语义标注？`)) return;
+    if (!confirm(t('semanticLayer.confirm.deleteColumn', { table: selected, column: colName }))) return;
     const r = await api(
       `/api/semantic/annotations/${encodeURIComponent(selected)}/${encodeURIComponent(colName)}`,
       { method: 'DELETE' },
     );
     if (r.ok) await selectTable(selected);
-    else setError(r.data?.error || '删除失败');
+    else setError(r.data?.error || t('semanticLayer.errors.delete'));
   }
 
   async function autoRegisterOne(table: string) {
-    setInfo(`正在注册 ${table}...`);
+    setInfo(t('semanticLayer.messages.registering', { table }));
     const r = await api('/api/semantic/auto-register', {
       method: 'POST', body: JSON.stringify({ tables: [table] }),
     });
     if (r.ok) {
       setInfo(`${table}: ${JSON.stringify(r.data.summary)}`);
       await refreshAll();
-    } else setError(r.data?.error || '注册失败');
+    } else setError(r.data?.error || t('semanticLayer.errors.register'));
   }
 
   async function autoRegisterAll() {
-    if (!unregistered.length) { setInfo('所有表都已注册'); return; }
-    if (!confirm(`将自动注册 ${unregistered.length} 张未注册表。继续？`)) return;
-    setSaving(true); setInfo('正在批量注册...');
+    if (!unregistered.length) { setInfo(t('semanticLayer.messages.allRegistered')); return; }
+    if (!confirm(t('semanticLayer.confirm.registerAll', { count: formatNumber(unregistered.length) }))) return;
+    setSaving(true); setInfo(t('semanticLayer.messages.registeringAll'));
     const r = await api('/api/semantic/auto-register', { method: 'POST', body: '{}' });
     setSaving(false);
     if (r.ok) {
       const s = r.data.summary || {};
-      setInfo(`注册完成: ${s.ok} 成功 / ${s.skipped} 跳过 / ${s.failed} 失败`);
+      setInfo(t('semanticLayer.messages.registrationComplete', {
+        ok: formatNumber(s.ok || 0),
+        skipped: formatNumber(s.skipped || 0),
+        failed: formatNumber(s.failed || 0),
+      }));
       await refreshAll();
-    } else setError(r.data?.error || '注册失败');
+    } else setError(r.data?.error || t('semanticLayer.errors.register'));
   }
 
   async function runPreview() {
@@ -227,12 +237,12 @@ export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
     });
     setPreviewLoading(false);
     if (r.ok) setPreviewRes(r.data);
-    else { setError(r.data?.error || '预览失败'); setPreviewRes(null); }
+    else { setError(r.data?.error || t('semanticLayer.errors.preview')); setPreviewRes(null); }
   }
 
   async function exportJSON() {
     const r = await api('/api/semantic/export');
-    if (!r.ok) { setError(r.data?.error || '导出失败'); return; }
+    if (!r.ok) { setError(r.data?.error || t('semanticLayer.errors.export')); return; }
     const blob = new Blob([JSON.stringify(r.data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -248,16 +258,21 @@ export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
       const body = JSON.parse(text);
       const nSrc = (body.sources || []).length;
       const nAnn = (body.annotations || []).length;
-      if (!confirm(`将导入 ${nSrc} 张表的元数据 + ${nAnn} 条列标注。继续？`)) return;
+      if (!confirm(t('semanticLayer.confirm.import', { sources: formatNumber(nSrc), annotations: formatNumber(nAnn) }))) return;
       setSaving(true);
       const r = await api('/api/semantic/import', { method: 'POST', body: JSON.stringify(body) });
       setSaving(false);
       if (r.ok) {
-        setInfo(`导入成功: 表 ${r.data.sources_ok}OK/${r.data.sources_failed}FAIL, 列 ${r.data.annotations_ok}OK/${r.data.annotations_failed}FAIL`);
+        setInfo(t('semanticLayer.messages.importComplete', {
+          sourcesOk: formatNumber(r.data.sources_ok || 0),
+          sourcesFailed: formatNumber(r.data.sources_failed || 0),
+          annotationsOk: formatNumber(r.data.annotations_ok || 0),
+          annotationsFailed: formatNumber(r.data.annotations_failed || 0),
+        }));
         await refreshAll();
-      } else setError(r.data?.error || '导入失败');
+      } else setError(r.data?.error || t('semanticLayer.errors.import'));
     } catch (e) {
-      setError('JSON 解析失败: ' + String(e));
+      setError(t('semanticLayer.errors.jsonParse', { error: String(e) }));
     }
   }
 
@@ -272,19 +287,22 @@ export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
       {/* Toolbar */}
       <div className="semantic-toolbar">
         <div className="semantic-toolbar-info">
-          已注册 <b>{sources.length}</b> 表 · 未注册 <b>{unregistered.length}</b>
+          {t('semanticLayer.toolbar.summary', {
+            registered: formatNumber(sources.length),
+            unregistered: formatNumber(unregistered.length),
+          })}
         </div>
         <input
-          type="text" placeholder="搜索表名 / 显示名"
+          type="text" placeholder={t('semanticLayer.toolbar.searchPlaceholder')}
           value={search} onChange={e => setSearch(e.target.value)}
           className="semantic-search"
         />
         {canEdit && (
           <>
             <button className="btn-primary" disabled={saving || !unregistered.length} onClick={autoRegisterAll}>
-              一键自动注册 ({unregistered.length})
+              {t('semanticLayer.actions.registerAll', { count: formatNumber(unregistered.length) })}
             </button>
-            <button className="btn-secondary" onClick={() => fileInputRef.current?.click()}>↑ 导入</button>
+            <button className="btn-secondary" onClick={() => fileInputRef.current?.click()}>↑ {t('semanticLayer.actions.import')}</button>
             <input
               ref={fileInputRef} type="file" accept=".json"
               style={{ display: 'none' }}
@@ -292,8 +310,8 @@ export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
             />
           </>
         )}
-        <button className="btn-secondary" onClick={exportJSON}>↓ 导出</button>
-        <button className="btn-secondary" onClick={refreshAll}>刷新</button>
+        <button className="btn-secondary" onClick={exportJSON}>↓ {t('semanticLayer.actions.export')}</button>
+        <button className="btn-secondary" onClick={refreshAll}>{t('semanticLayer.actions.refresh')}</button>
       </div>
 
       {error && <div className="semantic-alert error">⚠ {error}</div>}
@@ -302,8 +320,8 @@ export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
       <div className="semantic-body">
         {/* Left: table list */}
         <div className="semantic-sources-list">
-          <div className="semantic-list-section-title">已注册 ({filteredSources.length})</div>
-          {loading && <div className="semantic-loading">加载中...</div>}
+          <div className="semantic-list-section-title">{t('semanticLayer.list.registered', { count: formatNumber(filteredSources.length) })}</div>
+          {loading && <div className="semantic-loading">{t('semanticLayer.common.loading')}</div>}
           {filteredSources.map(s => (
             <div
               key={s.table_name}
@@ -312,7 +330,10 @@ export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
             >
               <div className="semantic-source-name">{s.display_name || s.table_name}</div>
               <div className="semantic-source-sub">
-                {s.table_name} · {s.annotation_count || 0} 列标注
+                {t('semanticLayer.list.annotationCount', {
+                  table: s.table_name,
+                  count: formatNumber(s.annotation_count || 0),
+                })}
                 {s.geometry_type ? ` · ${s.geometry_type}` : ''}
               </div>
             </div>
@@ -320,14 +341,14 @@ export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
 
           <div className="semantic-list-section-title" style={{ marginTop: 16 }}>
             <span onClick={() => setShowUnreg(!showUnreg)} style={{ cursor: 'pointer' }}>
-              {showUnreg ? '▼' : '▶'} 未注册 ({unregistered.length})
+              {showUnreg ? '▼' : '▶'} {t('semanticLayer.list.unregistered', { count: formatNumber(unregistered.length) })}
             </span>
           </div>
-          {showUnreg && unregistered.map(t => (
-            <div key={t} className="semantic-unreg-item">
-              <span>{t}</span>
+          {showUnreg && unregistered.map(table => (
+            <div key={table} className="semantic-unreg-item">
+              <span>{table}</span>
               {canEdit && (
-                <button className="btn-mini" onClick={() => autoRegisterOne(t)}>+ 注册</button>
+                <button className="btn-mini" onClick={() => autoRegisterOne(table)}>+ {t('semanticLayer.actions.register')}</button>
               )}
             </div>
           ))}
@@ -337,9 +358,9 @@ export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
         <div className="semantic-detail">
           {!selected && (
             <div className="semantic-empty">
-              ← 从左侧选择一张表以查看 / 编辑其语义标注
+              {t('semanticLayer.empty.selectTable')}
               <div className="semantic-hint">
-                语义层给 NL2SQL 提供列别名、单位、分类层级等领域知识。完善标注可显著提升 Agent 的 SQL 生成准确率（实测 +20%）。
+                {t('semanticLayer.empty.hint')}
               </div>
             </div>
           )}
@@ -349,48 +370,48 @@ export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
               {/* Table-level */}
               <div className="semantic-section">
                 <div className="semantic-section-header">
-                  <h4>表级元数据: {selected}</h4>
+                  <h4>{t('semanticLayer.sections.tableMetadata', { table: selected })}</h4>
                   {canEdit && !editingSrc && (
                     <div>
-                      <button className="btn-secondary" onClick={() => setEditingSrc(true)}>编辑</button>
-                      <button className="btn-danger" onClick={() => deleteSource(selected)}>删除</button>
+                      <button className="btn-secondary" onClick={() => setEditingSrc(true)}>{t('semanticLayer.actions.edit')}</button>
+                      <button className="btn-danger" onClick={() => deleteSource(selected)}>{t('semanticLayer.actions.delete')}</button>
                     </div>
                   )}
                 </div>
                 {!editingSrc && detail.source && (
                   <div className="semantic-meta">
-                    <div><b>显示名:</b> {detail.source.display_name || <i>未设置</i>}</div>
-                    <div><b>描述:</b> {detail.source.description || <i>未设置</i>}</div>
-                    <div><b>同义词:</b> {(detail.source.synonyms || []).join(', ') || <i>无</i>}</div>
-                    <div><b>建议分析:</b> {(detail.source.suggested_analyses || []).join(', ') || <i>无</i>}</div>
+                    <div><b>{t('semanticLayer.fields.displayName')}:</b> {detail.source.display_name || <i>{t('semanticLayer.common.notSet')}</i>}</div>
+                    <div><b>{t('semanticLayer.fields.description')}:</b> {detail.source.description || <i>{t('semanticLayer.common.notSet')}</i>}</div>
+                    <div><b>{t('semanticLayer.fields.synonyms')}:</b> {(detail.source.synonyms || []).join(', ') || <i>{t('semanticLayer.common.none')}</i>}</div>
+                    <div><b>{t('semanticLayer.fields.suggestedAnalyses')}:</b> {(detail.source.suggested_analyses || []).join(', ') || <i>{t('semanticLayer.common.none')}</i>}</div>
                     {detail.source.geometry_type && (
-                      <div><b>几何:</b> {detail.source.geometry_type} (SRID={detail.source.srid})</div>
+                      <div><b>{t('semanticLayer.fields.geometry')}:</b> {detail.source.geometry_type} (SRID={detail.source.srid})</div>
                     )}
                   </div>
                 )}
                 {editingSrc && (
                   <div className="semantic-form">
-                    <label>显示名
+                    <label>{t('semanticLayer.fields.displayName')}
                       <input type="text" value={srcForm.display_name}
                         onChange={e => setSrcForm(f => ({ ...f, display_name: e.target.value }))} />
                     </label>
-                    <label>描述
+                    <label>{t('semanticLayer.fields.description')}
                       <textarea rows={2} value={srcForm.description}
                         onChange={e => setSrcForm(f => ({ ...f, description: e.target.value }))} />
                     </label>
-                    <label>同义词（逗号分隔）
+                    <label>{t('semanticLayer.fields.synonymsComma')}
                       <input type="text" value={srcForm.synonyms}
                         onChange={e => setSrcForm(f => ({ ...f, synonyms: e.target.value }))} />
                     </label>
-                    <label>建议分析（逗号分隔）
+                    <label>{t('semanticLayer.fields.suggestedAnalysesComma')}
                       <input type="text" value={srcForm.suggested_analyses}
                         onChange={e => setSrcForm(f => ({ ...f, suggested_analyses: e.target.value }))} />
                     </label>
                     <div>
                       <button className="btn-primary" disabled={saving} onClick={saveSource}>
-                        {saving ? '保存中...' : '保存'}
+                        {saving ? t('semanticLayer.actions.saving') : t('semanticLayer.actions.save')}
                       </button>
-                      <button className="btn-secondary" onClick={() => setEditingSrc(false)}>取消</button>
+                      <button className="btn-secondary" onClick={() => setEditingSrc(false)}>{t('semanticLayer.actions.cancel')}</button>
                     </div>
                   </div>
                 )}
@@ -399,14 +420,14 @@ export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
               {/* Column-level */}
               <div className="semantic-section">
                 <div className="semantic-section-header">
-                  <h4>列标注 ({(detail.columns || []).length} 列)</h4>
+                  <h4>{t('semanticLayer.sections.columnAnnotations', { count: formatNumber((detail.columns || []).length) })}</h4>
                 </div>
                 <table className="semantic-cols">
                   <thead>
                     <tr>
-                      <th>列名</th><th>数据类型</th><th>Domain</th>
-                      <th>别名</th><th>单位</th><th>描述</th>
-                      {canEdit && <th>操作</th>}
+                      <th>{t('semanticLayer.table.column')}</th><th>{t('semanticLayer.table.dataType')}</th><th>{t('semanticLayer.fields.domain')}</th>
+                      <th>{t('semanticLayer.table.aliases')}</th><th>{t('semanticLayer.table.unit')}</th><th>{t('semanticLayer.table.description')}</th>
+                      {canEdit && <th>{t('semanticLayer.table.actions')}</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -418,31 +439,31 @@ export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
                           <td colSpan={canEdit ? 6 : 5}>
                             <div className="semantic-inline-form">
                               <div>
-                                <label>Domain
+                                <label>{t('semanticLayer.fields.domain')}
                                   <select value={colForm.semantic_domain}
                                     onChange={e => setColForm(f => ({ ...f, semantic_domain: e.target.value }))}>
-                                    <option value="">(无)</option>
+                                    <option value="">({t('semanticLayer.common.none')})</option>
                                     {domains.map(d => (
                                       <option key={d.name} value={d.name}>{d.name} - {d.description}</option>
                                     ))}
                                   </select>
                                 </label>
-                                <label>单位
+                                <label>{t('semanticLayer.fields.unit')}
                                   <input type="text" value={colForm.unit}
                                     onChange={e => setColForm(f => ({ ...f, unit: e.target.value }))} />
                                 </label>
                               </div>
-                              <label>别名（逗号分隔）
+                              <label>{t('semanticLayer.fields.aliasesComma')}
                                 <input type="text" value={colForm.aliases}
                                   onChange={e => setColForm(f => ({ ...f, aliases: e.target.value }))} />
                               </label>
-                              <label>描述 / 使用规则
+                              <label>{t('semanticLayer.fields.descriptionRules')}
                                 <textarea rows={2} value={colForm.description}
                                   onChange={e => setColForm(f => ({ ...f, description: e.target.value }))} />
                               </label>
                               <div>
-                                <button className="btn-primary" disabled={saving} onClick={saveCol}>保存</button>
-                                <button className="btn-secondary" onClick={() => setEditingCol(null)}>取消</button>
+                                <button className="btn-primary" disabled={saving} onClick={saveCol}>{t('semanticLayer.actions.save')}</button>
+                                <button className="btn-secondary" onClick={() => setEditingCol(null)}>{t('semanticLayer.actions.cancel')}</button>
                               </div>
                             </div>
                           </td>
@@ -457,9 +478,9 @@ export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
                           <td className="semantic-col-desc">{c.description || <i>—</i>}</td>
                           {canEdit && (
                             <td>
-                              <button className="btn-mini" onClick={() => beginEditCol(c)}>编辑</button>
+                              <button className="btn-mini" onClick={() => beginEditCol(c)}>{t('semanticLayer.actions.edit')}</button>
                               {c.semantic_domain && (
-                                <button className="btn-mini btn-danger" onClick={() => deleteCol(c.column_name)}>清除</button>
+                                <button className="btn-mini btn-danger" onClick={() => deleteCol(c.column_name)}>{t('semanticLayer.actions.clear')}</button>
                               )}
                             </td>
                           )}
@@ -475,49 +496,49 @@ export default function SemanticLayerTab({ userRole }: { userRole?: string }) {
           {/* Preview panel (always visible, collapsed by default) */}
           <div className="semantic-section">
             <div className="semantic-section-header" onClick={() => setShowPreview(!showPreview)} style={{ cursor: 'pointer' }}>
-              <h4>{showPreview ? '▼' : '▶'} 语义解析预览</h4>
+              <h4>{showPreview ? '▼' : '▶'} {t('semanticLayer.sections.preview')}</h4>
             </div>
             {showPreview && (
               <div className="semantic-preview">
                 <div>
                   <input
                     type="text"
-                    placeholder="输入自然语言问题，如：统计水田的真实面积（公顷）"
+                    placeholder={t('semanticLayer.preview.placeholder')}
                     value={previewQ}
                     onChange={e => setPreviewQ(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && runPreview()}
                   />
                   <button className="btn-primary" disabled={previewLoading} onClick={runPreview}>
-                    {previewLoading ? '解析中...' : '解析'}
+                    {previewLoading ? t('semanticLayer.actions.resolving') : t('semanticLayer.actions.resolve')}
                   </button>
                 </div>
                 {previewRes && (
                   <div className="semantic-preview-result">
                     {(previewRes.sources && previewRes.sources.length > 0) && (
                       <div>
-                        <b>匹配的表:</b> {previewRes.sources.map((s: any) => s.table_name || s).join(', ')}
+                        <b>{t('semanticLayer.preview.matchedTables')}:</b> {previewRes.sources.map((s: any) => s.table_name || s).join(', ')}
                       </div>
                     )}
                     {previewRes.sql_filters && previewRes.sql_filters.length > 0 && (
                       <div>
-                        <b>SQL 过滤提示:</b>
+                        <b>{t('semanticLayer.preview.sqlFilters')}:</b>
                         <pre className="semantic-sql-filters">{previewRes.sql_filters.join('\n')}</pre>
                       </div>
                     )}
                     {previewRes.region_sql && previewRes.region_sql.length > 0 && (
                       <div>
-                        <b>区域过滤:</b>
+                        <b>{t('semanticLayer.preview.regionFilters')}:</b>
                         <pre>{previewRes.region_sql.join('\n')}</pre>
                       </div>
                     )}
                     {previewRes.hierarchy_matches && previewRes.hierarchy_matches.length > 0 && (
                       <div>
-                        <b>层级匹配:</b>
+                        <b>{t('semanticLayer.preview.hierarchyMatches')}:</b>
                         <pre>{JSON.stringify(previewRes.hierarchy_matches, null, 2)}</pre>
                       </div>
                     )}
                     <details>
-                      <summary>完整 JSON</summary>
+                      <summary>{t('semanticLayer.preview.fullJson')}</summary>
                       <pre>{JSON.stringify(previewRes, null, 2)}</pre>
                     </details>
                   </div>

@@ -1,2 +1,55 @@
-import {useEffect,useState} from 'react';import {AlertTriangle,RefreshCw,Shield} from 'lucide-react';type R=Record<string,any>;
-export default function PublicFeedbackReadinessTab(){const [overview,setOverview]=useState<R|null>(null),[caps,setCaps]=useState<R[]>([]),[channels,setChannels]=useState<R>({}),[gate,setGate]=useState<R>({}),[message,setMessage]=useState('');const load=async()=>{try{setMessage('');const rs=await Promise.all(['overview','capabilities','feedback-channels','analysis-gate'].map(x=>fetch('/api/uwm/public-feedback-readiness/'+x,{credentials:'include'}))),d=await Promise.all(rs.map(x=>x.json()));if(rs.some(x=>!x.ok))throw new Error(d.find(x=>x.error)?.error||'公众反馈证据产品不可用');setOverview(d[0]);setCaps(d[1].capabilities||[]);setChannels(d[2].feedback_channels||{});setGate(d[3].analysis_gate||{})}catch(e:unknown){setMessage(e instanceof Error?e.message:'公众反馈证据产品不可用')}};useEffect(()=>{load()},[]);return <div className="traditional-livability-tab"><div className="traditional-panel"><div className="traditional-panel-title"><strong>公众反馈证据与空间语义就绪度（需求15）</strong><button className="secondary-button" onClick={load}><RefreshCw size={14}/>刷新</button></div><div className="traditional-message error"><Shield size={15}/>Agent赞踩不是城市公众意见；文本数量不是问题严重度；情绪不是满意度；反馈热点不代表总体流行率。</div>{message&&<div className="traditional-message error"><AlertTriangle size={15}/>{message}</div>}<div className="traditional-kpi-grid"><div className="traditional-kpi"><span>处理能力</span><strong>{overview?.summary?.capability_count??'-'}</strong></div><div className="traditional-kpi"><span>反馈通道</span><strong>{overview?.summary?.feedback_channel_count??'-'}</strong></div><div className="traditional-kpi"><span>可用反馈通道</span><strong>{overview?.summary?.available_feedback_channel_count??'-'}</strong></div><div className="traditional-kpi"><span>已发布观测</span><strong>{overview?.summary?.published_feedback_observation_count??'-'}</strong></div></div><h4>平台处理能力</h4><p>{caps.map(x=>`${x.title}:${x.capability_type}`).join(' · ')}</p><h4>公众/客户反馈通道</h4><p>{Object.entries(channels).map(([k,v]:[string,any])=>`${k}:${v.status}`).join(' · ')}</p><h4>传统分析与UWM感知门</h4><p>{Object.entries(gate.mechanisms||{}).map(([k,v])=>`${k}:${v}`).join(' · ')}</p><div className="traditional-message error"><Shield size={15}/>未生成情感分布、满意度、投诉热点、代表性偏好、响应绩效、政策效果或满意度预测。</div></div></div>}
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { AlertTriangle, RefreshCw, Shield } from 'lucide-react';
+import { getLocaleHeaders } from '../../i18n';
+
+type Row = Record<string, any>;
+
+export default function PublicFeedbackReadinessTab() {
+  const { t, i18n } = useTranslation();
+  const [overview, setOverview] = useState<Row | null>(null);
+  const [capabilities, setCapabilities] = useState<Row[]>([]);
+  const [channels, setChannels] = useState<Row>({});
+  const [gate, setGate] = useState<Row>({});
+  const [message, setMessage] = useState('');
+
+  const load = async () => {
+    try {
+      setMessage('');
+      const resources = ['overview', 'capabilities', 'feedback-channels', 'analysis-gate'];
+      const responses = await Promise.all(resources.map(resource => fetch('/api/uwm/public-feedback-readiness/' + resource, { credentials: 'include', headers: getLocaleHeaders() })));
+      const data = await Promise.all(responses.map(response => response.json()));
+      if (responses.some(response => !response.ok)) {
+        throw new Error(data.find(item => item.error)?.error || t('readinessPanels.publicFeedback.errors.unavailable'));
+      }
+      setOverview(data[0]);
+      setCapabilities(data[1].capabilities || []);
+      setChannels(data[2].feedback_channels || {});
+      setGate(data[3].analysis_gate || {});
+    } catch (error: unknown) {
+      setMessage(error instanceof Error ? error.message : t('readinessPanels.publicFeedback.errors.unavailable'));
+    }
+  };
+
+  useEffect(() => { void load(); }, [i18n.resolvedLanguage]);
+
+  return (
+    <div className="traditional-livability-tab">
+      <div className="traditional-panel">
+        <div className="traditional-panel-title"><strong>{t('readinessPanels.publicFeedback.title')}</strong><button className="secondary-button" onClick={() => void load()}><RefreshCw size={14} />{t('readinessPanels.common.refresh')}</button></div>
+        <div className="traditional-message error"><Shield size={15} />{t('readinessPanels.publicFeedback.warning')}</div>
+        {message && <div className="traditional-message error"><AlertTriangle size={15} />{message}</div>}
+        <div className="traditional-kpi-grid">
+          <div className="traditional-kpi"><span>{t('readinessPanels.publicFeedback.kpis.capabilities')}</span><strong>{overview?.summary?.capability_count ?? '-'}</strong></div>
+          <div className="traditional-kpi"><span>{t('readinessPanels.publicFeedback.kpis.channels')}</span><strong>{overview?.summary?.feedback_channel_count ?? '-'}</strong></div>
+          <div className="traditional-kpi"><span>{t('readinessPanels.publicFeedback.kpis.available')}</span><strong>{overview?.summary?.available_feedback_channel_count ?? '-'}</strong></div>
+          <div className="traditional-kpi"><span>{t('readinessPanels.publicFeedback.kpis.published')}</span><strong>{overview?.summary?.published_feedback_observation_count ?? '-'}</strong></div>
+        </div>
+        <h4>{t('readinessPanels.publicFeedback.sections.capabilities')}</h4><p>{capabilities.map(item => String(item.title) + ':' + String(item.capability_type)).join(' · ') || '-'}</p>
+        <h4>{t('readinessPanels.publicFeedback.sections.channels')}</h4><p>{Object.entries(channels).map(([key, value]: [string, any]) => key + ':' + String(value.status)).join(' · ') || '-'}</p>
+        <h4>{t('readinessPanels.publicFeedback.sections.gate')}</h4><p>{Object.entries(gate.mechanisms || {}).map(([key, value]) => key + ':' + String(value)).join(' · ') || '-'}</p>
+        <div className="traditional-message error"><Shield size={15} />{t('readinessPanels.publicFeedback.finalWarning')}</div>
+      </div>
+    </div>
+  );
+}

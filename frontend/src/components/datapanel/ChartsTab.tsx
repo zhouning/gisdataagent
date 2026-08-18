@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import ChartView from '../ChartView';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
 
 interface ChartItem {
   chart_id: string;
@@ -9,13 +11,14 @@ interface ChartItem {
 }
 
 export default function ChartsTab() {
+  const { t } = useTranslation();
   const [charts, setCharts] = useState<ChartItem[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     const poll = async () => {
       try {
-        const resp = await fetch('/api/chart/pending', { credentials: 'include' });
+        const resp = await fetch('/api/chart/pending', { credentials: 'include', headers: getLocaleHeaders() });
         if (resp.ok) {
           const data = await resp.json();
           if (data.chart_updates && data.chart_updates.length > 0) {
@@ -46,8 +49,8 @@ export default function ChartsTab() {
   if (charts.length === 0) {
     return (
       <div className="empty-state">
-        暂无图表<br />
-        在对话中请求数据分析后，图表将在此显示
+        {t('chartsTab.empty.title')}<br />
+        {t('chartsTab.empty.description')}
       </div>
     );
   }
@@ -55,14 +58,15 @@ export default function ChartsTab() {
   return (
     <div className="charts-tab">
       <div className="charts-tab-header">
-        <span>{charts.length} 个图表</span>
-        <button className="btn-secondary btn-sm" onClick={handleClear}>清空</button>
+        <span>{t('chartsTab.count', { count: formatNumber(charts.length) })}</span>
+        <button className="btn-secondary btn-sm" onClick={handleClear}>{t('chartsTab.actions.clear')}</button>
       </div>
 
       {expandedId && (
         <div className="chart-expanded-overlay" onClick={() => setExpandedId(null)}>
           <div className="chart-expanded-content" onClick={e => e.stopPropagation()}>
-            <button className="chart-expanded-close" onClick={() => setExpandedId(null)}>✕</button>
+            <button className="chart-expanded-close" onClick={() => setExpandedId(null)}
+              title={t('chartsTab.actions.close')} aria-label={t('chartsTab.actions.close')}>✕</button>
             {charts.filter(c => c.chart_id === expandedId).map(c => (
               <ChartView key={c.chart_id} option={c.option} chartId={c.chart_id} height="500px" />
             ))}
@@ -76,8 +80,10 @@ export default function ChartsTab() {
             <div className="chart-card-header">
               <span className="chart-type-badge">{c.chart_type}</span>
               <div className="chart-card-actions">
-                <button className="chart-action-btn" onClick={() => setExpandedId(c.chart_id)} title="展开">⤢</button>
-                <button className="chart-action-btn" onClick={() => handleDelete(c.chart_id)} title="删除">✕</button>
+                <button className="chart-action-btn" onClick={() => setExpandedId(c.chart_id)}
+                  title={t('chartsTab.actions.expand')} aria-label={t('chartsTab.actions.expand')}>⤢</button>
+                <button className="chart-action-btn" onClick={() => handleDelete(c.chart_id)}
+                  title={t('chartsTab.actions.delete')} aria-label={t('chartsTab.actions.delete')}>✕</button>
               </div>
             </div>
             <ChartView option={c.option} chartId={c.chart_id} compact />

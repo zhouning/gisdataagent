@@ -8,7 +8,7 @@
 
 .platform-capability-index {
   min-width: 0;
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
   background: var(--surface);
 }
 
@@ -79,7 +79,7 @@
   border-bottom: 1px solid var(--border);
   background: transparent;
   color: var(--text);
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 .platform-capability-list > button:hover { background: var(--surface-elevated); }
@@ -87,6 +87,7 @@
   background: var(--primary-light);
   box-shadow: inset 3px 0 0 var(--primary);
 }
+[dir='rtl'] .platform-capability-list > button.active { box-shadow: inset -3px 0 0 var(--primary); }
 .platform-capability-list-title {
   width: 100%;
   font-size: 12px;
@@ -148,8 +149,8 @@
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
-.platform-contract-strip > div { min-width: 0; padding: 8px 9px; border-right: 1px solid var(--border); }
-.platform-contract-strip > div:last-child { border-right: 0; }
+.platform-contract-strip > div { min-width: 0; padding: 8px 9px; border-inline-end: 1px solid var(--border); }
+.platform-contract-strip > div:last-child { border-inline-end: 0; }
 .platform-contract-strip span { display: block; margin-bottom: 3px; color: var(--text-tertiary); font-size: 9px; }
 .platform-contract-strip strong,
 .platform-contract-strip code {
@@ -256,7 +257,7 @@
 .platform-capability-preview.requires-confirmation > .platform-primary-button { margin-top: 0; }
 
 .platform-receipt-heading { justify-content: flex-start; }
-.platform-receipt-heading span { margin-left: auto; }
+.platform-receipt-heading span { margin-inline-start: auto; }
 .platform-receipt-meta {
   margin-top: 8px;
   display: grid;
@@ -286,14 +287,14 @@
 
 @media (max-width: 680px) {
   .platform-capabilities-panel { grid-template-columns: minmax(0, 1fr); }
-  .platform-capability-index { border-right: 0; border-bottom: 1px solid var(--border); }
+  .platform-capability-index { border-inline-end: 0; border-bottom: 1px solid var(--border); }
   .platform-capability-list { display: block; overflow-x: visible; }
-  .platform-capability-list > button { min-width: 0; border-right: 0; }
+  .platform-capability-list > button { min-width: 0; border-inline-end: 0; }
   .platform-capability-workbench { padding: 12px; }
   .platform-capability-titlebar { flex-direction: column; }
   .platform-capability-badges { justify-content: flex-start; }
   .platform-contract-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .platform-contract-strip > div:nth-child(2) { border-right: 0; }
+  .platform-contract-strip > div:nth-child(2) { border-inline-end: 0; }
   .platform-contract-strip > div:nth-child(-n + 2) { border-bottom: 1px solid var(--border); }
   .platform-confirmation-row { grid-template-columns: minmax(0, 1fr); }
 }

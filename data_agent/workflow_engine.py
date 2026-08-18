@@ -18,6 +18,7 @@ import httpx
 from sqlalchemy import text
 
 from .db_engine import get_engine
+from .i18n import t
 from .user_context import current_user_id, current_session_id, current_user_role
 
 logger = logging.getLogger(__name__)
@@ -543,12 +544,12 @@ async def execute_workflow(
 
     workflow = get_workflow(workflow_id)
     if not workflow:
-        return {"status": "failed", "error": "Workflow not found"}
+        return {"status": "failed", "error": t("workflow.not_found")}
 
     user = run_by or current_user_id.get() or workflow["owner_username"]
     steps = workflow.get("steps", [])
     if not steps:
-        return {"status": "failed", "error": "Workflow has no steps"}
+        return {"status": "failed", "error": t("workflow.no_steps")}
 
     # Set user context early — needed by _resolve_path inside _merge_and_resolve_params
     current_user_id.set(user)
@@ -595,7 +596,11 @@ async def execute_workflow(
 
         # Inject previous step context
         if accumulated_context:
-            prompt = f"{base_prompt}\n\n[上一步结果]\n{accumulated_context}"
+            prompt = t(
+                "workflow.prompt.previous_result",
+                prompt=base_prompt,
+                context=accumulated_context,
+            )
         else:
             prompt = base_prompt
 
@@ -624,7 +629,7 @@ async def execute_workflow(
         # Select agent
         agent_obj = _get_agent_for_pipeline(agent_module, pipeline_type, step)
         if not agent_obj:
-            error_msg = f"Unknown pipeline_type: {pipeline_type}"
+            error_msg = t("workflow.unknown_pipeline", pipeline_type=pipeline_type)
             status = "failed"
             break
 
@@ -668,8 +673,17 @@ async def execute_workflow(
                     summary = result.report_text[:800]  # Keep last 800 chars
                     file_info = ""
                     if result.generated_files:
-                        file_info = f"\n生成文件: {', '.join(result.generated_files[:3])}"
-                    accumulated_context = f"步骤 {i+1} ({step.get('label', step_id)}):\n{summary}{file_info}"
+                        file_info = t(
+                            "workflow.prompt.generated_files",
+                            files=", ".join(result.generated_files[:3]),
+                        )
+                    accumulated_context = t(
+                        "workflow.prompt.step_context",
+                        index=i + 1,
+                        label=step.get("label", step_id),
+                        summary=summary,
+                        files=file_info,
+                    )
 
                 # Notify progress callback
                 if progress_callback:
@@ -698,7 +712,7 @@ async def execute_workflow(
                     })
 
                 if result.error:
-                    error_msg = f"Step '{step_id}' failed: {result.error}"
+                    error_msg = t("workflow.step_failed", step_id=step_id, error=result.error)
                     status = "failed"
                 step_done = True
 
@@ -717,15 +731,19 @@ async def execute_workflow(
                     "step_id": step_id,
                     "label": step.get("label", step_id),
                     "status": "timeout",
-                    "error": f"SLA timeout ({sla_seconds}s) after {attempt + 1} attempt(s)",
+                    "error": t(
+                        "workflow.sla_timeout",
+                        seconds=sla_seconds,
+                        attempts=attempt + 1,
+                    ),
                     "attempt": attempt + 1,
                 })
-                error_msg = f"Step '{step_id}' timed out"
+                error_msg = t("workflow.step_timed_out", step_id=step_id)
                 status = "failed"
                 step_done = True
 
             except Exception as e:
-                error_msg = f"Step '{step_id}' exception: {str(e)}"
+                error_msg = t("workflow.step_exception", step_id=step_id, error=e)
                 status = "failed"
                 step_results.append({
                     "step_id": step_id,
@@ -1041,9 +1059,7 @@ def _topological_sort(steps: list[dict]) -> list[list[dict]]:
 
     if visited < len(all_ids):
         unvisited = all_ids - {s["step_id"] for layer in layers for s in layer}
-        raise ValueError(
-            f"Cycle detected in workflow DAG involving nodes: {sorted(unvisited)}"
-        )
+        raise ValueError(t("workflow.dag_cycle", nodes=sorted(unvisited)))
 
     return layers
 
@@ -1180,12 +1196,12 @@ async def execute_workflow_dag(
 
     workflow = get_workflow(workflow_id)
     if not workflow:
-        return {"status": "failed", "error": "Workflow not found"}
+        return {"status": "failed", "error": t("workflow.not_found")}
 
     user = run_by or current_user_id.get() or workflow["owner_username"]
     steps = workflow.get("steps", [])
     if not steps:
-        return {"status": "failed", "error": "Workflow has no steps"}
+        return {"status": "failed", "error": t("workflow.no_steps")}
 
     # Merge parameters
     params = {}
@@ -1284,7 +1300,7 @@ async def execute_workflow_dag(
             # Check upstream dependencies
             for dep in step.get("depends_on", []):
                 if dep in failed_or_skipped:
-                    reason = f"Upstream '{dep}' failed or was skipped"
+                    reason = t("workflow.upstream_failed", step_id=dep)
                     if run_id:
                         _update_live_status(run_id, step_id, "skipped", {"error": reason})
                     return (step_id, {
@@ -1313,7 +1329,7 @@ async def execute_workflow_dag(
 
             agent_obj = _get_agent_for_pipeline(agent_module, pipeline_type, step)
             if not agent_obj:
-                err = f"Unknown pipeline_type: {pipeline_type}"
+                err = t("workflow.unknown_pipeline", pipeline_type=pipeline_type)
                 if run_id:
                     _update_live_status(run_id, step_id, "failed", {"error": err})
                 return (step_id, {
@@ -1440,7 +1456,11 @@ async def execute_workflow_dag(
             if result_data.get("status") == "failed":
                 failed_or_skipped.add(step_id)
                 if not error_msg:
-                    error_msg = f"Node '{step_id}' failed: {result_data.get('error', 'unknown')}"
+                    error_msg = t(
+                        "workflow.node_failed",
+                        step_id=step_id,
+                        error=result_data.get("error", t("workflow.unknown_error")),
+                    )
                 overall_status = "failed"
             elif result_data.get("status") == "skipped":
                 failed_or_skipped.add(step_id)
@@ -1589,14 +1609,14 @@ async def retry_workflow_node(run_id: int, step_id: str, username: str) -> dict:
     """
     checkpoint = get_run_checkpoint(run_id)
     if not checkpoint:
-        return {"status": "error", "message": f"Run {run_id} not found"}
+        return {"status": "error", "message": t("workflow.run_not_found", run_id=run_id)}
     if checkpoint["status"] not in ("failed", "completed"):
-        return {"status": "error", "message": "Can only retry nodes in failed/completed runs"}
+        return {"status": "error", "message": t("workflow.retry_status_invalid")}
 
     workflow_id = checkpoint["workflow_id"]
     workflow = get_workflow(workflow_id, username)
     if not workflow:
-        return {"status": "error", "message": "Workflow not found"}
+        return {"status": "error", "message": t("workflow.not_found")}
 
     steps = workflow.get("steps", [])
     target_step = None
@@ -1605,7 +1625,10 @@ async def retry_workflow_node(run_id: int, step_id: str, username: str) -> dict:
             target_step = s
             break
     if not target_step:
-        return {"status": "error", "message": f"Step '{step_id}' not found in workflow"}
+        return {
+            "status": "error",
+            "message": t("workflow.step_not_found", step_id=step_id),
+        }
 
     # Re-execute just this node
     node_outputs = checkpoint.get("node_checkpoints", {})
@@ -1663,7 +1686,7 @@ async def retry_workflow_node(run_id: int, step_id: str, username: str) -> dict:
 
         return {"status": "ok", "node": step_id, "result": result_data}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": t("workflow.operation_failed", error=e)}
 
 
 async def resume_workflow_dag(run_id: int, username: str) -> dict:
@@ -1674,14 +1697,17 @@ async def resume_workflow_dag(run_id: int, username: str) -> dict:
     """
     checkpoint = get_run_checkpoint(run_id)
     if not checkpoint:
-        return {"status": "error", "message": f"Run {run_id} not found"}
+        return {"status": "error", "message": t("workflow.run_not_found", run_id=run_id)}
     if checkpoint["status"] not in ("failed", "paused"):
-        return {"status": "error", "message": f"Cannot resume run with status '{checkpoint['status']}'"}
+        return {
+            "status": "error",
+            "message": t("workflow.resume_status_invalid", status=checkpoint["status"]),
+        }
 
     workflow_id = checkpoint["workflow_id"]
     workflow = get_workflow(workflow_id, username)
     if not workflow:
-        return {"status": "error", "message": "Workflow not found"}
+        return {"status": "error", "message": t("workflow.not_found")}
 
     node_outputs = checkpoint.get("node_checkpoints", {})
     completed_nodes = {k for k, v in node_outputs.items()
@@ -1692,7 +1718,11 @@ async def resume_workflow_dag(run_id: int, username: str) -> dict:
                        if s.get("step_id", s.get("name", "")) not in completed_nodes]
 
     if not remaining_steps:
-        return {"status": "ok", "message": "所有节点已完成，无需恢复", "completed": len(completed_nodes)}
+        return {
+            "status": "ok",
+            "message": t("workflow.all_nodes_completed"),
+            "completed": len(completed_nodes),
+        }
 
     # Mark as running
     engine = get_engine()

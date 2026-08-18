@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { Database } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import StrategyPane from "./derive/StrategyPane";
 import LinkTable from "./derive/LinkTable";
 import DeriveStatusSummary from "./derive/DeriveStatusSummary";
@@ -13,6 +15,7 @@ interface Props {
 }
 
 export default function DeriveSubTab({versionId, userRole}: Props) {
+  const { t } = useTranslation();
   const isAdmin = userRole === "admin";
   const [strategy, setStrategy] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -30,7 +33,7 @@ export default function DeriveSubTab({versionId, userRole}: Props) {
         strategy={strategy}
         refreshTick={refreshTick}
       />
-      <div style={{padding: 8, borderLeft: "1px solid #eee"}}>
+      <div style={{padding: 8, borderInlineStart: "1px solid #eee"}}>
         <DeriveStatusSummary
           versionId={versionId}
           refreshTick={refreshTick}
@@ -57,11 +60,13 @@ export default function DeriveSubTab({versionId, userRole}: Props) {
             onClick={() => setDataModelOpen(true)}
             style={{
               marginTop: 8, padding: "6px 10px", fontSize: 12,
-              width: "100%", background: "#fff",
+              width: "100%", background: "#fff", display: "inline-flex",
+              alignItems: "center", justifyContent: "center", gap: 5,
               border: "1px solid #007aff", color: "#007aff",
               borderRadius: 4, cursor: "pointer",
             }}>
-            📐 查看数据模型 (CDM/LDM/PDM/DDL)
+            <Database size={14} aria-hidden="true" />
+            {t("standards.derive.viewDataModel")}
           </button>
         )}
         {dataModelOpen && versionId && (

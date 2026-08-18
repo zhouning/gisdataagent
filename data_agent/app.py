@@ -8,12 +8,20 @@ import time
 import json
 import zipfile
 import shutil
+from html import escape as html_escape
 from pathlib import Path
 from typing import Any, List, Dict, Optional
 from dotenv import load_dotenv
 from google import genai as genai_client
 
-from data_agent.i18n import t, set_language, get_language
+from data_agent.i18n import (
+    get_language,
+    HttpLocaleMiddleware,
+    resolve_http_language,
+    resolve_language,
+    set_language,
+    t,
+)
 from data_agent.multimodal import (
     UploadType, classify_upload, prepare_image_part,
     extract_pdf_text, prepare_pdf_part,
@@ -40,6 +48,26 @@ from data_agent.observability import (
 setup_logging()
 logger = get_logger("app")
 from data_agent.model_requirements import configured_models_require_google_cloud_project
+
+
+def _activate_session_language(message_metadata: dict | None = None) -> str:
+    """Bind the UI locale to the current Chainlit async context."""
+    user_env = cl.user_session.get("env") or {}
+    if isinstance(user_env, str):
+        try:
+            user_env = json.loads(user_env)
+        except (TypeError, ValueError):
+            user_env = {}
+    if not isinstance(user_env, dict):
+        user_env = {}
+    language = resolve_language(
+        user_env=user_env,
+        message_metadata=message_metadata,
+        default=cl.user_session.get("locale") or os.environ.get("UI_LANGUAGE", "zh"),
+    )
+    set_language(language)
+    cl.user_session.set("locale", language)
+    return language
 
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
@@ -302,12 +330,89 @@ from data_agent.auth import register_user
 if ensure_chainlit_oauth_openapi_model(_chainlit_oauth):
     logger.info("Restored Chainlit OAuth OpenAPI security model")
 
+_HTTP_PAGE_LOCALES = {
+    "zh": ("zh-CN", "ltr"),
+    "en": ("en-US", "ltr"),
+    "ar": ("ar-AE", "rtl"),
+}
+
+
+def _activate_http_request_language(request: Request) -> str:
+    """Bind query, header, cookie, and browser locale preferences to the request."""
+    language = resolve_http_language(
+        query_locale=request.query_params.get("locale"),
+        x_locale=request.headers.get("x-locale"),
+        accept_language=request.headers.get("accept-language"),
+        default=os.environ.get("UI_LANGUAGE", "zh"),
+        cookie_locale=request.cookies.get("gda.locale"),
+    )
+    set_language(language)
+    return language
+
+
+def _json_for_html(value: Any) -> str:
+    """Encode JSON for an inline script without allowing a script end tag."""
+    return (
+        json.dumps(value, ensure_ascii=False)
+        .replace("&", "\\u0026")
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+    )
+
+
+def _render_localized_page(
+    template: str,
+    text_keys: dict[str, str],
+    *,
+    json_translation_groups: dict[str, dict[str, str]] | None = None,
+    text_values: dict[str, str] | None = None,
+) -> str:
+    """Render a fixed HTML template using escaped text and script-safe JSON."""
+    language = get_language()
+    locale, direction = _HTTP_PAGE_LOCALES[language]
+    replacements = {
+        "HTML_LANG": locale,
+        "HTML_DIR": direction,
+        **{token: t(key) for token, key in text_keys.items()},
+        **(text_values or {}),
+    }
+    rendered = template
+    for token, value in replacements.items():
+        rendered = rendered.replace(
+            f"__GDA_{token}__", html_escape(str(value), quote=True)
+        )
+    rendered = rendered.replace("__GDA_LOCALE_JSON__", _json_for_html(locale))
+    for token, translation_keys in (json_translation_groups or {}).items():
+        payload = {name: t(key) for name, key in translation_keys.items()}
+        rendered = rendered.replace(f"__GDA_{token}__", _json_for_html(payload))
+    return rendered
+
+
+_REGISTER_TEXT_KEYS = {
+    "PAGE_TITLE": "register.page_title",
+    "HEADING": "register.heading",
+    "USERNAME_LABEL": "register.username_label",
+    "DISPLAY_NAME_LABEL": "register.display_name_label",
+    "OPTIONAL_PLACEHOLDER": "register.optional_placeholder",
+    "PASSWORD_LABEL": "register.password_label",
+    "CONFIRM_PASSWORD_LABEL": "register.confirm_password_label",
+    "SUBMIT": "register.submit",
+    "BACK_TO_LOGIN": "register.back_to_login",
+}
+
+_REGISTER_MESSAGE_KEYS = {
+    "passwordMismatch": "register.password_mismatch",
+    "submitting": "register.submitting",
+    "submit": "register.submit",
+    "networkError": "register.network_error",
+}
+
 _REGISTER_HTML = """<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="__GDA_HTML_LANG__" dir="__GDA_HTML_DIR__">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>注册 - Data Agent</title>
+<title>__GDA_PAGE_TITLE__</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -334,42 +439,45 @@ _REGISTER_HTML = """<!DOCTYPE html>
 </head>
 <body>
 <div class="card">
-  <h2>注册 Data Agent</h2>
+  <h2>__GDA_HEADING__</h2>
   <div id="msg" class="msg"></div>
   <form id="regForm">
     <div class="field">
-      <label>用户名 (3-30位字母/数字/下划线)</label>
+      <label>__GDA_USERNAME_LABEL__</label>
       <input name="username" required minlength="3" maxlength="30" pattern="[a-zA-Z0-9_]+">
     </div>
     <div class="field">
-      <label>显示名称</label>
-      <input name="display_name" placeholder="可选">
+      <label>__GDA_DISPLAY_NAME_LABEL__</label>
+      <input name="display_name" placeholder="__GDA_OPTIONAL_PLACEHOLDER__">
     </div>
     <div class="field">
-      <label>密码 (8位以上，含字母和数字)</label>
+      <label>__GDA_PASSWORD_LABEL__</label>
       <input name="password" type="password" required minlength="8">
     </div>
     <div class="field">
-      <label>确认密码</label>
+      <label>__GDA_CONFIRM_PASSWORD_LABEL__</label>
       <input name="confirm" type="password" required>
     </div>
-    <button class="btn" type="submit">注册</button>
+    <button class="btn" type="submit">__GDA_SUBMIT__</button>
   </form>
-  <div class="link"><a href="/">返回登录</a></div>
+  <div class="link"><a href="/">__GDA_BACK_TO_LOGIN__</a></div>
 </div>
 <script>
+const locale=__GDA_LOCALE_JSON__;
+const labels=__GDA_REGISTER_MESSAGES__;
+try{window.localStorage.setItem('gda.locale',locale);}catch(err){}
 document.getElementById('regForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const fd=new FormData(e.target),msg=document.getElementById('msg');
   msg.className='msg';msg.style.display='none';
   if(fd.get('password')!==fd.get('confirm')){
-    msg.className='msg error';msg.textContent='两次密码不一致';msg.style.display='block';return;
+    msg.className='msg error';msg.textContent=labels.passwordMismatch;msg.style.display='block';return;
   }
   const btn=e.target.querySelector('button');
-  btn.disabled=true;btn.textContent='注册中...';
+  btn.disabled=true;btn.textContent=labels.submitting;
   try{
     const resp=await fetch('/auth/register',{
-      method:'POST',headers:{'Content-Type':'application/json'},
+      method:'POST',headers:{'Content-Type':'application/json','Accept-Language':locale,'X-Locale':locale},
       body:JSON.stringify({username:fd.get('username'),password:fd.get('password'),
                            display_name:fd.get('display_name')||''})
     });
@@ -381,8 +489,8 @@ document.getElementById('regForm').addEventListener('submit',async e=>{
       msg.className='msg error';msg.textContent=data.message;msg.style.display='block';
     }
   }catch(err){
-    msg.className='msg error';msg.textContent='网络错误: '+err.message;msg.style.display='block';
-  }finally{btn.disabled=false;btn.textContent='注册';}
+    msg.className='msg error';msg.textContent=labels.networkError+': '+err.message;msg.style.display='block';
+  }finally{btn.disabled=false;btn.textContent=labels.submit;}
 });
 </script>
 </body>
@@ -392,6 +500,7 @@ document.getElementById('regForm').addEventListener('submit',async e=>{
 @chainlit_app.post("/auth/register")
 async def api_register(request: Request):
     """Handle registration API call."""
+    _activate_http_request_language(request)
     body = await request.json()
     result = register_user(
         username=body.get("username", ""),
@@ -412,7 +521,12 @@ async def api_register(request: Request):
 
 
 async def _serve_register_page(request: Request):
-    return HTMLResponse(content=_REGISTER_HTML)
+    _activate_http_request_language(request)
+    return HTMLResponse(content=_render_localized_page(
+        _REGISTER_HTML,
+        _REGISTER_TEXT_KEYS,
+        json_translation_groups={"REGISTER_MESSAGES": _REGISTER_MESSAGE_KEYS},
+    ))
 
 # Insert GET /register BEFORE Chainlit's catch-all /{full_path:path}
 _register_route = Route("/register", endpoint=_serve_register_page, methods=["GET"])
@@ -668,13 +782,90 @@ def _verify_admin_token(token: str) -> bool:
     return False
 
 
+_AUDIT_TEXT_KEYS = {
+    "AUDIT_PAGE_TITLE": "audit_page.page_title",
+    "AUDIT_HEADING": "audit_page.heading",
+    "AUDIT_SUBTITLE": "audit_page.subtitle",
+    "AUDIT_USERNAME": "audit_page.username",
+    "AUDIT_ACTION_TYPE": "audit_page.action_type",
+    "AUDIT_STATUS": "audit_page.status",
+    "AUDIT_DAYS": "audit_page.days",
+    "AUDIT_ALL": "audit_page.all",
+    "AUDIT_STATUS_SUCCESS": "audit_page.status_success",
+    "AUDIT_STATUS_FAILURE": "audit_page.status_failure",
+    "AUDIT_STATUS_DENIED": "audit_page.status_denied",
+    "AUDIT_7_DAYS": "audit_page.days_7",
+    "AUDIT_30_DAYS": "audit_page.days_30",
+    "AUDIT_90_DAYS": "audit_page.days_90",
+    "AUDIT_SEARCH": "audit_page.search",
+    "AUDIT_TIME": "audit_page.time",
+    "AUDIT_USER": "audit_page.user",
+    "AUDIT_ACTION": "audit_page.action",
+    "AUDIT_DETAILS": "audit_page.details",
+    "AUDIT_LOAD_MORE": "audit_page.load_more",
+    "AUDIT_EMPTY": "audit_page.empty",
+}
+
+_AUDIT_MESSAGE_KEYS = {
+    "totalEvents": "audit_page.total_events",
+    "activeUsers": "audit_page.active_users",
+    "errorRate": "audit_page.error_rate",
+    "statusSuccess": "audit_page.status_success",
+    "statusFailure": "audit_page.status_failure",
+    "statusDenied": "audit_page.status_denied",
+}
+
+_AUDIT_ACTION_KEYS = {
+    action: f"audit_page.action_{action}"
+    for action in (
+        "login_success",
+        "login_failure",
+        "user_register",
+        "session_start",
+        "file_upload",
+        "pipeline_complete",
+        "report_export",
+        "share_create",
+        "file_delete",
+        "table_share",
+        "rbac_denied",
+        "code_export",
+        "template_create",
+        "template_apply",
+        "template_delete",
+        "wecom_message",
+        "team_create",
+        "team_invite",
+        "team_remove",
+        "team_delete",
+        "hitl_approval",
+        "mcp_server_create",
+        "mcp_server_update",
+        "mcp_server_delete",
+        "mcp_server_toggle",
+        "mcp_server_reconnect",
+        "custom_skill_create",
+        "custom_skill_update",
+        "custom_skill_delete",
+        "kb_create",
+        "kb_delete",
+        "kb_document_add",
+        "kb_document_delete",
+        "data_anonymize",
+        "anonymization_verify",
+        "security_event_reconcile",
+        "platform_branding_update",
+    )
+}
+
+
 _AUDIT_VIEWER_HTML = """<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="__GDA_HTML_LANG__" dir="__GDA_HTML_DIR__">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>审计日志 — Data Agent Admin</title>
-<meta name="admin-token" content="{admin_token}">
+<title>__GDA_AUDIT_PAGE_TITLE__</title>
+<meta name="admin-token" content="__GDA_ADMIN_TOKEN__">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
@@ -697,7 +888,7 @@ header h1{font-size:1.4em;color:#1a1a2e;margin-bottom:8px}
 .filters button:hover{background:#4f46e5}
 table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;
       box-shadow:0 1px 3px rgba(0,0,0,.1)}
-th{background:#f8f9fa;padding:12px 14px;text-align:left;font-size:.85em;color:#555;
+th{background:#f8f9fa;padding:12px 14px;text-align:start;font-size:.85em;color:#555;
    border-bottom:2px solid #e8e8e8}
 td{padding:10px 14px;border-bottom:1px solid #f0f0f0;font-size:.88em}
 tr:hover{background:#fafafa}
@@ -716,51 +907,54 @@ footer{text-align:center;color:#aaa;font-size:.8em;padding:24px 0}
 </head>
 <body>
 <div class="container">
-<header><h1>审计日志管理</h1><p style="color:#888;font-size:.9em">系统操作记录与安全审计</p></header>
+<header><h1>__GDA_AUDIT_HEADING__</h1><p style="color:#888;font-size:.9em">__GDA_AUDIT_SUBTITLE__</p></header>
 <div class="stats-bar" id="stats-bar"></div>
 <div class="filters">
-  <div><label>用户名</label><input id="f-user" placeholder="全部"></div>
-  <div><label>操作类型</label><select id="f-action"><option value="">全部</option>
-    <option value="login_success">登录成功</option><option value="login_failure">登录失败</option>
-    <option value="user_register">用户注册</option><option value="session_start">会话开始</option>
-    <option value="file_upload">文件上传</option><option value="pipeline_complete">分析完成</option>
-    <option value="report_export">报告导出</option><option value="share_create">创建分享</option>
-    <option value="file_delete">文件删除</option><option value="table_share">共享数据表</option>
-    <option value="rbac_denied">权限拒绝</option></select></div>
-  <div><label>状态</label><select id="f-status"><option value="">全部</option>
-    <option value="success">成功</option><option value="failure">失败</option>
-    <option value="denied">拒绝</option></select></div>
-  <div><label>天数</label><select id="f-days">
-    <option value="7">7天</option><option value="30" selected>30天</option>
-    <option value="90">90天</option></select></div>
-  <div><button id="btn-search" onclick="doSearch(0)">查询</button></div>
+  <div><label>__GDA_AUDIT_USERNAME__</label><input id="f-user" placeholder="__GDA_AUDIT_ALL__"></div>
+  <div><label>__GDA_AUDIT_ACTION_TYPE__</label><select id="f-action"><option value="">__GDA_AUDIT_ALL__</option></select></div>
+  <div><label>__GDA_AUDIT_STATUS__</label><select id="f-status"><option value="">__GDA_AUDIT_ALL__</option>
+    <option value="success">__GDA_AUDIT_STATUS_SUCCESS__</option><option value="failure">__GDA_AUDIT_STATUS_FAILURE__</option>
+    <option value="denied">__GDA_AUDIT_STATUS_DENIED__</option></select></div>
+  <div><label>__GDA_AUDIT_DAYS__</label><select id="f-days">
+    <option value="7">__GDA_AUDIT_7_DAYS__</option><option value="30" selected>__GDA_AUDIT_30_DAYS__</option>
+    <option value="90">__GDA_AUDIT_90_DAYS__</option></select></div>
+  <div><button id="btn-search" onclick="doSearch(0)">__GDA_AUDIT_SEARCH__</button></div>
 </div>
-<table><thead><tr><th>时间</th><th>用户</th><th>操作</th><th>状态</th><th>详情</th></tr></thead>
+<table><thead><tr><th>__GDA_AUDIT_TIME__</th><th>__GDA_AUDIT_USER__</th><th>__GDA_AUDIT_ACTION__</th><th>__GDA_AUDIT_STATUS__</th><th>__GDA_AUDIT_DETAILS__</th></tr></thead>
 <tbody id="log-body"></tbody></table>
 <div class="load-more" id="load-more" style="display:none">
-  <button onclick="loadMore()">加载更多</button></div>
-<div class="empty" id="empty-msg" style="display:none">暂无符合条件的审计日志</div>
+  <button onclick="loadMore()">__GDA_AUDIT_LOAD_MORE__</button></div>
+<div class="empty" id="empty-msg" style="display:none">__GDA_AUDIT_EMPTY__</div>
 <footer>Data Agent Admin Panel</footer>
 </div>
 <script>
 var TOKEN=document.querySelector('meta[name=admin-token]').content;
 var offset=0,limit=50;
-var actionLabels={login_success:"登录成功",login_failure:"登录失败",user_register:"用户注册",
-  session_start:"会话开始",file_upload:"文件上传",pipeline_complete:"分析完成",
-  report_export:"报告导出",share_create:"创建分享",file_delete:"文件删除",
-  table_share:"共享数据表",rbac_denied:"权限拒绝"};
+var locale=__GDA_LOCALE_JSON__;
+var labels=__GDA_AUDIT_MESSAGES__;
+var actionLabels=__GDA_AUDIT_ACTIONS__;
+var statusLabels={success:labels.statusSuccess,failure:labels.statusFailure,denied:labels.statusDenied};
+var numberFormat=new Intl.NumberFormat(locale);
+var percentFormat=new Intl.NumberFormat(locale,{style:'percent',minimumFractionDigits:1,maximumFractionDigits:1});
+var actionSelect=document.getElementById('f-action');
+Object.keys(actionLabels).forEach(function(action){
+  var option=document.createElement('option');
+  option.value=action;option.textContent=actionLabels[action];actionSelect.appendChild(option);
+});
 
 function api(url){
-  return fetch(url,{headers:{'Authorization':'Bearer '+TOKEN}}).then(function(r){return r.json()});
+  return fetch(url,{headers:{'Authorization':'Bearer '+TOKEN,'Accept-Language':locale,'X-Locale':locale}})
+    .then(function(r){return r.json()});
 }
 function loadStats(){
   api('/api/admin/audit/stats?days='+document.getElementById('f-days').value).then(function(d){
     var bar=document.getElementById('stats-bar');
+    var statuses=d.events_by_status||{};
     var errRate=d.total_events>0?
-      ((d.events_by_status.failure||0)+(d.events_by_status.denied||0))*100/d.total_events:0;
-    bar.innerHTML='<div class="stat-card"><div class="num">'+d.total_events+'</div><div class="label">总事件数</div></div>'+
-      '<div class="stat-card"><div class="num">'+d.active_users+'</div><div class="label">活跃用户</div></div>'+
-      '<div class="stat-card"><div class="num">'+errRate.toFixed(1)+'%</div><div class="label">异常率</div></div>';
+      ((statuses.failure||0)+(statuses.denied||0))/d.total_events:0;
+    bar.innerHTML='<div class="stat-card"><div class="num">'+numberFormat.format(d.total_events||0)+'</div><div class="label">'+labels.totalEvents+'</div></div>'+
+      '<div class="stat-card"><div class="num">'+numberFormat.format(d.active_users||0)+'</div><div class="label">'+labels.activeUsers+'</div></div>'+
+      '<div class="stat-card"><div class="num">'+percentFormat.format(errRate)+'</div><div class="label">'+labels.errorRate+'</div></div>';
   });
 }
 function doSearch(off){
@@ -783,11 +977,15 @@ function doSearch(off){
     document.getElementById('empty-msg').style.display='none';
     d.rows.forEach(function(r){
       var tr=document.createElement('tr');
-      var ts=r.created_at?new Date(r.created_at).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'?';
+      var ts=r.created_at?new Date(r.created_at).toLocaleString(locale,{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'?';
       var sc=r.status==='success'?'s-success':(r.status==='failure'?'s-failure':'s-denied');
       var det=r.details?Object.entries(r.details).map(function(e){return e[0]+'='+e[1]}).join(', '):'';
-      tr.innerHTML='<td>'+ts+'</td><td>'+r.username+'</td><td>'+(actionLabels[r.action]||r.action)+
-        '</td><td class="'+sc+'">'+r.status+'</td><td class="detail-cell" title="'+det+'">'+det+'</td>';
+      [ts,r.username,actionLabels[r.action]||r.action,statusLabels[r.status]||r.status,det].forEach(function(value,index){
+        var td=document.createElement('td');td.textContent=value==null?'':String(value);
+        if(index===3) td.className=sc;
+        if(index===4){td.className='detail-cell';td.title=det;}
+        tr.appendChild(td);
+      });
       tb.appendChild(tr);
     });
     document.getElementById('load-more').style.display=d.rows.length>=limit?'':'none';
@@ -807,8 +1005,17 @@ async def _serve_audit_page(request: Request):
     # We generate a token for the admin user that's embedded in the HTML.
     # The page-level auth is minimal (anyone can see the page shell),
     # but the API endpoints verify the HMAC token.
+    _activate_http_request_language(request)
     admin_token = _make_admin_token("admin")
-    html = _AUDIT_VIEWER_HTML.replace("{admin_token}", admin_token)
+    html = _render_localized_page(
+        _AUDIT_VIEWER_HTML,
+        _AUDIT_TEXT_KEYS,
+        json_translation_groups={
+            "AUDIT_MESSAGES": _AUDIT_MESSAGE_KEYS,
+            "AUDIT_ACTIONS": _AUDIT_ACTION_KEYS,
+        },
+        text_values={"ADMIN_TOKEN": admin_token},
+    )
     return HTMLResponse(content=html)
 
 
@@ -976,6 +1183,13 @@ try:
 except Exception as _obs_err:
     logger.warning("Observability middleware failed: %s", _obs_err)
 
+# Apply the selected UI locale to all backend routes, including direct fetches.
+chainlit_app.add_middleware(
+    HttpLocaleMiddleware,
+    default=os.environ.get("UI_LANGUAGE", "zh"),
+)
+logger.info("HTTP locale middleware installed")
+
 # --- GZip compression for large JSON responses (catalog lists, GeoJSON) ---
 try:
     from starlette.middleware.gzip import GZipMiddleware
@@ -1035,7 +1249,102 @@ os.makedirs(BASE_UPLOAD_DIR, exist_ok=True)
 MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
 
 # --- Progress Feedback Labels ---
-TOOL_LABELS = {
+_TOOL_LABEL_EN_OVERRIDES = {
+    "describe_geodataframe": "Data quality check",
+    "check_topology": "Topology check",
+    "check_field_standards": "Field standards check",
+    "check_consistency": "Consistency check",
+    "query_database": "Database query",
+    "list_tables": "List tables",
+    "describe_table": "Describe table",
+    "reproject_spatial_data": "Reproject spatial data",
+    "engineer_spatial_features": "Spatial feature engineering",
+    "visualize_interactive_map": "Generate interactive map",
+    "drl_model": "Deep reinforcement-learning optimization",
+    "perform_clustering": "Spatial clustering",
+    "create_buffer": "Buffer analysis",
+    "batch_geocode": "Batch geocoding",
+    "reverse_geocode": "Reverse geocoding",
+    "get_admin_boundary": "Administrative boundary",
+    "get_population_data": "Population density",
+    "visualize_geodataframe": "Render static map",
+    "export_map_png": "Export map PNG",
+    "world_model_v21_status": "World Model v2.1 status",
+    "world_model_v21_plan": "World Model v2.1 MPC plan",
+}
+
+_AGENT_LABEL_EN_OVERRIDES = {
+    "vertex_search_agent": "Domain knowledge retrieval",
+    "DataIngestion": "Data ingestion and engineering",
+    "DataExploration": "Data quality audit",
+    "DataProcessing": "Feature engineering and preprocessing",
+    "DataAnalysis": "Spatial analysis and optimization",
+    "DataVisualization": "Visualization generation",
+    "DataSummary": "Analysis report generation",
+    "FarmlandDataPreparation": "Farmland optimization data preparation",
+    "FarmlandDRLOptimizer": "DRL layout optimization",
+    "FarmlandOptimizationVisualizer": "Optimization comparison map",
+    "FarmlandOptimizationSummary": "Fact summary generation",
+    "GovExploration": "Data quality audit",
+    "GovProcessing": "Data remediation",
+    "GovernanceReporter": "Governance report generation",
+    "GeneralProcessing": "Data processing and analysis",
+    "GeneralViz": "Visualization generation",
+    "GeneralSummary": "Analysis summary generation",
+    "OntologyAnalysisAgent": "Ontology query and evidence explanation",
+    "Planner": "Task planning",
+    "PlannerExplorer": "Data exploration",
+    "PlannerProcessor": "Data processing",
+    "PlannerAnalyzer": "Analysis and optimization",
+    "PlannerVisualizer": "Visualization generation",
+    "PlannerReporter": "Report writing",
+    "MentionNL2SQL": "NL2SQL query",
+    "MentionWorldModelV21": "World Model v2.1",
+}
+
+
+def _humanize_label(name: str) -> str:
+    text = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", str(name or ""))
+    text = text.replace("_", " ").replace("-", " ").strip()
+    return text[:1].upper() + text[1:] if text else ""
+
+
+class _LocalizedLabelMap(dict):
+    """Keep legacy Chinese defaults while localizing runtime progress labels."""
+
+    def __init__(self, namespace: str, values: dict[str, str]):
+        super().__init__(values)
+        self.namespace = namespace
+
+    def get(self, key, default=None):  # type: ignore[override]
+        original = super().get(key, default)
+        if get_language() == "zh":
+            return original
+        resource_key = f"app.{self.namespace}.{key}"
+        translated = t(resource_key)
+        if translated != resource_key:
+            return translated
+        overrides = _TOOL_LABEL_EN_OVERRIDES if self.namespace == "tool_label" else _AGENT_LABEL_EN_OVERRIDES
+        return overrides.get(str(key), _humanize_label(str(key))) or original
+
+
+class _LocalizedDescriptionMap(dict):
+    """Localize tool explanations without changing the description contract."""
+
+    def get(self, key, default=None):  # type: ignore[override]
+        description = super().get(key, default)
+        if not description or get_language() == "zh":
+            return description
+        method = TOOL_LABELS.get(key, _humanize_label(str(key)))
+        params = description.get("params", {}) if isinstance(description, dict) else {}
+        return {
+            **(description if isinstance(description, dict) else {}),
+            "method": method,
+            "params": {name: _humanize_label(name) for name in params},
+        }
+
+
+TOOL_LABELS = _LocalizedLabelMap("tool_label", {
     "describe_geodataframe": "数据质量检查",
     "check_topology": "拓扑检查",
     "check_field_standards": "字段标准检查",
@@ -1121,9 +1430,9 @@ TOOL_LABELS = {
     "run_nl2semantic2sql": "NL2Semantic2SQL",
     "world_model_v21_status": "世界模型 v2.1 状态检查",
     "world_model_v21_plan": "世界模型 v2.1 MPC规划",
-}
+})
 
-AGENT_LABELS = {
+AGENT_LABELS = _LocalizedLabelMap("agent_label", {
     "vertex_search_agent": "检索领域知识",
     "DataIngestion": "数据采集与工程(并行)",
     "DataExploration": "数据质量审计",
@@ -1150,10 +1459,10 @@ AGENT_LABELS = {
     "PlannerReporter": "撰写报告",
     "MentionNL2SQL": "NL2SQL 查询",
     "MentionWorldModelV21": "世界模型 v2.1",
-}
+})
 
 # --- Tool Descriptions: method names + parameter labels for explainability ---
-TOOL_DESCRIPTIONS = {
+TOOL_DESCRIPTIONS = _LocalizedDescriptionMap({
     "describe_geodataframe": {
         "method": "数据质量预检（7项检查）",
         "params": {"file_path": "数据文件"},
@@ -1539,7 +1848,7 @@ TOOL_DESCRIPTIONS = {
         "method": "数据血缘追踪",
         "params": {"asset_name_or_id": "资产名称/ID", "direction": "追踪方向"},
     },
-}
+})
 
 
 def _format_tool_explanation(tool_name: str, args: dict) -> str:
@@ -2987,6 +3296,7 @@ def generate_analysis_plan(user_text: str, intent: str, uploaded_files: list) ->
 @cl.on_chat_resume
 async def on_resume(thread: dict):
     """Restore context when user resumes a thread from sidebar history."""
+    _activate_session_language()
     cl_user = cl.user_session.get("user")
     if cl_user:
         user_id = cl_user.identifier
@@ -3089,8 +3399,7 @@ async def _execute_workflow_with_steps(workflow_id: int, file_path: str, templat
 @cl.on_chat_start
 async def start():
     """Initialize session with authenticated user."""
-    # Set i18n language from env (default: zh)
-    set_language(os.environ.get("UI_LANGUAGE", "zh"))
+    _activate_session_language()
 
     # Start MCP Hub connections (once, on first chat start — async-safe)
     global _mcp_started
@@ -3181,7 +3490,7 @@ async def start():
     # Ensure user upload directory exists
     get_user_upload_dir()
 
-    await cl.Message(content=f"Welcome, **{display_name}**! ({role})").send()
+    await cl.Message(content=t("session.welcome", display_name=display_name, role=role)).send()
     cl.user_session.set("auto_extract_count", 0)
 
     try:
@@ -3762,6 +4071,7 @@ async def main(message: cl.Message):
 
     # Re-set context variables (ContextVar is per-async-task)
     trace_id = _set_user_context(user_id, session_id, role)
+    _activate_session_language(getattr(message, "metadata", None))
     logger.info("[Trace:%s] Message received user=%s role=%s", trace_id, user_id, role)
 
     if configured_models_require_google_cloud_project() and not os.environ.get("GOOGLE_CLOUD_PROJECT"):
@@ -3979,9 +4289,9 @@ async def main(message: cl.Message):
         full_prompt += "\n\n[系统环境] ArcPy 引擎可用。当用户需要修复几何、按字段融合统计、或对比ArcPy与开源工具结果时，可使用 arcpy_ 前缀的工具。"
 
     # v14.3: Language hint injection
-    user_lang = None
+    from data_agent.intent_router import _LANG_HINTS, detect_language
+    user_lang = detect_language(user_text)
     if user_lang and user_lang != "zh":
-        from data_agent.intent_router import _LANG_HINTS
         lang_hint = _LANG_HINTS.get(user_lang, "")
         if lang_hint:
             full_prompt += f"\n\n[Language] {lang_hint}"

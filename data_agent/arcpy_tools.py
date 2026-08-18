@@ -15,6 +15,7 @@ import atexit
 from typing import Optional
 
 from .gis_processors import _resolve_path, _generate_output_path
+from .i18n import t
 
 
 class ArcPyBridge:
@@ -176,7 +177,7 @@ def arcpy_buffer(file_path: str, distance: float = 500.0, dissolve_type: str = "
     try:
         bridge = ArcPyBridge.get_instance()
         if not bridge:
-            return "Error: ArcPy 环境未配置或不可用"
+            return t("arcpy.unavailable")
         input_path = _resolve_path(file_path)
         output_path = _generate_output_path("arcpy_buffer", "shp")
         result = bridge.call("buffer", {
@@ -205,7 +206,7 @@ def arcpy_clip(input_features: str, clip_features: str) -> str:
     try:
         bridge = ArcPyBridge.get_instance()
         if not bridge:
-            return "Error: ArcPy 环境未配置或不可用"
+            return t("arcpy.unavailable")
         input_path = _resolve_path(input_features)
         clip_path = _resolve_path(clip_features)
         output_path = _generate_output_path("arcpy_clipped", "shp")
@@ -238,7 +239,7 @@ def arcpy_dissolve(file_path: str, dissolve_field: str, statistics_fields: str =
     try:
         bridge = ArcPyBridge.get_instance()
         if not bridge:
-            return "Error: ArcPy 环境未配置或不可用"
+            return t("arcpy.unavailable")
         input_path = _resolve_path(file_path)
         output_path = _generate_output_path("arcpy_dissolved", "shp")
         result = bridge.call("dissolve", {
@@ -267,7 +268,7 @@ def arcpy_project(file_path: str, target_crs: str = "EPSG:4490") -> str:
     try:
         bridge = ArcPyBridge.get_instance()
         if not bridge:
-            return "Error: ArcPy 环境未配置或不可用"
+            return t("arcpy.unavailable")
         input_path = _resolve_path(file_path)
         output_path = _generate_output_path("arcpy_projected", "shp")
         result = bridge.call("project", {
@@ -295,7 +296,7 @@ def arcpy_check_geometry(file_path: str) -> dict:
     try:
         bridge = ArcPyBridge.get_instance()
         if not bridge:
-            return {"status": "error", "message": "ArcPy 环境未配置或不可用"}
+            return {"status": "error", "message": t("arcpy.unavailable")}
         input_path = _resolve_path(file_path)
         output_path = _generate_output_path("arcpy_geom_check", "csv")
         result = bridge.call("check_geometry", {
@@ -321,7 +322,7 @@ def arcpy_repair_geometry(file_path: str) -> str:
     try:
         bridge = ArcPyBridge.get_instance()
         if not bridge:
-            return "Error: ArcPy 环境未配置或不可用"
+            return t("arcpy.unavailable")
         input_path = _resolve_path(file_path)
         output_path = _generate_output_path("arcpy_repaired", "shp")
         result = bridge.call("repair_geometry", {
@@ -348,7 +349,7 @@ def arcpy_slope(dem_raster: str, output_measurement: str = "DEGREE") -> str:
     try:
         bridge = ArcPyBridge.get_instance()
         if not bridge:
-            return "Error: ArcPy 环境未配置或不可用"
+            return t("arcpy.unavailable")
         input_path = _resolve_path(dem_raster)
         output_path = _generate_output_path("arcpy_slope", "tif")
         result = bridge.call("slope", {
@@ -379,7 +380,7 @@ def arcpy_zonal_statistics(zone_vector: str, value_raster: str,
     try:
         bridge = ArcPyBridge.get_instance()
         if not bridge:
-            return "Error: ArcPy 环境未配置或不可用"
+            return t("arcpy.unavailable")
         zone_path = _resolve_path(zone_vector)
         raster_path = _resolve_path(value_raster)
         output_path = _generate_output_path("arcpy_zonal_stats", "csv")
@@ -424,7 +425,8 @@ async def arcpy_extract_watershed(dem_path: str, pour_point_x: str = "",
             bridge = ArcPyBridge.get_instance()
             if not bridge:
                 return json.dumps({"status": "error",
-                                   "message": "ArcPy 环境未配置或不可用。请使用开源版 extract_watershed。"})
+                                   "message": t("arcpy.unavailable_watershed")},
+                                  ensure_ascii=False)
 
             # Resolve DEM path — support "auto" download mode
             resolved_dem = dem_path
@@ -439,12 +441,18 @@ async def arcpy_extract_watershed(dem_path: str, pour_point_x: str = "",
                             resolved_dem = parts[-1].strip() if len(parts) > 1 else line.strip()
                             break
                 except Exception as e:
-                    return json.dumps({"status": "error", "message": f"DEM 下载失败: {e}"})
+                    return json.dumps({
+                        "status": "error",
+                        "message": t("arcpy.dem_download_failed", error=e),
+                    }, ensure_ascii=False)
             else:
                 resolved_dem = _resolve_path(dem_path)
 
             if not os.path.exists(resolved_dem):
-                return json.dumps({"status": "error", "message": f"DEM 文件不存在: {resolved_dem}"})
+                return json.dumps({
+                    "status": "error",
+                    "message": t("arcpy.dem_missing", path=resolved_dem),
+                }, ensure_ascii=False)
 
             output_dir = os.path.dirname(_generate_output_path("arcpy_ws", "tmp"))
 
@@ -497,6 +505,9 @@ async def arcpy_extract_watershed(dem_path: str, pour_point_x: str = "",
 
         except Exception as e:
             import json
-            return json.dumps({"status": "error", "message": f"ArcPy 水文分析失败: {str(e)}"})
+            return json.dumps({
+                "status": "error",
+                "message": t("arcpy.watershed_failed", error=e),
+            }, ensure_ascii=False)
 
     return await asyncio.to_thread(_run)

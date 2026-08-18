@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import WorkflowEditor from '../WorkflowEditor';
 import FilePickerDialog from './FilePickerDialog';
-import { getPipelineLabel, formatTime } from './utils';
+import { formatDate, formatNumber, getLocaleHeaders } from '../../i18n';
 
 interface WorkflowSummary {
   id: number;
@@ -39,6 +40,7 @@ interface WorkflowRunSummary {
 }
 
 export default function WorkflowsTab() {
+  const { t } = useTranslation('common');
   const [workflows, setWorkflows] = useState<WorkflowSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -63,7 +65,7 @@ export default function WorkflowsTab() {
   const fetchWorkflows = async () => {
     setLoading(true);
     try {
-      const resp = await fetch('/api/workflows', { credentials: 'include' });
+      const resp = await fetch('/api/workflows', { credentials: 'include', headers: getLocaleHeaders() });
       if (resp.ok) {
         const data = await resp.json();
         setWorkflows(data.workflows || []);
@@ -82,21 +84,21 @@ export default function WorkflowsTab() {
 
   // --- AI Workflow Generator handlers (v23.0) ---
   const handleAiGenerate = async () => {
-    if (!aiDesc.trim()) { setAiError('请描述你想创建的工作流'); return; }
+    if (!aiDesc.trim()) { setAiError(t('workflows.describeRequired')); return; }
     setAiGenerating(true); setAiError(''); setAiPreview(null);
     try {
       const resp = await fetch('/api/workflows/generate', {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({ description: aiDesc.trim() }),
       });
       const data = await resp.json();
       if (resp.ok && data.workflow) {
         setAiPreview(data);
       } else {
-        setAiError(data.error || data.message || 'AI 生成失败，请重试');
+        setAiError(data.error || data.message || t('workflows.aiGenerateFailed'));
       }
-    } catch { setAiError('网络错误'); }
+    } catch { setAiError(t('workflows.networkError')); }
     finally { setAiGenerating(false); }
   };
 
@@ -106,7 +108,7 @@ export default function WorkflowsTab() {
     try {
       const resp = await fetch('/api/workflows', {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify(aiPreview.workflow),
       });
       if (resp.ok) {
@@ -114,9 +116,9 @@ export default function WorkflowsTab() {
         fetchWorkflows();
       } else {
         const data = await resp.json();
-        setAiError(data.error || '保存失败');
+        setAiError(data.error || t('workflows.saveFailed'));
       }
-    } catch { setAiError('网络错误'); }
+    } catch { setAiError(t('workflows.networkError')); }
     finally { setAiSaving(false); }
   };
 
@@ -129,7 +131,7 @@ export default function WorkflowsTab() {
 
   const handleEdit = async (id: number) => {
     try {
-      const resp = await fetch(`/api/workflows/${id}`, { credentials: 'include' });
+      const resp = await fetch(`/api/workflows/${id}`, { credentials: 'include', headers: getLocaleHeaders() });
       if (resp.ok) {
         setEditWorkflow(await resp.json());
         setEditing(true);
@@ -143,14 +145,14 @@ export default function WorkflowsTab() {
         await fetch(`/api/workflows/${wf.id}`, {
           method: 'PUT',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
           body: JSON.stringify(wf),
         });
       } else {
         await fetch('/api/workflows', {
           method: 'POST',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
           body: JSON.stringify(wf),
         });
       }
@@ -161,9 +163,9 @@ export default function WorkflowsTab() {
   };
 
   const handleDelete = async (id: number, name: string) => {
-    if (!confirm(`确定删除工作流「${name}」？`)) return;
+    if (!confirm(t('workflows.deleteConfirm', { name }))) return;
     try {
-      await fetch(`/api/workflows/${id}`, { method: 'DELETE', credentials: 'include' });
+      await fetch(`/api/workflows/${id}`, { method: 'DELETE', credentials: 'include', headers: getLocaleHeaders() });
     } catch { /* ignore */ }
     fetchWorkflows();
   };
@@ -183,7 +185,7 @@ export default function WorkflowsTab() {
       const resp = await fetch(`/api/workflows/${executeTarget}/execute`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({ parameters: { file_path: filePath } }),
       });
       if (resp.ok) {
@@ -193,7 +195,7 @@ export default function WorkflowsTab() {
           setLiveRunId(runId);
           const pollId = setInterval(async () => {
             try {
-              const statusResp = await fetch(`/api/workflows/${executeTarget}/runs/${runId}/status`, { credentials: 'include' });
+              const statusResp = await fetch(`/api/workflows/${executeTarget}/runs/${runId}/status`, { credentials: 'include', headers: getLocaleHeaders() });
               if (statusResp.ok) {
                 const statusData = await statusResp.json();
                 setLiveStatus(statusData);
@@ -228,7 +230,7 @@ export default function WorkflowsTab() {
   const handleViewRuns = async (id: number) => {
     setViewRunsFor(id);
     try {
-      const resp = await fetch(`/api/workflows/${id}/runs?limit=10`, { credentials: 'include' });
+      const resp = await fetch(`/api/workflows/${id}/runs?limit=10`, { credentials: 'include', headers: getLocaleHeaders() });
       if (resp.ok) {
         const data = await resp.json();
         setRuns(data.runs || []);
@@ -251,11 +253,11 @@ export default function WorkflowsTab() {
     return (
       <div className="workflow-runs-view">
         <button className="asset-back-btn" onClick={() => { setViewRunsFor(null); setRuns([]); setExpandedRun(null); }}>
-          &larr; 返回列表
+          &larr; {t('workflows.backToList')}
         </button>
-        <h4>{wf?.workflow_name} — 执行历史</h4>
+        <h4>{t('workflows.executionHistory', { name: wf?.workflow_name || '' })}</h4>
         {runs.length === 0 ? (
-          <div className="empty-state">暂无执行记录</div>
+          <div className="empty-state">{t('workflows.noRuns')}</div>
         ) : (
           <div className="workflow-runs-list">
             {runs.map((r) => (
@@ -265,16 +267,16 @@ export default function WorkflowsTab() {
                   style={{ cursor: 'pointer' }}
                   onClick={() => setExpandedRun(expandedRun === r.id ? null : r.id)}
                 >
-                  <span className={`workflow-run-status ${r.status}`}>{r.status}</span>
-                  <span className="workflow-run-time">{formatTime(r.started_at)}</span>
-                  <span style={{ marginLeft: 'auto', fontSize: 11, color: '#9ca3af' }}>
-                    {expandedRun === r.id ? '▼' : '▶'} {r.step_results?.length || 0} 步
+                  <span className={`workflow-run-status ${r.status}`}>{t(`statusLabels.${r.status}`, { defaultValue: r.status })}</span>
+                  <span className="workflow-run-time">{formatDate(r.started_at, { dateStyle: 'short', timeStyle: 'short' })}</span>
+                  <span style={{ marginInlineStart: 'auto', fontSize: 11, color: '#9ca3af' }}>
+                    {expandedRun === r.id ? '▼' : '▶'} {t('workflows.stepCount', { count: r.step_results?.length || 0 })}
                   </span>
                 </div>
                 <div className="workflow-run-detail">
                   <span>{r.total_duration?.toFixed(1)}s</span>
-                  <span>{(r.total_input_tokens + r.total_output_tokens).toLocaleString()} tokens</span>
-                  {r.completed_at && <span>完成: {formatTime(r.completed_at)}</span>}
+                  <span>{formatNumber(r.total_input_tokens + r.total_output_tokens)} tokens</span>
+                  {r.completed_at && <span>{t('workflows.completedAt', { time: formatDate(r.completed_at, { dateStyle: 'short', timeStyle: 'short' }) })}</span>}
                 </div>
                 {r.error_message && (
                   <div className="workflow-run-error">{r.error_message}</div>
@@ -282,17 +284,17 @@ export default function WorkflowsTab() {
                 {/* Expanded step details */}
                 {expandedRun === r.id && r.step_results && r.step_results.length > 0 && (
                   <div style={{ marginTop: 8, borderTop: '1px solid #e5e7eb', paddingTop: 8 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 6, color: '#374151' }}>步骤详情</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 6, color: '#374151' }}>{t('workflows.stepDetails')}</div>
                     {r.step_results.map((step, idx) => (
                       <div key={idx} style={{
                         display: 'flex', flexDirection: 'column', gap: 2,
                         padding: '6px 8px', marginBottom: 4,
                         background: step.status === 'completed' ? '#f0fdf4' : step.status === 'failed' ? '#fef2f2' : '#f9fafb',
-                        borderRadius: 4, fontSize: 11, borderLeft: `3px solid ${step.status === 'completed' ? '#22c55e' : step.status === 'failed' ? '#ef4444' : '#d1d5db'}`,
+                        borderRadius: 4, fontSize: 11, borderInlineStart: `3px solid ${step.status === 'completed' ? '#22c55e' : step.status === 'failed' ? '#ef4444' : '#d1d5db'}`,
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontWeight: 600 }}>
-                            {idx + 1}. {step.label || step.node_id || `步骤 ${idx + 1}`}
+                            {idx + 1}. {step.label || step.node_id || t('workflows.stepNumber', { number: idx + 1 })}
                           </span>
                           <span style={{ color: step.status === 'completed' ? '#16a34a' : step.status === 'failed' ? '#dc2626' : '#6b7280' }}>
                             {step.status || 'unknown'}
@@ -312,12 +314,12 @@ export default function WorkflowsTab() {
                         )}
                         {step.files && step.files.length > 0 && (
                           <div style={{ marginTop: 4, fontSize: 10, color: '#0d9488' }}>
-                            生成文件: {step.files.join(', ')}
+                            {t('workflows.generatedFiles')}: {step.files.join(', ')}
                           </div>
                         )}
                         {step.error && (
                           <div style={{ marginTop: 4, color: '#dc2626', fontSize: 10 }}>
-                            错误: {step.error}
+                            {t('workflows.error')}: {step.error}
                           </div>
                         )}
                       </div>
@@ -326,7 +328,7 @@ export default function WorkflowsTab() {
                 )}
                 {expandedRun === r.id && (!r.step_results || r.step_results.length === 0) && (
                   <div style={{ marginTop: 8, fontSize: 11, color: '#9ca3af', fontStyle: 'italic' }}>
-                    无步骤详情记录
+                    {t('workflows.noStepDetails')}
                   </div>
                 )}
               </div>
@@ -340,39 +342,39 @@ export default function WorkflowsTab() {
   return (
     <div className="workflows-view">
       <div className="workflows-header">
-        <button className="btn-primary btn-sm" onClick={handleCreate}>+ 新建工作流</button>
+        <button className="btn-primary btn-sm" onClick={handleCreate}>+ {t('workflows.newWorkflow')}</button>
         <button className="btn-primary btn-sm" onClick={() => { setShowAiGen(!showAiGen); setAiPreview(null); setAiError(''); }}
-          style={{ background: '#8b5cf6', marginLeft: 6 }}>✨ AI生成</button>
+          style={{ background: '#8b5cf6', marginInlineStart: 6 }}>AI {t('workflows.generate')}</button>
       </div>
 
       {/* AI Workflow Generator Panel (v23.0) */}
       {showAiGen && (
         <div style={{ margin: '8px 0', padding: 12, background: '#faf5ff', borderRadius: 8, border: '1px solid #c4b5fd' }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#8b5cf6', marginBottom: 8 }}>✨ AI 辅助创建工作流</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#8b5cf6', marginBottom: 8 }}>AI {t('workflows.aiAssistedCreation')}</div>
           {!aiPreview ? (
             <>
               <textarea
-                placeholder={"用自然语言描述工作流，例如：\n• 先做数据画像，再检查拓扑，最后生成专题图\n• 并行执行生态评估和耕地合规检查，然后合并结果做用地优化\n• 加载遥感影像，计算NDVI，检测植被变化，生成报告"}
+                placeholder={t('workflows.aiDescriptionPlaceholder')}
                 rows={4} maxLength={2000}
                 value={aiDesc} onChange={e => setAiDesc(e.target.value)}
                 style={{ width: '100%', fontSize: 12, lineHeight: 1.6, padding: 8, borderRadius: 6, border: '1px solid #d1d5db', resize: 'vertical' }}
               />
               {aiError && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{aiError}</div>}
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                <button className="btn-secondary btn-sm" onClick={() => setShowAiGen(false)}>取消</button>
+                <button className="btn-secondary btn-sm" onClick={() => setShowAiGen(false)}>{t('workflows.cancel')}</button>
                 <button className="btn-primary btn-sm" disabled={aiGenerating || !aiDesc.trim()}
                   onClick={handleAiGenerate} style={{ background: '#8b5cf6' }}>
-                  {aiGenerating ? '生成中...' : '生成工作流'}
+                  {aiGenerating ? t('workflows.generating') : t('workflows.generateWorkflow')}
                 </button>
               </div>
             </>
           ) : (
             <>
-              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>AI 已生成以下工作流，请确认或编辑后保存：</div>
+              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>{t('workflows.aiPreviewHint')}</div>
               <div style={{ background: '#fff', borderRadius: 6, padding: 10, fontSize: 12, lineHeight: 1.7, border: '1px solid #e5e7eb' }}>
-                <div><b>名称:</b> {aiPreview.workflow?.workflow_name}</div>
-                <div><b>描述:</b> {aiPreview.workflow?.description}</div>
-                <div style={{ marginTop: 6 }}><b>步骤 ({aiPreview.workflow?.steps?.length || 0}):</b></div>
+                <div><b>{t('workflows.name')}:</b> {aiPreview.workflow?.workflow_name}</div>
+                <div><b>{t('workflows.description')}:</b> {aiPreview.workflow?.description}</div>
+                <div style={{ marginTop: 6 }}><b>{t('workflows.steps', { count: aiPreview.workflow?.steps?.length || 0 })}:</b></div>
                 {(aiPreview.workflow?.steps || []).map((step: any, i: number) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', fontSize: 11 }}>
                     <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#8b5cf6', color: '#fff',
@@ -394,11 +396,11 @@ export default function WorkflowsTab() {
               </div>
               {aiError && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{aiError}</div>}
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                <button className="btn-secondary btn-sm" onClick={() => { setAiPreview(null); setAiDesc(''); }}>重新生成</button>
-                <button className="btn-secondary btn-sm" onClick={handleAiEdit}>编辑后保存</button>
+                <button className="btn-secondary btn-sm" onClick={() => { setAiPreview(null); setAiDesc(''); }}>{t('workflows.regenerate')}</button>
+                <button className="btn-secondary btn-sm" onClick={handleAiEdit}>{t('workflows.editBeforeSave')}</button>
                 <button className="btn-primary btn-sm" disabled={aiSaving} onClick={handleAiSave}
                   style={{ background: '#8b5cf6' }}>
-                  {aiSaving ? '保存中...' : '直接保存'}
+                  {aiSaving ? t('workflows.saving') : t('workflows.saveDirectly')}
                 </button>
               </div>
             </>
@@ -406,9 +408,9 @@ export default function WorkflowsTab() {
         </div>
       )}
       {loading && workflows.length === 0 ? (
-        <div className="empty-state">加载中...</div>
+        <div className="empty-state">{t('workflows.loading')}</div>
       ) : workflows.length === 0 ? (
-        <div className="empty-state">暂无工作流<br />点击上方按钮创建</div>
+        <div className="empty-state">{t('workflows.empty')}<br />{t('workflows.emptyHint')}</div>
       ) : (
         <div className="workflow-list">
           {/* Live execution status panel */}
@@ -416,7 +418,7 @@ export default function WorkflowsTab() {
             <div className="workflow-live-status">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <div style={{ fontSize: 12, fontWeight: 600 }}>
-                  {liveStatus.status === 'completed' ? 'v 已完成' : liveStatus.status === 'failed' ? 'x 执行失败' : '>> 执行中...'} (Run #{liveRunId || ''})
+                  {liveStatus.status === 'completed' ? t('workflows.completed') : liveStatus.status === 'failed' ? t('workflows.executionFailed') : t('workflows.executing')} (Run #{liveRunId || ''})
                 </div>
                 <div style={{ fontSize: 11, color: '#6b7280' }}>
                   {liveStatus.elapsed ? `${liveStatus.elapsed.toFixed(0)}s` : ''}
@@ -432,7 +434,7 @@ export default function WorkflowsTab() {
                 return (
                   <div style={{ marginBottom: 8 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#6b7280', marginBottom: 4 }}>
-                      <span>进度: {completed}/{total} 步骤</span>
+                      <span>{t('workflows.progress', { completed, total })}</span>
                       <span>{progress.toFixed(0)}%</span>
                     </div>
                     <div style={{ height: 4, background: '#e5e7eb', borderRadius: 2, overflow: 'hidden' }}>
@@ -461,7 +463,7 @@ export default function WorkflowsTab() {
               <div className="workflow-card-header">
                 <span className="workflow-card-name">{wf.workflow_name}</span>
                 {wf.cron_schedule && (
-                  <span className="workflow-cron-badge" title={`Cron: ${wf.cron_schedule}`}>定时</span>
+                  <span className="workflow-cron-badge" title={`Cron: ${wf.cron_schedule}`}>{t('workflows.scheduled')}</span>
                 )}
               </div>
               {wf.description && (
@@ -469,18 +471,18 @@ export default function WorkflowsTab() {
               )}
               <div className="workflow-card-meta">
                 <span className={`pipeline-badge ${wf.pipeline_type}`}>
-                  {getPipelineLabel(wf.pipeline_type)}
+                  {t(`workflowEditor.pipelineTypes.${wf.pipeline_type}`, { defaultValue: wf.pipeline_type })}
                 </span>
-                <span>执行 {wf.use_count} 次</span>
+                <span>{t('workflows.executionCount', { count: wf.use_count })}</span>
               </div>
               <div className="workflow-card-actions">
                 <button onClick={() => handleExecute(wf.id)} disabled={executing === wf.id}>
-                  {executing === wf.id ? '执行中...' : '执行'}
+                  {executing === wf.id ? t('workflows.executing') : t('workflows.execute')}
                 </button>
-                <button onClick={() => handleEdit(wf.id)}>编辑</button>
-                <button onClick={() => handleViewRuns(wf.id)}>历史</button>
+                <button onClick={() => handleEdit(wf.id)}>{t('workflows.edit')}</button>
+                <button onClick={() => handleViewRuns(wf.id)}>{t('workflows.history')}</button>
                 <button className="btn-danger" onClick={() => handleDelete(wf.id, wf.workflow_name)}>
-                  删除
+                  {t('workflows.delete')}
                 </button>
               </div>
             </div>

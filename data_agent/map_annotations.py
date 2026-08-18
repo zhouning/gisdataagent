@@ -8,6 +8,7 @@ from sqlalchemy import text
 from .db_engine import get_engine
 from .database_tools import _inject_user_context, TABLE_PREFIX
 from .user_context import current_user_id
+from .i18n import t as translate
 
 T_MAP_ANNOTATIONS = f"{TABLE_PREFIX}map_annotations"
 
@@ -52,7 +53,7 @@ def create_annotation(username: str, lng: float, lat: float,
     """Create a new map annotation."""
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置"}
+        return {"status": "error", "message": translate("annotation.db_unavailable")}
 
     try:
         with engine.connect() as conn:
@@ -81,7 +82,7 @@ def create_annotation(username: str, lng: float, lat: float,
                 },
             }
     except Exception as e:
-        return {"status": "error", "message": f"创建标注失败: {e}"}
+        return {"status": "error", "message": translate("annotation.create_failed", error=e)}
 
 
 def list_annotations(username: str, team_id: int = None) -> dict:
@@ -128,7 +129,11 @@ def list_annotations(username: str, team_id: int = None) -> dict:
                 })
             return {"annotations": annotations, "count": len(annotations)}
     except Exception as e:
-        return {"annotations": [], "count": 0, "error": str(e)}
+        return {
+            "annotations": [],
+            "count": 0,
+            "error": translate("annotation.list_failed", error=e),
+        }
 
 
 def update_annotation(annotation_id: int, username: str,
@@ -137,7 +142,7 @@ def update_annotation(annotation_id: int, username: str,
     """Update an annotation (owner only)."""
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置"}
+        return {"status": "error", "message": translate("annotation.db_unavailable")}
 
     updates = []
     params: dict = {"id": annotation_id, "u": username}
@@ -156,7 +161,7 @@ def update_annotation(annotation_id: int, username: str,
         params["color"] = color[:20]
 
     if not updates:
-        return {"status": "error", "message": "无更新字段"}
+        return {"status": "error", "message": translate("annotation.no_updates")}
 
     try:
         with engine.connect() as conn:
@@ -168,17 +173,17 @@ def update_annotation(annotation_id: int, username: str,
             """), params)
             conn.commit()
             if result.rowcount == 0:
-                return {"status": "error", "message": "标注不存在或无权限"}
-            return {"status": "success", "message": "标注已更新"}
+                return {"status": "error", "message": translate("annotation.not_found_or_denied")}
+            return {"status": "success", "message": translate("annotation.updated")}
     except Exception as e:
-        return {"status": "error", "message": f"更新失败: {e}"}
+        return {"status": "error", "message": translate("annotation.update_failed", error=e)}
 
 
 def delete_annotation(annotation_id: int, username: str) -> dict:
     """Delete an annotation (owner only)."""
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置"}
+        return {"status": "error", "message": translate("annotation.db_unavailable")}
 
     try:
         with engine.connect() as conn:
@@ -189,7 +194,7 @@ def delete_annotation(annotation_id: int, username: str) -> dict:
             """), {"id": annotation_id, "u": username})
             conn.commit()
             if result.rowcount == 0:
-                return {"status": "error", "message": "标注不存在或无权限"}
-            return {"status": "success", "message": "标注已删除"}
+                return {"status": "error", "message": translate("annotation.not_found_or_denied")}
+            return {"status": "success", "message": translate("annotation.deleted")}
     except Exception as e:
-        return {"status": "error", "message": f"删除失败: {e}"}
+        return {"status": "error", "message": translate("annotation.delete_failed", error=e)}

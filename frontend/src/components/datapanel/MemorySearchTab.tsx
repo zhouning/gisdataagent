@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatDate, formatNumber, getLocaleHeaders } from '../../i18n';
 
 interface Memory {
   id: number;
@@ -10,15 +12,16 @@ interface Memory {
 }
 
 const MEMORY_TYPES = [
-  { value: '', label: '全部' },
-  { value: 'region', label: '区域' },
-  { value: 'viz_preference', label: '可视化偏好' },
-  { value: 'analysis_result', label: '分析结果' },
-  { value: 'auto_extract', label: '自动提取' },
-  { value: 'custom', label: '自定义' },
+  { value: '', labelKey: 'all' },
+  { value: 'region', labelKey: 'region' },
+  { value: 'viz_preference', labelKey: 'visualizationPreference' },
+  { value: 'analysis_result', labelKey: 'analysisResult' },
+  { value: 'auto_extract', labelKey: 'autoExtract' },
+  { value: 'custom', labelKey: 'custom' },
 ];
 
 export default function MemorySearchTab() {
+  const { t, i18n } = useTranslation();
   const [keyword, setKeyword] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [memories, setMemories] = useState<Memory[]>([]);
@@ -31,14 +34,17 @@ export default function MemorySearchTab() {
       const params = new URLSearchParams();
       if (kw) params.set('keyword', kw);
       if (tp) params.set('type', tp);
-      const r = await fetch(`/api/memory/search?${params}`, { credentials: 'include' });
+      const r = await fetch(`/api/memory/search?${params}`, {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       if (r.ok) {
         const d = await r.json();
         setMemories(d.memories || []);
       }
     } catch { /* ignore */ }
     finally { setLoading(false); setSearched(true); }
-  }, []);
+  }, [i18n.resolvedLanguage]);
 
   // Debounced search on keyword change
   useEffect(() => {
@@ -49,11 +55,17 @@ export default function MemorySearchTab() {
   }, [keyword, typeFilter, doSearch]);
 
   // Initial load
-  useEffect(() => { doSearch('', ''); }, [doSearch]);
+  useEffect(() => {
+    if (!keyword && !typeFilter) doSearch('', '');
+  }, [doSearch, keyword, typeFilter]);
 
   const handleDelete = async (id: number) => {
-    if (!confirm('确定删除此记忆？')) return;
-    await fetch(`/api/user/memories/${id}`, { method: 'DELETE', credentials: 'include' });
+    if (!confirm(t('memorySearch.confirm.delete'))) return;
+    await fetch(`/api/user/memories/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: getLocaleHeaders(),
+    });
     doSearch(keyword, typeFilter);
   };
 
@@ -65,11 +77,16 @@ export default function MemorySearchTab() {
     return m[t] || '#888';
   };
 
+  const typeLabel = (type: string) => {
+    const option = MEMORY_TYPES.find(item => item.value === type);
+    return option ? t(`memorySearch.types.${option.labelKey}`) : type;
+  };
+
   return (
     <div style={{ padding: '8px 12px', fontSize: 13 }}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
         <input
-          placeholder="搜索记忆（关键词）..."
+          placeholder={t('memorySearch.search.placeholder')}
           value={keyword}
           onChange={e => setKeyword(e.target.value)}
           style={{
@@ -86,21 +103,21 @@ export default function MemorySearchTab() {
           }}
         >
           {MEMORY_TYPES.map(t => (
-            <option key={t.value} value={t.value}>{t.label}</option>
+            <option key={t.value} value={t.value}>{typeLabel(t.value)}</option>
           ))}
         </select>
       </div>
 
       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary, #888)', cursor: 'pointer', margin: '4px 0' }}>
         <input type="checkbox" checked={typeFilter === 'auto_extract'} onChange={() => setTypeFilter(typeFilter === 'auto_extract' ? '' : 'auto_extract')} />
-        仅显示自动提取
+        {t('memorySearch.filters.autoExtractOnly')}
       </label>
 
-      {loading && <div style={{ color: '#888', textAlign: 'center', padding: 16 }}>搜索中...</div>}
+      {loading && <div style={{ color: '#888', textAlign: 'center', padding: 16 }}>{t('memorySearch.common.searching')}</div>}
 
       {!loading && searched && memories.length === 0 && (
         <div style={{ color: '#888', textAlign: 'center', padding: 24 }}>
-          {keyword || typeFilter ? '未找到匹配的记忆' : '暂无记忆数据'}
+          {keyword || typeFilter ? t('memorySearch.empty.noMatches') : t('memorySearch.empty.noData')}
         </div>
       )}
 
@@ -113,17 +130,17 @@ export default function MemorySearchTab() {
             <div>
               <span style={{ fontWeight: 600, color: '#e0e0e0' }}>{m.key}</span>
               <span style={{
-                marginLeft: 8, fontSize: 10, padding: '1px 6px', borderRadius: 3,
+                marginInlineStart: 8, fontSize: 10, padding: '1px 6px', borderRadius: 3,
                 background: `${typeColor(m.type)}20`, color: typeColor(m.type),
-              }}>{m.type}</span>
+              }}>{typeLabel(m.type)}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 11, color: '#666' }}>
-                {m.updated_at ? new Date(m.updated_at).toLocaleDateString() : ''}
+                {m.updated_at ? formatDate(m.updated_at, { dateStyle: 'medium' }) : ''}
               </span>
               <button onClick={() => handleDelete(m.id)}
                 style={{ fontSize: 11, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
-                删除
+                {t('memorySearch.actions.delete')}
               </button>
             </div>
           </div>
@@ -134,7 +151,7 @@ export default function MemorySearchTab() {
       ))}
 
       <div style={{ fontSize: 11, color: '#555', textAlign: 'center', marginTop: 8 }}>
-        共 {memories.length} 条记忆
+        {t('memorySearch.summary.count', { count: formatNumber(memories.length) })}
       </div>
     </div>
   );

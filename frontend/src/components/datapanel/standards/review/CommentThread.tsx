@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { formatNumber } from "../../../../i18n";
 import { ReviewComment, listReviewComments, postReviewComment,
          resolveReviewComment } from "../standardsApi";
 
@@ -11,6 +13,7 @@ interface Props {
 
 export default function CommentThread({roundId, clauseId, isReviewer,
                                       onChanged}: Props) {
+  const { t } = useTranslation();
   const [comments, setComments] = useState<ReviewComment[]>([]);
   const [draft, setDraft] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
@@ -32,7 +35,7 @@ export default function CommentThread({roundId, clauseId, isReviewer,
       refresh();
       onChanged?.();
     } catch (e: any) {
-      alert(`发表失败: ${e.message}`);
+      alert(t("standards.review.comments.postFailed", {message: e.message}));
     } finally {
       setBusy(false);
     }
@@ -45,33 +48,35 @@ export default function CommentThread({roundId, clauseId, isReviewer,
       refresh();
       onChanged?.();
     } catch (e: any) {
-      alert(`解决失败: ${e.message}`);
+      alert(t("standards.review.comments.resolveFailed", {message: e.message}));
     }
   };
 
   return (
     <div style={{padding: 8}}>
-      <h4>评论 ({comments.filter(c => c.resolution === "open").length} 未决)</h4>
+      <h4>{t("standards.review.comments.title", {
+        count: formatNumber(comments.filter(c => c.resolution === "open").length),
+      })}</h4>
       {comments.map(c => (
         <div key={c.id}
              style={{padding: 6, marginBottom: 4,
-                      marginLeft: c.parent_comment_id ? 16 : 0,
+                      marginInlineStart: c.parent_comment_id ? 16 : 0,
                       background: c.resolution === "open" ? "#fff8e8" : "#f5f5f5",
                       border: "1px solid #ddd", borderRadius: 4}}>
           <div style={{fontSize: 11, color: "#666"}}>
-            {c.author_user_id} · {c.resolution}
+            {c.author_user_id} · {t(`standards.review.comments.resolution.${c.resolution}`, {defaultValue: c.resolution})}
           </div>
           <div style={{fontSize: 12, whiteSpace: "pre-wrap"}}>{c.body_md}</div>
           {isReviewer && c.resolution === "open" && (
             <div style={{display: "flex", gap: 4, marginTop: 4}}>
               <button onClick={() => resolve(c.id, "accepted")}
-                      style={{fontSize: 11}}>✓ 接受</button>
+                      style={{fontSize: 11}}>{t("standards.review.comments.accept")}</button>
               <button onClick={() => resolve(c.id, "rejected")}
-                      style={{fontSize: 11}}>✗ 拒绝</button>
+                      style={{fontSize: 11}}>{t("standards.review.comments.reject")}</button>
               <button onClick={() => resolve(c.id, "duplicate")}
-                      style={{fontSize: 11}}>= 重复</button>
+                      style={{fontSize: 11}}>{t("standards.review.comments.duplicate")}</button>
               <button onClick={() => setReplyTo(c.id)}
-                      style={{fontSize: 11}}>↳ 回复</button>
+                      style={{fontSize: 11}}>{t("standards.review.comments.reply")}</button>
             </div>
           )}
         </div>
@@ -80,17 +85,17 @@ export default function CommentThread({roundId, clauseId, isReviewer,
         <div style={{marginTop: 8}}>
           {replyTo && (
             <div style={{fontSize: 11, color: "#666"}}>
-              回复: {replyTo.slice(0, 8)}…{" "}
-              <button onClick={() => setReplyTo(null)}>取消</button>
+              {t("standards.review.comments.replyingTo", {id: replyTo.slice(0, 8)})}{" "}
+              <button onClick={() => setReplyTo(null)}>{t("standards.review.comments.cancel")}</button>
             </div>
           )}
           <textarea value={draft} onChange={e => setDraft(e.target.value)}
-                    placeholder="评论内容…"
+                    placeholder={t("standards.review.comments.placeholder")}
                     rows={3} style={{width: "100%", boxSizing: "border-box"}}/>
           <button onClick={post} disabled={busy || !draft.trim()}
                   style={{padding: 6, background: "#0a7", color: "#fff",
                           border: "none", borderRadius: 4}}>
-            发表
+            {busy ? t("standards.review.comments.posting") : t("standards.review.comments.post")}
           </button>
         </div>
       )}

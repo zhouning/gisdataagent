@@ -42,6 +42,7 @@ SPATIAL_EXTENSIONS = {".shp", ".geojson", ".gpkg", ".kml", ".kmz", ".csv", ".xls
 class AnalysisSuggestion:
     """A single analysis suggestion."""
     suggestion_id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
+    template_key: str = ""
     title: str = ""
     description: str = ""
     pipeline_type: str = "general"
@@ -52,6 +53,7 @@ class AnalysisSuggestion:
     def to_dict(self) -> dict:
         return {
             "suggestion_id": self.suggestion_id,
+            "template_key": self.template_key,
             "title": self.title,
             "description": self.description,
             "pipeline_type": self.pipeline_type,
@@ -201,6 +203,7 @@ _SUGGESTION_TEMPLATES = [
     {
         "condition": lambda p: p.get("geometry_types") and "Polygon" in str(p.get("geometry_types", [])),
         "suggestion": AnalysisSuggestion(
+            template_key="spatialAutocorrelation",
             title="空间自相关分析",
             description="对多边形数据执行 Moran's I 空间自相关检验，发现空间聚类模式",
             pipeline_type="general",
@@ -211,6 +214,7 @@ _SUGGESTION_TEMPLATES = [
     {
         "condition": lambda p: p.get("geometry_types") and "Point" in str(p.get("geometry_types", [])),
         "suggestion": AnalysisSuggestion(
+            template_key="hotspotAnalysis",
             title="热点分析",
             description="对点数据执行 Getis-Ord Gi* 热点分析，识别统计显著的热/冷点",
             pipeline_type="general",
@@ -221,6 +225,7 @@ _SUGGESTION_TEMPLATES = [
     {
         "condition": lambda p: p.get("row_count", 0) > 100 and p.get("geometry_types"),
         "suggestion": AnalysisSuggestion(
+            template_key="dataQualityAudit",
             title="数据质量审计",
             description="对空间数据执行拓扑检查、属性完整性验证和规范符合性审计",
             pipeline_type="governance",
@@ -231,6 +236,7 @@ _SUGGESTION_TEMPLATES = [
     {
         "condition": lambda p: p.get("has_coordinates"),
         "suggestion": AnalysisSuggestion(
+            template_key="spatialVisualization",
             title="空间可视化",
             description="将CSV坐标数据可视化为交互式地图",
             pipeline_type="general",
@@ -241,6 +247,7 @@ _SUGGESTION_TEMPLATES = [
     {
         "condition": lambda p: p.get("numeric_columns") and len(p.get("numeric_columns", [])) >= 2,
         "suggestion": AnalysisSuggestion(
+            template_key="idwInterpolation",
             title="IDW 空间插值",
             description="使用反距离加权法对数值属性进行空间插值",
             pipeline_type="general",
@@ -260,6 +267,7 @@ def generate_suggestions(profile: dict, file_path: str) -> list[AnalysisSuggesti
         try:
             if template["condition"](profile):
                 suggestion = AnalysisSuggestion(
+                    template_key=template["suggestion"].template_key,
                     title=template["suggestion"].title,
                     description=template["suggestion"].description,
                     pipeline_type=template["suggestion"].pipeline_type,

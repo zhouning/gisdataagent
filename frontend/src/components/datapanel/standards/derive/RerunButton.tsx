@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { formatNumber } from "../../../../i18n";
 import { rerunDerivation } from "../standardsApi";
 
 interface Props {
@@ -8,6 +10,7 @@ interface Props {
 }
 
 export default function RerunButton({versionId, isAdmin, onCompleted}: Props) {
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -19,13 +22,17 @@ export default function RerunButton({versionId, isAdmin, onCompleted}: Props) {
       const r = await rerunDerivation(versionId);
       const summary = Object.entries(r.results)
         .map(([k, v]: [string, any]) => v.ok
-          ? `${k}: +${v.new ?? 0} new / ${v.staled ?? 0} stale`
-          : `${k}: 失败 — ${v.error}`)
+          ? t("standards.derive.rerun.strategySuccess", {
+              strategy: k,
+              created: formatNumber(v.new ?? 0),
+              stale: formatNumber(v.staled ?? 0),
+            })
+          : t("standards.derive.rerun.strategyFailed", {strategy: k, message: v.error}))
         .join("; ");
-      setMsg(summary || "无 active strategy");
+      setMsg(summary || t("standards.derive.rerun.noActiveStrategy"));
       onCompleted();
     } catch (e: any) {
-      setMsg(`失败: ${e.message}`);
+      setMsg(t("standards.derive.rerun.failed", {message: e.message}));
     } finally {
       setBusy(false);
     }
@@ -35,13 +42,13 @@ export default function RerunButton({versionId, isAdmin, onCompleted}: Props) {
     <div>
       <button onClick={rerun}
               disabled={!versionId || !isAdmin || busy}
-              title={!isAdmin ? "仅 admin 可重派生" :
-                     !versionId ? "请先选版本" : ""}
+              title={!isAdmin ? t("standards.derive.rerun.adminOnly") :
+                     !versionId ? t("standards.derive.rerun.selectVersion") : ""}
               style={{padding: "6px 16px", width: "100%",
                       background: (versionId && isAdmin) ? "#06c" : "#ddd",
                       color: "#fff", border: "none", borderRadius: 4,
                       cursor: (versionId && isAdmin) ? "pointer" : "not-allowed"}}>
-        {busy ? "重派生中…" : "重派生"}
+        {busy ? t("standards.derive.rerun.running") : t("standards.derive.rerun.action")}
       </button>
       {msg && (
         <div style={{marginTop: 8, padding: 6, fontSize: 11,

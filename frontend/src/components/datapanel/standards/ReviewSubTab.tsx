@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { formatNumber, getLocaleHeaders } from "../../../i18n";
 import { ReviewRound } from "./standardsApi";
 import RoundSelector from "./review/RoundSelector";
 import ClauseAuditList from "./review/ClauseAuditList";
@@ -21,6 +23,7 @@ interface ReferenceRow {
 }
 
 export default function ReviewSubTab({versionId, userRole, username}: Props) {
+  const { t } = useTranslation();
   const [round, setRound] = useState<ReviewRound | null>(null);
   const [clauseId, setClauseId] = useState<string | null>(null);
   const [refs, setRefs] = useState<ReferenceRow[]>([]);
@@ -34,7 +37,10 @@ export default function ReviewSubTab({versionId, userRole, username}: Props) {
 
   useEffect(() => {
     if (!round || !clauseId) { setRefs([]); return; }
-    fetch(`/api/std/clauses/${clauseId}/references`)
+    fetch(`/api/std/clauses/${clauseId}/references`, {
+      credentials: "include",
+      headers: getLocaleHeaders(),
+    })
       .then(r => r.ok ? r.json() : {references: []})
       .then(j => setRefs(j.references || []))
       .catch(() => setRefs([]));
@@ -42,7 +48,7 @@ export default function ReviewSubTab({versionId, userRole, username}: Props) {
 
   if (!versionId) {
     return <div style={{padding: 24, color: "#888"}}>
-      请先在「分析」选择一个文档版本
+      {t("standards.review.selectVersion")}
     </div>;
   }
 
@@ -68,8 +74,8 @@ export default function ReviewSubTab({versionId, userRole, username}: Props) {
             <div style={{padding: 8, overflow: "auto"}}>
               {clauseId && (
                 <>
-                  <h4>引用 ({pendingCount} 待审)</h4>
-                  {refs.length === 0 && <div style={{color:"#888"}}>无引用</div>}
+                  <h4>{t("standards.review.referencesTitle", {count: formatNumber(pendingCount)})}</h4>
+                  {refs.length === 0 && <div style={{color:"#888"}}>{t("standards.review.noReferences")}</div>}
                   {refs.map(r => (
                     <ReferenceAuditCard
                       key={r.id} reference={r} roundId={round.id}
@@ -92,7 +98,7 @@ export default function ReviewSubTab({versionId, userRole, username}: Props) {
           </>
         ) : (
           <div style={{gridColumn: "2 / 5", padding: 24, color: "#888"}}>
-            请选择一个 round
+            {t("standards.review.selectRound")}
           </div>
         )}
       </div>

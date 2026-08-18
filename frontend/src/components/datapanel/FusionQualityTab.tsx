@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
+import { formatDate, formatNumber, getLocaleHeaders } from '../../i18n';
 
 /* ------------------------------------------------------------------
    Types
@@ -63,22 +66,23 @@ interface MmfeReadiness {
    Helpers
    ------------------------------------------------------------------ */
 
-function confidenceBadge(score: number | null): { label: string; color: string } {
+function confidenceBadge(score: number | null, t: TFunction): { label: string; color: string } {
   if (score === null) return { label: '—', color: '#888' };
-  if (score >= 0.7) return { label: '高', color: '#10b981' };
-  if (score >= 0.3) return { label: '中', color: '#f59e0b' };
-  return { label: '低', color: '#ef4444' };
+  if (score >= 0.7) return { label: t('fusionQuality.confidence.high'), color: '#10b981' };
+  if (score >= 0.3) return { label: t('fusionQuality.confidence.medium'), color: '#f59e0b' };
+  return { label: t('fusionQuality.confidence.low'), color: '#ef4444' };
 }
 
-function statusBadge(status: string): { label: string; color: string; background: string } {
-  if (status === 'pass') return { label: '通过', color: '#047857', background: '#d1fae5' };
-  if (status === 'warn') return { label: '警告', color: '#b45309', background: '#fef3c7' };
-  return { label: '失败', color: '#b91c1c', background: '#fee2e2' };
+function statusBadge(status: string, t: TFunction): { label: string; color: string; background: string } {
+  if (status === 'pass') return { label: t('fusionQuality.status.pass'), color: '#047857', background: '#d1fae5' };
+  if (status === 'warn') return { label: t('fusionQuality.status.warn'), color: '#b45309', background: '#fef3c7' };
+  return { label: t('fusionQuality.status.fail'), color: '#b91c1c', background: '#fee2e2' };
 }
 
 function formatEvidenceValue(value: unknown): string {
   if (value === null || value === undefined) return '—';
-  if (Array.isArray(value)) return value.join(', ');
+  if (typeof value === 'number') return formatNumber(value, { maximumFractionDigits: 4 });
+  if (Array.isArray(value)) return value.map(formatEvidenceValue).join(', ');
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
 }
@@ -114,6 +118,7 @@ function compactEvidence(check: DiagnosticCheck): string {
    ------------------------------------------------------------------ */
 
 export default function FusionQualityTab() {
+  const { t } = useTranslation();
   const [operations, setOperations] = useState<FusionOperation[]>([]);
   const [selected, setSelected] = useState<QualityDetail | null>(null);
   const [readiness, setReadiness] = useState<MmfeReadiness | null>(null);
@@ -125,7 +130,7 @@ export default function FusionQualityTab() {
     setReadinessLoading(true);
     setError(null);
     try {
-      const resp = await fetch('/api/fusion/mmfe/readiness');
+      const resp = await fetch('/api/fusion/mmfe/readiness', { credentials: 'include', headers: getLocaleHeaders() });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       setReadiness(data);
@@ -141,7 +146,7 @@ export default function FusionQualityTab() {
     setLoading(true);
     setError(null);
     try {
-      const resp = await fetch('/api/fusion/operations?limit=50');
+      const resp = await fetch('/api/fusion/operations?limit=50', { credentials: 'include', headers: getLocaleHeaders() });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       setOperations(data.items ?? []);
@@ -160,7 +165,7 @@ export default function FusionQualityTab() {
   /* Fetch quality detail for a specific operation */
   const fetchDetail = useCallback(async (opId: number) => {
     try {
-      const resp = await fetch(`/api/fusion/quality/${opId}`);
+      const resp = await fetch(`/api/fusion/quality/${opId}`, { credentials: 'include', headers: getLocaleHeaders() });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data: QualityDetail = await resp.json();
       setSelected(data);
@@ -169,6 +174,9 @@ export default function FusionQualityTab() {
     }
   }, []);
 
+  const checkLabel = (check: DiagnosticCheck) => t(`fusionQuality.checks.${check.check_id}`, { defaultValue: check.label_zh });
+  const readinessStatus = (status: string) => t(`fusionQuality.readinessStatus.${status}`, { defaultValue: status });
+
   /* ----------------------------------------------------------------
      Render
      ---------------------------------------------------------------- */
@@ -176,18 +184,18 @@ export default function FusionQualityTab() {
   return (
     <div style={{ padding: 12, height: '100%', overflow: 'auto', fontSize: 13 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-        <h3 style={{ margin: 0 }}>融合质量监控</h3>
+        <h3 style={{ margin: 0 }}>{t('fusionQuality.title')}</h3>
         <button
           onClick={() => { fetchReadiness(); fetchOperations(); }}
           style={{ padding: '4px 12px', cursor: 'pointer', borderRadius: 4, border: '1px solid #ccc' }}
         >
-          刷新
+          {t('fusionQuality.actions.refresh')}
         </button>
       </div>
 
-      {loading && <p>加载中...</p>}
-      {readinessLoading && <p>MMFE 诊断加载中...</p>}
-      {error && <p style={{ color: '#ef4444' }}>错误: {error}</p>}
+      {loading && <p>{t('fusionQuality.loading.operations')}</p>}
+      {readinessLoading && <p>{t('fusionQuality.loading.readiness')}</p>}
+      {error && <p style={{ color: '#ef4444' }}>{t('fusionQuality.error', { error })}</p>}
 
       {readiness && (
         <div style={{
@@ -199,9 +207,9 @@ export default function FusionQualityTab() {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
             <div>
-              <h4 style={{ margin: '0 0 6px' }}>MMFE 语义融合就绪</h4>
+              <h4 style={{ margin: '0 0 6px' }}>{t('fusionQuality.readiness.title')}</h4>
               <div style={{ color: '#4b5563', fontSize: 12 }}>
-                {readiness.product_id} / {readiness.summary.status}
+                {readiness.product_id} / {readinessStatus(readiness.summary.status)}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -212,7 +220,7 @@ export default function FusionQualityTab() {
                 background: '#d1fae5',
                 fontWeight: 600,
               }}>
-                验证就绪 {readiness.summary.validation_ready ? '是' : '否'}
+                {t('fusionQuality.readiness.validation', { value: t(readiness.summary.validation_ready ? 'fusionQuality.common.yes' : 'fusionQuality.common.no') })}
               </span>
               <span style={{
                 padding: '3px 8px',
@@ -221,7 +229,7 @@ export default function FusionQualityTab() {
                 background: readiness.summary.production_ready ? '#d1fae5' : '#fef3c7',
                 fontWeight: 600,
               }}>
-                生产就绪 {readiness.summary.production_ready ? '是' : '否'}
+                {t('fusionQuality.readiness.production', { value: t(readiness.summary.production_ready ? 'fusionQuality.common.yes' : 'fusionQuality.common.no') })}
               </span>
               <span style={{
                 padding: '3px 8px',
@@ -230,7 +238,7 @@ export default function FusionQualityTab() {
                 background: '#f3f4f6',
                 fontWeight: 600,
               }}>
-                {readiness.summary.readiness_score.toFixed(2)}
+                {formatNumber(readiness.summary.readiness_score, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
           </div>
@@ -242,21 +250,21 @@ export default function FusionQualityTab() {
             marginTop: 10,
             marginBottom: 10,
           }}>
-            <div><strong>图层</strong><br />{readiness.capabilities.layer_count}</div>
-            <div><strong>字段语义</strong><br />{readiness.capabilities.field_semantic_count}</div>
-            <div><strong>语义关系</strong><br />{readiness.capabilities.semantic_relation_count}</div>
-            <div><strong>图谱节点</strong><br />{readiness.capabilities.semantic_graph_node_count}</div>
-            <div><strong>图谱边</strong><br />{readiness.capabilities.semantic_graph_edge_count}</div>
-            <div><strong>目标</strong><br />{readiness.capabilities.objective_count}</div>
+            <div><strong>{t('fusionQuality.capabilities.layers')}</strong><br />{formatNumber(readiness.capabilities.layer_count)}</div>
+            <div><strong>{t('fusionQuality.capabilities.fieldSemantics')}</strong><br />{formatNumber(readiness.capabilities.field_semantic_count)}</div>
+            <div><strong>{t('fusionQuality.capabilities.relations')}</strong><br />{formatNumber(readiness.capabilities.semantic_relation_count)}</div>
+            <div><strong>{t('fusionQuality.capabilities.graphNodes')}</strong><br />{formatNumber(readiness.capabilities.semantic_graph_node_count)}</div>
+            <div><strong>{t('fusionQuality.capabilities.graphEdges')}</strong><br />{formatNumber(readiness.capabilities.semantic_graph_edge_count)}</div>
+            <div><strong>{t('fusionQuality.capabilities.objectives')}</strong><br />{formatNumber(readiness.capabilities.objective_count)}</div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
             {readiness.core_surfaces.map((check) => {
-              const badge = statusBadge(check.status);
+              const badge = statusBadge(check.status, t);
               return (
                 <div key={check.check_id} style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <strong>{check.label_zh}</strong>
+                    <strong>{checkLabel(check)}</strong>
                     <span style={{
                       padding: '1px 6px',
                       borderRadius: 999,
@@ -277,14 +285,14 @@ export default function FusionQualityTab() {
           </div>
 
           <div style={{ marginTop: 10 }}>
-            <strong>生产阻塞项:</strong>
+            <strong>{t('fusionQuality.readiness.productionBlockers')}:</strong>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
               {readiness.production_gates.map((check) => {
-                const badge = statusBadge(check.status);
+                const badge = statusBadge(check.status, t);
                 return (
                   <span
                     key={check.check_id}
-                    title={check.message_zh}
+                    title={t('fusionQuality.readiness.gateTitle', { label: checkLabel(check), status: badge.label })}
                     style={{
                       padding: '3px 8px',
                       borderRadius: 999,
@@ -293,7 +301,7 @@ export default function FusionQualityTab() {
                       fontWeight: 600,
                     }}
                   >
-                    {check.label_zh}: {badge.label}
+                    {checkLabel(check)}: {badge.label}
                   </span>
                 );
               })}
@@ -305,18 +313,18 @@ export default function FusionQualityTab() {
       {/* Operations Table */}
       <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}>
         <thead>
-          <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+          <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'start' }}>
             <th style={{ padding: '6px 8px' }}>ID</th>
-            <th style={{ padding: '6px 8px' }}>策略</th>
-            <th style={{ padding: '6px 8px' }}>质量</th>
-            <th style={{ padding: '6px 8px' }}>耗时</th>
-            <th style={{ padding: '6px 8px' }}>v2 特性</th>
-            <th style={{ padding: '6px 8px' }}>时间</th>
+            <th style={{ padding: '6px 8px' }}>{t('fusionQuality.table.strategy')}</th>
+            <th style={{ padding: '6px 8px' }}>{t('fusionQuality.table.quality')}</th>
+            <th style={{ padding: '6px 8px' }}>{t('fusionQuality.table.duration')}</th>
+            <th style={{ padding: '6px 8px' }}>{t('fusionQuality.table.features')}</th>
+            <th style={{ padding: '6px 8px' }}>{t('fusionQuality.table.time')}</th>
           </tr>
         </thead>
         <tbody>
           {operations.map((op) => {
-            const badge = confidenceBadge(op.quality_score);
+            const badge = confidenceBadge(op.quality_score, t);
             return (
               <tr
                 key={op.id}
@@ -334,25 +342,25 @@ export default function FusionQualityTab() {
                     display: 'inline-block', padding: '2px 8px', borderRadius: 10,
                     background: badge.color + '20', color: badge.color, fontWeight: 600,
                   }}>
-                    {op.quality_score !== null ? op.quality_score.toFixed(2) : '—'} {badge.label}
+                    {op.quality_score !== null ? formatNumber(op.quality_score, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'} {badge.label}
                   </span>
                 </td>
-                <td style={{ padding: '6px 8px' }}>{op.duration_s?.toFixed(1)}s</td>
+                <td style={{ padding: '6px 8px' }}>{op.duration_s == null ? '—' : t('fusionQuality.durationSeconds', { value: formatNumber(op.duration_s, { maximumFractionDigits: 1 }) })}</td>
                 <td style={{ padding: '6px 8px' }}>
-                  {op.v2_features.temporal && <span title="时序对齐">⏱</span>}
-                  {op.v2_features.conflict && <span title="冲突解决">⚡</span>}
-                  {op.v2_features.explainability && <span title="可解释性">🔍</span>}
+                  {op.v2_features.temporal && <span title={t('fusionQuality.features.temporal')}>⏱</span>}
+                  {op.v2_features.conflict && <span title={t('fusionQuality.features.conflict')}>⚡</span>}
+                  {op.v2_features.explainability && <span title={t('fusionQuality.features.explainability')}>🔍</span>}
                   {!op.v2_features.temporal && !op.v2_features.conflict && !op.v2_features.explainability && '—'}
                 </td>
                 <td style={{ padding: '6px 8px', fontSize: 11, color: '#6b7280' }}>
-                  {op.created_at?.slice(0, 16)}
+                  {formatDate(op.created_at, { dateStyle: 'medium', timeStyle: 'short' })}
                 </td>
               </tr>
             );
           })}
           {operations.length === 0 && !loading && (
             <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#9ca3af' }}>
-              暂无融合操作记录
+              {t('fusionQuality.empty.operations')}
             </td></tr>
           )}
         </tbody>
@@ -361,20 +369,20 @@ export default function FusionQualityTab() {
       {/* Detail Panel */}
       {selected && (
         <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
-          <h4 style={{ margin: '0 0 8px' }}>操作 #{selected.operation_id} 详情</h4>
+          <h4 style={{ margin: '0 0 8px' }}>{t('fusionQuality.details.title', { id: formatNumber(selected.operation_id) })}</h4>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <div>
-              <strong>质量分数:</strong>{' '}
-              {selected.quality_score !== null ? selected.quality_score.toFixed(4) : '—'}
+              <strong>{t('fusionQuality.details.qualityScore')}:</strong>{' '}
+              {selected.quality_score !== null ? formatNumber(selected.quality_score, { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '—'}
             </div>
             <div>
-              <strong>质量报告:</strong>{' '}
+              <strong>{t('fusionQuality.details.qualityReport')}:</strong>{' '}
               {JSON.stringify(selected.quality_report?.warnings ?? [], null, 0).slice(0, 100)}
             </div>
           </div>
           {selected.explainability && Object.keys(selected.explainability).length > 0 && (
             <div style={{ marginTop: 8 }}>
-              <strong>可解释性元数据:</strong>
+              <strong>{t('fusionQuality.details.explainability')}:</strong>
               <pre style={{ background: '#f9fafb', padding: 8, borderRadius: 4, fontSize: 11, overflow: 'auto', maxHeight: 200 }}>
                 {JSON.stringify(selected.explainability, null, 2)}
               </pre>

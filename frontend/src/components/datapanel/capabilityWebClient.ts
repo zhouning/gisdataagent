@@ -1,5 +1,6 @@
 import Ajv2020, { type ErrorObject, type ValidateFunction } from 'ajv/dist/2020';
 import addFormats from 'ajv-formats';
+import i18n, { getLocaleHeaders } from '../../i18n';
 
 export type JsonObject = Record<string, unknown>;
 export type FetchLike = typeof fetch;
@@ -144,6 +145,10 @@ const ajv = new Ajv2020({ allErrors: true, strict: false });
 addFormats(ajv);
 const validators = new Map<string, ValidateFunction>();
 
+function protocolMessage(key: string, values: Record<string, unknown> = {}): string {
+  return i18n.t(`capabilities.platform.protocol.${key}`, values);
+}
+
 function asObject(value: unknown, message: string): JsonObject {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new CapabilityWebError(message, 'protocol_error');
@@ -153,11 +158,11 @@ function asObject(value: unknown, message: string): JsonObject {
 
 async function responseJson(response: Response): Promise<JsonObject> {
   try {
-    return asObject(await response.json(), `平台返回了非对象 JSON（HTTP ${response.status}）`);
+    return asObject(await response.json(), protocolMessage('nonObjectJson', { status: response.status }));
   } catch (error) {
     if (error instanceof CapabilityWebError) throw error;
     throw new CapabilityWebError(
-      `平台返回了无法解析的响应（HTTP ${response.status}）`,
+      protocolMessage('unparseableResponse', { status: response.status }),
       'protocol_error',
       response.status,
     );
@@ -172,7 +177,7 @@ function remoteMessage(payload: JsonObject, status: number): string {
     if (typeof detail === 'string' && detail) return detail;
   }
   if (typeof payload.message === 'string' && payload.message) return payload.message;
-  return `平台拒绝了能力调用（HTTP ${status}）`;
+  return protocolMessage('rejected', { status });
 }
 
 function isContractMismatch(payload: JsonObject): boolean {
@@ -187,14 +192,14 @@ function isContractMismatch(payload: JsonObject): boolean {
 export async function listWebCapabilities(fetchImpl: FetchLike = fetch): Promise<CapabilityManifest> {
   const response = await fetchImpl('/api/capability-specs?surface=web&llm_mode=disabled', {
     credentials: 'include',
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', ...getLocaleHeaders() },
   });
   const payload = await responseJson(response);
   if (!response.ok) {
     throw new CapabilityWebError(remoteMessage(payload, response.status), 'discovery_error', response.status);
   }
   if (payload.schema !== REGISTRY_SCHEMA || !Array.isArray(payload.capabilities)) {
-    throw new CapabilityWebError('平台能力清单不符合受支持的注册表合同', 'protocol_error');
+    throw new CapabilityWebError(protocolMessage('unsupportedRegistry'), 'protocol_error');
   }
   return payload as unknown as CapabilityManifest;
 }
@@ -207,19 +212,19 @@ export async function getWebCapability(
   const query = version ? `?version=${encodeURIComponent(version)}` : '';
   const response = await fetchImpl(
     `/api/capability-specs/${encodeURIComponent(capabilityId)}${query}`,
-    { credentials: 'include', headers: { Accept: 'application/json' } },
+    { credentials: 'include', headers: { Accept: 'application/json', ...getLocaleHeaders() } },
   );
   const payload = await responseJson(response);
   if (!response.ok) {
     throw new CapabilityWebError(remoteMessage(payload, response.status), 'discovery_error', response.status);
   }
-  const spec = asObject(payload.spec, '能力详情缺少 canonical spec') as unknown as CapabilitySpec;
+  const spec = asObject(payload.spec, protocolMessage('missingCanonicalSpec')) as unknown as CapabilitySpec;
   if (
     typeof payload.fingerprint !== 'string'
     || typeof spec.capability_id !== 'string'
     || typeof spec.version !== 'string'
   ) {
-    throw new CapabilityWebError('能力详情缺少身份、版本或指纹', 'protocol_error');
+    throw new CapabilityWebError(protocolMessage('missingIdentity'), 'protocol_error');
   }
   return payload as unknown as CapabilityDetail;
 }
@@ -243,14 +248,14 @@ function validatorFor(schema: JsonObject): ValidateFunction {
 export function validateCapabilityInput(detail: CapabilityDetail, input: JsonObject): void {
   const validator = validatorFor(detail.spec.input.json_schema);
   if (!validator(input)) {
-    throw new CapabilityValidationError('输入不符合 canonical schema', validationIssues(validator.errors));
+    throw new CapabilityValidationError(protocolMessage('invalidInputSchema'), validationIssues(validator.errors));
   }
 }
 
 function validateCapabilityOutput(detail: CapabilityDetail, output: JsonObject): void {
   const validator = validatorFor(detail.spec.output.json_schema);
   if (!validator(output)) {
-    throw new CapabilityValidationError('平台输出不符合 canonical schema', validationIssues(validator.errors));
+    throw new CapabilityValidationError(protocolMessage('invalidOutputSchema'), validationIssues(validator.errors));
   }
 }
 
@@ -317,9 +322,9 @@ export async function assertCapabilityConfirmation(
   now = Date.now(),
 ): Promise<void> {
   if (!requiresCapabilityConfirmation(detail)) return;
-  if (!preview) throw new CapabilityConfirmationError('请先校验并预览本次调用', 'preview_required');
+  if (!preview) throw new CapabilityConfirmationError(protocolMessage('previewRequired'), 'preview_required');
   if (now > preview.expires_at) {
-    throw new CapabilityConfirmationError('确认已过期，请重新预览', 'confirmation_expired');
+    throw new CapabilityConfirmationError(protocolMessage('confirmationExpired'), 'confirmation_expired');
   }
   const rebound = await buildCapabilityPreview(detail, input, preview.expires_at - CONFIRMATION_TTL_MS);
   if (
@@ -328,10 +333,10 @@ export async function assertCapabilityConfirmation(
     || preview.version !== detail.spec.version
     || preview.fingerprint !== detail.fingerprint
   ) {
-    throw new CapabilityConfirmationError('输入或能力合同已变化，请重新预览', 'preview_mismatch');
+    throw new CapabilityConfirmationError(protocolMessage('previewMismatch'), 'preview_mismatch');
   }
   if ((confirmationCode ?? '').trim().toUpperCase() !== preview.confirmation_code) {
-    throw new CapabilityConfirmationError('确认码与本次预览不匹配');
+    throw new CapabilityConfirmationError(protocolMessage('confirmationMismatch'));
   }
 }
 
@@ -342,7 +347,7 @@ function projectRequest(detail: CapabilityDetail, input: JsonObject): {
   headers: Record<string, string>;
 } {
   const http = detail.spec.http;
-  if (!http) throw new CapabilityWebError('该能力没有 HTTP 投影', 'projection_error');
+  if (!http) throw new CapabilityWebError(protocolMessage('missingHttpProjection'), 'projection_error');
   let path = http.path;
   const pathNames = new Set(http.path_parameters);
   for (const name of http.path_parameters) {
@@ -366,6 +371,7 @@ function projectRequest(detail: CapabilityDetail, input: JsonObject): {
     body,
     headers: {
       Accept: 'application/json',
+      ...getLocaleHeaders(),
       [FINGERPRINT_HEADER]: detail.fingerprint,
       ...(body ? { 'Content-Type': 'application/json' } : {}),
     },
@@ -397,11 +403,11 @@ export async function invokeWebCapability(
     || serving.spec.version !== detail.spec.version
     || serving.fingerprint !== detail.fingerprint
   ) {
-    throw new CapabilityDriftError('执行前检测到能力合同漂移，命令未发送');
+    throw new CapabilityDriftError(protocolMessage('preflightDrift'));
   }
 
   const http = detail.spec.http;
-  if (!http) throw new CapabilityWebError('该能力没有 HTTP 投影', 'projection_error');
+  if (!http) throw new CapabilityWebError(protocolMessage('missingHttpProjection'), 'projection_error');
   const projected = projectRequest(detail, input);
   const query = projected.query.toString();
   const response = await fetchImpl(`${projected.path}${query ? `?${query}` : ''}`, {
@@ -414,7 +420,7 @@ export async function invokeWebCapability(
   const expectedStatuses = [http.success_status, ...(http.additional_success_statuses ?? [])];
   if (!expectedStatuses.includes(response.status)) {
     if (isContractMismatch(payload)) {
-      throw new CapabilityDriftError('能力合同在执行窗口内发生漂移');
+      throw new CapabilityDriftError(protocolMessage('executionDrift'));
     }
     throw new CapabilityWebError(
       remoteMessage(payload, response.status),
@@ -427,14 +433,14 @@ export async function invokeWebCapability(
   let requestId = response.headers.get('x-request-id');
   let created: boolean | null = null;
   if (http.response_envelope === 'platform_v1') {
-    data = asObject(payload.data, '平台回执缺少 canonical data');
+    data = asObject(payload.data, protocolMessage('missingCanonicalData'));
     if (payload.error !== null || typeof payload.request_id !== 'string' || !payload.request_id) {
-      throw new CapabilityWebError('平台回执不符合 platform_v1 envelope', 'protocol_error');
+      throw new CapabilityWebError(protocolMessage('invalidEnvelope'), 'protocol_error');
     }
     requestId = payload.request_id;
     if (http.include_created) {
       if (typeof payload.created !== 'boolean') {
-        throw new CapabilityWebError('平台回执缺少 created 标记', 'protocol_error');
+        throw new CapabilityWebError(protocolMessage('missingCreated'), 'protocol_error');
       }
       created = payload.created;
     }

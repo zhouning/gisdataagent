@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { RotateCw } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { formatDate, formatNumber } from "../../../../i18n";
 import {
   listOutboxEvents,
   retryOutboxEvent,
@@ -34,15 +37,9 @@ const normalizeCounts = (counts?: Partial<OutboxCounts>): OutboxCounts => ({
 const messageOf = (value: unknown) =>
   value instanceof Error ? value.message : String(value);
 
-const shortText = (value: string | null, max = 96) => {
-  if (!value) return "无错误";
+const shortText = (value: string | null, emptyLabel: string, max = 96) => {
+  if (!value) return emptyLabel;
   return value.length > max ? `${value.slice(0, max)}...` : value;
-};
-
-const formatDate = (value: string | null) => {
-  if (!value) return "-";
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? value : d.toLocaleString();
 };
 
 const formatPayload = (payload: Record<string, any>) => {
@@ -53,23 +50,13 @@ const formatPayload = (payload: Record<string, any>) => {
   }
 };
 
-const summarizeSkipped = (
-  skipped: {id: string; reason?: string}[],
-  max = 3,
-) => {
-  if (skipped.length === 0) return "";
-  const reasons = skipped.slice(0, max)
-    .map(s => `${s.id.slice(0, 8)}: ${s.reason ?? "skipped"}`);
-  const suffix = skipped.length > max ? `; +${skipped.length - max}` : "";
-  return ` (${reasons.join("; ")}${suffix})`;
-};
-
 const shortId = (id: string) => id.length > 8 ? id.slice(0, 8) : id;
 
 export default function OutboxDeadLetterPanel({
   refreshTick,
   onRetryComplete,
 }: Props) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<OutboxStatus>("failed");
   const [loadedStatus, setLoadedStatus] = useState<OutboxStatus | null>(null);
   const [events, setEvents] = useState<OutboxEvent[]>([]);
@@ -108,7 +95,9 @@ export default function OutboxDeadLetterPanel({
         );
       })
       .catch(e => {
-        if (!cancelled) setError(`加载失败: ${messageOf(e)}`);
+        if (!cancelled) {
+          setError(t("standards.derive.outbox.loadFailed", {message: messageOf(e)}));
+        }
       })
       .finally(() => {
         if (!cancelled) setBusy(false);
@@ -130,6 +119,16 @@ export default function OutboxDeadLetterPanel({
       .map(e => e.id),
     [visibleEvents, selectedIds],
   );
+
+  const summarizeSkipped = (skipped: {id: string; reason?: string}[], max = 3) => {
+    if (skipped.length === 0) return "";
+    const reasons = skipped.slice(0, max)
+      .map(item => `${item.id.slice(0, 8)}: ${item.reason ?? t("standards.derive.outbox.skipped")}`);
+    const suffix = skipped.length > max
+      ? `; +${formatNumber(skipped.length - max)}`
+      : "";
+    return ` (${reasons.join("; ")}${suffix})`;
+  };
 
   const changeStatus = (nextStatus: OutboxStatus) => {
     if (nextStatus === status) return;
@@ -158,9 +157,11 @@ export default function OutboxDeadLetterPanel({
     try {
       const r = await retryOutboxEvent(event.id);
       if (r.result.status === "retried") {
-        setRetryMessage("已重试 1 条事件");
+        setRetryMessage(t("standards.derive.outbox.retriedOne"));
       } else {
-        setRetryMessage(`未重试: ${r.result.reason ?? "skipped"}`);
+        setRetryMessage(t("standards.derive.outbox.notRetried", {
+          reason: r.result.reason ?? t("standards.derive.outbox.skipped"),
+        }));
       }
       setSelectedIds(prev => {
         const next = new Set(prev);
@@ -169,7 +170,7 @@ export default function OutboxDeadLetterPanel({
       });
       onRetryComplete();
     } catch (e) {
-      setError(`重试失败: ${messageOf(e)}`);
+      setError(t("standards.derive.outbox.retryFailed", {message: messageOf(e)}));
     } finally {
       setBusy(false);
     }
@@ -185,7 +186,11 @@ export default function OutboxDeadLetterPanel({
       const r = await retryOutboxEvents(ids);
       const skippedNote = summarizeSkipped(r.skipped);
       setRetryMessage(
-        `重试完成: retried ${r.retried.length}, skipped ${r.skipped.length}${skippedNote}`,
+        t("standards.derive.outbox.retryComplete", {
+          retried: formatNumber(r.retried.length),
+          skipped: formatNumber(r.skipped.length),
+          details: skippedNote,
+        }),
       );
       setSelectedIds(prev => {
         const next = new Set(prev);
@@ -194,7 +199,7 @@ export default function OutboxDeadLetterPanel({
       });
       onRetryComplete();
     } catch (e) {
-      setError(`批量重试失败: ${messageOf(e)}`);
+      setError(t("standards.derive.outbox.batchRetryFailed", {message: messageOf(e)}));
     } finally {
       setBusy(false);
     }
@@ -209,7 +214,7 @@ export default function OutboxDeadLetterPanel({
         display: "flex", alignItems: "center", justifyContent: "space-between",
         gap: 8, marginBottom: 6,
       }}>
-        <div style={{fontSize: 12, fontWeight: 500}}>Outbox 死信</div>
+        <div style={{fontSize: 12, fontWeight: 500}}>{t("standards.derive.outbox.title")}</div>
         <button
           type="button"
           onClick={() => setLocalRefreshTick(t => t + 1)}
@@ -219,7 +224,7 @@ export default function OutboxDeadLetterPanel({
             borderRadius: 3, background: "#fff",
             cursor: busy ? "not-allowed" : "pointer",
           }}>
-          刷新
+          {t("standards.derive.outbox.refresh")}
         </button>
       </div>
 
@@ -243,7 +248,7 @@ export default function OutboxDeadLetterPanel({
                 cursor: busy ? "not-allowed" : "pointer",
                 overflow: "hidden", textOverflow: "ellipsis",
               }}>
-              {s} {counts[s] ?? 0}
+              {t(`standards.derive.outbox.status.${s}`)} {formatNumber(counts[s] ?? 0)}
             </button>
           );
         })}
@@ -282,14 +287,16 @@ export default function OutboxDeadLetterPanel({
           color: "#fff",
           cursor: busy || selectedRetryableIds.length === 0 ? "not-allowed" : "pointer",
         }}>
-        批量重试 ({selectedRetryableIds.length})
+        {t("standards.derive.outbox.retrySelected", {count: formatNumber(selectedRetryableIds.length)})}
       </button>
 
       {busy && visibleEvents.length === 0 && (
-        <div style={{color: "#888", marginBottom: 6}}>加载中...</div>
+        <div style={{color: "#888", marginBottom: 6}}>{t("standards.derive.outbox.loading")}</div>
       )}
       {!busy && visibleEvents.length === 0 && !error && (
-        <div style={{color: "#888", marginBottom: 6}}>无 {status} 事件</div>
+        <div style={{color: "#888", marginBottom: 6}}>
+          {t("standards.derive.outbox.empty", {status: t(`standards.derive.outbox.status.${status}`)})}
+        </div>
       )}
 
       <div style={{
@@ -304,7 +311,7 @@ export default function OutboxDeadLetterPanel({
               key={event.id}
               style={{padding: "7px 0", borderBottom: "1px solid #e6e6e6"}}>
               <div style={{
-                display: "grid", gridTemplateColumns: "18px minmax(0, 1fr) 46px",
+                display: "grid", gridTemplateColumns: "18px minmax(0, 1fr) 30px",
                 gap: 4, alignItems: "start",
               }}>
                 <input
@@ -312,7 +319,7 @@ export default function OutboxDeadLetterPanel({
                   checked={selectedIds.has(event.id)}
                   disabled={!retryable || busy}
                   onChange={e => toggleSelected(event, e.currentTarget.checked)}
-                  aria-label={`选择 outbox 事件 ${eventContext}`}
+                  aria-label={t("standards.derive.outbox.selectEvent", {event: eventContext})}
                   style={{margin: "2px 0 0"}}
                 />
                 <button
@@ -321,7 +328,7 @@ export default function OutboxDeadLetterPanel({
                   aria-expanded={expanded}
                   style={{
                     minWidth: 0, padding: 0, border: "none", background: "transparent",
-                    textAlign: "left", cursor: "pointer", color: "#222",
+                    textAlign: "start", cursor: "pointer", color: "#222",
                   }}>
                   <div style={{display: "flex", alignItems: "center", gap: 4}}>
                     <span
@@ -339,11 +346,11 @@ export default function OutboxDeadLetterPanel({
                       fontSize: 10, maxWidth: 58, overflow: "hidden",
                       textOverflow: "ellipsis", whiteSpace: "nowrap",
                     }}>
-                      {event.status}
+                      {t(`standards.derive.outbox.status.${event.status}`)}
                     </span>
                   </div>
                   <div style={{marginTop: 2, color: "#666"}}>
-                    attempts {event.attempts}
+                    {t("standards.derive.outbox.attempts", {count: formatNumber(event.attempts)})}
                   </div>
                   <div
                     title={event.last_error ?? ""}
@@ -351,22 +358,24 @@ export default function OutboxDeadLetterPanel({
                       marginTop: 2, color: event.last_error ? "#a33" : "#888",
                       lineHeight: 1.3, overflowWrap: "anywhere",
                     }}>
-                    {shortText(event.last_error)}
+                    {shortText(event.last_error, t("standards.derive.outbox.noError"))}
                   </div>
                 </button>
                 <button
                   type="button"
                   onClick={() => retryOne(event)}
-                  aria-label={`Retry outbox event ${eventContext}`}
+                  aria-label={t("standards.derive.outbox.retryEvent", {event: eventContext})}
+                  title={t("standards.derive.outbox.retry")}
                   disabled={!retryable || busy}
                   style={{
                     padding: "3px 5px", fontSize: 10, borderRadius: 3,
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
                     border: "1px solid #ccc",
                     background: retryable ? "#fff" : "#eee",
                     color: retryable ? "#06c" : "#888",
                     cursor: retryable && !busy ? "pointer" : "not-allowed",
                   }}>
-                  Retry
+                  <RotateCw size={12} aria-hidden="true" />
                 </button>
               </div>
 
@@ -379,19 +388,21 @@ export default function OutboxDeadLetterPanel({
                     marginBottom: 4, fontFamily: "monospace",
                     overflowWrap: "anywhere",
                   }}>
-                    id: {event.id}
+                    {t("standards.derive.outbox.id")}: {event.id}
                   </div>
                   <div style={{marginBottom: 6}}>
-                    next_attempt_at: {formatDate(event.next_attempt_at)}
+                    {t("standards.derive.outbox.nextAttempt")}: {event.next_attempt_at
+                      ? formatDate(event.next_attempt_at, {dateStyle: "medium", timeStyle: "medium"})
+                      : "-"}
                   </div>
-                  <div style={{fontWeight: 500, marginBottom: 3}}>payload</div>
+                  <div style={{fontWeight: 500, marginBottom: 3}}>{t("standards.derive.outbox.payload")}</div>
                   <pre style={{
                     maxHeight: 130, overflow: "auto", margin: "0 0 6px",
                     padding: 6, background: "#f7f7f7", border: "1px solid #eee",
                     borderRadius: 3, fontSize: 10, whiteSpace: "pre-wrap",
                     overflowWrap: "anywhere",
                   }}>{formatPayload(event.payload)}</pre>
-                  <div style={{fontWeight: 500, marginBottom: 3}}>last_error</div>
+                  <div style={{fontWeight: 500, marginBottom: 3}}>{t("standards.derive.outbox.lastError")}</div>
                   <pre style={{
                     maxHeight: 120, overflow: "auto", margin: 0,
                     padding: 6, background: "#fff7f7", border: "1px solid #f0dddd",

@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
 
 interface TraceEvent {
   timestamp: number;
@@ -19,6 +21,7 @@ interface PipelineTrace {
 }
 
 export default function ObservabilityTab() {
+  const { t } = useTranslation();
   const [traceId, setTraceId] = useState('');
   const [trace, setTrace] = useState<PipelineTrace | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,15 +32,15 @@ export default function ObservabilityTab() {
     setLoading(true);
     setError('');
     try {
-      const r = await fetch(`/api/pipeline/trace/${id}`, { credentials: 'include' });
+      const r = await fetch(`/api/pipeline/trace/${id}`, { credentials: 'include', headers: getLocaleHeaders() });
       if (r.ok) {
         const d = await r.json();
         setTrace(d);
       } else {
-        setError('未找到追踪数据');
+        setError(t('observabilityTrace.errors.notFound'));
         setTrace(null);
       }
-    } catch { setError('加载失败'); }
+    } catch { setError(t('observabilityTrace.errors.load')); }
     finally { setLoading(false); }
   };
 
@@ -63,11 +66,11 @@ export default function ObservabilityTab() {
 
   return (
     <div style={{ padding: '8px 12px', fontSize: 13 }}>
-      <div style={{ fontWeight: 600, marginBottom: 8 }}>Pipeline 决策追踪</div>
+      <div style={{ fontWeight: 600, marginBottom: 8 }}>{t('observabilityTrace.title')}</div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
         <input
-          placeholder="输入 Trace ID..."
+          placeholder={t('observabilityTrace.controls.traceIdPlaceholder')}
           value={traceId}
           onChange={e => setTraceId(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && loadTrace(traceId)}
@@ -83,7 +86,7 @@ export default function ObservabilityTab() {
             background: '#1e3a5f', color: '#7dd3fc', border: 'none',
             borderRadius: 4, padding: '6px 12px', cursor: 'pointer', fontSize: 12,
           }}
-        >{loading ? '加载中...' : '查看'}</button>
+        >{loading ? t('observabilityTrace.actions.loading') : t('observabilityTrace.actions.view')}</button>
       </div>
 
       {error && <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 8 }}>{error}</div>}
@@ -96,9 +99,9 @@ export default function ObservabilityTab() {
             padding: 10, marginBottom: 10,
           }}>
             <div style={{ display: 'flex', gap: 16, fontSize: 12 }}>
-              <span><strong style={{ color: '#7dd3fc' }}>管线:</strong> {trace.pipeline_type}</span>
-              <span><strong style={{ color: '#7dd3fc' }}>Trace:</strong> {trace.trace_id}</span>
-              <span><strong style={{ color: '#7dd3fc' }}>事件:</strong> {trace.event_count}</span>
+              <span><strong style={{ color: '#7dd3fc' }}>{t('observabilityTrace.summary.pipeline')}:</strong> {trace.pipeline_type}</span>
+              <span><strong style={{ color: '#7dd3fc' }}>{t('observabilityTrace.summary.trace')}:</strong> {trace.trace_id}</span>
+              <span><strong style={{ color: '#7dd3fc' }}>{t('observabilityTrace.summary.events')}:</strong> {formatNumber(trace.event_count)}</span>
             </div>
           </div>
 
@@ -108,7 +111,7 @@ export default function ObservabilityTab() {
               <div key={i} style={{
                 display: 'flex', gap: 8, marginBottom: 4, padding: '6px 8px',
                 background: '#111827', border: '1px solid #1f2937', borderRadius: 4,
-                borderLeft: `3px solid ${eventColor(e.type)}`,
+                borderInlineStart: `3px solid ${eventColor(e.type)}`,
               }}>
                 <span style={{ fontSize: 16, lineHeight: '20px' }}>{eventIcon(e.type)}</span>
                 <div style={{ flex: 1 }}>
@@ -121,7 +124,7 @@ export default function ObservabilityTab() {
                   )}
                   {e.alternatives && e.alternatives.length > 0 && (
                     <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>
-                      备选: {e.alternatives.join(', ')}
+                      {t('observabilityTrace.details.alternatives')}: {e.alternatives.join(', ')}
                     </div>
                   )}
                 </div>
@@ -130,14 +133,14 @@ export default function ObservabilityTab() {
           </div>
 
           {trace.events.length === 0 && (
-            <div style={{ color: '#888', textAlign: 'center', padding: 24 }}>暂无决策事件</div>
+            <div style={{ color: '#888', textAlign: 'center', padding: 24 }}>{t('observabilityTrace.empty.events')}</div>
           )}
         </div>
       )}
 
       {!trace && !loading && !error && (
         <div style={{ color: '#888', textAlign: 'center', padding: 24 }}>
-          输入 Pipeline 执行的 Trace ID 查看决策追踪
+          {t('observabilityTrace.empty.prompt')}
         </div>
       )}
     </div>

@@ -16,6 +16,7 @@ from sqlalchemy import text
 
 from .database_tools import _inject_user_context
 from .db_engine import get_engine
+from .i18n import t as translate
 
 logger = logging.getLogger(__name__)
 
@@ -98,23 +99,25 @@ def create_data_request(
         return {
             "status": "error",
             "error_code": "invalid_asset_id",
-            "message": "资产编号无效",
+            "message": translate("distribution.invalid_asset_id"),
         }
     requester = str(requester or "").strip()
     if asset_id <= 0 or not requester:
         return {
             "status": "error",
             "error_code": "invalid_asset_id",
-            "message": "资产编号无效",
+            "message": translate("distribution.invalid_asset_id"),
         }
     try:
         duration_days = int(duration_days)
     except (TypeError, ValueError):
-        return {"status": "error", "message": "授权期限无效"}
+        return {"status": "error", "message": translate("distribution.invalid_duration")}
     if not 1 <= duration_days <= MAX_REQUEST_DURATION_DAYS:
         return {
             "status": "error",
-            "message": f"授权期限必须在 1-{MAX_REQUEST_DURATION_DAYS} 天之间",
+            "message": translate(
+                "distribution.duration_range", max_days=MAX_REQUEST_DURATION_DAYS
+            ),
         }
     try:
         package_quota = int(package_quota)
@@ -122,18 +125,20 @@ def create_data_request(
         return {
             "status": "error",
             "error_code": "invalid_package_quota",
-            "message": "分发包额度无效",
+            "message": translate("distribution.invalid_quota"),
         }
     if not 1 <= package_quota <= MAX_PACKAGE_QUOTA:
         return {
             "status": "error",
             "error_code": "invalid_package_quota",
-            "message": f"分发包额度必须在 1-{MAX_PACKAGE_QUOTA} 次之间",
+            "message": translate(
+                "distribution.quota_range", max_quota=MAX_PACKAGE_QUOTA
+            ),
         }
 
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("distribution.db_unavailable")}
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
@@ -151,7 +156,7 @@ def create_data_request(
                 return {
                     "status": "error",
                     "error_code": "asset_not_found",
-                    "message": "资产不存在或无权访问",
+                    "message": translate("distribution.asset_not_found_or_denied"),
                 }
 
             owner = str(asset._mapping.get("owner_username") or "").strip()
@@ -159,7 +164,7 @@ def create_data_request(
                 return {
                     "status": "error",
                     "error_code": "owner_request_not_allowed",
-                    "message": "资产责任人无需申请自己的资产",
+                    "message": translate("distribution.owner_request_not_allowed"),
                 }
 
             conn.execute(
@@ -233,7 +238,7 @@ def create_data_request(
             "requested_package_quota": package_quota,
         }
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("distribution.create_failed", error=e)}
 
 
 def list_data_requests(username: str, role: str = "analyst") -> list:
@@ -267,7 +272,7 @@ def approve_request(
     """Approve a request and snapshot the declared product's current version."""
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("distribution.db_unavailable")}
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
@@ -287,7 +292,10 @@ def approve_request(
                 {"id": request_id},
             ).fetchone()
             if not request_row or request_row._mapping.get("requester") == approver:
-                return {"status": "error", "message": "申请未找到、已处理或不能自批"}
+                return {
+                    "status": "error",
+                    "message": translate("distribution.request_not_approvable"),
+                }
 
             product_urn = str(request_row._mapping.get("product_urn") or "").strip()
             binding = None
@@ -296,7 +304,7 @@ def approve_request(
                     return {
                         "status": "error",
                         "error_code": "product_version_unavailable",
-                        "message": "当前用户未绑定租户，无法校验资产的数据产品版本",
+                        "message": translate("distribution.tenant_required"),
                     }
                 conn.execute(
                     text(
@@ -324,7 +332,7 @@ def approve_request(
                     return {
                         "status": "error",
                         "error_code": "product_version_unavailable",
-                        "message": "资产关联的数据产品版本不可用，审批已停止",
+                        "message": translate("distribution.product_version_unavailable"),
                     }
 
             result = conn.execute(text(f"""
@@ -351,7 +359,10 @@ def approve_request(
             })
             conn.commit()
             if result.rowcount == 0:
-                return {"status": "error", "message": "申请未找到或已处理"}
+                return {
+                    "status": "error",
+                    "message": translate("distribution.request_not_found_or_processed"),
+                }
         return {
             "status": "ok",
             "grant_contract": "data_product_version" if binding else "asset_compatibility",
@@ -361,16 +372,16 @@ def approve_request(
             ],
         }
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("distribution.approve_failed", error=e)}
 
 
 def reject_request(request_id: int, approver: str, reason: str = "") -> dict:
     reason = str(reason or "").strip()
     if not reason:
-        return {"status": "error", "message": "驳回原因不能为空"}
+        return {"status": "error", "message": translate("distribution.reject_reason_required")}
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("distribution.db_unavailable")}
     try:
         with engine.connect() as conn:
             result = conn.execute(text(f"""
@@ -380,20 +391,23 @@ def reject_request(request_id: int, approver: str, reason: str = "") -> dict:
             """), {"id": request_id, "ap": approver, "rr": reason})
             conn.commit()
             if result.rowcount == 0:
-                return {"status": "error", "message": "申请未找到或已处理"}
+                return {
+                    "status": "error",
+                    "message": translate("distribution.request_not_found_or_processed"),
+                }
         return {"status": "ok"}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("distribution.reject_failed", error=e)}
 
 
 def revoke_request(request_id: int, revoker: str, reason: str = "") -> dict:
     """Revoke an active grant and invalidate every package created from it."""
     reason = str(reason or "").strip()
     if not reason:
-        return {"status": "error", "message": "撤销原因不能为空"}
+        return {"status": "error", "message": translate("distribution.revoke_reason_required")}
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("distribution.db_unavailable")}
 
     invalidated_packages: list[dict] = []
     try:
@@ -415,7 +429,7 @@ def revoke_request(request_id: int, revoker: str, reason: str = "") -> dict:
                 {"id": request_id, "revoker": revoker, "reason": reason},
             ).fetchone()
             if not revoked:
-                return {"status": "error", "message": "授权未找到、已撤销或已过期"}
+                return {"status": "error", "message": translate("distribution.grant_inactive")}
 
             package_rows = conn.execute(
                 text(
@@ -442,7 +456,7 @@ def revoke_request(request_id: int, revoker: str, reason: str = "") -> dict:
             invalidated_packages = [_serialize_row(row) for row in package_rows]
             conn.commit()
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("distribution.revoke_failed", error=e)}
 
     removed = 0
     for package in invalidated_packages:
@@ -472,15 +486,18 @@ def package_assets(asset_ids: list, username: str = "") -> dict:
     try:
         normalized_ids = sorted({int(asset_id) for asset_id in asset_ids})
     except (TypeError, ValueError):
-        return {"status": "error", "message": "资产编号无效"}
+        return {"status": "error", "message": translate("distribution.invalid_asset_id")}
     if not normalized_ids or any(asset_id <= 0 for asset_id in normalized_ids):
-        return {"status": "error", "message": "资产编号无效"}
+        return {"status": "error", "message": translate("distribution.invalid_asset_id")}
     if len(normalized_ids) > 50:
-        return {"status": "error", "message": "单次最多打包 50 个资产"}
+        return {
+            "status": "error",
+            "message": translate("distribution.too_many_assets", max_assets=50),
+        }
 
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("distribution.db_unavailable")}
     zip_path = ""
     try:
         from .user_context import current_user_role, get_user_upload_dir
@@ -513,7 +530,7 @@ def package_assets(asset_ids: list, username: str = "") -> dict:
                     return {
                         "status": "error",
                         "error_code": "asset_not_found",
-                        "message": "资产不存在或无权访问",
+                        "message": translate("distribution.asset_not_found_or_denied"),
                     }
 
                 item = row._mapping
@@ -545,7 +562,9 @@ def package_assets(asset_ids: list, username: str = "") -> dict:
                         return {
                             "status": "error",
                             "error_code": "access_denied",
-                            "message": f"没有资产 {asset_id} 的有效分发授权",
+                            "message": translate(
+                                "distribution.grant_required", asset_id=asset_id
+                            ),
                         }
 
                 grant_value = dict(grant._mapping) if grant else {}
@@ -572,9 +591,8 @@ def package_assets(asset_ids: list, username: str = "") -> dict:
                         return {
                             "status": "error",
                             "error_code": "quota_exhausted",
-                            "message": (
-                                f"资产 {asset_id} 的分发包额度已用完，"
-                                "请申请追加额度"
+                            "message": translate(
+                                "distribution.quota_exhausted", asset_id=asset_id
                             ),
                             "grant_request_id": grant_value["id"],
                             "granted_package_quota": granted_package_quota,
@@ -590,7 +608,9 @@ def package_assets(asset_ids: list, username: str = "") -> dict:
                     return {
                         "status": "error",
                         "error_code": "asset_unavailable",
-                        "message": f"资产 {asset_id} 暂无可打包的本地文件",
+                        "message": translate(
+                            "distribution.asset_file_unavailable", asset_id=asset_id
+                        ),
                     }
                 asset_name = str(item.get("asset_name") or "")
                 files_added.append((asset_id, file_path, asset_name))
@@ -694,7 +714,7 @@ def package_assets(asset_ids: list, username: str = "") -> dict:
                 os.remove(zip_path)
             except OSError:
                 logger.warning("Unable to remove failed distribution package %s", zip_path)
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("distribution.package_failed", error=e)}
 
 
 def get_distribution_package(package_id: str, username: str) -> dict:
@@ -705,11 +725,11 @@ def get_distribution_package(package_id: str, username: str) -> dict:
         return {
             "status": "error",
             "error_code": "package_not_found",
-            "message": "分发包不存在",
+            "message": translate("distribution.package_not_found"),
         }
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("distribution.db_unavailable")}
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
@@ -743,7 +763,7 @@ def get_distribution_package(package_id: str, username: str) -> dict:
                 return {
                     "status": "error",
                     "error_code": "package_not_found",
-                    "message": "分发包不存在、已过期或已撤销",
+                    "message": translate("distribution.package_inactive"),
                 }
             package = _serialize_row(row)
             file_path = str(package.get("file_path") or "")
@@ -754,7 +774,7 @@ def get_distribution_package(package_id: str, username: str) -> dict:
                 return {
                     "status": "error",
                     "error_code": "package_not_found",
-                    "message": "分发包文件不可用",
+                    "message": translate("distribution.package_file_unavailable"),
                 }
             conn.execute(
                 text(
@@ -770,7 +790,7 @@ def get_distribution_package(package_id: str, username: str) -> dict:
             conn.commit()
             return {"status": "ok", **package}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("distribution.resolve_failed", error=e)}
 
 
 # ---------------------------------------------------------------------------
@@ -779,10 +799,10 @@ def get_distribution_package(package_id: str, username: str) -> dict:
 
 def add_review(asset_id: int, username: str, rating: int, comment: str = "") -> dict:
     if rating < 1 or rating > 5:
-        return {"status": "error", "message": "评分必须在 1-5 之间"}
+        return {"status": "error", "message": translate("distribution.rating_invalid")}
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("distribution.db_unavailable")}
     try:
         with engine.connect() as conn:
             conn.execute(text(f"""
@@ -794,7 +814,7 @@ def add_review(asset_id: int, username: str, rating: int, comment: str = "") -> 
             conn.commit()
         return {"status": "ok"}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("distribution.review_failed", error=e)}
 
 
 def get_reviews(asset_id: int) -> list:
@@ -852,7 +872,7 @@ def log_access(asset_id: int, username: str, access_type: str = "view"):
 def get_access_stats(asset_id: int = None, days: int = 30) -> dict:
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        return {"status": "error", "message": translate("distribution.db_unavailable")}
     try:
         with engine.connect() as conn:
             if asset_id:
@@ -880,7 +900,7 @@ def get_access_stats(asset_id: int = None, days: int = 30) -> dict:
                     "period_days": days,
                 }
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("distribution.stats_failed", error=e)}
 
 
 def get_hot_assets(limit: int = 10) -> list:

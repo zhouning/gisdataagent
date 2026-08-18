@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import L from 'leaflet';
+import { ArrowLeft } from 'lucide-react';
+import { getLocaleHeaders } from '../../i18n';
 
 interface MetadataAsset {
   id: number;
@@ -12,6 +15,7 @@ interface MetadataAsset {
 }
 
 export default function MetadataPanel() {
+  const { t, i18n } = useTranslation('common');
   const [assets, setAssets] = useState<MetadataAsset[]>([]);
   const [query, setQuery] = useState('');
   const [regionFilter, setRegionFilter] = useState('');
@@ -28,7 +32,10 @@ export default function MetadataPanel() {
       if (regionFilter) params.set('region', regionFilter);
       if (domainFilter) params.set('domain', domainFilter);
       if (sourceFilter) params.set('source_type', sourceFilter);
-      const resp = await fetch(`/api/metadata/search?${params}`, { credentials: 'include' });
+      const resp = await fetch(`/api/metadata/search?${params}`, {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       if (resp.ok) {
         const data = await resp.json();
         setAssets(data.assets || []);
@@ -39,12 +46,12 @@ export default function MetadataPanel() {
 
   useEffect(() => {
     fetchAssets();
-  }, []);
+  }, [i18n.resolvedLanguage]);
 
   useEffect(() => {
     const timer = setTimeout(fetchAssets, 300);
     return () => clearTimeout(timer);
-  }, [query, regionFilter, domainFilter, sourceFilter]);
+  }, [query, regionFilter, domainFilter, sourceFilter, i18n.resolvedLanguage]);
 
   if (selectedId !== null) {
     return <MetadataDetail assetId={selectedId} onBack={() => setSelectedId(null)} />;
@@ -55,44 +62,38 @@ export default function MetadataPanel() {
       <div className="metadata-filters">
         <input
           type="text"
-          placeholder="搜索数据资产..."
+          placeholder={t('assetWorkbench.metadata.searchPlaceholder')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="catalog-search"
         />
         <div className="metadata-filter-row">
           <select value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)} className="catalog-type-select">
-            <option value="">全部地区</option>
-            <option value="重庆市">重庆市</option>
-            <option value="四川省">四川省</option>
-            <option value="上海市">上海市</option>
-            <option value="北京市">北京市</option>
-            <option value="广东省">广东省</option>
-            <option value="浙江省">浙江省</option>
-            <option value="江苏省">江苏省</option>
-            <option value="山东省">山东省</option>
-            <option value="河南省">河南省</option>
+            <option value="">{t('assetWorkbench.metadata.allRegions')}</option>
+            {['\u91cd\u5e86\u5e02', '\u56db\u5ddd\u7701', '\u4e0a\u6d77\u5e02', '\u5317\u4eac\u5e02', '\u5e7f\u4e1c\u7701', '\u6d59\u6c5f\u7701', '\u6c5f\u82cf\u7701', '\u5c71\u4e1c\u7701', '\u6cb3\u5357\u7701'].map(region => (
+              <option key={region} value={region}>
+                {t(`assetWorkbench.metadata.regions.${region}`, { defaultValue: region })}
+              </option>
+            ))}
           </select>
           <select value={domainFilter} onChange={(e) => setDomainFilter(e.target.value)} className="catalog-type-select">
-            <option value="">全部领域</option>
-            <option value="LAND_USE">土地利用</option>
-            <option value="ELEVATION">高程</option>
-            <option value="POPULATION">人口</option>
-            <option value="TRANSPORTATION">交通</option>
-            <option value="BUILDING">建筑</option>
+            <option value="">{t('assetWorkbench.metadata.allDomains')}</option>
+            {['LAND_USE', 'ELEVATION', 'POPULATION', 'TRANSPORTATION', 'BUILDING'].map(domain => (
+              <option key={domain} value={domain}>{t(`assetWorkbench.metadata.domains.${domain}`)}</option>
+            ))}
           </select>
           <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)} className="catalog-type-select">
-            <option value="">全部来源</option>
-            <option value="uploaded">上传</option>
-            <option value="generated">生成</option>
+            <option value="">{t('assetWorkbench.metadata.allSources')}</option>
+            <option value="uploaded">{t('assetWorkbench.metadata.sources.uploaded')}</option>
+            <option value="generated">{t('assetWorkbench.metadata.sources.generated')}</option>
           </select>
         </div>
       </div>
 
       {loading && assets.length === 0 ? (
-        <div className="empty-state">加载中...</div>
+        <div className="empty-state">{t('assetWorkbench.common.loading')}</div>
       ) : assets.length === 0 ? (
-        <div className="empty-state">暂无数据资产</div>
+        <div className="empty-state">{t('assetWorkbench.common.noAssets')}</div>
       ) : (
         <ul className="file-list">
           {assets.map((a) => {
@@ -114,9 +115,15 @@ export default function MetadataPanel() {
                   </div>
                   <div className="file-meta">
                     <span className="type-badge">{format}</span>
-                    {domain && <span className="type-badge">{domain}</span>}
+                    {domain && (
+                      <span className="type-badge">
+                        {t(`assetWorkbench.metadata.domains.${domain}`, { defaultValue: domain })}
+                      </span>
+                    )}
                     {regions.length > 0 && (
-                      <span style={{ color: '#0d9488', fontSize: 11 }}>{regions.join(', ')}</span>
+                      <span style={{ color: '#0d9488', fontSize: 11 }}>
+                        {regions.map((region: string) => t(`assetWorkbench.metadata.regions.${region}`, { defaultValue: region })).join(', ')}
+                      </span>
                     )}
                     {crs && <span style={{ fontSize: 11, color: '#888' }}>{crs}</span>}
                   </div>
@@ -131,17 +138,18 @@ export default function MetadataPanel() {
 }
 
 function MetadataDetail({ assetId, onBack }: { assetId: number; onBack: () => void }) {
+  const { t, i18n } = useTranslation('common');
   const [meta, setMeta] = useState<any>(null);
   const [lineage, setLineage] = useState<any>(null);
   const [activeLayer, setActiveLayer] = useState<'technical' | 'business' | 'operational' | 'lineage'>('technical');
   const bboxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch(`/api/metadata/${assetId}`, { credentials: 'include' })
+    fetch(`/api/metadata/${assetId}`, { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.json()).then(setMeta).catch(() => {});
-    fetch(`/api/metadata/${assetId}/lineage`, { credentials: 'include' })
+    fetch(`/api/metadata/${assetId}/lineage`, { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.json()).then(setLineage).catch(() => {});
-  }, [assetId]);
+  }, [assetId, i18n.resolvedLanguage]);
 
   // Bbox mini-map
   useEffect(() => {
@@ -164,20 +172,23 @@ function MetadataDetail({ assetId, onBack }: { assetId: number; onBack: () => vo
     return () => { map.remove(); };
   }, [meta]);
 
-  if (!meta) return <div className="empty-state">加载中...</div>;
+  if (!meta) return <div className="empty-state">{t('assetWorkbench.common.loading')}</div>;
 
   const layers = [
-    { key: 'technical' as const, label: '技术元数据', icon: '⚙️', color: '#3b82f6' },
-    { key: 'business' as const, label: '业务元数据', icon: '💼', color: '#10b981' },
-    { key: 'operational' as const, label: '操作元数据', icon: '🔄', color: '#f59e0b' },
-    { key: 'lineage' as const, label: '血缘元数据', icon: '🔗', color: '#8b5cf6' },
+    { key: 'technical' as const, label: t('assetWorkbench.metadata.layers.technical'), icon: '⚙️', color: '#3b82f6' },
+    { key: 'business' as const, label: t('assetWorkbench.metadata.layers.business'), icon: '💼', color: '#10b981' },
+    { key: 'operational' as const, label: t('assetWorkbench.metadata.layers.operational'), icon: '🔄', color: '#f59e0b' },
+    { key: 'lineage' as const, label: t('assetWorkbench.metadata.layers.lineage'), icon: '🔗', color: '#8b5cf6' },
   ];
 
   const currentData = activeLayer === 'lineage' ? lineage : meta[activeLayer];
 
   return (
     <div className="metadata-detail">
-      <button className="asset-back-btn" onClick={onBack}>&larr; 返回列表</button>
+      <button className="asset-back-btn" onClick={onBack}>
+        <ArrowLeft aria-hidden="true" />
+        <span>{t('assetWorkbench.common.backToList')}</span>
+      </button>
 
       {/* Bbox preview */}
       {meta.technical?.spatial?.extent && (
@@ -205,7 +216,7 @@ function MetadataDetail({ assetId, onBack }: { assetId: number; onBack: () => vo
         {currentData ? (
           <JsonTree data={currentData} />
         ) : (
-          <div className="empty-state" style={{ height: 60 }}>无数据</div>
+          <div className="empty-state" style={{ height: 60 }}>{t('assetWorkbench.common.noData')}</div>
         )}
       </div>
     </div>
@@ -221,7 +232,7 @@ function JsonTree({ data, depth = 0 }: { data: any; depth?: number }) {
   if (Array.isArray(data)) {
     if (data.length === 0) return <span className="json-null">[]</span>;
     return (
-      <div className="json-array" style={{ paddingLeft: depth > 0 ? 16 : 0 }}>
+      <div className="json-array" style={{ paddingInlineStart: depth > 0 ? 16 : 0 }}>
         {data.map((item, i) => (
           <div key={i} className="json-array-item">
             <JsonTree data={item} depth={depth + 1} />
@@ -235,7 +246,7 @@ function JsonTree({ data, depth = 0 }: { data: any; depth?: number }) {
     const entries = Object.entries(data);
     if (entries.length === 0) return <span className="json-null">{'{}'}</span>;
     return (
-      <div className="json-object" style={{ paddingLeft: depth > 0 ? 16 : 0 }}>
+      <div className="json-object" style={{ paddingInlineStart: depth > 0 ? 16 : 0 }}>
         {entries.map(([key, val]) => (
           <div key={key} className="json-kv">
             <span className="json-key">{key}:</span>

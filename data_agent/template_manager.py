@@ -13,6 +13,7 @@ from .db_engine import get_engine
 from .database_tools import _inject_user_context, T_ANALYSIS_TEMPLATES
 from .code_exporter import NON_EXPORTABLE_TOOLS, _PATH_ARG_NAMES
 from .user_context import current_user_id
+from .i18n import t as translate
 
 
 def ensure_templates_table():
@@ -87,17 +88,17 @@ def save_as_template(
         操作结果 dict。
     """
     if not template_name or not template_name.strip():
-        return {"status": "error", "message": "模板名称不能为空。"}
+        return {"status": "error", "message": translate("template.name_empty")}
 
     template_name = template_name.strip()[:200]
 
     filtered = _filter_tool_sequence(tool_sequence or [])
     if not filtered:
-        return {"status": "error", "message": "当前分析流程中没有可保存的有效工具调用。"}
+        return {"status": "error", "message": translate("template.no_steps")}
 
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置，无法保存模板。"}
+        return {"status": "error", "message": translate("template.db_unavailable")}
 
     username = current_user_id.get()
     try:
@@ -129,10 +130,12 @@ def save_as_template(
 
         return {
             "status": "success",
-            "message": f"模板「{template_name}」已保存（{len(filtered)} 个步骤）。",
+            "message": translate(
+                "template.saved", name=template_name, count=len(filtered)
+            ),
         }
     except Exception as e:
-        return {"status": "error", "message": f"保存模板失败: {e}"}
+        return {"status": "error", "message": translate("template.save_failed", error=e)}
 
 
 def list_templates(keyword: str = "") -> dict:
@@ -147,7 +150,7 @@ def list_templates(keyword: str = "") -> dict:
     """
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置。"}
+        return {"status": "error", "message": translate("template.db_unavailable")}
 
     username = current_user_id.get()
     try:
@@ -173,12 +176,18 @@ def list_templates(keyword: str = "") -> dict:
             """), params).fetchall()
 
         if not rows:
-            msg = "暂无可用模板。" if not keyword else f"未找到匹配「{keyword}」的模板。"
+            msg = (
+                translate("template.no_templates")
+                if not keyword
+                else translate("template.no_match", keyword=keyword)
+            )
             return {"status": "success", "message": msg, "templates": []}
 
-        PIPE_CN = {
-            "optimization": "空间优化", "governance": "数据治理",
-            "general": "通用分析", "planner": "动态规划",
+        pipeline_keys = {
+            "optimization": "template.pipeline_optimization",
+            "governance": "template.pipeline_governance",
+            "general": "template.pipeline_general",
+            "planner": "template.pipeline_planner",
         }
 
         templates = []
@@ -193,16 +202,23 @@ def list_templates(keyword: str = "") -> dict:
             }
             templates.append(t)
 
-            tag = "[我的]" if is_own else f"[共享·{r[3]}]"
-            pipe = PIPE_CN.get(r[5], r[5])
+            tag = (
+                translate("template.tag_own")
+                if is_own
+                else translate("template.tag_shared_owner", owner=r[3])
+            )
+            pipe = translate(pipeline_keys.get(r[5], "template.pipeline_unknown"), value=r[5])
             desc_short = f" — {r[2][:60]}" if r[2] else ""
-            lines.append(f"  {r[0]}. **{r[1]}** {tag} | {pipe} | 使用 {r[7]} 次{desc_short}")
+            lines.append(translate(
+                "template.list_item", id=r[0], name=r[1], tag=tag,
+                pipeline=pipe, uses=r[7], description=desc_short,
+            ))
 
-        msg = f"找到 {len(templates)} 个模板：\n" + "\n".join(lines)
+        msg = translate("template.list_found", count=len(templates)) + "\n" + "\n".join(lines)
         return {"status": "success", "message": msg, "templates": templates}
 
     except Exception as e:
-        return {"status": "error", "message": f"查询模板失败: {e}"}
+        return {"status": "error", "message": translate("template.list_failed", error=e)}
 
 
 def get_template(template_id: int) -> Optional[dict]:
@@ -254,11 +270,11 @@ def delete_template(template_id: int) -> dict:
         操作结果 dict。
     """
     if not isinstance(template_id, int) or template_id <= 0:
-        return {"status": "error", "message": "无效的模板 ID。"}
+        return {"status": "error", "message": translate("template.invalid_id")}
 
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置。"}
+        return {"status": "error", "message": translate("template.db_unavailable")}
 
     username = current_user_id.get()
     try:
@@ -271,11 +287,11 @@ def delete_template(template_id: int) -> dict:
             conn.commit()
 
         if result.rowcount == 0:
-            return {"status": "error", "message": "模板不存在或您无权删除。"}
+            return {"status": "error", "message": translate("template.delete_denied")}
 
-        return {"status": "success", "message": f"模板 #{template_id} 已删除。"}
+        return {"status": "success", "message": translate("template.deleted", id=template_id)}
     except Exception as e:
-        return {"status": "error", "message": f"删除失败: {e}"}
+        return {"status": "error", "message": translate("template.delete_failed", error=e)}
 
 
 def share_template(template_id: int) -> dict:
@@ -289,11 +305,11 @@ def share_template(template_id: int) -> dict:
         操作结果 dict。
     """
     if not isinstance(template_id, int) or template_id <= 0:
-        return {"status": "error", "message": "无效的模板 ID。"}
+        return {"status": "error", "message": translate("template.invalid_id")}
 
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置。"}
+        return {"status": "error", "message": translate("template.db_unavailable")}
 
     username = current_user_id.get()
     try:
@@ -307,11 +323,11 @@ def share_template(template_id: int) -> dict:
             conn.commit()
 
         if result.rowcount == 0:
-            return {"status": "error", "message": "模板不存在或您无权操作。"}
+            return {"status": "error", "message": translate("template.share_denied")}
 
-        return {"status": "success", "message": f"模板 #{template_id} 已设为共享。"}
+        return {"status": "success", "message": translate("template.shared", id=template_id)}
     except Exception as e:
-        return {"status": "error", "message": f"共享失败: {e}"}
+        return {"status": "error", "message": translate("template.share_failed", error=e)}
 
 
 def generate_plan_from_template(template: dict) -> str:
@@ -324,18 +340,16 @@ def generate_plan_from_template(template: dict) -> str:
     source_query = template.get("source_query", "")
     tool_sequence = template.get("tool_sequence", [])
 
-    lines = [
-        f"（基于模板「{name}」）",
-    ]
+    lines = [translate("template.plan_title", name=name)]
     if description:
-        lines.append(f"模板说明: {description}")
+        lines.append(translate("template.plan_description", description=description))
     if source_query:
-        lines.append(f"原始任务: {source_query[:200]}")
+        lines.append(translate("template.plan_source", query=source_query[:200]))
 
     lines.append("")
-    lines.append("**分析目标**: 按以下模板步骤执行分析，根据当前数据适配参数。")
+    lines.append(translate("template.plan_goal"))
     lines.append("")
-    lines.append("**执行步骤**:")
+    lines.append(translate("template.plan_steps"))
 
     for i, record in enumerate(tool_sequence, 1):
         tool_name = record.get("tool_name", "unknown")
@@ -358,16 +372,16 @@ def generate_plan_from_template(template: dict) -> str:
                 val_str = val_str[:57] + "..."
             param_parts.append(f"{k}={val_str}")
 
-        step_line = f"{i}. 调用 `{tool_name}`"
+        step_line = translate("template.plan_step", idx=i, tool_name=tool_name)
         if param_parts:
-            step_line += f"（参数: {', '.join(param_parts)}）"
+            step_line += translate("template.plan_step_params", params=", ".join(param_parts))
         if agent_name:
-            step_line += f" [via {agent_name}]"
+            step_line += translate("template.plan_step_agent", agent=agent_name)
 
         lines.append(step_line)
 
     lines.append("")
-    lines.append("**注意事项**: 请根据用户当前上传的数据文件自动适配文件路径和列名参数。")
+    lines.append(translate("template.plan_notes"))
 
     return "\n".join(lines)
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -13,6 +14,7 @@ import { marked } from "marked";
 import TurndownService from "turndown";
 // @ts-expect-error - turndown-plugin-gfm has no types
 import { tables, strikethrough } from "turndown-plugin-gfm";
+import { formatDate } from "../../../../i18n";
 import {
   acquireLock, heartbeat, releaseLock, saveClause, breakLock,
   getClauseElements,
@@ -37,13 +39,12 @@ type EditorState =
 const turndown = new TurndownService();
 turndown.use([tables, strikethrough]);
 
-/** Keep ONLY the standard metadata header lines (模块:/章节:/表代码:/字段数:/
- *  页码:/表头:/行数:) — strip everything else. The data_element table is
+/** Keep only the standard metadata header lines and strip everything else. The data_element table is
  *  always reconstructed from the API on load, so any leftover table or
  *  scattered cell text in body_md is purely noise. */
 function stripExistingTable(md: string): string {
   if (!md) return "";
-  const headerKeys = /^(模块|章节|表代码|字段数|页码|表头|行数)\s*[:：]/;
+  const headerKeys = /^(\u6a21\u5757|\u7ae0\u8282|\u8868\u4ee3\u7801|\u5b57\u6bb5\u6570|\u9875\u7801|\u8868\u5934|\u884c\u6570)\s*[:\uff1a]/;
   const lines = md.split("\n");
   const out: string[] = [];
   for (const line of lines) {
@@ -110,7 +111,7 @@ function elementsToMarkdownTable(elements: StdDataElement[]): string {
   );
   return [
     "",
-    "| 序号 | 字段代码 | 字段名称 | 类型 | 必选 |",
+    "| \u5e8f\u53f7 | \u5b57\u6bb5\u4ee3\u7801 | \u5b57\u6bb5\u540d\u79f0 | \u7c7b\u578b | \u5fc5\u9009 |",
     "|------|----------|----------|------|------|",
     ...rows,
     "",
@@ -123,6 +124,7 @@ export default function ClauseEditor({
   onLockChange,
   onSaved,
 }: Props) {
+  const { t, i18n } = useTranslation();
   const [state, setState] = useState<EditorState>({ kind: "idle" });
   const [citationOpen, setCitationOpen] = useState(false);
   const heartbeatRef = useRef<number | null>(null);
@@ -131,7 +133,9 @@ export default function ClauseEditor({
     {
       extensions: [
         StarterKit,
-        Placeholder.configure({ placeholder: "开始编写条款内容…" }),
+        Placeholder.configure({
+          placeholder: () => i18n.t("standards.draft.editor.placeholder"),
+        }),
         Link,
         Table.configure({ resizable: false }),
         TableRow,
@@ -144,6 +148,12 @@ export default function ClauseEditor({
     },
     [clause?.id],
   );
+
+  useEffect(() => {
+    if (editor && editor.isEmpty) {
+      editor.view.dispatch(editor.state.tr);
+    }
+  }, [editor, i18n.resolvedLanguage]);
 
   // Keep editable in sync with state
   useEffect(() => {
@@ -259,7 +269,7 @@ export default function ClauseEditor({
   if (!clause) {
     return (
       <div style={{ padding: 24, color: "#888" }}>
-        请从左侧选择条款开始编辑
+        {t("standards.draft.editor.selectClause")}
       </div>
     );
   }
@@ -284,25 +294,27 @@ export default function ClauseEditor({
           borderBottom: "1px solid #ddd",
         }}
       >
-        {state.kind === "acquiring" && "🔄 正在获取锁…"}
+        {state.kind === "acquiring" && t("standards.draft.editor.acquiring")}
         {state.kind === "editing" &&
-          `🟢 已加锁，${new Date(state.lockExpiresAt).toLocaleTimeString()} 后过期`}
+          t("standards.draft.editor.locked", {
+            time: formatDate(state.lockExpiresAt, {hour: "numeric", minute: "2-digit", second: "2-digit"}),
+          })}
         {state.kind === "lockedByOther" && (
           <span>
-            🟡 被 <b>{state.holder ?? "其他用户"}</b> 锁定中
+            {t("standards.draft.editor.lockedBy", {holder: state.holder ?? t("standards.draft.editor.otherUser")})}
             {isAdmin && (
               <button
                 onClick={onForceBreak}
-                style={{ marginLeft: 8 }}
+                style={{ marginInlineStart: 8 }}
               >
-                强制破锁
+                {t("standards.draft.editor.breakLock")}
               </button>
             )}
           </span>
         )}
-        {state.kind === "lost" && "🔴 锁丢失，重新选择条款以继续"}
+        {state.kind === "lost" && t("standards.draft.editor.lockLost")}
         {state.kind === "conflict" &&
-          "⚠️ 服务端版本已变化，下方按钮重置后再编辑"}
+          t("standards.draft.editor.conflict")}
         {state.kind === "idle" && ""}
       </div>
 
@@ -344,7 +356,7 @@ export default function ClauseEditor({
           }
           .std-clause-editor .ProseMirror th,
           .std-clause-editor .ProseMirror td {
-            border: 1px solid #ccc; padding: 4px 8px; text-align: left;
+            border: 1px solid #ccc; padding: 4px 8px; text-align: start;
           }
           .std-clause-editor .ProseMirror th { background: #f0f0f0; font-weight: 600; }
           .std-clause-editor .ProseMirror p.is-editor-empty:first-child::before {
@@ -381,35 +393,35 @@ export default function ClauseEditor({
         }}
       >
         <button onClick={onSave} disabled={state.kind !== "editing"}>
-          保存
+          {t("standards.draft.editor.save")}
         </button>
         <button
           onClick={() => editor?.chain().focus().addRowAfter().run()}
           disabled={state.kind !== "editing" || !editor?.can().addRowAfter()}
-          title="在当前行下方插入新行（光标需在表格内）"
+          title={t("standards.draft.editor.addRowTitle")}
         >
-          + 行
+          + {t("standards.draft.editor.row")}
         </button>
         <button
           onClick={() => editor?.chain().focus().deleteRow().run()}
           disabled={state.kind !== "editing" || !editor?.can().deleteRow()}
-          title="删除当前行（光标需在表格内）"
+          title={t("standards.draft.editor.deleteRowTitle")}
         >
-          − 行
+          − {t("standards.draft.editor.row")}
         </button>
         <button
           onClick={() => setCitationOpen(true)}
           disabled={state.kind !== "editing"}
-          title="查找并插入引用 (Ctrl+Shift+R)"
+          title={t("standards.draft.editor.findCitationTitle")}
         >
-          查找引用
+          {t("standards.draft.editor.findCitation")}
         </button>
         {state.kind === "conflict" && (
           <>
             <span style={{ color: "#a60", fontSize: 12 }}>
-              服务端版本：{state.server.server_body_md.slice(0, 60)}…
+              {t("standards.draft.editor.serverVersion")}: {state.server.server_body_md.slice(0, 60)}…
             </span>
-            <button onClick={() => setState({ kind: "idle" })}>关闭</button>
+            <button onClick={() => setState({ kind: "idle" })}>{t("standards.draft.editor.close")}</button>
           </>
         )}
       </div>

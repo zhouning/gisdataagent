@@ -13,8 +13,15 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from .helpers import _get_user_from_request, _set_user_context
+from ..i18n import t as translate
 
 logger = logging.getLogger("data_agent.api.virtual_routes")
+
+
+def _localized_error(key: str, status_code: int, **kwargs) -> JSONResponse:
+    return JSONResponse({
+        "error": translate(f"virtual_api.{key}", **kwargs),
+    }, status_code=status_code)
 
 _CHONGQING_MAPPING_REPORT = (
     Path(__file__).resolve().parents[2]
@@ -47,7 +54,7 @@ async def vsource_list(request: Request):
     """GET /api/virtual-sources — list virtual sources visible to current user."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     username, _ = _set_user_context(user)
     from ..virtual_sources import list_virtual_sources
     sources = list_virtual_sources(username, include_shared=True)
@@ -58,19 +65,20 @@ async def vsource_create(request: Request):
     """POST /api/virtual-sources — register a new virtual data source."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     username, _ = _set_user_context(user)
     try:
         body = await request.json()
     except Exception:
-        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+        return _localized_error("invalid_json", 400)
 
     from ..virtual_sources import VALID_SOURCE_TYPES, create_virtual_source
     stype = body.get("source_type", "")
     if stype not in VALID_SOURCE_TYPES:
-        return JSONResponse(
-            {"error": f"source_type must be one of {sorted(VALID_SOURCE_TYPES)}"},
-            status_code=400,
+        return _localized_error(
+            "invalid_source_type",
+            400,
+            types=sorted(VALID_SOURCE_TYPES),
         )
 
     result = create_virtual_source(
@@ -95,13 +103,13 @@ async def vsource_detail(request: Request):
     """GET /api/virtual-sources/{id} — get virtual source detail."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     username, _ = _set_user_context(user)
     source_id = int(request.path_params.get("id", 0))
     from ..virtual_sources import get_virtual_source
     source = get_virtual_source(source_id, username)
     if not source:
-        return JSONResponse({"error": "Source not found"}, status_code=404)
+        return _localized_error("source_not_found", 404)
     # Redact auth_config secrets in response
     if source.get("auth_config"):
         auth = source["auth_config"]
@@ -118,13 +126,13 @@ async def vsource_update(request: Request):
     """PUT /api/virtual-sources/{id} — update a virtual source."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     username, _ = _set_user_context(user)
     source_id = int(request.path_params.get("id", 0))
     try:
         body = await request.json()
     except Exception:
-        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+        return _localized_error("invalid_json", 400)
 
     from ..virtual_sources import update_virtual_source
     result = update_virtual_source(source_id, username, **body)
@@ -138,7 +146,7 @@ async def vsource_delete(request: Request):
     """DELETE /api/virtual-sources/{id} — delete a virtual source."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     username, _ = _set_user_context(user)
     source_id = int(request.path_params.get("id", 0))
     from ..virtual_sources import delete_virtual_source
@@ -152,7 +160,7 @@ async def vsource_test(request: Request):
     """POST /api/virtual-sources/{id}/test — test connectivity to a virtual source."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     username, _ = _set_user_context(user)
     source_id = int(request.path_params.get("id", 0))
     from ..virtual_sources import check_source_health
@@ -166,51 +174,52 @@ async def vsource_discover(request: Request):
     """POST /api/virtual-sources/discover — discover layers/collections from a remote service."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     _set_user_context(user)
     try:
         body = await request.json()
     except Exception:
-        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+        return _localized_error("invalid_json", 400)
 
     source_type = body.get("source_type", "")
     endpoint_url = body.get("endpoint_url", "")
     auth_config = body.get("auth_config") or {}
 
     if not source_type or not endpoint_url:
-        return JSONResponse({"error": "source_type and endpoint_url required"}, status_code=400)
+        return _localized_error("type_and_endpoint_required", 400)
 
     from ..connectors import ConnectorRegistry
     connector = ConnectorRegistry.get(source_type)
     if not connector:
-        return JSONResponse({"error": f"Unknown source type: {source_type}"}, status_code=400)
+        return _localized_error("unknown_source_type", 400, source_type=source_type)
 
     try:
         caps = await connector.get_capabilities(endpoint_url, auth_config)
         return JSONResponse(caps)
     except Exception as e:
         logger.warning("Discover failed for %s %s: %s", source_type, endpoint_url, e)
-        return JSONResponse({"error": str(e)[:300]}, status_code=502)
+        return _localized_error("operation_failed", 502, error=str(e)[:300])
 
 
 async def vsource_preview_columns(request: Request):
     """POST /api/virtual-sources/{id}/preview-columns — fetch remote column info."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     username, _ = _set_user_context(user)
     source_id = int(request.path_params["id"])
     try:
         from ..virtual_sources import get_virtual_source, query_virtual_source
         source = get_virtual_source(source_id, username)
         if not source:
-            return JSONResponse({"error": "数据源不存在"}, status_code=404)
+            return _localized_error("source_not_found", 404)
         # Query a small sample to get column info
         gdf = await query_virtual_source(source, limit=5, register_result=False)
         if gdf is None or (hasattr(gdf, '__len__') and len(gdf) == 0):
             return JSONResponse({"columns": [], "sample_count": 0})
         if isinstance(gdf, dict):
-            return JSONResponse({"error": gdf.get("message", "查询失败")}, status_code=500)
+            return JSONResponse({"error": gdf.get(
+                "message", translate("virtual_api.query_failed"))}, status_code=500)
         columns = []
         for col in gdf.columns:
             sample_vals = gdf[col].dropna().head(3).tolist()
@@ -222,14 +231,14 @@ async def vsource_preview_columns(request: Request):
         return JSONResponse({"columns": columns, "sample_count": len(gdf)})
     except Exception as e:
         logger.warning("preview-columns error: %s", e)
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return _localized_error("operation_failed", 500, error=e)
 
 
 async def standard_mapping_acceptance_summary(request: Request):
     """GET a sanitized summary of the frozen Chongqing real-data benchmark."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     _set_user_context(user)
     try:
         report = json.loads(_CHONGQING_MAPPING_REPORT.read_text(encoding="utf-8"))
@@ -238,21 +247,17 @@ async def standard_mapping_acceptance_summary(request: Request):
         )
         return JSONResponse(acceptance_public_summary(report))
     except FileNotFoundError:
-        return JSONResponse(
-            {"error": "重庆真实数据验收报告尚未生成"}, status_code=404,
-        )
+        return _localized_error("acceptance_report_missing", 404)
     except (OSError, ValueError, TypeError) as exc:
         logger.warning("standard mapping acceptance summary error: %s", exc)
-        return JSONResponse(
-            {"error": "重庆真实数据验收报告不可用"}, status_code=500,
-        )
+        return _localized_error("acceptance_report_unavailable", 500)
 
 
 async def chongqing_source_onboarding_summary(request: Request):
     """GET aggregate full-dataset quality and control-ledger registration state."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     _set_user_context(user)
     try:
         report = json.loads(
@@ -300,21 +305,17 @@ async def chongqing_source_onboarding_summary(request: Request):
             )
         )
     except FileNotFoundError:
-        return JSONResponse(
-            {"error": "重庆全量源数据审计报告尚未生成"}, status_code=404,
-        )
+        return _localized_error("onboarding_report_missing", 404)
     except (KeyError, OSError, ValueError, TypeError) as exc:
         logger.warning("source onboarding summary error: %s", exc)
-        return JSONResponse(
-            {"error": "重庆全量源数据审计报告不可用"}, status_code=500,
-        )
+        return _localized_error("onboarding_report_unavailable", 500)
 
 
 async def vsource_infer_mapping(request: Request):
     """POST /api/virtual-sources/{id}/infer-mapping — auto-infer schema mapping."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     username, _ = _set_user_context(user)
     source_id = int(request.path_params["id"])
     try:
@@ -327,12 +328,15 @@ async def vsource_infer_mapping(request: Request):
         from ..virtual_sources import get_virtual_source, infer_schema_mapping, query_virtual_source
         source = get_virtual_source(source_id, username)
         if not source:
-            return JSONResponse({"error": "数据源不存在"}, status_code=404)
+            return _localized_error("source_not_found", 404)
         # A small sample supports dtype evidence and a reproducible source
         # profile hash without performing ingestion or modifying source data.
         gdf = await query_virtual_source(source, limit=5, register_result=False)
         if gdf is None or isinstance(gdf, dict) or len(gdf.columns) == 0:
-            return JSONResponse({"mapping": {}, "message": "无法获取远程列名"})
+            return JSONResponse({
+                "mapping": {},
+                "message": translate("virtual_api.remote_columns_unavailable"),
+            })
         if standard_version_id:
             from ..standards_platform.application.contracts import SourceFieldProfile
             from ..standards_platform.application.service import (
@@ -366,34 +370,32 @@ async def vsource_infer_mapping(request: Request):
             },
         })
     except LookupError as e:
-        return JSONResponse({"error": str(e)}, status_code=404)
+        return _localized_error("operation_failed", 404, error=e)
     except ValueError as e:
         status = 409 if "must be released" in str(e) else 400
-        return JSONResponse({"error": str(e)}, status_code=status)
+        return _localized_error("operation_failed", status, error=e)
     except Exception as e:
         logger.warning("infer-mapping error: %s", e)
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return _localized_error("operation_failed", 500, error=e)
 
 
 async def vsource_update_mapping(request: Request):
     """PUT /api/virtual-sources/{id}/schema-mapping — update schema mapping."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     username, _ = _set_user_context(user)
     source_id = int(request.path_params["id"])
     try:
         body = await request.json()
         schema_mapping = body.get("schema_mapping", {})
         if not isinstance(schema_mapping, dict):
-            return JSONResponse({"error": "schema_mapping 须为 JSON 对象"}, status_code=400)
+            return _localized_error("schema_mapping_object", 400)
         standard_version_id = str(body.get("standard_version_id") or "").strip()
         if standard_version_id:
             field_bindings = body.get("field_bindings") or []
             if not isinstance(field_bindings, list):
-                return JSONResponse(
-                    {"error": "field_bindings 须为数组"}, status_code=400,
-                )
+                return _localized_error("field_bindings_array", 400)
             from ..standards_platform.application.service import (
                 confirm_virtual_source_mapping,
             )
@@ -419,20 +421,20 @@ async def vsource_update_mapping(request: Request):
             return JSONResponse({"error": result["message"]}, status_code=status)
         return JSONResponse({"status": "ok", "mapping_count": len(schema_mapping)})
     except LookupError as e:
-        return JSONResponse({"error": str(e)}, status_code=404)
+        return _localized_error("operation_failed", 404, error=e)
     except ValueError as e:
         status = 409 if "must be released" in str(e) else 400
-        return JSONResponse({"error": str(e)}, status_code=status)
+        return _localized_error("operation_failed", status, error=e)
     except Exception as e:
         logger.warning("update-mapping error: %s", e)
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return _localized_error("operation_failed", 500, error=e)
 
 
 async def vsource_quality_preflight(request: Request):
     """Run a read-only, explicitly sampled quality preflight."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     username, _ = _set_user_context(user)
     source_id = int(request.path_params["id"])
     try:
@@ -443,15 +445,9 @@ async def vsource_quality_preflight(request: Request):
         try:
             sample_limit = int(body.get("sample_limit", 200))
         except (TypeError, ValueError):
-            return JSONResponse(
-                {"error": "sample_limit 须为 1 到 1000 的整数"},
-                status_code=400,
-            )
+            return _localized_error("sample_limit_invalid", 400)
         if sample_limit < 1 or sample_limit > 1000:
-            return JSONResponse(
-                {"error": "sample_limit 须为 1 到 1000 的整数"},
-                status_code=400,
-            )
+            return _localized_error("sample_limit_invalid", 400)
 
         from ..standards_platform.application.service import (
             load_confirmed_virtual_source_mapping,
@@ -460,7 +456,7 @@ async def vsource_quality_preflight(request: Request):
 
         source = get_virtual_source(source_id, username)
         if not source:
-            return JSONResponse({"error": "数据源不存在"}, status_code=404)
+            return _localized_error("source_not_found", 404)
         contract = load_confirmed_virtual_source_mapping(
             source_id=source_id,
             owner_username=username,
@@ -471,14 +467,15 @@ async def vsource_quality_preflight(request: Request):
             register_result=False,
         )
         if frame is None:
-            return JSONResponse({"error": "数据源预检查询失败"}, status_code=502)
+            return _localized_error("preflight_query_failed", 502)
         if isinstance(frame, dict):
             return JSONResponse(
-                {"error": frame.get("message", "数据源预检查询失败")},
+                {"error": frame.get(
+                    "message", translate("virtual_api.preflight_query_failed"))},
                 status_code=502,
             )
         if not hasattr(frame, "columns") or not hasattr(frame, "__len__"):
-            return JSONResponse({"error": "数据源未返回表格数据"}, status_code=502)
+            return _localized_error("non_tabular_data", 502)
 
         from ..standards_platform.application.contracts import (
             DatasetColumnProfile,
@@ -519,25 +516,25 @@ async def vsource_quality_preflight(request: Request):
         return JSONResponse(result)
     except LookupError as exc:
         status = 409 if "mapping contract" in str(exc) else 404
-        return JSONResponse({"error": str(exc)}, status_code=status)
+        return _localized_error("operation_failed", status, error=exc)
     except ValueError as exc:
-        return JSONResponse({"error": str(exc)}, status_code=409)
+        return _localized_error("operation_failed", 409, error=exc)
     except Exception as exc:
         logger.warning("quality preflight error: %s", exc)
-        return JSONResponse({"error": "数据质量预检失败"}, status_code=500)
+        return _localized_error("quality_preflight_failed", 500)
 
 
 async def vsource_ingestion_list(request: Request):
     """Return ingestion definitions and recent durable runs for a source."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     username, _ = _set_user_context(user)
     source_id = int(request.path_params["id"])
     from ..virtual_sources import get_virtual_source
 
     if not get_virtual_source(source_id, username):
-        return JSONResponse({"error": "数据源不存在"}, status_code=404)
+        return _localized_error("source_not_found", 404)
     try:
         from ..data_ingestion import IngestionRepository
 
@@ -548,30 +545,27 @@ async def vsource_ingestion_list(request: Request):
         }))
     except Exception as exc:
         logger.warning("list ingestion state failed: %s", exc)
-        return JSONResponse({"error": str(exc)[:300]}, status_code=503)
+        return _localized_error("operation_failed", 503, error=str(exc)[:300])
 
 
 async def vsource_ingestion_create(request: Request):
     """Create/update an ArcGIS ingestion definition and optionally run it."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     username, _ = _set_user_context(user)
     source_id = int(request.path_params["id"])
     try:
         body = await request.json()
     except Exception:
-        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+        return _localized_error("invalid_json", 400)
     from ..virtual_sources import get_virtual_source
 
     source = get_virtual_source(source_id, username)
     if not source:
-        return JSONResponse({"error": "数据源不存在"}, status_code=404)
+        return _localized_error("source_not_found", 404)
     if source.get("source_type") != "arcgis_rest":
-        return JSONResponse(
-            {"error": "当前仅 ArcGIS REST 数据源支持此 ingest 执行器"},
-            status_code=400,
-        )
+        return _localized_error("arcgis_ingest_only", 400)
     try:
         from ..data_ingestion import (
             IngestionDefinitionSpec,
@@ -617,17 +611,17 @@ async def vsource_ingestion_create(request: Request):
             _jsonable({"definition": definition, "run": run}), status_code=201,
         )
     except ValueError as exc:
-        return JSONResponse({"error": str(exc)}, status_code=400)
+        return _localized_error("operation_failed", 400, error=exc)
     except Exception as exc:
         logger.exception("create ingestion definition failed")
-        return JSONResponse({"error": str(exc)[:500]}, status_code=503)
+        return _localized_error("operation_failed", 503, error=str(exc)[:500])
 
 
 async def ingestion_run_trigger(request: Request):
     """Enqueue an idempotent manual run for an ingestion definition."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     username, _ = _set_user_context(user)
     definition_id = int(request.path_params["id"])
     try:
@@ -643,7 +637,7 @@ async def ingestion_run_trigger(request: Request):
         repository = IngestionRepository()
         definition = repository.get_definition(definition_id, username)
         if definition is None:
-            return JSONResponse({"error": "Ingestion definition not found"}, status_code=404)
+            return _localized_error("ingestion_definition_not_found", 404)
         run = repository.enqueue_run(
             definition,
             trigger_type="manual",
@@ -653,31 +647,31 @@ async def ingestion_run_trigger(request: Request):
         return JSONResponse(_jsonable(run), status_code=202)
     except Exception as exc:
         logger.exception("enqueue ingestion run failed")
-        return JSONResponse({"error": str(exc)[:500]}, status_code=503)
+        return _localized_error("operation_failed", 503, error=str(exc)[:500])
 
 
 async def ingestion_run_detail(request: Request):
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     username, _ = _set_user_context(user)
     try:
         from ..data_ingestion import IngestionRepository
 
         run = IngestionRepository().get_run(request.path_params["run_id"], username)
         if run is None:
-            return JSONResponse({"error": "Ingestion run not found"}, status_code=404)
+            return _localized_error("ingestion_run_not_found", 404)
         return JSONResponse(_jsonable(run))
     except (ValueError, TypeError):
-        return JSONResponse({"error": "Invalid ingestion run ID"}, status_code=400)
+        return _localized_error("invalid_ingestion_run_id", 400)
     except Exception as exc:
-        return JSONResponse({"error": str(exc)[:300]}, status_code=503)
+        return _localized_error("operation_failed", 503, error=str(exc)[:300])
 
 
 async def ingestion_run_cancel(request: Request):
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return _localized_error("unauthorized", 401)
     username, _ = _set_user_context(user)
     try:
         from ..data_ingestion import IngestionRepository
@@ -686,14 +680,12 @@ async def ingestion_run_cancel(request: Request):
             request.path_params["run_id"], username,
         )
         if run is None:
-            return JSONResponse(
-                {"error": "运行不存在、已进入提交阶段或已结束"}, status_code=409,
-            )
+            return _localized_error("run_not_cancelable", 409)
         return JSONResponse(_jsonable(run))
     except (ValueError, TypeError):
-        return JSONResponse({"error": "Invalid ingestion run ID"}, status_code=400)
+        return _localized_error("invalid_ingestion_run_id", 400)
     except Exception as exc:
-        return JSONResponse({"error": str(exc)[:300]}, status_code=503)
+        return _localized_error("operation_failed", 503, error=str(exc)[:300])
 
 
 def _sample_frame_fingerprint(frame) -> str:

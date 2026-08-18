@@ -43,6 +43,7 @@ from .capability_registry import (
     CapabilityFingerprintMismatchError,
 )
 from .db_engine import get_engine
+from .i18n import t as translate
 from .observability import get_logger
 from .pipeline_helpers import clean_cot_leakage
 from .user_context import current_user_id, current_user_role
@@ -409,9 +410,13 @@ async def _api_catalog_search(request: Request):
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
     _set_user_context(user)
 
-    fingerprint = request.headers.get(CAPABILITY_FINGERPRINT_HEADER)
-    if fingerprint is None:
-        fingerprint = request.headers.get(CAPABILITY_FINGERPRINT_HEADER.lower())
+    headers = getattr(request, "headers", None)
+    fingerprint = None
+    if headers is not None and hasattr(headers, "get"):
+        candidate = headers.get(CAPABILITY_FINGERPRINT_HEADER)
+        if candidate is None:
+            candidate = headers.get(CAPABILITY_FINGERPRINT_HEADER.lower())
+        fingerprint = candidate if isinstance(candidate, str) else None
     try:
         CATALOG_ASSET_SEARCH.assert_invocation_fingerprint(fingerprint)
     except CapabilityFingerprintMismatchError:
@@ -428,7 +433,7 @@ async def _api_catalog_search(request: Request):
 
     q = request.query_params.get("q", "").strip()
     if not q:
-        return JSONResponse({"error": "参数 q 必填"}, status_code=400)
+        return JSONResponse({"error": translate("catalog.search_query_required")}, status_code=400)
 
     from .data_catalog import search_data_assets
     result = search_data_assets(q)
@@ -1325,7 +1330,7 @@ async def _api_config_basemaps(request: Request):
     """GET /api/config/basemaps — available basemap layers for frontend."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return JSONResponse({"error": translate("map_api.unauthorized")}, status_code=401)
 
     from .basemaps import list_dmt_basemaps
 
@@ -1342,7 +1347,7 @@ async def _api_dmt_basemap_tile(request: Request):
     """GET /api/basemaps/dmt/{id}/tiles/{z}/{x}/{y} — proxy a governed tile."""
     user = _get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return JSONResponse({"error": translate("map_api.unauthorized")}, status_code=401)
 
     from .basemaps import fetch_dmt_basemap_tile
 
@@ -1353,12 +1358,12 @@ async def _api_dmt_basemap_tile(request: Request):
         y = int(request.path_params["y"])
         content, content_type = await fetch_dmt_basemap_tile(basemap_id, z, x, y)
     except KeyError:
-        return JSONResponse({"error": "Unknown DMT basemap"}, status_code=404)
+        return JSONResponse({"error": translate("map_api.basemap_not_found")}, status_code=404)
     except ValueError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
     except Exception as exc:
         logger.warning("DMT basemap tile failed for %s: %s", basemap_id, exc)
-        return JSONResponse({"error": "DMT basemap tile unavailable"}, status_code=502)
+        return JSONResponse({"error": translate("map_api.basemap_unavailable")}, status_code=502)
 
     return Response(
         content,
@@ -2330,7 +2335,7 @@ async def _api_user_perspective_put(request: Request):
         memories = existing.get("memories", [])
         if memories:
             delete_memory(str(memories[0]["id"]))
-        result = {"status": "success", "message": "已清除分析视角"}
+        result = {"status": "success", "message": translate("perspective.cleared")}
 
     status_code = 200 if result.get("status") == "success" else 400
     return JSONResponse(result, status_code=status_code)

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatNumber, getLocaleHeaders, isRtlLocale } from '../../i18n';
 
 /* ============================================================
    Knowledge Base Tab
@@ -17,6 +19,7 @@ interface KBDoc {
 }
 
 export default function KnowledgeBaseTab() {
+  const { t, i18n } = useTranslation();
   const [kbs, setKbs] = useState<KBItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedKb, setSelectedKb] = useState<(KBItem & { documents?: KBDoc[] }) | null>(null);
@@ -34,7 +37,7 @@ export default function KnowledgeBaseTab() {
   const fetchKbs = async () => {
     setLoading(true);
     try {
-      const resp = await fetch('/api/kb', { credentials: 'include' });
+      const resp = await fetch('/api/kb', { credentials: 'include', headers: getLocaleHeaders() });
       if (resp.ok) {
         const data = await resp.json();
         setKbs(data.knowledge_bases || []);
@@ -43,15 +46,15 @@ export default function KnowledgeBaseTab() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchKbs(); }, []);
+  useEffect(() => { fetchKbs(); }, [i18n.resolvedLanguage]);
 
   const handleCreate = async () => {
     setCreateError('');
-    if (!createName.trim()) { setCreateError('名称必填'); return; }
+    if (!createName.trim()) { setCreateError(t('knowledgeBase.errors.nameRequired')); return; }
     try {
       const resp = await fetch('/api/kb', {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: createName.trim(), description: createDesc.trim(), is_shared: createShared }),
       });
       const data = await resp.json();
@@ -59,21 +62,25 @@ export default function KnowledgeBaseTab() {
         setShowCreateForm(false);
         setCreateName(''); setCreateDesc(''); setCreateShared(false);
         fetchKbs();
-      } else { setCreateError(data.error || '创建失败'); }
-    } catch { setCreateError('网络错误'); }
+      } else { setCreateError(data.error || t('knowledgeBase.errors.create')); }
+    } catch { setCreateError(t('knowledgeBase.errors.network')); }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('确定删除此知识库及所有文档？')) return;
+    if (!confirm(t('knowledgeBase.confirm.delete'))) return;
     try {
-      const resp = await fetch(`/api/kb/${id}`, { method: 'DELETE', credentials: 'include' });
+      const resp = await fetch(`/api/kb/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       if (resp.ok) { setSelectedKb(null); fetchKbs(); }
     } catch { /* ignore */ }
   };
 
   const handleSelectKb = async (kb: KBItem) => {
     try {
-      const resp = await fetch(`/api/kb/${kb.id}`, { credentials: 'include' });
+      const resp = await fetch(`/api/kb/${kb.id}`, { credentials: 'include', headers: getLocaleHeaders() });
       if (resp.ok) {
         const data = await resp.json();
         setSelectedKb(data);
@@ -86,7 +93,7 @@ export default function KnowledgeBaseTab() {
     try {
       const resp = await fetch(`/api/kb/${selectedKb.id}/documents`, {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: docText.trim(), filename: docName.trim() || 'document.txt' }),
       });
       if (resp.ok) {
@@ -99,7 +106,11 @@ export default function KnowledgeBaseTab() {
   const handleDeleteDoc = async (docId: number) => {
     if (!selectedKb) return;
     try {
-      const resp = await fetch(`/api/kb/${selectedKb.id}/documents/${docId}`, { method: 'DELETE', credentials: 'include' });
+      const resp = await fetch(`/api/kb/${selectedKb.id}/documents/${docId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       if (resp.ok) handleSelectKb(selectedKb);
     } catch { /* ignore */ }
   };
@@ -110,7 +121,7 @@ export default function KnowledgeBaseTab() {
     try {
       const resp = await fetch('/api/kb/search', {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: searchQuery.trim(), top_k: 5 }),
       });
       if (resp.ok) {
@@ -126,30 +137,33 @@ export default function KnowledgeBaseTab() {
     return (
       <div className="kb-view">
         <div className="kb-detail-header">
-          <button className="btn-secondary btn-sm" onClick={() => setSelectedKb(null)}>← 返回</button>
+          <button className="btn-secondary btn-sm" onClick={() => setSelectedKb(null)}>
+            {isRtlLocale() ? '→' : '←'} {t('knowledgeBase.actions.back')}
+          </button>
           <span className="kb-detail-name">{selectedKb.name}</span>
-          <button className="cap-delete-btn" onClick={() => handleDelete(selectedKb.id)}>删除</button>
+          <button className="cap-delete-btn" onClick={() => handleDelete(selectedKb.id)}>{t('knowledgeBase.actions.delete')}</button>
         </div>
         {selectedKb.description && <div className="kb-detail-desc">{selectedKb.description}</div>}
 
-        <div className="skill-section-label">文档 ({(selectedKb.documents || []).length})</div>
+        <div className="skill-section-label">{t('knowledgeBase.sections.documents', { count: formatNumber((selectedKb.documents || []).length) })}</div>
         <div className="kb-doc-list">
           {(selectedKb.documents || []).map(doc => (
             <div key={doc.id} className="kb-doc-item">
               <span className="kb-doc-name">{doc.filename}</span>
-              <span className="kb-doc-meta">{doc.chunk_count} 块</span>
-              <button className="param-remove-btn" onClick={() => handleDeleteDoc(doc.id)}>×</button>
+              <span className="kb-doc-meta">{t('knowledgeBase.counts.chunks', { count: formatNumber(doc.chunk_count) })}</span>
+              <button className="param-remove-btn" onClick={() => handleDeleteDoc(doc.id)}
+                title={t('knowledgeBase.actions.deleteDocument')} aria-label={t('knowledgeBase.actions.deleteDocument')}>×</button>
             </div>
           ))}
         </div>
 
-        <div className="skill-section-label">添加文档</div>
-        <input placeholder="文件名 (如: 政策文件.txt)" value={docName}
+        <div className="skill-section-label">{t('knowledgeBase.sections.addDocument')}</div>
+        <input placeholder={t('knowledgeBase.form.filenamePlaceholder')} value={docName}
           onChange={e => setDocName(e.target.value)} className="capabilities-search" style={{ margin: '0 0 4px' }} />
-        <textarea placeholder="粘贴文档内容..." rows={3} value={docText}
+        <textarea placeholder={t('knowledgeBase.form.documentPlaceholder')} rows={3} value={docText}
           onChange={e => setDocText(e.target.value)}
           className="tool-config-editor" style={{ margin: '0 0 6px', fontSize: '12px' }} />
-        <button className="btn-primary btn-sm" onClick={handleAddDoc} disabled={!docText.trim()}>添加文档</button>
+        <button className="btn-primary btn-sm" onClick={handleAddDoc} disabled={!docText.trim()}>{t('knowledgeBase.actions.addDocument')}</button>
 
         {/* ── Knowledge Graph Section (GraphRAG v10.0.5) ── */}
         <GraphRAGSection kbId={selectedKb.id} />
@@ -160,45 +174,48 @@ export default function KnowledgeBaseTab() {
   return (
     <div className="kb-view">
       <div className="capabilities-summary">
-        <span>{kbs.length} 个知识库</span>
-        <button className="btn-add-server" onClick={() => setShowCreateForm(!showCreateForm)} title="新建知识库">+</button>
+        <span>{t('knowledgeBase.counts.knowledgeBases', { count: formatNumber(kbs.length) })}</span>
+        <button className="btn-add-server" onClick={() => setShowCreateForm(!showCreateForm)}
+          title={t('knowledgeBase.actions.new')} aria-label={t('knowledgeBase.actions.new')}>+</button>
       </div>
 
       {showCreateForm && (
         <div className="skill-add-form">
-          <div className="skill-add-form-title">新建知识库</div>
-          <input placeholder="知识库名称 (必填)" value={createName}
+          <div className="skill-add-form-title">{t('knowledgeBase.form.createTitle')}</div>
+          <input placeholder={t('knowledgeBase.form.namePlaceholder')} value={createName}
             onChange={e => setCreateName(e.target.value)} />
-          <input placeholder="描述 (可选)" value={createDesc}
+          <input placeholder={t('knowledgeBase.form.descriptionPlaceholder')} value={createDesc}
             onChange={e => setCreateDesc(e.target.value)} />
           <label className="skill-checkbox">
             <input type="checkbox" checked={createShared}
               onChange={e => setCreateShared(e.target.checked)} />
-            共享给其他用户
+            {t('knowledgeBase.form.share')}
           </label>
           {createError && <div className="skill-add-error">{createError}</div>}
           <div className="skill-add-actions">
-            <button className="btn-secondary btn-sm" onClick={() => setShowCreateForm(false)}>取消</button>
-            <button className="btn-primary btn-sm" onClick={handleCreate}>创建</button>
+            <button className="btn-secondary btn-sm" onClick={() => setShowCreateForm(false)}>{t('knowledgeBase.actions.cancel')}</button>
+            <button className="btn-primary btn-sm" onClick={handleCreate}>{t('knowledgeBase.actions.create')}</button>
           </div>
         </div>
       )}
 
       <div className="kb-search-bar">
-        <input className="capabilities-search" placeholder="语义搜索所有知识库..." value={searchQuery}
+        <input className="capabilities-search" placeholder={t('knowledgeBase.search.placeholder')} value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSearch()} />
         <button className="btn-primary btn-sm" onClick={handleSearch} disabled={searching}>
-          {searching ? '搜索中...' : '搜索'}
+          {searching ? t('knowledgeBase.actions.searching') : t('knowledgeBase.actions.search')}
         </button>
       </div>
 
       {searchResults.length > 0 && (
         <div className="kb-search-results">
-          <div className="skill-section-label">搜索结果 ({searchResults.length})</div>
+          <div className="skill-section-label">{t('knowledgeBase.search.results', { count: formatNumber(searchResults.length) })}</div>
           {searchResults.map((r: any, i: number) => (
             <div key={i} className="kb-search-result-item">
-              <div className="kb-result-score">相似度 {(r.score * 100).toFixed(0)}%</div>
+              <div className="kb-result-score">{t('knowledgeBase.search.similarity', {
+                value: formatNumber(r.score || 0, { style: 'percent', maximumFractionDigits: 0 }),
+              })}</div>
               <div className="kb-result-text">{(r.text || r.chunk_text || '').slice(0, 200)}</div>
               <div className="kb-result-meta">{r.kb_name} / {r.filename}</div>
             </div>
@@ -207,22 +224,22 @@ export default function KnowledgeBaseTab() {
       )}
 
       {loading && kbs.length === 0 ? (
-        <div className="empty-state">加载中...</div>
+        <div className="empty-state">{t('knowledgeBase.common.loading')}</div>
       ) : kbs.length === 0 ? (
-        <div className="empty-state">暂无知识库，点击 + 创建</div>
+        <div className="empty-state">{t('knowledgeBase.empty.knowledgeBases')}</div>
       ) : (
         <div className="capabilities-list">
           {kbs.map(kb => (
             <div key={kb.id} className="capability-card" onClick={() => handleSelectKb(kb)} style={{ cursor: 'pointer' }}>
               <div className="cap-card-header">
                 <span className="cap-card-name">{kb.name}</span>
-                <span className="cap-badge cap-type-builtin">{kb.doc_count || 0} 文档</span>
-                <span className="cap-badge cap-domain">{kb.chunk_count || 0} 块</span>
+                <span className="cap-badge cap-type-builtin">{t('knowledgeBase.counts.documents', { count: formatNumber(kb.doc_count || 0) })}</span>
+                <span className="cap-badge cap-domain">{t('knowledgeBase.counts.chunks', { count: formatNumber(kb.chunk_count || 0) })}</span>
               </div>
               {kb.description && <div className="cap-card-desc">{kb.description}</div>}
               <div className="cap-card-footer">
-                <span className="cap-owner">by {kb.owner_username}</span>
-                {kb.is_shared && <span className="cap-badge cap-shared">共享</span>}
+                <span className="cap-owner">{t('knowledgeBase.details.owner', { owner: kb.owner_username })}</span>
+                {kb.is_shared && <span className="cap-badge cap-shared">{t('knowledgeBase.details.shared')}</span>}
               </div>
             </div>
           ))}
@@ -233,6 +250,7 @@ export default function KnowledgeBaseTab() {
 }
 
 function GraphRAGSection({ kbId }: { kbId: number }) {
+  const { t, i18n } = useTranslation();
   const [building, setBuilding] = useState(false);
   const [graph, setGraph] = useState<{ nodes: any[]; edges: any[] } | null>(null);
   const [entities, setEntities] = useState<any[]>([]);
@@ -244,8 +262,8 @@ function GraphRAGSection({ kbId }: { kbId: number }) {
   const fetchGraph = async () => {
     try {
       const [gResp, eResp] = await Promise.all([
-        fetch(`/api/kb/${kbId}/graph`, { credentials: 'include' }),
-        fetch(`/api/kb/${kbId}/entities`, { credentials: 'include' }),
+        fetch(`/api/kb/${kbId}/graph`, { credentials: 'include', headers: getLocaleHeaders() }),
+        fetch(`/api/kb/${kbId}/entities`, { credentials: 'include', headers: getLocaleHeaders() }),
       ]);
       if (gResp.ok) {
         const g = await gResp.json();
@@ -258,12 +276,16 @@ function GraphRAGSection({ kbId }: { kbId: number }) {
     } catch { /* ignore */ }
   };
 
-  useEffect(() => { fetchGraph(); }, [kbId]);
+  useEffect(() => { fetchGraph(); }, [kbId, i18n.resolvedLanguage]);
 
   const handleBuild = async () => {
     setBuilding(true);
     try {
-      await fetch(`/api/kb/${kbId}/build-graph`, { method: 'POST', credentials: 'include' });
+      await fetch(`/api/kb/${kbId}/build-graph`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       await fetchGraph();
     } catch { /* ignore */ }
     finally { setBuilding(false); }
@@ -275,7 +297,7 @@ function GraphRAGSection({ kbId }: { kbId: number }) {
     try {
       const resp = await fetch(`/api/kb/${kbId}/graph-search`, {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: graphSearch.trim() }),
       });
       if (resp.ok) {
@@ -292,17 +314,24 @@ function GraphRAGSection({ kbId }: { kbId: number }) {
   return (
     <div style={{ marginTop: 12 }}>
       <div className="skill-section-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>知识图谱 ({nodeCount} 实体, {edgeCount} 关系)</span>
+        <span>{t('knowledgeBase.graph.summary', {
+          entities: formatNumber(nodeCount),
+          relations: formatNumber(edgeCount),
+        })}</span>
         <button className="btn-primary btn-sm" onClick={handleBuild} disabled={building}>
-          {building ? '构建中...' : nodeCount > 0 ? '重新构建' : '构建图谱'}
+          {building
+            ? t('knowledgeBase.graph.building')
+            : nodeCount > 0
+              ? t('knowledgeBase.graph.rebuild')
+              : t('knowledgeBase.graph.build')}
         </button>
       </div>
 
       {nodeCount > 0 && (
         <>
           <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
-            <button className={`cap-filter-btn ${tab === 'entities' ? 'active' : ''}`} onClick={() => setTab('entities')}>实体列表</button>
-            <button className={`cap-filter-btn ${tab === 'graph' ? 'active' : ''}`} onClick={() => setTab('graph')}>图谱搜索</button>
+            <button className={`cap-filter-btn ${tab === 'entities' ? 'active' : ''}`} onClick={() => setTab('entities')}>{t('knowledgeBase.graph.entitiesTab')}</button>
+            <button className={`cap-filter-btn ${tab === 'graph' ? 'active' : ''}`} onClick={() => setTab('graph')}>{t('knowledgeBase.graph.searchTab')}</button>
           </div>
 
           {tab === 'entities' && (
@@ -310,30 +339,30 @@ function GraphRAGSection({ kbId }: { kbId: number }) {
               {entities.map((ent, i) => (
                 <div key={i} style={{ padding: '4px 8px', borderBottom: '1px solid #f0f0f0', fontSize: 12 }}>
                   <span style={{ fontWeight: 500 }}>{ent.name || ent.entity}</span>
-                  {ent.type && <span style={{ marginLeft: 6, color: '#6b7280', fontSize: 11 }}>[{ent.type}]</span>}
+                  {ent.type && <span style={{ marginInlineStart: 6, color: '#6b7280', fontSize: 11 }}>[{ent.type}]</span>}
                   {ent.description && <div style={{ color: '#9ca3af', fontSize: 11 }}>{ent.description}</div>}
                 </div>
               ))}
-              {entities.length === 0 && <div style={{ color: '#9ca3af', fontSize: 12, padding: 8 }}>暂无实体</div>}
+              {entities.length === 0 && <div style={{ color: '#9ca3af', fontSize: 12, padding: 8 }}>{t('knowledgeBase.graph.noEntities')}</div>}
             </div>
           )}
 
           {tab === 'graph' && (
             <div>
               <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
-                <input className="capabilities-search" placeholder="搜索图谱实体或关系..."
+                <input className="capabilities-search" placeholder={t('knowledgeBase.graph.searchPlaceholder')}
                   value={graphSearch} onChange={e => setGraphSearch(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleGraphSearch()}
                   style={{ margin: 0, flex: 1 }} />
                 <button className="btn-primary btn-sm" onClick={handleGraphSearch} disabled={searching}>
-                  {searching ? '...' : '搜索'}
+                  {searching ? '...' : t('knowledgeBase.actions.search')}
                 </button>
               </div>
               {searchResults.length > 0 && (
                 <div style={{ maxHeight: 200, overflow: 'auto' }}>
                   {searchResults.map((r, i) => (
                     <div key={i} style={{ padding: '4px 8px', borderBottom: '1px solid #f0f0f0', fontSize: 12 }}>
-                      <div style={{ fontWeight: 500 }}>{r.source} → <span style={{ color: '#6b7280' }}>{r.relation}</span> → {r.target}</div>
+                      <div style={{ fontWeight: 500 }}>{r.source} {isRtlLocale() ? '←' : '→'} <span style={{ color: '#6b7280' }}>{r.relation}</span> {isRtlLocale() ? '←' : '→'} {r.target}</div>
                       {r.context && <div style={{ color: '#9ca3af', fontSize: 11 }}>{r.context}</div>}
                     </div>
                   ))}
@@ -346,7 +375,7 @@ function GraphRAGSection({ kbId }: { kbId: number }) {
 
       {nodeCount === 0 && !building && (
         <div style={{ textAlign: 'center', color: '#9ca3af', padding: 12, fontSize: 12 }}>
-          点击"构建图谱"从文档中提取实体和关系
+          {t('knowledgeBase.graph.emptyHint')}
         </div>
       )}
     </div>

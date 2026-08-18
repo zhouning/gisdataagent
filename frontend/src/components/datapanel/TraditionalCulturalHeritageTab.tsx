@@ -1,2 +1,72 @@
-import {useEffect,useMemo,useState} from 'react';import {AlertTriangle,Map,RefreshCw,Shield} from 'lucide-react';type Row=Record<string,any>;type Tier='confirmed_cultural_place_evidence'|'heritage_candidate_leads'|'excluded_ambiguous_records';const arr=<T,>(x:unknown):T[]=>Array.isArray(x)?x as T[]:[];
-export default function TraditionalCulturalHeritageTab(){const [tier,setTier]=useState<Tier>('confirmed_cultural_place_evidence'),[overview,setOverview]=useState<Row|null>(null),[places,setPlaces]=useState<Row[]>([]),[admins,setAdmins]=useState<Row[]>([]),[map,setMap]=useState<Row|null>(null),[message,setMessage]=useState(''),[loading,setLoading]=useState(false);const load=async()=>{setLoading(true);setMessage('');try{const q=`?tier=${tier}`,rs=await Promise.all([fetch('/api/uwm/traditional-livability/cultural-heritage/overview',{credentials:'include'}),fetch('/api/uwm/traditional-livability/cultural-heritage/places'+q,{credentials:'include'}),fetch('/api/uwm/traditional-livability/cultural-heritage/admin-units',{credentials:'include'}),fetch('/api/uwm/traditional-livability/cultural-heritage/map'+q,{credentials:'include'})]),d=await Promise.all(rs.map(r=>r.json()));if(rs.some(r=>!r.ok))throw new Error(d.find(x=>x.error)?.error||'文化遗产证据产品不可用');setOverview(d[0]);setPlaces(arr(d[1].places));setAdmins(arr(d[2].admin_units));setMap(d[3])}catch(e:unknown){setMessage(e instanceof Error?e.message:'文化遗产证据产品不可用')}finally{setLoading(false)}};useEffect(()=>{load()},[tier]);const ranked=useMemo(()=>[...admins].sort((a,b)=>Number(a.relative_cultural_heritage_evidence_gap_rank)-Number(b.relative_cultural_heritage_evidence_gap_rank)).slice(0,12),[admins]);return <div className="traditional-livability-tab"><div className="traditional-panel"><div className="traditional-panel-title"><strong>文化遗产与场所语境证据（需求16）</strong><button className="secondary-button" onClick={load} disabled={loading}><RefreshCw size={14}/>刷新</button></div><div className="traditional-tag-list">{(['confirmed_cultural_place_evidence','heritage_candidate_leads','excluded_ambiguous_records'] as Tier[]).map(x=><button key={x} className={tier===x?'primary-button':'secondary-button'} onClick={()=>setTier(x)}>{x}</button>)}</div><div className="traditional-message error"><Shield size={15}/>文化场所POI不等于法定文化遗产；名称关键词仅形成核查线索；宗教场所不自动等于文物保护单位。</div>{message&&<div className="traditional-message error"><AlertTriangle size={15}/>{message}</div>}<div className="traditional-kpi-grid"><div className="traditional-kpi"><span>当前证据层</span><strong>{places.length}</strong></div><div className="traditional-kpi"><span>明确文化场所</span><strong>{overview?.summary?.confirmed_place_count??'-'}</strong></div><div className="traditional-kpi"><span>候选线索</span><strong>{overview?.summary?.candidate_lead_count??'-'}</strong></div><div className="traditional-kpi"><span>歧义排除</span><strong>{overview?.summary?.excluded_ambiguous_count??'-'}</strong></div></div><p>明确分类：{Object.entries(overview?.summary?.confirmed_category_counts||{}).map(([k,v])=>`${k}:${v}`).join(' / ')||'-'}</p><div className="traditional-message error"><Shield size={15}/>法定等级、真实性、完整性、文化价值、开放运营、客流、社区认同、保护质量、活化潜力和政策效果均未就绪。</div><h4>relative_cultural_heritage_evidence_gap</h4><div className="traditional-table-wrap"><table className="traditional-table"><thead><tr><th>排名</th><th>行政单元</th><th>明确场所</th><th>候选线索</th><th>类别数</th></tr></thead><tbody>{ranked.map(x=><tr key={x.admin_unit_id}><td>{x.relative_cultural_heritage_evidence_gap_rank}</td><td>{x.admin_name||x.admin_unit_id}</td><td>{x.confirmed_place_count}</td><td>{x.candidate_lead_count}</td><td>{x.confirmed_category_count}</td></tr>)}</tbody></table></div><button className="primary-button" disabled={!map} onClick={()=>window.__handleMapUpdate?.(map)}><Map size={14}/>发送当前证据层到地图</button></div></div>}
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { AlertTriangle, Map, RefreshCw, Shield } from 'lucide-react';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
+
+type Row = Record<string, any>;
+type Tier = 'confirmed_cultural_place_evidence' | 'heritage_candidate_leads' | 'excluded_ambiguous_records';
+const arrayOf = <T,>(value: unknown): T[] => Array.isArray(value) ? value as T[] : [];
+
+export default function TraditionalCulturalHeritageTab() {
+  const { t, i18n } = useTranslation();
+  const [tier, setTier] = useState<Tier>('confirmed_cultural_place_evidence');
+  const [overview, setOverview] = useState<Row | null>(null);
+  const [places, setPlaces] = useState<Row[]>([]);
+  const [admins, setAdmins] = useState<Row[]>([]);
+  const [mapPayload, setMapPayload] = useState<Row | null>(null);
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    setMessage('');
+    try {
+      const suffix = '?tier=' + tier;
+      const urls = [
+        '/api/uwm/traditional-livability/cultural-heritage/overview',
+        '/api/uwm/traditional-livability/cultural-heritage/places' + suffix,
+        '/api/uwm/traditional-livability/cultural-heritage/admin-units',
+        '/api/uwm/traditional-livability/cultural-heritage/map' + suffix,
+      ];
+      const responses = await Promise.all(urls.map(url => fetch(url, { credentials: 'include', headers: getLocaleHeaders() })));
+      const data = await Promise.all(responses.map(response => response.json()));
+      if (responses.some(response => !response.ok)) {
+        throw new Error(data.find(item => item.error)?.error || t('traditionalPanels.cultural.errors.unavailable'));
+      }
+      setOverview(data[0]);
+      setPlaces(arrayOf<Row>(data[1].places));
+      setAdmins(arrayOf<Row>(data[2].admin_units));
+      setMapPayload(data[3]);
+    } catch (error: unknown) {
+      setMessage(error instanceof Error ? error.message : t('traditionalPanels.cultural.errors.unavailable'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void load(); }, [tier, i18n.resolvedLanguage]);
+  const ranked = useMemo(() => [...admins].sort((a, b) => Number(a.relative_cultural_heritage_evidence_gap_rank) - Number(b.relative_cultural_heritage_evidence_gap_rank)).slice(0, 12), [admins]);
+  const count = (value: unknown) => typeof value === 'number' ? formatNumber(value) : String(value ?? '-');
+
+  return (
+    <div className="traditional-livability-tab">
+      <div className="traditional-panel">
+        <div className="traditional-panel-title"><strong>{t('traditionalPanels.cultural.title')}</strong><button className="secondary-button" onClick={() => void load()} disabled={loading}><RefreshCw size={14} />{t('traditionalPanels.common.refresh')}</button></div>
+        <div className="traditional-tag-list">{(['confirmed_cultural_place_evidence', 'heritage_candidate_leads', 'excluded_ambiguous_records'] as Tier[]).map(item => <button key={item} className={tier === item ? 'primary-button' : 'secondary-button'} onClick={() => setTier(item)}>{t('traditionalPanels.cultural.tiers.' + item)}</button>)}</div>
+        <div className="traditional-message error"><Shield size={15} />{t('traditionalPanels.cultural.warning')}</div>
+        {message && <div className="traditional-message error"><AlertTriangle size={15} />{message}</div>}
+        <div className="traditional-kpi-grid">
+          <div className="traditional-kpi"><span>{t('traditionalPanels.cultural.kpis.currentTier')}</span><strong>{formatNumber(places.length)}</strong></div>
+          <div className="traditional-kpi"><span>{t('traditionalPanels.cultural.kpis.confirmed')}</span><strong>{count(overview?.summary?.confirmed_place_count)}</strong></div>
+          <div className="traditional-kpi"><span>{t('traditionalPanels.cultural.kpis.candidates')}</span><strong>{count(overview?.summary?.candidate_lead_count)}</strong></div>
+          <div className="traditional-kpi"><span>{t('traditionalPanels.cultural.kpis.excluded')}</span><strong>{count(overview?.summary?.excluded_ambiguous_count)}</strong></div>
+        </div>
+        <p>{t('traditionalPanels.cultural.confirmedCategories')}: {Object.entries(overview?.summary?.confirmed_category_counts || {}).map(([key, value]) => key + ':' + String(value)).join(' / ') || '-'}</p>
+        <div className="traditional-message error"><Shield size={15} />{t('traditionalPanels.cultural.finalWarning')}</div>
+        <h4>{t('traditionalPanels.cultural.sections.gap')}</h4>
+        <div className="traditional-table-wrap"><table className="traditional-table"><thead><tr><th>{t('traditionalPanels.cultural.table.rank')}</th><th>{t('traditionalPanels.cultural.table.unit')}</th><th>{t('traditionalPanels.cultural.table.confirmed')}</th><th>{t('traditionalPanels.cultural.table.candidates')}</th><th>{t('traditionalPanels.cultural.table.categories')}</th></tr></thead><tbody>{ranked.map(item => <tr key={item.admin_unit_id}><td>{item.relative_cultural_heritage_evidence_gap_rank}</td><td>{item.admin_name || item.admin_unit_id}</td><td>{item.confirmed_place_count}</td><td>{item.candidate_lead_count}</td><td>{item.confirmed_category_count}</td></tr>)}</tbody></table></div>
+        <button className="primary-button" disabled={!mapPayload} onClick={() => window.__handleMapUpdate?.(mapPayload)}><Map size={14} />{t('traditionalPanels.cultural.actions.sendToMap')}</button>
+      </div>
+    </div>
+  );
+}

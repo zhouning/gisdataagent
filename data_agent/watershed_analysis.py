@@ -14,6 +14,8 @@ from typing import Optional
 
 import numpy as np
 
+from .i18n import t
+
 try:
     from .observability import get_logger
     logger = get_logger("watershed_analysis")
@@ -104,14 +106,16 @@ def extract_watershed(
     Returns:
         JSON 包含流域边界文件、河网文件、统计信息和可视化路径。
     """
+    if dem_path.strip().lower() == "auto" and not boundary_path:
+        return json.dumps({
+            "status": "error",
+            "message": t("watershed.boundary_required"),
+        }, ensure_ascii=False)
     try:
         from pysheds.grid import Grid
 
         # ---- Step 0: Resolve DEM source ----
         if dem_path.strip().lower() == "auto":
-            if not boundary_path:
-                return json.dumps({"status": "error",
-                                   "message": "dem_path='auto' 时必须提供 boundary_path 用于下载 DEM"})
             try:
                 from .remote_sensing import download_dem
                 dem_result = download_dem(_resolve_path(boundary_path))
@@ -126,14 +130,23 @@ def extract_watershed(
                             dem_path = parts[-1].strip()
                             break
                 if dem_path.strip().lower() == "auto":
-                    return json.dumps({"status": "error", "message": "DEM 下载失败"})
+                    return json.dumps({
+                        "status": "error",
+                        "message": t("watershed.dem_download_failed"),
+                    }, ensure_ascii=False)
             except Exception as e:
-                return json.dumps({"status": "error", "message": f"DEM 下载失败: {e}"})
+                return json.dumps({
+                    "status": "error",
+                    "message": t("watershed.dem_download_failed_detail", error=e),
+                }, ensure_ascii=False)
         else:
             dem_path = _resolve_path(dem_path)
 
         if not os.path.exists(dem_path):
-            return json.dumps({"status": "error", "message": f"DEM 文件不存在: {dem_path}"})
+            return json.dumps({
+                "status": "error",
+                "message": t("watershed.dem_missing", path=dem_path),
+            }, ensure_ascii=False)
 
         # ---- Step 1: Read DEM ----
         grid = Grid.from_raster(dem_path)
@@ -270,7 +283,12 @@ def extract_watershed(
 
             # Show DEM within watershed with terrain colors
             im = ax.imshow(dem_in_ws, cmap='terrain', alpha=0.8, extent=extent)
-            plt.colorbar(im, ax=ax, label='高程 (m)', shrink=0.8)
+            plt.colorbar(
+                im,
+                ax=ax,
+                label=t("watershed.plot.elevation"),
+                shrink=0.8,
+            )
 
             # Show streams as blue lines
             stream_mask = (acc > thresh) & catch_mask
@@ -278,21 +296,33 @@ def extract_watershed(
             ax.imshow(stream_display, cmap='winter', alpha=0.9, extent=extent)
 
             # Mark pour point
-            ax.plot(px, py, 'r^', markersize=14, label=f'出口点 ({px:.4f}, {py:.4f})',
-                    markeredgecolor='darkred', markeredgewidth=1.5)
+            ax.plot(
+                px,
+                py,
+                'r^',
+                markersize=14,
+                label=t("watershed.plot.pour_point", x=px, y=py),
+                markeredgecolor='darkred',
+                markeredgewidth=1.5,
+            )
 
             # Draw watershed boundary outline
             if watershed_geojson_path and os.path.exists(watershed_geojson_path):
                 try:
                     gdf_ws = gpd.read_file(watershed_geojson_path)
-                    gdf_ws.boundary.plot(ax=ax, color='red', linewidth=2, label='流域边界')
+                    gdf_ws.boundary.plot(
+                        ax=ax,
+                        color='red',
+                        linewidth=2,
+                        label=t("watershed.plot.boundary"),
+                    )
                 except Exception:
                     pass
 
             ax.legend(loc='upper right', fontsize=10, framealpha=0.8)
-            ax.set_title(f"小流域提取结果 (阈值={thresh})", fontsize=14, fontweight='bold')
-            ax.set_xlabel("经度")
-            ax.set_ylabel("纬度")
+            ax.set_title(t("watershed.plot.extraction", threshold=thresh), fontsize=14, fontweight='bold')
+            ax.set_xlabel(t("watershed.plot.longitude"))
+            ax.set_ylabel(t("watershed.plot.latitude"))
 
             # Zoom to watershed extent (avoid large blank areas from full DEM)
             ws_rows, ws_cols = np.where(catch_mask)
@@ -361,72 +391,99 @@ def extract_watershed(
 
         # ---- Step 13: Generate report text ----
         report_lines = [
-            "# 小流域水文分析报告",
+            t("watershed.report.title"),
             "",
-            "## 一、分析概述",
-            f"- **DEM 数据源**: {os.path.basename(dem_path)}",
-            f"- **分析方法**: D8 流向算法 + pysheds 水文分析引擎",
-            f"- **河网提取阈值**: {thresh} (汇流累积单元数)",
+            t("watershed.report.section.overview"),
+            t("watershed.report.dem_source", source=os.path.basename(dem_path)),
+            t("watershed.report.analysis_method"),
+            t("watershed.report.stream_threshold", threshold=thresh),
             "",
-            "## 二、流域基本信息",
-            f"- **出口点坐标**: ({px:.6f}, {py:.6f})",
+            t("watershed.report.section.basic"),
+            t("watershed.report.pour_point", x=px, y=py),
         ]
         if stats.get("area_km2"):
-            report_lines.append(f"- **流域面积**: {stats['area_km2']} km²")
+            report_lines.append(
+                t("watershed.report.area", value=stats["area_km2"])
+            )
         if stats.get("perimeter_km"):
-            report_lines.append(f"- **流域周长**: {stats['perimeter_km']} km")
-        report_lines.append(f"- **流域栅格单元数**: {watershed_cells}")
-        report_lines.append(f"- **流域占比**: {stats['watershed_ratio'] * 100:.1f}%")
+            report_lines.append(
+                t("watershed.report.perimeter", value=stats["perimeter_km"])
+            )
+        report_lines.append(
+            t("watershed.report.watershed_cells", count=watershed_cells)
+        )
+        report_lines.append(
+            t("watershed.report.watershed_ratio", value=stats["watershed_ratio"] * 100)
+        )
 
         if stats.get("elevation"):
             elev = stats["elevation"]
             report_lines += [
                 "",
-                "## 三、高程特征",
-                f"- **最低高程**: {elev['min']} m",
-                f"- **最高高程**: {elev['max']} m",
-                f"- **平均高程**: {elev['mean']} m",
-                f"- **高差**: {elev['range']} m",
+                t("watershed.report.section.elevation"),
+                t("watershed.report.elevation_min", value=elev["min"]),
+                t("watershed.report.elevation_max", value=elev["max"]),
+                t("watershed.report.elevation_mean", value=elev["mean"]),
+                t("watershed.report.elevation_range", value=elev["range"]),
             ]
 
         report_lines += [
             "",
-            "## 四、河网特征",
-            f"- **河网栅格单元数**: {stream_cells}",
-            f"- **最大汇流累积值**: {max_acc}",
+            t("watershed.report.section.stream"),
+            t("watershed.report.stream_cells", count=stream_cells),
+            t("watershed.report.max_accumulation", value=max_acc),
         ]
         if stats.get("area_km2") and stream_cells > 0:
             stream_length_km = stream_cells * abs(grid.affine[0]) * 111  # approximate km per degree
             density = stream_length_km / stats["area_km2"] if stats["area_km2"] > 0 else 0
-            report_lines.append(f"- **河网密度** (估算): {density:.2f} km/km²")
+            report_lines.append(t("watershed.report.stream_density", value=density))
 
+        not_generated = t("watershed.report.not_generated")
         report_lines += [
             "",
-            "## 五、输出文件",
-            f"- 流域边界: {os.path.basename(watershed_geojson_path) if watershed_geojson_path else '未生成'}",
-            f"- 河网数据: {os.path.basename(stream_geojson_path) if stream_geojson_path else '未生成'}",
-            f"- 汇流累积栅格: {os.path.basename(acc_path) if acc_path else '未生成'}",
-            f"- 可视化地图: {os.path.basename(viz_path) if viz_path else '未生成'}",
+            t("watershed.report.section.outputs"),
+            t(
+                "watershed.report.output_boundary",
+                value=(
+                    os.path.basename(watershed_geojson_path)
+                    if watershed_geojson_path else not_generated
+                ),
+            ),
+            t(
+                "watershed.report.output_stream",
+                value=(
+                    os.path.basename(stream_geojson_path)
+                    if stream_geojson_path else not_generated
+                ),
+            ),
+            t(
+                "watershed.report.output_accumulation",
+                value=os.path.basename(acc_path) if acc_path else not_generated,
+            ),
+            t(
+                "watershed.report.output_map",
+                value=os.path.basename(viz_path) if viz_path else not_generated,
+            ),
         ]
 
         # Embed visualization image path so report generator auto-inserts it
         if viz_path and os.path.exists(viz_path):
             report_lines += [
                 "",
-                "## 六、流域分析可视化",
+                t("watershed.report.section.visualization"),
                 "",
                 viz_path,
                 "",
             ]
 
         report_lines += [
-            "## 七、方法说明",
-            "本分析采用经典的 D8 单流向水文分析方法：",
-            "1. **DEM 预处理**: 填充洼地 → 填充凹陷 → 解析平地，消除数据伪影",
-            "2. **流向计算**: D8 算法，每个栅格单元流向最陡下降方向的 8 邻域之一",
-            "3. **汇流累积**: 计算每个单元上游汇入的单元数量",
-            "4. **河网提取**: 汇流累积值超过阈值的单元构成河网",
-            "5. **流域划分**: 从出口点追溯所有上游汇流单元，构成流域边界",
+            t("watershed.report.section.method"),
+            t("watershed.report.method_intro"),
+            t("watershed.report.method_step1"),
+            t("watershed.report.method_step2"),
+            t("watershed.report.method_step3"),
+            t("watershed.report.method_step4"),
+            t("watershed.report.method_step5"),
         ]
 
         report_text = "\n".join(report_lines)
@@ -444,11 +501,16 @@ def extract_watershed(
         return json.dumps(result, default=str, ensure_ascii=False)
 
     except ImportError:
-        return json.dumps({"status": "error",
-                           "message": "pysheds 未安装。请运行: pip install pysheds"})
+        return json.dumps({
+            "status": "error",
+            "message": t("watershed.pysheds_missing_install"),
+        }, ensure_ascii=False)
     except Exception as e:
         logger.warning("Watershed extraction failed: %s", e)
-        return json.dumps({"status": "error", "message": str(e)})
+        return json.dumps({
+            "status": "error",
+            "message": t("watershed.operation_failed", operation=t("watershed.operation.extract"), error=e),
+        }, ensure_ascii=False)
 
 
 def extract_stream_network(
@@ -469,7 +531,10 @@ def extract_stream_network(
 
         dem_path = _resolve_path(dem_path)
         if not os.path.exists(dem_path):
-            return json.dumps({"status": "error", "message": f"文件不存在: {dem_path}"})
+            return json.dumps({
+                "status": "error",
+                "message": t("watershed.dem_missing", path=dem_path),
+            }, ensure_ascii=False)
 
         grid = Grid.from_raster(dem_path)
         dem = grid.read_raster(dem_path)
@@ -501,10 +566,16 @@ def extract_stream_network(
         }, default=str)
 
     except ImportError:
-        return json.dumps({"status": "error", "message": "pysheds 未安装"})
+            return json.dumps({
+                "status": "error",
+                "message": t("watershed.pysheds_missing"),
+            }, ensure_ascii=False)
     except Exception as e:
         logger.warning("Stream extraction failed: %s", e)
-        return json.dumps({"status": "error", "message": str(e)})
+        return json.dumps({
+            "status": "error",
+            "message": t("watershed.operation_failed", operation=t("watershed.operation.stream"), error=e),
+        }, ensure_ascii=False)
 
 
 def compute_flow_accumulation(
@@ -523,7 +594,10 @@ def compute_flow_accumulation(
 
         dem_path = _resolve_path(dem_path)
         if not os.path.exists(dem_path):
-            return json.dumps({"status": "error", "message": f"文件不存在: {dem_path}"})
+            return json.dumps({
+                "status": "error",
+                "message": t("watershed.dem_missing", path=dem_path),
+            }, ensure_ascii=False)
 
         grid = Grid.from_raster(dem_path)
         dem = grid.read_raster(dem_path)
@@ -554,8 +628,8 @@ def compute_flow_accumulation(
             ax.imshow(log_acc, cmap='Blues',
                      extent=[grid.affine[2], grid.affine[2] + grid.affine[0] * acc.shape[1],
                              grid.affine[5] + grid.affine[4] * acc.shape[0], grid.affine[5]])
-            ax.set_title("汇流累积 (对数尺度)")
-            plt.colorbar(ax.images[0], ax=ax, label="log(累积值+1)")
+            ax.set_title(t("watershed.plot.accumulation"))
+            plt.colorbar(ax.images[0], ax=ax, label=t("watershed.plot.log_accumulation"))
             plt.tight_layout()
             plt.savefig(viz_path, dpi=150)
             plt.close(fig)
@@ -574,7 +648,13 @@ def compute_flow_accumulation(
         }, default=str)
 
     except ImportError:
-        return json.dumps({"status": "error", "message": "pysheds 未安装"})
+        return json.dumps({
+            "status": "error",
+            "message": t("watershed.pysheds_missing"),
+        }, ensure_ascii=False)
     except Exception as e:
         logger.warning("Flow accumulation failed: %s", e)
-        return json.dumps({"status": "error", "message": str(e)})
+        return json.dumps({
+            "status": "error",
+            "message": t("watershed.operation_failed", operation=t("watershed.operation.accumulation"), error=e),
+        }, ensure_ascii=False)

@@ -2,6 +2,7 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useState,
   type ReactNode,
 } from 'react';
+import { getLocaleHeaders } from './i18n';
 
 export interface PlatformBranding {
   platform_name: string;
@@ -36,7 +37,10 @@ export function PlatformBrandingProvider({ children }: { children: ReactNode }) 
 
   const refreshBranding = useCallback(async () => {
     try {
-      const response = await fetch('/api/platform/branding', { credentials: 'include' });
+      const response = await fetch('/api/platform/branding', {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       setBranding(await parseResponse(response));
     } catch {
       setBranding(current => current || DEFAULT_BRANDING);
@@ -51,7 +55,7 @@ export function PlatformBrandingProvider({ children }: { children: ReactNode }) 
     const response = await fetch('/api/admin/platform-branding', {
       method: 'PUT',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
       body: JSON.stringify(values),
     });
     const saved = await parseResponse(response);

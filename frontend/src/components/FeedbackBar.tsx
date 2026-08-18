@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { ThumbsUp, ThumbsDown, Send } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { getLocaleHeaders } from '../i18n';
 
 interface FeedbackBarProps {
   messageId: string;
@@ -9,6 +11,7 @@ interface FeedbackBarProps {
 }
 
 export default function FeedbackBar({ messageId, query, response, pipelineType }: FeedbackBarProps) {
+  const { t } = useTranslation('common');
   const [vote, setVote] = useState<'up' | 'down' | null>(null);
   const [issueOpen, setIssueOpen] = useState(false);
   const [issueText, setIssueText] = useState('');
@@ -20,7 +23,7 @@ export default function FeedbackBar({ messageId, query, response, pipelineType }
       await fetch('/api/feedback', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({
           message_id: messageId,
           query_text: query,
@@ -59,7 +62,8 @@ export default function FeedbackBar({ messageId, query, response, pipelineType }
         className={`feedback-btn ${vote === 'up' ? 'active-up' : ''}`}
         onClick={handleUp}
         disabled={!!vote || submitting}
-        title="有帮助"
+        title={t('feedback.helpful')}
+        aria-label={t('feedback.helpful')}
       >
         <ThumbsUp size={14} />
       </button>
@@ -67,7 +71,8 @@ export default function FeedbackBar({ messageId, query, response, pipelineType }
         className={`feedback-btn ${vote === 'down' ? 'active-down' : ''}`}
         onClick={handleDown}
         disabled={!!vote || submitting}
-        title="需改进"
+        title={t('feedback.needsImprovement')}
+        aria-label={t('feedback.needsImprovement')}
       >
         <ThumbsDown size={14} />
       </button>
@@ -78,11 +83,11 @@ export default function FeedbackBar({ messageId, query, response, pipelineType }
             type="text"
             value={issueText}
             onChange={e => setIssueText(e.target.value)}
-            placeholder="描述问题 (可选)..."
+            placeholder={t('feedback.issuePlaceholder')}
             className="feedback-issue-input"
             onKeyDown={e => e.key === 'Enter' && handleIssueSend()}
           />
-          <button className="feedback-issue-send" onClick={handleIssueSend}>
+          <button className="feedback-issue-send" onClick={handleIssueSend} aria-label={t('feedback.send')}>
             <Send size={12} />
           </button>
         </div>

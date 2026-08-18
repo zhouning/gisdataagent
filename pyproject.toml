@@ -97,6 +97,7 @@ include = ["data_agent*", "geocausal*"]
 [tool.setuptools.package-data]
 data_agent = [
     "benchmarks/twm_runtime_v1/*.json",
+    "locales/*.yaml",
     "scca_samples/data/*.csv",
     "scca_samples/spatial/county_data/*",
     "scca_samples/spatial/chongqing_uhi_points/*",

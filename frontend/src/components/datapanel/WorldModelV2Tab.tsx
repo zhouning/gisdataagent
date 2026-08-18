@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
 
 type V2Mode = 'ppo' | 'dream_v5' | 'mpc';
 
@@ -39,13 +41,8 @@ interface V2Result {
   geojson_diff?: string;
 }
 
-const MODE_LABELS: Record<V2Mode, string> = {
-  ppo: 'PPO (快速, ~1s/回合)',
-  dream_v5: 'Dream-v5 (中等, ~4s/回合)',
-  mpc: 'Contrastive MPC (高质量, ~18min/回合)',
-};
-
 export default function WorldModelV2Tab() {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<V2Status | null>(null);
   const [result, setResult] = useState<V2Result | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,7 +51,7 @@ export default function WorldModelV2Tab() {
   const [mode, setMode] = useState<V2Mode>('ppo');
 
   useEffect(() => {
-    fetch('/api/world-model-v2/status', { credentials: 'include' })
+    fetch('/api/world-model-v2/status', { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (d && d.modes) {
@@ -76,7 +73,7 @@ export default function WorldModelV2Tab() {
       const resp = await fetch('/api/world-model-v2/run', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ n_episodes: nEpisodes, mode }),
       });
       const data = await resp.json();
@@ -85,7 +82,7 @@ export default function WorldModelV2Tab() {
       } else {
         setResult(data);
         try {
-          const mapResp = await fetch('/api/map/pending', { credentials: 'include' });
+          const mapResp = await fetch('/api/map/pending', { credentials: 'include', headers: getLocaleHeaders() });
           const mapData = await mapResp.json();
           if (mapData.map_update && (window as any).__handleMapUpdate) {
             (window as any).__handleMapUpdate(mapData.map_update);
@@ -93,38 +90,40 @@ export default function WorldModelV2Tab() {
         } catch { /* map update is best-effort */ }
       }
     } catch (e: any) {
-      setError(e.message || '请求失败');
+      setError(e.message || t('worldModelV2.errors.requestFailed'));
     } finally {
       setLoading(false);
     }
   };
 
-  const pct = (x?: number) => (typeof x === 'number' ? (x * 100).toFixed(2) + '%' : '—');
+  const pct = (x?: number) => (typeof x === 'number' ? `${formatNumber(x * 100, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%` : '—');
+  const number = (x?: number, maximumFractionDigits = 3) => typeof x === 'number' ? formatNumber(x, { maximumFractionDigits }) : '—';
+  const resultStatus = (value: string) => t(`statusLabels.${value}`, { defaultValue: value });
 
   return (
     <div className="worldmodel-tab">
       <div className="worldmodel-config">
         <div style={{ marginBottom: '8px', fontSize: '13px', color: '#666' }}>
-          基于 Contrastive World Model + Dream/MPC 规划的璧山区耕地布局优化
+          {t('worldModelV2.description')}
         </div>
 
         <div className="worldmodel-status">
           {status ? (
             <span className={`status-badge ${modeAvailable ? 'ready' : 'warning'}`}>
-              {modeAvailable ? '模型就绪' : '该模式不可用'}
+              {modeAvailable ? t('worldModelV2.status.ready') : t('worldModelV2.status.unavailable')}
             </span>
           ) : (
-            <span className="status-badge loading">检测中...</span>
+            <span className="status-badge loading">{t('worldModelV2.status.checking')}</span>
           )}
           {status && <span className="param-info">{status.version} · {status.region}</span>}
         </div>
 
         <div style={{ fontSize: '12px', color: '#999', margin: '6px 0', padding: '6px 8px', background: '#f8f9fa', borderRadius: '4px' }}>
-          当前仅支持璧山区内置数据，无需上传文件
+          {t('worldModelV2.builtInData')}
         </div>
 
         <div className="config-row">
-          <label>推理模式</label>
+          <label>{t('worldModelV2.controls.mode')}</label>
           <select
             value={mode}
             onChange={e => setMode(e.target.value as V2Mode)}
@@ -133,7 +132,7 @@ export default function WorldModelV2Tab() {
           >
             {(['ppo', 'dream_v5', 'mpc'] as V2Mode[]).map(m => (
               <option key={m} value={m} disabled={status ? !status.modes?.[m]?.available : false}>
-                {MODE_LABELS[m]}
+                {t(`worldModelV2.modes.${m}`)}
               </option>
             ))}
           </select>
@@ -141,18 +140,18 @@ export default function WorldModelV2Tab() {
 
         {currentModeInfo && (
           <div style={{ fontSize: '11px', color: '#666', margin: '6px 0', padding: '6px 8px', background: '#f8f9fa', borderRadius: '4px' }}>
-            <div>模型: {currentModeInfo.model}</div>
+            <div>{t('worldModelV2.details.model')}: {currentModeInfo.model}</div>
             <div>
-              典型坡度改善: {currentModeInfo.typical_slope_improvement_pct?.toFixed(3)}%
+              {t('worldModelV2.details.typicalSlope')}: {number(currentModeInfo.typical_slope_improvement_pct, 3)}%
               {typeof currentModeInfo.slope_improvement_pct_5seed_std === 'number' &&
-                ` ± ${currentModeInfo.slope_improvement_pct_5seed_std.toFixed(3)}% (5 seeds)`}
+                ` ± ${number(currentModeInfo.slope_improvement_pct_5seed_std, 3)}% (${t('worldModelV2.details.seeds', { count: 5 })})`}
             </div>
-            <div>单回合耗时 ≈ {currentModeInfo.time_per_episode_s}s</div>
+            <div>{t('worldModelV2.details.timePerEpisode')} ≈ {number(currentModeInfo.time_per_episode_s, 1)}s</div>
           </div>
         )}
 
         <div className="config-row">
-          <label>评估回合数</label>
+          <label>{t('worldModelV2.controls.episodes')}</label>
           <input
             type="number"
             min={1}
@@ -173,12 +172,12 @@ export default function WorldModelV2Tab() {
             fontSize: '13px', fontWeight: 500,
           }}
         >
-          {loading ? `${mode} 优化运行中...` : '运行耕地布局优化'}
+          {loading ? t('worldModelV2.actions.running', { mode: t(`worldModelV2.modeNames.${mode}`) }) : t('worldModelV2.actions.run')}
         </button>
 
         {loading && mode === 'mpc' && (
           <div style={{ fontSize: '11px', color: '#b45309', marginTop: '6px' }}>
-            MPC 模式单回合约 18 分钟，请耐心等待
+            {t('worldModelV2.mpcNotice')}
           </div>
         )}
       </div>
@@ -191,21 +190,21 @@ export default function WorldModelV2Tab() {
 
       {result && (
         <div className="worldmodel-results">
-          <h4 style={{ margin: '12px 0 8px', fontSize: '13px' }}>优化结果 ({result.mode})</h4>
+          <h4 style={{ margin: '12px 0 8px', fontSize: '13px' }}>{t('worldModelV2.results.title')} ({result.mode})</h4>
           <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
             <tbody>
-              <tr><td style={{ padding: '4px 8px', color: '#666' }}>状态</td><td style={{ padding: '4px 8px' }}>{result.status}</td></tr>
-              <tr><td style={{ padding: '4px 8px', color: '#666' }}>总奖励</td><td style={{ padding: '4px 8px', fontWeight: 600 }}>{result.total_reward?.toFixed(2)}</td></tr>
-              <tr><td style={{ padding: '4px 8px', color: '#666' }}>坡度改善 (绝对值)</td><td style={{ padding: '4px 8px', fontWeight: 600, color: (result.slope_improvement ?? 0) > 0 ? '#28a745' : '#dc3545' }}>{result.slope_improvement?.toFixed(4)}</td></tr>
-              <tr><td style={{ padding: '4px 8px', color: '#666' }}>坡度改善 (%)</td><td style={{ padding: '4px 8px' }}>{result.initial_slope && result.slope_improvement ? pct(result.slope_improvement / result.initial_slope) : '—'}</td></tr>
-              <tr><td style={{ padding: '4px 8px', color: '#666' }}>连片度改善</td><td style={{ padding: '4px 8px' }}>{result.contiguity_improvement?.toFixed(4)}</td></tr>
-              <tr><td style={{ padding: '4px 8px', color: '#666' }}>swap 次数</td><td style={{ padding: '4px 8px' }}>{result.n_swaps}</td></tr>
-              <tr><td style={{ padding: '4px 8px', color: '#666' }}>最佳回合</td><td style={{ padding: '4px 8px' }}>{(result.best_episode ?? 0) + 1}/{result.n_episodes}</td></tr>
-              <tr><td style={{ padding: '4px 8px', color: '#666' }}>初始/最终坡度</td><td style={{ padding: '4px 8px' }}>{result.initial_slope?.toFixed(3)} → {result.final_slope?.toFixed(3)}</td></tr>
+              <tr><td style={{ padding: '4px 8px', color: '#666' }}>{t('worldModelV2.results.status')}</td><td style={{ padding: '4px 8px' }}>{resultStatus(result.status)}</td></tr>
+              <tr><td style={{ padding: '4px 8px', color: '#666' }}>{t('worldModelV2.results.reward')}</td><td style={{ padding: '4px 8px', fontWeight: 600 }}>{number(result.total_reward, 2)}</td></tr>
+              <tr><td style={{ padding: '4px 8px', color: '#666' }}>{t('worldModelV2.results.slopeImprovement')}</td><td style={{ padding: '4px 8px', fontWeight: 600, color: (result.slope_improvement ?? 0) > 0 ? '#28a745' : '#dc3545' }}>{number(result.slope_improvement, 4)}</td></tr>
+              <tr><td style={{ padding: '4px 8px', color: '#666' }}>{t('worldModelV2.results.slopeImprovementPct')}</td><td style={{ padding: '4px 8px' }}>{result.initial_slope && result.slope_improvement ? pct(result.slope_improvement / result.initial_slope) : '—'}</td></tr>
+              <tr><td style={{ padding: '4px 8px', color: '#666' }}>{t('worldModelV2.results.contiguity')}</td><td style={{ padding: '4px 8px' }}>{number(result.contiguity_improvement, 4)}</td></tr>
+              <tr><td style={{ padding: '4px 8px', color: '#666' }}>{t('worldModelV2.results.swaps')}</td><td style={{ padding: '4px 8px' }}>{number(result.n_swaps, 0)}</td></tr>
+              <tr><td style={{ padding: '4px 8px', color: '#666' }}>{t('worldModelV2.results.bestEpisode')}</td><td style={{ padding: '4px 8px' }}>{number((result.best_episode ?? 0) + 1, 0)}/{number(result.n_episodes, 0)}</td></tr>
+              <tr><td style={{ padding: '4px 8px', color: '#666' }}>{t('worldModelV2.results.slopeRange')}</td><td style={{ padding: '4px 8px' }}>{number(result.initial_slope)} → {number(result.final_slope)}</td></tr>
             </tbody>
           </table>
           <div style={{ fontSize: '11px', color: '#999', marginTop: '8px' }}>
-            优化后布局和变化差异已推送到地图面板
+            {t('worldModelV2.results.mapUpdated')}
           </div>
         </div>
       )}

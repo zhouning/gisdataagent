@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Brain, Database, GitBranch, MapPin, Play, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
 
 type EnvKind = 'county' | 'restoration';
 type Continuation = 'random' | 'greedy';
@@ -95,19 +97,9 @@ const DEFAULT_FORM = {
 type V21Form = typeof DEFAULT_FORM;
 
 const metricLabels: Record<string, string> = {
-  total_reward: '总奖励',
-  steps_run: '执行步数',
-  swaps_completed: '完成 swap',
-  n_selected: '选中单元',
-  budget_used: '预算使用',
-  budget_fraction_used: '预算比例',
-  slope_change_pct: '坡度变化',
-  cont_change: '连片度变化',
-  baimu_area_change_ha: '百亩方面积变化',
-  n_blocks: '块数量',
-  n_parcels: '地块/单元数',
-  max_steps: '最大步数',
-  ensemble_members: 'ONNX 成员',
+  total_reward: 'totalReward', steps_run: 'stepsRun', swaps_completed: 'swapsCompleted', n_selected: 'selectedUnits',
+  budget_used: 'budgetUsed', budget_fraction_used: 'budgetFraction', slope_change_pct: 'slopeChange', cont_change: 'contiguityChange',
+  baimu_area_change_ha: 'baimuAreaChange', n_blocks: 'blocks', n_parcels: 'parcels', max_steps: 'maxSteps', ensemble_members: 'ensembleMembers',
 };
 
 const stageDefinitions = [
@@ -185,16 +177,17 @@ function formatValue(value: number | string | null | undefined, suffix = '') {
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) return '-';
     const formatted = Math.abs(value) >= 100
-      ? value.toFixed(1)
+      ? formatNumber(value, { maximumFractionDigits: 1 })
       : Math.abs(value) >= 10
-        ? value.toFixed(2)
-        : value.toFixed(4);
+        ? formatNumber(value, { maximumFractionDigits: 2 })
+        : formatNumber(value, { maximumFractionDigits: 4 });
     return `${formatted}${suffix}`;
   }
   return value || '-';
 }
 
 export default function WorldModelV21Tab() {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<V21Status | null>(null);
   const [form, setForm] = useState<V21Form>(DEFAULT_FORM);
   const [result, setResult] = useState<V21Result | null>(null);
@@ -238,10 +231,10 @@ export default function WorldModelV21Tab() {
     setStatusLoading(true);
     setError('');
     try {
-      const resp = await fetch('/api/world-model-v21/status', { credentials: 'include' });
+      const resp = await fetch('/api/world-model-v21/status', { credentials: 'include', headers: getLocaleHeaders() });
       const data = await resp.json();
       if (!resp.ok || data.error) {
-        setError(data.error || '状态检查失败');
+        setError(data.error || t('worldModelV21.errors.status'));
         return;
       }
       setStatus(data as V21Status);
@@ -251,7 +244,7 @@ export default function WorldModelV21Tab() {
         ensemble_dir: prev.ensemble_dir || data.defaults?.ensemble_dir || '',
       }));
     } catch (e: any) {
-      setError(e.message || '状态检查失败');
+      setError(e.message || t('worldModelV21.errors.status'));
     } finally {
       setStatusLoading(false);
     }
@@ -292,7 +285,7 @@ export default function WorldModelV21Tab() {
 
   const syncPendingMap = async () => {
     try {
-      const mapResp = await fetch('/api/map/pending', { credentials: 'include' });
+      const mapResp = await fetch('/api/map/pending', { credentials: 'include', headers: getLocaleHeaders() });
       const mapData = await mapResp.json();
       if (mapData.map_update && (window as any).__handleMapUpdate) {
         (window as any).__handleMapUpdate(mapData.map_update);
@@ -343,18 +336,18 @@ export default function WorldModelV21Tab() {
       const resp = await fetch('/api/world-model-v21/plan', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody()),
       });
       const data = await resp.json();
       if (!resp.ok || data.error) {
-        setError(data.error || '规划运行失败');
+        setError(data.error || t('worldModelV21.errors.plan'));
         return;
       }
       setResult(data as V21Result);
       await syncPendingMap();
     } catch (e: any) {
-      setError(e.message || '规划运行失败');
+      setError(e.message || t('worldModelV21.errors.plan'));
     } finally {
       setActiveRun(null);
     }
@@ -369,12 +362,12 @@ export default function WorldModelV21Tab() {
       const resp = await fetch('/api/world-model-v21/pipeline', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(pipelineBody()),
       });
       const data = await resp.json();
       if (!resp.ok || data.error) {
-        setError(data.error || 'A/B/C/D 编排运行失败');
+        setError(data.error || t('worldModelV21.errors.pipeline'));
         return;
       }
       setPipelineResult(data as V21PipelineResult);
@@ -383,7 +376,7 @@ export default function WorldModelV21Tab() {
         await syncPendingMap();
       }
     } catch (e: any) {
-      setError(e.message || 'A/B/C/D 编排运行失败');
+      setError(e.message || t('worldModelV21.errors.pipeline'));
     } finally {
       setActiveRun(null);
     }
@@ -412,12 +405,12 @@ export default function WorldModelV21Tab() {
   ] : [];
   const stageStepByKey = new Map((pipelineResult?.steps || []).map(step => [step.step, step]));
   const stageBadge = (step: V21PipelineStep | undefined, enabled: boolean, capability: string) => {
-    if (step?.status === 'skipped_reused') return { className: 'success', label: '复用完成' };
-    if (step?.status === 'ok') return { className: 'success', label: '执行完成' };
+    if (step?.status === 'skipped_reused') return { className: 'success', label: t('worldModelV21.stage.reused') };
+    if (step?.status === 'ok') return { className: 'success', label: t('worldModelV21.stage.completed') };
     if (step?.status) return { className: 'warning', label: step.status };
-    if (!enabled) return { className: 'warning', label: '本次跳过' };
-    if (!status?.capabilities?.[capability]) return { className: 'warning', label: '不可用' };
-    return { className: 'success', label: '可执行' };
+    if (!enabled) return { className: 'warning', label: t('worldModelV21.stage.skipped') };
+    if (!status?.capabilities?.[capability]) return { className: 'warning', label: t('worldModelV21.stage.unavailable') };
+    return { className: 'success', label: t('worldModelV21.stage.available') };
   };
   const stageArtifact = (key: string, step?: V21PipelineStep) => {
     if (key === 'prepare') return step?.prepared_dir || form.prepared_dir || '-';
@@ -431,17 +424,17 @@ export default function WorldModelV21Tab() {
       <div className="worldmodel-config">
         <div className="worldmodel-v21-toolbar" style={{ marginBottom: 8 }}>
           <span className={`status-badge ${statusClass}`}>
-            {statusLoading ? '检测中' : ready ? 'Paper9 就绪' : '未就绪'}
+            {statusLoading ? t('worldModelV21.status.checking') : ready ? t('worldModelV21.status.ready') : t('worldModelV21.status.notReady')}
           </span>
           <button
             type="button"
             onClick={loadStatus}
             disabled={statusLoading || loading}
-            title="刷新状态"
+            title={t('worldModelV21.actions.refresh')}
             className="worldmodel-v21-icon-button"
           >
             <RefreshCw size={12} />
-            刷新
+            {t('worldModelV21.actions.refresh')}
           </button>
           <span className="worldmodel-v21-subtle-text">
             v{status?.version || '2.1.0'} / Paper9 {status?.paper9?.package_version || '-'}
@@ -458,7 +451,7 @@ export default function WorldModelV21Tab() {
             </div>
             {!ready && (
               <div className="worldmodel-v21-status-error">
-                {status.paper9.error || 'Paper9 仓库或依赖不可用'}
+                {status.paper9.error || t('worldModelV21.status.paperUnavailable')}
               </div>
             )}
           </div>
@@ -477,10 +470,10 @@ export default function WorldModelV21Tab() {
               {demoDatasets[key].label}
             </button>
           ))}
-          <span>Docker 演示数据集</span>
+          <span>{t('worldModelV21.presets.docker')}</span>
         </div>
 
-        <div className="worldmodel-v21-stage-grid" aria-label="World Model v2.1 A/B/C/D 阶段">
+        <div className="worldmodel-v21-stage-grid" aria-label={t('worldModelV21.stage.aria')}>
           {stageDefinitions.map(stage => {
             const enabled = Boolean(form[stage.formKey]);
             const step = stageStepByKey.get(stage.key);
@@ -516,7 +509,7 @@ export default function WorldModelV21Tab() {
               onChange={e => updateForm('reuse_existing', e.target.checked)}
               disabled={loading}
             />
-            复用已有产物
+            {t('worldModelV21.controls.reuse')}
           </label>
           {stageDefinitions.map(stage => (
             <label key={stage.key}>
@@ -533,7 +526,7 @@ export default function WorldModelV21Tab() {
 
         <div className="worldmodel-v21-grid">
           <div className="config-row">
-            <label>DLTB 路径</label>
+            <label>{t('worldModelV21.controls.dltbPath')}</label>
             <input
               type="text"
               value={form.dltb_path}
@@ -543,7 +536,7 @@ export default function WorldModelV21Tab() {
             />
           </div>
           <div className="config-row">
-            <label>DEM 路径</label>
+            <label>{t('worldModelV21.controls.demPath')}</label>
             <input
               type="text"
               value={form.dem_path}
@@ -555,7 +548,7 @@ export default function WorldModelV21Tab() {
         </div>
 
         <div className="config-row">
-          <label>Prepared 目录</label>
+          <label>{t('worldModelV21.controls.preparedDir')}</label>
           <input
             type="text"
             value={form.prepared_dir}
@@ -565,7 +558,7 @@ export default function WorldModelV21Tab() {
           />
         </div>
         <div className="config-row">
-          <label>Ensemble 目录</label>
+          <label>{t('worldModelV21.controls.ensembleDir')}</label>
           <input
             type="text"
             value={form.ensemble_dir}
@@ -577,7 +570,7 @@ export default function WorldModelV21Tab() {
 
         <div className="worldmodel-v21-grid">
           <div className="config-row">
-            <label>环境</label>
+            <label>{t('worldModelV21.controls.environment')}</label>
             <select
               value={form.env_kind}
               onChange={e => updateForm('env_kind', e.target.value as EnvKind)}
@@ -588,7 +581,7 @@ export default function WorldModelV21Tab() {
             </select>
           </div>
           <div className="config-row">
-            <label>坐标系</label>
+            <label>{t('worldModelV21.controls.crs')}</label>
             <input
               type="text"
               value={form.proj_crs}
@@ -598,7 +591,7 @@ export default function WorldModelV21Tab() {
             />
           </div>
           <div className="config-row">
-            <label>规划步长</label>
+            <label>{t('worldModelV21.controls.horizon')}</label>
             <input
               type="number"
               min={1}
@@ -609,7 +602,7 @@ export default function WorldModelV21Tab() {
             />
           </div>
           <div className="config-row">
-            <label>候选数</label>
+            <label>{t('worldModelV21.controls.topK')}</label>
             <input
               type="number"
               min={1}
@@ -620,7 +613,7 @@ export default function WorldModelV21Tab() {
             />
           </div>
           <div className="config-row">
-            <label>回合数</label>
+            <label>{t('worldModelV21.controls.episodes')}</label>
             <input
               type="number"
               min={1}
@@ -631,7 +624,7 @@ export default function WorldModelV21Tab() {
             />
           </div>
           <div className="config-row">
-            <label>线程</label>
+            <label>{t('worldModelV21.controls.threads')}</label>
             <input
               type="number"
               min={0}
@@ -642,7 +635,7 @@ export default function WorldModelV21Tab() {
             />
           </div>
           <div className="config-row">
-            <label>延续策略</label>
+            <label>{t('worldModelV21.controls.continuation')}</label>
             <select
               value={form.continuation}
               onChange={e => updateForm('continuation', e.target.value as Continuation)}
@@ -653,7 +646,7 @@ export default function WorldModelV21Tab() {
             </select>
           </div>
           <div className="config-row">
-            <label>评分</label>
+            <label>{t('worldModelV21.controls.scoring')}</label>
             <select
               value={form.scoring}
               onChange={e => updateForm('scoring', e.target.value as Scoring)}
@@ -667,7 +660,7 @@ export default function WorldModelV21Tab() {
 
         <div className="worldmodel-v21-grid" style={{ marginTop: 8 }}>
           <div className="config-row">
-            <label>耕地面积下限</label>
+            <label>{t('worldModelV21.controls.cultivatedFloor')}</label>
             <input
               type="number"
               value={form.cultivated_area_floor_delta_ha}
@@ -676,7 +669,7 @@ export default function WorldModelV21Tab() {
             />
           </div>
           <div className="config-row">
-            <label>百亩方面积下限</label>
+            <label>{t('worldModelV21.controls.baimuFloor')}</label>
             <input
               type="number"
               value={form.baimu_area_floor_delta_ha}
@@ -685,7 +678,7 @@ export default function WorldModelV21Tab() {
             />
           </div>
           <div className="config-row">
-            <label>连片权重</label>
+            <label>{t('worldModelV21.controls.connectivityWeight')}</label>
             <input
               type="number"
               value={form.gamma_conn}
@@ -694,7 +687,7 @@ export default function WorldModelV21Tab() {
             />
           </div>
           <div className="config-row">
-            <label>连片约束</label>
+            <label>{t('worldModelV21.controls.connectivityConstraint')}</label>
             <input
               type="number"
               value={form.delta_conn}
@@ -712,7 +705,7 @@ export default function WorldModelV21Tab() {
             className="worldmodel-v21-primary-action"
           >
             <Play size={14} />
-            {activeRun === 'pipeline' ? 'A/B/C/D 编排运行中...' : '运行/复用 A→D 编排'}
+            {activeRun === 'pipeline' ? t('worldModelV21.actions.pipelineRunning') : t('worldModelV21.actions.pipeline')}
           </button>
           <button
             type="button"
@@ -721,7 +714,7 @@ export default function WorldModelV21Tab() {
             className="worldmodel-v21-secondary-action"
           >
             <Play size={14} />
-            {activeRun === 'plan' ? 'Tool 4 运行中...' : '只运行 Tool 4'}
+            {activeRun === 'plan' ? t('worldModelV21.actions.planRunning') : t('worldModelV21.actions.plan')}
           </button>
         </div>
 
@@ -734,7 +727,7 @@ export default function WorldModelV21Tab() {
 
       {pipelineResult && (
         <div className="worldmodel-results">
-          <h4 style={{ margin: '4px 0 8px', fontSize: 13 }}>A/B/C/D 编排结果</h4>
+          <h4 style={{ margin: '4px 0 8px', fontSize: 13 }}>{t('worldModelV21.results.pipeline')}</h4>
           <div className="worldmodel-v21-pipeline-steps">
             {pipelineResult.steps.map((step, index) => {
               const stage = stageDefinitions.find(item => item.key === step.step);
@@ -762,21 +755,21 @@ export default function WorldModelV21Tab() {
 
       {result && (
         <div className="worldmodel-results">
-          <h4 style={{ margin: '4px 0 8px', fontSize: 13 }}>规划结果 ({result.env_kind})</h4>
+          <h4 style={{ margin: '4px 0 8px', fontSize: 13 }}>{t('worldModelV21.results.plan', { env: result.env_kind })}</h4>
           <div className="worldmodel-v21-results-grid">
             {metrics.map(key => (
               <div className="worldmodel-v21-metric" key={key}>
-                <span>{metricLabels[key] || key}</span>
+                <span>{t(`worldModelV21.metrics.${metricLabels[key] || key}`, { defaultValue: key })}</span>
                 <strong>{formatValue(result.summary[key], key.includes('pct') || key.includes('fraction') ? '%' : '')}</strong>
               </div>
             ))}
           </div>
           <div style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>输出目录</div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>{t('worldModelV21.results.outputDir')}</div>
             <div className="worldmodel-v21-path">{result.out_dir}</div>
           </div>
           <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
-            summary: {result.artifacts.summary_json || '-'} / map: {result.map_update_queued ? '已推送' : '未推送'}
+            {t('worldModelV21.results.artifacts', { summary: result.artifacts.summary_json || '-', map: result.map_update_queued ? t('worldModelV21.results.mapPushed') : t('worldModelV21.results.mapNotPushed') })}
           </div>
           {result.warnings && result.warnings.length > 0 && (
             <div style={{ marginTop: 8, color: 'var(--warning)', fontSize: 11 }}>

@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { formatDate, formatNumber } from "../../../../i18n";
 import { DerivedLink, listDeriveLinks } from "../standardsApi";
 
 interface Props {
@@ -13,6 +15,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function LinkTable({versionId, strategy, refreshTick}: Props) {
+  const { t } = useTranslation();
   const [links, setLinks] = useState<DerivedLink[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -29,26 +32,26 @@ export default function LinkTable({versionId, strategy, refreshTick}: Props) {
   if (!versionId) {
     return (
       <div style={{padding: 24, color: "#888"}}>
-        请选择一个版本以查看派生 link
+        {t("standards.derive.links.selectVersion")}
       </div>
     );
   }
 
   return (
     <div style={{padding: 8, overflow: "auto"}}>
-      <h4>派生 Link ({links.length})</h4>
-      {loading && <div style={{color: "#888"}}>加载中…</div>}
+      <h4>{t("standards.derive.links.title", {count: formatNumber(links.length)})}</h4>
+      {loading && <div style={{color: "#888"}}>{t("standards.derive.links.loading")}</div>}
       {!loading && links.length === 0 && (
-        <div style={{color: "#888", fontSize: 12}}>无派生记录</div>
+        <div style={{color: "#888", fontSize: 12}}>{t("standards.derive.links.empty")}</div>
       )}
       <table style={{width: "100%", borderCollapse: "collapse", fontSize: 12}}>
         <thead>
           <tr style={{background: "#f5f5f5"}}>
-            <th style={{padding: 4, textAlign: "left"}}>Source</th>
-            <th style={{padding: 4, textAlign: "left"}}>Target</th>
-            <th style={{padding: 4, textAlign: "left"}}>Strategy</th>
-            <th style={{padding: 4, textAlign: "left"}}>Status</th>
-            <th style={{padding: 4, textAlign: "left"}}>Generated</th>
+            <th style={{padding: 4, textAlign: "start"}}>{t("standards.derive.links.source")}</th>
+            <th style={{padding: 4, textAlign: "start"}}>{t("standards.derive.links.target")}</th>
+            <th style={{padding: 4, textAlign: "start"}}>{t("standards.derive.links.strategy")}</th>
+            <th style={{padding: 4, textAlign: "start"}}>{t("standards.derive.links.status")}</th>
+            <th style={{padding: 4, textAlign: "start"}}>{t("standards.derive.links.generated")}</th>
           </tr>
         </thead>
         <tbody>
@@ -66,7 +69,7 @@ export default function LinkTable({versionId, strategy, refreshTick}: Props) {
                   padding: "1px 6px", borderRadius: 3, color: "#fff",
                   background: STATUS_COLORS[l.status] || "#666",
                   fontSize: 11,
-                }}>{l.status}</span>
+                }}>{t(`standards.derive.status.${l.status}`, {defaultValue: l.status})}</span>
                 {l.stale_reason && (
                   <div style={{fontSize: 10, color: "#888"}}>
                     {l.stale_reason}
@@ -74,7 +77,7 @@ export default function LinkTable({versionId, strategy, refreshTick}: Props) {
                 )}
               </td>
               <td style={{padding: 4, fontSize: 11}}>
-                {l.generated_at && new Date(l.generated_at).toLocaleString()}
+                {l.generated_at && formatDate(l.generated_at, {dateStyle: "medium", timeStyle: "medium"})}
               </td>
             </tr>
           ))}

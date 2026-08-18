@@ -1,3 +1,5 @@
+import i18n, { getLocaleHeaders } from '../../i18n';
+
 export type Mode = 'baseline' | 'candidateA' | 'candidateB';
 export type Horizon = 6 | 12 | 24;
 export type ProposalStatus = 'pending' | 'returned' | 'approved';
@@ -95,7 +97,7 @@ export interface AuditEvent {
   timestamp: string;
   time: string;
   step: string;
-  status: '通过' | '记录' | '待审查';
+  status: '\u901a\u8fc7' | '\u8bb0\u5f55' | '\u5f85\u5ba1\u67e5';
   detail: string;
 }
 
@@ -187,7 +189,7 @@ export interface IrrigationBootstrap {
 }
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { credentials: 'include', ...init });
+  const response = await fetch(url, { credentials: 'include', ...init, headers: { ...getLocaleHeaders(), ...(init?.headers || {}) } });
   let payload: unknown = null;
   try {
     payload = await response.json();
@@ -197,7 +199,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     const message = payload && typeof payload === 'object' && 'error' in payload
       ? String((payload as { error: unknown }).error)
-      : `服务请求失败（HTTP ${response.status}）`;
+      : `${i18n.t('errors.requestFailed')} (HTTP ${response.status})`;
     throw new Error(message);
   }
   return payload as T;

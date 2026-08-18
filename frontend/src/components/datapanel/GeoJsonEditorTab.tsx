@@ -1,6 +1,9 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
 
 export default function GeoJsonEditorTab() {
+  const { t } = useTranslation();
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -9,21 +12,23 @@ export default function GeoJsonEditorTab() {
   const validate = () => {
     setError('');
     setInfo('');
-    if (!text.trim()) { setError('请粘贴 GeoJSON 内容'); return null; }
+    if (!text.trim()) { setError(t('geoJsonEditor.errors.empty')); return null; }
     try {
       const parsed = JSON.parse(text);
-      if (!parsed.type) { setError('缺少 "type" 字段'); return null; }
+      if (!parsed.type) { setError(t('geoJsonEditor.errors.missingType')); return null; }
       if (parsed.type === 'FeatureCollection') {
         const n = parsed.features?.length || 0;
-        setInfo(`FeatureCollection: ${n} 个要素`);
+        setInfo(t('geoJsonEditor.info.featureCollection', { count: formatNumber(n) }));
       } else if (parsed.type === 'Feature') {
-        setInfo(`单个 Feature (${parsed.geometry?.type || 'unknown'})`);
+        setInfo(t('geoJsonEditor.info.singleFeature', {
+          geometryType: parsed.geometry?.type || t('geoJsonEditor.common.unknown'),
+        }));
       } else {
-        setInfo(`类型: ${parsed.type}`);
+        setInfo(t('geoJsonEditor.info.type', { type: parsed.type }));
       }
       return parsed;
     } catch (e: any) {
-      setError(`JSON 解析错误: ${e.message}`);
+      setError(t('geoJsonEditor.errors.parse', { error: e.message }));
       return null;
     }
   };
@@ -37,15 +42,20 @@ export default function GeoJsonEditorTab() {
       const formData = new FormData();
       const filename = `geojson_${Date.now()}.geojson`;
       formData.append('file', blob, filename);
-      const r = await fetch('/api/user/upload', { method: 'POST', credentials: 'include', body: formData });
+      const r = await fetch('/api/user/upload', {
+        method: 'POST',
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+        body: formData,
+      });
       if (r.ok) {
-        setInfo(`已保存为 ${filename}`);
+        setInfo(t('geoJsonEditor.info.saved', { filename }));
         setError('');
       } else {
-        setError('保存失败');
+        setError(t('geoJsonEditor.errors.save'));
       }
     } catch (e: any) {
-      setError(e.message);
+      setError(t('geoJsonEditor.errors.saveWithReason', { error: e.message }));
     } finally {
       setSaving(false);
     }
@@ -57,19 +67,19 @@ export default function GeoJsonEditorTab() {
       setText(JSON.stringify(parsed, null, 2));
       setError('');
     } catch (e: any) {
-      setError(`格式化失败: ${e.message}`);
+      setError(t('geoJsonEditor.errors.format', { error: e.message }));
     }
   };
 
   return (
     <div style={{ padding: '8px 12px', fontSize: 13, display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <span style={{ fontWeight: 600 }}>GeoJSON 编辑器</span>
+        <span style={{ fontWeight: 600 }}>{t('geoJsonEditor.title')}</span>
         <div style={{ display: 'flex', gap: 6 }}>
-          <button className="btn-secondary btn-sm" onClick={validate} style={{ fontSize: 11 }}>验证</button>
-          <button className="btn-secondary btn-sm" onClick={handleFormat} style={{ fontSize: 11 }}>格式化</button>
+          <button className="btn-secondary btn-sm" onClick={validate} style={{ fontSize: 11 }}>{t('geoJsonEditor.actions.validate')}</button>
+          <button className="btn-secondary btn-sm" onClick={handleFormat} style={{ fontSize: 11 }}>{t('geoJsonEditor.actions.format')}</button>
           <button className="btn-primary btn-sm" onClick={handleSave} disabled={saving} style={{ fontSize: 11 }}>
-            {saving ? '保存中...' : '保存'}
+            {saving ? t('geoJsonEditor.actions.saving') : t('geoJsonEditor.actions.save')}
           </button>
         </div>
       </div>
@@ -78,11 +88,12 @@ export default function GeoJsonEditorTab() {
       <textarea
         value={text}
         onChange={e => setText(e.target.value)}
-        placeholder='粘贴或编辑 GeoJSON 内容...\n\n{\n  "type": "FeatureCollection",\n  "features": []\n}'
+        placeholder={t('geoJsonEditor.placeholder')}
+        dir="ltr"
         style={{
           flex: 1, minHeight: 200, background: '#0d1117', border: '1px solid #333',
           borderRadius: 6, padding: 8, color: '#e0e0e0', fontFamily: 'monospace',
-          fontSize: 12, resize: 'vertical', lineHeight: 1.5,
+          fontSize: 12, resize: 'vertical', lineHeight: 1.5, textAlign: 'left',
         }}
       />
     </div>

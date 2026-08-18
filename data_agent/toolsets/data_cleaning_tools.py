@@ -16,6 +16,7 @@ from google.adk.tools import FunctionTool
 from google.adk.tools.base_toolset import BaseToolset
 
 from ..gis_processors import _resolve_path, _generate_output_path
+from ..i18n import t as translate
 from ..utils import _load_spatial_data
 
 logger = logging.getLogger(__name__)
@@ -45,12 +46,17 @@ def fill_null_values(
     try:
         gdf = _load_spatial_data(file_path)
         if field not in gdf.columns:
-            return json.dumps({"status": "error", "message": f"字段 '{field}' 不存在。可用字段: {list(gdf.columns)}"},
+            return json.dumps({"status": "error", "message": translate(
+                                  "cleaning.field_not_found_available",
+                                  field=field,
+                                  available=list(gdf.columns),
+                              )},
                               ensure_ascii=False)
 
         null_count = int(gdf[field].isna().sum())
         if null_count == 0:
-            return json.dumps({"status": "ok", "message": f"字段 '{field}' 无空值，无需填充", "null_count": 0},
+            return json.dumps({"status": "ok", "message": translate(
+                                  "cleaning.no_nulls", field=field), "null_count": 0},
                               ensure_ascii=False)
 
         if strategy == "mean":
@@ -71,7 +77,8 @@ def fill_null_values(
                            "null_filled": null_count, "strategy": strategy},
                           ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "cleaning.fill_failed", error=e)}, ensure_ascii=False)
 
 
 def map_field_codes(
@@ -97,7 +104,8 @@ def map_field_codes(
     try:
         gdf = _load_spatial_data(file_path)
         if field not in gdf.columns:
-            return json.dumps({"status": "error", "message": f"字段 '{field}' 不存在"},
+            return json.dumps({"status": "error", "message": translate(
+                                  "cleaning.field_not_found", field=field)},
                               ensure_ascii=False)
 
         # Resolve mapping: mapping_id or inline JSON
@@ -107,7 +115,8 @@ def map_field_codes(
             if mapping_data and "mapping" in mapping_data:
                 mapping = mapping_data["mapping"]
             else:
-                return json.dumps({"status": "error", "message": f"未找到映射表: {mapping_table}"},
+                return json.dumps({"status": "error", "message": translate(
+                                      "cleaning.mapping_not_found", mapping=mapping_table)},
                                   ensure_ascii=False)
         else:
             mapping = json.loads(mapping_table) if isinstance(mapping_table, str) else mapping_table
@@ -126,7 +135,10 @@ def map_field_codes(
         else:  # error
             missing = set(gdf[field].unique()) - set(str_mapping.keys())
             if missing:
-                return json.dumps({"status": "error", "message": f"未映射值: {list(missing)[:10]}"},
+                return json.dumps({"status": "error", "message": translate(
+                                      "cleaning.unmapped_values",
+                                      values=list(missing)[:10],
+                                  )},
                                   ensure_ascii=False)
             gdf[field] = new_values
 
@@ -139,10 +151,12 @@ def map_field_codes(
                            "mapped_count": mapped_count, "unmapped_sample": unmapped_values},
                           ensure_ascii=False)
     except json.JSONDecodeError:
-        return json.dumps({"status": "error", "message": "mapping_table 不是合法的JSON"},
+        return json.dumps({"status": "error", "message": translate(
+                              "cleaning.invalid_mapping_json")},
                           ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "cleaning.map_failed", error=e)}, ensure_ascii=False)
 
 
 def rename_fields(file_path: str, field_mapping: str) -> str:
@@ -162,7 +176,10 @@ def rename_fields(file_path: str, field_mapping: str) -> str:
         valid = {k: v for k, v in mapping.items() if k in gdf.columns}
         if not valid:
             return json.dumps({"status": "error",
-                               "message": f"映射中的字段均不存在。可用字段: {list(gdf.columns)}"},
+                               "message": translate(
+                                   "cleaning.no_mapping_fields",
+                                   available=list(gdf.columns),
+                               )},
                               ensure_ascii=False)
 
         gdf = gdf.rename(columns=valid)
@@ -172,10 +189,12 @@ def rename_fields(file_path: str, field_mapping: str) -> str:
                            "skipped": [k for k in mapping if k not in valid]},
                           ensure_ascii=False)
     except json.JSONDecodeError:
-        return json.dumps({"status": "error", "message": "field_mapping 不是合法的JSON"},
+        return json.dumps({"status": "error", "message": translate(
+                              "cleaning.invalid_field_mapping_json")},
                           ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "cleaning.rename_failed", error=e)}, ensure_ascii=False)
 
 
 def cast_field_type(file_path: str, field: str, target_type: str) -> str:
@@ -192,7 +211,8 @@ def cast_field_type(file_path: str, field: str, target_type: str) -> str:
     try:
         gdf = _load_spatial_data(file_path)
         if field not in gdf.columns:
-            return json.dumps({"status": "error", "message": f"字段 '{field}' 不存在"},
+            return json.dumps({"status": "error", "message": translate(
+                                  "cleaning.field_not_found", field=field)},
                               ensure_ascii=False)
 
         original_type = str(gdf[field].dtype)
@@ -220,7 +240,8 @@ def cast_field_type(file_path: str, field: str, target_type: str) -> str:
                            "conversion_failures": failed_count},
                           ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "cleaning.cast_failed", error=e)}, ensure_ascii=False)
 
 
 def clip_outliers(
@@ -245,7 +266,8 @@ def clip_outliers(
     try:
         gdf = _load_spatial_data(file_path)
         if field not in gdf.columns:
-            return json.dumps({"status": "error", "message": f"字段 '{field}' 不存在"},
+            return json.dumps({"status": "error", "message": translate(
+                                  "cleaning.field_not_found", field=field)},
                               ensure_ascii=False)
 
         lo = float(lower) if lower else None
@@ -277,7 +299,8 @@ def clip_outliers(
                            "remaining_rows": len(gdf)},
                           ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "cleaning.clip_failed", error=e)}, ensure_ascii=False)
 
 
 def standardize_crs(file_path: str, target_crs: str = "EPSG:4326") -> str:
@@ -298,7 +321,8 @@ def standardize_crs(file_path: str, target_crs: str = "EPSG:4326") -> str:
         elif str(gdf.crs) != target_crs:
             gdf = gdf.to_crs(target_crs)
         else:
-            return json.dumps({"status": "ok", "message": f"已是目标坐标系 {target_crs}，无需转换"},
+            return json.dumps({"status": "ok", "message": translate(
+                                  "cleaning.crs_already_target", crs=target_crs)},
                               ensure_ascii=False)
 
         out = _generate_output_path("crs_std", "gpkg")
@@ -307,7 +331,8 @@ def standardize_crs(file_path: str, target_crs: str = "EPSG:4326") -> str:
                            "from_crs": original_crs, "to_crs": target_crs},
                           ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "cleaning.crs_failed", error=e)}, ensure_ascii=False)
 
 
 def add_missing_fields(file_path: str, standard_id: str) -> str:
@@ -325,7 +350,8 @@ def add_missing_fields(file_path: str, standard_id: str) -> str:
 
         std = StandardRegistry.get(standard_id)
         if not std:
-            return json.dumps({"status": "error", "message": f"未找到标准: {standard_id}"},
+            return json.dumps({"status": "error", "message": translate(
+                                  "cleaning.standard_not_found", standard_id=standard_id)},
                               ensure_ascii=False)
 
         gdf = _load_spatial_data(file_path)
@@ -341,7 +367,11 @@ def add_missing_fields(file_path: str, standard_id: str) -> str:
                 added.append(fspec.name)
 
         if not added:
-            return json.dumps({"status": "ok", "message": "所有标准字段已存在，无需补齐", "added": []},
+            return json.dumps({
+                "status": "ok",
+                "message": translate("cleaning.fields_complete"),
+                "added": [],
+            },
                               ensure_ascii=False)
 
         out = _generate_output_path("fields_added", "gpkg")
@@ -350,7 +380,8 @@ def add_missing_fields(file_path: str, standard_id: str) -> str:
                            "added_fields": added, "total_fields": len(gdf.columns)},
                           ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "cleaning.fields_failed", error=e)}, ensure_ascii=False)
 
 
 def mask_sensitive_fields_tool(file_path: str, field_rules: str) -> str:
@@ -418,7 +449,11 @@ def auto_fix_defects(file_path: str, standard_id: str = "gb_t_24356") -> str:
                     fixed.append({"code": defect.code, "name": defect.name, "count": 1})
 
                 else:
-                    skipped.append({"code": defect.code, "name": defect.name, "reason": "strategy not implemented"})
+                    skipped.append({
+                        "code": defect.code,
+                        "name": defect.name,
+                        "reason": translate("cleaning.strategy_not_implemented"),
+                    })
             except Exception as e:
                 skipped.append({"code": defect.code, "name": defect.name, "reason": str(e)})
 
@@ -436,7 +471,8 @@ def auto_fix_defects(file_path: str, standard_id: str = "gb_t_24356") -> str:
         }
         return json.dumps(result, ensure_ascii=False, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "cleaning.fix_failed", error=e)}, ensure_ascii=False)
 
 
 def auto_classify_archive(file_path: str, standard_id: str = "gb_t_24356") -> str:
@@ -473,15 +509,15 @@ def auto_classify_archive(file_path: str, standard_id: str = "gb_t_24356") -> st
                 coord_str = str(sample.x)
                 decimals = len(coord_str.split(".")[-1]) if "." in coord_str else 0
                 if decimals >= 8:
-                    precision_class = "高精度"
+                    precision_class = translate("cleaning.precision_high")
                 elif decimals >= 5:
-                    precision_class = "中精度"
+                    precision_class = translate("cleaning.precision_medium")
                 else:
-                    precision_class = "低精度"
+                    precision_class = translate("cleaning.precision_low")
             else:
-                precision_class = "未知"
+                precision_class = translate("cleaning.precision_unknown")
         else:
-            precision_class = "未知"
+            precision_class = translate("cleaning.precision_unknown")
 
         result = {
             "status": "ok",
@@ -496,7 +532,8 @@ def auto_classify_archive(file_path: str, standard_id: str = "gb_t_24356") -> st
         }
         return json.dumps(result, ensure_ascii=False, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "cleaning.classify_failed", error=e)}, ensure_ascii=False)
 
 
 def batch_standardize_crs(file_path: str, target_crs: str = "EPSG:4490") -> str:
@@ -532,7 +569,8 @@ def batch_standardize_crs(file_path: str, target_crs: str = "EPSG:4490") -> str:
         }
         return json.dumps(result, ensure_ascii=False, default=str)
     except Exception as e:
-        return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+        return json.dumps({"status": "error", "message": translate(
+                              "cleaning.batch_crs_failed", error=e)}, ensure_ascii=False)
 
 
 _ALL_FUNCS = [

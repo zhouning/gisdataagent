@@ -7,6 +7,8 @@ import json
 import re
 from typing import Optional
 
+from .i18n import t
+
 
 # ---------------------------------------------------------------------------
 # Toolset recommendation table: keywords → toolset names + reason
@@ -139,7 +141,10 @@ def _recommend_toolsets(description: str) -> list[dict]:
 
     # Always include ExplorationToolset as base
     if "ExplorationToolset" not in scored:
-        scored["ExplorationToolset"] = {"score": 0, "reasons": ["基础数据探查 (默认)"]}
+        scored["ExplorationToolset"] = {
+            "score": 0,
+            "reasons": [t("skill_generator.default_toolset_reason")],
+        }
 
     ranked = sorted(scored.items(), key=lambda x: x[1]["score"], reverse=True)
     return [{"name": name, "reasons": info["reasons"]} for name, info in ranked[:6]]
@@ -196,33 +201,11 @@ def _generate_trigger_keywords(description: str, skill_name: str) -> list[str]:
 def _generate_instruction(description: str, toolsets: list[str], category: str) -> str:
     """Generate a structured skill instruction from description."""
     toolset_list = "、".join(toolsets)
-
-    instruction = f"""你是一个专业的 GIS 数据分析智能体，专注于{description}。
-
-## 核心职责
-1. 理解用户的分析需求，确认输入数据和期望输出
-2. 使用 {toolset_list} 中的工具执行分析
-3. 对分析结果进行质量检查和解读
-4. 生成结构化的分析报告
-
-## 工作流程
-1. **数据探查**: 使用 describe_geodataframe 了解数据结构和质量
-2. **预处理**: 检查坐标系、缺失值，必要时进行数据清洗
-3. **核心分析**: 执行主要分析任务
-4. **结果验证**: 检查输出合理性
-5. **报告生成**: 汇总关键发现和建议
-
-## 输出格式
-- 分析结果以 JSON 格式返回
-- 可视化结果保存为文件并返回路径
-- 关键指标和统计量需要明确标注
-
-## 注意事项
-- 处理前务必检查坐标系一致性
-- 大数据集先采样验证再全量处理
-- 遇到错误时提供明确的诊断信息"""
-
-    return instruction
+    return t(
+        "skill_generator.instruction_template",
+        description=description,
+        toolset_list=toolset_list,
+    )
 
 
 def generate_skill_config(description: str) -> dict:
@@ -235,7 +218,7 @@ def generate_skill_config(description: str) -> dict:
                    trigger_keywords, model_tier, category, tags, toolset_recommendations
     """
     if not description or len(description.strip()) < 5:
-        return {"status": "error", "message": "描述过短，请提供至少 5 个字符的技能描述"}
+        return {"status": "error", "message": t("skill_generator.description_too_short")}
 
     desc = description.strip()
 

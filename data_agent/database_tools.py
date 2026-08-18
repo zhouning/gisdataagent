@@ -8,6 +8,7 @@ from .db_engine import get_engine
 from .gis_processors import _generate_output_path, _resolve_path
 from .user_context import current_user_id, current_user_role
 from .observability import get_logger
+from .i18n import t as translate
 
 import urllib.parse
 
@@ -89,12 +90,12 @@ def query_database(sql_query: str) -> dict:
     """
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "Database credentials not configured in .env"}
+        return {"status": "error", "message": translate("database.credentials_unavailable")}
 
     # Security: Block non-query statements to prevent data modification
     sql_lower = sql_query.strip().lower()
     if not (sql_lower.startswith("select") or sql_lower.startswith("with")):
-        return {"status": "error", "message": "Only SELECT or WITH queries are allowed for security reasons."}
+        return {"status": "error", "message": translate("database.read_only_required")}
 
     # Guard: Strip LLM-injected LIMIT on simple full-table queries.
     # LLMs (especially Gemini) tend to add "LIMIT 1000" even when the user
@@ -181,7 +182,9 @@ def query_database(sql_query: str) -> dict:
                     "status": "success",
                     "output_path": out_path,
                     "rows": len(df),
-                    "message": f"Spatial query returned {len(df)} rows. Saved to {out_path}"
+                    "message": translate(
+                        "database.spatial_query_success", count=len(df), path=out_path
+                    ),
                 }
             else:
                 df = pd.DataFrame(rows, columns=keys)
@@ -191,20 +194,22 @@ def query_database(sql_query: str) -> dict:
                     "status": "success",
                     "output_path": out_path,
                     "rows": len(df),
-                    "message": f"Query returned {len(df)} rows. Saved to {out_path}"
+                    "message": translate(
+                        "database.query_success", count=len(df), path=out_path
+                    ),
                 }
 
     except Exception as e:
         err = str(e)
         recovery = ""
         if "relation" in err and "does not exist" in err:
-            recovery = "请先调用 list_tables 查看可用表名"
+            recovery = translate("database.recovery_table_missing")
         elif "column" in err and "does not exist" in err:
-            recovery = "请先调用 describe_table 查看表的字段结构"
+            recovery = translate("database.recovery_column_missing")
         elif "permission denied" in err.lower() or "access" in err.lower():
-            recovery = "当前用户无权访问该表，请联系管理员"
+            recovery = translate("database.recovery_access_denied")
         elif "syntax error" in err.lower():
-            recovery = "SQL语法错误，请检查查询语句"
+            recovery = translate("database.recovery_syntax_error")
         return {"status": "error", "message": err,
                 **({"recovery": recovery} if recovery else {})}
 
@@ -214,7 +219,7 @@ def list_tables() -> dict:
     Uses the table_ownership registry with RLS to auto-filter by user access."""
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "Database credentials not configured in .env"}
+        return {"status": "error", "message": translate("database.credentials_unavailable")}
 
     try:
         with engine.connect() as conn:
@@ -242,9 +247,9 @@ def list_tables() -> dict:
                     name, shared, owner, spatial = r
                     label = name
                     if spatial:
-                        label += " (Spatial)"
+                        label += translate("database.tag_spatial")
                     if shared:
-                        label += " [Shared]"
+                        label += translate("database.tag_shared")
                     annotated.append(label)
             else:
                 # Fallback: no registry yet, show all tables (pre-migration behavior)
@@ -260,27 +265,28 @@ def list_tables() -> dict:
                 for r in rows:
                     label = r[0]
                     if r[0] in spatial_set:
-                        label += " (Spatial)"
+                        label += translate("database.tag_spatial")
                     annotated.append(label)
 
             return {
                 "status": "success",
                 "tables": annotated,
-                "message": f"Found {len(annotated)} accessible tables:\n" +
-                           "\n".join(f"- {t}" for t in annotated),
+                "message": translate(
+                    "database.tables_found", count=len(annotated)
+                ) + "\n" + "\n".join(f"- {table}" for table in annotated),
             }
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("database.list_failed", error=e)}
 
 
 def describe_table(table_name: str) -> dict:
     """[Database Tool] Returns columns and data types for a table the user can access."""
     if not re.match(r'^[a-zA-Z0-9_]+$', table_name):
-        return {"status": "error", "message": "Invalid table name format."}
+        return {"status": "error", "message": translate("database.invalid_table_name")}
 
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "Database credentials not configured in .env"}
+        return {"status": "error", "message": translate("database.credentials_unavailable")}
 
     # System tables that don't require ownership check
     system_tables = {
@@ -306,7 +312,9 @@ def describe_table(table_name: str) -> dict:
                     ), {"t": table_name}).scalar()
                     if access == 0:
                         return {"status": "error",
-                                "message": f"Table '{table_name}' not found or access denied."}
+                                "message": translate(
+                                    "database.table_not_found_or_denied", table_name=table_name
+                                )}
 
             # Describe the table
             result = conn.execute(text(
@@ -315,7 +323,9 @@ def describe_table(table_name: str) -> dict:
             ), {"t": table_name}).fetchall()
 
             if not result:
-                return {"status": "error", "message": f"Table '{table_name}' not found."}
+                return {"status": "error", "message": translate(
+                    "database.table_not_found", table_name=table_name
+                )}
 
             cols_info = [{"column_name": r[0], "data_type": r[1]} for r in result]
 
@@ -329,11 +339,15 @@ def describe_table(table_name: str) -> dict:
             return {
                 "status": "success",
                 "columns": cols_info,
-                "message": f"Table '{table_name}' has columns:\n" +
-                           "\n".join(f"- {c['column_name']} ({c['data_type']})" for c in cols_info),
+                "message": translate(
+                    "database.table_columns", table_name=table_name
+                ) + "\n" + "\n".join(
+                    f"- {column['column_name']} ({column['data_type']})"
+                    for column in cols_info
+                ),
             }
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("database.describe_failed", error=e)}
 
 
 def register_table_ownership(table_name: str, owner_username: str,
@@ -341,7 +355,7 @@ def register_table_ownership(table_name: str, owner_username: str,
     """Register a newly imported table in the ownership registry."""
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "Database not configured"}
+        return {"status": "error", "message": translate("database.db_unavailable")}
 
     try:
         with engine.connect() as conn:
@@ -353,9 +367,11 @@ def register_table_ownership(table_name: str, owner_username: str,
                 SET owner_username = :u, is_shared = :s, description = :d
             """), {"t": table_name, "u": owner_username, "s": is_shared, "d": description})
             conn.commit()
-        return {"status": "success", "message": f"Registered table '{table_name}' owned by '{owner_username}'"}
+        return {"status": "success", "message": translate(
+            "database.registered", table_name=table_name, owner=owner_username
+        )}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("database.register_failed", error=e)}
     finally:
         # Cross-register in data catalog (non-fatal)
         try:
@@ -368,11 +384,11 @@ def register_table_ownership(table_name: str, owner_username: str,
 def share_table(table_name: str) -> dict:
     """[Admin Tool] Mark a table as shared so all users can access it."""
     if current_user_role.get() != 'admin':
-        return {"status": "error", "message": "Only admin can share tables."}
+        return {"status": "error", "message": translate("database.share_admin_only")}
 
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "Database not configured"}
+        return {"status": "error", "message": translate("database.db_unavailable")}
 
     try:
         with engine.connect() as conn:
@@ -388,10 +404,14 @@ def share_table(table_name: str) -> dict:
                                  details={"table_name": table_name})
                 except Exception:
                     pass
-                return {"status": "success", "message": f"Table '{table_name}' is now shared."}
-            return {"status": "error", "message": f"Table '{table_name}' not found in registry."}
+                return {"status": "success", "message": translate(
+                    "database.shared", table_name=table_name
+                )}
+            return {"status": "error", "message": translate(
+                "database.not_in_registry", table_name=table_name
+            )}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": translate("database.share_failed", error=e)}
 
 
 def import_to_postgis(file_path: str, table_name: str = "",
@@ -418,20 +438,21 @@ def import_to_postgis(file_path: str, table_name: str = "",
     """
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库未配置，无法导入。"}
+        return {"status": "error", "message": translate("database.import_unavailable")}
 
     # Validate if_exists
     if if_exists not in ("fail", "replace", "append"):
         return {"status": "error",
-                "message": f"if_exists 参数无效: '{if_exists}'。可选值: fail, replace, append"}
+                "message": translate("database.invalid_if_exists", value=if_exists)}
 
     # Sanitize or auto-generate table name
     if table_name:
         table_name = table_name.strip().lower()
         if not re.match(r'^[a-z][a-z0-9_]{0,62}$', table_name):
             return {"status": "error",
-                    "message": f"表名 '{table_name}' 格式无效。"
-                               "必须以字母开头，仅包含小写字母、数字和下划线，最长63字符。"}
+                    "message": translate(
+                        "database.import_invalid_table_name", table_name=table_name
+                    )}
     else:
         # Auto-generate from filename
         basename = os.path.splitext(os.path.basename(file_path))[0]
@@ -446,10 +467,10 @@ def import_to_postgis(file_path: str, table_name: str = "",
         resolved = _resolve_path(file_path)
         gdf = _load_spatial_data(resolved)
     except Exception as e:
-        return {"status": "error", "message": f"读取文件失败: {e}"}
+        return {"status": "error", "message": translate("database.file_read_failed", error=e)}
 
     if gdf.empty:
-        return {"status": "error", "message": "文件不包含任何要素数据。"}
+        return {"status": "error", "message": translate("database.empty_file")}
 
     # Handle SRID / CRS
     original_srid = 0
@@ -463,7 +484,9 @@ def import_to_postgis(file_path: str, table_name: str = "",
         try:
             gdf = gdf.to_crs(epsg=srid)
         except Exception as e:
-            return {"status": "error", "message": f"坐标转换失败 (EPSG:{srid}): {e}"}
+            return {"status": "error", "message": translate(
+                "database.crs_failed", srid=srid, error=e
+            )}
     else:
         srid = original_srid
 
@@ -477,8 +500,8 @@ def import_to_postgis(file_path: str, table_name: str = "",
         msg = str(e)
         if "already exists" in msg.lower():
             return {"status": "error",
-                    "message": f"表 '{table_name}' 已存在。使用 if_exists='replace' 覆盖或 'append' 追加。"}
-        return {"status": "error", "message": f"写入 PostGIS 失败: {e}"}
+                    "message": translate("database.table_exists", table_name=table_name)}
+        return {"status": "error", "message": translate("database.write_failed", error=e)}
 
     # Register ownership (cross-registers in data catalog)
     username = current_user_id.get() or "anonymous"
@@ -488,15 +511,25 @@ def import_to_postgis(file_path: str, table_name: str = "",
     )
 
     columns = [c for c in gdf.columns if c != "geometry"]
+    columns_suffix = (
+        translate("database.more_columns", count=len(columns))
+        if len(columns) > 10 else ""
+    )
     return {
         "status": "success",
         "table_name": table_name,
         "rows": len(gdf),
         "srid": srid,
         "columns": columns,
-        "message": f"成功导入 {len(gdf)} 条要素到表 '{table_name}' (EPSG:{srid})。"
-                   f"包含 {len(columns)} 个属性列: {', '.join(columns[:10])}"
-                   + (f"... 等共{len(columns)}列" if len(columns) > 10 else ""),
+        "message": translate(
+            "database.import_success",
+            rows=len(gdf),
+            table_name=table_name,
+            srid=srid,
+            column_count=len(columns),
+            columns=", ".join(columns[:10]),
+            suffix=columns_suffix,
+        ),
     }
 
 

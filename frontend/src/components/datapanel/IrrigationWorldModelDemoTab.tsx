@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Activity,
   AlertTriangle,
@@ -38,17 +39,37 @@ import {
   type ScenarioResult,
 } from './irrigationWorldModelApi';
 import './irrigation-world-model-demo.css';
+import i18n, { formatDate, formatNumber } from '../../i18n';
 
 type DetailTab = 'object' | 'link' | 'state' | 'action' | 'constraint' | 'evidence';
 const DEFAULT_MODES: Array<{ id: Mode; label: string; note: string }> = [
-  { id: 'baseline', label: 'Baseline', note: '不调整' },
-  { id: 'candidateA', label: 'Candidate A', note: '仅时段调整' },
-  { id: 'candidateB', label: 'Candidate B', note: '时段 + 比例' },
+  { id: 'baseline', label: 'Baseline', note: '' },
+  { id: 'candidateA', label: 'Candidate A', note: '' },
+  { id: 'candidateB', label: 'Candidate B', note: '' },
 ];
-const format = (value: number, digits = 0) => new Intl.NumberFormat('zh-CN', {
+const format = (value: number, digits = 0) => formatNumber(value, {
   minimumFractionDigits: digits,
   maximumFractionDigits: digits,
-}).format(value);
+});
+const tx = (key: string, options?: Record<string, unknown>) => i18n.t(key, options);
+const TIMELINE_STATUS_KEYS: Record<string, 'assessable' | 'partial' | 'waiting'> = {
+  '\u53ef\u8bc4\u4f30': 'assessable',
+  assessable: 'assessable',
+  '\u90e8\u5206\u5230\u8fbe': 'partial',
+  partial: 'partial',
+  '\u5f85\u8bc4\u4f30': 'waiting',
+  waiting: 'waiting',
+};
+const AUDIT_STATUS_KEYS: Record<string, 'passed' | 'recorded' | 'review'> = {
+  '\u901a\u8fc7': 'passed',
+  passed: 'passed',
+  '\u8bb0\u5f55': 'recorded',
+  recorded: 'recorded',
+  '\u5f85\u5ba1\u67e5': 'review',
+  review: 'review',
+};
+const timelineStatusKey = (value: string) => TIMELINE_STATUS_KEYS[value] || 'waiting';
+const auditStatusKey = (value: string) => AUDIT_STATUS_KEYS[value] || 'recorded';
 
 function valueForNode(nodeId: string, result: ScenarioResult): string {
   const state = result.nodeStates[nodeId];
@@ -58,6 +79,7 @@ function valueForNode(nodeId: string, result: ScenarioResult): string {
 }
 
 export default function IrrigationWorldModelDemoTab() {
+  const { t } = useTranslation();
   const [bootstrap, setBootstrap] = useState<IrrigationBootstrap | null>(null);
   const [run, setRun] = useState<IrrigationRun | null>(null);
   const [supplyDrop, setSupplyDrop] = useState(20);
@@ -72,7 +94,7 @@ export default function IrrigationWorldModelDemoTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadNonce, setLoadNonce] = useState(0);
   const [serviceError, setServiceError] = useState('');
-  const [reviewNote, setReviewNote] = useState('待调度人员核对现场规则');
+  const [reviewNote, setReviewNote] = useState(() => t('irrigationWorldModel.review.defaultNote'));
 
   useEffect(() => {
     const controller = new AbortController();
@@ -150,9 +172,9 @@ export default function IrrigationWorldModelDemoTab() {
   };
 
   const proposalStatusLabel: Record<ProposalStatus, string> = {
-    pending: '待人工审查',
-    returned: '已退回修改',
-    approved: '已通过审查（不执行）',
+    pending: t('irrigationWorldModel.proposal.pending'),
+    returned: t('irrigationWorldModel.proposal.returned'),
+    approved: t('irrigationWorldModel.proposal.approved'),
   };
   const reviewProposal = async (status: Exclude<ProposalStatus, 'pending'>) => {
     if (!run) return;
@@ -160,9 +182,9 @@ export default function IrrigationWorldModelDemoTab() {
     setServiceError('');
     try {
       const defaultNote = status === 'approved'
-        ? '已核对本次模型条件；通过审查但不执行设备动作。'
-        : '请补充现场规则、设备状态或数据证据后重新运行。';
-      const submittedNote = reviewNote.trim() && reviewNote !== '待调度人员核对现场规则' ? reviewNote : defaultNote;
+        ? t('irrigationWorldModel.review.approvedNote')
+        : t('irrigationWorldModel.review.returnedNote');
+      const submittedNote = reviewNote.trim() && reviewNote !== t('irrigationWorldModel.review.defaultNote') ? reviewNote : defaultNote;
       const reviewed = await reviewIrrigationProposal(run.proposal.proposal_id, status, submittedNote);
       setRun(reviewed);
       setReviewNote(reviewed.proposal.review_note);
@@ -178,8 +200,8 @@ export default function IrrigationWorldModelDemoTab() {
       <div className="odiwm-demo-shell">
         <div className="odiwm-dirty-banner">
           {serviceError ? <AlertTriangle size={15} /> : <Activity size={15} className="odiwm-spin" />}
-          <span>{serviceError || '正在连接灌区世界模型后端服务...'}</span>
-          {serviceError && <button type="button" className="odiwm-reset-button" onClick={() => setLoadNonce(value => value + 1)}>重试</button>}
+          <span>{serviceError || t('irrigationWorldModel.loading')}</span>
+          {serviceError && <button type="button" className="odiwm-reset-button" onClick={() => setLoadNonce(value => value + 1)}>{t('irrigationWorldModel.retry')}</button>}
         </div>
       </div>
     );
@@ -191,89 +213,89 @@ export default function IrrigationWorldModelDemoTab() {
         <div className="odiwm-demo-title">
           <span className="odiwm-demo-mark"><Waves size={17} /></span>
           <div>
-            <strong>本体驱动的灌区条件推演</strong>
-            <span>Ontology-grounded irrigation scenario workspace</span>
+            <strong>{t('irrigationWorldModel.title')}</strong>
+            <span>{t('irrigationWorldModelLabels.workspaceSubtitle')}</span>
           </div>
         </div>
-        <div className="odiwm-demo-badges" aria-label="System status">
-          <span className="odiwm-badge odiwm-badge-green"><Sparkles size={12} />后端服务运行</span>
-          <span className="odiwm-badge"><Activity size={12} />有状态模型执行</span>
-          <span className="odiwm-badge"><Layers3 size={12} />合成灌区数据</span>
-          <span className="odiwm-badge odiwm-badge-warn"><ShieldCheck size={12} />不连接生产控制</span>
-          <button className="odiwm-reset-button" type="button" onClick={openOntologyModel}><Network size={13} />打开灌区本体</button>
+        <div className="odiwm-demo-badges" aria-label={t('irrigationWorldModel.systemStatus')}>
+          <span className="odiwm-badge odiwm-badge-green"><Sparkles size={12} />{t('irrigationWorldModel.badges.backendRunning')}</span>
+          <span className="odiwm-badge"><Activity size={12} />{t('irrigationWorldModel.badges.statefulExecution')}</span>
+          <span className="odiwm-badge"><Layers3 size={12} />{t('irrigationWorldModel.badges.syntheticData')}</span>
+          <span className="odiwm-badge odiwm-badge-warn"><ShieldCheck size={12} />{t('irrigationWorldModel.badges.noProductionControl')}</span>
+          <button className="odiwm-reset-button" type="button" onClick={openOntologyModel}><Network size={13} />{t('irrigationWorldModel.openOntology')}</button>
         </div>
       </header>
 
       <section className="odiwm-demo-question">
         <div>
-          <span>当前问题</span>
-          <strong>未来 {horizon} 小时上游可供水量下降 {supplyDrop}% 时，怎样降低末端供水缺口？</strong>
-          <small>通过正式本体包固定 Object/Link，再执行 Manning 参数化的有状态运动波近似与逐步水量账。</small>
+          <span>{t('irrigationWorldModel.question.label')}</span>
+          <strong>{t('irrigationWorldModel.question.prompt', { horizon, drop: supplyDrop })}</strong>
+          <small>{t('irrigationWorldModel.question.description')}</small>
         </div>
         <button className="odiwm-primary-button" type="button" onClick={runSimulation} disabled={isRunning}>
           {isRunning ? <Activity size={14} className="odiwm-spin" /> : <Play size={14} />}
-          {isRunning ? '推演中...' : '运行推演'}
+          {isRunning ? t('irrigationWorldModel.running') : t('irrigationWorldModel.run')}
         </button>
       </section>
 
-      <section className="odiwm-controls" aria-label="Scenario controls">
+      <section className="odiwm-controls" aria-label={t('irrigationWorldModel.scenarioControls')}>
         <div className="odiwm-control-block">
-          <div className="odiwm-control-label"><SlidersHorizontal size={14} /><span>上游供水下降</span><strong>{supplyDrop}%</strong></div>
-          <input type="range" min="0" max="40" step="5" value={supplyDrop} onChange={event => setSupplyDrop(Number(event.target.value))} aria-label="上游供水下降百分比" />
-          <div className="odiwm-range-hints"><span>0%</span><span>情景输入，非实测预报</span><span>40%</span></div>
+          <div className="odiwm-control-label"><SlidersHorizontal size={14} /><span>{t('irrigationWorldModel.controls.supplyDrop')}</span><strong>{supplyDrop}%</strong></div>
+          <input type="range" min="0" max="40" step="5" value={supplyDrop} onChange={event => setSupplyDrop(Number(event.target.value))} aria-label={t('irrigationWorldModel.controls.supplyDropAria')} />
+          <div className="odiwm-range-hints"><span>0%</span><span>{t('irrigationWorldModel.controls.syntheticInput')}</span><span>40%</span></div>
         </div>
         <div className="odiwm-control-block">
-          <div className="odiwm-control-label"><Timer size={14} /><span>西支渠时段后移</span><strong>{westShift} h</strong></div>
-          <input type="range" min="0" max="12" step="2" value={westShift} onChange={event => setWestShift(Number(event.target.value))} aria-label="西支渠时段后移小时数" />
-          <div className="odiwm-range-hints"><span>0 h</span><span>用于比较时序假设</span><span>12 h</span></div>
+          <div className="odiwm-control-label"><Timer size={14} /><span>{t('irrigationWorldModel.controls.westShift')}</span><strong>{westShift} h</strong></div>
+          <input type="range" min="0" max="12" step="2" value={westShift} onChange={event => setWestShift(Number(event.target.value))} aria-label={t('irrigationWorldModel.controls.westShiftAria')} />
+          <div className="odiwm-range-hints"><span>0 h</span><span>{t('irrigationWorldModel.controls.timingAssumption')}</span><span>12 h</span></div>
         </div>
         <div className="odiwm-control-block">
-          <div className="odiwm-control-label"><GitBranch size={14} /><span>Candidate B 东支渠比例</span><strong>{candidateEastRatio}%</strong></div>
-          <input type="range" min="40" max="60" step="5" value={candidateEastRatio} onChange={event => setCandidateEastRatio(Number(event.target.value))} aria-label="Candidate B 东支渠目标比例" />
-          <div className="odiwm-range-hints"><span>40%</span><span>动作参数</span><span>60%</span></div>
+          <div className="odiwm-control-label"><GitBranch size={14} /><span>{t('irrigationWorldModel.controls.eastRatio')}</span><strong>{candidateEastRatio}%</strong></div>
+          <input type="range" min="40" max="60" step="5" value={candidateEastRatio} onChange={event => setCandidateEastRatio(Number(event.target.value))} aria-label={t('irrigationWorldModel.controls.eastRatioAria')} />
+          <div className="odiwm-range-hints"><span>40%</span><span>{t('irrigationWorldModel.controls.actionParameter')}</span><span>60%</span></div>
         </div>
         <div className="odiwm-control-block odiwm-horizon-control">
-          <div className="odiwm-control-label"><CalendarDays size={14} /><span>评估时间窗</span></div>
-          <select value={horizon} onChange={event => setHorizon(Number(event.target.value) as Horizon)} aria-label="评估时间窗">
-            <option value="6">未来 6 小时</option>
-            <option value="12">未来 12 小时</option>
-            <option value="24">未来 24 小时</option>
+          <div className="odiwm-control-label"><CalendarDays size={14} /><span>{t('irrigationWorldModel.controls.horizon')}</span></div>
+          <select value={horizon} onChange={event => setHorizon(Number(event.target.value) as Horizon)} aria-label={t('irrigationWorldModel.controls.horizon')}>
+            <option value="6">{t('irrigationWorldModel.controls.futureHours', { hours: 6 })}</option>
+            <option value="12">{t('irrigationWorldModel.controls.futureHours', { hours: 12 })}</option>
+            <option value="24">{t('irrigationWorldModel.controls.futureHours', { hours: 24 })}</option>
           </select>
-          <div className="odiwm-range-hints"><span>回放步长 6 h</span><span>情景评估</span></div>
+          <div className="odiwm-range-hints"><span>{t('irrigationWorldModel.controls.replayStep')}</span><span>{t('irrigationWorldModel.controls.scenarioAssessment')}</span></div>
         </div>
         <div className="odiwm-control-block odiwm-mode-control">
-          <div className="odiwm-control-label"><GitBranch size={14} /><span>查看方案</span></div>
-          <div className="odiwm-segmented" role="tablist" aria-label="查看方案">
+          <div className="odiwm-control-label"><GitBranch size={14} /><span>{t('irrigationWorldModel.controls.viewPlan')}</span></div>
+          <div className="odiwm-segmented" role="tablist" aria-label={t('irrigationWorldModel.controls.viewPlan')}>
             {modes.map(mode => (
               <button key={mode.id} type="button" className={activeMode === mode.id ? 'active' : ''} onClick={() => setActiveMode(mode.id)} role="tab" aria-selected={activeMode === mode.id}>
-                <span>{mode.label}</span><small>{mode.note}</small>
+                <span>{mode.label}</span><small>{t(`irrigationWorldModel.modes.${mode.id}`, { defaultValue: mode.note })}</small>
               </button>
             ))}
           </div>
         </div>
-        <button className="odiwm-reset-button" type="button" onClick={reset} title="恢复默认情景"><RotateCcw size={14} />重置</button>
+        <button className="odiwm-reset-button" type="button" onClick={reset} title={t('irrigationWorldModel.controls.resetTitle')}><RotateCcw size={14} />{t('irrigationWorldModel.controls.reset')}</button>
       </section>
 
-      {dirty && <div className="odiwm-dirty-banner"><Info size={14} />参数已改变，结果区等待重新运行。当前仍显示上一次已确认的情景。</div>}
-      {serviceError && <div className="odiwm-dirty-banner"><AlertTriangle size={14} />后端服务：{serviceError}</div>}
+      {dirty && <div className="odiwm-dirty-banner"><Info size={14} />{t('irrigationWorldModel.dirty')}</div>}
+      {serviceError && <div className="odiwm-dirty-banner"><AlertTriangle size={14} />{t('irrigationWorldModel.backendError', { message: serviceError })}</div>}
 
-      <section className="odiwm-run-context" aria-label="Run context">
-        <div className="odiwm-context-card"><span className="odiwm-context-icon"><CalendarDays size={14} /></span><div><small>状态快照</small><strong>{new Date(run.state_snapshot.effective_at).toLocaleString('zh-CN', { hour12: false })} · {run.state_snapshot.snapshot_id}</strong></div></div>
-        <div className="odiwm-context-card"><span className="odiwm-context-icon"><ClipboardCheck size={14} /></span><div><small>数据质量</small><strong>{run.state_snapshot.quality_label}</strong></div><span className="odiwm-context-status warn">需现场校准</span></div>
-        <div className="odiwm-context-card"><span className="odiwm-context-icon"><LockKeyhole size={14} /></span><div><small>运行权限</small><strong>条件推演 · Proposal only</strong></div><span className="odiwm-context-status ok">无控制权限</span></div>
-        <div className="odiwm-context-card"><span className="odiwm-context-icon"><Activity size={14} /></span><div><small>后端运行</small><strong>{run.run_id}</strong></div><span className="odiwm-context-status ok">{format(run.model.numerical_evidence.timestep_count)} steps</span></div>
+      <section className="odiwm-run-context" aria-label={t('irrigationWorldModel.runContext')}>
+        <div className="odiwm-context-card"><span className="odiwm-context-icon"><CalendarDays size={14} /></span><div><small>{t('irrigationWorldModel.context.snapshot')}</small><strong>{formatDate(run.state_snapshot.effective_at, { dateStyle: 'medium', timeStyle: 'short', hour12: false })} · {run.state_snapshot.snapshot_id}</strong></div></div>
+        <div className="odiwm-context-card"><span className="odiwm-context-icon"><ClipboardCheck size={14} /></span><div><small>{t('irrigationWorldModel.context.dataQuality')}</small><strong>{run.state_snapshot.quality_label}</strong></div><span className="odiwm-context-status warn">{t('irrigationWorldModel.context.needsCalibration')}</span></div>
+        <div className="odiwm-context-card"><span className="odiwm-context-icon"><LockKeyhole size={14} /></span><div><small>{t('irrigationWorldModel.context.runtimePermission')}</small><strong>{t('irrigationWorldModel.context.proposalOnly')}</strong></div><span className="odiwm-context-status ok">{t('irrigationWorldModel.context.noControl')}</span></div>
+        <div className="odiwm-context-card"><span className="odiwm-context-icon"><Activity size={14} /></span><div><small>{t('irrigationWorldModel.context.backendRun')}</small><strong>{run.run_id}</strong></div><span className="odiwm-context-status ok">{t('irrigationWorldModel.context.steps', { count: format(run.model.numerical_evidence.timestep_count) })}</span></div>
       </section>
 
-      <section className="odiwm-pipeline-strip" aria-label="Run pipeline">
+      <section className="odiwm-pipeline-strip" aria-label={t('irrigationWorldModelLabels.runPipeline')}>
         {run.pipeline.map(stage => {
           const status = stage.key === 'proposal' ? proposalStatusLabel[proposalStatus] : stage.status;
-          return <div key={stage.key} className={status === '禁止' ? 'blocked' : status === '待运行' ? 'idle' : 'done'}><b>{stage.index}</b><span><strong>{stage.label}</strong><small>{status}</small></span></div>;
+          return <div key={stage.key} className={status === tx('irrigationWorldModel.pipeline.blocked') ? 'blocked' : status === tx('irrigationWorldModel.pipeline.idle') ? 'idle' : 'done'}><b>{stage.index}</b><span><strong>{stage.label}</strong><small>{status}</small></span></div>;
         })}
       </section>
 
       <section className="odiwm-main-grid">
-          <div className="odiwm-network-panel">
-          <div className="odiwm-section-heading"><div><strong>灌区语义网络</strong><span>点击对象查看 Object / Link / State / Action</span></div><span className="odiwm-live-tag"><CircleDot size={10} />已冻结状态</span></div>
+        <div className="odiwm-network-panel">
+          <div className="odiwm-section-heading"><div><strong>{t('irrigationWorldModel.network.title')}</strong><span>{t('irrigationWorldModel.network.description')}</span></div><span className="odiwm-live-tag"><CircleDot size={10} />{t('irrigationWorldModel.network.frozen')}</span></div>
           <div className="odiwm-network-map">
             <div className="odiwm-network-source-row">
               <button type="button" className={`odiwm-node odiwm-node-source ${selectedNodeId === 'R1' ? 'selected' : ''}`} onClick={() => setSelectedNodeId('R1')}>
@@ -289,16 +311,15 @@ export default function IrrigationWorldModelDemoTab() {
               <BranchNetwork branch="west" selectedNodeId={selectedNodeId} onSelect={setSelectedNodeId} result={selectedResult} nodeById={nodeById} />
             </div>
           </div>
-          <div className="odiwm-network-legend"><span><i className="legend-dot object" />本体对象</span><span><i className="legend-dot state" />状态值</span><span><i className="legend-dot action" />候选动作</span><span><i className="legend-dot constraint" />约束</span></div>
+          <div className="odiwm-network-legend"><span><i className="legend-dot object" />{t('irrigationWorldModel.network.legendObject')}</span><span><i className="legend-dot state" />{t('irrigationWorldModel.network.legendState')}</span><span><i className="legend-dot action" />{t('irrigationWorldModel.network.legendAction')}</span><span><i className="legend-dot constraint" />{t('irrigationWorldModel.network.legendConstraint')}</span></div>
         </div>
 
         <aside className="odiwm-detail-panel">
-          <div className="odiwm-section-heading"><div><strong>本体对象详情</strong><span>稳定 ID 与关系可追溯</span></div><span className="odiwm-version-tag">v{bootstrap.ontology_profile.version}</span></div>
+          <div className="odiwm-section-heading"><div><strong>{t('irrigationWorldModel.detail.title')}</strong><span>{t('irrigationWorldModel.detail.description')}</span></div><span className="odiwm-version-tag">v{bootstrap.ontology_profile.version}</span></div>
           <div className="odiwm-detail-object-head"><span className="odiwm-object-icon"><Layers3 size={15} /></span><div><strong>{selectedNode?.label || selectedNodeId}</strong><span>{selectedNode?.type} · {selectedNodeId}</span></div></div>
           <div className="odiwm-detail-tabs" role="tablist">
             {(['object', 'link', 'state', 'action', 'constraint', 'evidence'] as DetailTab[]).map(tab => {
-              const labels: Record<DetailTab, string> = { object: 'Object', link: 'Link', state: 'State', action: 'Action', constraint: 'Constraint', evidence: 'Evidence' };
-              return <button key={tab} type="button" className={detailTab === tab ? 'active' : ''} onClick={() => setDetailTab(tab)} role="tab" aria-selected={detailTab === tab}>{labels[tab]}</button>;
+              return <button key={tab} type="button" className={detailTab === tab ? 'active' : ''} onClick={() => setDetailTab(tab)} role="tab" aria-selected={detailTab === tab}>{t(`irrigationWorldModelLabels.detailTabs.${tab}`)}</button>;
             })}
           </div>
           <DetailBody tab={detailTab} node={selectedNode} nodeId={selectedNodeId} result={selectedResult} links={bootstrap.links} westShift={displayedWestShift} horizon={committedHorizon} ontologyVersion={`${bootstrap.ontology_profile.profile_id}:${bootstrap.ontology_profile.version}`} />
@@ -306,62 +327,62 @@ export default function IrrigationWorldModelDemoTab() {
       </section>
 
       <section className="odiwm-results-panel">
-        <div className="odiwm-section-heading"><div><strong>情景结果对比</strong><span>运行版本 {run.version} · {run.run_id}</span></div><span className="odiwm-compute-tag"><Gauge size={12} />运动波近似 · 有状态</span></div>
+        <div className="odiwm-section-heading"><div><strong>{t('irrigationWorldModel.results.title')}</strong><span>{t('irrigationWorldModel.results.runVersion', { version: run.version, id: run.run_id })}</span></div><span className="odiwm-compute-tag"><Gauge size={12} />{t('irrigationWorldModel.results.computeTag')}</span></div>
         <div className="odiwm-results-table-wrap">
           <table className="odiwm-results-table">
-            <thead><tr><th>指标</th>{results.map(result => <th key={result.mode} className={activeMode === result.mode ? 'active-col' : ''}>{result.label}</th>)}</tr></thead>
+            <thead><tr><th>{t('irrigationWorldModel.results.metric')}</th>{results.map(result => <th key={result.mode} className={activeMode === result.mode ? 'active-col' : ''}>{result.label}</th>)}</tr></thead>
             <tbody>
-              <MetricRow label="到田水量" values={results.map(result => `${format(result.delivered)} m³/d`)} activeMode={activeMode} />
-              <MetricRow label="供水缺口" values={results.map(result => `${format(result.shortage)} m³/d`)} activeMode={activeMode} tone="warning" />
-              <MetricRow label="尾端最低保障" values={results.map(result => `${format(result.tailCoverage, 1)}%`)} activeMode={activeMode} />
-              <MetricRow label="公平 CV（越低越好）" values={results.map(result => format(result.fairnessCv, 3))} activeMode={activeMode} />
-              <MetricRow label="容量违规" values={results.map(result => result.capacityViolations ? `${result.capacityViolations} 项` : '0 项')} activeMode={activeMode} tone="constraint" />
-              <MetricRow label="水量账残差" values={results.map(result => `${format(result.residual, 3)} m³/d`)} activeMode={activeMode} />
+              <MetricRow label={t('irrigationWorldModel.metrics.delivered')} values={results.map(result => `${format(result.delivered)} m³/d`)} activeMode={activeMode} />
+              <MetricRow label={t('irrigationWorldModel.metrics.shortage')} values={results.map(result => `${format(result.shortage)} m³/d`)} activeMode={activeMode} tone="warning" />
+              <MetricRow label={t('irrigationWorldModel.metrics.tailCoverage')} values={results.map(result => `${format(result.tailCoverage, 1)}%`)} activeMode={activeMode} />
+              <MetricRow label={t('irrigationWorldModel.metrics.fairness')} values={results.map(result => format(result.fairnessCv, 3))} activeMode={activeMode} />
+              <MetricRow label={t('irrigationWorldModel.metrics.capacityViolations')} values={results.map(result => result.capacityViolations ? t('irrigationWorldModel.metrics.items', { count: result.capacityViolations }) : t('irrigationWorldModel.metrics.zeroItems'))} activeMode={activeMode} tone="constraint" />
+              <MetricRow label={t('irrigationWorldModel.metrics.residual')} values={results.map(result => `${format(result.residual, 3)} m³/d`)} activeMode={activeMode} />
             </tbody>
           </table>
         </div>
         <div className="odiwm-result-notes">
-          <span><CheckCircle2 size={13} />连续方程残差 {format(selectedResult.residualVolumeM3, 4)} m³</span>
-          <span><Timer size={13} />{format(selectedResult.numerical.timestep_count)} 步 · {format(selectedResult.numerical.runtime_ms, 1)} ms</span>
-          <span><Waves size={13} />水深范围 {format(selectedResult.numerical.minimum_depth_m, 3)}–{format(selectedResult.numerical.maximum_depth_m, 3)} m</span>
-          <span><AlertTriangle size={13} />超容量仅标记为阻断，不自动修正动作</span>
+          <span><CheckCircle2 size={13} />{t('irrigationWorldModel.results.continuityResidual', { value: format(selectedResult.residualVolumeM3, 4) })}</span>
+          <span><Timer size={13} />{t('irrigationWorldModel.results.runtime', { steps: format(selectedResult.numerical.timestep_count), ms: format(selectedResult.numerical.runtime_ms, 1) })}</span>
+          <span><Waves size={13} />{t('irrigationWorldModel.results.depthRange', { min: format(selectedResult.numerical.minimum_depth_m, 3), max: format(selectedResult.numerical.maximum_depth_m, 3) })}</span>
+          <span><AlertTriangle size={13} />{t('irrigationWorldModel.results.capacityBoundary')}</span>
         </div>
       </section>
 
       <section className="odiwm-timeline-panel">
-        <div className="odiwm-section-heading"><div><strong>时序回放 · {selectedResult.label}</strong><span>以 6 小时步长查看末端状态变化；数值为模型条件下的合成回放</span></div><span className="odiwm-compute-tag"><Timer size={12} />T+0 ~ T+{committedHorizon} h</span></div>
+        <div className="odiwm-section-heading"><div><strong>{t('irrigationWorldModel.timeline.title', { label: selectedResult.label })}</strong><span>{t('irrigationWorldModel.timeline.description')}</span></div><span className="odiwm-compute-tag"><Timer size={12} />{t('irrigationWorldModelLabels.timeWindow', { start: 0, end: committedHorizon })}</span></div>
         <div className="odiwm-timeline-grid">
-          {selectedResult.timeline.map(point => <div key={point.hour} className="odiwm-timeline-point"><div className="odiwm-timeline-hour">T+{point.hour} h</div><div className="odiwm-timeline-bar"><span style={{ width: `${Math.max(4, point.tailCoverage)}%` }} /></div><strong>{format(point.tailCoverage, 1)}%</strong><small>尾端保障</small><em className={point.status === '可评估' ? 'ready' : point.status === '部分到达' ? 'partial' : 'waiting'}>{point.status}</em><span className="odiwm-timeline-shortage">缺口 {format(point.shortage)} m³/d</span></div>)}
+          {selectedResult.timeline.map(point => { const statusKey = timelineStatusKey(point.status); return <div key={point.hour} className="odiwm-timeline-point"><div className="odiwm-timeline-hour">T+{point.hour} h</div><div className="odiwm-timeline-bar"><span style={{ width: `${Math.max(4, point.tailCoverage)}%` }} /></div><strong>{format(point.tailCoverage, 1)}%</strong><small>{t('irrigationWorldModel.timeline.tailCoverage')}</small><em className={statusKey === 'assessable' ? 'ready' : statusKey === 'partial' ? 'partial' : 'waiting'}>{t(`irrigationWorldModel.timeline.status.${statusKey}`)}</em><span className="odiwm-timeline-shortage">{t('irrigationWorldModel.timeline.shortage', { value: format(point.shortage) })} m³/d</span></div>; })}
         </div>
       </section>
 
       <section className="odiwm-proposal-grid">
         <div className="odiwm-proposal-card">
-          <div className="odiwm-section-heading"><div><strong>Proposal · {modes.find(mode => mode.id === run.proposal.candidate_mode)?.label || run.proposal.candidate_mode}</strong><span>有约束候选排序 · {run.proposal.proposal_id}</span></div><span className={`odiwm-review-tag ${proposalStatus === 'approved' ? 'approved' : proposalStatus === 'returned' ? 'returned' : ''}`}><AlertTriangle size={12} />{proposalStatusLabel[proposalStatus]}</span></div>
+          <div className="odiwm-section-heading"><div><strong>{t('irrigationWorldModelLabels.proposal', { mode: modes.find(mode => mode.id === run.proposal.candidate_mode)?.label || run.proposal.candidate_mode })}</strong><span>{t('irrigationWorldModel.proposal.ranking', { id: run.proposal.proposal_id })}</span></div><span className={`odiwm-review-tag ${proposalStatus === 'approved' ? 'approved' : proposalStatus === 'returned' ? 'returned' : ''}`}><AlertTriangle size={12} />{proposalStatusLabel[proposalStatus]}</span></div>
           <div className="odiwm-action-list">
             {run.proposal.actions.map(action => <div key={action.order}><span className="action-index">{action.order}</span><span>{action.summary}</span></div>)}
           </div>
           <div className="odiwm-review-form">
-            <label htmlFor="odiwm-review-note"><MessageSquareText size={13} />审核意见</label>
+            <label htmlFor="odiwm-review-note"><MessageSquareText size={13} />{t('irrigationWorldModel.review.label')}</label>
             <textarea id="odiwm-review-note" value={reviewNote} onChange={event => setReviewNote(event.target.value)} rows={2} disabled={proposalStatus !== 'pending' || isReviewing} />
-            <div className="odiwm-review-actions"><button type="button" className="odiwm-return-button" onClick={() => reviewProposal('returned')} disabled={proposalStatus !== 'pending' || isReviewing}><AlertTriangle size={13} />退回修改</button><button type="button" className="odiwm-approve-button" onClick={() => reviewProposal('approved')} disabled={proposalStatus !== 'pending' || isReviewing}><FileCheck2 size={13} />通过审查（不执行）</button></div>
+            <div className="odiwm-review-actions"><button type="button" className="odiwm-return-button" onClick={() => reviewProposal('returned')} disabled={proposalStatus !== 'pending' || isReviewing}><AlertTriangle size={13} />{t('irrigationWorldModel.review.return')}</button><button type="button" className="odiwm-approve-button" onClick={() => reviewProposal('approved')} disabled={proposalStatus !== 'pending' || isReviewing}><FileCheck2 size={13} />{t('irrigationWorldModel.review.approve')}</button></div>
           </div>
-          <div className="odiwm-no-control"><ShieldCheck size={14} /><strong>当前系统不执行设备动作</strong><span>Proposal 用于解释、比较和人工审查，不会调用闸门、泵站或生产 API。</span></div>
+          <div className="odiwm-no-control"><ShieldCheck size={14} /><strong>{t('irrigationWorldModel.review.noControlTitle')}</strong><span>{t('irrigationWorldModel.review.noControlDescription')}</span></div>
         </div>
         <div className="odiwm-evidence-card">
-          <div className="odiwm-section-heading"><div><strong>证据、运行记录与边界</strong><span>让结果知道自己从哪里来</span></div><Info size={14} /></div>
+          <div className="odiwm-section-heading"><div><strong>{t('irrigationWorldModel.evidence.title')}</strong><span>{t('irrigationWorldModel.evidence.description')}</span></div><Info size={14} /></div>
           <dl className="odiwm-evidence-list">
-            <div><dt>Ontology profile</dt><dd>{bootstrap.ontology_profile.profile_id}:{bootstrap.ontology_profile.version}</dd></div>
-            <div><dt>Ontology package</dt><dd>{bootstrap.ontology_profile.content_sha256.slice(0, 16)}</dd></div>
-            <div><dt>Data source</dt><dd>{run.claim_boundary.data}</dd></div>
-            <div><dt>Kernel</dt><dd>{run.model.model_id}:{run.model.version}</dd></div>
-            <div><dt>State transition</dt><dd>{run.model.numerical_evidence.equations}</dd></div>
-            <div><dt>Execution</dt><dd>{format(run.model.numerical_evidence.timestep_count)} steps / {format(run.model.numerical_evidence.runtime_ms, 1)} ms</dd></div>
-            <div><dt>Planner</dt><dd>{run.planner?.planner_id || 'legacy-run-metadata'} · {run.planner?.selected_mode || run.proposal.candidate_mode}</dd></div>
-            <div><dt>Claim</dt><dd>{run.claim_boundary.claim}</dd></div>
-            <div><dt>Uncertainty</dt><dd>{run.claim_boundary.calibration}</dd></div>
+            <div><dt>{t('irrigationWorldModelLabels.evidence.ontologyProfile')}</dt><dd>{bootstrap.ontology_profile.profile_id}:{bootstrap.ontology_profile.version}</dd></div>
+            <div><dt>{t('irrigationWorldModelLabels.evidence.ontologyPackage')}</dt><dd>{bootstrap.ontology_profile.content_sha256.slice(0, 16)}</dd></div>
+            <div><dt>{t('irrigationWorldModelLabels.evidence.dataSource')}</dt><dd>{run.claim_boundary.data}</dd></div>
+            <div><dt>{t('irrigationWorldModelLabels.evidence.kernel')}</dt><dd>{run.model.model_id}:{run.model.version}</dd></div>
+            <div><dt>{t('irrigationWorldModelLabels.evidence.stateTransition')}</dt><dd>{run.model.numerical_evidence.equations}</dd></div>
+            <div><dt>{t('irrigationWorldModelLabels.evidence.execution')}</dt><dd>{t('irrigationWorldModel.evidence.execution', { steps: format(run.model.numerical_evidence.timestep_count), ms: format(run.model.numerical_evidence.runtime_ms, 1) })}</dd></div>
+            <div><dt>{t('irrigationWorldModelLabels.evidence.planner')}</dt><dd>{run.planner?.planner_id || 'legacy-run-metadata'} · {run.planner?.selected_mode || run.proposal.candidate_mode}</dd></div>
+            <div><dt>{t('irrigationWorldModelLabels.evidence.claim')}</dt><dd>{run.claim_boundary.claim}</dd></div>
+            <div><dt>{t('irrigationWorldModelLabels.evidence.uncertainty')}</dt><dd>{run.claim_boundary.calibration}</dd></div>
           </dl>
-          <div className="odiwm-audit-list"><div className="odiwm-audit-title"><ClipboardCheck size={13} />运行审计</div>{auditEvents.slice(-5).map((event, index) => <div className="odiwm-audit-event" key={`${event.time}-${event.step}-${index}`}><span>{event.time}</span><strong>{event.step}</strong><em className={event.status === '通过' ? 'ok' : event.status === '待审查' ? 'wait' : ''}>{event.status}</em><small>{event.detail}</small></div>)}</div>
+          <div className="odiwm-audit-list"><div className="odiwm-audit-title"><ClipboardCheck size={13} />{t('irrigationWorldModel.evidence.audit')}</div>{auditEvents.slice(-5).map((event, index) => { const statusKey = auditStatusKey(event.status); return <div className="odiwm-audit-event" key={`${event.time}-${event.step}-${index}`}><span>{event.time}</span><strong>{event.step}</strong><em className={statusKey === 'passed' ? 'ok' : statusKey === 'review' ? 'wait' : ''}>{t(`irrigationWorldModel.auditStatus.${statusKey}`)}</em><small>{event.detail}</small></div>; })}</div>
         </div>
       </section>
     </div>
@@ -370,30 +391,30 @@ export default function IrrigationWorldModelDemoTab() {
 
 function BranchNetwork({ branch, selectedNodeId, onSelect, result, nodeById }: { branch: 'east' | 'west'; selectedNodeId: string; onSelect: (id: string) => void; result: ScenarioResult; nodeById: Record<string, Node> }) {
   const ids = branch === 'east' ? ['C2', 'D1', 'F1', 'F2'] : ['C3', 'D2', 'F3', 'F4'];
-  const label = branch === 'east' ? '东支渠' : '西支渠';
+  const label = branch === 'east' ? tx('irrigationWorldModel.network.eastBranch') : tx('irrigationWorldModel.network.westBranch');
   return (
     <div className={`odiwm-branch ${branch}`}>
-      <div className="odiwm-branch-label"><span>{label}</span><small>{branch === 'east' ? `${format(result.branchRatio * 100, 1)}%` : `${format((1 - result.branchRatio) * 100, 1)}%`} 分配</small></div>
+      <div className="odiwm-branch-label"><span>{label}</span><small>{tx('irrigationWorldModel.network.allocation', { value: branch === 'east' ? `${format(result.branchRatio * 100, 1)}%` : `${format((1 - result.branchRatio) * 100, 1)}%` })}</small></div>
       <div className="odiwm-branch-chain">
         <button type="button" className={`odiwm-node odiwm-node-compact ${selectedNodeId === ids[0] ? 'selected' : ''}`} onClick={() => onSelect(ids[0])}><Waves size={14} /><span><strong>{ids[0]}</strong><small>{nodeById[ids[0]]?.label}</small></span><em>{valueForNode(ids[0], result)}</em></button>
         <span className="odiwm-branch-line"><ChevronRight size={15} /></span>
         <button type="button" className={`odiwm-node odiwm-node-compact ${selectedNodeId === ids[1] ? 'selected' : ''}`} onClick={() => onSelect(ids[1])}><Gauge size={14} /><span><strong>{ids[1]}</strong><small>{nodeById[ids[1]]?.label}</small></span><em>{valueForNode(ids[1], result)}</em></button>
       </div>
-      <div className="odiwm-field-line"><span className="odiwm-field-stem" />{ids.slice(2).map(fieldId => <button type="button" key={fieldId} className={`odiwm-field-node ${selectedNodeId === fieldId ? 'selected' : ''}`} onClick={() => onSelect(fieldId)}><span>{fieldId}</span><small>{format(result.fields[fieldId].coverage * 100, 1)}% 保障</small></button>)}</div>
+      <div className="odiwm-field-line"><span className="odiwm-field-stem" />{ids.slice(2).map(fieldId => <button type="button" key={fieldId} className={`odiwm-field-node ${selectedNodeId === fieldId ? 'selected' : ''}`} onClick={() => onSelect(fieldId)}><span>{fieldId}</span><small>{format(result.fields[fieldId].coverage * 100, 1)}% {tx('irrigationWorldModel.network.coverage')}</small></button>)}</div>
     </div>
   );
 }
 
 function DetailBody({ tab, node, nodeId, result, links, westShift, horizon, ontologyVersion }: { tab: DetailTab; node?: Node; nodeId: string; result: ScenarioResult; links: OntologyLink[]; westShift: number; horizon: Horizon; ontologyVersion: string }) {
-  if (!node) return <div className="odiwm-detail-empty">请选择一个本体对象。</div>;
+  if (!node) return <div className="odiwm-detail-empty">{tx('irrigationWorldModel.detail.selectObject')}</div>;
   const incoming = links.filter(link => link.object === nodeId).map(link => `${link.subject} ${link.predicate} ${nodeId}`);
   const outgoing = links.filter(link => link.subject === nodeId).map(link => `${nodeId} ${link.predicate} ${link.object}`);
-  if (tab === 'object') return <div className="odiwm-detail-body"><DetailRow label="稳定 ID" value={node.stable_id} /><DetailRow label="类型" value={node.type} /><DetailRow label="业务角色" value={node.role} /><DetailRow label="本体版本" value={ontologyVersion} /></div>;
-  if (tab === 'link') return <div className="odiwm-detail-body"><DetailRow label="入向关系" value={incoming.join('；') || '无（边界源）'} /><DetailRow label="出向关系" value={outgoing.join('；') || '无'} /><DetailRow label="关系权威" value={links.find(link => link.subject === nodeId || link.object === nodeId)?.authority || '未发布'} /></div>;
-  if (tab === 'state') return <div className="odiwm-detail-body"><DetailRow label="当前状态" value={node.state} /><DetailRow label="状态值" value={valueForNode(nodeId, result)} /><DetailRow label="时间窗" value={`T+0 ~ T+${horizon} h`} /><DetailRow label="传播时延" value={nodeId === 'C3' || nodeId === 'D2' ? `${result.westDelay} h（假设）` : '由后端模型按拓扑计算'} /><DetailRow label="质量标记" value="合成状态 · 未校准" tone="warning" /></div>;
-  if (tab === 'action') return <div className="odiwm-detail-body"><DetailRow label="候选动作" value={nodeId === 'D2' || nodeId === 'C3' ? `西支渠时段后移 ${westShift} h` : nodeId === 'D1' || nodeId === 'C2' ? `东支渠比例 ${format(result.branchRatio * 100, 1)}%` : '保持不变'} /><DetailRow label="执行方式" value="Proposal only" /><DetailRow label="人工审查" value="required" /></div>;
-  if (tab === 'constraint') return <div className="odiwm-detail-body"><DetailRow label="容量上限" value={node.capacity ? `${format(node.capacity)} m³/d` : '由规则约束'} /><DetailRow label="约束结果" value={node.capacity && (nodeId === 'C2' || nodeId === 'C3') ? (result.capacityViolations ? '需阻断并复核' : '通过') : '通过 / 待校准'} tone={result.capacityViolations ? 'warning' : 'ok'} /><DetailRow label="守恒残差" value={`${format(result.residual, 3)} m³/d`} /></div>;
-  return <div className="odiwm-detail-body"><DetailRow label="证据类型" value="合成数据 + 显式假设" /><DetailRow label="来源标识" value="synthetic_seed_dataset" /><DetailRow label="可支持结论" value="模型条件下的方案比较" /><DetailRow label="不可支持结论" value="真实灌区调度承诺" /></div>;
+  if (tab === 'object') return <div className="odiwm-detail-body"><DetailRow label={tx('irrigationWorldModel.detail.stableId')} value={node.stable_id} /><DetailRow label={tx('irrigationWorldModel.detail.type')} value={node.type} /><DetailRow label={tx('irrigationWorldModel.detail.role')} value={node.role} /><DetailRow label={tx('irrigationWorldModel.detail.ontologyVersion')} value={ontologyVersion} /></div>;
+  if (tab === 'link') return <div className="odiwm-detail-body"><DetailRow label={tx('irrigationWorldModel.detail.incoming')} value={incoming.join('；') || tx('irrigationWorldModel.detail.noBoundarySource')} /><DetailRow label={tx('irrigationWorldModel.detail.outgoing')} value={outgoing.join('；') || tx('irrigationWorldModel.common.none')} /><DetailRow label={tx('irrigationWorldModel.detail.authority')} value={links.find(link => link.subject === nodeId || link.object === nodeId)?.authority || tx('irrigationWorldModel.detail.unpublished')} /></div>;
+  if (tab === 'state') return <div className="odiwm-detail-body"><DetailRow label={tx('irrigationWorldModel.detail.currentState')} value={node.state} /><DetailRow label={tx('irrigationWorldModel.detail.stateValue')} value={valueForNode(nodeId, result)} /><DetailRow label={tx('irrigationWorldModel.detail.timeWindow')} value={tx('irrigationWorldModelLabels.timeWindow', { start: 0, end: horizon })} /><DetailRow label={tx('irrigationWorldModel.detail.propagationDelay')} value={nodeId === 'C3' || nodeId === 'D2' ? tx('irrigationWorldModel.detail.assumptionDelay', { hours: result.westDelay }) : tx('irrigationWorldModel.detail.topologyComputed')} /><DetailRow label={tx('irrigationWorldModel.detail.qualityFlag')} value={tx('irrigationWorldModel.detail.syntheticUncalibrated')} tone="warning" /></div>;
+  if (tab === 'action') return <div className="odiwm-detail-body"><DetailRow label={tx('irrigationWorldModel.detail.candidateAction')} value={nodeId === 'D2' || nodeId === 'C3' ? tx('irrigationWorldModel.detail.westShiftAction', { hours: westShift }) : nodeId === 'D1' || nodeId === 'C2' ? tx('irrigationWorldModel.detail.eastRatioAction', { ratio: format(result.branchRatio * 100, 1) }) : tx('irrigationWorldModel.detail.noChange')} /><DetailRow label={tx('irrigationWorldModel.detail.executionMethod')} value={tx('irrigationWorldModel.detail.proposalOnly')} /><DetailRow label={tx('irrigationWorldModel.detail.humanReview')} value={tx('irrigationWorldModel.detail.required')} /></div>;
+  if (tab === 'constraint') return <div className="odiwm-detail-body"><DetailRow label={tx('irrigationWorldModel.detail.capacityLimit')} value={node.capacity ? `${format(node.capacity)} m³/d` : tx('irrigationWorldModel.detail.ruleConstrained')} /><DetailRow label={tx('irrigationWorldModel.detail.constraintResult')} value={node.capacity && (nodeId === 'C2' || nodeId === 'C3') ? (result.capacityViolations ? tx('irrigationWorldModel.detail.blockAndReview') : tx('irrigationWorldModel.detail.passed')) : tx('irrigationWorldModel.detail.passedPendingCalibration')} tone={result.capacityViolations ? 'warning' : 'ok'} /><DetailRow label={tx('irrigationWorldModel.detail.conservationResidual')} value={`${format(result.residual, 3)} m³/d`} /></div>;
+  return <div className="odiwm-detail-body"><DetailRow label={tx('irrigationWorldModel.detail.evidenceType')} value={tx('irrigationWorldModel.detail.syntheticExplicit')} /><DetailRow label={tx('irrigationWorldModel.detail.sourceId')} value="synthetic_seed_dataset" /><DetailRow label={tx('irrigationWorldModel.detail.supportedConclusion')} value={tx('irrigationWorldModel.detail.modelConditionComparison')} /><DetailRow label={tx('irrigationWorldModel.detail.unsupportedConclusion')} value={tx('irrigationWorldModel.detail.realSchedulingCommitment')} /></div>;
 }
 
 function DetailRow({ label, value, tone }: { label: string; value: string; tone?: 'ok' | 'warning' }) {

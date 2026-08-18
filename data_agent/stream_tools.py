@@ -13,6 +13,7 @@ from .stream_engine import (
     StreamConfig, LocationEvent,
     get_stream_engine, haversine_meters,
 )
+from .i18n import t as translate
 
 
 def create_iot_stream(
@@ -40,7 +41,7 @@ def create_iot_stream(
         ))
         return {
             "status": "success",
-            "message": f"数据流 '{name}' 已创建",
+            "message": translate("stream.created", name=name),
             "stream_id": config.id,
             "ingest_url": f"/api/streams/{config.id}/ingest",
             "ws_url": f"/ws/streams/{config.id}",
@@ -48,7 +49,7 @@ def create_iot_stream(
             "has_geofence": bool(config.geofence_wkt),
         }
     except Exception as e:
-        return {"status": "error", "message": f"创建数据流失败: {str(e)}"}
+        return {"status": "error", "message": translate("stream.create_failed", error=e)}
 
 
 def list_active_streams() -> dict:
@@ -66,7 +67,7 @@ def list_active_streams() -> dict:
             "streams": streams,
         }
     except Exception as e:
-        return {"status": "error", "message": f"查询失败: {str(e)}"}
+        return {"status": "error", "message": translate("stream.list_failed", error=e)}
 
 
 def stop_data_stream(stream_id: str) -> dict:
@@ -88,16 +89,16 @@ def stop_data_stream(stream_id: str) -> dict:
             # The task will complete asynchronously
             return {
                 "status": "success",
-                "message": f"数据流 {stream_id} 停止请求已发送",
+                "message": translate("stream.stop_requested", stream_id=stream_id),
             }
         else:
             loop.run_until_complete(engine.stop_stream(stream_id))
             return {
                 "status": "success",
-                "message": f"数据流 {stream_id} 已停止",
+                "message": translate("stream.stopped", stream_id=stream_id),
             }
     except Exception as e:
-        return {"status": "error", "message": f"停止失败: {str(e)}"}
+        return {"status": "error", "message": translate("stream.stop_failed", error=e)}
 
 
 def get_stream_statistics(stream_id: str) -> dict:
@@ -120,19 +121,19 @@ def get_stream_statistics(stream_id: str) -> dict:
             streams = engine.get_active_streams()
             stream_info = next((s for s in streams if s["id"] == stream_id), None)
             if not stream_info:
-                return {"status": "error", "message": f"数据流 {stream_id} 不存在"}
+                return {"status": "error", "message": translate("stream.not_found", stream_id=stream_id)}
             return {
                 "status": "success",
                 "stream_id": stream_id,
                 "name": stream_info.get("name", ""),
                 "status": stream_info.get("status", "unknown"),
                 "window_seconds": stream_info.get("window_seconds", 60),
-                "message": "统计信息将在下一个窗口周期后可用",
+                "message": translate("stream.stats_pending"),
             }
         else:
             result = loop.run_until_complete(engine.process_window(stream_id))
             if not result:
-                return {"status": "error", "message": f"数据流 {stream_id} 不存在"}
+                return {"status": "error", "message": translate("stream.not_found", stream_id=stream_id)}
             return {
                 "status": "success",
                 "stream_id": stream_id,
@@ -146,7 +147,7 @@ def get_stream_statistics(stream_id: str) -> dict:
                 "window_end": datetime.fromtimestamp(result.window_end, tz=timezone.utc).isoformat(),
             }
     except Exception as e:
-        return {"status": "error", "message": f"查询统计失败: {str(e)}"}
+        return {"status": "error", "message": translate("stream.stats_failed", error=e)}
 
 
 def set_geofence_alert(
@@ -170,24 +171,24 @@ def set_geofence_alert(
         engine = get_stream_engine()
         config = engine._configs.get(stream_id)
         if not config:
-            return {"status": "error", "message": f"数据流 {stream_id} 不存在"}
+            return {"status": "error", "message": translate("stream.not_found", stream_id=stream_id)}
 
         # Validate WKT
         try:
             from shapely import wkt
             geom = wkt.loads(polygon_wkt)
             if geom.geom_type not in ("Polygon", "MultiPolygon"):
-                return {"status": "error", "message": "围栏必须是Polygon或MultiPolygon类型"}
+                return {"status": "error", "message": translate("stream.geofence_invalid")}
         except ImportError:
             pass  # Accept without validation if Shapely not available
         except Exception as e:
-            return {"status": "error", "message": f"WKT格式错误: {str(e)}"}
+            return {"status": "error", "message": translate("stream.wkt_invalid", error=e)}
 
         config.geofence_wkt = polygon_wkt
         return {
             "status": "success",
-            "message": f"地理围栏已设置 (告警类型: {alert_type})",
+            "message": translate("stream.geofence_set", alert_type=alert_type),
             "stream_id": stream_id,
         }
     except Exception as e:
-        return {"status": "error", "message": f"设置围栏失败: {str(e)}"}
+        return {"status": "error", "message": translate("stream.geofence_failed", error=e)}

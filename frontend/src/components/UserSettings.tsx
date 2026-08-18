@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatDate, getLocaleHeaders } from '../i18n';
+import LanguageSwitcher from './LanguageSwitcher';
 
 interface UserSettingsProps {
   username: string;
@@ -9,6 +12,7 @@ interface UserSettingsProps {
 }
 
 export default function UserSettings({ username, displayName, role, onClose, onDeleted }: UserSettingsProps) {
+  const { t } = useTranslation('common');
   const [password, setPassword] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -34,14 +38,14 @@ export default function UserSettings({ username, displayName, role, onClose, onD
   const [deletingMemoryId, setDeletingMemoryId] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch('/api/user/analysis-perspective', { credentials: 'include' })
+    fetch('/api/user/analysis-perspective', { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.json())
       .then(data => setPerspective(data.perspective || ''))
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    fetch('/api/user/memories', { credentials: 'include' })
+    fetch('/api/user/memories', { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.json())
       .then(data => { setMemories(data.memories || []); setMemoriesLoading(false); })
       .catch(() => setMemoriesLoading(false));
@@ -49,7 +53,7 @@ export default function UserSettings({ username, displayName, role, onClose, onD
 
   const handleDelete = async () => {
     if (!password) {
-      setError('请输入密码');
+      setError(t('settings.deleteConfirmPlaceholder'));
       return;
     }
     setDeleting(true);
@@ -57,7 +61,7 @@ export default function UserSettings({ username, displayName, role, onClose, onD
     try {
       const resp = await fetch('/api/user/account', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         credentials: 'include',
         body: JSON.stringify({ password }),
       });
@@ -65,10 +69,10 @@ export default function UserSettings({ username, displayName, role, onClose, onD
       if (data.status === 'success') {
         onDeleted();
       } else {
-        setError(data.message || '删除失败');
+        setError(data.message || t('settings.deleteFailed'));
       }
     } catch {
-      setError('网络错误');
+      setError(t('settings.networkError'));
     } finally {
       setDeleting(false);
     }
@@ -81,7 +85,7 @@ export default function UserSettings({ username, displayName, role, onClose, onD
     try {
       const resp = await fetch('/api/user/analysis-perspective', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         credentials: 'include',
         body: JSON.stringify({ perspective }),
       });
@@ -90,10 +94,10 @@ export default function UserSettings({ username, displayName, role, onClose, onD
         setPerspectiveSaved(true);
         setTimeout(() => setPerspectiveSaved(false), 2000);
       } else {
-        setPerspectiveError(data.message || '保存失败');
+        setPerspectiveError(data.message || t('settings.saveFailed'));
       }
     } catch {
-      setPerspectiveError('网络错误');
+      setPerspectiveError(t('settings.networkError'));
     } finally {
       setPerspectiveLoading(false);
     }
@@ -105,6 +109,7 @@ export default function UserSettings({ username, displayName, role, onClose, onD
       const resp = await fetch(`/api/user/memories/${id}`, {
         method: 'DELETE',
         credentials: 'include',
+        headers: getLocaleHeaders(),
       });
       const data = await resp.json();
       if (data.status === 'success') {
@@ -115,42 +120,46 @@ export default function UserSettings({ username, displayName, role, onClose, onD
   };
 
   const categoryLabels: Record<string, string> = {
-    data_characteristic: '数据特征',
-    analysis_conclusion: '分析结论',
-    user_preference: '用户偏好',
+    data_characteristic: t('settings.dataCharacteristic'),
+    analysis_conclusion: t('settings.analysisConclusion'),
+    user_preference: t('settings.userPreference'),
   };
 
   return (
     <div className="user-settings-overlay" onClick={onClose}>
       <div className="user-settings-modal" onClick={(e) => e.stopPropagation()}>
         <div className="user-settings-header">
-          <h3>账户设置</h3>
+          <h3>{t('settings.title')}</h3>
           <button className="user-settings-close" onClick={onClose}>&times;</button>
         </div>
 
         <div className="user-settings-info">
           <div className="user-settings-row">
-            <span className="user-settings-label">用户名</span>
+            <span className="user-settings-label">{t('settings.username')}</span>
             <span>{username}</span>
           </div>
           <div className="user-settings-row">
-            <span className="user-settings-label">显示名</span>
+            <span className="user-settings-label">{t('settings.displayName')}</span>
             <span>{displayName}</span>
           </div>
           <div className="user-settings-row">
-            <span className="user-settings-label">角色</span>
+            <span className="user-settings-label">{t('settings.role')}</span>
             <span className={`type-badge ${role}`}>{role}</span>
           </div>
         </div>
 
+        <div className="settings-language-section">
+          <LanguageSwitcher />
+        </div>
+
         <div className="perspective-section">
-          <div className="perspective-title">分析视角</div>
+          <div className="perspective-title">{t('settings.perspective')}</div>
           <p className="perspective-desc">
-            设置您的分析关注点和偏好视角，系统将在每次分析中参考这些信息。
+            {t('settings.perspectiveDescription')}
           </p>
           <textarea
             className="perspective-textarea"
-            placeholder="例如：关注生态保护区域、优先分析耕地变化趋势、重点关注城市扩张..."
+            placeholder={t('settings.perspectivePlaceholder')}
             value={perspective}
             onChange={(e) => setPerspective(e.target.value)}
             maxLength={2000}
@@ -159,26 +168,26 @@ export default function UserSettings({ username, displayName, role, onClose, onD
           <div className="perspective-footer">
             <span className="perspective-count">{perspective.length}/2000</span>
             {perspectiveError && <span className="perspective-error">{perspectiveError}</span>}
-            {perspectiveSaved && <span className="perspective-success">已保存</span>}
+            {perspectiveSaved && <span className="perspective-success">{t('settings.saved')}</span>}
             <button
               className="btn-primary btn-sm"
               onClick={handleSavePerspective}
               disabled={perspectiveLoading}
             >
-              {perspectiveLoading ? '保存中...' : '保存'}
+              {perspectiveLoading ? t('settings.saving') : t('settings.save')}
             </button>
           </div>
         </div>
 
         <div className="memory-section">
-          <div className="memory-title">智能记忆</div>
+          <div className="memory-title">{t('settings.smartMemory')}</div>
           <p className="memory-desc">
-            系统自动从分析结果中提取的关键发现，用于增强后续分析。
+            {t('settings.memoryDescription')}
           </p>
           {memoriesLoading ? (
-            <div className="memory-empty">加载中...</div>
+            <div className="memory-empty">{t('settings.loading')}</div>
           ) : memories.length === 0 ? (
-            <div className="memory-empty">暂无自动提取的记忆，完成分析后系统将自动记录关键发现。</div>
+            <div className="memory-empty">{t('settings.noMemory')}</div>
           ) : (
             <div className="memory-list">
               {memories.map(m => (
@@ -186,20 +195,20 @@ export default function UserSettings({ username, displayName, role, onClose, onD
                   <div className="memory-item-header">
                     <span className="memory-item-key">{m.key}</span>
                     <span className={`memory-category-badge ${m.value?.category || 'default'}`}>
-                      {categoryLabels[m.value?.category as string] || '自动'}
+                      {categoryLabels[m.value?.category as string] || t('settings.automatic')}
                     </span>
                   </div>
                   <div className="memory-item-value">
                     {m.value?.finding || m.description || JSON.stringify(m.value)}
                   </div>
                   <div className="memory-item-footer">
-                    <span className="memory-item-time">{new Date(m.updated_at).toLocaleString()}</span>
+                    <span className="memory-item-time">{formatDate(m.updated_at, { dateStyle: 'medium', timeStyle: 'short' })}</span>
                     <button
                       className="memory-delete-btn"
                       onClick={() => handleDeleteMemory(m.id)}
                       disabled={deletingMemoryId === m.id}
                     >
-                      {deletingMemoryId === m.id ? '...' : '删除'}
+                      {deletingMemoryId === m.id ? '...' : t('settings.delete')}
                     </button>
                   </div>
                 </div>
@@ -210,15 +219,15 @@ export default function UserSettings({ username, displayName, role, onClose, onD
 
         {/* Password Change */}
         <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 8, padding: 16, marginBottom: 16 }}>
-          <div style={{ fontWeight: 600, marginBottom: 8, color: '#e0e0e0' }}>修改密码</div>
+          <div style={{ fontWeight: 600, marginBottom: 8, color: '#e0e0e0' }}>{t('settings.changePassword')}</div>
           <div style={{ display: 'grid', gap: 8 }}>
-            <input type="password" placeholder="当前密码" value={oldPassword}
+            <input type="password" placeholder={t('settings.currentPassword')} value={oldPassword}
               onChange={e => { setOldPassword(e.target.value); setPwError(''); setPwMessage(''); }}
               style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '6px 10px', color: '#e0e0e0' }} />
-            <input type="password" placeholder="新密码 (至少6位)" value={newPassword}
+            <input type="password" placeholder={t('settings.newPassword')} value={newPassword}
               onChange={e => { setNewPassword(e.target.value); setPwError(''); setPwMessage(''); }}
               style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '6px 10px', color: '#e0e0e0' }} />
-            <input type="password" placeholder="确认新密码" value={confirmNewPassword}
+            <input type="password" placeholder={t('settings.confirmNewPassword')} value={confirmNewPassword}
               onChange={e => { setConfirmNewPassword(e.target.value); setPwError(''); setPwMessage(''); }}
               style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '6px 10px', color: '#e0e0e0' }} />
             {pwError && <div style={{ color: '#ef4444', fontSize: 12 }}>{pwError}</div>}
@@ -226,19 +235,19 @@ export default function UserSettings({ username, displayName, role, onClose, onD
             <button
               disabled={pwChanging || !oldPassword || !newPassword}
               onClick={async () => {
-                if (newPassword !== confirmNewPassword) { setPwError('两次输入的新密码不一致'); return; }
-                if (newPassword.length < 6) { setPwError('新密码至少6位'); return; }
+                if (newPassword !== confirmNewPassword) { setPwError(t('settings.newPasswordMismatch')); return; }
+                if (newPassword.length < 6) { setPwError(t('settings.newPasswordTooShort')); return; }
                 setPwChanging(true); setPwError(''); setPwMessage('');
                 try {
                   const r = await fetch('/api/user/password', {
                     method: 'PUT', credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
                     body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
                   });
                   const d = await r.json();
-                  if (r.ok) { setPwMessage('密码修改成功'); setOldPassword(''); setNewPassword(''); setConfirmNewPassword(''); }
-                  else { setPwError(d.error || d.message || '修改失败'); }
-                } catch { setPwError('请求失败'); }
+                  if (r.ok) { setPwMessage(t('settings.passwordChanged')); setOldPassword(''); setNewPassword(''); setConfirmNewPassword(''); }
+                  else { setPwError(d.error || d.message || t('settings.requestFailed')); }
+                } catch { setPwError(t('settings.requestFailed')); }
                 finally { setPwChanging(false); }
               }}
               style={{
@@ -246,13 +255,13 @@ export default function UserSettings({ username, displayName, role, onClose, onD
                 padding: '8px 16px', cursor: 'pointer', fontSize: 13,
                 opacity: (pwChanging || !oldPassword || !newPassword) ? 0.5 : 1,
               }}
-            >{pwChanging ? '修改中...' : '修改密码'}</button>
+            >{pwChanging ? t('settings.changing') : t('settings.change')}</button>
           </div>
         </div>
 
         <div className="danger-zone">
-          <div className="danger-zone-title">危险操作</div>
-          <p className="danger-zone-desc">删除账户后，所有数据（文件、分析记录、团队数据）将被永久清除，不可恢复。</p>
+          <div className="danger-zone-title">{t('settings.dangerZone')}</div>
+          <p className="danger-zone-desc">{t('settings.dangerDescription')}</p>
 
           {!confirmDelete ? (
             <button
@@ -260,13 +269,13 @@ export default function UserSettings({ username, displayName, role, onClose, onD
               onClick={() => setConfirmDelete(true)}
               disabled={role === 'admin'}
             >
-              {role === 'admin' ? '管理员不可自助删除' : '删除我的账户'}
+              {role === 'admin' ? t('settings.adminCannotDelete') : t('settings.deleteAccount')}
             </button>
           ) : (
             <div className="danger-zone-confirm">
               <input
                 type="password"
-                placeholder="请输入密码以确认"
+                placeholder={t('settings.deleteConfirmPlaceholder')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="danger-zone-input"
@@ -274,10 +283,10 @@ export default function UserSettings({ username, displayName, role, onClose, onD
               {error && <div className="danger-zone-error">{error}</div>}
               <div className="danger-zone-actions">
                 <button onClick={() => { setConfirmDelete(false); setPassword(''); setError(''); }}>
-                  取消
+                  {t('settings.cancel')}
                 </button>
                 <button className="danger-confirm-btn" onClick={handleDelete} disabled={deleting}>
-                  {deleting ? '删除中...' : '确认删除'}
+                  {deleting ? t('settings.deleting') : t('settings.confirmDelete')}
                 </button>
               </div>
             </div>

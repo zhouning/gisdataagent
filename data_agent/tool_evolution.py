@@ -12,6 +12,8 @@ import fnmatch
 from dataclasses import dataclass, field, asdict
 from typing import Optional
 
+from .i18n import t
+
 
 @dataclass
 class ToolMetadata:
@@ -415,7 +417,7 @@ class ToolEvolutionEngine:
                 "status": "success",
                 "task": task_description,
                 "recommended": [],
-                "message": "未找到匹配的工具推荐，请提供更具体的任务描述",
+                "message": t("tool_evolution.no_recommendation"),
             }, ensure_ascii=False)
 
         ranked = sorted(scored.items(), key=lambda x: x[1], reverse=True)[:8]
@@ -451,7 +453,11 @@ class ToolEvolutionEngine:
 
             engine = get_engine()
             if engine is None:
-                return json.dumps({"status": "success", "failures": [], "message": "数据库不可用，无历史失败数据"}, ensure_ascii=False)
+                return json.dumps({
+                    "status": "success",
+                    "failures": [],
+                    "message": t("tool_evolution.failure_db_unavailable"),
+                }, ensure_ascii=False)
 
             from sqlalchemy import text
             with engine.connect() as conn:
@@ -501,7 +507,10 @@ class ToolEvolutionEngine:
                     "tool_failure_summary": summary,
                 }, ensure_ascii=False)
         except Exception as e:
-            return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+            return json.dumps({
+                "status": "error",
+                "message": t("tool_evolution.operation_failed", error=e),
+            }, ensure_ascii=False)
 
     def _failure_recommendations(self, tool_name: str, failures: list[dict]) -> list[str]:
         """Generate recommendations from failure patterns."""
@@ -510,10 +519,13 @@ class ToolEvolutionEngine:
 
         for key, info in _FAILURE_TOOL_SUGGESTIONS.items():
             if any(p in error_texts for p in info["pattern"]):
-                recs.append(f"建议先调用 {info['suggested_tool']} — {info['reason']}")
+                recs.append(t(
+                    f"tool_evolution.failure_reason.{key}",
+                    suggested_tool=info["suggested_tool"],
+                ))
 
         if not recs:
-            recs.append("建议检查输入数据质量和参数设置")
+            recs.append(t("tool_evolution.failure_check_input"))
         return recs[:5]
 
     def register_tool(self, name: str, description: str, category: str = "uncategorized",
@@ -532,7 +544,10 @@ class ToolEvolutionEngine:
             JSON: 注册结果
         """
         if name in self._metadata or name in self._dynamic_tools:
-            return json.dumps({"status": "error", "message": f"Tool '{name}' already exists"}, ensure_ascii=False)
+            return json.dumps({
+                "status": "error",
+                "message": t("tool_evolution.tool_exists", name=name),
+            }, ensure_ascii=False)
 
         meta = ToolMetadata(
             name=name,
@@ -544,7 +559,11 @@ class ToolEvolutionEngine:
             tags=(scenarios or [])[:3],
         )
         self._dynamic_tools[name] = meta
-        return json.dumps({"status": "success", "message": f"Tool '{name}' registered", "tool": asdict(meta)}, ensure_ascii=False)
+        return json.dumps({
+            "status": "success",
+            "message": t("tool_evolution.tool_registered", name=name),
+            "tool": asdict(meta),
+        }, ensure_ascii=False)
 
     def deactivate_tool(self, name: str, reason: str = "") -> str:
         """停用一个工具 (标记为不活跃，不物理删除)。
@@ -557,12 +576,22 @@ class ToolEvolutionEngine:
         """
         meta = self._dynamic_tools.get(name) or self._metadata.get(name)
         if not meta:
-            return json.dumps({"status": "error", "message": f"Unknown tool: {name}"}, ensure_ascii=False)
+            return json.dumps({
+                "status": "error",
+                "message": t("tool_evolution.unknown_tool", name=name),
+            }, ensure_ascii=False)
         if not meta.active:
-            return json.dumps({"status": "error", "message": f"Tool '{name}' is already inactive"}, ensure_ascii=False)
+            return json.dumps({
+                "status": "error",
+                "message": t("tool_evolution.tool_inactive", name=name),
+            }, ensure_ascii=False)
         meta.active = False
         meta.deactivation_reason = reason
-        return json.dumps({"status": "success", "message": f"Tool '{name}' deactivated", "reason": reason}, ensure_ascii=False)
+        return json.dumps({
+            "status": "success",
+            "message": t("tool_evolution.tool_deactivated", name=name),
+            "reason": reason,
+        }, ensure_ascii=False)
 
     def get_failure_driven_suggestions(self, failed_tool: str, error_message: str) -> str:
         """根据工具失败信息，推荐替代工具或前置修复工具。
@@ -585,7 +614,7 @@ class ToolEvolutionEngine:
             suggestions.append({
                 "tool": alt,
                 "type": "alternative",
-                "reason": f"{failed_tool} 的替代工具",
+                "reason": t("tool_evolution.alternative_tool", tool=failed_tool),
                 "description": meta.description if meta else "",
             })
 
@@ -596,7 +625,10 @@ class ToolEvolutionEngine:
                     suggestions.append({
                         "tool": info["suggested_tool"],
                         "type": "prerequisite",
-                        "reason": info["reason"],
+                        "reason": t(
+                            f"tool_evolution.failure_reason.{key}",
+                            suggested_tool=info["suggested_tool"],
+                        ),
                         "description": _TOOL_DESCRIPTIONS.get(info["suggested_tool"], ""),
                     })
 
@@ -604,7 +636,7 @@ class ToolEvolutionEngine:
             suggestions.append({
                 "tool": "",
                 "type": "escalate",
-                "reason": "未找到自动替代方案，建议人工介入或检查输入数据",
+                "reason": t("tool_evolution.no_automatic_alternative"),
                 "description": "",
             })
 
@@ -666,7 +698,11 @@ class ToolEvolutionEngine:
             from .db_engine import get_engine
             engine = get_engine()
             if engine is None:
-                return json.dumps({"status": "success", "updated": 0, "message": "DB unavailable"}, ensure_ascii=False)
+                return json.dumps({
+                    "status": "success",
+                    "updated": 0,
+                    "message": t("tool_evolution.db_unavailable"),
+                }, ensure_ascii=False)
 
             from sqlalchemy import text
             with engine.connect() as conn:
@@ -689,7 +725,10 @@ class ToolEvolutionEngine:
 
             return json.dumps({"status": "success", "updated": updated}, ensure_ascii=False)
         except Exception as e:
-            return json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)
+            return json.dumps({
+                "status": "error",
+                "message": t("tool_evolution.operation_failed", error=e),
+            }, ensure_ascii=False)
 
 
 # Module-level singleton

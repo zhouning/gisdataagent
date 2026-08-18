@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -98,15 +99,21 @@ def test_multistage_api_and_frontend_contract() -> None:
     page = (
         ROOT / "frontend/src/components/datapanel/UwmMultistageInterventionTab.tsx"
     ).read_text(encoding="utf-8")
+    translations = json.loads(
+        (ROOT / "frontend/src/i18n/locales/zh-CN/common.json").read_text(encoding="utf-8")
+    )["uwmMultistage"]
+    localized_text = json.dumps(translations, ensure_ascii=False)
     assert "UWM多阶段城市干预规划" in data_panel
     assert "/api/uwm/multistage-intervention/plan" in page
     assert "window.__handleMapUpdate" in page
-    assert "第二步分叉" in page
-    assert "第二步候选排名真的发生了变化" in page
-    assert "当前模型等级" in page
-    assert "不是1,137种政策" in page
-    assert "展开查看全部23个输入字段" in page
-    assert "参数量核对" in page
+    assert "第二步分叉" in localized_text
+    assert "第二步候选排名真的发生了变化" in localized_text
+    assert "当前模型等级" in localized_text
+    assert "不是" in translations["catalog"]["title"]
+    assert "展开查看全部" in translations["model"]["showInputs"]
+    assert "参数量核对" in translations["model"]["parameterCheck"]
+    assert "useTranslation" in page
+    assert "getLocaleHeaders" in page
     assert "138" not in page
 
 

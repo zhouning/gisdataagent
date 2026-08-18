@@ -16,16 +16,18 @@ import {
 } from '@chainlit/react-client';
 import type { IFileRef, IAction } from '@chainlit/react-client';
 import ReactMarkdown from 'react-markdown';
+import { useTranslation } from 'react-i18next';
 import FeedbackBar from './FeedbackBar';
+import { formatDate, getLocale, getLocaleHeaders, type Locale } from '../i18n';
 
-function cleanCotLeakage(text: string): string {
+function cleanCotLeakage(text: string, translate: (key: string) => string): string {
   if (!text || text.length < 20) return text;
 
   if (text.length < 120 && (text.includes('DELETE/UPDATE/DROP') || text.includes('修改、删除或新增数据') || text.includes('我不能执行'))) {
-    return '我不能执行修改、删除或新增数据的操作。我只能帮助查询。';
+    return translate('chat.readOnlyNotice');
   }
   if (text.length < 120 && text.startsWith('当前数据库中不存在')) {
-    return '当前数据库中不存在与该问题对应的数据字段或数据表，因此无法查询。';
+    return translate('chat.noMatchingData');
   }
 
   const finalMarkers = ['已成功', '我无法', '查询成功', '经过查询', '结果如下', '以下是结果', '数据来源表'];
@@ -83,6 +85,7 @@ function dispatchWorkspaceUpdate(update: any) {
 }
 
 export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }: ChatPanelProps) {
+  const { t, i18n } = useTranslation('common');
   const { messages, threadId: currentThreadId } = useChatMessages();
   const chatInteract = useChatInteract() as ReturnType<typeof useChatInteract> & {
     setIdToResume?: (threadId?: string) => void;
@@ -106,7 +109,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const [input, setInput] = useState('');
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isRecording, setIsRecording] = useState(false);
-  const [voiceLang, setVoiceLang] = useState<'zh-CN' | 'en-US'>('zh-CN');
+  const [voiceLang, setVoiceLang] = useState<Locale>(() => getLocale());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -141,6 +144,10 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    setVoiceLang(getLocale());
+  }, [i18n.resolvedLanguage]);
 
   useEffect(() => {
     if (!messages || messages.length === 0) return;
@@ -188,9 +195,10 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
       const detail = (rawEvent as CustomEvent).detail || {};
       const parcelId = String(detail.parcelId || '');
       if (!parcelId.startsWith('parcel_')) return;
-      const template = s2SelectionTemplateRef.current
-        || '@S2 帮我判断地块 {parcel_id} 改成公共服务用地并新增养老服务站是否同意。';
-      setInput(template.replace('{parcel_id}', parcelId));
+      const template = s2SelectionTemplateRef.current;
+      setInput(template
+        ? template.replace('{parcel_id}', parcelId)
+        : t('chat.s2SelectionPrompt', { parcelId }));
       setS2MapSelection({
         parcelId,
         planningAreaId: String(detail.planningAreaId || ''),
@@ -200,7 +208,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
     };
     window.addEventListener('s2-map-parcel-selected', handleS2ParcelSelection);
     return () => window.removeEventListener('s2-map-parcel-selected', handleS2ParcelSelection);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const handleChatPrefill = (rawEvent: Event) => {
@@ -279,14 +287,19 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
       .filter((f) => f.id && !f.error)
       .map((f) => ({ id: f.id! }));
     sendMessage(
-      { name: 'user', type: 'user_message', output: text || '(文件上传)' },
+      {
+        name: 'user',
+        type: 'user_message',
+        output: text || t('chat.fileUploadMessage'),
+        metadata: { locale: getLocale() },
+      },
       fileRefs.length > 0 ? fileRefs : undefined
     );
     setInput('');
     setS2MapSelection(null);
     setPendingFiles([]);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
-  }, [input, pendingFiles, sendMessage]);
+  }, [input, pendingFiles, sendMessage, t]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (showMention) {
@@ -386,7 +399,11 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   }, [speechSupported, isRecording, voiceLang]);
 
   const toggleVoiceLang = useCallback(() => {
-    setVoiceLang((prev) => prev === 'zh-CN' ? 'en-US' : 'zh-CN');
+    setVoiceLang((prev) => {
+      if (prev === 'zh-CN') return 'en-US';
+      if (prev === 'en-US') return 'ar-AE';
+      return 'zh-CN';
+    });
   }, []);
 
   const matchTarget = useCallback((t: {
@@ -402,7 +419,10 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
 
   const fetchMentionTargets = useCallback(async () => {
     try {
-      const resp = await fetch('/api/agents/mention-targets', { credentials: 'include' });
+      const resp = await fetch('/api/agents/mention-targets', {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       if (resp.ok) {
         const data = await resp.json();
         setMentionTargets(data.targets || []);
@@ -414,7 +434,10 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const fetchSessions = useCallback(async () => {
     setSessionsLoading(true);
     try {
-      const resp = await fetch('/api/sessions', { credentials: 'include' });
+      const resp = await fetch('/api/sessions', {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       if (resp.ok) {
         const data = await resp.json();
         setSessions(data.sessions || []);
@@ -467,7 +490,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
     }
 
     const timer = window.setTimeout(() => {
-      connect({ userEnv: {} });
+      connect({ userEnv: { locale: getLocale() } });
       if (connectMode === 'resume') {
         window.setTimeout(() => setResumingSessionId(null), 3000);
       }
@@ -499,12 +522,16 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
 
   const handleDeleteSession = useCallback(async (threadId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('确定删除此会话？')) return;
+    if (!confirm(t('chat.deleteSessionConfirm'))) return;
     try {
-      await fetch(`/api/sessions/${threadId}`, { method: 'DELETE', credentials: 'include' });
+      await fetch(`/api/sessions/${threadId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       setSessions(prev => prev.filter(s => s.id !== threadId));
     } catch { /* ignore */ }
-  }, []);
+  }, [t]);
 
   const handleToggleSessions = useCallback(() => {
     const next = !showSessions;
@@ -520,14 +547,14 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
         <svg className="chat-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
-        <span>对话</span>
+        <span>{t('chat.title')}</span>
         <div className="chat-header-actions">
-          <button className="chat-header-btn" onClick={handleNewChat} title="新建对话">
+          <button className="chat-header-btn" onClick={handleNewChat} title={t('chat.newChat')} aria-label={t('chat.newChat')}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 5v14M5 12h14"/>
             </svg>
           </button>
-          <button className={`chat-header-btn ${showSessions ? 'active' : ''}`} onClick={handleToggleSessions} title="历史会话">
+          <button className={`chat-header-btn ${showSessions ? 'active' : ''}`} onClick={handleToggleSessions} title={t('chat.history')} aria-label={t('chat.history')}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
             </svg>
@@ -539,13 +566,13 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
       {showSessions && (
         <div className="session-list">
           <div className="session-list-header">
-            <span>历史会话</span>
-            <button className="session-close-btn" onClick={() => setShowSessions(false)}>&times;</button>
+            <span>{t('chat.history')}</span>
+            <button className="session-close-btn" onClick={() => setShowSessions(false)} aria-label={t('chat.closeHistory')}>&times;</button>
           </div>
           {sessionsLoading ? (
-            <div className="session-empty">加载中...</div>
+            <div className="session-empty">{t('app.loading')}</div>
           ) : sessions.length === 0 ? (
-            <div className="session-empty">暂无历史会话</div>
+            <div className="session-empty">{t('chat.noHistory')}</div>
           ) : (
             <div className="session-items">
               {sessions.map(s => (
@@ -554,14 +581,22 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
                   className={`session-item ${s.id === currentThreadId ? 'session-item-active' : ''} ${s.id === resumingSessionId ? 'session-item-resuming' : ''}`}
                   onClick={() => handleResumeSession(s.id)}
                 >
-                  <div className="session-item-name">{s.name || '未命名会话'}</div>
+                  <div className="session-item-name">{s.name || t('chat.untitledSession')}</div>
                   <div className="session-item-meta">
-                    {s.id === resumingSessionId ? '恢复中...' : s.updated_at ? new Date(s.updated_at).toLocaleString() : ''}
+                    {s.id === resumingSessionId
+                      ? t('chat.resumeLoading')
+                      : s.updated_at
+                        ? formatDate(s.updated_at, {
+                            year: 'numeric', month: 'short', day: 'numeric',
+                            hour: '2-digit', minute: '2-digit',
+                          })
+                        : ''}
                   </div>
                   <button
                     className="session-item-delete"
                     onClick={(e) => handleDeleteSession(s.id, e)}
-                    title="删除"
+                    title={t('chat.deleteSession')}
+                    aria-label={t('chat.deleteSession')}
                   >&times;</button>
                 </div>
               ))}
@@ -575,7 +610,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
           const isUser = msg.type?.includes('user');
           const meta = msg.metadata as any;
           const routingInfo = meta?.routing_info;
-          const displayOutput = isUser ? (msg.output || '') : cleanCotLeakage(msg.output || '');
+          const displayOutput = isUser ? (msg.output || '') : cleanCotLeakage(msg.output || '', t);
           return (
             <div key={msg.id} className={`chat-message ${isUser ? 'user' : 'assistant'}`}>
               {!isUser && <div className="assistant-avatar">AI</div>}
@@ -583,16 +618,16 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
                 {routingInfo && (
                   <div className="routing-card">
                     <div className="routing-card-row">
-                      <span className="routing-label">意图</span>
+                      <span className="routing-label">{t('chat.intent')}</span>
                       <span className={`pipeline-badge ${routingInfo.pipeline}`}>{routingInfo.intent}</span>
                     </div>
                     <div className="routing-card-row">
-                      <span className="routing-label">管线</span>
+                      <span className="routing-label">{t('chat.pipeline')}</span>
                       <span className="routing-value">{routingInfo.pipeline_name}</span>
                     </div>
                     {routingInfo.reason && (
                       <div className="routing-card-row">
-                        <span className="routing-label">依据</span>
+                        <span className="routing-label">{t('chat.reason')}</span>
                         <span className="routing-reason">{routingInfo.reason}</span>
                       </div>
                     )}
@@ -660,7 +695,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
         {askUser && askUser.spec.type === 'file' && (
           <div className="chat-message assistant">
             <div className="assistant-avatar">AI</div>
-            <div className="message-content">请上传文件</div>
+            <div className="message-content">{t('chat.pleaseUploadFile')}</div>
           </div>
         )}
 
@@ -693,7 +728,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
         {s2MapSelection && (
           <div className="s2-map-selection-banner" role="status">
             <div>
-              <strong>已从地图选择地块</strong>
+              <strong>{t('chat.parcelSelected')}</strong>
               <span>{s2MapSelection.parcelId}</span>
               {(s2MapSelection.planningAreaId || s2MapSelection.sourceLandUseName) && (
                 <small>
@@ -707,7 +742,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
                 setS2MapSelection(null);
                 setInput('');
               }}
-              aria-label="清除地图选地"
+              aria-label={t('chat.clearParcelSelection')}
             >×</button>
           </div>
         )}
@@ -717,7 +752,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
               <span key={idx} className={`file-chip ${pf.error ? 'file-error' : ''}`}>
                 {pf.error ? '\u274C' : pf.progress < 100 ? `${Math.round(pf.progress)}%` : '\u2705'}{' '}
                 {pf.file.name}
-                <button className="file-chip-remove" onClick={() => removePendingFile(pf.file)}>×</button>
+                <button className="file-chip-remove" onClick={() => removePendingFile(pf.file)} aria-label={t('chat.removeFile')}>×</button>
               </span>
             ))}
           </div>
@@ -726,30 +761,30 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
           {showMention && (
             <div className="mention-dropdown" ref={mentionRef}>
               {mentionTargets
-                .filter(t => matchTarget(t, mentionFilter))
+                .filter(target => matchTarget(target, mentionFilter))
                 .sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1))
-                .map((t, idx) => (
+                .map((target, idx) => (
                   <div
-                    key={t.handle}
+                    key={target.handle}
                     className={`mention-item ${idx === mentionIndex ? 'mention-item-active' : ''}`}
                     onMouseDown={(e) => {
                       e.preventDefault();
-                      setInput(`@${t.handle} `);
+                      setInput(`@${target.handle} `);
                       setShowMention(false);
                       textareaRef.current?.focus();
                     }}
                   >
-                    <span className="mention-handle">@{t.display_name || t.handle}</span>
-                    <span className="mention-type">{t.type}</span>
+                    <span className="mention-handle">@{target.display_name || target.handle}</span>
+                    <span className="mention-type">{target.type}</span>
                     <span className="mention-desc">
-                      {t.aliases && t.aliases.length > 0
-                        ? `${t.description} · 别名: ${t.aliases.join(', ')}`
-                        : t.description}
+                      {target.aliases && target.aliases.length > 0
+                        ? t('chat.mentionAliases', { description: target.description, aliases: target.aliases.join(', ') })
+                        : target.description}
                     </span>
                   </div>
                 ))}
               {mentionTargets.filter(t => matchTarget(t, mentionFilter)).length === 0 && (
-                <div className="mention-item mention-empty">无匹配目标</div>
+                <div className="mention-item mention-empty">{t('chat.noMentionTargets')}</div>
               )}
             </div>
           )}
@@ -760,7 +795,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
             onChange={handleFileSelect}
             style={{ display: 'none' }}
           />
-          <button className="btn-attach" onClick={() => fileInputRef.current?.click()} title="上传文件">
+          <button className="btn-attach" onClick={() => fileInputRef.current?.click()} title={t('chat.uploadFile')} aria-label={t('chat.uploadFile')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
             </svg>
@@ -770,14 +805,17 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
               className={`btn-voice ${isRecording ? 'recording' : ''}`}
               onClick={toggleVoiceRecording}
               onContextMenu={(e) => { e.preventDefault(); toggleVoiceLang(); }}
-              title={isRecording ? '停止录音' : `语音输入 (${voiceLang === 'zh-CN' ? '中文' : 'EN'})`}
+              title={isRecording
+                ? t('chat.stopRecording')
+                : t('chat.voiceInputWithLanguage', { language: t(`chat.voiceLanguage.${voiceLang}`) })}
+              aria-label={isRecording ? t('chat.stopRecording') : t('chat.voiceInput')}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/>
                 <line x1="8" y1="23" x2="16" y2="23"/>
               </svg>
-              <span className="voice-lang-badge">{voiceLang === 'zh-CN' ? '中' : 'EN'}</span>
+              <span className="voice-lang-badge">{t(`chat.voiceBadge.${voiceLang}`)}</span>
             </button>
           )}
           <textarea
@@ -800,10 +838,10 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
             }}
             onKeyDown={handleKeyDown}
             onInput={handleTextareaInput}
-            placeholder="输入消息... (Enter 发送)"
+            placeholder={t('chat.inputPlaceholder')}
             rows={1}
           />
-          <button className="btn-send" onClick={handleSend} disabled={!input.trim() && pendingFiles.length === 0} title="发送">
+          <button className="btn-send" onClick={handleSend} disabled={!input.trim() && pendingFiles.length === 0} title={t('chat.send')} aria-label={t('chat.send')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
             </svg>

@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { formatDate, formatNumber } from "../../../../i18n";
 import {
   DataModelPayload,
   getDataModel,
@@ -13,20 +15,16 @@ interface Props {
 
 type TabKey = "pdm" | "ddl" | "cdm" | "ldm";
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "pdm", label: "PDM (物理层)" },
-  { key: "ddl", label: "DDL" },
-  { key: "ldm", label: "LDM (逻辑层)" },
-  { key: "cdm", label: "CDM (概念层)" },
-];
+const TABS: TabKey[] = ["pdm", "ddl", "ldm", "cdm"];
 
 /** Wave 8 — preview the to_data_model strategy's snapshot for a version.
  * Shows three-layer JSON and copy-pasteable PostgreSQL DDL. */
 export default function DataModelPreviewModal({ versionId, onClose }: Props) {
+  const { t } = useTranslation();
   const [payload, setPayload] = useState<DataModelPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>("pdm");
-  const [copyHint, setCopyHint] = useState<string>("");
+  const [copyHint, setCopyHint] = useState<"copied" | "failed" | "">("");
 
   useEffect(() => {
     setError(null); setPayload(null);
@@ -39,10 +37,10 @@ export default function DataModelPreviewModal({ versionId, onClose }: Props) {
     if (!payload) return;
     try {
       await navigator.clipboard.writeText(payload.ddl_postgresql);
-      setCopyHint("已复制");
+      setCopyHint("copied");
       setTimeout(() => setCopyHint(""), 1500);
     } catch {
-      setCopyHint("复制失败");
+      setCopyHint("failed");
       setTimeout(() => setCopyHint(""), 1500);
     }
   };
@@ -51,16 +49,15 @@ export default function DataModelPreviewModal({ versionId, onClose }: Props) {
     if (error) {
       return (
         <div style={{ padding: 16, color: "#c33", fontSize: 13 }}>
-          加载失败：{error}
+          {t("standards.derive.dataModel.loadFailed", {message: error})}
           <div style={{ marginTop: 8, color: "#666", fontSize: 12 }}>
-            提示：to_data_model 派生还未运行过这个版本时会返回 404。请先在
-            派生面板点「重新派生」，再重新打开本窗口。
+            {t("standards.derive.dataModel.notGeneratedHint")}
           </div>
         </div>
       );
     }
     if (!payload) {
-      return <div style={{ padding: 16, color: "#888" }}>加载中...</div>;
+      return <div style={{ padding: 16, color: "#888" }}>{t("standards.derive.dataModel.loading")}</div>;
     }
 
     if (tab === "ddl") {
@@ -69,28 +66,31 @@ export default function DataModelPreviewModal({ versionId, onClose }: Props) {
           <div style={{ padding: "8px 12px", borderBottom: "1px solid #eee",
                          display: "flex", gap: 8, alignItems: "center" }}>
             <button onClick={onCopyDdl} style={{ padding: "4px 12px" }}>
-              复制
+              {t("standards.derive.dataModel.copy")}
             </button>
             <a href={getDataModelDdlDownloadUrl(versionId)}
                style={{ padding: "4px 12px",
                         background: "#007aff", color: "#fff",
                         textDecoration: "none", borderRadius: 4 }}>
-              下载 .sql
+              {t("standards.derive.dataModel.downloadSql")}
             </a>
             <a href={getDataModelXmiDownloadUrl(versionId)}
                style={{ padding: "4px 12px",
                         background: "#2f6f4e", color: "#fff",
                         textDecoration: "none", borderRadius: 4 }}>
-              下载 XMI
+              {t("standards.derive.dataModel.downloadXmi")}
             </a>
             {copyHint && (
-              <span style={{ color: "#0a7", fontSize: 12 }}>{copyHint}</span>
+              <span style={{ color: copyHint === "failed" ? "#c33" : "#0a7", fontSize: 12 }}>
+                {t(`standards.derive.dataModel.${copyHint}`)}
+              </span>
             )}
           </div>
           <pre style={{ flex: 1, overflow: "auto", padding: 12, margin: 0,
                          background: "#f7f7f7", fontSize: 12,
                          fontFamily: "Menlo, Consolas, monospace",
-                         whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                         whiteSpace: "pre-wrap", wordBreak: "break-word",
+                         direction: "ltr", textAlign: "left" }}>
             {payload.ddl_postgresql}
           </pre>
         </div>
@@ -102,7 +102,8 @@ export default function DataModelPreviewModal({ versionId, onClose }: Props) {
       <pre style={{ overflow: "auto", padding: 12, margin: 0,
                      background: "#f7f7f7", fontSize: 12,
                      height: "100%",
-                     fontFamily: "Menlo, Consolas, monospace" }}>
+                     fontFamily: "Menlo, Consolas, monospace",
+                     direction: "ltr", textAlign: "left" }}>
         {JSON.stringify(data, null, 2)}
       </pre>
     );
@@ -110,7 +111,7 @@ export default function DataModelPreviewModal({ versionId, onClose }: Props) {
 
   return (
     <div style={{
-      position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+      position: "fixed", inset: 0,
       background: "rgba(0,0,0,0.5)", display: "flex",
       alignItems: "center", justifyContent: "center", zIndex: 9999,
     }} onClick={onClose}>
@@ -126,18 +127,22 @@ export default function DataModelPreviewModal({ versionId, onClose }: Props) {
                        display: "flex", justifyContent: "space-between",
                        alignItems: "center" }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 500 }}>数据模型预览</div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>{t("standards.derive.dataModel.title")}</div>
             {payload && (
               <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
-                {payload.stats.entity_count} 实体 ·{" "}
-                {payload.stats.attribute_count} 属性 ·{" "}
-                {payload.stats.constraint_count} 约束 · 生成于{" "}
-                {payload.generated_at?.slice(0, 19).replace("T", " ")}
-                {" "}· {payload.derived_status}
+                {t("standards.derive.dataModel.stats", {
+                  entities: formatNumber(payload.stats.entity_count),
+                  attributes: formatNumber(payload.stats.attribute_count),
+                  constraints: formatNumber(payload.stats.constraint_count),
+                  generatedAt: payload.generated_at
+                    ? formatDate(payload.generated_at, {dateStyle: "medium", timeStyle: "medium"})
+                    : "-",
+                  status: t(`standards.derive.status.${payload.derived_status}`, {defaultValue: payload.derived_status}),
+                })}
               </div>
             )}
           </div>
-          <button onClick={onClose}
+          <button onClick={onClose} aria-label={t("standards.derive.dataModel.close")}
                   style={{ background: "transparent", border: "none",
                            fontSize: 20, cursor: "pointer", color: "#666" }}>
             ×
@@ -147,19 +152,19 @@ export default function DataModelPreviewModal({ versionId, onClose }: Props) {
         {/* Tabs */}
         <div style={{ display: "flex", borderBottom: "1px solid #eee",
                        background: "#fafafa" }}>
-          {TABS.map(t => (
-            <button key={t.key}
-                    onClick={() => setTab(t.key)}
+          {TABS.map(tabKey => (
+            <button key={tabKey}
+                    onClick={() => setTab(tabKey)}
                     style={{
                       padding: "8px 16px", fontSize: 12,
                       border: "none", borderBottom:
-                        tab === t.key ? "2px solid #007aff" : "2px solid transparent",
+                        tab === tabKey ? "2px solid #007aff" : "2px solid transparent",
                       background: "transparent",
-                      color: tab === t.key ? "#007aff" : "#333",
-                      fontWeight: tab === t.key ? 500 : 400,
+                      color: tab === tabKey ? "#007aff" : "#333",
+                      fontWeight: tab === tabKey ? 500 : 400,
                       cursor: "pointer",
                     }}>
-              {t.label}
+              {t(`standards.derive.dataModel.tabs.${tabKey}`)}
             </button>
           ))}
         </div>

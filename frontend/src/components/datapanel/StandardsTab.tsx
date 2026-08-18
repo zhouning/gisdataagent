@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from 'react-i18next';
 import IngestSubTab from "./standards/IngestSubTab";
 import AnalyzeSubTab from "./standards/AnalyzeSubTab";
 import DraftSubTab from "./standards/DraftSubTab";
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export default function StandardsTab({userRole = "", username = ""}: Props) {
+  const { t } = useTranslation();
   const [sub, setSub] = useState<Sub>("ingest");
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const isAdmin = userRole === "admin";
@@ -36,9 +38,7 @@ export default function StandardsTab({userRole = "", username = ""}: Props) {
               border:"1px solid #ccc", borderRadius:4,
               opacity: enabled.has(k) ? 1 : 0.4,
               cursor: enabled.has(k) ? "pointer" : "not-allowed"}}>
-            {({ingest:"采集", analyze:"分析", draft:"起草",
-               review:"审定", publish:"发布", derive:"派生",
-               market:"市场"} as Record<Sub,string>)[k]}
+            {t(`standards.tabs.${k}`)}
           </button>
         ))}
       </div>

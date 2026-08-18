@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, Pin, EyeOff, Eye } from 'lucide-react';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
 
 interface MentionTarget {
   handle: string;
@@ -16,11 +18,11 @@ interface MentionTarget {
 
 type FilterKey = 'all' | 'pipeline' | 'sub_agent' | 'adk_skill' | 'custom_skill';
 
-const TYPE_LABELS: Record<string, string> = {
-  pipeline: '流水线',
-  sub_agent: '子智能体',
-  adk_skill: '内置技能',
-  custom_skill: '自定义技能',
+const TYPE_LABEL_KEYS: Record<MentionTarget['type'], string> = {
+  pipeline: 'pipeline',
+  sub_agent: 'subAgent',
+  adk_skill: 'builtInSkill',
+  custom_skill: 'customSkill',
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -31,6 +33,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export default function AgentsTab() {
+  const { t, i18n } = useTranslation();
   const [targets, setTargets] = useState<MentionTarget[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>('all');
@@ -40,13 +43,16 @@ export default function AgentsTab() {
   const fetchTargets = useCallback(async () => {
     setLoading(true);
     try {
-      const resp = await fetch('/api/agents/mention-targets?include_hidden=1', { credentials: 'include' });
+      const resp = await fetch('/api/agents/mention-targets?include_hidden=1', {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
       if (resp.ok) {
         const data = await resp.json();
         setTargets(data.targets || []);
       }
     } finally { setLoading(false); }
-  }, []);
+  }, [i18n.resolvedLanguage]);
 
   useEffect(() => { fetchTargets(); }, [fetchTargets]);
 
@@ -73,28 +79,34 @@ export default function AgentsTab() {
         const at = typeOrder[a.type] ?? 99;
         const bt = typeOrder[b.type] ?? 99;
         if (at !== bt) return at - bt;
-        return (a.display_name || a.handle).localeCompare(b.display_name || b.handle, 'zh-CN');
+        return (a.display_name || a.handle).localeCompare(
+          b.display_name || b.handle,
+          i18n.resolvedLanguage || i18n.language,
+        );
       });
-  }, [targets, filter, search]);
+  }, [targets, filter, search, i18n.resolvedLanguage, i18n.language]);
 
-  if (loading) return <div className="empty-state">加载中...</div>;
+  if (loading) return <div className="empty-state">{t('agentsTab.common.loading')}</div>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 12 }}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: 1 }}>
-          <Search size={14} style={{ position: 'absolute', left: 8, top: 8, color: '#9ca3af' }} />
+          <Search size={14} style={{ position: 'absolute', insetInlineStart: 8, top: 8, color: '#9ca3af' }} />
           <input
-            type="text" placeholder="搜索 handle / 显示名 / 别名"
+            type="text" placeholder={t('agentsTab.search.placeholder')}
             value={search} onChange={e => setSearch(e.target.value)}
             style={{
-              width: '100%', padding: '6px 8px 6px 28px', fontSize: 12,
+              width: '100%', paddingBlock: 6, paddingInlineEnd: 8, paddingInlineStart: 28, fontSize: 12,
               border: '1px solid #e5e7eb', borderRadius: 4,
             }}
           />
         </div>
         <span style={{ fontSize: 11, color: '#9ca3af' }}>
-          {filtered.length} / {targets.length}
+          {t('agentsTab.search.resultCount', {
+            filtered: formatNumber(filtered.length),
+            total: formatNumber(targets.length),
+          })}
         </span>
       </div>
 
@@ -107,7 +119,7 @@ export default function AgentsTab() {
               background: filter === k ? '#3b82f6' : '#fff',
               color: filter === k ? '#fff' : '#374151',
             }}>
-            {k === 'all' ? '全部' : TYPE_LABELS[k]}
+            {k === 'all' ? t('agentsTab.filters.all') : t(`agentsTab.types.${TYPE_LABEL_KEYS[k]}`)}
           </button>
         ))}
       </div>
@@ -122,7 +134,7 @@ export default function AgentsTab() {
           />
         ))}
         {filtered.length === 0 && (
-          <div className="empty-state" style={{ padding: 24 }}>无匹配项</div>
+          <div className="empty-state" style={{ padding: 24 }}>{t('agentsTab.empty.noMatches')}</div>
         )}
       </div>
     </div>
@@ -137,6 +149,7 @@ interface AgentCardProps {
 }
 
 function AgentCard({ target, expanded, onToggle, onChanged }: AgentCardProps) {
+  const { t } = useTranslation();
   const [aliasInput, setAliasInput] = useState(target.aliases.join(', '));
   const [displayName, setDisplayName] = useState(target.display_name);
   const [saving, setSaving] = useState(false);
@@ -147,7 +160,7 @@ function AgentCard({ target, expanded, onToggle, onChanged }: AgentCardProps) {
       const aliases = aliasInput.split(',').map(a => a.trim()).filter(Boolean);
       await fetch(`/api/agents/${encodeURIComponent(target.handle)}/alias`, {
         method: 'PUT', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ aliases, display_name: displayName }),
       });
       onChanged();
@@ -157,7 +170,7 @@ function AgentCard({ target, expanded, onToggle, onChanged }: AgentCardProps) {
   const togglePin = async () => {
     await fetch(`/api/agents/${encodeURIComponent(target.handle)}/pin`, {
       method: 'PUT', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ pinned: !target.pinned }),
     });
     onChanged();
@@ -166,7 +179,7 @@ function AgentCard({ target, expanded, onToggle, onChanged }: AgentCardProps) {
   const toggleHide = async () => {
     await fetch(`/api/agents/${encodeURIComponent(target.handle)}/hide`, {
       method: 'PUT', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ hidden: !target.hidden }),
     });
     onChanged();
@@ -188,23 +201,25 @@ function AgentCard({ target, expanded, onToggle, onChanged }: AgentCardProps) {
         <span style={{
           background: color, color: '#fff', fontSize: 9, fontWeight: 600,
           padding: '1px 6px', borderRadius: 3,
-        }}>{TYPE_LABELS[target.type]}</span>
+        }}>{t(`agentsTab.types.${TYPE_LABEL_KEYS[target.type]}`)}</span>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 12, fontWeight: 600 }}>
             {target.display_name || target.handle}
           </div>
           <div style={{ fontSize: 10, color: '#9ca3af' }}>
             @{target.handle}
-            {target.aliases.length > 0 && ` · 别名: ${target.aliases.join(', ')}`}
+            {target.aliases.length > 0 && ` · ${t('agentsTab.card.aliases', { aliases: target.aliases.join(', ') })}`}
           </div>
         </div>
         <button onClick={e => { e.stopPropagation(); togglePin(); }}
-          title={target.pinned ? '取消置顶' : '置顶'}
+          title={target.pinned ? t('agentsTab.actions.unpin') : t('agentsTab.actions.pin')}
+          aria-label={target.pinned ? t('agentsTab.actions.unpin') : t('agentsTab.actions.pin')}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
           <Pin size={14} color={target.pinned ? '#f59e0b' : '#9ca3af'} />
         </button>
         <button onClick={e => { e.stopPropagation(); toggleHide(); }}
-          title={target.hidden ? '显示' : '隐藏'}
+          title={target.hidden ? t('agentsTab.actions.show') : t('agentsTab.actions.hide')}
+          aria-label={target.hidden ? t('agentsTab.actions.show') : t('agentsTab.actions.hide')}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
           {target.hidden ? <EyeOff size={14} color="#9ca3af" /> : <Eye size={14} color="#9ca3af" />}
         </button>
@@ -213,27 +228,27 @@ function AgentCard({ target, expanded, onToggle, onChanged }: AgentCardProps) {
       {expanded && (
         <div style={{ borderTop: '1px solid #f3f4f6', padding: '8px 12px', background: '#fafafa' }}>
           <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 6 }}>
-            {target.description || '（无描述）'}
+            {target.description || t('agentsTab.empty.noDescription')}
           </div>
           <label style={{ fontSize: 10, color: '#374151', display: 'block', marginTop: 6 }}>
-            显示名（中文）
+            {t('agentsTab.form.displayName')}
           </label>
           <input value={displayName} onChange={e => setDisplayName(e.target.value)}
-            placeholder="例：数据探查"
+            placeholder={t('agentsTab.form.displayNamePlaceholder')}
             style={{ width: '100%', padding: '4px 6px', fontSize: 11,
                      border: '1px solid #e5e7eb', borderRadius: 3 }} />
           <label style={{ fontSize: 10, color: '#374151', display: 'block', marginTop: 6 }}>
-            别名（逗号分隔）
+            {t('agentsTab.form.aliases')}
           </label>
           <input value={aliasInput} onChange={e => setAliasInput(e.target.value)}
-            placeholder="例：探查, 数据探查"
+            placeholder={t('agentsTab.form.aliasesPlaceholder')}
             style={{ width: '100%', padding: '4px 6px', fontSize: 11,
                      border: '1px solid #e5e7eb', borderRadius: 3 }} />
           <button onClick={handleSave} disabled={saving}
             style={{ marginTop: 8, padding: '4px 12px', fontSize: 11,
                      background: '#3b82f6', color: '#fff', border: 'none',
                      borderRadius: 3, cursor: 'pointer' }}>
-            {saving ? '保存中...' : '保存'}
+            {saving ? t('agentsTab.actions.saving') : t('agentsTab.actions.save')}
           </button>
         </div>
       )}

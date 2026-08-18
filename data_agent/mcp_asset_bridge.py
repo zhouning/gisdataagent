@@ -28,6 +28,7 @@ from typing import Any
 from sqlalchemy import text
 
 from .db_engine import get_engine
+from .i18n import t
 from .observability import get_logger
 from .user_context import current_user_id, current_user_role
 
@@ -142,7 +143,7 @@ def _artifact_id(value: Any) -> str:
     result = _first(value, ("artifact_id", "artifactId", "id"))
     if isinstance(result, str) and result:
         return result
-    raise McpAssetBridgeError("MCP_ARTIFACT_MISSING", "MCP 未返回可用 artifact")
+    raise McpAssetBridgeError("MCP_ARTIFACT_MISSING", t("mcp_bridge.artifact_missing"))
 
 
 def _job_id(value: Any) -> str:
@@ -151,7 +152,7 @@ def _job_id(value: Any) -> str:
     result = _first(value, ("job_id", "jobId", "id"))
     if isinstance(result, str) and result:
         return result
-    raise McpAssetBridgeError("MCP_JOB_MISSING", "MCP 未返回作业 ID")
+    raise McpAssetBridgeError("MCP_JOB_MISSING", t("mcp_bridge.job_missing"))
 
 
 def _job_status(value: Any) -> str:
@@ -162,7 +163,7 @@ def _job_status(value: Any) -> str:
 def _asset_row(asset_id: int) -> dict[str, Any]:
     engine = get_engine()
     if not engine:
-        raise McpAssetBridgeError("CATALOG_UNAVAILABLE", "数据资产目录不可用")
+        raise McpAssetBridgeError("CATALOG_UNAVAILABLE", t("mcp_bridge.catalog_unavailable"))
     username = current_user_id.get() or "anonymous"
     role = current_user_role.get() or "anonymous"
     try:
@@ -182,11 +183,17 @@ def _asset_row(asset_id: int) -> dict[str, Any]:
             ).mappings().first()
     except Exception as exc:
         logger.warning("Catalog asset lookup failed: %s", exc)
-        raise McpAssetBridgeError("CATALOG_UNAVAILABLE", "无法读取数据资产元数据") from exc
+        raise McpAssetBridgeError(
+            "CATALOG_UNAVAILABLE",
+            t("mcp_bridge.catalog_read_failed"),
+        ) from exc
     if not row:
-        raise McpAssetBridgeError("ASSET_NOT_FOUND", f"资产 {asset_id} 不存在")
+        raise McpAssetBridgeError(
+            "ASSET_NOT_FOUND",
+            t("mcp_bridge.asset_not_found", asset_id=asset_id),
+        )
     if role != "admin" and row["owner_username"] != username and not row["is_shared"]:
-        raise McpAssetBridgeError("ASSET_FORBIDDEN", "当前用户无权处理此资产")
+        raise McpAssetBridgeError("ASSET_FORBIDDEN", t("mcp_bridge.asset_forbidden"))
     result = dict(row)
     for key in (
         "technical_metadata",
@@ -211,10 +218,10 @@ def _format(asset: dict[str, Any]) -> str:
 
 def _postgis_dsn(table: str) -> tuple[str, dict[str, str]]:
     if not _SAFE_TABLE.fullmatch(table):
-        raise McpAssetBridgeError("INVALID_TABLE", "资产的 PostGIS 表名不符合安全约束")
+        raise McpAssetBridgeError("INVALID_TABLE", t("mcp_bridge.invalid_table"))
     engine = get_engine()
     if not engine:
-        raise McpAssetBridgeError("CATALOG_UNAVAILABLE", "数据资产目录不可用")
+        raise McpAssetBridgeError("CATALOG_UNAVAILABLE", t("mcp_bridge.catalog_unavailable"))
     url = engine.url
     env = {}
     password = url.password or os.environ.get("POSTGRES_PASSWORD", "")
@@ -282,12 +289,15 @@ def _copy_or_export_asset(
             logger.warning("PostGIS materialization failed: %s", exc)
             raise McpAssetBridgeError(
                 "MATERIALIZE_FAILED",
-                "无法从数据湖物化 PostGIS 资产",
+                t("mcp_bridge.materialize_postgis_failed"),
             ) from exc
         if output_format.upper() == "ESRI SHAPEFILE":
             shp = target / f"{layer_name}.shp"
             if not shp.exists():
-                raise McpAssetBridgeError("MATERIALIZE_FAILED", "物化结果缺少 Shapefile")
+                raise McpAssetBridgeError(
+                    "MATERIALIZE_FAILED",
+                    t("mcp_bridge.materialize_shapefile_missing"),
+                )
             return shp
         return target
 
@@ -330,7 +340,7 @@ def _copy_or_export_asset(
             ) as exc:
                 raise McpAssetBridgeError(
                     "MATERIALIZE_FAILED",
-                    "无法将矢量资产转换为 Shapefile",
+                    t("mcp_bridge.materialize_vector_failed"),
                 ) from exc
             return target
         name = _safe_name(preferred_name or source.name, source.name)
@@ -357,7 +367,7 @@ def _copy_or_export_asset(
         return _download_s3_asset(uri, destination, preferred_name)
     raise McpAssetBridgeError(
         "MATERIALIZE_UNSUPPORTED",
-        "该资产没有可物化的本地、PostGIS 或 S3 位置",
+        t("mcp_bridge.materialize_location_missing"),
     )
 
 
@@ -381,13 +391,16 @@ def _s3_client():
             region_name=os.environ.get("AWS_REGION", "us-east-1"),
         )
     except Exception as exc:
-        raise McpAssetBridgeError("OBJECT_STORE_UNAVAILABLE", "对象存储客户端不可用") from exc
+        raise McpAssetBridgeError(
+            "OBJECT_STORE_UNAVAILABLE",
+            t("mcp_bridge.object_store_unavailable"),
+        ) from exc
 
 
 def _parse_s3(uri: str) -> tuple[str, str]:
     match = re.fullmatch(r"s3://([^/]+)/(.+)", uri)
     if not match:
-        raise McpAssetBridgeError("INVALID_STORAGE_URI", "资产的 S3 URI 无效")
+        raise McpAssetBridgeError("INVALID_STORAGE_URI", t("mcp_bridge.invalid_storage_uri"))
     return match.group(1), match.group(2)
 
 
@@ -401,7 +414,10 @@ def _download_s3_asset(uri: str, destination: Path, preferred_name: str) -> Path
     try:
         client.download_file(bucket, key, str(target))
     except Exception as exc:
-        raise McpAssetBridgeError("MATERIALIZE_FAILED", "无法从对象存储下载资产") from exc
+        raise McpAssetBridgeError(
+            "MATERIALIZE_FAILED",
+            t("mcp_bridge.materialize_object_store_failed"),
+        ) from exc
     return target
 
 
@@ -410,7 +426,10 @@ def _zip_inputs(files: list[tuple[Path, str]], target: Path) -> Path:
         for path, relative in files:
             relative = relative.replace("\\", "/")
             if relative.startswith("/") or ".." in Path(relative).parts:
-                raise McpAssetBridgeError("INVALID_PACKAGE", "文件包包含不安全的相对路径")
+                raise McpAssetBridgeError(
+                    "INVALID_PACKAGE",
+                    t("mcp_bridge.invalid_package_path"),
+                )
             archive.write(path, relative)
     return target
 
@@ -424,21 +443,27 @@ def _validate_zip(path: Path, required: tuple[str, ...] = ()) -> list[str]:
                 if p.is_absolute() or ".." in p.parts:
                     raise McpAssetBridgeError(
                         "INVALID_PACKAGE",
-                        "ZIP 包包含路径穿越条目",
+                        t("mcp_bridge.zip_path_traversal"),
                     )
                 mode = archive.getinfo(name).external_attr >> 16
                 if stat.S_ISLNK(mode):
                     raise McpAssetBridgeError(
                         "INVALID_PACKAGE",
-                        "ZIP 包不能包含符号链接",
+                        t("mcp_bridge.zip_symlink"),
                     )
             lower = {Path(name).name.lower() for name in names}
             missing = [item for item in required if item.lower() not in lower]
             if missing:
-                raise McpAssetBridgeError("INVALID_RESULT", f"结果包缺少: {', '.join(missing)}")
+                raise McpAssetBridgeError(
+                    "INVALID_RESULT",
+                    t("mcp_bridge.result_missing_members", members=", ".join(missing)),
+                )
             return names
     except zipfile.BadZipFile as exc:
-        raise McpAssetBridgeError("INVALID_RESULT", "MCP 返回的结果不是有效 ZIP") from exc
+        raise McpAssetBridgeError(
+            "INVALID_RESULT",
+            t("mcp_bridge.invalid_result_zip"),
+        ) from exc
 
 
 def _safe_extract_zip(path: Path, destination: Path) -> list[Path]:
@@ -454,7 +479,7 @@ def _safe_extract_zip(path: Path, destination: Path) -> list[Path]:
             if not target.is_relative_to(root):
                 raise McpAssetBridgeError(
                     "INVALID_PACKAGE",
-                    "ZIP 包包含路径穿越条目",
+                    t("mcp_bridge.zip_path_traversal"),
                 )
             if info.is_dir():
                 target.mkdir(parents=True, exist_ok=True)
@@ -478,7 +503,7 @@ def _prepare_road_shapefile(
         if not candidates:
             raise McpAssetBridgeError(
                 "DTS_ROAD_SHP_MISSING",
-                "道路资产包缺少 Shapefile",
+                t("mcp_bridge.road_shapefile_missing"),
             )
         source = candidates[0]
 
@@ -499,7 +524,7 @@ def _prepare_road_shapefile(
         if target_epsg:
             epsg = int(target_epsg)
             if not 1 <= epsg <= 999999:
-                raise McpAssetBridgeError("INVALID_EPSG", "目标 EPSG 编码无效")
+                raise McpAssetBridgeError("INVALID_EPSG", t("mcp_bridge.invalid_epsg"))
             command.extend(["-t_srs", f"EPSG:{epsg}"])
         try:
             subprocess.run(
@@ -512,7 +537,7 @@ def _prepare_road_shapefile(
         except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
             raise McpAssetBridgeError(
                 "DTS_ROAD_INVALID",
-                "无法将道路资产转换为 DTS Shapefile",
+                t("mcp_bridge.road_convert_failed"),
             ) from exc
     else:
         for sidecar in source.parent.glob(f"{source.stem}.*"):
@@ -529,7 +554,7 @@ def _prepare_road_shapefile(
     if missing:
         raise McpAssetBridgeError(
             "DTS_ROAD_SIDECAR_MISSING",
-            f"道路 Shapefile 缺少必需文件: {', '.join(missing)}",
+            t("mcp_bridge.road_sidecars_missing", members=", ".join(missing)),
         )
 
     try:
@@ -543,19 +568,19 @@ def _prepare_road_shapefile(
         if not road_crs.is_projected:
             raise McpAssetBridgeError(
                 "DTS_PROJECTED_CRS_REQUIRED",
-                "DTS road 需要投影坐标系道路，不能直接使用经纬度",
+                t("mcp_bridge.projected_crs_required"),
             )
         if "LineString" not in geometry:
             raise McpAssetBridgeError(
                 "DTS_ROAD_GEOMETRY_REQUIRED",
-                "DTS road 需要线类型道路数据",
+                t("mcp_bridge.road_geometry_required"),
             )
     except McpAssetBridgeError:
         raise
     except Exception as exc:
         raise McpAssetBridgeError(
             "DTS_ROAD_INVALID",
-            "无法验证道路 Shapefile",
+            t("mcp_bridge.road_validation_failed"),
         ) from exc
     return normalized, road_crs, bounds
 
@@ -579,14 +604,14 @@ def _validate_dts_raster_alignment(
                 if dataset.crs is None:
                     raise McpAssetBridgeError(
                         "DTS_RASTER_CRS_MISSING",
-                        f"{label} 缺少坐标系",
+                        t("mcp_bridge.raster_crs_missing", label=label),
                     )
                 raster_crs = CRS.from_user_input(dataset.crs)
                 bounds = tuple(float(value) for value in dataset.bounds)
             if raster_crs != road_crs:
                 raise McpAssetBridgeError(
                     "DTS_CRS_MISMATCH",
-                    f"{label} 与道路 Shapefile 坐标系不一致",
+                    t("mcp_bridge.crs_mismatch", label=label),
                 )
             overlaps = not (
                 road_bounds[2] <= bounds[0]
@@ -597,7 +622,7 @@ def _validate_dts_raster_alignment(
             if not overlaps:
                 raise McpAssetBridgeError(
                     "DTS_EXTENT_MISMATCH",
-                    f"{label} 与道路 Shapefile 空间范围不相交",
+                    t("mcp_bridge.extent_mismatch", label=label),
                 )
             checked[label.lower()] = {
                 "crs": raster_crs.to_string(),
@@ -609,7 +634,7 @@ def _validate_dts_raster_alignment(
     except Exception as exc:
         raise McpAssetBridgeError(
             "DTS_RASTER_INVALID",
-            "无法验证 DTS 栅格输入",
+            t("mcp_bridge.raster_validation_failed"),
         ) from exc
 
 
@@ -627,7 +652,7 @@ def _signed_put(url: str, path: Path, ca_cert: str, offset_header: str) -> None:
                 response = client.put(url, headers={offset_header: "0"}, content=handle)
             response.raise_for_status()
     except Exception as exc:
-        raise McpAssetBridgeError("UPLOAD_FAILED", "上传到 MCP 失败") from exc
+        raise McpAssetBridgeError("UPLOAD_FAILED", t("mcp_bridge.upload_failed")) from exc
 
 
 def _signed_download(url: str, path: Path, ca_cert: str) -> None:
@@ -646,7 +671,7 @@ def _signed_download(url: str, path: Path, ca_cert: str) -> None:
                     for block in response.iter_bytes(1024 * 1024):
                         handle.write(block)
     except Exception as exc:
-        raise McpAssetBridgeError("DOWNLOAD_FAILED", "从 MCP 下载结果失败") from exc
+        raise McpAssetBridgeError("DOWNLOAD_FAILED", t("mcp_bridge.download_failed")) from exc
 
 
 async def _call(server: str, tool: str, args: dict[str, Any]) -> dict[str, Any]:
@@ -659,7 +684,7 @@ async def _call(server: str, tool: str, args: dict[str, Any]) -> dict[str, Any]:
     except Exception as exc:
         raise McpAssetBridgeError(
             "MCP_CALL_FAILED",
-            f"MCP 工具 {tool} 调用失败",
+            t("mcp_bridge.call_failed", tool=tool),
         ) from exc
 
 
@@ -691,11 +716,11 @@ async def _poll(server: str, job_id: str, *, timeout: int = 1800,
                 suffix = f" ({code})" if code else ""
                 raise McpAssetBridgeError(
                     "MCP_JOB_FAILED",
-                    f"MCP 作业结束状态为 {status}{suffix}",
+                    t("mcp_bridge.job_failed", status=status, suffix=suffix),
                 )
             return result
         if asyncio.get_running_loop().time() - started > timeout:
-            raise McpAssetBridgeError("MCP_JOB_TIMEOUT", "MCP 作业轮询超时")
+            raise McpAssetBridgeError("MCP_JOB_TIMEOUT", t("mcp_bridge.job_timeout"))
         delay = delays[index] if index < len(delays) else 20
         index += 1
         await asyncio.sleep(delay)
@@ -736,7 +761,7 @@ async def _upload(server: str, path: Path, logical_name: str) -> tuple[str, dict
     artifact_id = _artifact_id(payload)
     url = _first(payload, ("upload_url", "uploadUrl", "url"))
     if not isinstance(url, str) or not url.startswith("https://"):
-        raise McpAssetBridgeError("UPLOAD_URL_MISSING", "MCP 未返回 HTTPS 上传地址")
+        raise McpAssetBridgeError("UPLOAD_URL_MISSING", t("mcp_bridge.upload_url_missing"))
     offset_header = "Upload-Offset" if server == "arcpy-mcp" else "X-Upload-Offset"
     await asyncio.to_thread(
         _signed_put,
@@ -752,9 +777,12 @@ async def _upload(server: str, path: Path, logical_name: str) -> tuple[str, dict
     actual = _first(complete, ("actual_sha256", "actualSha256"))
     state = str(_first(complete, ("state", "status")) or "").lower()
     if not actual or str(actual).lower() != digest:
-        raise McpAssetBridgeError("UPLOAD_HASH_MISMATCH", "MCP 上传校验和与本地文件不一致")
+        raise McpAssetBridgeError(
+            "UPLOAD_HASH_MISMATCH",
+            t("mcp_bridge.upload_hash_mismatch"),
+        )
     if state != "ready":
-        raise McpAssetBridgeError("UPLOAD_NOT_READY", "MCP artifact 未进入 ready 状态")
+        raise McpAssetBridgeError("UPLOAD_NOT_READY", t("mcp_bridge.upload_not_ready"))
     return artifact_id, {"size": size, "sha256": digest}
 
 
@@ -770,7 +798,10 @@ async def _download_result(
     payload = await _call(server, tool, args)
     url = _first(payload, ("download_url", "downloadUrl", "url"))
     if not isinstance(url, str) or not url.startswith("https://"):
-        raise McpAssetBridgeError("DOWNLOAD_URL_MISSING", "MCP 未返回 HTTPS 下载地址")
+        raise McpAssetBridgeError(
+            "DOWNLOAD_URL_MISSING",
+            t("mcp_bridge.download_url_missing"),
+        )
     expected = _first(payload, ("actual_sha256", "actualSha256", "sha256"))
     suggested = _first(payload, ("logical_name", "filename", "file_name", "name"))
     if isinstance(suggested, str) and _SAFE_ID.fullmatch(Path(suggested).name):
@@ -783,7 +814,10 @@ async def _download_result(
     await asyncio.to_thread(_signed_download, url, target, _ca_cert(server))
     size, digest = _sha256(target)
     if not expected or str(expected).lower() != digest:
-        raise McpAssetBridgeError("RESULT_HASH_MISMATCH", "下载结果校验和不匹配")
+        raise McpAssetBridgeError(
+            "RESULT_HASH_MISMATCH",
+            t("mcp_bridge.result_hash_mismatch"),
+        )
     return target, {"size": size, "sha256": digest}
 
 
@@ -825,7 +859,10 @@ def _result_artifact_id(job: dict[str, Any], input_artifact: str) -> str:
     for value in candidates:
         if value != input_artifact:
             return value
-    raise McpAssetBridgeError("RESULT_ARTIFACT_MISSING", "成功作业没有返回结果 artifact")
+    raise McpAssetBridgeError(
+        "RESULT_ARTIFACT_MISSING",
+        t("mcp_bridge.result_artifact_missing"),
+    )
 
 
 def _run_receipt(
@@ -895,13 +932,19 @@ def _register_output(
 ) -> int:
     engine = get_engine()
     if not engine:
-        raise McpAssetBridgeError("CATALOG_UNAVAILABLE", "无法将 MCP 结果登记到资产目录")
+        raise McpAssetBridgeError(
+            "CATALOG_UNAVAILABLE",
+            t("mcp_bridge.catalog_register_unavailable"),
+        )
     prefix = os.environ.get(
         "MCP_ASSET_OUTPUT_PREFIX",
         "s3://gis-agent-lakehouse/derived/mcp",
     )
     if not prefix.startswith("s3://"):
-        raise McpAssetBridgeError("OBJECT_STORE_UNAVAILABLE", "MCP 结果存储前缀必须是 S3 URI")
+        raise McpAssetBridgeError(
+            "OBJECT_STORE_UNAVAILABLE",
+            t("mcp_bridge.result_prefix_invalid"),
+        )
     bucket, key_prefix = _parse_s3(prefix.rstrip("/"))
     owner_key = _safe_name(owner, "user")
     key = f"{key_prefix}/{owner_key}/{run_id}/{_safe_name(output_path.name)}"
@@ -909,7 +952,10 @@ def _register_output(
     try:
         client.upload_file(str(output_path), bucket, key)
     except Exception as exc:
-        raise McpAssetBridgeError("RESULT_PERSIST_FAILED", "无法将 MCP 结果写入数据湖") from exc
+        raise McpAssetBridgeError(
+            "RESULT_PERSIST_FAILED",
+            t("mcp_bridge.result_persist_failed"),
+        ) from exc
     uri = f"s3://{bucket}/{key}"
     size = output_path.stat().st_size
     technical = {
@@ -932,7 +978,11 @@ def _register_output(
     }
     business = {
         "semantic": {
-            "description": f"{server} MCP 处理结果（运行 {run_id}）",
+            "description": t(
+                "mcp_bridge.catalog_result_description",
+                server=server,
+                run_id=run_id,
+            ),
             "keywords": ["mcp", server, operation],
         },
         "classification": {
@@ -1036,7 +1086,7 @@ def _register_output(
             logger.warning("Could not remove orphaned MCP result object")
         raise McpAssetBridgeError(
             "RESULT_REGISTER_FAILED",
-            "MCP 结果已校验但未能登记到资产目录",
+            t("mcp_bridge.result_register_failed"),
         ) from exc
     return int(row)
 
@@ -1058,16 +1108,19 @@ async def _run_arcpy(
         "buffer_features",
     }
     if operation not in allowed:
-        raise McpAssetBridgeError("INVALID_OPERATION", "ArcPy 操作不在受控白名单内")
+        raise McpAssetBridgeError("INVALID_OPERATION", t("mcp_bridge.invalid_operation"))
     health = await _call("arcpy-mcp", "health_check", {})
     if str(health.get("status", "")).lower() != "healthy":
-        raise McpAssetBridgeError("ARCPY_UNHEALTHY", "ArcPy MCP worker 不健康")
+        raise McpAssetBridgeError("ARCPY_UNHEALTHY", t("mcp_bridge.arcpy_unhealthy"))
     await _call("arcpy-mcp", "get_capabilities", {})
     with tempfile.TemporaryDirectory(prefix="gda-arcpy-") as temp:
         workdir = Path(temp)
         feature_limit = int(parameters.get("feature_limit") or 0)
         if feature_limit < 0 or feature_limit > 1_000_000:
-            raise McpAssetBridgeError("INVALID_FEATURE_LIMIT", "要素数量限制无效")
+            raise McpAssetBridgeError(
+                "INVALID_FEATURE_LIMIT",
+                t("mcp_bridge.feature_limit_invalid"),
+            )
         source = _copy_or_export_asset(
             asset,
             workdir,
@@ -1094,7 +1147,10 @@ async def _run_arcpy(
             if missing:
                 raise McpAssetBridgeError(
                     "SHAPEFILE_SIDECAR_MISSING",
-                    f"Shapefile 缺少必需文件: {', '.join(missing)}",
+                    t(
+                        "mcp_bridge.shapefile_sidecars_missing",
+                        members=", ".join(missing),
+                    ),
                 )
             package = _zip_inputs(
                 [(path, path.name) for path in sidecars],
@@ -1241,7 +1297,7 @@ async def _run_dts(
     dem = _asset_row(dem_asset_id) if dem_asset_id else None
     ping = await _call("dts-mcp", "dts_ping", {})
     if not ping.get("ok"):
-        raise McpAssetBridgeError("DTS_UNHEALTHY", "DTS Engine 不可用")
+        raise McpAssetBridgeError("DTS_UNHEALTHY", t("mcp_bridge.dts_unhealthy"))
     pipelines = await _call("dts-mcp", "dts_list_pipelines", {})
     road = next(
         (
@@ -1252,7 +1308,10 @@ async def _run_dts(
         None,
     )
     if not road or not road.get("verified"):
-        raise McpAssetBridgeError("DTS_PIPELINE_UNVERIFIED", "DTS road pipeline 尚未通过验证")
+        raise McpAssetBridgeError(
+            "DTS_PIPELINE_UNVERIFIED",
+            t("mcp_bridge.dts_pipeline_unverified"),
+        )
     with tempfile.TemporaryDirectory(prefix="gda-dts-") as temp:
         workdir = Path(temp)
         road_source = _copy_or_export_asset(
@@ -1317,7 +1376,10 @@ async def _run_dts(
         )
         output_members = _validate_zip(output_path, ("DataInfor.txt",))
         if not any(name.lower().endswith(".3dt") for name in output_members):
-            raise McpAssetBridgeError("INVALID_RESULT", "DTS road 结果包缺少 .3dt 文件")
+            raise McpAssetBridgeError(
+                "INVALID_RESULT",
+                t("mcp_bridge.dts_result_3dt_missing"),
+            )
         source_assets = [
             value
             for value in (source_asset_id, dom_asset_id, dem_asset_id)
@@ -1371,7 +1433,7 @@ async def run_mcp_asset_workflow(
         return {
             "status": "error",
             "code": "SERVER_NOT_MANAGED",
-            "message": "只能通过受控 ArcPy/DTS 资产工作流调用",
+            "message": t("mcp_bridge.managed_only"),
         }
     owner = current_user_id.get() or "anonymous"
     run_id = uuid.uuid4()
@@ -1428,8 +1490,7 @@ async def run_mcp_asset_workflow(
             if operation != "road" or not dom_asset_id:
                 raise McpAssetBridgeError(
                     "DTS_INPUT_REQUIRED",
-                    "DTS road 需要道路资产和 dom_asset_id；"
-                    "建筑物图层不能直接作为 road 输入",
+                    t("mcp_bridge.dts_inputs_required"),
                 )
             result = await _run_dts(
                 int(asset_id),
@@ -1467,7 +1528,10 @@ async def run_mcp_asset_workflow(
             "message": exc.user_message,
         }
     except Exception as exc:
-        safe = McpAssetBridgeError("MCP_WORKFLOW_FAILED", "MCP 资产工作流执行失败")
+        safe = McpAssetBridgeError(
+            "MCP_WORKFLOW_FAILED",
+            t("mcp_bridge.workflow_failed"),
+        )
         logger.exception("MCP asset workflow failed: %s", exc)
         stages.append(
             {
@@ -1492,7 +1556,7 @@ def describe_mcp_asset_workflow(asset_id: int, mcp_server: str) -> dict:
         return {
             "status": "error",
             "code": "SERVER_NOT_MANAGED",
-            "message": "未知 MCP 服务器",
+            "message": t("mcp_bridge.unknown_server"),
         }
     asset = _asset_row(int(asset_id))
     storage = _storage(asset)
@@ -1525,11 +1589,11 @@ def describe_mcp_asset_workflow(asset_id: int, mcp_server: str) -> dict:
         "asset_id": asset_id,
         "pipeline": "road",
         "required": [
-            "projected road Shapefile (.shp/.shx/.dbf/.prj)",
-            "matching DOM asset (dom_asset_id)",
+            t("mcp_bridge.required_projected_road"),
+            t("mcp_bridge.required_dom"),
         ],
-        "optional": ["matching DEM asset (dem_asset_id)"],
-        "reason": "建筑物、多边形或经纬度资产不能直接调用 DTS road",
+        "optional": [t("mcp_bridge.optional_dem")],
+        "reason": t("mcp_bridge.dts_reason"),
     }
 
 

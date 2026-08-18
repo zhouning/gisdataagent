@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { patchReferenceStatus } from "../standardsApi";
 
 interface ReferenceRow {
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export default function ReferenceAuditCard({reference, roundId, onUpdated}: Props) {
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
 
   const decide = async (status: 'approved' | 'rejected') => {
@@ -23,14 +25,13 @@ export default function ReferenceAuditCard({reference, roundId, onUpdated}: Prop
       await patchReferenceStatus(reference.id, roundId, status);
       onUpdated();
     } catch (e: any) {
-      alert(`更新失败: ${e.message}`);
+      alert(t("standards.review.references.updateFailed", {message: e.message}));
     } finally {
       setBusy(false);
     }
   };
 
-  const badge = {pending: "🟠 待审", approved: "🟢 已通过",
-                  rejected: "🔴 已驳回"}[reference.verification_status];
+  const badge = t(`standards.review.references.status.${reference.verification_status}`);
 
   return (
     <div style={{padding: 8, marginBottom: 6,
@@ -46,12 +47,12 @@ export default function ReferenceAuditCard({reference, roundId, onUpdated}: Prop
           <button onClick={() => decide("approved")} disabled={busy}
                   style={{flex: 1, padding: 4, background: "#0a7",
                           color: "#fff", border: "none", borderRadius: 3}}>
-            通过
+            {t("standards.review.references.approve")}
           </button>
           <button onClick={() => decide("rejected")} disabled={busy}
                   style={{flex: 1, padding: 4, background: "#c33",
                           color: "#fff", border: "none", borderRadius: 3}}>
-            驳回
+            {t("standards.review.references.reject")}
           </button>
         </div>
       )}

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatDate, formatNumber, getLocaleHeaders } from '../../i18n';
 
 interface ScenarioWeights {
   slope: number;
@@ -29,20 +31,13 @@ const DEFAULT_PAIR_BONUS = 1.0;
 
 // Weight presets
 const WEIGHT_PRESETS = {
-  balanced: { slope: 1000, contiguity: 1000, balance: 1000, label: '平衡模式' },
-  slopeFocused: { slope: 2000, contiguity: 500, balance: 500, label: '坡度优先' },
-  contiguityFocused: { slope: 500, contiguity: 2000, balance: 500, label: '连片优先' },
-};
-
-// Weight tooltips
-const WEIGHT_TOOLTIPS = {
-  slope: '控制地形坡度对优化的影响程度，值越大越倾向于选择平坦区域',
-  contiguity: '控制地块连片性的重要程度，值越大越倾向于形成连续区域',
-  balance: '控制转换前后面积平衡的约束强度，值越大越严格保持面积守恒',
-  pair: '配对转换的额外奖励系数，影响交换操作的优先级',
+  balanced: { slope: 1000, contiguity: 1000, balance: 1000 },
+  slopeFocused: { slope: 2000, contiguity: 500, balance: 500 },
+  contiguityFocused: { slope: 500, contiguity: 2000, balance: 500 },
 };
 
 export default function OptimizationTab() {
+  const { t, i18n } = useTranslation();
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [scenarioId, setScenarioId] = useState('farmland_optimization');
   const [dataPath, setDataPath] = useState('');
@@ -63,7 +58,7 @@ export default function OptimizationTab() {
   const [compareResult, setCompareResult] = useState<any>(null);
 
   useEffect(() => {
-    fetch('/api/drl/scenarios', { credentials: 'include' })
+    fetch('/api/drl/scenarios', { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (d?.scenarios?.length) {
@@ -72,7 +67,7 @@ export default function OptimizationTab() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [i18n.resolvedLanguage]);
 
   const applyDefaults = (s: Scenario) => {
     setSlopeWeight(s.weights.slope);
@@ -105,7 +100,7 @@ export default function OptimizationTab() {
   const currentDefaults = scenarios.find(s => s.id === scenarioId);
 
   const handleRun = async () => {
-    if (!dataPath.trim()) { setError('请输入数据文件路径'); return; }
+    if (!dataPath.trim()) { setError(t('optimizationTab.errors.dataPathRequired')); return; }
     setLoading(true);
     setError('');
     setResult(null);
@@ -113,7 +108,7 @@ export default function OptimizationTab() {
       const resp = await fetch('/api/drl/run-custom', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           data_path: dataPath.trim(),
           scenario_id: scenarioId,
@@ -127,7 +122,7 @@ export default function OptimizationTab() {
       if (data.error) setError(data.error);
       else setResult(data);
     } catch (e: any) {
-      setError(e.message || '请求失败');
+      setError(e.message || t('optimizationTab.errors.request'));
     } finally {
       setLoading(false);
     }
@@ -136,7 +131,7 @@ export default function OptimizationTab() {
   const loadHistory = async () => {
     setHistoryLoading(true);
     try {
-      const r = await fetch('/api/drl/history', { credentials: 'include' });
+      const r = await fetch('/api/drl/history', { credentials: 'include', headers: getLocaleHeaders() });
       if (r.ok) { const d = await r.json(); setHistory(d.runs || []); }
     } catch { /* ignore */ }
     finally { setHistoryLoading(false); }
@@ -145,7 +140,7 @@ export default function OptimizationTab() {
   const doCompare = async () => {
     if (!compareA || !compareB) return;
     try {
-      const r = await fetch(`/api/drl/compare?a=${compareA}&b=${compareB}`, { credentials: 'include' });
+      const r = await fetch(`/api/drl/compare?a=${compareA}&b=${compareB}`, { credentials: 'include', headers: getLocaleHeaders() });
       if (r.ok) setCompareResult(await r.json());
     } catch { /* ignore */ }
   };
@@ -169,10 +164,10 @@ export default function OptimizationTab() {
           <strong>{value}</strong>
           {defaultVal !== undefined && (
             <span style={{
-              marginLeft: '6px', fontSize: '11px', color: 'var(--text-tertiary)',
+              marginInlineStart: '6px', fontSize: '11px', color: 'var(--text-tertiary)',
               background: 'var(--surface)', padding: '1px 6px', borderRadius: 'var(--radius-sm)',
             }}>
-              默认: {defaultVal}
+              {t('optimizationTab.labels.defaultValue', { value: formatNumber(defaultVal) })}
             </span>
           )}
         </span>
@@ -192,7 +187,7 @@ export default function OptimizationTab() {
       {/* Scenario selector */}
       <div className="config-row" style={{ marginBottom: '10px' }}>
         <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-          优化场景
+          {t('optimizationTab.form.scenario')}
         </label>
         <select
           value={scenarioId}
@@ -216,11 +211,11 @@ export default function OptimizationTab() {
       {/* Data path */}
       <div style={{ marginBottom: '12px' }}>
         <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-          数据文件路径
+          {t('optimizationTab.form.dataPath')}
         </label>
         <input
           type="text" value={dataPath} onChange={e => setDataPath(e.target.value)}
-          placeholder="输入数据文件路径，如 uploads/user/data.shp"
+          placeholder={t('optimizationTab.form.dataPathPlaceholder')}
           style={{
             width: '100%', padding: '6px 8px', borderRadius: 'var(--radius-sm)',
             border: '1px solid var(--border)', fontSize: '13px', background: 'var(--surface-elevated)',
@@ -240,7 +235,7 @@ export default function OptimizationTab() {
               cursor: 'pointer', color: 'var(--text-secondary)',
             }}
           >
-            {preset.label}
+            {t(`optimizationTab.presets.${key}`)}
           </button>
         ))}
       </div>
@@ -249,10 +244,10 @@ export default function OptimizationTab() {
       <div style={{
         background: 'var(--surface)', padding: '12px', borderRadius: 'var(--radius-md)', marginBottom: '12px',
       }}>
-        {sliderRow('坡度权重 (slope_weight)', slopeWeight, setSlopeWeight, 100, 3000, 50, currentDefaults?.weights.slope, WEIGHT_TOOLTIPS.slope)}
-        {sliderRow('连片权重 (contiguity_weight)', contiguityWeight, setContiguityWeight, 100, 2000, 50, currentDefaults?.weights.contiguity, WEIGHT_TOOLTIPS.contiguity)}
-        {sliderRow('平衡权重 (balance_weight)', balanceWeight, setBalanceWeight, 100, 2000, 50, currentDefaults?.weights.balance, WEIGHT_TOOLTIPS.balance)}
-        {sliderRow('配对奖励 (pair_bonus)', pairBonus, setPairBonus, 0.1, 10.0, 0.1, DEFAULT_PAIR_BONUS, WEIGHT_TOOLTIPS.pair)}
+        {sliderRow(t('optimizationTab.weights.slope.label'), slopeWeight, setSlopeWeight, 100, 3000, 50, currentDefaults?.weights.slope, t('optimizationTab.weights.slope.tooltip'))}
+        {sliderRow(t('optimizationTab.weights.contiguity.label'), contiguityWeight, setContiguityWeight, 100, 2000, 50, currentDefaults?.weights.contiguity, t('optimizationTab.weights.contiguity.tooltip'))}
+        {sliderRow(t('optimizationTab.weights.balance.label'), balanceWeight, setBalanceWeight, 100, 2000, 50, currentDefaults?.weights.balance, t('optimizationTab.weights.balance.tooltip'))}
+        {sliderRow(t('optimizationTab.weights.pair.label'), pairBonus, setPairBonus, 0.1, 10.0, 0.1, DEFAULT_PAIR_BONUS, t('optimizationTab.weights.pair.tooltip'))}
 
         {/* Weight balance indicator */}
         {isUnbalanced && (
@@ -261,7 +256,7 @@ export default function OptimizationTab() {
             background: '#fef3c7', color: '#92400e', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px',
           }}>
             <span>⚠️</span>
-            <span>权重总和 {totalWeight}，建议保持在 1500-5000 范围内以获得最佳效果</span>
+            <span>{t('optimizationTab.messages.unbalanced', { total: formatNumber(totalWeight) })}</span>
           </div>
         )}
       </div>
@@ -276,7 +271,7 @@ export default function OptimizationTab() {
             cursor: 'pointer', color: 'var(--text-secondary)',
           }}
         >
-          重置为默认
+          {t('optimizationTab.actions.reset')}
         </button>
         <button
           onClick={handleRun} disabled={loading}
@@ -286,7 +281,7 @@ export default function OptimizationTab() {
             color: '#fff', cursor: loading ? 'not-allowed' : 'pointer',
           }}
         >
-          {loading ? '优化计算中...' : '运行优化'}
+          {loading ? t('optimizationTab.actions.running') : t('optimizationTab.actions.run')}
         </button>
       </div>
 
@@ -308,7 +303,7 @@ export default function OptimizationTab() {
           {summaryText && <div style={{ marginBottom: '8px', lineHeight: 1.6 }}>{summaryText}</div>}
           {result.output_path && (
             <div style={{ marginBottom: '6px' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>输出文件: </span>
+              <span style={{ color: 'var(--text-secondary)' }}>{t('optimizationTab.result.outputFile')}: </span>
               <code style={{
                 fontFamily: 'var(--font-mono)', background: 'var(--surface-elevated)',
                 padding: '2px 6px', borderRadius: '4px',
@@ -320,7 +315,7 @@ export default function OptimizationTab() {
           {result.output_path?.endsWith('.png') && (
             <img
               src={`/uploads/${result.output_path}`}
-              alt="优化结果" style={{ width: '100%', borderRadius: 'var(--radius-sm)', marginTop: '6px' }}
+              alt={t('optimizationTab.result.imageAlt')} style={{ width: '100%', borderRadius: 'var(--radius-sm)', marginTop: '6px' }}
             />
           )}
         </div>
@@ -334,7 +329,7 @@ export default function OptimizationTab() {
             try {
               const r = await fetch('/api/drl/explain', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({ scenario_id: scenarioId }),
               });
@@ -349,18 +344,18 @@ export default function OptimizationTab() {
             cursor: explainLoading ? 'not-allowed' : 'pointer', color: 'var(--text-secondary)',
           }}
         >
-          {explainLoading ? '分析中...' : '特征重要性分析'}
+          {explainLoading ? t('optimizationTab.actions.analyzing') : t('optimizationTab.actions.explain')}
         </button>
         {explainResult && explainResult.feature_importance && (
           <div style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>特征重要性排名</div>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{t('optimizationTab.explain.ranking')}</div>
             {explainResult.feature_importance.slice(0, 6).map((f: any, i: number) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 4 }}>
                 <span style={{ width: 140, color: 'var(--text-secondary)' }}>{f.feature}</span>
                 <div style={{ flex: 1, background: 'var(--bg-secondary)', borderRadius: 4, height: 14 }}>
                   <div style={{ width: `${f.importance}%`, background: i < 3 ? 'var(--primary)' : 'var(--text-secondary)', borderRadius: 4, height: '100%' }} />
                 </div>
-                <span style={{ fontSize: 11, width: 40, textAlign: 'right' }}>{f.importance}%</span>
+                <span style={{ fontSize: 11, width: 40, textAlign: 'end' }}>{formatNumber(f.importance)}%</span>
               </div>
             ))}
             {explainResult.summary && (
@@ -370,9 +365,9 @@ export default function OptimizationTab() {
         )}
         {explainResult && explainResult.mode === 'scenario_based' && (
           <div style={{ marginTop: 8, fontSize: 12 }}>
-            <div style={{ fontWeight: 600 }}>场景特征分析</div>
+            <div style={{ fontWeight: 600 }}>{t('optimizationTab.explain.scenarioAnalysis')}</div>
             <div style={{ color: 'var(--text-secondary)', marginTop: 4 }}>{explainResult.description}</div>
-            <div style={{ marginTop: 4 }}>关键特征: {explainResult.key_features?.join(', ')}</div>
+            <div style={{ marginTop: 4 }}>{t('optimizationTab.explain.keyFeatures', { features: explainResult.key_features?.join(', ') })}</div>
           </div>
         )}
       </div>
@@ -388,19 +383,19 @@ export default function OptimizationTab() {
             cursor: 'pointer', color: 'var(--text-secondary)',
           }}
         >
-          {showHistory ? '收起历史' : '运行历史'}
+          {showHistory ? t('optimizationTab.actions.collapseHistory') : t('optimizationTab.actions.history')}
         </button>
         {showHistory && (
           <div style={{ marginTop: 8 }}>
-            {historyLoading ? <div style={{ fontSize: 12 }}>加载中...</div> : (
+            {historyLoading ? <div style={{ fontSize: 12 }}>{t('optimizationTab.common.loading')}</div> : (
               <>
-                {history.length === 0 && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>暂无历史记录</div>}
+                {history.length === 0 && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('optimizationTab.empty.history')}</div>}
                 {history.map(run => (
                   <div key={run.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '4px 0', borderBottom: '1px solid var(--border-light, #eee)' }}>
                     <input type="radio" name="compareA" checked={compareA === run.id} onChange={() => setCompareA(run.id)} />
                     <input type="radio" name="compareB" checked={compareB === run.id} onChange={() => setCompareB(run.id)} />
-                    <span style={{ flex: 1 }}>#{run.id} {run.scenario_id} — {run.summary?.slice(0, 40) || '(无摘要)'}</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>{run.created_at?.slice(0, 16)}</span>
+                    <span style={{ flex: 1 }}>#{formatNumber(run.id)} {run.scenario_id} — {run.summary?.slice(0, 40) || t('optimizationTab.empty.summary')}</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{run.created_at ? formatDate(run.created_at, { dateStyle: 'short', timeStyle: 'short', hour12: false }) : ''}</span>
                   </div>
                 ))}
                 {compareA && compareB && compareA !== compareB && (
@@ -411,29 +406,29 @@ export default function OptimizationTab() {
                       border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer',
                     }}
                   >
-                    对比 #{compareA} vs #{compareB}
+                    {t('optimizationTab.actions.compare', { a: formatNumber(compareA), b: formatNumber(compareB) })}
                   </button>
                 )}
                 {compareResult && compareResult.metrics_comparison && (
                   <div style={{ marginTop: 8 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>指标对比</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('optimizationTab.comparison.title')}</div>
                     <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
                       <thead>
                         <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                          <th style={{ textAlign: 'left', padding: '4px' }}>指标</th>
-                          <th style={{ textAlign: 'right', padding: '4px' }}>Run A</th>
-                          <th style={{ textAlign: 'right', padding: '4px' }}>Run B</th>
-                          <th style={{ textAlign: 'right', padding: '4px' }}>差异</th>
+                          <th style={{ textAlign: 'start', padding: '4px' }}>{t('optimizationTab.comparison.metric')}</th>
+                          <th style={{ textAlign: 'end', padding: '4px' }}>{t('optimizationTab.comparison.runA')}</th>
+                          <th style={{ textAlign: 'end', padding: '4px' }}>{t('optimizationTab.comparison.runB')}</th>
+                          <th style={{ textAlign: 'end', padding: '4px' }}>{t('optimizationTab.comparison.delta')}</th>
                         </tr>
                       </thead>
                       <tbody>
                         {Object.entries(compareResult.metrics_comparison).map(([key, v]: [string, any]) => (
                           <tr key={key} style={{ borderBottom: '1px solid var(--border-light, #eee)' }}>
                             <td style={{ padding: '3px 4px' }}>{key}</td>
-                            <td style={{ textAlign: 'right', padding: '3px 4px' }}>{v.run_a ?? '—'}</td>
-                            <td style={{ textAlign: 'right', padding: '3px 4px' }}>{v.run_b ?? '—'}</td>
-                            <td style={{ textAlign: 'right', padding: '3px 4px', color: v.delta > 0 ? '#22c55e' : v.delta < 0 ? '#ef4444' : '' }}>
-                              {v.delta != null ? (v.delta > 0 ? '+' : '') + v.delta.toFixed(3) : '—'}
+                            <td style={{ textAlign: 'end', padding: '3px 4px' }}>{typeof v.run_a === 'number' ? formatNumber(v.run_a, { maximumFractionDigits: 3 }) : v.run_a ?? '—'}</td>
+                            <td style={{ textAlign: 'end', padding: '3px 4px' }}>{typeof v.run_b === 'number' ? formatNumber(v.run_b, { maximumFractionDigits: 3 }) : v.run_b ?? '—'}</td>
+                            <td style={{ textAlign: 'end', padding: '3px 4px', color: v.delta > 0 ? '#22c55e' : v.delta < 0 ? '#ef4444' : '' }}>
+                              {v.delta != null ? `${v.delta > 0 ? '+' : ''}${formatNumber(v.delta, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}` : '—'}
                             </td>
                           </tr>
                         ))}
@@ -451,9 +446,9 @@ export default function OptimizationTab() {
       {!result && !loading && !error && (
         <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-tertiary)' }}>
           <div style={{ fontSize: '28px', marginBottom: '8px' }}>⚙</div>
-          <div>选择场景、输入数据路径并调整权重后运行优化</div>
+          <div>{t('optimizationTab.empty.instructions')}</div>
           <div style={{ fontSize: '11px', marginTop: '4px' }}>
-            DRL 模型将通过强化学习寻找最优的用地空间布局调整方案
+            {t('optimizationTab.empty.description')}
           </div>
         </div>
       )}

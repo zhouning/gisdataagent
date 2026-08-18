@@ -4,12 +4,19 @@ from __future__ import annotations
 
 from typing import Any
 
+from data_agent.i18n import t
+
 
 ACTION_LABELS = {
-    "increase_green_infrastructure": "增加绿色/降温基础设施",
-    "traffic_emission_control": "实施交通排放治理",
-    "add_community_service": "新增或改善社区公共服务",
+    "increase_green_infrastructure": "uwm_chat.action.increase_green_infrastructure",
+    "traffic_emission_control": "uwm_chat.action.traffic_emission_control",
+    "add_community_service": "uwm_chat.action.add_community_service",
 }
+
+
+def _action_label(action_type: Any) -> str:
+    key = ACTION_LABELS.get(str(action_type))
+    return t(key) if key else str(action_type or t("uwm_chat.action.unknown"))
 
 
 def is_multistage_uwm_chat_message(text: str) -> bool:
@@ -19,12 +26,21 @@ def is_multistage_uwm_chat_message(text: str) -> bool:
         "@uwm多阶段",
         "@多阶段uwm",
         "@城市干预",
+        "@uwm plan",
+        "@uwm multistage",
+        "@city intervention",
+        "@تخطيط uwm",
+        "@تدخل حضري",
     )
     if any(marker in normalized for marker in explicit_mentions):
         return True
     return "uwm" in normalized and any(
         marker in normalized
-        for marker in ("多阶段", "城市干预", "状态数据", "未来规划")
+        for marker in (
+            "多阶段", "城市干预", "状态数据", "未来规划",
+            "multistage", "city intervention", "state data", "future planning",
+            "تدخل", "بيانات الحالة", "التخطيط المستقبلي",
+        )
     )
 
 
@@ -36,42 +52,46 @@ def format_state_inspection(inspection: dict[str, Any]) -> str:
     rows = snapshot.get("units") or []
     action_counts = candidate.get("action_type_counts") or {}
     state_lines = "\n".join(
-        (
-            f"- **{row.get('display_name')}**：热风险 {row.get('heat_risk')}，"
-            f"污染暴露 {row.get('air_pollution_exposure')}，服务可达性 {row.get('service_accessibility')}，"
-            f"公平性 {row.get('equity')}，宜居性 {row.get('livability')}，"
-            f"候选动作 {row.get('candidate_action_count')} 个"
+        t(
+            "uwm_chat.state.row",
+            display_name=row.get("display_name"),
+            heat_risk=row.get("heat_risk"),
+            air_pollution_exposure=row.get("air_pollution_exposure"),
+            service_accessibility=row.get("service_accessibility"),
+            equity=row.get("equity"),
+            livability=row.get("livability"),
+            candidate_action_count=row.get("candidate_action_count"),
         )
         for row in rows
     )
     action_lines = "\n".join(
-        f"- {ACTION_LABELS.get(action_type, action_type)}：{count}个候选实例"
+        t(
+            "uwm_chat.state.action_count",
+            action=_action_label(action_type),
+            count=count,
+        )
         for action_type, count in action_counts.items()
-    ) or "- 当前范围没有候选动作。"
+    ) or t("uwm_chat.state.no_actions")
     return (
-        "## UWM推演前状态体检\n\n"
-        f"**场景**：{(inspection.get('scenario') or {}).get('display_name')}\n\n"
-        "### 1. 当前输入UWM的状态\n\n"
-        f"- 当前规划域：{snapshot.get('unit_count')}个空间单元\n"
-        f"- 业务状态维度：{snapshot.get('state_dimension_count')}维，分别为"
-        f"{'、'.join(snapshot.get('state_dimensions') or [])}\n"
-        f"- 全域底座：{foundation.get('graph_node_count')}个状态节点、"
-        f"{foundation.get('graph_edge_count')}条空间关系\n\n"
+        f"{t('uwm_chat.state.title')}\n\n"
+        f"{t('uwm_chat.state.scenario', display_name=(inspection.get('scenario') or {}).get('display_name'))}\n\n"
+        f"{t('uwm_chat.state.section_input')}\n\n"
+        f"{t('uwm_chat.state.planning_scope', count=snapshot.get('unit_count'))}\n"
+        f"{t('uwm_chat.state.dimensions', count=snapshot.get('state_dimension_count'), dimensions=t('uwm_chat.list_separator').join(snapshot.get('state_dimensions') or []))}\n"
+        f"{t('uwm_chat.state.foundation', nodes=foundation.get('graph_node_count'), edges=foundation.get('graph_edge_count'))}\n\n"
         f"{state_lines}\n\n"
-        "### 2. 当前状态生成的候选动作\n\n"
-        f"- 本场景候选动作实例：{candidate.get('candidate_action_count')}个\n"
+        f"{t('uwm_chat.state.section_actions')}\n\n"
+        f"{t('uwm_chat.state.candidate_count', count=candidate.get('candidate_action_count'))}\n"
         f"{action_lines}\n"
-        "- 一个候选实例表示“一类动作模板 × 一个满足阈值的空间单元”，不是一种新政策。\n\n"
-        "### 3. 如果确认推演，UWM会做什么\n\n"
-        f"- Simulator：{simulator.get('input_dimension')}维输入 → "
-        f"{simulator.get('output_dimension')}维下一状态变化，"
-        f"{simulator.get('coefficient_count')}个系数；\n"
-        "- Kernel：把目标单元变化传播到真实空间邻域；\n"
-        "- Planner：生成第一步未来`t1`，写回世界后再选择第二步，而不是沿用初始排行榜；\n"
-        "- 对照：同时比较传统静态排序、单步模型和多步但不写回状态的结果。\n\n"
-        "### 4. 当前执行状态\n\n"
-        "> 当前只读取并展示状态快照，**尚未训练Simulator、尚未执行未来推演、尚未形成规划结论**。\n\n"
-        "当前输入状态已经发送到中间地图。请先检查地图和上述数据，再选择是否正式推演。"
+        f"{t('uwm_chat.state.instance_definition')}\n\n"
+        f"{t('uwm_chat.state.section_capability')}\n\n"
+        f"{t('uwm_chat.state.simulator', inputs=simulator.get('input_dimension'), outputs=simulator.get('output_dimension'), coefficients=simulator.get('coefficient_count'))}\n"
+        f"{t('uwm_chat.state.kernel')}\n"
+        f"{t('uwm_chat.state.planner')}\n"
+        f"{t('uwm_chat.state.baseline')}\n\n"
+        f"{t('uwm_chat.state.section_status')}\n\n"
+        f"> {t('uwm_chat.state.status_not_run')}\n\n"
+        f"{t('uwm_chat.state.map_sent')}"
     )
 
 
@@ -80,25 +100,25 @@ def format_scenario_parse(parse_result: dict[str, Any]) -> str:
     resolution = parse_result.get("resolution") or {}
     request = parse_result.get("planning_request") or {}
     action_types = request.get("action_types") or []
-    action_labels = [ACTION_LABELS.get(str(value), str(value)) for value in action_types]
+    action_labels = [_action_label(value) for value in action_types]
     objectives = interpretation.get("objectives") or []
     constraints = interpretation.get("explicit_constraints") or []
     warning = str(resolution.get("warning") or "")
     parsed_horizon = interpretation.get("horizon")
     return (
-        "## Gemma4场景语义解析\n\n"
-        f"- 解析模型：`{parse_result.get('model')}`（已真实调用）\n"
-        f"- 解析耗时：{parse_result.get('latency_ms')}毫秒\n"
-        f"- 规划区域：{resolution.get('display_name')}\n"
-        f"- 邻域范围：{request.get('neighborhood_hops')}阶空间邻域\n"
-        f"- 规划时域：{parsed_horizon or '未明确，确认时选择'}\n"
-        f"- 允许动作：{'、'.join(action_labels)}\n"
-        f"- 用户目标表述：{'、'.join(objectives) if objectives else '未额外指定，采用UWM综合保守回报'}\n"
-        f"- 显式约束：{'；'.join(constraints) if constraints else '无'}\n"
-        f"- 不确定性偏好：{interpretation.get('uncertainty_preference')}\n"
-        f"- 语义复述：{interpretation.get('summary') or '未提供'}\n"
-        + (f"- 数据解析提示：{warning}\n" if warning else "")
-        + "\n> 区域、邻域、动作类型、时域和不确定性偏好会进入Planner；自由文本目标当前用于确认与解释，不会直接改写Simulator回报函数。Gemma4不生成数值变化或行动排序。"
+        f"{t('uwm_chat.parse.title')}\n\n"
+        f"{t('uwm_chat.parse.model', model=parse_result.get('model'))}\n"
+        f"{t('uwm_chat.parse.latency', latency=parse_result.get('latency_ms'))}\n"
+        f"{t('uwm_chat.parse.area', area=resolution.get('display_name'))}\n"
+        f"{t('uwm_chat.parse.neighborhood', hops=request.get('neighborhood_hops'))}\n"
+        f"{t('uwm_chat.parse.horizon', horizon=parsed_horizon or t('uwm_chat.parse.horizon_pending'))}\n"
+        f"{t('uwm_chat.parse.actions', actions=t('uwm_chat.list_separator').join(action_labels))}\n"
+        f"{t('uwm_chat.parse.objectives', objectives=t('uwm_chat.list_separator').join(objectives) if objectives else t('uwm_chat.parse.objectives_default'))}\n"
+        f"{t('uwm_chat.parse.constraints', constraints=t('uwm_chat.constraint_separator').join(constraints) if constraints else t('uwm_chat.parse.none'))}\n"
+        f"{t('uwm_chat.parse.uncertainty', preference=interpretation.get('uncertainty_preference'))}\n"
+        f"{t('uwm_chat.parse.summary', summary=interpretation.get('summary') or t('uwm_chat.parse.not_provided'))}\n"
+        + (f"{t('uwm_chat.parse.warning', warning=warning)}\n" if warning else "")
+        + f"\n> {t('uwm_chat.parse.boundary')}"
     )
 
 
@@ -115,29 +135,22 @@ def format_plan_result(run: dict[str, Any]) -> str:
         parts = target.split("|")
         display = " · ".join(parts[:2]) if len(parts) >= 2 else target
         steps.append(
-            f"{index + 1}. **{ACTION_LABELS.get(str(action.get('action_type')), action.get('action_type'))}** — {display}"
+            t(
+                "uwm_chat.plan.step",
+                index=index + 1,
+                action=_action_label(action.get("action_type")),
+                display=display,
+            )
         )
     return (
-        "## UWM多阶段城市干预规划完成\n\n"
-        "### 推荐行动序列\n\n"
+        f"{t('uwm_chat.plan.title')}\n\n"
+        f"{t('uwm_chat.plan.section_sequence')}\n\n"
         + "\n".join(steps)
-        + "\n\n### 世界模型能力证据\n\n"
-        f"- 规划时域：{search.get('horizon')}步；\n"
-        f"- 候选动作：{search.get('candidate_action_count')}个；\n"
-        f"- 主搜索想象动作：{search.get('evaluated_imagined_action_count')}次；\n"
-        f"- 完整未来序列：{search.get('completed_sequence_count')}条；\n"
-        f"- 保留较优路径：{search.get('retained_sequence_count')}条；\n"
-        f"- 第二步首选因状态写回发生切换："
-        f"{'是' if dependency.get('state_update_changes_top_second_action') else '否'}；\n"
-        f"- 发生名次变化的后续动作：{dependency.get('changed_action_rank_count')}个。\n\n"
-        "### Simulator与执行\n\n"
-        f"- 本次训练：{training.get('training_row_count')}/{training.get('holdout_row_count')}条训练/留出；\n"
-        f"- 模型结构：{training.get('feature_count')}维输入 → {training.get('target_count')}维输出，"
-        f"{training.get('coefficient_count')}个系数；\n"
-        f"- 本地CPU完整运行：{runtime.get('total_ms')}毫秒；\n"
-        f"- 运行ID：`{run.get('run_id')}`。\n\n"
-        "### 能力边界\n\n"
-        "该结果证明同场景动作条件预测、空间传播、状态写回和多阶段重规划能力；"
-        "不证明现实政策因果效果，也不替代正式规划、投资或行政审批。\n\n"
-        "第二步未来分叉已发送到中间地图。"
+        + f"\n\n{t('uwm_chat.plan.section_evidence')}\n\n"
+        + t("uwm_chat.plan.evidence", horizon=search.get("horizon"), candidates=search.get("candidate_action_count"), imagined=search.get("evaluated_imagined_action_count"), completed=search.get("completed_sequence_count"), retained=search.get("retained_sequence_count"), switched=t("uwm_chat.yes") if dependency.get("state_update_changes_top_second_action") else t("uwm_chat.no"), changed=dependency.get("changed_action_rank_count"))
+        + f"\n\n{t('uwm_chat.plan.section_execution')}\n\n"
+        + t("uwm_chat.plan.execution", training=training.get("training_row_count"), holdout=training.get("holdout_row_count"), inputs=training.get("feature_count"), outputs=training.get("target_count"), coefficients=training.get("coefficient_count"), elapsed=runtime.get("total_ms"), run_id=run.get("run_id"))
+        + f"\n\n{t('uwm_chat.plan.section_boundary')}\n\n"
+        + t("uwm_chat.plan.boundary")
+        + f"\n\n{t('uwm_chat.plan.map_sent')}"
     )

@@ -1,2 +1,65 @@
-import {useEffect,useState} from 'react';import {AlertTriangle,RefreshCw,Shield} from 'lucide-react';type R=Record<string,any>;
-export default function AssetLifecycleReadinessTab(){const [overview,setOverview]=useState<R|null>(null),[products,setProducts]=useState<R[]>([]),[channels,setChannels]=useState<R>({}),[gate,setGate]=useState<R>({}),[message,setMessage]=useState('');const load=async()=>{try{setMessage('');const rs=await Promise.all(['overview','source-products','lifecycle-channels','lifecycle-gate'].map(x=>fetch('/api/uwm/asset-lifecycle-readiness/'+x,{credentials:'include'}))),d=await Promise.all(rs.map(x=>x.json()));if(rs.some(x=>!x.ok))throw new Error(d.find(x=>x.error)?.error||'资产生命周期产品不可用');setOverview(d[0]);setProducts(d[1].source_products||[]);setChannels(d[2].lifecycle_channels||{});setGate(d[3].lifecycle_gate||{})}catch(e:unknown){setMessage(e instanceof Error?e.message:'资产生命周期产品不可用')}};useEffect(()=>{load()},[]);return <div className="traditional-livability-tab"><div className="traditional-panel"><div className="traditional-panel-title"><strong>资产目录与生命周期就绪度（需求5）</strong><button className="secondary-button" onClick={load}><RefreshCw size={14}/>刷新</button></div><div className="traditional-message error"><Shield size={15}/>跨产品记录可能重叠，不汇总为唯一资产；目录出现不等于生命周期观测。</div>{message&&<div className="traditional-message error"><AlertTriangle size={15}/>{message}</div>}<div className="traditional-kpi-grid"><div className="traditional-kpi"><span>来源产品</span><strong>{overview?.summary?.source_product_count??'-'}</strong></div><div className="traditional-kpi"><span>唯一资产</span><strong>{overview?.summary?.unique_asset_count??'不可用'}</strong></div><div className="traditional-kpi"><span>资产状态节点</span><strong>{overview?.summary?.materialized_asset_state_count??'-'}</strong></div><div className="traditional-kpi"><span>生命周期事件</span><strong>{overview?.summary?.observed_lifecycle_event_count??'-'}</strong></div></div><h4>跨产品目录引用</h4><p>{products.map(x=>`${x.product_id}:${x.record_count}（${x.record_semantics}）`).join(' · ')}</p><h4>生命周期证据通道</h4><p>{Object.entries(channels).map(([k,v]:[string,any])=>`${k}:${v.status}`).join(' · ')}</p><h4>UWM资产生命周期 Kernel 门</h4><p>{Object.entries(gate.mechanisms||{}).map(([k,v])=>`${k}:${v}`).join(' · ')}</p><div className="traditional-message error"><Shield size={15}/>未生成权属、状态、健康度、维护、故障、退化、成本、替换或恢复结论。</div></div></div>}
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { AlertTriangle, RefreshCw, Shield } from 'lucide-react';
+import { formatNumber, getLocaleHeaders } from '../../i18n';
+
+type Row = Record<string, any>;
+
+export default function AssetLifecycleReadinessTab() {
+  const { t, i18n } = useTranslation();
+  const [overview, setOverview] = useState<Row | null>(null);
+  const [products, setProducts] = useState<Row[]>([]);
+  const [channels, setChannels] = useState<Row>({});
+  const [gate, setGate] = useState<Row>({});
+  const [message, setMessage] = useState('');
+
+  const load = async () => {
+    try {
+      setMessage('');
+      const resources = ['overview', 'source-products', 'lifecycle-channels', 'lifecycle-gate'];
+      const responses = await Promise.all(resources.map(resource => fetch('/api/uwm/asset-lifecycle-readiness/' + resource, {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      })));
+      const data = await Promise.all(responses.map(response => response.json()));
+      if (responses.some(response => !response.ok)) {
+        throw new Error(data.find(item => item.error)?.error || t('readinessPanels.assetLifecycle.errors.unavailable'));
+      }
+      setOverview(data[0]);
+      setProducts(data[1].source_products || []);
+      setChannels(data[2].lifecycle_channels || {});
+      setGate(data[3].lifecycle_gate || {});
+    } catch (error: unknown) {
+      setMessage(error instanceof Error ? error.message : t('readinessPanels.assetLifecycle.errors.unavailable'));
+    }
+  };
+
+  useEffect(() => { void load(); }, [i18n.resolvedLanguage]);
+  const count = (value: unknown) => typeof value === 'number' ? formatNumber(value) : String(value ?? '-');
+
+  return (
+    <div className="traditional-livability-tab">
+      <div className="traditional-panel">
+        <div className="traditional-panel-title">
+          <strong>{t('readinessPanels.assetLifecycle.title')}</strong>
+          <button className="secondary-button" onClick={() => void load()}><RefreshCw size={14} />{t('readinessPanels.common.refresh')}</button>
+        </div>
+        <div className="traditional-message error"><Shield size={15} />{t('readinessPanels.assetLifecycle.warning')}</div>
+        {message && <div className="traditional-message error"><AlertTriangle size={15} />{message}</div>}
+        <div className="traditional-kpi-grid">
+          <div className="traditional-kpi"><span>{t('readinessPanels.assetLifecycle.kpis.sourceProducts')}</span><strong>{count(overview?.summary?.source_product_count)}</strong></div>
+          <div className="traditional-kpi"><span>{t('readinessPanels.assetLifecycle.kpis.uniqueAssets')}</span><strong>{count(overview?.summary?.unique_asset_count ?? t('readinessPanels.common.unavailable'))}</strong></div>
+          <div className="traditional-kpi"><span>{t('readinessPanels.assetLifecycle.kpis.stateNodes')}</span><strong>{count(overview?.summary?.materialized_asset_state_count)}</strong></div>
+          <div className="traditional-kpi"><span>{t('readinessPanels.assetLifecycle.kpis.events')}</span><strong>{count(overview?.summary?.observed_lifecycle_event_count)}</strong></div>
+        </div>
+        <h4>{t('readinessPanels.assetLifecycle.sections.catalog')}</h4>
+        <p>{products.map(item => String(item.product_id) + ':' + String(item.record_count) + ' (' + String(item.record_semantics) + ')').join(' · ') || '-'}</p>
+        <h4>{t('readinessPanels.assetLifecycle.sections.channels')}</h4>
+        <p>{Object.entries(channels).map(([key, value]: [string, any]) => `${key}:${t(`statusLabels.${String(value.status)}`, { defaultValue: String(value.status) })}`).join(' · ') || '-'}</p>
+        <h4>{t('readinessPanels.assetLifecycle.sections.kernel')}</h4>
+        <p>{Object.entries(gate.mechanisms || {}).map(([key, value]) => key + ':' + String(value)).join(' · ') || '-'}</p>
+        <div className="traditional-message error"><Shield size={15} />{t('readinessPanels.assetLifecycle.finalWarning')}</div>
+      </div>
+    </div>
+  );
+}

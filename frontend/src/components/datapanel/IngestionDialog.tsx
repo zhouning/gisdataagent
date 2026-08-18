@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   CheckCircle2, CircleStop, Clock3, Database, HardDrive,
   LoaderCircle, Play, RefreshCw, TriangleAlert, X,
 } from 'lucide-react';
+import { formatDate, formatNumber, getLocaleHeaders } from '../../i18n';
 
 interface IngestionSource {
   id: number;
@@ -63,14 +65,8 @@ function statusColor(status: IngestionRun['status']): string {
   return '#fbbf24';
 }
 
-function statusLabel(status: IngestionRun['status']): string {
-  return ({
-    queued: '排队', running: '运行中', committing: '提交中', cancelling: '取消中', cancelled: '已取消',
-    succeeded: '成功', failed: '失败',
-  } as Record<string, string>)[status] || status;
-}
-
 export default function IngestionDialog({ source, onClose }: Props) {
+  const { t, i18n } = useTranslation();
   const [definitions, setDefinitions] = useState<IngestionDefinition[]>([]);
   const [runs, setRuns] = useState<IngestionRun[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,20 +93,21 @@ export default function IngestionDialog({ source, onClose }: Props) {
     try {
       const response = await fetch(`/api/virtual-sources/${source.id}/ingestions`, {
         credentials: 'include',
+        headers: getLocaleHeaders(),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || '无法读取 ingest 状态');
+      if (!response.ok) throw new Error(payload.error || t('ingestionDialog.errors.load'));
       setDefinitions(payload.definitions || []);
       setRuns(payload.runs || []);
       setError('');
     } catch (cause: any) {
-      setError(cause.message || '无法读取 ingest 状态');
+      setError(cause.message || t('ingestionDialog.errors.load'));
     } finally {
       if (!quiet) setLoading(false);
     }
   };
 
-  useEffect(() => { fetchState(); }, [source.id]);
+  useEffect(() => { fetchState(); }, [source.id, i18n.resolvedLanguage]);
   useEffect(() => {
     if (!hasActiveRun) return undefined;
     const timer = window.setInterval(() => fetchState(true), 2000);
@@ -123,7 +120,7 @@ export default function IngestionDialog({ source, onClose }: Props) {
     try {
       const response = await fetch(`/api/virtual-sources/${source.id}/ingestions`, {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           target_name: targetName,
           target_mode: targetMode,
@@ -135,10 +132,10 @@ export default function IngestionDialog({ source, onClose }: Props) {
         }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || '创建 ingest 失败');
+      if (!response.ok) throw new Error(payload.error || t('ingestionDialog.errors.create'));
       await fetchState(true);
     } catch (cause: any) {
-      setError(cause.message || '创建 ingest 失败');
+      setError(cause.message || t('ingestionDialog.errors.create'));
     } finally {
       setSaving(false);
     }
@@ -149,13 +146,13 @@ export default function IngestionDialog({ source, onClose }: Props) {
     try {
       const response = await fetch(`/api/ingestions/${definitionId}/runs`, {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' }, body: '{}',
+        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' }, body: '{}',
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || '启动 ingest 失败');
+      if (!response.ok) throw new Error(payload.error || t('ingestionDialog.errors.start'));
       await fetchState(true);
     } catch (cause: any) {
-      setError(cause.message || '启动 ingest 失败');
+      setError(cause.message || t('ingestionDialog.errors.start'));
     }
   };
 
@@ -163,12 +160,13 @@ export default function IngestionDialog({ source, onClose }: Props) {
     try {
       const response = await fetch(`/api/ingestions/runs/${runId}/cancel`, {
         method: 'POST', credentials: 'include',
+        headers: getLocaleHeaders(),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || '取消失败');
+      if (!response.ok) throw new Error(payload.error || t('ingestionDialog.errors.cancel'));
       await fetchState(true);
     } catch (cause: any) {
-      setError(cause.message || '取消失败');
+      setError(cause.message || t('ingestionDialog.errors.cancel'));
     }
   };
 
@@ -190,10 +188,10 @@ export default function IngestionDialog({ source, onClose }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
             <Database size={17} color="#60a5fa" />
             <strong style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              Data ingest · {source.source_name}
+              {t('ingestionDialog.title')} · {source.source_name}
             </strong>
           </div>
-          <button onClick={onClose} title="关闭" aria-label="关闭" style={{
+          <button onClick={onClose} title={t('ingestionDialog.actions.close')} aria-label={t('ingestionDialog.actions.close')} style={{
             width: 30, height: 30, display: 'grid', placeItems: 'center', color: '#9ca3af',
             background: 'transparent', border: 0, cursor: 'pointer',
           }}><X size={17} /></button>
@@ -201,12 +199,12 @@ export default function IngestionDialog({ source, onClose }: Props) {
 
         <div style={{ padding: 14, display: 'grid', gap: 14 }}>
           <section style={{ display: 'grid', gap: 9 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1' }}>物化目标</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1' }}>{t('ingestionDialog.sections.target')}</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
               {([
-                ['lakehouse', '数据湖', HardDrive],
-                ['postgis', 'PostGIS', Database],
-                ['lakehouse_postgis', '湖层 + PostGIS', Database],
+                ['lakehouse', t('ingestionDialog.modes.lakehouse'), HardDrive],
+                ['postgis', t('ingestionDialog.modes.postgis'), Database],
+                ['lakehouse_postgis', t('ingestionDialog.modes.lakehousePostgis'), Database],
               ] as const).map(([mode, label, Icon]) => (
                 <button key={mode} onClick={() => setTargetMode(mode)} style={{
                   minHeight: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -218,14 +216,14 @@ export default function IngestionDialog({ source, onClose }: Props) {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
               <label style={{ display: 'grid', gap: 4, fontSize: 11, color: '#9ca3af' }}>
-                数据资产名称
+                {t('ingestionDialog.form.assetName')}
                 <input value={targetName} onChange={event => {
                   setTargetName(event.target.value);
                   if (targetMode !== 'lakehouse') setTargetTable(safeTableName(event.target.value));
                 }} style={inputStyle} />
               </label>
               <label style={{ display: 'grid', gap: 4, fontSize: 11, color: '#9ca3af' }}>
-                PostGIS 表
+                {t('ingestionDialog.form.postgisTable')}
                 <input value={targetTable} disabled={targetMode === 'lakehouse'}
                   onChange={event => setTargetTable(event.target.value)} style={{
                     ...inputStyle, opacity: targetMode === 'lakehouse' ? .45 : 1,
@@ -234,21 +232,21 @@ export default function IngestionDialog({ source, onClose }: Props) {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
               <label style={{ display: 'grid', gap: 4, fontSize: 11, color: '#9ca3af' }}>
-                周期策略
+                {t('ingestionDialog.form.schedule')}
                 <select value={schedulePolicy} onChange={event => setSchedulePolicy(event.target.value)} style={inputStyle}>
-                  <option value="on_demand">按需</option>
-                  <option value="interval:5m">每 5 分钟</option>
-                  <option value="interval:30m">每 30 分钟</option>
-                  <option value="interval:1h">每小时</option>
+                  <option value="on_demand">{t('ingestionDialog.schedules.onDemand')}</option>
+                  <option value="interval:5m">{t('ingestionDialog.schedules.fiveMinutes')}</option>
+                  <option value="interval:30m">{t('ingestionDialog.schedules.thirtyMinutes')}</option>
+                  <option value="interval:1h">{t('ingestionDialog.schedules.hourly')}</option>
                 </select>
               </label>
               <label style={{ display: 'grid', gap: 4, fontSize: 11, color: '#9ca3af' }}>
-                最大记录数
+                {t('ingestionDialog.form.maxRecords')}
                 <input type="number" min="1" max="1000000" value={maxRecords}
                   onChange={event => setMaxRecords(event.target.value)} style={inputStyle} />
               </label>
               <label style={{ display: 'grid', gap: 4, fontSize: 11, color: '#9ca3af' }}>
-                批大小
+                {t('ingestionDialog.form.pageSize')}
                 <input type="number" min="1" max="5000" value={pageSize}
                   onChange={event => setPageSize(event.target.value)} style={inputStyle} />
               </label>
@@ -256,12 +254,12 @@ export default function IngestionDialog({ source, onClose }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#cbd5e1' }}>
                 <input type="checkbox" checked={runNow} onChange={event => setRunNow(event.target.checked)} />
-                立即运行
+                {t('ingestionDialog.form.runNow')}
               </label>
               <button onClick={saveAndRun} disabled={saving || !targetName.trim()} className="btn-primary btn-sm"
                 style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 32 }}>
                 {saving ? <LoaderCircle size={14} className="spin" /> : <Play size={14} />}
-                {runNow ? '保存并运行' : '保存定义'}
+                {runNow ? t('ingestionDialog.actions.saveAndRun') : t('ingestionDialog.actions.save')}
               </button>
             </div>
           </section>
@@ -273,14 +271,14 @@ export default function IngestionDialog({ source, onClose }: Props) {
 
           <section style={{ display: 'grid', gap: 7 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1' }}>Ingest 定义</span>
-              <button onClick={() => fetchState()} title="刷新" aria-label="刷新" style={{
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1' }}>{t('ingestionDialog.sections.definitions')}</span>
+              <button onClick={() => fetchState()} title={t('ingestionDialog.actions.refresh')} aria-label={t('ingestionDialog.actions.refresh')} style={{
                 width: 28, height: 28, display: 'grid', placeItems: 'center', color: '#9ca3af',
                 background: 'transparent', border: 0, cursor: 'pointer',
               }}><RefreshCw size={14} /></button>
             </div>
-            {loading ? <div style={{ color: '#64748b', fontSize: 12 }}>加载中...</div> : definitions.length === 0 ? (
-              <div style={{ color: '#64748b', fontSize: 12, padding: '8px 0' }}>暂无定义</div>
+            {loading ? <div style={{ color: '#64748b', fontSize: 12 }}>{t('ingestionDialog.common.loading')}</div> : definitions.length === 0 ? (
+              <div style={{ color: '#64748b', fontSize: 12, padding: '8px 0' }}>{t('ingestionDialog.empty.definitions')}</div>
             ) : definitions.map(definition => (
               <div key={definition.id} style={{
                 display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8,
@@ -291,10 +289,10 @@ export default function IngestionDialog({ source, onClose }: Props) {
                     {definition.target_name}
                   </div>
                   <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
-                    {definition.target_mode} · {definition.schedule_policy} · {definition.page_size.toLocaleString()}/批
+                    {t(`ingestionDialog.modes.${definition.target_mode === 'lakehouse_postgis' ? 'lakehousePostgis' : definition.target_mode}`)} · {t(`ingestionDialog.scheduleValues.${definition.schedule_policy}`, { defaultValue: definition.schedule_policy })} · {t('ingestionDialog.counts.perBatch', { count: formatNumber(definition.page_size) })}
                   </div>
                 </div>
-                <button onClick={() => triggerRun(definition.id)} title="运行" aria-label="运行"
+                <button onClick={() => triggerRun(definition.id)} title={t('ingestionDialog.actions.run')} aria-label={t('ingestionDialog.actions.run')}
                   disabled={hasActiveRun} style={{
                     width: 30, height: 30, display: 'grid', placeItems: 'center', borderRadius: 4,
                     color: '#93c5fd', background: '#172554', border: '1px solid #1e3a8a', cursor: 'pointer',
@@ -305,8 +303,8 @@ export default function IngestionDialog({ source, onClose }: Props) {
           </section>
 
           <section style={{ display: 'grid', gap: 7 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1' }}>运行记录</div>
-            {runs.length === 0 ? <div style={{ color: '#64748b', fontSize: 12 }}>暂无运行</div> : runs.map(run => {
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1' }}>{t('ingestionDialog.sections.runs')}</div>
+            {runs.length === 0 ? <div style={{ color: '#64748b', fontSize: 12 }}>{t('ingestionDialog.empty.runs')}</div> : runs.map(run => {
               const progress = run.records_total > 0
                 ? Math.min(100, Math.round(run.records_read * 100 / run.records_total)) : 0;
               const active = ['queued', 'running', 'committing', 'cancelling'].includes(run.status);
@@ -318,10 +316,10 @@ export default function IngestionDialog({ source, onClose }: Props) {
                       {run.status === 'succeeded' ? <CheckCircle2 size={14} color="#34d399" />
                         : active ? <LoaderCircle size={14} color="#60a5fa" className="spin" />
                           : <TriangleAlert size={14} color="#f87171" />}
-                      <span style={{ color: statusColor(run.status), fontSize: 11 }}>{statusLabel(run.status)}</span>
+                      <span style={{ color: statusColor(run.status), fontSize: 11 }}>{t(`ingestionDialog.status.${run.status}`, { defaultValue: run.status })}</span>
                       <code style={{ color: '#64748b', fontSize: 10 }}>{run.run_id.slice(0, 8)}</code>
                     </div>
-                    {cancellable && <button onClick={() => cancelRun(run.run_id)} title="取消" aria-label="取消" style={{
+                    {cancellable && <button onClick={() => cancelRun(run.run_id)} title={t('ingestionDialog.actions.cancel')} aria-label={t('ingestionDialog.actions.cancel')} style={{
                       width: 28, height: 28, display: 'grid', placeItems: 'center', color: '#fca5a5',
                       background: 'transparent', border: 0, cursor: 'pointer',
                     }}><CircleStop size={14} /></button>}
@@ -330,12 +328,12 @@ export default function IngestionDialog({ source, onClose }: Props) {
                     <div style={{ width: `${progress}%`, height: '100%', background: '#3b82f6', transition: 'width .2s' }} />
                   </div>}
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 10, color: '#64748b' }}>
-                    <span>{run.records_read.toLocaleString()} / {run.records_total.toLocaleString()} 条</span>
-                    <span>{run.batches_completed} / {run.batches_total} 批</span>
-                    {run.asset_id && <span>资产 #{run.asset_id}</span>}
+                    <span>{t('ingestionDialog.counts.records', { read: formatNumber(run.records_read), total: formatNumber(run.records_total) })}</span>
+                    <span>{t('ingestionDialog.counts.batches', { completed: formatNumber(run.batches_completed), total: formatNumber(run.batches_total) })}</span>
+                    {run.asset_id && <span>{t('ingestionDialog.counts.asset', { id: formatNumber(run.asset_id) })}</span>}
                     {run.postgis_table && <span>PostGIS: {run.postgis_table}</span>}
                     {run.created_at && <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <Clock3 size={10} />{new Date(run.created_at).toLocaleString()}
+                      <Clock3 size={10} />{formatDate(run.created_at, { dateStyle: 'medium', timeStyle: 'short', hour12: false })}
                     </span>}
                   </div>
                   {run.target_uri && <div title={run.target_uri} style={{

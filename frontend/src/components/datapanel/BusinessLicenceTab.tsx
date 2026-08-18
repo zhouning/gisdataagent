@@ -1,2 +1,44 @@
-import {useEffect,useState} from 'react';import {AlertTriangle,Map,RefreshCw,Shield} from 'lucide-react';type R=Record<string,any>;
-export default function BusinessLicenceTab(){const [overview,setOverview]=useState<R|null>(null),[admins,setAdmins]=useState<R[]>([]),[channels,setChannels]=useState<R>({}),[gate,setGate]=useState<R>({}),[map,setMap]=useState<R|null>(null),[message,setMessage]=useState('');const load=async()=>{try{const rs=await Promise.all(['overview','admin-units','licence-channels','uwm-gate','map'].map(x=>fetch('/api/uwm/business-licence/'+x,{credentials:'include'}))),d=await Promise.all(rs.map(x=>x.json()));if(rs.some(x=>!x.ok))throw new Error(d.find(x=>x.error)?.error||'企业执照产品不可用');setOverview(d[0]);setAdmins(d[1].admin_units||[]);setChannels(d[2].licence_channels||{});setGate(d[3].uwm_gate||{});setMap(d[4])}catch(e:unknown){setMessage(e instanceof Error?e.message:'企业执照产品不可用')}};useEffect(()=>{load()},[]);return <div className="traditional-livability-tab"><div className="traditional-panel"><div className="traditional-panel-title"><strong>企业执照与经济活动证据（需求20）</strong><button className="secondary-button" onClick={load}><RefreshCw size={14}/>刷新</button></div><div className="traditional-message error"><Shield size={15}/>企业POI不等于法定企业、有效执照或实际营业；缺少执照数据不表示无证经营。</div>{message&&<div className="traditional-message error"><AlertTriangle size={15}/>{message}</div>}<div className="traditional-kpi-grid"><div className="traditional-kpi"><span>商业活动POI</span><strong>{overview?.summary?.business_poi_count??'-'}</strong></div><div className="traditional-kpi"><span>区县</span><strong>{overview?.summary?.admin_unit_count??'-'}</strong></div><div className="traditional-kpi"><span>可用执照通道</span><strong>{overview?.summary?.available_licence_channel_count??'-'}</strong></div><div className="traditional-kpi"><span>开放生命周期机制</span><strong>{overview?.summary?.open_lifecycle_mechanism_count??'-'}</strong></div></div><h4>区县POI证据</h4><p>{admins.slice(0,12).map(x=>`${x.admin_name}:${x.business_poi_count}`).join(' · ')}</p><h4>执照通道</h4><p>{Object.entries(channels).map(([k,v]:[string,any])=>`${k}:${v.status}`).join(' · ')}</p><h4>企业生命周期UWM门禁</h4><p>{Object.entries(gate.mechanisms||{}).map(([k,v])=>`${k}:${v}`).join(' · ')}</p><div className="traditional-message error"><Shield size={15}/>有效执照数、无证经营数、开业退出率、存活率、就业、营业额、税收、企业健康度、投资优先级和政策效果均未生成。</div><button className="primary-button" disabled={!map} onClick={()=>window.__handleMapUpdate?.(map)}><Map size={14}/>发送企业POI证据到地图</button></div></div>}
+import { useEffect, useState } from 'react';
+import { AlertTriangle, Map, RefreshCw, Shield } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { getLocaleHeaders } from '../../i18n';
+
+type Row = Record<string, any>;
+
+export default function BusinessLicenceTab() {
+  const { t, i18n } = useTranslation();
+  const [overview, setOverview] = useState<Row | null>(null);
+  const [admins, setAdmins] = useState<Row[]>([]);
+  const [channels, setChannels] = useState<Row>({});
+  const [gate, setGate] = useState<Row>({});
+  const [map, setMap] = useState<Row | null>(null);
+  const [message, setMessage] = useState('');
+
+  const load = async () => {
+    try {
+      setMessage('');
+      const headers = getLocaleHeaders();
+      const responses = await Promise.all(['overview', 'admin-units', 'licence-channels', 'uwm-gate', 'map'].map((part) => fetch(`/api/uwm/business-licence/${part}`, { credentials: 'include', headers })));
+      const data = await Promise.all(responses.map((response) => response.json()));
+      if (responses.some((response) => !response.ok)) throw new Error(data.find((item) => item.error)?.error || t('readinessPanels.businessLicence.errors.unavailable'));
+      setOverview(data[0]); setAdmins(data[1].admin_units || []); setChannels(data[2].licence_channels || {}); setGate(data[3].uwm_gate || {}); setMap(data[4]);
+    } catch (error: unknown) {
+      setMessage(error instanceof Error ? error.message : t('readinessPanels.businessLicence.errors.unavailable'));
+    }
+  };
+
+  useEffect(() => { void load(); }, [i18n.resolvedLanguage]);
+  const list = (value: Row, key = 'status') => Object.entries(value).map(([name, item]) => `${name}:${String((item as Row)?.[key] ?? item)}`).join(' · ') || t('readinessPanels.common.none');
+
+  return <div className="traditional-livability-tab"><div className="traditional-panel">
+    <div className="traditional-panel-title"><strong>{t('readinessPanels.businessLicence.title')}</strong><button className="secondary-button" onClick={() => void load()}><RefreshCw size={14} />{t('readinessPanels.common.refresh')}</button></div>
+    <div className="traditional-message error"><Shield size={15} />{t('readinessPanels.businessLicence.warning')}</div>
+    {message && <div className="traditional-message error"><AlertTriangle size={15} />{message}</div>}
+    <div className="traditional-kpi-grid"><div className="traditional-kpi"><span>{t('readinessPanels.businessLicence.kpis.poi')}</span><strong>{overview?.summary?.business_poi_count ?? '-'}</strong></div><div className="traditional-kpi"><span>{t('readinessPanels.businessLicence.kpis.districts')}</span><strong>{overview?.summary?.admin_unit_count ?? '-'}</strong></div><div className="traditional-kpi"><span>{t('readinessPanels.businessLicence.kpis.channels')}</span><strong>{overview?.summary?.available_licence_channel_count ?? '-'}</strong></div><div className="traditional-kpi"><span>{t('readinessPanels.businessLicence.kpis.mechanisms')}</span><strong>{overview?.summary?.open_lifecycle_mechanism_count ?? '-'}</strong></div></div>
+    <h4>{t('readinessPanels.businessLicence.sections.admin')}</h4><p>{admins.slice(0, 12).map((item) => `${item.admin_name}:${item.business_poi_count}`).join(' · ') || t('readinessPanels.businessLicence.emptyAssets')}</p>
+    <h4>{t('readinessPanels.businessLicence.sections.channels')}</h4><p>{list(channels)}</p>
+    <h4>{t('readinessPanels.businessLicence.sections.gate')}</h4><p>{list(gate.mechanisms || {})}</p>
+    <div className="traditional-message error"><Shield size={15} />{t('readinessPanels.businessLicence.finalWarning')}</div>
+    <button className="primary-button" disabled={!map} onClick={() => window.__handleMapUpdate?.(map)}><Map size={14} />{t('readinessPanels.businessLicence.sendToMap')}</button>
+  </div></div>;
+}
