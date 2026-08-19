@@ -143,9 +143,12 @@ def record_audit(
     status: str = "success",
     ip_address: Optional[str] = None,
     details: Optional[dict] = None,
-) -> None:
+) -> bool:
     """
-    Record a single audit event. Non-fatal on failure.
+    Record a single audit event and report whether it was persisted.
+
+    The function remains non-fatal for existing callers. Security-sensitive
+    callers can use the boolean result to fail closed.
 
     Args:
         username: User performing the action.
@@ -156,7 +159,7 @@ def record_audit(
     """
     engine = get_engine()
     if not engine:
-        return
+        return False
 
     try:
         with engine.connect() as conn:
@@ -172,8 +175,10 @@ def record_audit(
                 "d": json.dumps(details or {}, ensure_ascii=False),
             })
             conn.commit()
+        return True
     except Exception as e:
         print(f"[Audit] Failed to record: {e}")
+        return False
 
 
 def get_user_audit_log(username: str, days: int = 30, limit: int = 200) -> list:

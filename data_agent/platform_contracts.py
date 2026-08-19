@@ -277,6 +277,9 @@ class PlatformCommandType(str, Enum):
     DOLPHINSCHEDULER_RECONCILE = "dolphinscheduler.reconcile"
     DOLPHINSCHEDULER_CANCEL = "dolphinscheduler.cancel"
     METRIC_QUERY_EXECUTE = "metric_query.execute"
+    GIS_ANALYSIS_EXECUTE = "gis_analysis.execute"
+    GIS_ANALYSIS_CANCEL = "gis_analysis.cancel"
+    GIS_ANALYSIS_RECONCILE = "gis_analysis.reconcile"
 
 
 class PlatformCommandStatus(str, Enum):
@@ -2015,6 +2018,90 @@ class PlatformCommand(FrozenContract):
                 or payload.get("execution_mode") != expected_mode
             ):
                 raise ValueError("metric query command must bind an exact executable plan")
+        if self.command_type == PlatformCommandType.GIS_ANALYSIS_EXECUTE:
+            payload = self.payload
+            if (
+                self.trigger_observation_id is not None
+                or payload.get("schema") != "gda.gis_analysis_execute_command.v1"
+                or payload.get("run_id") != str(self.run_id)
+                or payload.get("plan_artifact_id")
+                != str(self.execution_plan_artifact_id)
+                or re.fullmatch(r"[0-9a-f]{64}", str(payload.get("plan_fingerprint")))
+                is None
+                or re.fullmatch(r"[0-9a-f]{64}", str(payload.get("cache_key")))
+                is None
+                or payload.get("engine") != "postgis"
+                or payload.get("execution_mode") != "asynchronous"
+                or payload.get("operation") not in {"buffer", "clip", "intersection"}
+            ):
+                raise ValueError("GIS analysis command must bind an exact executable plan")
+        if self.command_type == PlatformCommandType.GIS_ANALYSIS_CANCEL:
+            payload = self.payload
+            if (
+                self.trigger_observation_id is None
+                or payload.get("schema") != "gda.gis_analysis_cancel_command.v1"
+                or payload.get("run_id") != str(self.run_id)
+                or payload.get("plan_artifact_id")
+                != str(self.execution_plan_artifact_id)
+                or re.fullmatch(
+                    r"[0-9a-f]{64}",
+                    str(payload.get("backend_binding_fingerprint")),
+                )
+                is None
+                or not isinstance(payload.get("backend_pid"), int)
+                or payload.get("backend_pid", 0) < 1
+                or not payload.get("backend_start")
+                or not isinstance(payload.get("database_oid"), int)
+                or not isinstance(payload.get("user_oid"), int)
+                or not payload.get("application_name")
+            ):
+                raise ValueError(
+                    "GIS analysis cancel command must bind an exact PostGIS backend"
+                )
+        if self.command_type == PlatformCommandType.GIS_ANALYSIS_RECONCILE:
+            payload = self.payload
+            try:
+                reconciliation_deadline = datetime.fromisoformat(
+                    str(payload.get("reconciliation_deadline")).replace(
+                        "Z", "+00:00"
+                    )
+                )
+                business_max_attempts = int(
+                    payload.get("max_reconciliation_attempts")
+                )
+            except (TypeError, ValueError):
+                reconciliation_deadline = None
+                business_max_attempts = 0
+            if (
+                self.trigger_observation_id is None
+                or payload.get("schema")
+                != "gda.gis_analysis_reconcile_command.v1"
+                or payload.get("run_id") != str(self.run_id)
+                or payload.get("plan_artifact_id")
+                != str(self.execution_plan_artifact_id)
+                or payload.get("initial_cancel_outcome")
+                not in {"signalled", "not_found", "unknown"}
+                or not payload.get("cancel_command_id")
+                or not payload.get("cancel_observation_id")
+                or re.fullmatch(
+                    r"[0-9a-f]{64}",
+                    str(payload.get("backend_binding_fingerprint")),
+                )
+                is None
+                or not isinstance(payload.get("backend_pid"), int)
+                or payload.get("backend_pid", 0) < 1
+                or not isinstance(payload.get("database_oid"), int)
+                or not isinstance(payload.get("user_oid"), int)
+                or not payload.get("backend_start")
+                or not payload.get("application_name")
+                or reconciliation_deadline is None
+                or reconciliation_deadline.tzinfo is None
+                or reconciliation_deadline.utcoffset() is None
+                or not 1 <= business_max_attempts <= 100
+            ):
+                raise ValueError(
+                    "GIS reconciliation command must bind exact cancellation evidence"
+                )
         return self
 
 

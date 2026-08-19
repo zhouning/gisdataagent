@@ -190,6 +190,9 @@ class MetricPhysicalIntent(_FrozenContract):
     relation_ref: str
     value_column: str
     group_by_columns: tuple[str, ...]
+    # Retain logical names beside physical columns so result projections do not
+    # have to infer business dimensions from storage identifiers.
+    group_by_dimensions: tuple[DimensionName, ...] = ()
     filters: tuple[MetricPhysicalFilter, ...]
     time_range: MetricPhysicalTimeRange | None = None
     spatial_filter: MetricPhysicalSpatialFilter | None = None
@@ -510,6 +513,7 @@ class MetricQueryPlanner:
                 projection.dimension_columns[item]
                 for item in request.group_by_dimensions
             ),
+            group_by_dimensions=request.group_by_dimensions,
             filters=filters,
             time_range=time_range,
             spatial_filter=spatial_filter,

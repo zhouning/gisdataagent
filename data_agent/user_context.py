@@ -19,6 +19,21 @@ current_model_tier: ContextVar[str] = ContextVar('current_model_tier', default='
 current_nl2sql_schemas: ContextVar[dict] = ContextVar('current_nl2sql_schemas', default={})
 current_nl2sql_large_tables: ContextVar[set] = ContextVar('current_nl2sql_large_tables', default=set())
 current_nl2sql_question: ContextVar[str] = ContextVar('current_nl2sql_question', default='')
+current_nl2sql_requested_engine: ContextVar[str] = ContextVar(
+    'current_nl2sql_requested_engine', default=''
+)
+current_nl2sql_execution_engine: ContextVar[str] = ContextVar(
+    'current_nl2sql_execution_engine', default='postgis'
+)
+current_nl2sql_candidate_tables: ContextVar[list] = ContextVar(
+    'current_nl2sql_candidate_tables', default=[]
+)
+current_nl2sql_llm_evidence: ContextVar[dict] = ContextVar(
+    'current_nl2sql_llm_evidence', default={}
+)
+current_nl2sql_llm_calls: ContextVar[list] = ContextVar(
+    'current_nl2sql_llm_calls', default=[]
+)
 
 from data_agent.nl2sql_intent import IntentLabel  # noqa: E402
 

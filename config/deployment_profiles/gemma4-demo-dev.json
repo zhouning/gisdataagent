@@ -13,7 +13,7 @@
     "model_profiles": [],
     "network": "gemma4-demo-net",
     "baseline_probe_service": "app",
-    "config_sha256": "95ba0f76c42984b083395c7aa3f448aa0d381bf381e62509f9ee17c3d7f939f0",
+    "config_sha256": "bee21628a60005565557fb26e18e187a478a38ffdbc670da1545429bf93e75f0",
     "services": [
       {
         "name": "db",
@@ -58,8 +58,8 @@
     ]
   },
   "migrations": {
-    "count": 156,
-    "fingerprint": "85c33b9811a5e4bdd17689ccf54d1ee24cf90aa7bea3da665c6cfd06b7e3b64b"
+    "count": 196,
+    "fingerprint": "712abbc8fd2e5bbb221166c39e03878e6327d13528d980cd76d4e17eeafc4768"
   },
   "released_standard": {
     "doc_code": "NR_ONE_MAP_TWM_CORE_2026",

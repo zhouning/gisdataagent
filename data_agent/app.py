@@ -130,6 +130,20 @@ except ImportError:
 from data_agent.migration_runner import verify_schema_state
 verify_schema_state(allow_unconfigured=_LITE_MODE)
 
+# When the governed-query security gate is required, install the repository's
+# durable tenant resolver unless an explicit resolver was already configured.
+from data_agent.governed_query_policy_authority import (
+    configure_default_governed_query_security_resolver,
+)
+configure_default_governed_query_security_resolver()
+
+# The HTTP semantic-planning projection has an honest seed-only development
+# fallback until an application-owned model proposer replaces this resolver.
+from data_agent.api.semantic_planning_routes import (
+    configure_default_semantic_planning_port_resolver,
+)
+configure_default_semantic_planning_port_resolver()
+
 # Runtime imports and maintenance remain separate from schema ownership.
 try:
     from data_agent.semantic_layer import resolve_semantic_context, build_context_prompt

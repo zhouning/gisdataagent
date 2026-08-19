@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 from datetime import UTC, datetime
 from pathlib import Path
+from unittest.mock import MagicMock
 
 from docx import Document
 
@@ -18,6 +19,8 @@ from data_agent.ontology.compiler import (
 )
 from data_agent.ontology.contracts import (
     ConceptRecord,
+    MappingRecord,
+    MappingStatus,
     PropertyRecord,
     RelationRecord,
     SourceRecord,
@@ -137,7 +140,7 @@ def test_standard_parser_merges_wrapped_members_but_preserves_code_conflicts():
     assert len({concept.uri for concept in conflict_members}) == 2
 
 
-def _build_test_package(tmp_path):
+def _build_test_package(tmp_path, *, include_effective_fixture: bool = False):
     source = SourceRecord(
         source_id="test-source",
         source_kind="manual_governance",
@@ -177,6 +180,39 @@ def _build_test_package(tmp_path):
             source_id="test-source",
         ),
     ]
+    if include_effective_fixture:
+        concepts.extend([
+            ConceptRecord(
+                concept_id="test:class:parent",
+                uri="https://example.test/class/parent",
+                kind="DomainClass",
+                code="ParentClass",
+                pref_label="父级语义类",
+                domain_id="01",
+                source_system="curated_domain",
+                source_id="test-source",
+            ),
+            ConceptRecord(
+                concept_id="test:class:child",
+                uri="https://example.test/class/child",
+                kind="DomainClass",
+                code="ChildClass",
+                pref_label="子级语义类",
+                domain_id="01",
+                source_system="curated_domain",
+                source_id="test-source",
+            ),
+            ConceptRecord(
+                concept_id="test:schema:mapped",
+                uri="https://example.test/schema/mapped",
+                kind="SchemaArtifact",
+                code="MAPPED_TABLE",
+                pref_label="映射标准表",
+                domain_id="01",
+                source_system="standard",
+                source_id="test-source",
+            ),
+        ])
     properties = [
         PropertyRecord(
             property_id="test:property:a:bsm",
@@ -197,6 +233,36 @@ def _build_test_package(tmp_path):
             source_id="test-source",
         ),
     ]
+    if include_effective_fixture:
+        properties.extend([
+            PropertyRecord(
+                property_id="test:property:child:direct",
+                owner_concept_id="test:class:child",
+                uri="https://example.test/class/child/direct",
+                code="directProperty",
+                pref_label="直接属性",
+                datatype="xsd:string",
+                source_id="test-source",
+            ),
+            PropertyRecord(
+                property_id="test:property:parent:inherited",
+                owner_concept_id="test:class:parent",
+                uri="https://example.test/class/parent/inherited",
+                code="inheritedProperty",
+                pref_label="继承属性",
+                datatype="xsd:string",
+                source_id="test-source",
+            ),
+            PropertyRecord(
+                property_id="test:property:mapped:field",
+                owner_concept_id="test:schema:mapped",
+                uri="https://example.test/schema/mapped/field",
+                code="MAPPED_FIELD",
+                pref_label="映射字段",
+                datatype="xsd:string",
+                source_id="test-source",
+            ),
+        ])
     relations = [
         RelationRecord(
             relation_id="test:relation:contains:a",
@@ -213,12 +279,39 @@ def _build_test_package(tmp_path):
             source_id="test-source",
         ),
     ]
+    if include_effective_fixture:
+        relations.extend([
+            RelationRecord(
+                relation_id="test:relation:child:parent",
+                relation_type="subClassOf",
+                source_concept_id="test:class:child",
+                target_concept_id="test:class:parent",
+                source_id="test-source",
+            ),
+        ])
+    mappings = (
+        [
+            MappingRecord(
+                mapping_id="test:mapping:schema:child",
+                source_concept_id="test:schema:mapped",
+                target_concept_id="test:class:child",
+                mapping_type="describes",
+                mapping_status=MappingStatus.CONFIRMED,
+                confidence=1.0,
+                evidence={"match_basis": ["curated_binding"]},
+                reviewed_by="test-reviewer",
+                reviewed_at=datetime(2026, 8, 4, tzinfo=UTC),
+            ),
+        ]
+        if include_effective_fixture
+        else []
+    )
     compiled = CompiledOntology(
         sources=[source],
         concepts=concepts,
         properties=properties,
         relations=relations,
-        mappings=[],
+        mappings=mappings,
         issues=[],
     )
     package_dir = tmp_path / "1.0.0"
@@ -252,6 +345,37 @@ def test_package_reader_indexes_fields_and_layouts_only_the_selected_subgraph(tm
         for node in graph["nodes"]
     }
     assert len(positions) == graph["node_count"]
+
+
+def test_package_reader_groups_direct_inherited_and_confirmed_mapped_properties(tmp_path):
+    reader = OntologyPackageReader(
+        _build_test_package(
+            tmp_path,
+            include_effective_fixture=True,
+        )
+    )
+
+    direct = reader.properties("test:class:child")
+    effective = reader.properties(
+        "test:class:child",
+        include_effective=True,
+        limit=20,
+    )
+
+    assert direct["total"] == 1
+    assert effective["total"] == 3
+    assert effective["group_counts"] == {
+        "direct": 1,
+        "inherited": 1,
+        "mapped": 1,
+    }
+    by_code = {item["code"]: item for item in effective["items"]}
+    assert by_code["directProperty"]["origin_type"] == "direct"
+    assert by_code["inheritedProperty"]["origin_type"] == "inherited"
+    assert by_code["inheritedProperty"]["origin_depth"] == 1
+    assert by_code["MAPPED_FIELD"]["origin_type"] == "mapped"
+    assert by_code["MAPPED_FIELD"]["origin_concept"]["code"] == "MAPPED_TABLE"
+    assert by_code["MAPPED_FIELD"]["mapping"]["mapping_status"] == "confirmed"
 
 
 def test_service_reports_ambiguous_exact_field_matches(tmp_path, monkeypatch):
@@ -301,3 +425,25 @@ def test_postgres_graph_layout_has_dedicated_curated_model_lanes():
     assert PostgresOntologyReader._kind_lane("StateClass") == 2
     assert PostgresOntologyReader._kind_lane("ProcessClass") == 3
     assert PostgresOntologyReader._kind_lane("SchemaArtifact") == 4
+
+
+def test_postgres_validation_unwraps_release_report_evidence():
+    reader = object.__new__(PostgresOntologyReader)
+    reader.version_id = "00000000-0000-0000-0000-000000000001"
+    reader.engine = MagicMock()
+    connection = reader.engine.connect.return_value.__enter__.return_value
+    connection.execute.return_value.scalar.return_value = {
+        "validation": {
+            "conforms": True,
+            "issue_count": 2,
+            "severity_counts": {"warning": 2},
+        },
+        "competency_report": {"conforms": True},
+        "semantic_quality_report": {"conforms": True},
+    }
+
+    assert reader.validation() == {
+        "conforms": True,
+        "issue_count": 2,
+        "severity_counts": {"warning": 2},
+    }

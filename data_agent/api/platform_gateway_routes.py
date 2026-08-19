@@ -39,12 +39,102 @@ from ..architecture_change_approval import (
 )
 from ..capability_registry import (
     CAPABILITY_FINGERPRINT_HEADER,
+    CHONGQING_DATA_PACKAGE_RECONCILE,
+    CHONGQING_DATA_PACKAGE_RECONCILIATION_JOB_CANCEL,
+    CHONGQING_DATA_PACKAGE_RECONCILIATION_JOB_GET,
+    CHONGQING_DATA_PACKAGE_RECONCILIATION_JOB_SUBMIT,
     DATAOPS_MANUAL_RUN_SUBMIT,
     DATAOPS_RUN_CANCEL,
+    ENTITY_AUTHORITY_BATCH_INGEST,
+    ENTITY_LINEAGE_RECORD,
+    FEDERATED_PROJECTION_COMPENSATION_APPROVAL_REQUEST,
+    FEDERATED_PROJECTION_COMPENSATION_EXECUTION_APPROVAL_REQUEST,
+    FEDERATED_PROJECTION_COMPENSATION_PROPOSAL_GET,
+    FEDERATED_PROJECTION_COMPENSATION_PROPOSAL_READ,
+    FEDERATED_PROJECTION_COMPENSATION_RULE_ASSESS,
+    FEDERATED_PROJECTION_COMPENSATION_RULE_AUTHORITY_ASSESS,
+    FEDERATED_PROJECTION_COMPENSATION_RULE_GET,
+    LAKEHOUSE_PROJECTION_REPAIR_EXECUTE,
+    OBJECT_PROJECTION_REPAIR_EXECUTE,
+    POSTGIS_PROJECTION_REPAIR_EXECUTE,
+    RDF_PROJECTION_REPAIR_EXECUTE,
+    VECTOR_PROJECTION_REPAIR_EXECUTE,
     CapabilityFingerprintMismatchError,
     CapabilitySpec,
 )
+from ..chongqing_data_package_reconciliation import (
+    ChongqingDataPackageReconciliationError,
+)
+from ..chongqing_data_package_reconciliation_job import (
+    ChongqingDataPackageReconciliationJobCancelRequest,
+    ChongqingDataPackageReconciliationJobConfigurationError,
+    ChongqingDataPackageReconciliationJobError,
+    ChongqingDataPackageReconciliationJobForbiddenError,
+    ChongqingDataPackageReconciliationJobNotFoundError,
+    ChongqingDataPackageReconciliationJobQuery,
+    ChongqingDataPackageReconciliationJobValidationError,
+    cancel_chongqing_data_package_reconciliation_job,
+    get_chongqing_data_package_reconciliation_job,
+    submit_chongqing_data_package_reconciliation_job,
+)
+from ..chongqing_data_package_reconciliation_service import (
+    ChongqingDataPackageReconciliationRequest,
+    ChongqingDataPackageReconciliationServiceConfigurationError,
+    ChongqingDataPackageReconciliationServiceConflictError,
+    ChongqingDataPackageReconciliationServiceError,
+    ChongqingDataPackageReconciliationServiceForbiddenError,
+    ChongqingDataPackageReconciliationServiceValidationError,
+    execute_chongqing_data_package_reconciliation,
+)
+from ..cross_store_projection_compensation_approval import (
+    FederatedProjectionCompensationApprovalCaseRequest,
+    FederatedProjectionCompensationApprovalError,
+    FederatedProjectionCompensationApprovalNotFoundError,
+    FederatedProjectionCompensationApprovalService,
+    FederatedProjectionCompensationExecutionApprovalRequest,
+    FederatedProjectionCompensationExecutionApprovalService,
+)
+from ..cross_store_projection_compensation_proposal import (
+    FederatedProjectionCompensationProposalError,
+    FederatedProjectionCompensationProposalReadRequest,
+    FederatedProjectionCompensationProposalRequest,
+    build_federated_projection_compensation_proposal,
+)
+from ..cross_store_projection_compensation_proposal_authority import (
+    FederatedProjectionCompensationProposalAuthorityError,
+    FederatedProjectionCompensationProposalConfigurationError,
+    FederatedProjectionCompensationProposalForbiddenError,
+    FederatedProjectionCompensationProposalValidationError,
+    PostgresFederatedProjectionCompensationProposalStore,
+)
+from ..cross_store_projection_compensation_rule_authority import (
+    CustomerCompensationRuleAuthorityConfigurationError,
+    CustomerCompensationRuleAuthorityError,
+    CustomerCompensationRuleAuthorityForbiddenError,
+    CustomerCompensationRuleAuthorityValidationError,
+    PostgresCustomerCompensationRuleAuthorityStore,
+)
+from ..cross_store_projection_compensation_rule_contract import (
+    CustomerCompensationRuleAuthorityReadRequest,
+    CustomerCompensationRuleError,
+    FederatedProjectionCompensationRuleAssessmentRequest,
+    FederatedProjectionCompensationRuleAuthorityAssessmentRequest,
+)
+from ..cross_store_projection_compensation_rule_contract import (
+    assess_federated_projection_compensation_rules as assess_customer_compensation_rules,
+)
+from ..cross_store_projection_compensation_trust import (
+    CustomerCompensationApprovalTrustConfigurationError,
+    load_customer_compensation_approval_trust_registry,
+)
 from ..data_architecture_ledger import ResourceVersionArchitectureReconciliation
+from ..data_product_blueprint import (
+    DataProductBlueprint,
+    DataProductBlueprintReview,
+    build_data_product_blueprint_approval_case,
+    build_data_product_blueprint_preview,
+    compile_data_product_blueprint,
+)
 from ..dataops_cancel import (
     DataOpsCancelRequest,
     DataOpsCancelResponse,
@@ -55,6 +145,28 @@ from ..dataops_manual import (
     ManualDataOpsRunRequest,
     ManualDataOpsRunResponse,
 )
+from ..entity_authority_batch import (
+    EntityAuthorityBatchRequest,
+    execute_entity_authority_batch,
+)
+from ..entity_lineage_authority import (
+    EntityLineageAuthority,
+    EntityLineageAuthorityError,
+    EntityLineageConfigurationError,
+    EntityLineageConflictError,
+    EntityLineageForbiddenError,
+    EntityLineageNotFoundError,
+    EntityLineageRequest,
+    EntityLineageValidationError,
+)
+from ..entity_link_authority import (
+    EntityLinkAuthorityError,
+    EntityLinkConfigurationError,
+    EntityLinkConflictError,
+    EntityLinkForbiddenError,
+    EntityLinkNotFoundError,
+    EntityLinkValidationError,
+)
 from ..gis_provider_runtime import (
     GISProviderContractError,
     GISProviderUnavailable,
@@ -63,6 +175,15 @@ from ..gis_provider_runtime import (
     martin_provider_manifest,
 )
 from ..gis_service_control_plane import EndpointProtocol, GISServiceType
+from ..lakehouse_projection_service import (
+    LakehouseProjectionRepairRequest,
+    LakehouseProjectionServiceConfigurationError,
+    LakehouseProjectionServiceConflictError,
+    LakehouseProjectionServiceError,
+    LakehouseProjectionServiceForbiddenError,
+    LakehouseProjectionServiceValidationError,
+    execute_lakehouse_projection_repair,
+)
 from ..master_data_authority import (
     MASTER_DATA_ACTIVATION_ACTION,
     MasterDataAuthority,
@@ -84,6 +205,24 @@ from ..master_data_authority import (
     MasterSourceRecordDraft,
 )
 from ..metadata_fabric import MetadataFabricBinding, MetadataFabricSystem
+from ..metadata_provider_read import (
+    MetadataProviderReadError,
+    MetadataProviderReadService,
+    ProviderReadResult,
+)
+from ..metadata_provider_search import (
+    MetadataProviderSearchService,
+    ProviderSearchPage,
+)
+from ..object_projection_service import (
+    ObjectProjectionRepairRequest,
+    ObjectProjectionServiceConfigurationError,
+    ObjectProjectionServiceConflictError,
+    ObjectProjectionServiceError,
+    ObjectProjectionServiceForbiddenError,
+    ObjectProjectionServiceValidationError,
+    execute_object_projection_repair,
+)
 from ..platform_contracts import (
     ApprovalAssignmentActorAccess,
     ApprovalAvailabilityStatus,
@@ -134,6 +273,7 @@ from ..platform_gateway import (
     GatewayNotFoundError,
     GatewayUnavailableError,
     GatewayValidationError,
+    MetadataFabricBindingPage,
     PlatformGateway,
     PlatformGatewayError,
 )
@@ -143,6 +283,24 @@ from ..platform_openlineage import (
     OpenLineageIngestionResult,
     OpenLineageRunEvent,
     openlineage_to_lineage_events,
+)
+from ..postgis_projection_service import (
+    PostGISProjectionRepairRequest,
+    PostGISProjectionServiceConfigurationError,
+    PostGISProjectionServiceConflictError,
+    PostGISProjectionServiceError,
+    PostGISProjectionServiceForbiddenError,
+    PostGISProjectionServiceValidationError,
+    execute_postgis_projection_repair,
+)
+from ..rdf_projection_service import (
+    RDFProjectionRepairRequest,
+    RDFProjectionServiceConfigurationError,
+    RDFProjectionServiceConflictError,
+    RDFProjectionServiceError,
+    RDFProjectionServiceForbiddenError,
+    RDFProjectionServiceValidationError,
+    execute_rdf_projection_repair,
 )
 from ..slo_authority import (
     SLO_ACTIVATION_ACTION,
@@ -169,11 +327,31 @@ from ..slo_incident import (
     SLOIncidentReconciler,
     SLOIncidentValidationError,
 )
+from ..temporal_entity_authority import (
+    TemporalEntityAuthorityError,
+    TemporalEntityConfigurationError,
+    TemporalEntityConflictError,
+    TemporalEntityForbiddenError,
+    TemporalEntityNotFoundError,
+    TemporalEntityValidationError,
+)
+from ..vector_projection_service import (
+    VectorProjectionRepairRequest,
+    VectorProjectionServiceConfigurationError,
+    VectorProjectionServiceConflictError,
+    VectorProjectionServiceError,
+    VectorProjectionServiceForbiddenError,
+    VectorProjectionServiceValidationError,
+    execute_vector_projection_repair,
+)
 from .helpers import _get_user_from_request
 
 _TENANT_ADAPTER = TypeAdapter(TenantId)
 _APPROVAL_ACTION_ADAPTER = TypeAdapter(ShortName)
 _PLATFORM_ROLES = frozenset({"admin", "platform_operator"})
+_GIS_CONSUMER_ROLES = frozenset(
+    {"viewer", "analyst", "standard_editor", "standard_reviewer"}
+)
 
 
 class StrictRequest(BaseModel):
@@ -181,12 +359,10 @@ class StrictRequest(BaseModel):
 
 
 class MVTGatewayEndpointContract(StrictRequest):
-    """Provider placement contract consumed by the operator-only tile route."""
+    """Provider placement contract consumed by the governed tile route."""
 
     contract_schema: Literal["gda.mvt_endpoint.v1"] = Field(alias="schema")
-    provider_layer_ref: str = Field(
-        pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$"
-    )
+    provider_layer_ref: str = Field(pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$")
     provider_query: dict[str, str] = Field(default_factory=dict)
 
     model_config = ConfigDict(
@@ -480,6 +656,13 @@ class ApprovalCaseCreateRequest(StrictRequest):
     expires_at: datetime
 
 
+class DataProductBlueprintReviewRequest(StrictRequest):
+    blueprint: DataProductBlueprint
+    request_reason: NonEmptyText
+    requested_at: datetime
+    expires_at: datetime
+
+
 class ApprovalCaseDecisionRequest(StrictRequest):
     expected_state_version: int = Field(ge=0)
     verdict: ApprovalCaseStatus
@@ -535,9 +718,7 @@ class ApprovalCaseAssignmentRequest(StrictRequest):
             if self.assignee_id is not None or self.assignee_subject is not None:
                 raise ValueError("release must not specify an assignee")
         elif (self.assignee_id is None) == (self.assignee_subject is None):
-            raise ValueError(
-                "assignment operation requires exactly one typed assignee"
-            )
+            raise ValueError("assignment operation requires exactly one typed assignee")
         return self
 
     @property
@@ -569,9 +750,7 @@ class ApprovalPrincipalUpsertRequest(StrictRequest):
     display_name: str = Field(min_length=1, max_length=200)
     status: ApprovalPrincipalStatus = ApprovalPrincipalStatus.ACTIVE
     approval_eligible: bool = True
-    availability_status: ApprovalAvailabilityStatus = (
-        ApprovalAvailabilityStatus.AVAILABLE
-    )
+    availability_status: ApprovalAvailabilityStatus = ApprovalAvailabilityStatus.AVAILABLE
     valid_from: datetime | None = None
     valid_until: datetime | None = None
     reason: NonEmptyText
@@ -648,6 +827,22 @@ class LineageImpactQuery(StrictRequest):
 class MetadataFabricBindingListResponse(StrictRequest):
     items: tuple[MetadataFabricBinding, ...]
     count: int = Field(ge=0)
+
+
+class MetadataFabricBindingSearchResponse(StrictRequest):
+    items: tuple[MetadataFabricBinding, ...]
+    count: int = Field(ge=0)
+    offset: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+    has_more: bool
+
+
+class MetadataProviderReadResponse(StrictRequest):
+    result: ProviderReadResult
+
+
+class MetadataProviderSearchResponse(StrictRequest):
+    page: ProviderSearchPage
 
 
 @dataclass(frozen=True)
@@ -747,19 +942,12 @@ def _identifier(user: Any) -> str:
     return ""
 
 
-def _principal(request: Request) -> GatewayPrincipal | JSONResponse:
+def _authenticated_principal(request: Request) -> GatewayPrincipal | JSONResponse:
     user = _get_user_from_request(request)
     if not user:
         return _error(request, 401, "unauthorized", "Authentication is required")
     metadata = _metadata(user)
     role = str(metadata.get("role") or "")
-    if role not in _PLATFORM_ROLES:
-        return _error(
-            request,
-            403,
-            "platform_role_required",
-            "Platform operator role is required",
-        )
     tenant_id = metadata.get("tenant_id")
     try:
         tenant = _TENANT_ADAPTER.validate_python(tenant_id)
@@ -775,6 +963,35 @@ def _principal(request: Request) -> GatewayPrincipal | JSONResponse:
     if not subject_id:
         return _error(request, 401, "invalid_identity", "Identity is incomplete")
     return GatewayPrincipal(tenant, subject_id, subject_type, role)
+
+
+def _principal(request: Request) -> GatewayPrincipal | JSONResponse:
+    principal = _authenticated_principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.role not in _PLATFORM_ROLES:
+        return _error(
+            request,
+            403,
+            "platform_role_required",
+            "Platform operator role is required",
+        )
+    return principal
+
+
+def _gis_mvt_principal(request: Request) -> GatewayPrincipal | JSONResponse:
+    """Authenticate operators and bound data consumers for the MVT data plane."""
+    principal = _authenticated_principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.role not in _PLATFORM_ROLES | _GIS_CONSUMER_ROLES:
+        return _error(
+            request,
+            403,
+            "gis_consumer_role_required",
+            "A GIS operator or consumer role is required",
+        )
+    return principal
 
 
 def _validation_details(error: ValidationError) -> list[dict[str, str]]:
@@ -821,6 +1038,36 @@ def _master_data_authority() -> MasterDataAuthority:
     return MasterDataAuthority()
 
 
+def _federated_compensation_proposal_store(
+    tenant_id: str,
+) -> PostgresFederatedProjectionCompensationProposalStore:
+    return PostgresFederatedProjectionCompensationProposalStore(tenant_id)
+
+
+def _federated_compensation_rule_store(
+    tenant_id: str,
+) -> PostgresCustomerCompensationRuleAuthorityStore:
+    return PostgresCustomerCompensationRuleAuthorityStore(tenant_id)
+
+
+def _federated_compensation_approval_service(
+    tenant_id: str,
+) -> FederatedProjectionCompensationApprovalService:
+    return FederatedProjectionCompensationApprovalService(
+        _federated_compensation_rule_store(tenant_id),
+        _approval_case_authority(),
+    )
+
+
+def _federated_compensation_execution_approval_service(
+    tenant_id: str,
+) -> FederatedProjectionCompensationExecutionApprovalService:
+    return FederatedProjectionCompensationExecutionApprovalService(
+        _federated_compensation_rule_store(tenant_id),
+        _approval_case_authority(),
+    )
+
+
 def _slo_incident_reconciler() -> SLOIncidentReconciler:
     return SLOIncidentReconciler(_slo_authority(), _gateway())
 
@@ -828,9 +1075,7 @@ def _slo_incident_reconciler() -> SLOIncidentReconciler:
 def _slo_alert_detector_subject() -> str:
     subject = os.environ.get("GDA_SLO_ALERT_DETECTOR_SUBJECT", "")
     if re.fullmatch(r"workload:[^\s]{1,128}", subject) is None:
-        raise GatewayConfigurationError(
-            "SLO alert detector workload identity is not configured"
-        )
+        raise GatewayConfigurationError("SLO alert detector workload identity is not configured")
     return subject
 
 
@@ -910,9 +1155,7 @@ def _gateway_error(request: Request, error: PlatformGatewayError) -> JSONRespons
     return _error(request, status, error.code, str(error))
 
 
-def _approval_case_error(
-    request: Request, error: ApprovalCaseAuthorityError
-) -> JSONResponse:
+def _approval_case_error(request: Request, error: ApprovalCaseAuthorityError) -> JSONResponse:
     if isinstance(error, ApprovalCaseConflictError):
         status = 409
     elif isinstance(error, ApprovalCaseNotFoundError):
@@ -957,6 +1200,60 @@ def _master_data_error(
     elif isinstance(error, MasterDataValidationError):
         status = 422
     elif isinstance(error, MasterDataConfigurationError):
+        status = 503
+    else:
+        status = 500
+    return _error(request, status, error.code, str(error))
+
+
+def _entity_authority_error(
+    request: Request,
+    error: (EntityLineageAuthorityError | EntityLinkAuthorityError | TemporalEntityAuthorityError),
+) -> JSONResponse:
+    if isinstance(
+        error,
+        (
+            EntityLineageConflictError,
+            EntityLinkConflictError,
+            TemporalEntityConflictError,
+        ),
+    ):
+        status = 409
+    elif isinstance(
+        error,
+        (
+            EntityLineageNotFoundError,
+            EntityLinkNotFoundError,
+            TemporalEntityNotFoundError,
+        ),
+    ):
+        status = 404
+    elif isinstance(
+        error,
+        (
+            EntityLineageForbiddenError,
+            EntityLinkForbiddenError,
+            TemporalEntityForbiddenError,
+        ),
+    ):
+        status = 403
+    elif isinstance(
+        error,
+        (
+            EntityLineageValidationError,
+            EntityLinkValidationError,
+            TemporalEntityValidationError,
+        ),
+    ):
+        status = 422
+    elif isinstance(
+        error,
+        (
+            EntityLineageConfigurationError,
+            EntityLinkConfigurationError,
+            TemporalEntityConfigurationError,
+        ),
+    ):
         status = 503
     else:
         status = 500
@@ -1075,9 +1372,10 @@ def _master_source_record_ref(
 
 
 def _approval_subject(subject_type: str, subject_id: str) -> str:
-    if subject_type not in {"human", "team"} or re.fullmatch(
-        r"[a-z0-9][a-z0-9._-]{0,127}", subject_id
-    ) is None:
+    if (
+        subject_type not in {"human", "team"}
+        or re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,127}", subject_id) is None
+    ):
         raise ValueError("approval subject must be a canonical human or team identity")
     return f"{subject_type}:{subject_id}"
 
@@ -1098,12 +1396,12 @@ def _tenant_matches(
 async def get_gis_mvt_tile(request: Request) -> Response:
     """Serve an active, release-versioned MVT tile through the control gateway.
 
-    This first route is deliberately operator-only. Consumer policy, cache
-    namespace and service-level ConsumerBinding are separate gates and must
-    be added before exposing the route as a general data-plane endpoint.
+    Operators retain the operational path. Other authenticated principals must
+    hold an active, version-compatible DataProduct ConsumerBinding with the
+    ``read`` operation before the provider is called.
     """
 
-    principal = _principal(request)
+    principal = _gis_mvt_principal(request)
     if isinstance(principal, JSONResponse):
         return principal
 
@@ -1168,6 +1466,34 @@ async def get_gis_mvt_tile(request: Request) -> Response:
             "active_release_mismatch",
             "requested release_key is not the active release",
         )
+
+    if principal.role not in _PLATFORM_ROLES:
+        try:
+            binding = await asyncio.to_thread(
+                _gateway().get_active_consumer_binding_for_product_version,
+                principal.tenant_id,
+                definition.source_product_urn,
+                definition.source_data_product_version_id,
+                principal.actor_ref,
+            )
+        except PlatformGatewayError as exc:
+            return _gateway_error(request, exc)
+        if binding is None:
+            return _error(
+                request,
+                403,
+                "consumer_binding_required",
+                "An active ConsumerBinding for this GIS product version is required",
+            )
+        operations = binding.scope.get("operations")
+        if not isinstance(operations, list) or "read" not in operations:
+            return _error(
+                request,
+                403,
+                "consumer_scope_denied",
+                "The active ConsumerBinding does not grant MVT read access",
+            )
+
     if (
         z < tile_matrix_set.min_zoom
         or z > tile_matrix_set.max_zoom
@@ -1213,9 +1539,7 @@ async def get_gis_mvt_tile(request: Request) -> Response:
         )
 
     try:
-        endpoint_contract = MVTGatewayEndpointContract.model_validate(
-            endpoint.endpoint_contract
-        )
+        endpoint_contract = MVTGatewayEndpointContract.model_validate(endpoint.endpoint_contract)
         context = MVTProviderReleaseContext.from_release(
             release,
             tile_matrix_set,
@@ -1357,11 +1681,7 @@ async def list_approval_cases(request: Request) -> JSONResponse:
         limit = int(request.query_params.get("limit", "50"))
         offset = int(request.query_params.get("offset", "0"))
         status = ApprovalCaseStatus(raw_status) if raw_status else None
-        action = (
-            _APPROVAL_ACTION_ADAPTER.validate_python(raw_action)
-            if raw_action
-            else None
-        )
+        action = _APPROVAL_ACTION_ADAPTER.validate_python(raw_action) if raw_action else None
     except (TypeError, ValueError, ValidationError):
         return _error(
             request,
@@ -1638,12 +1958,8 @@ async def upsert_approval_team_membership(request: Request) -> JSONResponse:
     if isinstance(update, JSONResponse):
         return update
     try:
-        team_subject = _approval_subject(
-            "team", request.path_params.get("team_id", "")
-        )
-        member_subject = _approval_subject(
-            "human", request.path_params.get("member_id", "")
-        )
+        team_subject = _approval_subject("team", request.path_params.get("team_id", ""))
+        member_subject = _approval_subject("human", request.path_params.get("member_id", ""))
         stored = await asyncio.to_thread(
             _approval_case_authority().upsert_team_membership,
             tenant_id=principal.tenant_id,
@@ -1680,9 +1996,7 @@ async def list_approval_team_memberships(request: Request) -> JSONResponse:
     if isinstance(principal, JSONResponse):
         return principal
     try:
-        team_subject = _approval_subject(
-            "team", request.path_params.get("team_id", "")
-        )
+        team_subject = _approval_subject("team", request.path_params.get("team_id", ""))
         items = await asyncio.to_thread(
             _approval_case_authority().list_team_memberships,
             principal.tenant_id,
@@ -2589,6 +2903,147 @@ async def create_definition(request: Request) -> JSONResponse:
         return _gateway_error(request, exc)
 
 
+async def create_data_product_blueprint(request: Request) -> JSONResponse:
+    """Compile and register a blueprint through the existing definition authority."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    blueprint = await _parse(request, DataProductBlueprint)
+    if isinstance(blueprint, JSONResponse):
+        return blueprint
+    if mismatch := _tenant_matches(request, principal, blueprint.tenant_id):
+        return mismatch
+    if blueprint.created_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "actor_mismatch",
+            "created_by must match authenticated actor",
+        )
+    try:
+        registration = compile_data_product_blueprint(blueprint)
+        result = await asyncio.to_thread(_gateway().register_definition, registration)
+        return _success(
+            request,
+            result.value,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def preview_data_product_blueprint(request: Request) -> JSONResponse:
+    """Compile and diff a blueprint without mutating definition authority."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    blueprint = await _parse(request, DataProductBlueprint)
+    if isinstance(blueprint, JSONResponse):
+        return blueprint
+    if mismatch := _tenant_matches(request, principal, blueprint.tenant_id):
+        return mismatch
+    if blueprint.created_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "actor_mismatch",
+            "created_by must match authenticated actor",
+        )
+    try:
+        predecessor = None
+        if blueprint.predecessor_definition_version_id is not None:
+            predecessor = await asyncio.to_thread(
+                _gateway().get_definition,
+                principal.tenant_id,
+                blueprint.predecessor_definition_version_id,
+            )
+        preview = build_data_product_blueprint_preview(
+            blueprint,
+            predecessor=predecessor,
+        )
+        return _success(request, preview)
+    except ValueError as exc:
+        return _error(
+            request,
+            422,
+            "blueprint_preview_failed",
+            str(exc),
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def create_data_product_blueprint_review(request: Request) -> JSONResponse:
+    """Compile a Blueprint and admit its exact change set to ApprovalCase."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    submission = await _parse(request, DataProductBlueprintReviewRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    blueprint = submission.blueprint
+    if mismatch := _tenant_matches(request, principal, blueprint.tenant_id):
+        return mismatch
+    if blueprint.created_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "actor_mismatch",
+            "created_by must match authenticated actor",
+        )
+    try:
+        predecessor = None
+        if blueprint.predecessor_definition_version_id is not None:
+            predecessor = await asyncio.to_thread(
+                _gateway().get_definition,
+                principal.tenant_id,
+                blueprint.predecessor_definition_version_id,
+            )
+        preview = build_data_product_blueprint_preview(
+            blueprint,
+            predecessor=predecessor,
+        )
+        approval_case = build_data_product_blueprint_approval_case(
+            preview,
+            requester_subject=principal.actor_ref,
+            request_reason=submission.request_reason,
+            requested_at=submission.requested_at,
+            expires_at=submission.expires_at,
+        )
+        written = await asyncio.to_thread(
+            _approval_case_authority().create,
+            approval_case,
+            owner_ref=os.environ.get(
+                "GDA_APPROVAL_CASE_OWNER_REF",
+                "team:data-platform",
+            ),
+        )
+        result = DataProductBlueprintReview(
+            preview=preview,
+            approval_case=written.approval_case,
+        )
+        return _success(
+            request,
+            result,
+            status_code=201 if written.created else 200,
+            created=written.created,
+        )
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "blueprint_review_failed",
+            str(exc),
+            details,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+
+
 async def create_run(request: Request) -> JSONResponse:
     principal = _principal(request)
     if isinstance(principal, JSONResponse):
@@ -2708,6 +3163,1120 @@ async def create_manual_dataops_run(request: Request) -> JSONResponse:
         )
     except PlatformGatewayError as exc:
         return _gateway_error(request, exc)
+
+
+async def ingest_entity_authority_batch(request: Request) -> JSONResponse:
+    """Ingest one typed authority batch under the authenticated tenant."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        ENTITY_AUTHORITY_BATCH_INGEST,
+    )
+    if contract_error is not None:
+        return contract_error
+    submission = await _parse(request, EntityAuthorityBatchRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    if submission.tenant_id != principal.tenant_id:
+        return _error(
+            request,
+            403,
+            "tenant_mismatch",
+            "Request tenant_id must match the authenticated tenant",
+        )
+    header_key = request.headers.get("idempotency-key")
+    if header_key and header_key != submission.idempotency_key:
+        return _error(
+            request,
+            409,
+            "idempotency_key_mismatch",
+            "Idempotency-Key header must match the request body",
+        )
+    actor_field = "created_by" if submission.batch_type == "link_types" else "recorded_by"
+    if any(getattr(item, actor_field) != principal.actor_ref for item in submission.items):
+        return _error(
+            request,
+            403,
+            "actor_mismatch",
+            f"{actor_field} must match the authenticated actor",
+        )
+    try:
+        result = await asyncio.to_thread(execute_entity_authority_batch, submission)
+        return _success(request, result)
+    except (EntityLinkAuthorityError, TemporalEntityAuthorityError) as exc:
+        return _entity_authority_error(request, exc)
+
+
+async def reconcile_entity_data_package(request: Request) -> JSONResponse:
+    """Reconcile one sealed Chongqing package under the tenant authority."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        CHONGQING_DATA_PACKAGE_RECONCILE,
+    )
+    if contract_error is not None:
+        return contract_error
+    submission = await _parse(
+        request,
+        ChongqingDataPackageReconciliationRequest,
+    )
+    if isinstance(submission, JSONResponse):
+        return submission
+    if submission.tenant_id != principal.tenant_id:
+        return _error(
+            request,
+            403,
+            "tenant_mismatch",
+            "Request tenant_id must match the authenticated tenant",
+        )
+    header_key = request.headers.get("idempotency-key")
+    if header_key and header_key != submission.idempotency_key:
+        return _error(
+            request,
+            409,
+            "idempotency_key_mismatch",
+            "Idempotency-Key header must match the request body",
+        )
+    if submission.recorded_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "actor_mismatch",
+            "recorded_by must match the authenticated actor",
+        )
+    try:
+        result = await asyncio.to_thread(
+            execute_chongqing_data_package_reconciliation,
+            submission,
+        )
+        return _success(request, result)
+    except ChongqingDataPackageReconciliationServiceError as exc:
+        if isinstance(exc, ChongqingDataPackageReconciliationServiceConflictError):
+            status = 409
+        elif isinstance(exc, ChongqingDataPackageReconciliationServiceForbiddenError):
+            status = 403
+        elif isinstance(exc, ChongqingDataPackageReconciliationServiceValidationError):
+            status = 422
+        elif isinstance(
+            exc,
+            ChongqingDataPackageReconciliationServiceConfigurationError,
+        ):
+            status = 503
+        else:
+            status = 500
+        return _error(request, status, exc.code, str(exc))
+    except ChongqingDataPackageReconciliationError as exc:
+        return _error(
+            request,
+            409,
+            "chongqing_data_package_reconciliation_conflict",
+            str(exc),
+        )
+    except (EntityLinkAuthorityError, TemporalEntityAuthorityError) as exc:
+        return _entity_authority_error(request, exc)
+
+
+async def execute_postgis_projection_repair_plan(request: Request) -> JSONResponse:
+    """Execute one sealed plan against an explicitly configured PostGIS target."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        POSTGIS_PROJECTION_REPAIR_EXECUTE,
+    )
+    if contract_error is not None:
+        return contract_error
+    submission = await _parse(request, PostGISProjectionRepairRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    if submission.plan.tenant_id != principal.tenant_id:
+        return _error(
+            request,
+            403,
+            "tenant_mismatch",
+            "Repair plan tenant_id must match the authenticated tenant",
+        )
+    if submission.checkpointed_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "checkpoint_actor_mismatch",
+            "checkpointed_by must match the authenticated subject",
+        )
+    header_key = request.headers.get("idempotency-key")
+    if header_key and header_key != submission.plan.plan_idempotency_key:
+        return _error(
+            request,
+            409,
+            "idempotency_key_mismatch",
+            "Idempotency-Key header must match the sealed repair plan",
+        )
+    try:
+        result = await asyncio.to_thread(execute_postgis_projection_repair, submission)
+        return _success(request, result)
+    except PostGISProjectionServiceError as exc:
+        if isinstance(exc, PostGISProjectionServiceValidationError):
+            status = 422
+        elif isinstance(exc, PostGISProjectionServiceForbiddenError):
+            status = 403
+        elif isinstance(exc, PostGISProjectionServiceConflictError):
+            status = 409
+        elif isinstance(exc, PostGISProjectionServiceConfigurationError):
+            status = 503
+        else:
+            status = 500
+        return _error(request, status, exc.code, str(exc))
+
+
+async def execute_vector_projection_repair_plan(request: Request) -> JSONResponse:
+    """Execute one sealed plan against an explicitly configured pgvector target."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        VECTOR_PROJECTION_REPAIR_EXECUTE,
+    )
+    if contract_error is not None:
+        return contract_error
+    submission = await _parse(request, VectorProjectionRepairRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    if submission.plan.tenant_id != principal.tenant_id:
+        return _error(
+            request,
+            403,
+            "tenant_mismatch",
+            "Repair plan tenant_id must match the authenticated tenant",
+        )
+    if submission.checkpointed_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "checkpoint_actor_mismatch",
+            "checkpointed_by must match the authenticated subject",
+        )
+    header_key = request.headers.get("idempotency-key")
+    if header_key and header_key != submission.plan.plan_idempotency_key:
+        return _error(
+            request,
+            409,
+            "idempotency_key_mismatch",
+            "Idempotency-Key header must match the sealed repair plan",
+        )
+    try:
+        result = await asyncio.to_thread(execute_vector_projection_repair, submission)
+        return _success(request, result)
+    except VectorProjectionServiceError as exc:
+        if isinstance(exc, VectorProjectionServiceValidationError):
+            status = 422
+        elif isinstance(exc, VectorProjectionServiceForbiddenError):
+            status = 403
+        elif isinstance(exc, VectorProjectionServiceConflictError):
+            status = 409
+        elif isinstance(exc, VectorProjectionServiceConfigurationError):
+            status = 503
+        else:
+            status = 500
+        return _error(request, status, exc.code, str(exc))
+
+
+async def execute_rdf_projection_repair_plan(request: Request) -> JSONResponse:
+    """Execute one sealed plan against an explicitly configured Fuseki target."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        RDF_PROJECTION_REPAIR_EXECUTE,
+    )
+    if contract_error is not None:
+        return contract_error
+    submission = await _parse(request, RDFProjectionRepairRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    if submission.plan.tenant_id != principal.tenant_id:
+        return _error(
+            request,
+            403,
+            "tenant_mismatch",
+            "Repair plan tenant_id must match the authenticated tenant",
+        )
+    if submission.checkpointed_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "checkpoint_actor_mismatch",
+            "checkpointed_by must match the authenticated subject",
+        )
+    header_key = request.headers.get("idempotency-key")
+    if header_key and header_key != submission.plan.plan_idempotency_key:
+        return _error(
+            request,
+            409,
+            "idempotency_key_mismatch",
+            "Idempotency-Key header must match the sealed repair plan",
+        )
+    try:
+        result = await asyncio.to_thread(execute_rdf_projection_repair, submission)
+        return _success(request, result)
+    except RDFProjectionServiceError as exc:
+        if isinstance(exc, RDFProjectionServiceValidationError):
+            status = 422
+        elif isinstance(exc, RDFProjectionServiceForbiddenError):
+            status = 403
+        elif isinstance(exc, RDFProjectionServiceConflictError):
+            status = 409
+        elif isinstance(exc, RDFProjectionServiceConfigurationError):
+            status = 503
+        else:
+            status = 500
+        return _error(request, status, exc.code, str(exc))
+
+
+async def execute_lakehouse_projection_repair_plan(request: Request) -> JSONResponse:
+    """Execute one sealed plan against an explicitly configured Iceberg table."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        LAKEHOUSE_PROJECTION_REPAIR_EXECUTE,
+    )
+    if contract_error is not None:
+        return contract_error
+    submission = await _parse(request, LakehouseProjectionRepairRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    if submission.plan.tenant_id != principal.tenant_id:
+        return _error(
+            request,
+            403,
+            "tenant_mismatch",
+            "Repair plan tenant_id must match the authenticated tenant",
+        )
+    if submission.checkpointed_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "checkpoint_actor_mismatch",
+            "checkpointed_by must match the authenticated subject",
+        )
+    header_key = request.headers.get("idempotency-key")
+    if header_key and header_key != submission.plan.plan_idempotency_key:
+        return _error(
+            request,
+            409,
+            "idempotency_key_mismatch",
+            "Idempotency-Key header must match the sealed repair plan",
+        )
+    try:
+        result = await asyncio.to_thread(execute_lakehouse_projection_repair, submission)
+        return _success(request, result)
+    except LakehouseProjectionServiceError as exc:
+        if isinstance(exc, LakehouseProjectionServiceValidationError):
+            status = 422
+        elif isinstance(exc, LakehouseProjectionServiceForbiddenError):
+            status = 403
+        elif isinstance(exc, LakehouseProjectionServiceConflictError):
+            status = 409
+        elif isinstance(exc, LakehouseProjectionServiceConfigurationError):
+            status = 503
+        else:
+            status = 500
+        return _error(request, status, exc.code, str(exc))
+
+
+async def execute_object_projection_repair_plan(request: Request) -> JSONResponse:
+    """Execute one sealed plan against an explicitly configured S3 object."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        OBJECT_PROJECTION_REPAIR_EXECUTE,
+    )
+    if contract_error is not None:
+        return contract_error
+    submission = await _parse(request, ObjectProjectionRepairRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    if submission.plan.tenant_id != principal.tenant_id:
+        return _error(
+            request,
+            403,
+            "tenant_mismatch",
+            "Repair plan tenant_id must match the authenticated tenant",
+        )
+    if submission.checkpointed_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "checkpoint_actor_mismatch",
+            "checkpointed_by must match the authenticated subject",
+        )
+    header_key = request.headers.get("idempotency-key")
+    if header_key and header_key != submission.plan.plan_idempotency_key:
+        return _error(
+            request,
+            409,
+            "idempotency_key_mismatch",
+            "Idempotency-Key header must match the sealed repair plan",
+        )
+    try:
+        result = await asyncio.to_thread(execute_object_projection_repair, submission)
+        return _success(request, result)
+    except ObjectProjectionServiceError as exc:
+        if isinstance(exc, ObjectProjectionServiceValidationError):
+            status = 422
+        elif isinstance(exc, ObjectProjectionServiceForbiddenError):
+            status = 403
+        elif isinstance(exc, ObjectProjectionServiceConflictError):
+            status = 409
+        elif isinstance(exc, ObjectProjectionServiceConfigurationError):
+            status = 503
+        else:
+            status = 500
+        return _error(request, status, exc.code, str(exc))
+
+
+async def submit_entity_data_package_reconciliation_job(
+    request: Request,
+) -> JSONResponse:
+    """Durably enqueue an asynchronous Chongqing package reconciliation job."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        CHONGQING_DATA_PACKAGE_RECONCILIATION_JOB_SUBMIT,
+    )
+    if contract_error is not None:
+        return contract_error
+    submission = await _parse(request, ChongqingDataPackageReconciliationRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    if submission.tenant_id != principal.tenant_id:
+        return _error(
+            request,
+            403,
+            "tenant_mismatch",
+            "Request tenant_id must match the authenticated tenant",
+        )
+    header_key = request.headers.get("idempotency-key")
+    if header_key and header_key != submission.idempotency_key:
+        return _error(
+            request,
+            409,
+            "idempotency_key_mismatch",
+            "Idempotency-Key header must match the request body",
+        )
+    if submission.recorded_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "actor_mismatch",
+            "recorded_by must match the authenticated actor",
+        )
+    try:
+        result = await asyncio.to_thread(
+            submit_chongqing_data_package_reconciliation_job,
+            submission,
+        )
+        return _success(request, result, status_code=202)
+    except ChongqingDataPackageReconciliationJobError as exc:
+        status = (
+            403
+            if isinstance(exc, ChongqingDataPackageReconciliationJobForbiddenError)
+            else 422
+            if isinstance(exc, ChongqingDataPackageReconciliationJobValidationError)
+            else 409
+            if not isinstance(exc, ChongqingDataPackageReconciliationJobConfigurationError)
+            else 503
+        )
+        return _error(request, status, exc.code, str(exc))
+
+
+async def get_entity_data_package_reconciliation_job(
+    request: Request,
+) -> JSONResponse:
+    """Read one asynchronous reconciliation job under the authenticated tenant."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        CHONGQING_DATA_PACKAGE_RECONCILIATION_JOB_GET,
+    )
+    if contract_error is not None:
+        return contract_error
+    try:
+        job_id = UUID(request.path_params["job_id"])
+        query = ChongqingDataPackageReconciliationJobQuery(job_id=job_id)
+        result = await asyncio.to_thread(
+            get_chongqing_data_package_reconciliation_job,
+            query,
+            tenant_id=principal.tenant_id,
+        )
+        return _success(request, result)
+    except (KeyError, ValueError):
+        return _error(request, 400, "invalid_job_id", "job_id must be a UUID")
+    except ChongqingDataPackageReconciliationJobNotFoundError as exc:
+        return _error(request, 404, exc.code, str(exc))
+    except ChongqingDataPackageReconciliationJobError as exc:
+        return _error(request, 503, exc.code, str(exc))
+
+
+async def cancel_entity_data_package_reconciliation_job(
+    request: Request,
+) -> JSONResponse:
+    """Request cooperative cancellation at the next atomic authority boundary."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        CHONGQING_DATA_PACKAGE_RECONCILIATION_JOB_CANCEL,
+    )
+    if contract_error is not None:
+        return contract_error
+    try:
+        job_id = UUID(request.path_params["job_id"])
+    except (KeyError, ValueError):
+        return _error(request, 400, "invalid_job_id", "job_id must be a UUID")
+    try:
+        body = await request.json()
+    except Exception:
+        return _error(request, 400, "invalid_json", "Request body must be JSON")
+    if not isinstance(body, dict):
+        return _error(request, 422, "contract_validation_failed", "Request body must be an object")
+    try:
+        submission = ChongqingDataPackageReconciliationJobCancelRequest.model_validate(
+            {**body, "job_id": job_id, "requested_by": principal.actor_ref}
+        )
+    except ValidationError as exc:
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "Request does not satisfy the platform contract",
+            _validation_details(exc),
+        )
+    try:
+        result = await asyncio.to_thread(
+            cancel_chongqing_data_package_reconciliation_job,
+            submission,
+            tenant_id=principal.tenant_id,
+        )
+        status = 202 if result.status == "cancel_requested" else 200
+        return _success(request, result, status_code=status)
+    except ChongqingDataPackageReconciliationJobNotFoundError as exc:
+        return _error(request, 404, exc.code, str(exc))
+    except ChongqingDataPackageReconciliationJobError as exc:
+        status = (
+            503
+            if isinstance(exc, ChongqingDataPackageReconciliationJobConfigurationError)
+            else 422
+            if isinstance(exc, ChongqingDataPackageReconciliationJobValidationError)
+            else 403
+            if isinstance(exc, ChongqingDataPackageReconciliationJobForbiddenError)
+            else 409
+        )
+        return _error(request, status, exc.code, str(exc))
+
+
+async def record_entity_lineage_event(request: Request) -> JSONResponse:
+    """Record one atomic merge, split, or replacement under the tenant authority."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(request, ENTITY_LINEAGE_RECORD)
+    if contract_error is not None:
+        return contract_error
+    submission = await _parse(request, EntityLineageRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    if submission.tenant_id != principal.tenant_id:
+        return _error(
+            request,
+            403,
+            "tenant_mismatch",
+            "Request tenant_id must match the authenticated tenant",
+        )
+    header_key = request.headers.get("idempotency-key")
+    if header_key and header_key != submission.idempotency_key:
+        return _error(
+            request,
+            409,
+            "idempotency_key_mismatch",
+            "Idempotency-Key header must match the request body",
+        )
+    if submission.recorded_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "actor_mismatch",
+            "recorded_by must match the authenticated actor",
+        )
+    try:
+        result = await asyncio.to_thread(EntityLineageAuthority().record, submission)
+        return _success(request, result)
+    except EntityLineageAuthorityError as exc:
+        return _entity_authority_error(request, exc)
+
+
+async def generate_federated_projection_compensation_proposal(
+    request: Request,
+) -> JSONResponse:
+    """Generate a read-only, snapshot-bound compensation proposal.
+
+    This route never persists a proposal, selects a mutating candidate, or
+    calls a provider.  A later operator workflow may use the returned
+    evidence to request the separately governed action/approval path.
+    """
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        FEDERATED_PROJECTION_COMPENSATION_PROPOSAL_READ,
+    )
+    if contract_error is not None:
+        return contract_error
+    submission = await _parse(
+        request,
+        FederatedProjectionCompensationProposalRequest,
+    )
+    if isinstance(submission, JSONResponse):
+        return submission
+    if submission.snapshot.tenant_id != principal.tenant_id:
+        return _error(
+            request,
+            403,
+            "tenant_mismatch",
+            "Recovery snapshot tenant_id must match the authenticated tenant",
+        )
+    try:
+        proposal = await asyncio.to_thread(
+            build_federated_projection_compensation_proposal,
+            submission.plans,
+            submission.snapshot,
+        )
+    except FederatedProjectionCompensationProposalError as exc:
+        return _error(
+            request,
+            422,
+            "compensation_proposal_validation_failed",
+            str(exc),
+        )
+    return _success(request, proposal)
+
+
+async def get_federated_projection_compensation_proposal(
+    request: Request,
+) -> JSONResponse:
+    """Read current and immutable proposal history for one tenant-bound run."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        FEDERATED_PROJECTION_COMPENSATION_PROPOSAL_GET,
+    )
+    if contract_error is not None:
+        return contract_error
+    if request.query_params:
+        return _error(
+            request,
+            422,
+            "unexpected_query_parameters",
+            "Compensation proposal lookup does not accept query parameters",
+        )
+    try:
+        query = FederatedProjectionCompensationProposalReadRequest.model_validate(
+            {"run_id": request.path_params.get("run_id")}
+        )
+    except ValidationError as exc:
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "Request does not satisfy the platform contract",
+            _validation_details(exc),
+        )
+    try:
+        result = await asyncio.to_thread(
+            _federated_compensation_proposal_store(principal.tenant_id).lookup,
+            query.run_id,
+        )
+    except FederatedProjectionCompensationProposalConfigurationError as exc:
+        return _error(
+            request,
+            503,
+            "compensation_proposal_authority_unavailable",
+            str(exc),
+        )
+    except FederatedProjectionCompensationProposalForbiddenError as exc:
+        return _error(
+            request,
+            403,
+            "compensation_proposal_authority_forbidden",
+            str(exc),
+        )
+    except FederatedProjectionCompensationProposalValidationError as exc:
+        return _error(
+            request,
+            422,
+            "compensation_proposal_lookup_invalid",
+            str(exc),
+        )
+    except FederatedProjectionCompensationProposalAuthorityError as exc:
+        return _error(
+            request,
+            500,
+            "compensation_proposal_authority_error",
+            str(exc),
+        )
+    if result is None:
+        return _error(
+            request,
+            404,
+            "compensation_proposal_not_found",
+            "No persisted compensation proposal exists for this federated run",
+        )
+    return _success(request, result)
+
+
+async def assess_federated_projection_compensation_rules(
+    request: Request,
+) -> JSONResponse:
+    """Assess submitted customer rule contracts without authorizing a mutation."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        FEDERATED_PROJECTION_COMPENSATION_RULE_ASSESS,
+    )
+    if contract_error is not None:
+        return contract_error
+    submission = await _parse(
+        request,
+        FederatedProjectionCompensationRuleAssessmentRequest,
+    )
+    if isinstance(submission, JSONResponse):
+        return submission
+    if submission.proposal.tenant_id != principal.tenant_id:
+        return _error(
+            request,
+            403,
+            "tenant_mismatch",
+            "Compensation proposal tenant_id must match the authenticated tenant",
+        )
+    try:
+        trust_registry = await asyncio.to_thread(
+            load_customer_compensation_approval_trust_registry
+        )
+        assessment = await asyncio.to_thread(
+            assess_customer_compensation_rules,
+            submission.proposal,
+            submission.rules,
+            trust_registry,
+        )
+    except CustomerCompensationApprovalTrustConfigurationError as exc:
+        return _error(
+            request,
+            500,
+            "customer_approval_trust_registry_configuration_error",
+            str(exc),
+        )
+    except CustomerCompensationRuleError as exc:
+        return _error(
+            request,
+            422,
+            "compensation_rule_assessment_failed",
+            str(exc),
+        )
+    return _success(request, assessment)
+
+
+async def assess_persisted_federated_projection_compensation_rules(
+    request: Request,
+) -> JSONResponse:
+    """Assess persisted proposal/rule current state without caller overrides."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        FEDERATED_PROJECTION_COMPENSATION_RULE_AUTHORITY_ASSESS,
+    )
+    if contract_error is not None:
+        return contract_error
+    if request.query_params:
+        return _error(
+            request,
+            422,
+            "unexpected_query_parameters",
+            "Persisted compensation rule assessment accepts only path run_id",
+        )
+    try:
+        query = (
+            FederatedProjectionCompensationRuleAuthorityAssessmentRequest.model_validate(
+                {"run_id": request.path_params.get("run_id")}
+            )
+        )
+    except ValidationError as exc:
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "Request does not satisfy the platform contract",
+            _validation_details(exc),
+        )
+    try:
+        result = await asyncio.to_thread(
+            _federated_compensation_rule_store(principal.tenant_id).assess_current,
+            query.run_id,
+        )
+    except CustomerCompensationApprovalTrustConfigurationError as exc:
+        return _error(
+            request,
+            500,
+            "customer_approval_trust_registry_configuration_error",
+            str(exc),
+        )
+    except CustomerCompensationRuleAuthorityConfigurationError as exc:
+        return _error(
+            request,
+            503,
+            "customer_compensation_rule_authority_unavailable",
+            str(exc),
+        )
+    except CustomerCompensationRuleAuthorityForbiddenError as exc:
+        return _error(
+            request,
+            403,
+            "customer_compensation_rule_authority_forbidden",
+            str(exc),
+        )
+    except CustomerCompensationRuleAuthorityValidationError as exc:
+        return _error(
+            request,
+            422,
+            "customer_compensation_rule_assessment_invalid",
+            str(exc),
+        )
+    except CustomerCompensationRuleAuthorityError as exc:
+        return _error(
+            request,
+            500,
+            "customer_compensation_rule_authority_error",
+            str(exc),
+        )
+    if result is None:
+        return _error(
+            request,
+            404,
+            "compensation_proposal_not_found",
+            "No persisted compensation proposal exists for this federated run",
+        )
+    return _success(request, result)
+
+
+async def request_federated_projection_compensation_approval(
+    request: Request,
+) -> JSONResponse:
+    """Create a review-only ApprovalCase for one trusted selected candidate."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        FEDERATED_PROJECTION_COMPENSATION_APPROVAL_REQUEST,
+    )
+    if contract_error is not None:
+        return contract_error
+    submission = await _parse(
+        request,
+        FederatedProjectionCompensationApprovalCaseRequest,
+    )
+    if isinstance(submission, JSONResponse):
+        return submission
+    header_key = request.headers.get("idempotency-key")
+    if header_key and header_key != submission.idempotency_key:
+        return _error(
+            request,
+            409,
+            "idempotency_key_mismatch",
+            "Idempotency-Key header must match the request body",
+        )
+    try:
+        result = await asyncio.to_thread(
+            _federated_compensation_approval_service(
+                principal.tenant_id
+            ).request_review,
+            submission,
+            requester_subject=principal.actor_ref,
+            owner_ref=os.environ.get(
+                "GDA_APPROVAL_CASE_OWNER_REF",
+                "team:data-platform",
+            ),
+        )
+    except FederatedProjectionCompensationApprovalNotFoundError as exc:
+        return _error(
+            request,
+            404,
+            "compensation_proposal_not_found",
+            str(exc),
+        )
+    except FederatedProjectionCompensationApprovalError as exc:
+        return _error(
+            request,
+            422,
+            "compensation_approval_not_reviewable",
+            str(exc),
+        )
+    except CustomerCompensationApprovalTrustConfigurationError as exc:
+        return _error(
+            request,
+            500,
+            "customer_approval_trust_registry_configuration_error",
+            str(exc),
+        )
+    except CustomerCompensationRuleAuthorityConfigurationError as exc:
+        return _error(
+            request,
+            503,
+            "customer_compensation_rule_authority_unavailable",
+            str(exc),
+        )
+    except CustomerCompensationRuleAuthorityForbiddenError as exc:
+        return _error(
+            request,
+            403,
+            "customer_compensation_rule_authority_forbidden",
+            str(exc),
+        )
+    except CustomerCompensationRuleAuthorityValidationError as exc:
+        return _error(
+            request,
+            422,
+            "customer_compensation_rule_assessment_invalid",
+            str(exc),
+        )
+    except CustomerCompensationRuleAuthorityError as exc:
+        return _error(
+            request,
+            500,
+            "customer_compensation_rule_authority_error",
+            str(exc),
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+    return _success(
+        request,
+        result,
+        status_code=201 if result.created else 200,
+        created=result.created,
+    )
+
+
+async def request_federated_projection_compensation_execution_approval(
+    request: Request,
+) -> JSONResponse:
+    """Create a separate execution-verdict ApprovalCase without execution."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        FEDERATED_PROJECTION_COMPENSATION_EXECUTION_APPROVAL_REQUEST,
+    )
+    if contract_error is not None:
+        return contract_error
+    submission = await _parse(
+        request,
+        FederatedProjectionCompensationExecutionApprovalRequest,
+    )
+    if isinstance(submission, JSONResponse):
+        return submission
+    header_key = request.headers.get("idempotency-key")
+    if header_key and header_key != submission.idempotency_key:
+        return _error(
+            request,
+            409,
+            "idempotency_key_mismatch",
+            "Idempotency-Key header must match the request body",
+        )
+    try:
+        result = await asyncio.to_thread(
+            _federated_compensation_execution_approval_service(
+                principal.tenant_id
+            ).request_execution_authorization,
+            submission,
+            requester_subject=principal.actor_ref,
+            owner_ref=os.environ.get(
+                "GDA_APPROVAL_CASE_OWNER_REF",
+                "team:data-platform",
+            ),
+        )
+    except FederatedProjectionCompensationApprovalNotFoundError as exc:
+        return _error(
+            request,
+            404,
+            "compensation_proposal_not_found",
+            str(exc),
+        )
+    except FederatedProjectionCompensationApprovalError as exc:
+        return _error(
+            request,
+            422,
+            "compensation_execution_approval_not_reviewable",
+            str(exc),
+        )
+    except CustomerCompensationApprovalTrustConfigurationError as exc:
+        return _error(
+            request,
+            500,
+            "customer_approval_trust_registry_configuration_error",
+            str(exc),
+        )
+    except CustomerCompensationRuleAuthorityConfigurationError as exc:
+        return _error(
+            request,
+            503,
+            "customer_compensation_rule_authority_unavailable",
+            str(exc),
+        )
+    except CustomerCompensationRuleAuthorityForbiddenError as exc:
+        return _error(
+            request,
+            403,
+            "customer_compensation_rule_authority_forbidden",
+            str(exc),
+        )
+    except CustomerCompensationRuleAuthorityValidationError as exc:
+        return _error(
+            request,
+            422,
+            "customer_compensation_rule_assessment_invalid",
+            str(exc),
+        )
+    except CustomerCompensationRuleAuthorityError as exc:
+        return _error(
+            request,
+            500,
+            "customer_compensation_rule_authority_error",
+            str(exc),
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+    return _success(
+        request,
+        result,
+        status_code=201 if result.created else 200,
+        created=result.created,
+    )
+
+
+async def get_federated_projection_compensation_rules(
+    request: Request,
+) -> JSONResponse:
+    """Read tenant-bound current/history customer compensation rule evidence."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        FEDERATED_PROJECTION_COMPENSATION_RULE_GET,
+    )
+    if contract_error is not None:
+        return contract_error
+    unexpected = set(request.query_params) - {"rule_id"}
+    if unexpected:
+        return _error(
+            request,
+            422,
+            "unexpected_query_parameters",
+            "Customer compensation rule lookup accepts only rule_id",
+        )
+    try:
+        query = CustomerCompensationRuleAuthorityReadRequest.model_validate(
+            {"rule_id": request.query_params.get("rule_id")}
+        )
+    except ValidationError as exc:
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "Request does not satisfy the platform contract",
+            _validation_details(exc),
+        )
+    try:
+        result = await asyncio.to_thread(
+            _federated_compensation_rule_store(principal.tenant_id).lookup,
+            query.rule_id,
+        )
+    except CustomerCompensationRuleAuthorityConfigurationError as exc:
+        return _error(
+            request,
+            503,
+            "customer_compensation_rule_authority_unavailable",
+            str(exc),
+        )
+    except CustomerCompensationRuleAuthorityForbiddenError as exc:
+        return _error(
+            request,
+            403,
+            "customer_compensation_rule_authority_forbidden",
+            str(exc),
+        )
+    except CustomerCompensationRuleAuthorityValidationError as exc:
+        return _error(
+            request,
+            422,
+            "customer_compensation_rule_lookup_invalid",
+            str(exc),
+        )
+    except CustomerCompensationRuleAuthorityError as exc:
+        return _error(
+            request,
+            500,
+            "customer_compensation_rule_authority_error",
+            str(exc),
+        )
+    if query.rule_id is not None and result.rule_count == 0:
+        return _error(
+            request,
+            404,
+            "customer_compensation_rule_not_found",
+            "No persisted customer compensation rule exists for this rule_id",
+        )
+    return _success(request, result)
 
 
 async def get_run(request: Request) -> JSONResponse:
@@ -3234,6 +4803,269 @@ async def list_metadata_fabric_bindings(request: Request) -> JSONResponse:
         return _gateway_error(request, exc)
 
 
+async def search_metadata_fabric_bindings(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    raw_system = request.query_params.get("system")
+    query = request.query_params.get("q")
+    try:
+        system = MetadataFabricSystem(raw_system) if raw_system else None
+        limit = int(request.query_params.get("limit", "50"))
+        offset = int(request.query_params.get("offset", "0"))
+    except (TypeError, ValueError):
+        return _error(
+            request,
+            400,
+            "invalid_metadata_fabric_search_query",
+            "system, limit, or offset is invalid",
+        )
+    if query is not None and len(query.strip()) > 128:
+        return _error(
+            request,
+            400,
+            "invalid_metadata_fabric_search_query",
+            "q must be at most 128 characters",
+        )
+    if not 1 <= limit <= 100 or not 0 <= offset <= 10_000:
+        return _error(
+            request,
+            400,
+            "invalid_metadata_fabric_search_query",
+            "metadata fabric search is outside the supported range",
+        )
+    try:
+        page: MetadataFabricBindingPage = await asyncio.to_thread(
+            _gateway().search_metadata_fabric_bindings,
+            principal.tenant_id,
+            query=query,
+            system=system,
+            limit=limit,
+            offset=offset,
+        )
+        return _success(
+            request,
+            MetadataFabricBindingSearchResponse(
+                items=page.items,
+                count=len(page.items),
+                offset=page.offset,
+                limit=page.limit,
+                has_more=page.has_more,
+            ),
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+def _read_metadata_provider_binding(binding: MetadataFabricBinding) -> ProviderReadResult:
+    with MetadataProviderReadService.from_env() as service:
+        return service.read(binding)
+
+
+def _search_metadata_provider(
+    tenant_id: str,
+    *,
+    system: MetadataFabricSystem,
+    provider_namespace: str,
+    object_type: str,
+    query: str | None,
+    limit: int,
+    offset: int,
+) -> ProviderSearchPage:
+    with MetadataProviderSearchService.from_env() as service:
+        return service.search(
+            tenant_id,
+            system=system,
+            provider_namespace=provider_namespace,
+            object_type=object_type,
+            query=query,
+            limit=limit,
+            offset=offset,
+        )
+
+
+def _metadata_provider_namespace_is_bound(
+    tenant_id: str,
+    system: MetadataFabricSystem,
+    provider_namespace: str,
+) -> bool:
+    """Resolve exact namespace binding without trusting one fuzzy page."""
+    offset = 0
+    while offset <= 10_000:
+        page = _gateway().search_metadata_fabric_bindings(
+            tenant_id,
+            query=provider_namespace,
+            system=system,
+            limit=100,
+            offset=offset,
+        )
+        if any(
+            binding.external_namespace == provider_namespace for binding in page.items
+        ):
+            return True
+        if not page.has_more:
+            return False
+        offset += page.limit
+    return False
+
+
+async def read_metadata_fabric_provider_binding(request: Request) -> JSONResponse:
+    """Read one provider object through an authenticated GDA crosswalk.
+
+    The provider remains the metadata authority. GDA returns only the typed
+    observation contract and never persists or echoes the provider document.
+    """
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    resource_urn = request.query_params.get("resource_urn", "")
+    raw_system = request.query_params.get("system")
+    try:
+        urn_tenant = parse_resource_urn(resource_urn)["tenant_id"]
+        system = MetadataFabricSystem(raw_system) if raw_system else None
+    except ValueError:
+        return _error(
+            request,
+            400,
+            "invalid_metadata_fabric_provider_read_query",
+            "resource_urn and system must identify a valid Metadata Fabric binding",
+        )
+    if system is None:
+        return _error(
+            request,
+            400,
+            "invalid_metadata_fabric_provider_read_query",
+            "system is required for provider read",
+        )
+    if mismatch := _tenant_matches(request, principal, urn_tenant):
+        return mismatch
+    try:
+        bindings = await asyncio.to_thread(
+            _gateway().list_metadata_fabric_bindings,
+            principal.tenant_id,
+            resource_urn,
+            system=system,
+        )
+        if not bindings:
+            return _error(
+                request,
+                404,
+                "metadata_fabric_binding_not_found",
+                "No Metadata Fabric binding exists for the requested resource and system",
+            )
+        if len(bindings) != 1:
+            return _error(
+                request,
+                409,
+                "metadata_fabric_binding_ambiguous",
+                "Provider read requires exactly one binding for the resource and system",
+            )
+        result = await asyncio.to_thread(_read_metadata_provider_binding, bindings[0])
+        return _success(request, MetadataProviderReadResponse(result=result))
+    except MetadataProviderReadError as exc:
+        status = 503 if exc.retryable or exc.code == "provider_read_configuration_error" else 502
+        return _error(request, status, exc.code, str(exc))
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def search_metadata_fabric_provider(request: Request) -> JSONResponse:
+    """Discover candidates inside an already-bound provider namespace."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    provider_namespace = request.query_params.get("provider_namespace", "").strip()
+    raw_system = request.query_params.get("system")
+    object_type = request.query_params.get("object_type", "table").strip()
+    query = request.query_params.get("q")
+    try:
+        system = MetadataFabricSystem(raw_system) if raw_system else None
+        limit = int(request.query_params.get("limit", "50"))
+        offset = int(request.query_params.get("offset", "0"))
+    except (TypeError, ValueError):
+        return _error(
+            request,
+            400,
+            "invalid_metadata_provider_search_query",
+            "system, limit, or offset is invalid",
+        )
+    if system not in {
+        MetadataFabricSystem.GRAVITINO,
+        MetadataFabricSystem.OPENMETADATA,
+    }:
+        return _error(
+            request,
+            400,
+            "unsupported_metadata_provider_search",
+            "provider-backed search does not support this provider",
+        )
+    if not provider_namespace or len(provider_namespace) > 512:
+        return _error(
+            request,
+            400,
+            "invalid_metadata_provider_search_query",
+            "provider_namespace is required and must be at most 512 characters",
+        )
+    if query is not None and len(query.strip()) > 128:
+        return _error(
+            request,
+            400,
+            "invalid_metadata_provider_search_query",
+            "q must be at most 128 characters",
+        )
+    if system is MetadataFabricSystem.OPENMETADATA and (
+        query is None or not query.strip()
+    ):
+        return _error(
+            request,
+            400,
+            "invalid_metadata_provider_search_query",
+            "OpenMetadata provider search requires q",
+        )
+    if not 1 <= limit <= 100 or not 0 <= offset <= 10_000:
+        return _error(
+            request,
+            400,
+            "invalid_metadata_provider_search_query",
+            "provider search is outside the supported range",
+        )
+    try:
+        namespace_bound = await asyncio.to_thread(
+            _metadata_provider_namespace_is_bound,
+            principal.tenant_id,
+            system,
+            provider_namespace,
+        )
+        if not namespace_bound:
+            return _error(
+                request,
+                404,
+                "metadata_provider_namespace_not_bound",
+                "Provider search requires an existing same-tenant binding",
+            )
+        page = await asyncio.to_thread(
+            _search_metadata_provider,
+            principal.tenant_id,
+            system=system,
+            provider_namespace=provider_namespace,
+            object_type=object_type,
+            query=query,
+            limit=limit,
+            offset=offset,
+        )
+        return _success(request, MetadataProviderSearchResponse(page=page))
+    except MetadataProviderReadError as exc:
+        if exc.code == "provider_search_query_invalid":
+            status = 400
+        elif exc.code.endswith("configuration_error"):
+            status = 503
+        else:
+            status = 503 if exc.retryable else 502
+        return _error(request, status, exc.code, str(exc))
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
 async def create_openlineage_event(request: Request) -> JSONResponse:
     principal = _principal(request)
     if isinstance(principal, JSONResponse):
@@ -3711,6 +5543,24 @@ def get_platform_gateway_routes() -> list[APIRoute]:
             operation_id="platform_create_definition",
         ),
         _platform_route(
+            f"{base}/data-product-blueprints",
+            create_data_product_blueprint,
+            method="POST",
+            operation_id="platform_create_data_product_blueprint",
+        ),
+        _platform_route(
+            f"{base}/data-product-blueprints/preview",
+            preview_data_product_blueprint,
+            method="POST",
+            operation_id="platform_preview_data_product_blueprint",
+        ),
+        _platform_route(
+            f"{base}/data-product-blueprints/reviews",
+            create_data_product_blueprint_review,
+            method="POST",
+            operation_id="platform_create_data_product_blueprint_review",
+        ),
+        _platform_route(
             f"{base}/runs",
             create_run,
             method="POST",
@@ -3721,6 +5571,119 @@ def get_platform_gateway_routes() -> list[APIRoute]:
             create_manual_dataops_run,
             method="POST",
             operation_id="platform_create_manual_dataops_run",
+        ),
+        _platform_route(
+            f"{base}/entity-authority/batches",
+            ingest_entity_authority_batch,
+            method="POST",
+            operation_id="platform_ingest_entity_authority_batch",
+        ),
+        _platform_route(
+            f"{base}/entity-authority/reconciliations",
+            reconcile_entity_data_package,
+            method="POST",
+            operation_id="platform_reconcile_entity_data_package",
+        ),
+        _platform_route(
+            f"{base}/projections/postgis/repairs",
+            execute_postgis_projection_repair_plan,
+            method="POST",
+            operation_id="platform_execute_postgis_projection_repair",
+        ),
+        _platform_route(
+            f"{base}/projections/federated/compensation-proposals",
+            generate_federated_projection_compensation_proposal,
+            method="POST",
+            operation_id="platform_generate_federated_compensation_proposal",
+        ),
+        _platform_route(
+            f"{base}/projections/federated/compensation-proposals/{{run_id}}",
+            get_federated_projection_compensation_proposal,
+            method="GET",
+            operation_id="platform_get_federated_compensation_proposal",
+        ),
+        _platform_route(
+            f"{base}/projections/federated/compensation-rule-assessments",
+            assess_federated_projection_compensation_rules,
+            method="POST",
+            operation_id="platform_assess_federated_compensation_rules",
+        ),
+        _platform_route(
+            f"{base}/projections/federated/compensation-rule-assessments/{{run_id}}",
+            assess_persisted_federated_projection_compensation_rules,
+            method="GET",
+            operation_id=(
+                "platform_assess_persisted_federated_compensation_rules"
+            ),
+        ),
+        _platform_route(
+            f"{base}/projections/federated/compensation-approval-cases",
+            request_federated_projection_compensation_approval,
+            method="POST",
+            operation_id="platform_request_federated_compensation_approval",
+        ),
+        _platform_route(
+            f"{base}/projections/federated/"
+            "compensation-execution-approval-cases",
+            request_federated_projection_compensation_execution_approval,
+            method="POST",
+            operation_id=(
+                "platform_request_federated_compensation_execution_approval"
+            ),
+        ),
+        _platform_route(
+            f"{base}/projections/federated/compensation-rules",
+            get_federated_projection_compensation_rules,
+            method="GET",
+            operation_id="platform_get_federated_compensation_rules",
+        ),
+        _platform_route(
+            f"{base}/projections/vector/repairs",
+            execute_vector_projection_repair_plan,
+            method="POST",
+            operation_id="platform_execute_vector_projection_repair",
+        ),
+        _platform_route(
+            f"{base}/projections/rdf/repairs",
+            execute_rdf_projection_repair_plan,
+            method="POST",
+            operation_id="platform_execute_rdf_projection_repair",
+        ),
+        _platform_route(
+            f"{base}/projections/lakehouse/repairs",
+            execute_lakehouse_projection_repair_plan,
+            method="POST",
+            operation_id="platform_execute_lakehouse_projection_repair",
+        ),
+        _platform_route(
+            f"{base}/projections/object-store/repairs",
+            execute_object_projection_repair_plan,
+            method="POST",
+            operation_id="platform_execute_object_projection_repair",
+        ),
+        _platform_route(
+            f"{base}/entity-authority/reconciliation-jobs",
+            submit_entity_data_package_reconciliation_job,
+            method="POST",
+            operation_id="platform_submit_entity_data_package_reconciliation_job",
+        ),
+        _platform_route(
+            f"{base}/entity-authority/reconciliation-jobs/{{job_id}}",
+            get_entity_data_package_reconciliation_job,
+            method="GET",
+            operation_id="platform_get_entity_data_package_reconciliation_job",
+        ),
+        _platform_route(
+            f"{base}/entity-authority/reconciliation-jobs/{{job_id}}/cancel",
+            cancel_entity_data_package_reconciliation_job,
+            method="POST",
+            operation_id="platform_cancel_entity_data_package_reconciliation_job",
+        ),
+        _platform_route(
+            f"{base}/entity-authority/lineage-events",
+            record_entity_lineage_event,
+            method="POST",
+            operation_id="platform_record_entity_lineage_event",
         ),
         _platform_route(
             f"{base}/runs/{{run_id}}",
@@ -3811,6 +5774,24 @@ def get_platform_gateway_routes() -> list[APIRoute]:
             list_metadata_fabric_bindings,
             method="GET",
             operation_id="platform_list_metadata_fabric_bindings",
+        ),
+        _platform_route(
+            f"{base}/metadata-fabric/bindings/search",
+            search_metadata_fabric_bindings,
+            method="GET",
+            operation_id="platform_search_metadata_fabric_bindings",
+        ),
+        _platform_route(
+            f"{base}/metadata-fabric/provider-read",
+            read_metadata_fabric_provider_binding,
+            method="GET",
+            operation_id="platform_read_metadata_fabric_provider",
+        ),
+        _platform_route(
+            f"{base}/metadata-fabric/provider-search",
+            search_metadata_fabric_provider,
+            method="GET",
+            operation_id="platform_search_metadata_fabric_provider",
         ),
         _platform_route(
             f"{base}/openlineage/events",

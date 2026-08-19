@@ -15,7 +15,7 @@
     ],
     "network": "agent-net",
     "baseline_probe_service": "app",
-    "config_sha256": "76dffa0747271f4ae587faf5c851922d5044305b964bc269742182c3a67546ec",
+    "config_sha256": "df87d3aeefc03bde1377bbe1b347e9227947687235c99454cb1e83d31a095f8f",
     "services": [
       {
         "name": "db",
@@ -87,8 +87,8 @@
     ]
   },
   "migrations": {
-    "count": 156,
-    "fingerprint": "85c33b9811a5e4bdd17689ccf54d1ee24cf90aa7bea3da665c6cfd06b7e3b64b"
+    "count": 196,
+    "fingerprint": "712abbc8fd2e5bbb221166c39e03878e6327d13528d980cd76d4e17eeafc4768"
   },
   "released_standard": {
     "doc_code": "NR_ONE_MAP_TWM_CORE_2026",

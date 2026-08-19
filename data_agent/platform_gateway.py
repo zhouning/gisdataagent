@@ -9,7 +9,7 @@ import re
 from collections.abc import Iterator
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid5
@@ -281,6 +281,14 @@ class PostgresqlCdcRecoveryWriteResult:
 @dataclass(frozen=True)
 class GatewayResourceVersionPage:
     items: tuple[ResourceVersion, ...]
+    offset: int
+    limit: int
+    has_more: bool
+
+
+@dataclass(frozen=True)
+class MetadataFabricBindingPage:
+    items: tuple[MetadataFabricBinding, ...]
     offset: int
     limit: int
     has_more: bool
@@ -606,6 +614,102 @@ class PlatformGateway:
                 MetadataFabricBinding.model_validate(dict(row)) for row in rows
             )
 
+    def search_metadata_fabric_bindings(
+        self,
+        tenant_id: str,
+        *,
+        query: str | None = None,
+        system: MetadataFabricSystem | str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> MetadataFabricBindingPage:
+        """Search only the tenant-scoped GDA crosswalk, never provider catalogs.
+
+        This is the read bridge's deterministic discovery surface. OpenMetadata
+        and Gravitino remain authoritative for their own metadata; this query
+        searches the immutable external references that GDA is allowed to own.
+        """
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        if not 1 <= limit <= 100 or not 0 <= offset <= 10_000:
+            raise GatewayValidationError(
+                "metadata fabric search is outside the supported range"
+            )
+        normalized_query = query.strip() if query is not None else None
+        if normalized_query == "":
+            normalized_query = None
+        if normalized_query is not None and len(normalized_query) > 128:
+            raise GatewayValidationError(
+                "metadata fabric search query must be at most 128 characters"
+            )
+        try:
+            resolved_system = (
+                MetadataFabricSystem(system).value if system is not None else None
+            )
+        except ValueError as exc:
+            raise GatewayValidationError(
+                "metadata fabric system is invalid"
+            ) from exc
+        escaped_query = (
+            normalized_query.replace("!", "!!")
+            .replace("%", "!%")
+            .replace("_", "!_")
+            if normalized_query is not None
+            else None
+        )
+        query_pattern = (
+            f"%{escaped_query}%" if escaped_query is not None else None
+        )
+        with self._transaction(tenant) as connection:
+            rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT tenant_id, binding_id, resource_urn, system,
+                               binding_kind, external_namespace, external_object_id,
+                               external_object_type, external_version_ref,
+                               binding_sha256, created_by, created_at
+                        FROM gda_control.metadata_fabric_binding
+                        WHERE tenant_id = :tenant_id
+                          AND (
+                              CAST(:system AS TEXT) IS NULL
+                              OR system = :system
+                          )
+                          AND (
+                              CAST(:query_pattern AS TEXT) IS NULL
+                              OR resource_urn ILIKE :query_pattern ESCAPE '!'
+                              OR external_namespace ILIKE :query_pattern ESCAPE '!'
+                              OR external_object_id ILIKE :query_pattern ESCAPE '!'
+                              OR external_object_type ILIKE :query_pattern ESCAPE '!'
+                          )
+                        ORDER BY resource_urn, system, external_namespace,
+                                 external_object_type, external_object_id,
+                                 binding_id
+                        LIMIT :page_limit OFFSET :page_offset
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "system": resolved_system,
+                        "query_pattern": query_pattern,
+                        "page_limit": limit + 1,
+                        "page_offset": offset,
+                    },
+                )
+                .mappings()
+                .all()
+            )
+            has_more = len(rows) > limit
+            page_rows = rows[:limit]
+            return MetadataFabricBindingPage(
+                items=tuple(
+                    MetadataFabricBinding.model_validate(dict(row))
+                    for row in page_rows
+                ),
+                offset=offset,
+                limit=limit,
+                has_more=has_more,
+            )
+
     @staticmethod
     def _load_consumer_binding(
         connection,
@@ -756,6 +860,80 @@ class PlatformGateway:
                     value[key] = _as_json(value[key])
                 values.append(ConsumerBinding.model_validate(value))
             return tuple(values)
+
+    def get_active_consumer_binding_for_product_version(
+        self,
+        tenant_id: str,
+        product_urn: str,
+        product_version_id: UUID,
+        consumer_ref: str,
+    ) -> ConsumerBinding | None:
+        """Resolve one active binding for an exact product version and subject.
+
+        Version and expiry checks stay in the gateway transaction so protocol
+        routes never need to read the control tables directly or duplicate the
+        database authority's tenant policy.
+        """
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT binding.tenant_id, binding.binding_id,
+                               binding.product_urn, binding.consumer_ref,
+                               binding.purpose, binding.scope,
+                               binding.min_product_version,
+                               binding.max_product_version,
+                               binding.credential_ref, binding.quota,
+                               binding.expires_at,
+                               binding.compatibility_fingerprint,
+                               binding.compatibility_evidence,
+                               binding.binding_sha256, binding.created_by,
+                               binding.created_at
+                          FROM gda_control.consumer_binding AS binding
+                          JOIN gda_control.data_product_version AS version
+                            ON version.tenant_id = binding.tenant_id
+                           AND version.product_urn = binding.product_urn
+                           AND version.data_product_version_id = :product_version_id
+                         WHERE binding.tenant_id = :tenant_id
+                           AND binding.product_urn = :product_urn
+                           AND binding.consumer_ref = :consumer_ref
+                           AND binding.expires_at > clock_timestamp()
+                           AND (
+                               binding.min_product_version IS NULL
+                               OR string_to_array(substr(version.version_key, 2), '.')::numeric[]
+                                    >= string_to_array(
+                                        substr(binding.min_product_version, 2), '.'
+                                    )::numeric[]
+                           )
+                           AND (
+                               binding.max_product_version IS NULL
+                               OR string_to_array(substr(version.version_key, 2), '.')::numeric[]
+                                    <= string_to_array(
+                                        substr(binding.max_product_version, 2), '.'
+                                    )::numeric[]
+                           )
+                         ORDER BY binding.binding_id
+                         LIMIT 1
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "product_urn": product_urn,
+                        "product_version_id": product_version_id,
+                        "consumer_ref": consumer_ref,
+                    },
+                )
+                .mappings()
+                .one_or_none()
+            )
+            if row is None:
+                return None
+            value = dict(row)
+            for key in ("scope", "quota", "compatibility_evidence"):
+                value[key] = _as_json(value[key])
+            return ConsumerBinding.model_validate(value)
 
     @staticmethod
     def _load_consumer_binding_migration_state(
@@ -2283,6 +2461,22 @@ class PlatformGateway:
                 resource_result.created or version_result.created or definition_result.created,
             )
 
+    def get_definition(
+        self,
+        tenant_id: str,
+        definition_version_id: UUID,
+    ) -> PlatformDefinitionVersion:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            definition = self._load_definition(
+                connection,
+                tenant,
+                definition_version_id,
+            )
+            if definition is None:
+                raise GatewayNotFoundError("PlatformDefinitionVersion was not found")
+            return definition
+
     @staticmethod
     def _load_run(connection, tenant_id: str, run_id: UUID) -> PlatformRun | None:
         row = (
@@ -3669,6 +3863,34 @@ class PlatformGateway:
         return cls._load_delivered_cancel(connection, tenant_id, run_id) is not None
 
     @classmethod
+    def _load_cancel_requested_at(
+        cls, connection, tenant_id: str, run_id: UUID
+    ) -> datetime | None:
+        """Return the immutable PlatformRun time at which cancellation was admitted."""
+        return connection.execute(
+            text(
+                """
+                SELECT occurred_at
+                FROM gda_control.platform_run_event
+                WHERE tenant_id = :tenant_id
+                  AND run_id = :run_id
+                  AND to_status = 'cancelling'
+                  AND details ->> 'schema' = 'gda.dataops_cancel_admission.v1'
+                ORDER BY occurred_at DESC, sequence_no DESC
+                LIMIT 1
+                """
+            ),
+            {"tenant_id": tenant_id, "run_id": run_id},
+        ).scalar_one_or_none()
+
+    @staticmethod
+    def _cancel_terminal_evidence_is_current(
+        observed_at: datetime, cancel_requested_at: datetime
+    ) -> bool:
+        """Account only for DolphinScheduler 3.4's whole-second timestamps."""
+        return observed_at + timedelta(seconds=1) >= cancel_requested_at
+
+    @classmethod
     def _fail_run_for_incident(
         cls,
         connection,
@@ -3754,9 +3976,18 @@ class PlatformGateway:
                 raise GatewayValidationError(
                     "cancellation terminal mismatch requires a delivered governed cancel command"
                 )
-            if observation.observed_at < cancel_command.completed_at:
+            cancel_requested_at = self._load_cancel_requested_at(
+                connection, run.tenant_id, run.run_id
+            )
+            if cancel_requested_at is None:
                 raise GatewayValidationError(
-                    "cancellation terminal evidence predates governed cancel delivery"
+                    "cancellation terminal mismatch requires an immutable cancel admission event"
+                )
+            if not self._cancel_terminal_evidence_is_current(
+                observation.observed_at, cancel_requested_at
+            ):
+                raise GatewayValidationError(
+                    "cancellation terminal evidence predates governed cancel admission"
                 )
 
             dedupe_key = f"cancel-terminal:{observation.observation_id}"
@@ -6664,6 +6895,7 @@ def build_gateway_report(
             "SELECT set_config('app.current_tenant', :tenant, true)",
             "ON CONFLICT DO NOTHING",
             "def get_artifact(",
+            "def get_definition(",
             "def submit_schedule_window(",
             "def submit_manual_trigger(",
             "def admit_dataops_cancel(",
@@ -6680,11 +6912,13 @@ def build_gateway_report(
             "def complete_platform_run_event_delivery(",
             "def fail_platform_run_event_delivery(",
             "def register_metadata_fabric_binding(",
+            "def search_metadata_fabric_bindings(",
             "def claim_metadata_changes(",
             "def complete_metadata_change(",
             "def fail_metadata_change(",
             "def register_consumer_binding(",
             "def list_consumer_bindings(",
+            "def get_active_consumer_binding_for_product_version(",
             "def record_consumer_binding_migration_state(",
             "def list_consumer_binding_migration_states(",
             "def claim_consumer_binding_migration_notifications(",
@@ -6704,10 +6938,18 @@ def build_gateway_report(
         "routes_source": (
             'base = "/api/platform/v1"',
             'frozenset({"admin", "platform_operator"})',
+            "_gis_mvt_principal",
+            "consumer_binding_required",
             '"tenant_context_required"',
             '"actor_mismatch"',
             '"capability_contract_mismatch"',
             "_capability_contract_guard",
+            "create_data_product_blueprint",
+            "preview_data_product_blueprint",
+            "create_data_product_blueprint_review",
+            "platform_create_data_product_blueprint",
+            "platform_preview_data_product_blueprint",
+            "platform_create_data_product_blueprint_review",
             "create_dolphinscheduler_callback",
             "create_quality_result",
             "finalize_run_success",
@@ -6722,6 +6964,7 @@ def build_gateway_report(
             "create_openlineage_event",
             "create_metadata_fabric_binding",
             "list_metadata_fabric_bindings",
+            "search_metadata_fabric_bindings",
             "get_resource_version_lineage",
             "get_resource_version_impact",
             "observe_master_source_record",
@@ -6874,7 +7117,7 @@ def build_gateway_report(
         "schema": GATEWAY_SCHEMA_VERSION,
         "status": "valid" if not errors else "invalid",
         "database_role": GATEWAY_DATABASE_ROLE,
-        "route_count": 23,
+        "route_count": 26,
         "files": files,
         "missing_markers": missing_markers,
         "errors": errors,

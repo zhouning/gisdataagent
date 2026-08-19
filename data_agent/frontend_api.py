@@ -560,6 +560,19 @@ async def _api_semantic_source_upsert(request: Request):
     )
     if result.get("status") == "error":
         return JSONResponse({"error": result.get("message", "")}, status_code=400)
+    # Query participation is deliberately a separate governed policy from
+    # descriptive metadata. This lets operators keep staging/history tables
+    # registered for lineage while selecting one authoritative NL2SQL source.
+    if "nl2sql_enabled" in body or "nl2sql_priority" in body:
+        from .semantic_layer import configure_source_nl2sql_policy
+        policy = configure_source_nl2sql_policy(
+            table,
+            enabled=bool(body.get("nl2sql_enabled", True)),
+            priority=int(body.get("nl2sql_priority", 0) or 0),
+        )
+        if policy.get("status") == "error":
+            return JSONResponse({"error": policy.get("message", "")}, status_code=400)
+        result.update(policy)
     return JSONResponse(result)
 
 
@@ -4424,12 +4437,17 @@ def get_frontend_api_routes():
     from .api.platform_gateway_routes import get_platform_gateway_routes
     from .api.metric_routes import get_metric_routes
     from .api.capability_spec_routes import get_capability_spec_routes
+    from .api.governed_query_routes import get_governed_query_routes
+    from .api.governed_query_policy_routes import get_governed_query_policy_routes
+    from .api.semantic_planning_routes import get_semantic_planning_routes
+    from .api.gis_analysis_routes import get_gis_analysis_routes
     from .api.data_product_routes import get_data_product_routes
     from .api.abu_dhabi_land_use_routes import get_abu_dhabi_land_use_routes
     from .api.catalog_lifecycle_routes import get_catalog_lifecycle_routes
     from .api.map_publication_routes import get_map_publication_routes
     from .api.ontology_routes import get_ontology_routes
     from .api.ontology_draft_routes import get_ontology_draft_routes
+    from .api.public_ontology_routes import get_public_ontology_routes
     from .api.ontology_demo_routes import get_ontology_demo_routes
     from .api.offline_ingest_routes import get_offline_ingest_routes
 
@@ -4442,7 +4460,12 @@ def get_frontend_api_routes():
         *get_catalog_lifecycle_routes(),
         *get_map_publication_routes(),
         *get_ontology_routes(),
+        *get_governed_query_routes(),
+        *get_governed_query_policy_routes(),
+        *get_semantic_planning_routes(),
+        *get_gis_analysis_routes(),
         *get_ontology_draft_routes(),
+        *get_public_ontology_routes(),
         *get_ontology_demo_routes(),
         # Windows/isolated-network file ingest (resumable chunks, local scans,
         # durable run manifests and diagnostic bundles).

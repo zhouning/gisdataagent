@@ -180,6 +180,11 @@ auth_events = _safe_counter(
     "Authentication events",
     ["event_type"],
 )
+security_execution_audit_events = _safe_counter(
+    "agent_security_execution_audit_events_total",
+    "Immutable audit events for governed execution and recovery",
+    ["operation", "phase", "outcome"],
+)
 
 # Histograms
 pipeline_duration = _safe_histogram(
@@ -202,6 +207,22 @@ approval_notification_cycle_duration = _safe_histogram(
 approval_notification_last_success_timestamp = _safe_gauge(
     "gda_approval_notification_last_success_timestamp_seconds",
     "Unix timestamp of the last successful ApprovalCase notification cycle",
+    [],
+)
+consumer_binding_notification_operations = _safe_counter(
+    "gda_consumer_binding_notification_operations_total",
+    "ConsumerBinding migration notification worker operations by outcome",
+    ["outcome"],
+)
+consumer_binding_notification_cycle_duration = _safe_histogram(
+    "gda_consumer_binding_notification_cycle_duration_seconds",
+    "ConsumerBinding migration notification worker cycle latency",
+    [],
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30),
+)
+consumer_binding_notification_last_success_timestamp = _safe_gauge(
+    "gda_consumer_binding_notification_last_success_timestamp_seconds",
+    "Unix timestamp of the last successful ConsumerBinding notification cycle",
     [],
 )
 

@@ -2,23 +2,24 @@
 RAG Private Knowledge Base — per-user document store with semantic search (v8.0.2).
 
 Users can create knowledge bases, upload documents (text, Markdown, PDF, Word),
-which are chunked, embedded via Gemini text-embedding-004, and stored in
+which are chunked, embedded via the configured embedding gateway, and stored in
 PostgreSQL as REAL[] arrays. Semantic search uses numpy cosine similarity.
 
 All DB operations are non-fatal (never raise to caller).
 """
+import hashlib
+import json
 import logging
 import os
 import re
-from datetime import datetime
 from typing import Optional
 
 import numpy as np
 from sqlalchemy import text
 
+from .database_tools import T_KB_CHUNKS, T_KB_DOCUMENTS, T_KNOWLEDGE_BASES
 from .db_engine import get_engine
-from .database_tools import T_KNOWLEDGE_BASES, T_KB_DOCUMENTS, T_KB_CHUNKS
-from .user_context import current_user_id
+from .user_context import current_tenant_id, current_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +33,10 @@ MAX_DOCUMENT_SIZE = 5_000_000   # 5 MB raw text limit
 MAX_DOCUMENTS_PER_KB = 100
 MAX_KBS_PER_USER = 20
 
-_EMBEDDING_MODEL = "text-embedding-004"
-_EMBEDDING_DIM = 768
 _EMBEDDING_BATCH_SIZE = 100
+
+GOVERNED_DOCUMENT_SCHEMA = "gda.kb-document.v1"
+GOVERNED_CHUNK_SCHEMA = "gda.kb-chunk.v1"
 
 EXTENSION_TO_CONTENT_TYPE = {
     ".txt": "text/plain",
@@ -42,6 +44,18 @@ EXTENSION_TO_CONTENT_TYPE = {
     ".pdf": "application/pdf",
     ".docx": "application/docx",
 }
+
+
+def _sha256_text(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def governed_document_resource_id(kb_id: int, doc_id: int) -> str:
+    return f"kb:{kb_id}/documents/{doc_id}"
+
+
+def governed_chunk_locator(kb_id: int, doc_id: int, chunk_index: int) -> str:
+    return f"{governed_document_resource_id(kb_id, doc_id)}/chunks/{chunk_index}"
 
 # ---------------------------------------------------------------------------
 # Table initialization
@@ -454,7 +468,11 @@ def _resolve_kb_id(
 ) -> Optional[int]:
     """Resolve a KB by id or name. Returns kb_id or None."""
     if kb_id:
-        return kb_id
+        row = conn.execute(text(f"""
+            SELECT id FROM {T_KNOWLEDGE_BASES}
+            WHERE id = :id AND (owner_username = :u OR is_shared = TRUE)
+        """), {"id": kb_id, "u": username}).fetchone()
+        return row[0] if row else None
     if kb_name:
         row = conn.execute(text(f"""
             SELECT id FROM {T_KNOWLEDGE_BASES}
@@ -502,6 +520,9 @@ def add_document(
         return None
 
     raw_text = raw_text[:MAX_DOCUMENT_SIZE]
+    tenant_id = current_tenant_id.get().strip()
+    document_digest = _sha256_text(raw_text)
+    document_version = f"sha256-{document_digest}"
 
     try:
         with engine.connect() as conn:
@@ -530,8 +551,8 @@ def add_document(
             # Insert document
             doc_result = conn.execute(text(f"""
                 INSERT INTO {T_KB_DOCUMENTS}
-                (kb_id, filename, content_type, raw_text, char_count, chunk_count)
-                VALUES (:kb_id, :fn, :ct, :txt, :cc, :ck)
+                (kb_id, filename, content_type, raw_text, char_count, chunk_count, metadata)
+                VALUES (:kb_id, :fn, :ct, :txt, :cc, :ck, CAST(:metadata AS jsonb))
                 RETURNING id
             """), {
                 "kb_id": kb_id,
@@ -540,22 +561,46 @@ def add_document(
                 "txt": raw_text,
                 "cc": len(raw_text),
                 "ck": chunk_count,
+                "metadata": json.dumps({
+                    "schema": GOVERNED_DOCUMENT_SCHEMA,
+                    "tenant_id": tenant_id,
+                    "owner_subject_id": username,
+                    "content_sha256": document_digest,
+                    "version_key": document_version,
+                    "filename": filename,
+                    "content_type": content_type,
+                }, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
             })
             doc_id = doc_result.scalar()
 
             # Insert chunks
             for idx, chunk in enumerate(chunks):
                 emb = embeddings[idx] if has_embeddings else None
+                chunk_digest = _sha256_text(chunk)
                 conn.execute(text(f"""
                     INSERT INTO {T_KB_CHUNKS}
-                    (doc_id, kb_id, chunk_index, content, embedding)
-                    VALUES (:doc_id, :kb_id, :idx, :content, :emb)
+                    (doc_id, kb_id, chunk_index, content, embedding, metadata)
+                    VALUES (
+                        :doc_id, :kb_id, :idx, :content, :emb,
+                        CAST(:metadata AS jsonb)
+                    )
                 """), {
                     "doc_id": doc_id,
                     "kb_id": kb_id,
                     "idx": idx,
                     "content": chunk,
                     "emb": emb,
+                    "metadata": json.dumps({
+                        "schema": GOVERNED_CHUNK_SCHEMA,
+                        "tenant_id": tenant_id,
+                        "document_resource_id": governed_document_resource_id(
+                            kb_id, doc_id
+                        ),
+                        "document_version": document_version,
+                        "document_content_sha256": document_digest,
+                        "chunk_content_sha256": chunk_digest,
+                        "locator": governed_chunk_locator(kb_id, doc_id, idx),
+                    }, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
                 })
 
             # Update KB counters
@@ -665,6 +710,7 @@ def search_kb(
     query: str,
     kb_id: Optional[int] = None,
     kb_name: Optional[str] = None,
+    kb_ids: Optional[list[int]] = None,
     top_k: int = 5,
 ) -> list[dict]:
     """Semantic search across a knowledge base (or all user KBs).
@@ -675,6 +721,25 @@ def search_kb(
     if not engine:
         return []
     username = current_user_id.get()
+    try:
+        normalized_ids = (
+            tuple(dict.fromkeys(int(value) for value in kb_ids))
+            if kb_ids is not None
+            else ()
+        )
+        top_k = int(top_k)
+    except (TypeError, ValueError):
+        return []
+    if kb_ids is not None and (
+        not normalized_ids
+        or len(normalized_ids) > 100
+        or any(value <= 0 for value in normalized_ids)
+    ):
+        return []
+    if top_k < 1 or top_k > 100:
+        return []
+    if sum(value is not None for value in (kb_id, kb_name, kb_ids)) > 1:
+        return []
 
     # Embed query
     query_embeddings = _get_embeddings([query])
@@ -687,7 +752,23 @@ def search_kb(
         with engine.connect() as conn:
             resolved_id = _resolve_kb_id(conn, username, kb_id, kb_name)
 
-            if resolved_id:
+            if (kb_id is not None or kb_name is not None) and resolved_id is None:
+                return []
+
+            if normalized_ids:
+                rows = conn.execute(text(f"""
+                    SELECT c.id, c.content, c.embedding, c.doc_id,
+                           c.chunk_index, c.metadata
+                    FROM {T_KB_CHUNKS} c
+                    JOIN {T_KNOWLEDGE_BASES} kb ON c.kb_id = kb.id
+                    WHERE c.kb_id = ANY(:kb_ids)
+                      AND (kb.owner_username = :u OR kb.is_shared = TRUE)
+                      AND c.embedding IS NOT NULL
+                """), {
+                    "kb_ids": list(normalized_ids),
+                    "u": username,
+                }).fetchall()
+            elif resolved_id:
                 # Search specific KB
                 rows = conn.execute(text(f"""
                     SELECT c.id, c.content, c.embedding, c.doc_id, c.chunk_index, c.metadata
@@ -708,6 +789,15 @@ def search_kb(
     except Exception as e:
         logger.warning("[KB] search_kb failed: %s", e)
         return []
+
+
+def search_knowledge_base(
+    query: str,
+    kb_ids: Optional[list[int]] = None,
+    top_k: int = 5,
+) -> list[dict]:
+    """Compatibility entrypoint used by the HTTP and GraphRAG surfaces."""
+    return search_kb(query, kb_ids=kb_ids, top_k=top_k)
 
 
 def get_kb_context(
