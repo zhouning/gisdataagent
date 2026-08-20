@@ -1,0 +1,236 @@
+{
+  "schema": "gwm.abu_dhabi_public_data_acquisition_manifest.v1",
+  "generated_at_utc": "2026-08-19T14:45:00Z",
+  "authorization": {
+    "scope": "public no-login sources approved by customer",
+    "sources": [
+      "NCM/UAE Open Data/DMT SmartMakani",
+      "NASA GPM IMERG",
+      "Sentinel-1/Copernicus",
+      "Copernicus EMS/UNOSAT/HDX",
+      "IOC/NOAA/Copernicus Marine",
+      "FABDEM/ALOS and other public terrain sources"
+    ],
+    "excluded": [
+      "paid services",
+      "credentials, tokens, cookies or private browser state",
+      "customer files or database rows"
+    ]
+  },
+  "target": {
+    "place": "Abu Dhabi urban study area",
+    "event_window_utc": ["2024-04-15T00:00:00Z", "2024-04-18T00:00:00Z"],
+    "bbox_wgs84": [54.2971553, 24.2810331, 54.7659108, 24.601854],
+    "registered_subnet_bbox_wgs84": [54.3698672, 24.5055651, 54.3747036, 24.5101621]
+  },
+  "data_request_register_path": "derived/abu_dhabi_data_request_register_v2.json",
+  "artifacts": [
+    {
+      "path": "derived/abu_dhabi_data_request_register_v2.json",
+      "status": "request_register_recorded",
+      "size_bytes": 18314,
+      "sha256": "4effe48edcea4734c1cb8ce58404be984ade481ef34a981fc8f8b0b2c1d3b8ba",
+      "evidence_class": "customer_data_request_contract",
+      "model_admission": "no_admission_effect",
+      "limitation": "Records missing data and acceptance criteria; does not contain customer rows or credentials."
+    },
+    {
+      "path": "online/weather/chirps_daily_05deg_2024_04/chirps-v2.0.2024.04.15.tif.gz",
+      "status": "downloaded_and_validated",
+      "source_url": "https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_daily/tifs/p05/2024/chirps-v2.0.2024.04.15.tif.gz",
+      "source": "Climate Hazards Center CHIRPS v2.0 global daily 0.05 degree",
+      "time_range": ["2024-04-15", "2024-04-15"],
+      "units": "mm/day",
+      "spatial_resolution": "0.05 degree",
+      "size_bytes": 11221670,
+      "sha256": "d0c03d62d591ab9dfbd7c1f2e3f3b4a9945f743d0f2f9969f526c0b669b116da",
+      "license_or_terms": "CHIRPS public data terms; retain source attribution",
+      "evidence_class": "public_raster_proxy",
+      "model_admission": "diagnostic_sensitivity_only",
+      "limitation": "Daily and 0.05 degree product; not a local gauge/radar field and not event calibration evidence."
+    },
+    {
+      "path": "online/weather/chirps_daily_05deg_2024_04/chirps-v2.0.2024.04.16.tif.gz",
+      "status": "downloaded_and_validated",
+      "source_url": "https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_daily/tifs/p05/2024/chirps-v2.0.2024.04.16.tif.gz",
+      "source": "Climate Hazards Center CHIRPS v2.0 global daily 0.05 degree",
+      "time_range": ["2024-04-16", "2024-04-16"],
+      "units": "mm/day",
+      "spatial_resolution": "0.05 degree",
+      "size_bytes": 3848255,
+      "sha256": "8f7a4fb6b8dde0901c7799213d993b92938ab1a649c0bae1e6c6dc0ba783f623",
+      "license_or_terms": "CHIRPS public data terms; retain source attribution",
+      "evidence_class": "public_raster_proxy",
+      "model_admission": "diagnostic_sensitivity_only",
+      "limitation": "Daily and 0.05 degree product; cannot represent urban convective rainfall structure."
+    },
+    {
+      "path": "online/weather/chirps_daily_05deg_2024_04/chirps-v2.0.2024.04.17.tif.gz",
+      "status": "downloaded_and_validated",
+      "source_url": "https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_daily/tifs/p05/2024/chirps-v2.0.2024.04.17.tif.gz",
+      "source": "Climate Hazards Center CHIRPS v2.0 global daily 0.05 degree",
+      "time_range": ["2024-04-17", "2024-04-17"],
+      "units": "mm/day",
+      "spatial_resolution": "0.05 degree",
+      "size_bytes": 3325846,
+      "sha256": "af6fc02b6adcf3fac3b60b9617559fd036652a7a2258ca703cd0f079b5f00ed2",
+      "license_or_terms": "CHIRPS public data terms; retain source attribution",
+      "evidence_class": "public_raster_proxy",
+      "model_admission": "diagnostic_sensitivity_only",
+      "limitation": "Daily and 0.05 degree product; not suitable for direct SWMM event calibration."
+    },
+    {
+      "path": "online/supporting_context/hotosm_are_waterways_osm_gpkg.zip",
+      "status": "downloaded_and_validated",
+      "source_url": "https://production-raw-data-api.s3.amazonaws.com/ISO3/ARE/waterways/hotosm_are_waterways_osm_gpkg.zip",
+      "source": "HOT Export Tool, United Arab Emirates waterways",
+      "size_bytes": 4288146,
+      "sha256": "aa89117941b52f7fee6c8b2cba2afa9e874ecd2595e5aabfc3301a67d25953b6",
+      "derived_path": "derived/public_supporting_context/hotosm_are_waterways/waterways.gpkg",
+      "license_or_terms": "OpenStreetMap data, ODbL; attribution and share-alike obligations apply",
+      "evidence_class": "public_context_vector",
+      "model_admission": "context_and_spatial_crosswalk_only",
+      "limitation": "Not a surveyed stormwater network, invert inventory, capacity model or coastal boundary condition."
+    },
+    {
+      "path": "derived/public_supporting_context/chirps_abu_dhabi_point_summary.json",
+      "status": "derived_and_validated",
+      "source": "CHIRPS v2.0 daily rasters listed above",
+      "extraction_point_wgs84": [54.364998, 24.428822],
+      "time_range": ["2024-04-15", "2024-04-17"],
+      "units": "mm/day",
+      "size_bytes": 981,
+      "sha256": "f91a703e7bbb71e027930fc96922c1d22972006d034775c359b765884b038159",
+      "evidence_class": "derived_public_proxy_summary",
+      "model_admission": "diagnostic_sensitivity_only",
+      "limitation": "Daily values have no defensible sub-daily distribution and are not expanded into hourly forcing."
+    },
+    {
+      "path": "online/supporting_context/are_admin_boundaries.geojson.zip",
+      "status": "downloaded_and_validated",
+      "source_url": "https://data.humdata.org/dataset/23d41c1f-41ef-4957-a47e-b8c08c984d83/resource/29e34577-9c64-4792-bcd0-1dbe1121e7f5/download/are_admin_boundaries.geojson.zip",
+      "source": "OCHA/HDX United Arab Emirates subnational administrative boundaries",
+      "size_bytes": 3218854,
+      "sha256": "b8e081b6b94948a9c22a1103a817ef295854711a6c55830168362ddd48dcc4ce",
+      "derived_path": "derived/public_supporting_context/are_admin_boundaries/are_admin1.geojson",
+      "license_or_terms": "HDX dataset terms and source attribution",
+      "evidence_class": "public_context_vector",
+      "model_admission": "spatial_clip_and_impact_aggregation_only",
+      "limitation": "Administrative polygons do not provide parcel, building, drainage or inundation observations."
+    },
+    {
+      "path": "online/remote_catalogs/sentinel1_grd_april_2024_bbox_search.json",
+      "status": "catalog_saved_assets_access_restricted",
+      "source_url": "https://earth-search.aws.element84.com/v1/search",
+      "source": "Element 84 Earth Search Sentinel-1 GRD STAC",
+      "query": {
+        "bbox": [54.2971553, 24.2810331, 54.7659108, 24.601854],
+        "datetime": "2024-04-01T00:00:00Z/2024-04-30T23:59:59Z",
+        "collections": ["sentinel-1-grd"],
+        "items_found": 12
+      },
+      "size_bytes": 92373,
+      "sha256": "f259d50210d5c0300cc485f255b9cb6e8c37c94c56db4258c620a44817740f0f",
+      "license_or_terms": "Copernicus Sentinel data legal notice; Earth Search assets marked requester-pays/proprietary hosting",
+      "evidence_class": "public_catalog_evidence",
+      "model_admission": "event_observation_candidate_not_downloaded",
+      "limitation": "STAC discovery succeeded, but tested AWS/Planetary Computer raster URLs returned access restrictions; no flood extent is claimed."
+    },
+    {
+      "path": "online/remote_catalogs/planetarycomputer_sentinel1_grd_collection.json",
+      "status": "catalog_saved",
+      "source_url": "https://planetarycomputer.microsoft.com/api/stac/v1/collections/sentinel-1-grd",
+      "source": "Microsoft Planetary Computer Sentinel-1 GRD collection metadata",
+      "size_bytes": 10723,
+      "sha256": "07c6189ff6329fde5a1fc90a132fa3629c5044673879323d70e4d74f46e4da53",
+      "license_or_terms": "Copernicus Sentinel data legal notice",
+      "evidence_class": "public_catalog_evidence",
+      "model_admission": "metadata_only",
+      "limitation": "Collection metadata is not an event image and does not prove inundation."
+    },
+    {
+      "path": "online/remote_catalogs/sentinel1_asset_access_probe.txt",
+      "status": "access_probe_saved",
+      "size_bytes": 392,
+      "sha256": "3837ecae2e508b1cd62c56fc2cd05bee0e517bec8008633f1f5d90092acb2d90",
+      "evidence_class": "access_boundary_evidence",
+      "model_admission": "metadata_only"
+    },
+    {
+      "path": "online/remote_catalogs/gpm_imerg_v07_april_2024_event_cmr.json",
+      "status": "catalog_saved_data_requires_earthdata_login",
+      "source_url": "https://cmr.earthdata.nasa.gov/search/granules.json",
+      "source": "NASA CMR GPM IMERG Final V07 half-hourly granule catalog",
+      "query": {
+        "bbox": [54.36, 24.49, 54.39, 24.53],
+        "temporal": "2024-04-15T00:00:00Z/2024-04-18T00:00:00Z",
+        "granules_found": 145
+      },
+      "size_bytes": 600858,
+      "sha256": "1f4c85b522678416cc4e0005e678215c89d72498993656fb1aaba8d4d383eb2c",
+      "license_or_terms": "NASA GPM data terms; Earthdata Login required for tested data download",
+      "evidence_class": "public_catalog_evidence",
+      "model_admission": "metadata_only",
+      "limitation": "CMR discovery is complete for the queried point/bbox, but no HDF5 was retained because the data endpoint redirected to Earthdata Login."
+    },
+    {
+      "path": "online/remote_catalogs/gpm_imerg_data_access_probe.txt",
+      "status": "access_probe_saved",
+      "size_bytes": 396,
+      "sha256": "216e83cf779ec39909e76bf6aa17a1a14acb132e1ed849ad24df030d48bd2910",
+      "evidence_class": "access_boundary_evidence",
+      "model_admission": "metadata_only"
+    }
+  ],
+  "not_obtained_or_still_missing": [
+    {
+      "data": "NCM quality-controlled rain gauges and weather radar QPE for 2024-04-15..17",
+      "reason": "A customer-side station directory was identified, but observation time series and radar archives were not available within the approved public no-login boundary.",
+      "requested_from": "NCM or customer-authorized meteorological data owner",
+      "priority": "P0",
+      "required_for": "event calibration, spatial rainfall field, blind validation"
+    },
+    {
+      "data": "Sentinel-1 event raster or Copernicus EMS/UNOSAT flood extent",
+      "reason": "Public catalogs were found, but tested raster assets require account/requester-pays access and no Abu Dhabi-specific EMS/UNOSAT layer was identified.",
+      "requested_from": "customer remote-sensing account or Copernicus EMS activation archive",
+      "priority": "P1",
+      "required_for": "independent inundation footprint evidence"
+    },
+    {
+      "data": "Hourly tide, storm surge and outfall boundary levels",
+      "reason": "IOC public station search returned no UAE/Abu Dhabi match in the queried station catalog; monthly climatology would not be adequate for this event.",
+      "requested_from": "DMT/coastal authority, port operator, IOC/PSMSL/GESLA station owner",
+      "priority": "P0",
+      "required_for": "coastal boundary, backwater and non-free-outfall simulation"
+    },
+    {
+      "data": "Engineering DTM/LiDAR with vertical datum and breaklines",
+      "reason": "Existing Copernicus/SRTM and SmartMakani 2017 contour/bathymetry are diagnostic candidates, not an engineering micro-topography surface.",
+      "requested_from": "DMT survey/topography custodian",
+      "priority": "P0",
+      "required_for": "credible 2D surface routing and depth calibration"
+    },
+    {
+      "data": "Pump/gate operations, inlet capacity, storage and maintenance logs",
+      "reason": "Makani asset geometry and candidate facilities are available, but event-time controls and hydraulic curves are absent.",
+      "requested_from": "stormwater network operator",
+      "priority": "P0",
+      "required_for": "SWMM controls, non-zero SWMM-ANUGA exchange and operational counterfactuals"
+    },
+    {
+      "data": "Timed flood depth/extent/recession and road impact observations",
+      "reason": "No authoritative event observation set is present in the public sources tested.",
+      "requested_from": "DMT, municipality, emergency response and road operations",
+      "priority": "P0",
+      "required_for": "calibration, validation, impact model and GWM training labels"
+    }
+  ],
+  "current_model_gate": {
+    "public_downloads_admitted_for_calibration": false,
+    "public_downloads_admitted_for_diagnostic_sensitivity": true,
+    "traditional_models": ["EPA SWMM 5.2.4", "ANUGA 2D", "LISFLOOD-FP diagnostic candidate"],
+    "gwm_role": "shadow state emulator, uncertainty-aware surrogate and scenario-ranking layer after traditional-model calibration",
+    "prediction_claim": "No city-scale operational prediction or event accuracy claim is enabled by this acquisition round."
+  }
+}

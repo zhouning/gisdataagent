@@ -1,0 +1,1264 @@
+{
+  "claim_boundary": [
+    "public_proxy_presence_is_not_customer_authoritative_delivery",
+    "metadata_only_or_restricted_catalogs_are_not_observations",
+    "file_receipt_does_not_open_k0_or_admit_any_model",
+    "no_customer_database_rows_or_credentials_consumed"
+  ],
+  "dataset_root": "abu_dhabi_stormwater_data_v1",
+  "model_gate_summary": {
+    "admission_effect": "none_readiness_audit_only",
+    "city_scale_prediction_claim_allowed": false,
+    "diagnostic_sensitivity_allowed": true,
+    "gwm_training_admitted": false,
+    "hybrid_planner_admitted": false,
+    "k0_opened": false,
+    "traditional_model_admitted": false
+  },
+  "public_manifest_sha256": "77aaeb0d3b6432126a9168ff6b5cbbfbf4d734650c1063ea264a13129b564e58",
+  "register_id": "abu-dhabi-stormwater-data-requests-v2",
+  "register_sha256": "0b4ace813ca6be7bc82a641d9ca8ba2998a715d52ea7225657f9cbc564fc6ff3",
+  "requests": [
+    {
+      "acceptance_checks": [
+        "datum is explicit",
+        "outfall mapping is approved",
+        "time standard is UTC",
+        "storm-surge and tide components are not double counted"
+      ],
+      "blocks": [
+        "K0",
+        "coastal boundary admission",
+        "recession validation",
+        "operational prediction"
+      ],
+      "customer_authoritative_available": false,
+      "customer_authoritative_status": "recorded_waiting_customer_or_authority",
+      "domain": "coastal_boundary",
+      "priority": "P0",
+      "public_proxy_evidence": [],
+      "public_proxy_is_not_authoritative": true,
+      "public_proxy_missing_manifest_paths": [],
+      "public_proxy_status": "no_public_proxy",
+      "public_proxy_usable_artifact_count": 0,
+      "readiness_status": "blocked_waiting_customer_or_authority",
+      "request_id": "coastal-boundary-time-series",
+      "required_artifact": "event_tide_surge_and_outfall_boundary_series"
+    },
+    {
+      "acceptance_checks": [
+        "endpoint crosswalk is deterministic",
+        "diameter/length units are explicit",
+        "invert datum is explicit",
+        "outfall and pump relationships reconcile",
+        "duplicate and orphan rules are documented"
+      ],
+      "blocks": [
+        "K0",
+        "engineering SWMM",
+        "non-zero coupling",
+        "operational counterfactuals"
+      ],
+      "customer_authoritative_available": false,
+      "customer_authoritative_status": "recorded_waiting_customer_or_authority",
+      "domain": "drainage_network",
+      "priority": "P0",
+      "public_proxy_evidence": [
+        {
+          "exists": true,
+          "manifest_registered": false,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority"
+            ],
+            "present_fields": [
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "unregistered_candidate",
+          "path": "derived/smartmakani/abu_dhabi_stormwater_network.gpkg",
+          "sha256": "59fa25fd318ff44fd4e361ed8a7bf38a60756f2ca2f8dfa97821f0138bf30945",
+          "sha256_matches_manifest": false,
+          "size_bytes": 133984256,
+          "size_matches_manifest": false,
+          "source": null,
+          "status": "local_candidate_not_registered",
+          "usable_proxy": false
+        },
+        {
+          "exists": true,
+          "manifest_registered": false,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority"
+            ],
+            "present_fields": [
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "unregistered_candidate",
+          "path": "derived/makani_registered/registered_stormwater_pipelines.parquet",
+          "sha256": "42a632fcd0fc66457b3348f20851bf246cf5a9e4b6628db5b04759c89bd7f30c",
+          "sha256_matches_manifest": false,
+          "size_bytes": 38826911,
+          "size_matches_manifest": false,
+          "source": null,
+          "status": "local_candidate_not_registered",
+          "usable_proxy": false
+        },
+        {
+          "exists": true,
+          "manifest_registered": false,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority"
+            ],
+            "present_fields": [
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "unregistered_candidate",
+          "path": "derived/makani_registered/registered_stormwater_nodes.parquet",
+          "sha256": "67a8a0956a33dc6f52df25fa7d1f3cfa61def4710a22263babc702502994d1b4",
+          "sha256_matches_manifest": false,
+          "size_bytes": 5485368,
+          "size_matches_manifest": false,
+          "source": null,
+          "status": "local_candidate_not_registered",
+          "usable_proxy": false
+        },
+        {
+          "exists": true,
+          "manifest_registered": false,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority"
+            ],
+            "present_fields": [
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "unregistered_candidate",
+          "path": "derived/makani_registered/registered_network_candidate_audit.json",
+          "sha256": "3c143e5a80271b0cdbba6352e09208ee99fcdb2470941190c1ef941a120d06c4",
+          "sha256_matches_manifest": false,
+          "size_bytes": 6987,
+          "size_matches_manifest": false,
+          "source": null,
+          "status": "local_candidate_not_registered",
+          "usable_proxy": false
+        }
+      ],
+      "public_proxy_is_not_authoritative": true,
+      "public_proxy_missing_manifest_paths": [],
+      "public_proxy_status": "local_candidate_unregistered",
+      "public_proxy_usable_artifact_count": 0,
+      "readiness_status": "blocked_waiting_customer_or_authority",
+      "request_id": "drainage-network-topology-units",
+      "required_artifact": "authoritative_pipe_node_inlet_outfall_pump_crosswalk"
+    },
+    {
+      "acceptance_checks": [
+        "vertical datum is explicit",
+        "coverage includes candidate outfalls and drainage catchments",
+        "accuracy report is present",
+        "no unresolved CRS axis ambiguity"
+      ],
+      "blocks": [
+        "K0",
+        "ANUGA engineering admission",
+        "depth calibration",
+        "GWM training labels"
+      ],
+      "customer_authoritative_available": false,
+      "customer_authoritative_status": "recorded_waiting_customer_or_authority",
+      "domain": "terrain",
+      "priority": "P0",
+      "public_proxy_evidence": [
+        {
+          "exists": true,
+          "manifest_registered": false,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority"
+            ],
+            "present_fields": [
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "unregistered_candidate",
+          "path": "online/terrain/Copernicus_DSM_COG_10_N24_00_E054_00_DEM.tif",
+          "sha256": "aa3b6d63c48d46242ef313c5c7be098867d2a5459d43d4f1a71b04510c428793",
+          "sha256_matches_manifest": false,
+          "size_bytes": 28282630,
+          "size_matches_manifest": false,
+          "source": null,
+          "status": "local_candidate_not_registered",
+          "usable_proxy": false
+        },
+        {
+          "exists": true,
+          "manifest_registered": false,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority"
+            ],
+            "present_fields": [
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "unregistered_candidate",
+          "path": "online/terrain/abu_dhabi_copernicus_30m_epsg32640.tif",
+          "sha256": "0e2366198931787458117044eeb41f38f24690b4cfcf6684795ccad83f4c11b8",
+          "sha256_matches_manifest": false,
+          "size_bytes": 8169461,
+          "size_matches_manifest": false,
+          "source": null,
+          "status": "local_candidate_not_registered",
+          "usable_proxy": false
+        },
+        {
+          "exists": true,
+          "manifest_registered": false,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority"
+            ],
+            "present_fields": [
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "unregistered_candidate",
+          "path": "online/smartmakani/contour_2017_mapserver.json",
+          "sha256": "027e73707f98a652b51de5d47447c3bc77bf3f360639fa6a049bbc29a59d99cf",
+          "sha256_matches_manifest": false,
+          "size_bytes": 1873,
+          "size_matches_manifest": false,
+          "source": null,
+          "status": "local_candidate_not_registered",
+          "usable_proxy": false
+        }
+      ],
+      "public_proxy_is_not_authoritative": true,
+      "public_proxy_missing_manifest_paths": [],
+      "public_proxy_status": "local_candidate_unregistered",
+      "public_proxy_usable_artifact_count": 0,
+      "readiness_status": "blocked_waiting_customer_or_authority",
+      "request_id": "engineering-surface-vertical-datum",
+      "required_artifact": "authoritative_engineering_dem_lidar_and_vertical_control"
+    },
+    {
+      "acceptance_checks": [
+        "timezone conversion is reproducible",
+        "units are mass-conserving",
+        "quality flags are preserved",
+        "event totals reconcile to source report",
+        "independent event is held out"
+      ],
+      "blocks": [
+        "K0",
+        "event calibration",
+        "GWM training",
+        "city-scale prediction"
+      ],
+      "customer_authoritative_available": false,
+      "customer_authoritative_status": "recorded_waiting_customer_or_authority",
+      "domain": "rainfall",
+      "priority": "P0",
+      "public_proxy_evidence": [
+        {
+          "exists": true,
+          "integrity_verified": true,
+          "manifest_registered": true,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "version_or_snapshot",
+              "crs_or_vertical_datum",
+              "quality_flags"
+            ],
+            "present_fields": [
+              "source_owner",
+              "acquisition_or_valid_time",
+              "units",
+              "license_or_reuse_authority",
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "diagnostic_sensitivity_only",
+          "path": "online/weather/chirps_daily_05deg_2024_04/chirps-v2.0.2024.04.15.tif.gz",
+          "sha256": "d0c03d62d591ab9dfbd7c1f2e3f3b4a9945f743d0f2f9969f526c0b669b116da",
+          "sha256_matches_manifest": true,
+          "size_bytes": 11221670,
+          "size_matches_manifest": true,
+          "source": "Climate Hazards Center CHIRPS v2.0 global daily 0.05 degree",
+          "status": "downloaded_and_validated",
+          "usable_proxy": true
+        },
+        {
+          "exists": true,
+          "integrity_verified": true,
+          "manifest_registered": true,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "version_or_snapshot",
+              "crs_or_vertical_datum",
+              "quality_flags"
+            ],
+            "present_fields": [
+              "source_owner",
+              "acquisition_or_valid_time",
+              "units",
+              "license_or_reuse_authority",
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "diagnostic_sensitivity_only",
+          "path": "online/weather/chirps_daily_05deg_2024_04/chirps-v2.0.2024.04.16.tif.gz",
+          "sha256": "8f7a4fb6b8dde0901c7799213d993b92938ab1a649c0bae1e6c6dc0ba783f623",
+          "sha256_matches_manifest": true,
+          "size_bytes": 3848255,
+          "size_matches_manifest": true,
+          "source": "Climate Hazards Center CHIRPS v2.0 global daily 0.05 degree",
+          "status": "downloaded_and_validated",
+          "usable_proxy": true
+        },
+        {
+          "exists": true,
+          "integrity_verified": true,
+          "manifest_registered": true,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "version_or_snapshot",
+              "crs_or_vertical_datum",
+              "quality_flags"
+            ],
+            "present_fields": [
+              "source_owner",
+              "acquisition_or_valid_time",
+              "units",
+              "license_or_reuse_authority",
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "diagnostic_sensitivity_only",
+          "path": "online/weather/chirps_daily_05deg_2024_04/chirps-v2.0.2024.04.17.tif.gz",
+          "sha256": "af6fc02b6adcf3fac3b60b9617559fd036652a7a2258ca703cd0f079b5f00ed2",
+          "sha256_matches_manifest": true,
+          "size_bytes": 3325846,
+          "size_matches_manifest": true,
+          "source": "Climate Hazards Center CHIRPS v2.0 global daily 0.05 degree",
+          "status": "downloaded_and_validated",
+          "usable_proxy": true
+        },
+        {
+          "exists": true,
+          "integrity_verified": true,
+          "manifest_registered": true,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "version_or_snapshot",
+              "crs_or_vertical_datum",
+              "quality_flags",
+              "license_or_reuse_authority"
+            ],
+            "present_fields": [
+              "source_owner",
+              "acquisition_or_valid_time",
+              "units",
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "diagnostic_sensitivity_only",
+          "path": "derived/public_supporting_context/chirps_abu_dhabi_point_summary.json",
+          "sha256": "f91a703e7bbb71e027930fc96922c1d22972006d034775c359b765884b038159",
+          "sha256_matches_manifest": true,
+          "size_bytes": 981,
+          "size_matches_manifest": true,
+          "source": "CHIRPS v2.0 daily rasters listed above",
+          "status": "derived_and_validated",
+          "usable_proxy": true
+        },
+        {
+          "exists": true,
+          "integrity_verified": true,
+          "manifest_registered": true,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags"
+            ],
+            "present_fields": [
+              "source_owner",
+              "license_or_reuse_authority",
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "metadata_only",
+          "path": "online/remote_catalogs/gpm_imerg_v07_april_2024_event_cmr.json",
+          "sha256": "1f4c85b522678416cc4e0005e678215c89d72498993656fb1aaba8d4d383eb2c",
+          "sha256_matches_manifest": true,
+          "size_bytes": 600858,
+          "size_matches_manifest": true,
+          "source": "NASA CMR GPM IMERG Final V07 half-hourly granule catalog",
+          "status": "catalog_saved_data_requires_earthdata_login",
+          "usable_proxy": false
+        }
+      ],
+      "public_proxy_is_not_authoritative": true,
+      "public_proxy_missing_manifest_paths": [],
+      "public_proxy_status": "available_public_proxy",
+      "public_proxy_usable_artifact_count": 4,
+      "readiness_status": "blocked_waiting_customer_or_authority",
+      "request_id": "event-rainfall-forcing",
+      "required_artifact": "quality_controlled_event_gauge_and_or_radar_qpe_series"
+    },
+    {
+      "acceptance_checks": [
+        "command and actual state are distinguishable",
+        "discharge units are explicit",
+        "failure periods are retained",
+        "SCADA clock drift is documented"
+      ],
+      "blocks": [
+        "K0",
+        "non-zero coupling",
+        "hybrid planning",
+        "operational GWM"
+      ],
+      "customer_authoritative_available": false,
+      "customer_authoritative_status": "recorded_waiting_customer_or_authority",
+      "domain": "operations",
+      "priority": "P0",
+      "public_proxy_evidence": [],
+      "public_proxy_is_not_authoritative": true,
+      "public_proxy_missing_manifest_paths": [],
+      "public_proxy_status": "no_public_proxy",
+      "public_proxy_usable_artifact_count": 0,
+      "readiness_status": "blocked_waiting_customer_or_authority",
+      "request_id": "pump-gate-operation-history",
+      "required_artifact": "pump_gate_storage_and_outfall_operation_logs"
+    },
+    {
+      "acceptance_checks": [
+        "train/holdout split is frozen",
+        "depth units and datum are explicit",
+        "duplicate reports are reconciled",
+        "observation uncertainty is retained"
+      ],
+      "blocks": [
+        "K2",
+        "GWM training",
+        "impact accuracy",
+        "city-scale prediction"
+      ],
+      "customer_authoritative_available": false,
+      "customer_authoritative_status": "recorded_waiting_customer_or_authority",
+      "domain": "inundation_observation",
+      "priority": "P0",
+      "public_proxy_evidence": [
+        {
+          "exists": true,
+          "manifest_registered": false,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority"
+            ],
+            "present_fields": [
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "unregistered_candidate",
+          "path": "online/smartmakani/rain_incidents_layer_30.json",
+          "sha256": "5ef2beb3c25aef7a9d5d56eb80b8010c95e0f2b6b2c83f56d6137578d73dc985",
+          "sha256_matches_manifest": false,
+          "size_bytes": 18156,
+          "size_matches_manifest": false,
+          "source": null,
+          "status": "local_candidate_not_registered",
+          "usable_proxy": false
+        },
+        {
+          "exists": true,
+          "manifest_registered": false,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority"
+            ],
+            "present_fields": [
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "unregistered_candidate",
+          "path": "online/smartmakani/rain_incidents_layer_30_date_stats.json",
+          "sha256": "b425ccbba1d61063026755351aa910457c5cdbf46f4f9c9fd7367867e17f0948",
+          "sha256_matches_manifest": false,
+          "size_bytes": 545,
+          "size_matches_manifest": false,
+          "source": null,
+          "status": "local_candidate_not_registered",
+          "usable_proxy": false
+        },
+        {
+          "exists": true,
+          "integrity_verified": true,
+          "manifest_registered": true,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags"
+            ],
+            "present_fields": [
+              "source_owner",
+              "license_or_reuse_authority",
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "event_observation_candidate_not_downloaded",
+          "path": "online/remote_catalogs/sentinel1_grd_april_2024_bbox_search.json",
+          "sha256": "f259d50210d5c0300cc485f255b9cb6e8c37c94c56db4258c620a44817740f0f",
+          "sha256_matches_manifest": true,
+          "size_bytes": 92373,
+          "size_matches_manifest": true,
+          "source": "Element 84 Earth Search Sentinel-1 GRD STAC",
+          "status": "catalog_saved_assets_access_restricted",
+          "usable_proxy": false
+        }
+      ],
+      "public_proxy_is_not_authoritative": true,
+      "public_proxy_missing_manifest_paths": [],
+      "public_proxy_status": "metadata_only_proxy",
+      "public_proxy_usable_artifact_count": 0,
+      "readiness_status": "blocked_waiting_customer_or_authority",
+      "request_id": "timed-inundation-observations",
+      "required_artifact": "event_depth_extent_duration_and_road_impact_panel"
+    },
+    {
+      "acceptance_checks": [
+        "one-to-many and boundary cases are specified",
+        "version alignment is reproducible",
+        "aggregation does not double count"
+      ],
+      "blocks": [
+        "per-asset impact",
+        "liveability overlay",
+        "GWM spatial labels"
+      ],
+      "customer_authoritative_available": false,
+      "customer_authoritative_status": "recorded_waiting_customer_or_authority",
+      "domain": "spatial_overlay",
+      "priority": "P1",
+      "public_proxy_evidence": [
+        {
+          "exists": true,
+          "integrity_verified": true,
+          "manifest_registered": true,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags"
+            ],
+            "present_fields": [
+              "source_owner",
+              "license_or_reuse_authority",
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "spatial_clip_and_impact_aggregation_only",
+          "path": "online/supporting_context/are_admin_boundaries.geojson.zip",
+          "sha256": "b8e081b6b94948a9c22a1103a817ef295854711a6c55830168362ddd48dcc4ce",
+          "sha256_matches_manifest": true,
+          "size_bytes": 3218854,
+          "size_matches_manifest": true,
+          "source": "OCHA/HDX United Arab Emirates subnational administrative boundaries",
+          "status": "downloaded_and_validated",
+          "usable_proxy": true
+        }
+      ],
+      "public_proxy_is_not_authoritative": true,
+      "public_proxy_missing_manifest_paths": [],
+      "public_proxy_status": "available_public_proxy",
+      "public_proxy_usable_artifact_count": 1,
+      "readiness_status": "blocked_waiting_customer_or_authority",
+      "request_id": "common-geography-overlay-rule",
+      "required_artifact": "approved_common_boundary_or_overlay_specification"
+    },
+    {
+      "acceptance_checks": [
+        "event labels are frozen",
+        "holdout events are not used for training",
+        "design standards are cited"
+      ],
+      "blocks": [
+        "GWM generalization",
+        "design decision claims",
+        "uncertainty calibration"
+      ],
+      "customer_authoritative_available": false,
+      "customer_authoritative_status": "recorded_waiting_customer_or_authority",
+      "domain": "scenario_library",
+      "priority": "P1",
+      "public_proxy_evidence": [
+        {
+          "exists": true,
+          "manifest_registered": false,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority"
+            ],
+            "present_fields": [
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "unregistered_candidate",
+          "path": "derived/events/april_2024_event_catalog.json",
+          "sha256": "f033ec6e865fd55062852aa233c06be1731e58c33055cfcdceceffcf735f2160",
+          "sha256_matches_manifest": false,
+          "size_bytes": 5651,
+          "size_matches_manifest": false,
+          "source": null,
+          "status": "local_candidate_not_registered",
+          "usable_proxy": false
+        },
+        {
+          "exists": true,
+          "integrity_verified": true,
+          "manifest_registered": true,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "version_or_snapshot",
+              "crs_or_vertical_datum",
+              "quality_flags"
+            ],
+            "present_fields": [
+              "source_owner",
+              "acquisition_or_valid_time",
+              "units",
+              "license_or_reuse_authority",
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "diagnostic_sensitivity_only",
+          "path": "online/weather/chirps_daily_05deg_2024_04/chirps-v2.0.2024.04.15.tif.gz",
+          "sha256": "d0c03d62d591ab9dfbd7c1f2e3f3b4a9945f743d0f2f9969f526c0b669b116da",
+          "sha256_matches_manifest": true,
+          "size_bytes": 11221670,
+          "size_matches_manifest": true,
+          "source": "Climate Hazards Center CHIRPS v2.0 global daily 0.05 degree",
+          "status": "downloaded_and_validated",
+          "usable_proxy": true
+        },
+        {
+          "exists": true,
+          "integrity_verified": true,
+          "manifest_registered": true,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "version_or_snapshot",
+              "crs_or_vertical_datum",
+              "quality_flags"
+            ],
+            "present_fields": [
+              "source_owner",
+              "acquisition_or_valid_time",
+              "units",
+              "license_or_reuse_authority",
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "diagnostic_sensitivity_only",
+          "path": "online/weather/chirps_daily_05deg_2024_04/chirps-v2.0.2024.04.16.tif.gz",
+          "sha256": "8f7a4fb6b8dde0901c7799213d993b92938ab1a649c0bae1e6c6dc0ba783f623",
+          "sha256_matches_manifest": true,
+          "size_bytes": 3848255,
+          "size_matches_manifest": true,
+          "source": "Climate Hazards Center CHIRPS v2.0 global daily 0.05 degree",
+          "status": "downloaded_and_validated",
+          "usable_proxy": true
+        },
+        {
+          "exists": true,
+          "integrity_verified": true,
+          "manifest_registered": true,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "version_or_snapshot",
+              "crs_or_vertical_datum",
+              "quality_flags"
+            ],
+            "present_fields": [
+              "source_owner",
+              "acquisition_or_valid_time",
+              "units",
+              "license_or_reuse_authority",
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "diagnostic_sensitivity_only",
+          "path": "online/weather/chirps_daily_05deg_2024_04/chirps-v2.0.2024.04.17.tif.gz",
+          "sha256": "af6fc02b6adcf3fac3b60b9617559fd036652a7a2258ca703cd0f079b5f00ed2",
+          "sha256_matches_manifest": true,
+          "size_bytes": 3325846,
+          "size_matches_manifest": true,
+          "source": "Climate Hazards Center CHIRPS v2.0 global daily 0.05 degree",
+          "status": "downloaded_and_validated",
+          "usable_proxy": true
+        }
+      ],
+      "public_proxy_is_not_authoritative": true,
+      "public_proxy_missing_manifest_paths": [],
+      "public_proxy_status": "available_public_proxy",
+      "public_proxy_usable_artifact_count": 3,
+      "readiness_status": "blocked_waiting_customer_or_authority",
+      "request_id": "historical-events-design-storms",
+      "required_artifact": "historical_event_and_design_storm_library"
+    },
+    {
+      "acceptance_checks": [
+        "parameter units are explicit",
+        "classes cover all modeled cells",
+        "parameter provenance is retained"
+      ],
+      "blocks": [
+        "parameter calibration",
+        "design storm reliability"
+      ],
+      "customer_authoritative_available": false,
+      "customer_authoritative_status": "recorded_waiting_customer_or_authority",
+      "domain": "surface_runoff",
+      "priority": "P1",
+      "public_proxy_evidence": [],
+      "public_proxy_is_not_authoritative": true,
+      "public_proxy_missing_manifest_paths": [],
+      "public_proxy_status": "no_public_proxy",
+      "public_proxy_usable_artifact_count": 0,
+      "readiness_status": "blocked_waiting_customer_or_authority",
+      "request_id": "landcover-infiltration-parameters",
+      "required_artifact": "landcover_imperviousness_and_infiltration_parameter_catalog"
+    },
+    {
+      "acceptance_checks": [
+        "business definitions are signed off",
+        "privacy/output policy is explicit",
+        "snapshot hash and row-count receipt are available"
+      ],
+      "blocks": [
+        "impact overlay",
+        "priority ranking",
+        "customer-facing exposure claims"
+      ],
+      "customer_authoritative_available": false,
+      "customer_authoritative_status": "recorded_waiting_customer_or_authority",
+      "domain": "exposure_and_impact",
+      "priority": "P1",
+      "public_proxy_evidence": [
+        {
+          "exists": true,
+          "manifest_registered": false,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority"
+            ],
+            "present_fields": [
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "unregistered_candidate",
+          "path": "derived/liveability_pg_audit/liveability_source_audit.json",
+          "sha256": "4f724a090ecd3712efcc30f624da4fe680d0eef7b8e299d3864ce6af5628e74d",
+          "sha256_matches_manifest": false,
+          "size_bytes": 156903,
+          "size_matches_manifest": false,
+          "source": null,
+          "status": "local_candidate_not_registered",
+          "usable_proxy": false
+        },
+        {
+          "exists": true,
+          "manifest_registered": false,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority"
+            ],
+            "present_fields": [
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "unregistered_candidate",
+          "path": "derived/liveability_pg_audit/dictionary_to_database_mapping.json",
+          "sha256": "d3e143c4a5b8cefb6ffc704502302bbe87c45e81f78942f24a2b113dc261b07f",
+          "sha256_matches_manifest": false,
+          "size_bytes": 16626,
+          "size_matches_manifest": false,
+          "source": null,
+          "status": "local_candidate_not_registered",
+          "usable_proxy": false
+        }
+      ],
+      "public_proxy_is_not_authoritative": true,
+      "public_proxy_missing_manifest_paths": [],
+      "public_proxy_status": "local_candidate_unregistered",
+      "public_proxy_usable_artifact_count": 0,
+      "readiness_status": "blocked_waiting_customer_or_authority",
+      "request_id": "liveability-exposure-semantics",
+      "required_artifact": "approved_liveability_snapshot_semantics_and_output_policy"
+    },
+    {
+      "acceptance_checks": [
+        "vertical units and datum are explicit",
+        "barrier continuity is checked",
+        "invalid geometries are repaired with audit"
+      ],
+      "blocks": [
+        "credible road-level depth",
+        "surface routing validation"
+      ],
+      "customer_authoritative_available": false,
+      "customer_authoritative_status": "recorded_waiting_customer_or_authority",
+      "domain": "microtopography_and_blockage",
+      "priority": "P1",
+      "public_proxy_evidence": [
+        {
+          "exists": true,
+          "integrity_verified": true,
+          "manifest_registered": true,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags"
+            ],
+            "present_fields": [
+              "source_owner",
+              "license_or_reuse_authority",
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "context_and_spatial_crosswalk_only",
+          "path": "online/supporting_context/hotosm_are_waterways_osm_gpkg.zip",
+          "sha256": "aa89117941b52f7fee6c8b2cba2afa9e874ecd2595e5aabfc3301a67d25953b6",
+          "sha256_matches_manifest": true,
+          "size_bytes": 4288146,
+          "size_matches_manifest": true,
+          "source": "HOT Export Tool, United Arab Emirates waterways",
+          "status": "downloaded_and_validated",
+          "usable_proxy": true
+        },
+        {
+          "exists": true,
+          "manifest_registered": false,
+          "metadata_completeness": {
+            "complete": false,
+            "missing_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority"
+            ],
+            "present_fields": [
+              "sha256"
+            ],
+            "required_fields": [
+              "source_owner",
+              "version_or_snapshot",
+              "acquisition_or_valid_time",
+              "crs_or_vertical_datum",
+              "units",
+              "quality_flags",
+              "license_or_reuse_authority",
+              "sha256"
+            ]
+          },
+          "model_admission": "unregistered_candidate",
+          "path": "online/smartmakani/contour_2017_mapserver.json",
+          "sha256": "027e73707f98a652b51de5d47447c3bc77bf3f360639fa6a049bbc29a59d99cf",
+          "sha256_matches_manifest": false,
+          "size_bytes": 1873,
+          "size_matches_manifest": false,
+          "source": null,
+          "status": "local_candidate_not_registered",
+          "usable_proxy": false
+        }
+      ],
+      "public_proxy_is_not_authoritative": true,
+      "public_proxy_missing_manifest_paths": [],
+      "public_proxy_status": "available_public_proxy",
+      "public_proxy_usable_artifact_count": 1,
+      "readiness_status": "blocked_waiting_customer_or_authority",
+      "request_id": "roads-curbs-obstacles-buildings",
+      "required_artifact": "engineering_roads_curbs_walls_buildings_and_low_points"
+    },
+    {
+      "acceptance_checks": [
+        "condition semantics are documented",
+        "capacity factor units are defined",
+        "maintenance timestamps are timezone-aligned"
+      ],
+      "blocks": [
+        "reliability scenarios",
+        "failure-aware planning"
+      ],
+      "customer_authoritative_available": false,
+      "customer_authoritative_status": "recorded_waiting_customer_or_authority",
+      "domain": "asset_condition",
+      "priority": "P2",
+      "public_proxy_evidence": [],
+      "public_proxy_is_not_authoritative": true,
+      "public_proxy_missing_manifest_paths": [],
+      "public_proxy_status": "no_public_proxy",
+      "public_proxy_usable_artifact_count": 0,
+      "readiness_status": "blocked_waiting_customer_or_authority",
+      "request_id": "maintenance-blockage-asset-condition",
+      "required_artifact": "asset_condition_and_blockage_history"
+    }
+  ],
+  "schema": "gwm.abu_dhabi_stormwater.data_request_readiness.v1",
+  "summary": {
+    "available_public_proxy_count": 4,
+    "blocked_waiting_customer_or_authority_count": 12,
+    "customer_authoritative_available_count": 0,
+    "local_candidate_unregistered_count": 3,
+    "metadata_complete_proxy_count": 0,
+    "metadata_only_proxy_count": 1,
+    "no_public_proxy_count": 4,
+    "request_count": 12
+  }
+}
