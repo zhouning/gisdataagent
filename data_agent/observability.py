@@ -150,6 +150,11 @@ auth_events = _safe_counter(
     "Authentication events",
     ["event_type"],
 )
+security_execution_audit_events = _safe_counter(
+    "agent_security_execution_audit_events_total",
+    "Immutable audit events for governed execution and recovery",
+    ["operation", "phase", "outcome"],
+)
 
 # Histograms
 pipeline_duration = _safe_histogram(
