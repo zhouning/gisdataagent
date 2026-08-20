@@ -1,0 +1,21 @@
+# Customer and bulk public/test data stay outside the public code history.
+/online/*
+/derived/*
+
+# Keep only small, non-row contracts and receipts in the repository.
+!/derived/abu_dhabi_data_request_register_v2.json
+!/derived/public_data_acquisition_manifest.json
+!/derived/abu_dhabi_data_request_readiness_v2.json
+!/derived/README.md
+
+# Any downloaded or generated bulk artifacts are always local-only.
+*.parquet
+*.gpkg
+*.tif
+*.hgt
+*.hgt.gz
+*.sww
+*.inp
+*.geojson
+*.zip
+*.gz
