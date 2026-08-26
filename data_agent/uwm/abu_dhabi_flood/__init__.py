@@ -9,6 +9,16 @@ from .contracts import (
     RainfallForcing,
     SurfacePatch,
 )
+from .customer_event_validation import EventValidationPolicy, validate_customer_event_csv
+from .customer_arrival_preflight import (
+    render_customer_arrival_preflight_markdown,
+    run_customer_arrival_preflight,
+)
+from .customer_receipt_acceptance import accept_customer_receipt, render_acceptance_markdown
+from .customer_swmm_forcing_binding import (
+    bind_customer_boundary_to_swmm,
+    bind_customer_rainfall_to_swmm,
+)
 from .data_request_readiness import (
     build_data_request_readiness,
     render_data_request_readiness_markdown,
@@ -64,6 +74,7 @@ from .swmm_anuga_coupling import (
     build_swmm_anuga_coupling_receipt,
     evaluate_swmm_anuga_coupling,
 )
+from .swmm_dynamic_export import export_customer_swmm_dynamic_diagnostic
 from .traditional_solver import (
     TraditionalSolverExecutionError,
     TraditionalSolverQualityPolicy,
@@ -126,4 +137,13 @@ __all__ = [
     "write_data_request_readiness_markdown",
     "default_k0_data_request_package",
     "audit_local_contours",
+    "accept_customer_receipt",
+    "bind_customer_rainfall_to_swmm",
+    "bind_customer_boundary_to_swmm",
+    "EventValidationPolicy",
+    "export_customer_swmm_dynamic_diagnostic",
+    "render_acceptance_markdown",
+    "validate_customer_event_csv",
+    "run_customer_arrival_preflight",
+    "render_customer_arrival_preflight_markdown",
 ]
