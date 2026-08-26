@@ -400,6 +400,19 @@ def render_registered_swmm_input(
     ):
         raise ValueError("registered_swmm_ascii_forcing_label_required")
     root_node_id = str(selection["root_node_id"])
+    raw_outfall_node_ids = selection.get("outfall_node_ids")
+    if raw_outfall_node_ids is None:
+        outfall_node_ids = (root_node_id,)
+    else:
+        outfall_node_ids = tuple(sorted({str(value) for value in raw_outfall_node_ids}))
+        if not outfall_node_ids or root_node_id not in outfall_node_ids:
+            raise ValueError("registered_swmm_outfall_node_ids_invalid")
+    routing_method = str(selection.get("routing_method", "KINWAVE")).upper()
+    if routing_method not in {"KINWAVE", "DYNWAVE"}:
+        raise ValueError("registered_swmm_routing_method_invalid")
+    routing_step_seconds = int(selection.get("routing_step_seconds", 30))
+    if routing_step_seconds < 1:
+        raise ValueError("registered_swmm_routing_step_invalid")
     edges = selection["edges"]
     nodes = selection["nodes"]
     intake_node_ids = tuple(selection["intake_node_ids"])
@@ -410,7 +423,7 @@ def render_registered_swmm_input(
     }
 
     junction_rows = []
-    for node_id in sorted(set(nodes["node_id"]).difference({root_node_id})):
+    for node_id in sorted(set(nodes["node_id"]).difference(outfall_node_ids)):
         junction_rows.append(
             (
                 node_id,
@@ -421,7 +434,10 @@ def render_registered_swmm_input(
                 "0",
             )
         )
-    outfall_rows = [(root_node_id, f"{node_elevation[root_node_id]:.3f}", "FREE", "", "NO")]
+    outfall_rows = [
+        (node_id, f"{node_elevation[node_id]:.3f}", "FREE", "", "NO")
+        for node_id in outfall_node_ids
+    ]
     conduit_rows = []
     xsection_rows = []
     conduit_ledger = []
@@ -520,7 +536,7 @@ def render_registered_swmm_input(
                 [
                     ("FLOW_UNITS", "CMS"),
                     ("INFILTRATION", "HORTON"),
-                    ("FLOW_ROUTING", "KINWAVE"),
+                    ("FLOW_ROUTING", routing_method),
                     ("LINK_OFFSETS", "DEPTH"),
                     ("MIN_SLOPE", "0"),
                     ("ALLOW_PONDING", "NO"),
@@ -537,7 +553,10 @@ def render_registered_swmm_input(
                     ("REPORT_STEP", "00:15:00"),
                     ("WET_STEP", "00:05:00"),
                     ("DRY_STEP", "01:00:00"),
-                    ("ROUTING_STEP", "00:00:30"),
+                    (
+                        "ROUTING_STEP",
+                        f"00:{routing_step_seconds // 60:02d}:{routing_step_seconds % 60:02d}",
+                    ),
                 ]
             ),
         ),
@@ -559,6 +578,9 @@ def render_registered_swmm_input(
             [
                 "INPUT  YES",
                 "CONTROLS  NO",
+                # Keep all native objects in the RPT/OUT pair. The full-city
+                # report is retained privately and parsed for maxima; the
+                # browser consumes filtered GeoJSON and selected OUT periods.
                 "SUBCATCHMENTS  ALL",
                 "NODES  ALL",
                 "LINKS  ALL",
@@ -582,10 +604,13 @@ def render_registered_swmm_input(
     ledger = {
         "root_outfall_node_id": root_node_id,
         "junction_count": len(junction_rows),
-        "outfall_count": 1,
+        "outfall_count": len(outfall_rows),
+        "outfall_node_ids": list(outfall_node_ids),
         "conduit_count": len(conduit_rows),
         "subcatchment_count": len(subcatchment_rows),
         "rainfall_interval_count": len(hourly_precipitation_mm),
+        "routing_method": routing_method,
+        "routing_step_seconds": routing_step_seconds,
         "node_elevation_m": node_elevation,
         "conduits": conduit_ledger,
     }

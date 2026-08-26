@@ -24,7 +24,11 @@ from .traditional_solver import (
 
 SWMM_EXECUTION_RECEIPT_SCHEMA = "gwm.abu_dhabi_flood.swmm_execution_receipt.v1"
 SWMM_REPORT_PARSE_SCHEMA = "gwm.abu_dhabi_flood.swmm_report_parse.v1"
-_MAXIMUM_REPORT_BYTES = 32 * 1024 * 1024
+# A full-city diagnostic can legitimately produce a large native RPT even
+# when detailed tables are disabled by the input. Keep a bounded but useful
+# ceiling; the browser consumes the compact parsed summary and native OUT,
+# while the retained RPT remains a private audit artifact.
+_MAXIMUM_REPORT_BYTES = 128 * 1024 * 1024
 _MAXIMUM_BINARY_OUTPUT_BYTES = 512 * 1024 * 1024
 _FLOAT = r"[-+]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[Ee][-+]?[0-9]+)?"
 _SWMM_ERROR_PATTERN = re.compile(
@@ -218,8 +222,14 @@ def execute_swmm(
     *,
     quality_policy: TraditionalSolverQualityPolicy | None = None,
     timeout_seconds: float = 120.0,
+    retain_output_directory: Path | None = None,
 ) -> dict[str, Any]:
-    """Execute SWMM without a shell in an isolated, disposable directory."""
+    """Execute SWMM without a shell in an isolated directory.
+
+    By default the temporary report and binary output are discarded after
+    parsing.  ``retain_output_directory`` is an explicit, opt-in archive path
+    for customer delivery or audit runs; it does not change model admission.
+    """
 
     if not isinstance(request, TraditionalSolverRunRequest):
         raise ValueError("swmm_run_request_invalid")
@@ -235,6 +245,14 @@ def execute_swmm(
     policy = quality_policy or TraditionalSolverQualityPolicy()
     if not isinstance(policy, TraditionalSolverQualityPolicy):
         raise ValueError("swmm_quality_policy_invalid")
+    retention_root: Path | None = None
+    if retain_output_directory is not None:
+        if not isinstance(retain_output_directory, Path):
+            raise ValueError("swmm_retention_directory_invalid")
+        retention_root = retain_output_directory.expanduser().resolve()
+        retention_root.mkdir(parents=True, exist_ok=True)
+        if not retention_root.is_dir():
+            raise ValueError("swmm_retention_directory_invalid")
     executable = Path(request.executable_path).expanduser().resolve()
     model_input = Path(request.model_input_path).expanduser().resolve()
     _validate_runtime_paths(executable, model_input)
@@ -314,43 +332,109 @@ def execute_swmm(
                 env={"LANG": "C", "LC_ALL": "C", "PATH": "/usr/bin:/bin", "TZ": "UTC"},
             )
         except subprocess.TimeoutExpired as error:
-            raise TraditionalSolverExecutionError("swmm_execution_timeout") from error
+            evidence = _retain_failure_evidence(
+                retention_root,
+                request.run_id,
+                report_path,
+                binary_output_path,
+                getattr(error, "stdout", b"") or b"",
+                getattr(error, "stderr", b"") or b"",
+            )
+            raise TraditionalSolverExecutionError(
+                "swmm_execution_timeout", details={"failure_evidence": evidence}
+            ) from error
         except OSError as error:
             raise TraditionalSolverExecutionError("swmm_execution_failed_to_start") from error
         elapsed_seconds = monotonic() - started
         if completed.returncode != 0:
+            evidence = _retain_failure_evidence(
+                retention_root,
+                request.run_id,
+                report_path,
+                binary_output_path,
+                completed.stdout,
+                completed.stderr,
+            )
             raise TraditionalSolverExecutionError(
                 "swmm_execution_nonzero_exit",
                 details={
                     "returncode": completed.returncode,
                     "stdout_sha256": _sha256_bytes(completed.stdout),
                     "stderr_sha256": _sha256_bytes(completed.stderr),
+                    "failure_evidence": evidence,
                 },
             )
-        _validate_output_artifact(report_path, _MAXIMUM_REPORT_BYTES, "report")
-        _validate_output_artifact(
-            binary_output_path,
-            _MAXIMUM_BINARY_OUTPUT_BYTES,
-            "binary_output",
-        )
         try:
-            report_text = report_path.read_text(encoding="utf-8")
+            _validate_output_artifact(report_path, _MAXIMUM_REPORT_BYTES, "report")
+            _validate_output_artifact(
+                binary_output_path,
+                _MAXIMUM_BINARY_OUTPUT_BYTES,
+                "binary_output",
+            )
+        except TraditionalSolverExecutionError as error:
+            details = dict(error.details)
+            details["failure_evidence"] = _retain_failure_evidence(
+                retention_root,
+                request.run_id,
+                report_path,
+                binary_output_path,
+                completed.stdout,
+                completed.stderr,
+            )
+            raise TraditionalSolverExecutionError(error.code, details=details) from error
+        try:
+            # SWMM 5.2 can append a platform-native byte in its summary
+            # footer (observed on the macOS runtime).  The structured report
+            # fields are ASCII; replacement decoding preserves those fields
+            # while the report artifact hash remains byte-exact.
+            report_text = report_path.read_text(encoding="utf-8", errors="replace")
             parsed_report = parse_swmm_report(report_text)
-        except (UnicodeDecodeError, ValueError) as error:
-            raise TraditionalSolverExecutionError("swmm_report_parse_failed") from error
+        except ValueError as error:
+            evidence = _retain_failure_evidence(
+                retention_root,
+                request.run_id,
+                report_path,
+                binary_output_path,
+                completed.stdout,
+                completed.stderr,
+            )
+            raise TraditionalSolverExecutionError(
+                "swmm_report_parse_failed", details={"failure_evidence": evidence}
+            ) from error
         if parsed_report["solver"]["version"] != request.expected_solver_version:
+            evidence = _retain_failure_evidence(
+                retention_root,
+                request.run_id,
+                report_path,
+                binary_output_path,
+                completed.stdout,
+                completed.stderr,
+            )
             raise TraditionalSolverExecutionError(
                 "swmm_solver_version_mismatch",
                 details={
                     "expected": request.expected_solver_version,
                     "observed": parsed_report["solver"]["version"],
+                    "failure_evidence": evidence,
                 },
             )
         quality = evaluate_swmm_quality(parsed_report, policy)
         if not quality["passed"]:
+            evidence = _retain_failure_evidence(
+                retention_root,
+                request.run_id,
+                report_path,
+                binary_output_path,
+                completed.stdout,
+                completed.stderr,
+            )
             raise TraditionalSolverExecutionError(
                 "swmm_numerical_quality_gate_failed",
-                details={"quality_gates": quality, "parsed_report": parsed_report},
+                details={
+                    "quality_gates": quality,
+                    "parsed_report": parsed_report,
+                    "failure_evidence": evidence,
+                },
             )
         output_artifacts = {
             "report": artifact_descriptor(
@@ -364,6 +448,27 @@ def execute_swmm(
                 path_label="isolated:model.out",
             ),
         }
+        retained_output_artifacts: dict[str, dict[str, object]] = {}
+        if retention_root is not None:
+            retained_report = retention_root / f"{request.run_id}.rpt"
+            retained_binary_output = retention_root / f"{request.run_id}.out"
+            # A deterministic rerun should be idempotent.  Replace artifacts
+            # from an earlier diagnostic run instead of turning a valid model
+            # execution into a false failure caused by stale output files.
+            shutil.copyfile(report_path, retained_report)
+            shutil.copyfile(binary_output_path, retained_binary_output)
+            retained_output_artifacts = {
+                "report": artifact_descriptor(
+                    retained_report,
+                    sha256=_sha256_file(retained_report),
+                    path_label=f"retained:{retained_report.name}",
+                ),
+                "binary_output": artifact_descriptor(
+                    retained_binary_output,
+                    sha256=_sha256_file(retained_binary_output),
+                    path_label=f"retained:{retained_binary_output.name}",
+                ),
+            }
 
     receipt: dict[str, Any] = {
         "schema": SWMM_EXECUTION_RECEIPT_SCHEMA,
@@ -390,6 +495,11 @@ def execute_swmm(
         },
         "admission": request.claim_boundary(),
     }
+    if retained_output_artifacts:
+        receipt["execution"]["retained_output_artifacts"] = retained_output_artifacts
+        receipt["execution"]["retained_output_directory_provided"] = True
+    else:
+        receipt["execution"]["retained_output_directory_provided"] = False
     receipt["receipt_sha256"] = _sha256_json(receipt)
     return receipt
 
@@ -407,6 +517,44 @@ def _validate_runtime_paths(executable: Path, model_input: Path) -> None:
         or model_input.stat().st_size <= 0
     ):
         raise ValueError("swmm_model_input_invalid")
+
+
+def _retain_failure_evidence(
+    retention_root: Path | None,
+    run_id: str,
+    report_path: Path,
+    binary_output_path: Path,
+    stdout: bytes,
+    stderr: bytes,
+) -> dict[str, object]:
+    """Preserve failed-run evidence without masking the original failure."""
+
+    if retention_root is None:
+        return {"retained": False}
+    retention_root.mkdir(parents=True, exist_ok=True)
+    artifacts: dict[str, object] = {"retained": True}
+    candidates = (
+        (report_path, retention_root / f"{run_id}.failed.rpt"),
+        (binary_output_path, retention_root / f"{run_id}.failed.out"),
+    )
+    for source, target in candidates:
+        if source.is_file() and source.stat().st_size > 0:
+            shutil.copyfile(source, target)
+            artifacts[target.name] = {
+                "path": str(target),
+                "sha256": _sha256_file(target),
+                "size_bytes": target.stat().st_size,
+            }
+    for label, payload in (("stdout", stdout), ("stderr", stderr)):
+        if payload:
+            target = retention_root / f"{run_id}.failed.{label}.txt"
+            target.write_bytes(payload)
+            artifacts[target.name] = {
+                "path": str(target),
+                "sha256": _sha256_file(target),
+                "size_bytes": target.stat().st_size,
+            }
+    return artifacts
 
 
 def _validate_self_contained_input(model_input: Path) -> None:
