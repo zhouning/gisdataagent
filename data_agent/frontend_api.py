@@ -4300,8 +4300,10 @@ def get_frontend_api_routes():
     from .api.classification_routes import get_classification_routes
     from .api.standards_routes import get_standards_routes
     from .api.platform_gateway_routes import get_platform_gateway_routes
+    from .api.abu_dhabi_flood_routes import get_abu_dhabi_flood_routes
 
     return [
+        *get_abu_dhabi_flood_routes(),
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
         Route("/api/catalog/search", endpoint=_api_catalog_search, methods=["GET"]),
         Route("/api/catalog/{asset_id:int}", endpoint=_api_catalog_detail, methods=["GET"]),
