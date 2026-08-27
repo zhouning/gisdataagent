@@ -5,7 +5,7 @@ import {
   Zap, Wrench, BookOpen, Lightbulb, Brain, Store, Globe, FlaskConical, Network,
   History, Gauge, PieChart, Shield, ClipboardCheck, Bell, Activity, Radio, ListTodo,
   GitBranch, FileText, Target, ThumbsUp, Tags,
-  LayoutGrid,
+  LayoutGrid, Waves,
 } from 'lucide-react';
 
 import CatalogTab from './datapanel/CatalogTab';
@@ -68,6 +68,7 @@ import IntakeTab from './datapanel/IntakeTab';
 import SemanticLayerTab from './datapanel/SemanticLayerTab';
 import ClassificationTab from './datapanel/ClassificationTab';
 import FusionQualityTab from './datapanel/FusionQualityTab';
+import AbuDhabiFloodWorldModelTab from './datapanel/AbuDhabiFloodWorldModelTab';
 
 interface DataPanelProps {
   dataFile: string | null;
@@ -76,7 +77,7 @@ interface DataPanelProps {
   onRequestWidth?: (width: number) => void;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'traditional_livability' | 'cultural_heritage' | 'cross_domain_impact' | 'implementation_roadmap' | 'resilience_kernel' | 'digital_readiness' | 'operations_quality' | 'business_licence' | 'development_control' | 'financial_readiness' | 'public_feedback_readiness' | 'spatial_scope_registry' | 'planning_version_registry' | 'parcel_state_readiness' | 'infrastructure_network_readiness' | 'asset_lifecycle_readiness' | 'population_demographic_readiness' | 'uwm_livability' | 'uwm_multistage' | 'ai_demand_readiness' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
+type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'traditional_livability' | 'cultural_heritage' | 'cross_domain_impact' | 'implementation_roadmap' | 'resilience_kernel' | 'digital_readiness' | 'operations_quality' | 'business_licence' | 'development_control' | 'financial_readiness' | 'public_feedback_readiness' | 'spatial_scope_registry' | 'planning_version_registry' | 'parcel_state_readiness' | 'infrastructure_network_readiness' | 'asset_lifecycle_readiness' | 'population_demographic_readiness' | 'uwm_livability' | 'uwm_multistage' | 'ai_demand_readiness' | 'abu_dhabi_flood_world_model' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 
@@ -132,6 +133,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'uwm_livability', label: '城市宜居性分析（UWM）', icon: <Brain size={ICON_SIZE} /> },
       { key: 'uwm_multistage', label: 'UWM多阶段城市干预规划', icon: <GitBranch size={ICON_SIZE} /> },
       { key: 'ai_demand_readiness', label: 'AI应用需求矩阵', icon: <ClipboardCheck size={ICON_SIZE} /> },
+      { key: 'abu_dhabi_flood_world_model', label: '阿布扎比 · 暴雨内涝世界模型', icon: <Waves size={ICON_SIZE} /> },
       { key: 'worldmodel', label: '世界模型', icon: <Globe size={ICON_SIZE} /> },
       { key: 'worldmodel_v11', label: '世界模型v1.1', icon: <Globe size={ICON_SIZE} /> },
       { key: 'worldmodel_v2', label: '世界模型v2', icon: <Globe size={ICON_SIZE} /> },
@@ -204,6 +206,7 @@ export default function DataPanel({ dataFile, userRole, username, onRequestWidth
     setActiveTab(tab);
     setActiveGroup(TAB_TO_GROUP[tab]);
     if (tab === 'uwm_livability' || tab === 'uwm_multistage') onRequestWidth?.(680);
+    else if (tab === 'abu_dhabi_flood_world_model') onRequestWidth?.(1080);
   };
 
   const handleGroupClick = (groupKey: GroupKey) => {
@@ -296,6 +299,7 @@ export default function DataPanel({ dataFile, userRole, username, onRequestWidth
         {activeTab === 'uwm_livability' && <LivabilityWorldModelTab />}
         {activeTab === 'uwm_multistage' && <UwmMultistageInterventionTab />}
         {activeTab === 'ai_demand_readiness' && <AiDemandReadinessTab />}
+        {activeTab === 'abu_dhabi_flood_world_model' && <AbuDhabiFloodWorldModelTab />}
         {activeTab === 'worldmodel' && <WorldModelTab />}
         {activeTab === 'worldmodel_v11' && <WorldModelV11Tab />}
         {activeTab === 'worldmodel_v2' && <WorldModelV2Tab />}
