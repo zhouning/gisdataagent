@@ -75,8 +75,7 @@ class TestAuditNoDB(unittest.TestCase):
 
     @patch("data_agent.audit_logger.get_engine", return_value=None)
     def test_record_audit_noop(self, mock_engine):
-        # Should not raise
-        record_audit("testuser", ACTION_LOGIN_SUCCESS)
+        assert record_audit("testuser", ACTION_LOGIN_SUCCESS) is False
 
     @patch("data_agent.audit_logger.get_engine", return_value=None)
     def test_ensure_audit_table_prints_warning(self, mock_engine):

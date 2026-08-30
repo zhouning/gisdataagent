@@ -14,7 +14,7 @@ from uuid import UUID
 
 from sqlalchemy import text
 from starlette.requests import Request
-from starlette.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.routing import Route
 
 from ..data_product_registry import (
@@ -25,6 +25,18 @@ from ..data_product_registry import (
     DataProductRegistryError,
 )
 from ..db_engine import get_engine
+from ..governed_query_result_access_security import (
+    GOVERNED_QUERY_RESULT_ACCESS_SECURITY_PURPOSE,
+)
+from ..governed_query_result_delivery import (
+    GovernedQueryResultDeliveryForbidden,
+    GovernedQueryResultDeliveryService,
+    GovernedQueryResultDeliveryUnavailable,
+)
+from ..governed_query_security import (
+    GovernedQuerySecurityError,
+    resolve_governed_query_security_ports,
+)
 from ..platform_gateway import PlatformGateway
 from .platform_gateway_routes import GatewayPrincipal, _principal
 
@@ -37,10 +49,66 @@ STORAGE_ROOT = Path(
 )
 PAGE_PATH = Path(__file__).resolve().parents[1] / "data_products/product_page.html"
 _IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_]{1,62}$")
+DATA_PRODUCT_FEATURE_RESULT_ACCESS_ACTION = "data.product.feature.access"
+DATA_PRODUCT_STAC_RESULT_ACCESS_ACTION = "data.product.stac.access"
+DATA_PRODUCT_DOWNLOAD_RESULT_ACCESS_ACTION = "data.product.download.access"
 
 
 def _registry() -> DataProductRegistry:
     return DataProductRegistry()
+
+
+def _result_delivery() -> GovernedQueryResultDeliveryService:
+    return GovernedQueryResultDeliveryService()
+
+
+def _public_product_ref(product_slug: str, version_key: str) -> str:
+    return (
+        f"gda://{PUBLIC_TENANT}/data_product/{product_slug}/version/{version_key}"
+    )
+
+
+async def _deliver_public_result(
+    *,
+    product_slug: str,
+    version_key: str,
+    channel: str,
+    adapter_id: str,
+    consumption_mode: str,
+    action: str,
+    request_payload: dict[str, Any],
+    operation,
+    extra_resource_refs: tuple[str, ...] = (),
+):
+    security_ports = resolve_governed_query_security_ports(PUBLIC_TENANT)
+    return await asyncio.to_thread(
+        _result_delivery().execute,
+        tenant_id=PUBLIC_TENANT,
+        actor_subject="agent:public-data-product-gateway",
+        roles=("public_reader",),
+        purpose_code=GOVERNED_QUERY_RESULT_ACCESS_SECURITY_PURPOSE,
+        channel=channel,
+        adapter_id=adapter_id,
+        consumption_mode=consumption_mode,
+        resource_refs=(
+            _public_product_ref(product_slug, version_key),
+            *extra_resource_refs,
+        ),
+        request_payload=request_payload,
+        action=action,
+        operation=operation,
+        security_reader=None if security_ports is None else security_ports[0],
+    )
+
+
+def _result_delivery_error(
+    exc: Exception,
+    *,
+    unavailable_code: str,
+) -> JSONResponse:
+    if isinstance(exc, GovernedQueryResultDeliveryForbidden):
+        return _error(403, "data_product_result_access_forbidden", "Access was denied")
+    return _error(503, unavailable_code, "Result security is unavailable")
 
 
 def _error(status_code: int, code: str, message: str) -> JSONResponse:
@@ -118,15 +186,41 @@ async def get_data_product_stac(request: Request) -> JSONResponse:
             request.path_params["product_slug"],
         )
         distribution = _stac_distribution(version["distribution_manifest"])
-        artifact = await asyncio.to_thread(
-            PlatformGateway().get_artifact,
-            PUBLIC_TENANT,
-            UUID(distribution["artifact_id"]),
+        artifact_id = UUID(distribution["artifact_id"])
+
+        def read_stac() -> dict[str, Any]:
+            artifact = PlatformGateway().get_artifact(PUBLIC_TENANT, artifact_id)
+            return _read_s3_json_artifact(artifact)
+
+        item = await _deliver_public_result(
+            product_slug=request.path_params["product_slug"],
+            version_key=version["version_key"],
+            channel="data_product_result",
+            adapter_id="gda.data-product.stac.v1",
+            consumption_mode="read",
+            action=DATA_PRODUCT_STAC_RESULT_ACCESS_ACTION,
+            request_payload={
+                "product_slug": request.path_params["product_slug"],
+                "version_key": version["version_key"],
+                "representation": "stac",
+            },
+            extra_resource_refs=(
+                f"gda://{PUBLIC_TENANT}/artifact/{artifact_id}",
+            ),
+            operation=read_stac,
         )
-        item = await asyncio.to_thread(_read_s3_json_artifact, artifact)
         return JSONResponse(item, media_type="application/geo+json")
     except DataProductNotFoundError:
         return _error(404, "data_product_not_found", "Data product was not found")
+    except (
+        GovernedQueryResultDeliveryForbidden,
+        GovernedQueryResultDeliveryUnavailable,
+        GovernedQuerySecurityError,
+    ) as exc:
+        return _result_delivery_error(
+            exc,
+            unavailable_code="data_product_stac_security_unavailable",
+        )
     except Exception:
         return _error(503, "data_product_stac_unavailable", "STAC item is unavailable")
 
@@ -142,12 +236,26 @@ async def get_data_product_features(request: Request) -> JSONResponse:
             request.path_params["product_slug"],
         )
         projection = _postgis_projection(version["distribution_manifest"])
-        feature_collection = await asyncio.to_thread(
-            _read_features,
-            projection,
-            limit=limit,
-            simplify=simplify,
-            bbox=bbox,
+        feature_collection = await _deliver_public_result(
+            product_slug=request.path_params["product_slug"],
+            version_key=version["version_key"],
+            channel="data_product_result",
+            adapter_id="gda.data-product.features.v1",
+            consumption_mode="map",
+            action=DATA_PRODUCT_FEATURE_RESULT_ACCESS_ACTION,
+            request_payload={
+                "product_slug": request.path_params["product_slug"],
+                "version_key": version["version_key"],
+                "limit": limit,
+                "simplify": simplify,
+                "bbox": bbox,
+            },
+            operation=lambda: _read_features(
+                projection,
+                limit=limit,
+                simplify=simplify,
+                bbox=bbox,
+            ),
         )
         feature_collection["data_product_version"] = version["version_key"]
         feature_collection["is_current"] = version["is_current"]
@@ -156,6 +264,15 @@ async def get_data_product_features(request: Request) -> JSONResponse:
         return _error(400, "invalid_query", str(exc))
     except DataProductNotFoundError:
         return _error(404, "data_product_not_found", "Data product was not found")
+    except (
+        GovernedQueryResultDeliveryForbidden,
+        GovernedQueryResultDeliveryUnavailable,
+        GovernedQuerySecurityError,
+    ) as exc:
+        return _result_delivery_error(
+            exc,
+            unavailable_code="data_product_projection_security_unavailable",
+        )
     except (DataProductRegistryError, RuntimeError):
         return _error(503, "data_product_projection_unavailable", "Map data is unavailable")
 
@@ -168,37 +285,63 @@ async def download_data_product(request: Request):
             request.path_params["product_slug"],
         )
         distribution = _file_distribution(version["distribution_manifest"])
-        artifact = await asyncio.to_thread(
-            PlatformGateway().get_artifact,
-            PUBLIC_TENANT,
-            UUID(distribution["artifact_id"]),
-        )
-        _validate_distribution_artifact(distribution, artifact)
-        parts = urlsplit(artifact.storage_uri)
+        artifact_id = UUID(distribution["artifact_id"])
         filename = f"{request.path_params['product_slug']}-{version['version_key']}.geojson"
-        if parts.scheme == "s3":
-            payload = await asyncio.to_thread(
-                _read_s3_binary_artifact,
-                artifact,
-            )
+
+        def read_download() -> Response:
+            artifact = PlatformGateway().get_artifact(PUBLIC_TENANT, artifact_id)
+            _validate_distribution_artifact(distribution, artifact)
+            parts = urlsplit(artifact.storage_uri)
+            if parts.scheme == "s3":
+                payload = _read_s3_binary_artifact(artifact)
+            elif parts.scheme == "file":
+                path = Path(parts.path).resolve(strict=True)
+                root = STORAGE_ROOT.resolve(strict=True)
+                if not path.is_relative_to(root):
+                    raise RuntimeError("product artifact is outside the storage root")
+                payload = path.read_bytes()
+                if (
+                    len(payload) != artifact.size_bytes
+                    or hashlib.sha256(payload).hexdigest()
+                    != artifact.content_sha256
+                ):
+                    raise RuntimeError("product artifact bytes do not match its ledger")
+            else:
+                raise RuntimeError("product artifact is not downloadable")
             return Response(
                 payload,
                 media_type=artifact.media_type,
                 headers={"Content-Disposition": f'attachment; filename="{filename}"'},
             )
-        if parts.scheme != "file":
-            raise RuntimeError("product artifact is not downloadable")
-        path = Path(parts.path).resolve(strict=True)
-        root = STORAGE_ROOT.resolve(strict=True)
-        if not path.is_relative_to(root):
-            raise RuntimeError("product artifact is outside the storage root")
-        return FileResponse(
-            path,
-            media_type=artifact.media_type,
-            filename=filename,
+
+        return await _deliver_public_result(
+            product_slug=request.path_params["product_slug"],
+            version_key=version["version_key"],
+            channel="data_product_result",
+            adapter_id="gda.data-product.download.v1",
+            consumption_mode="download",
+            action=DATA_PRODUCT_DOWNLOAD_RESULT_ACCESS_ACTION,
+            request_payload={
+                "product_slug": request.path_params["product_slug"],
+                "version_key": version["version_key"],
+                "representation": str(distribution.get("kind") or "file"),
+            },
+            extra_resource_refs=(
+                f"gda://{PUBLIC_TENANT}/artifact/{artifact_id}",
+            ),
+            operation=read_download,
         )
     except DataProductNotFoundError:
         return _error(404, "data_product_not_found", "Data product was not found")
+    except (
+        GovernedQueryResultDeliveryForbidden,
+        GovernedQueryResultDeliveryUnavailable,
+        GovernedQuerySecurityError,
+    ) as exc:
+        return _result_delivery_error(
+            exc,
+            unavailable_code="data_product_download_security_unavailable",
+        )
     except Exception:
         return _error(503, "data_product_download_unavailable", "Download is unavailable")
 
@@ -212,6 +355,9 @@ async def rollback_data_product(request: Request) -> JSONResponse:
         target = str(body.get("target_version") or "").strip()
         reason = str(body.get("reason") or "").strip()
         idempotency_key = str(body.get("idempotency_key") or "").strip()
+        incident_value = body.get("incident_id")
+        incident_id = UUID(str(incident_value)) if incident_value else None
+        approval_case_ref = str(body.get("rollback_approval_case_ref") or "").strip() or None
         result = await asyncio.to_thread(
             _registry().rollback,
             principal.tenant_id,
@@ -220,6 +366,8 @@ async def rollback_data_product(request: Request) -> JSONResponse:
             actor_subject=principal.actor_ref,
             reason=reason,
             idempotency_key=idempotency_key,
+            incident_id=incident_id,
+            rollback_approval_case_ref=approval_case_ref,
         )
         return _success(result)
     except (ValueError, json.JSONDecodeError) as exc:

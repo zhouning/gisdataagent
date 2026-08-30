@@ -1,0 +1,241 @@
+# Verifies a post-rollout, evidence-gated DataOps Run against the live staging
+# workload. This workflow is read-only and never grants production promotion.
+name: Verify - Protected Staging Golden Slice
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_run_id:
+        description: Failed-closed protected deployment workflow run ID
+        required: true
+        type: string
+      golden_run_id:
+        description: Post-rollout evidence-gated PlatformRun UUID
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  attestations: write
+  contents: read
+  id-token: write
+
+concurrency:
+  group: protected-staging-golden
+  cancel-in-progress: false
+
+jobs:
+  verify-staging-golden:
+    name: Bind a governed Run to the live staging revision
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, linux, gda-staging]
+    environment: staging-live
+    timeout-minutes: 20
+
+    env:
+      GDA_STAGING_NAMESPACE: ${{ vars.GDA_STAGING_NAMESPACE }}
+      GDA_STAGING_CLUSTER_UID: ${{ vars.GDA_STAGING_CLUSTER_UID }}
+      GDA_STAGING_NAMESPACE_UID: ${{ vars.GDA_STAGING_NAMESPACE_UID }}
+      GDA_STAGING_GOLDEN_TENANT_ID: ${{ vars.GDA_STAGING_GOLDEN_TENANT_ID }}
+      GDA_STAGING_GOLDEN_CAPABILITY_ID: ${{ vars.GDA_STAGING_GOLDEN_CAPABILITY_ID }}
+      GDA_STAGING_GOLDEN_DEFINITION_VERSION_ID: ${{ vars.GDA_STAGING_GOLDEN_DEFINITION_VERSION_ID }}
+      GDA_STAGING_GOLDEN_INPUT_RESOURCE_VERSION_ID: ${{ vars.GDA_STAGING_GOLDEN_INPUT_RESOURCE_VERSION_ID }}
+      PYTHONPATH: ${{ github.workspace }}/protected-source
+
+    steps:
+      - name: Download the exact deployment observation
+        uses: actions/download-artifact@v4
+        with:
+          name: staging-live-observation-${{ inputs.deployment_run_id }}
+          path: staging-golden-input
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.deployment_run_id }}
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Verify the protected deployment observation
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERIFIER_REVISION=$(python -c \
+            'import json,re,sys; v=json.load(open(sys.argv[1]))["verifier_revision"]; assert re.fullmatch(r"[0-9a-f]{40}",v); print(v)' \
+            staging-golden-input/release.json)
+          gh attestation verify staging-golden-input/release.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/verify-staging-provenance.yml" \
+            --source-ref refs/heads/main \
+            --source-digest "$VERIFIER_REVISION" \
+            --signer-digest "$VERIFIER_REVISION" \
+            --deny-self-hosted-runners \
+            --format json > staging-golden-input/release-attestation.json
+          gh attestation verify staging-golden-input/collection.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/deploy-staging-live.yml" \
+            --source-ref refs/heads/main \
+            --format json > staging-golden-input/collection-attestation.json
+          echo "verifier_revision=$VERIFIER_REVISION" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the exact protected verifier revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.verifier_revision }}
+          path: protected-source
+          persist-credentials: false
+
+      - name: Require protected read-only environment configuration
+        env:
+          GDA_STAGING_LIVE_PROTECTED: ${{ vars.GDA_STAGING_LIVE_PROTECTED }}
+          GDA_STAGING_OBSERVER_KUBECONFIG_B64: ${{ secrets.GDA_STAGING_OBSERVER_KUBECONFIG_B64 }}
+        run: |
+          set -euo pipefail
+          if [[ "$GDA_STAGING_LIVE_PROTECTED" != "true" ]]; then
+            echo "staging-live environment is not explicitly enabled" >&2
+            exit 1
+          fi
+          if [[ "$GDA_STAGING_NAMESPACE" != "gis-agent-staging" ]]; then
+            echo "protected staging namespace must be gis-agent-staging" >&2
+            exit 1
+          fi
+          for value in \
+            "$GDA_STAGING_CLUSTER_UID" \
+            "$GDA_STAGING_NAMESPACE_UID" \
+            "$GDA_STAGING_GOLDEN_TENANT_ID" \
+            "$GDA_STAGING_GOLDEN_CAPABILITY_ID" \
+            "$GDA_STAGING_GOLDEN_DEFINITION_VERSION_ID" \
+            "$GDA_STAGING_GOLDEN_INPUT_RESOURCE_VERSION_ID" \
+            "$GDA_STAGING_OBSERVER_KUBECONFIG_B64"; do
+            if [[ -z "$value" ]]; then
+              echo "protected staging golden configuration is incomplete" >&2
+              exit 1
+            fi
+          done
+          KUBECONFIG_FILE="$RUNNER_TEMP/gda-staging-observer-kubeconfig"
+          printf '%s' "$GDA_STAGING_OBSERVER_KUBECONFIG_B64" | \
+            base64 --decode > "$KUBECONFIG_FILE"
+          chmod 600 "$KUBECONFIG_FILE"
+          echo "KUBECONFIG=$KUBECONFIG_FILE" >> "$GITHUB_ENV"
+
+      - name: Prove observer identity and immutable environment
+        run: |
+          set -euo pipefail
+          [[ "$(kubectl get namespace kube-system -o jsonpath='{.metadata.uid}')" \
+            == "$GDA_STAGING_CLUSTER_UID" ]]
+          [[ "$(kubectl get namespace "$GDA_STAGING_NAMESPACE" -o jsonpath='{.metadata.uid}')" \
+            == "$GDA_STAGING_NAMESPACE_UID" ]]
+          for resource in deployments.apps pods serviceaccounts services endpointslices.discovery.k8s.io; do
+            kubectl auth can-i get "$resource" -n "$GDA_STAGING_NAMESPACE" | \
+              grep -Fx yes
+          done
+          kubectl auth can-i list pods -n "$GDA_STAGING_NAMESPACE" | grep -Fx yes
+          kubectl auth can-i list endpointslices.discovery.k8s.io \
+            -n "$GDA_STAGING_NAMESPACE" | grep -Fx yes
+          kubectl auth can-i get namespaces | grep -Fx yes
+          kubectl auth can-i create pods/exec -n "$GDA_STAGING_NAMESPACE" | \
+            grep -Fx yes
+          kubectl auth can-i get services/proxy -n "$GDA_STAGING_NAMESPACE" | \
+            grep -Fx yes
+          for verb in create patch delete; do
+            for resource in jobs.batch deployments.apps serviceaccounts services; do
+              kubectl auth can-i "$verb" "$resource" \
+                -n "$GDA_STAGING_NAMESPACE" | grep -Fx no
+            done
+          done
+          for verb in get list create patch delete; do
+            for resource in secrets configmaps; do
+              kubectl auth can-i "$verb" "$resource" \
+                -n "$GDA_STAGING_NAMESPACE" | grep -Fx no
+            done
+          done
+
+      - name: Collect fresh allowlisted live observation
+        run: |
+          set -euo pipefail
+          mkdir -p staging-golden
+          python -m data_agent.staging_live_evidence collect \
+            --namespace "$GDA_STAGING_NAMESPACE" \
+            --runtime-privilege \
+            --output staging-golden/collection.json
+
+      - name: Build golden slice from protected ledger export
+        env:
+          GDA_STAGING_GOLDEN_RUN_ID: ${{ inputs.golden_run_id }}
+        run: |
+          set -euo pipefail
+          kubectl -n "$GDA_STAGING_NAMESPACE" exec -i \
+            deployment/gis-agent-app -c app -- \
+            /bin/bash -c '
+              set -euo pipefail
+              export PGHOST="$POSTGRES_HOST"
+              export PGPORT="$POSTGRES_PORT"
+              export PGDATABASE="$POSTGRES_DATABASE"
+              export PGUSER="$POSTGRES_USER"
+              export PGPASSWORD="$POSTGRES_PASSWORD"
+              exec /usr/bin/psql -X -qAt -v ON_ERROR_STOP=1 \
+                -v tenant_id="$1" \
+                -v run_id="$2" \
+                -v capability_id="$3" \
+                -f -
+            ' -- \
+              "$GDA_STAGING_GOLDEN_TENANT_ID" \
+              "$GDA_STAGING_GOLDEN_RUN_ID" \
+              "$GDA_STAGING_GOLDEN_CAPABILITY_ID" \
+            < protected-source/data_agent/staging_golden_ledger.sql | \
+          python -m data_agent.staging_golden_slice \
+            --tenant-id "$GDA_STAGING_GOLDEN_TENANT_ID" \
+            --run-id "$GDA_STAGING_GOLDEN_RUN_ID" \
+            --capability-id "$GDA_STAGING_GOLDEN_CAPABILITY_ID" \
+            --definition-version-id "$GDA_STAGING_GOLDEN_DEFINITION_VERSION_ID" \
+            --input-resource-version-id "$GDA_STAGING_GOLDEN_INPUT_RESOURCE_VERSION_ID" \
+            --ledger-evidence - \
+            --live-collection staging-golden/collection.json \
+            > staging-golden/golden-slice.json
+
+      - name: Validate the complete live staging evidence
+        run: |
+          python -m data_agent.staging_live_evidence validate \
+            --candidate-evidence staging-golden-input/candidate.json \
+            --release-evidence staging-golden-input/release.json \
+            --live-collection staging-golden/collection.json \
+            --golden-slice staging-golden/golden-slice.json \
+            --expected-namespace-name "$GDA_STAGING_NAMESPACE" \
+            --expected-cluster-uid "$GDA_STAGING_CLUSTER_UID" \
+            --expected-namespace-uid "$GDA_STAGING_NAMESPACE_UID" \
+            --expected-golden-tenant-id "$GDA_STAGING_GOLDEN_TENANT_ID" \
+            --expected-golden-capability-id "$GDA_STAGING_GOLDEN_CAPABILITY_ID" \
+            --expected-golden-definition-version-id "$GDA_STAGING_GOLDEN_DEFINITION_VERSION_ID" \
+            --expected-golden-input-resource-version-id "$GDA_STAGING_GOLDEN_INPUT_RESOURCE_VERSION_ID" \
+            --output staging-golden/live-evidence.json
+
+      - name: Assert staging verified without production authority
+        run: |
+          python - <<'PY'
+          import json
+
+          report = json.load(open("staging-golden/live-evidence.json"))
+          assert report["live_staging_verified"] is True
+          assert report["golden_slice_verified"] is True
+          assert report["promotion_authority_verified"] is False
+          assert report["production_promotion_allowed"] is False
+          PY
+
+      - name: Attest protected staging golden evidence
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            staging-golden/collection.json
+            staging-golden/golden-slice.json
+            staging-golden/live-evidence.json
+
+      - name: Upload protected staging golden evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-golden-evidence-${{ inputs.golden_run_id }}
+          path: staging-golden/
+          if-no-files-found: error
+          retention-days: 30

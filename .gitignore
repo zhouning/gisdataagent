@@ -43,6 +43,7 @@ deploy/windows-standalone/out/
 *.shp.xml
 *.tif
 *.tiff
+benchmarks/abu_dhabi_land_use_v1/runtime_runs/
 *.geojson
 *.gpkg
 *.kml
@@ -250,8 +251,13 @@ docs/causal_inference_paper*docs/paper*.tex
 results_dual_dreamer_real*/
 
 # Local datasets / workspace (multi-GB)
-/data/
+/data/*
 /workspace/
+
+# Small, source-term evidence needed to reproduce the Foundation release gate.
+!/data/gwm_bench_foundation_v0_1/
+!/data/gwm_bench_foundation_v0_1/license_audit/
+!/data/gwm_bench_foundation_v0_1/license_audit/**
 
 # SIGSPATIAL public-repo packaging artifacts (paper companion repo)
 .env.sigspatial.sample

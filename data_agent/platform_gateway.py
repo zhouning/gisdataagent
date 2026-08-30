@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 from collections.abc import Iterator
 from contextlib import contextmanager, nullcontext
@@ -12,6 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlsplit
 from uuid import UUID, uuid5
 
 from pydantic import BaseModel, ConfigDict, TypeAdapter, model_validator
@@ -38,6 +40,26 @@ from .data_architecture_ledger import (
     ResourceVersionArchitectureReconciliation,
     SchemaVersion,
 )
+from .data_product_blueprint import (
+    DATA_PRODUCT_BLUEPRINT_PROVIDER_CANCELLATION_TIMEOUT_SCHEMA,
+    DATA_PRODUCT_BLUEPRINT_PROVIDER_RECONCILE_SCHEMA,
+    DATA_PRODUCT_BLUEPRINT_PROVIDER_RETRY_SCHEMA,
+    DataProductBlueprintProviderCancellationTimeout,
+    DataProductBlueprintProviderCancellationTimeoutRequest,
+    DataProductBlueprintProviderReconcileRequest,
+    DataProductBlueprintProviderReconciliation,
+    DataProductBlueprintProviderRetry,
+    DataProductBlueprintProviderRetryRequest,
+    DataProductBlueprintTestCancellationRequest,
+    DataProductBlueprintTestExecution,
+    DataProductBlueprintTestExecutionFailureRequest,
+    DataProductBlueprintTestExecutionRequest,
+    DataProductBlueprintTestRunAdmission,
+    DataProductBlueprintTestRunRequest,
+    build_data_product_blueprint_test_report,
+    compile_data_product_blueprint,
+    data_product_blueprint_provider_retry_backoff_seconds,
+)
 from .dataops_cancel import (
     DataOpsCancelSpec,
     DataOpsCancelWriteResult,
@@ -61,17 +83,81 @@ from .dataops_schedule import (
     dataops_schedule_lock_keys,
 )
 from .db_engine import get_engine
+from .duckdb_blueprint_object_store import (
+    DuckDBBlueprintObjectStore,
+    S3ObjectVersionEvidence,
+    blueprint_s3_input_allowed,
+    blueprint_s3_output_uri,
+    parse_blueprint_s3_uri,
+    validate_blueprint_s3_input_prefixes,
+    validate_blueprint_s3_location,
+)
+from .duckdb_blueprint_provider import (
+    DUCKDB_BLUEPRINT_PROVIDER_RECEIPT_SCHEMA,
+    DUCKDB_BLUEPRINT_WORKLOAD,
+    DuckDBBlueprintExecutionRequest,
+    DuckDBBlueprintExecutionSpec,
+    DuckDBBlueprintInput,
+    DuckDBBlueprintPipeline,
+    DuckDBBlueprintProvider,
+    DuckDBBlueprintProviderError,
+    DuckDBBlueprintProviderReceipt,
+    DuckDBBlueprintProviderUnavailableError,
+    verify_duckdb_blueprint_output,
+)
+from .gis_mvt_cache_purge import (
+    GISMVTCachePurgeStatus,
+    GISMVTCachePurgeTask,
+)
+from .gis_provider_runtime import martin_mvt_warmup_sample_set_fingerprint
+from .gis_service_consumer_binding_migration import (
+    GISServiceConsumerBindingMigrationImpact,
+)
 from .gis_service_control_plane import (
+    CachePolicyVersion,
+    EndpointProtocol,
     EndpointRevision,
     GISServiceControlProjection,
     GISServiceDefinitionVersion,
+    GISServiceDeploymentTerminalSettlement,
+    GISServiceSLOBinding,
+    GISServiceType,
     LayerDefinitionVersion,
+    MVTServingProjectionVersion,
+    MVTServingRelationAttestation,
+    ServiceDeploymentEvent,
     ServiceDeploymentRevision,
     ServiceDeploymentState,
+    ServicePolicyBinding,
     ServiceReleaseBinding,
     StyleDefinitionVersion,
     TileMatrixSetDefinitionVersion,
+    service_deployment_terminal_state,
 )
+from .gis_service_endpoint_warmup import (
+    GIS_SERVICE_ENDPOINT_WARMUP_COMMAND_SCHEMA,
+    GIS_SERVICE_ENDPOINT_WARMUP_PURPOSE,
+    GIS_SERVICE_ENDPOINT_WARMUP_WORKLOAD,
+    GISServiceEndpointWarmupExecutionPlan,
+    GISServiceEndpointWarmupReceipt,
+    GISServiceEndpointWarmupRunAdmission,
+    GISServiceEndpointWarmupRunRequest,
+    GISServiceEndpointWarmupSettlement,
+    gis_service_endpoint_warmup_fingerprint,
+    gis_service_endpoint_warmup_plan_fingerprint,
+)
+from .gis_service_migration_cutover import (
+    GISServiceMigrationCutover,
+    GISServiceMigrationCutoverRequest,
+)
+from .gis_service_migration_rollback import (
+    GISServiceMigrationRollback,
+    GISServiceMigrationRollbackRequest,
+)
+from .gis_service_slo_reconciliation import (
+    GISServiceSLOReconciliationTask,
+)
+from .jqdltb_serving_release import JqdltbServingReleaseBinding
 from .master_data_authority import MasterEntityVersion
 from .metadata_fabric import (
     METADATA_FABRIC_MIGRATION,
@@ -92,14 +178,18 @@ from .platform_contracts import (
     ApprovalCase,
     ApprovalCaseStatus,
     Artifact,
+    ArtifactRole,
     DataIncident,
     DataIncidentEvent,
     FrameworkAttemptObservation,
+    FrameworkKind,
     IncidentNotification,
     IncidentNotificationEnvelope,
+    IncidentNotificationRecoveryEvent,
     IncidentSeverity,
     IncidentStatus,
     LineageEvent,
+    LineageEventType,
     PlatformCommand,
     PlatformCommandStatus,
     PlatformCommandType,
@@ -108,14 +198,21 @@ from .platform_contracts import (
     PlatformRunEvent,
     PolicyDecision,
     QualityResult,
+    QualityVerdict,
     Resource,
+    ResourceBinding,
     ResourceVersion,
     RunStatus,
     RunSuccessEvidence,
+    SubjectContext,
     SubjectType,
     TenantId,
+    build_resource_urn,
+    canonical_json_fingerprint,
     data_incident_fingerprint,
     parse_resource_urn,
+    quality_result_fingerprint,
+    run_success_evidence_fingerprint,
 )
 from .platform_lineage import (
     ImpactChangeType,
@@ -137,6 +234,9 @@ from .platform_run_events import (
     PlatformRunEventDelivery,
     PlatformRunEventEnvelope,
 )
+from .service_consumer_binding import ServiceConsumerBinding
+from .service_consumer_binding_renewal import ServiceConsumerBindingRenewal
+from .service_consumer_binding_revocation import ServiceConsumerBindingRevocation
 from .spatial_anonymization_run import (
     SPATIAL_ANONYMIZATION_SEMANTIC_TYPE,
     SpatialAnonymizationRunSpec,
@@ -163,6 +263,11 @@ COMMAND_OUTBOX_MIGRATION = (
 SUCCESS_VERDICT_MIGRATION = (
     Path(__file__).resolve().parent / "migrations" / "096_platform_success_verdict.sql"
 )
+BLUEPRINT_TEST_SUCCESS_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "197_blueprint_test_execution_success.sql"
+)
 CANCEL_COMMAND_MIGRATION = (
     Path(__file__).resolve().parent / "migrations" / "097_platform_cancel_command.sql"
 )
@@ -174,15 +279,98 @@ INCIDENT_NOTIFICATION_MIGRATION = (
     / "migrations"
     / "099_platform_incident_notification_outbox.sql"
 )
+INCIDENT_NOTIFICATION_RECEIPT_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "226_incident_notification_provider_receipt.sql"
+)
+INCIDENT_NOTIFICATION_RECEIPT_STRICT_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "227_incident_notification_receipt_strict_authority.sql"
+)
+INCIDENT_NOTIFICATION_RECOVERY_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "228_incident_notification_governed_recovery.sql"
+)
 CONSUMER_BINDING_NOTIFICATION_MIGRATION = (
     Path(__file__).resolve().parent
     / "migrations"
     / "152_consumer_binding_migration_notification_outbox.sql"
 )
+GIS_SERVICE_CONSUMER_MIGRATION_IMPACT_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "217_gis_service_consumer_binding_migration_impact.sql"
+)
+GIS_SERVICE_MIGRATION_CUTOVER_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "218_gis_service_migration_cutover.sql"
+)
+GIS_SERVICE_MIGRATION_ROLLBACK_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "219_gis_service_migration_rollback.sql"
+)
+GIS_SERVICE_ENDPOINT_WARMUP_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "220_gis_service_endpoint_warmup.sql"
+)
+GIS_SERVICE_ENDPOINT_WARMUP_COMMAND_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "221_gis_service_endpoint_warmup_command.sql"
+)
+GIS_MVT_CACHE_PURGE_OUTBOX_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "222_gis_mvt_cache_purge_outbox.sql"
+)
+GIS_SERVICE_SLO_BINDING_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "223_gis_service_slo_binding.sql"
+)
+GIS_SERVICE_SLO_RECONCILIATION_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "224_gis_service_slo_reconciliation_outbox.sql"
+)
+GIS_SERVICE_SLO_INCIDENT_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "225_gis_service_slo_incident_authority.sql"
+)
+GIS_SERVICE_SLO_RECONCILIATION_WORKER_SOURCE = (
+    Path(__file__).resolve().parent / "gis_service_slo_reconciliation_worker.py"
+)
 GIS_SERVICE_CONTROL_PLANE_MIGRATION = (
     Path(__file__).resolve().parent
     / "migrations"
     / "153_gis_service_control_plane.sql"
+)
+JQDLTB_SERVING_RELEASE_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "235_jqdltb_serving_release_binding.sql"
+)
+JQDLTB_SERVING_ENDPOINT_PROMOTION_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "236_jqdltb_serving_endpoint_promotion_gate.sql"
+)
+MVT_SERVING_RELATION_ATTESTATION_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "237_mvt_serving_relation_attestation.sql"
+)
+OGC_API_FEATURES_ENDPOINT_CONTRACT_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "238_ogc_api_features_endpoint_contract.sql"
 )
 RUN_EVENT_DELIVERY_MIGRATION = (
     Path(__file__).resolve().parent
@@ -215,6 +403,12 @@ USER_TENANT_MIGRATION = (
 GATEWAY_ROUTES_SOURCE = Path(__file__).resolve().parent / "api" / "platform_gateway_routes.py"
 COMMAND_CONSUMER_SOURCE = Path(__file__).resolve().parent / "dolphinscheduler_command_consumer.py"
 COMMAND_WORKER_SOURCE = Path(__file__).resolve().parent / "dolphinscheduler_command_worker.py"
+GIS_SERVICE_ENDPOINT_WARMUP_CONSUMER_SOURCE = (
+    Path(__file__).resolve().parent / "gis_service_endpoint_warmup_consumer.py"
+)
+GIS_SERVICE_ENDPOINT_WARMUP_WORKER_SOURCE = (
+    Path(__file__).resolve().parent / "gis_service_endpoint_warmup_worker.py"
+)
 INCIDENT_NOTIFICATION_WORKER_SOURCE = (
     Path(__file__).resolve().parent / "incident_notification_worker.py"
 )
@@ -310,6 +504,14 @@ class CancellationIncidentWriteResult:
     incident_created: bool
 
 
+@dataclass(frozen=True)
+class GISServiceEndpointWarmupSettlementResult:
+    run: PlatformRun
+    receipt: GISServiceEndpointWarmupReceipt
+    evidence_created: bool
+    receipt_created: bool
+
+
 class DefinitionRegistration(BaseModel):
     """Atomic Resource + ResourceVersion + logical definition registration."""
 
@@ -357,8 +559,88 @@ def _sqlstate(exc: DBAPIError) -> str | None:
 class PlatformGateway:
     """Synchronous PostgreSQL gateway with transaction-local role and tenant."""
 
-    def __init__(self, engine=None):
+    def __init__(
+        self,
+        engine=None,
+        *,
+        blueprint_duckdb_output_root: str | Path | None = None,
+        blueprint_duckdb_result_backend: str | None = None,
+        blueprint_duckdb_output_s3_bucket: str | None = None,
+        blueprint_duckdb_output_s3_prefix: str | None = None,
+        blueprint_duckdb_input_s3_prefixes: tuple[str, ...] | None = None,
+        blueprint_duckdb_object_store: DuckDBBlueprintObjectStore | None = None,
+    ):
         self._engine = engine
+        configured_root = blueprint_duckdb_output_root or os.environ.get(
+            "GDA_BLUEPRINT_DUCKDB_OUTPUT_ROOT"
+        )
+        self._blueprint_duckdb_output_root = (
+            None if configured_root is None else Path(configured_root).expanduser()
+        )
+        self._blueprint_duckdb_result_backend = str(
+            blueprint_duckdb_result_backend
+            or os.environ.get("GDA_BLUEPRINT_DUCKDB_RESULT_BACKEND")
+            or "local"
+        ).strip()
+        if self._blueprint_duckdb_result_backend not in {"local", "s3"}:
+            raise GatewayConfigurationError(
+                "DuckDB Blueprint result backend must be local or s3"
+            )
+        self._blueprint_duckdb_output_s3_bucket = str(
+            blueprint_duckdb_output_s3_bucket
+            or os.environ.get("GDA_BLUEPRINT_DUCKDB_OUTPUT_S3_BUCKET")
+            or ""
+        ).strip()
+        self._blueprint_duckdb_output_s3_prefix = str(
+            blueprint_duckdb_output_s3_prefix
+            or os.environ.get("GDA_BLUEPRINT_DUCKDB_OUTPUT_S3_PREFIX")
+            or "blueprint-duckdb-results/v1"
+        ).strip()
+        configured_input_prefixes = blueprint_duckdb_input_s3_prefixes
+        if configured_input_prefixes is None:
+            configured_input_prefixes = tuple(
+                item.strip()
+                for item in str(
+                    os.environ.get("GDA_BLUEPRINT_DUCKDB_INPUT_S3_PREFIXES") or ""
+                ).split(",")
+                if item.strip()
+            )
+        self._blueprint_duckdb_input_s3_prefixes = configured_input_prefixes
+        if self._blueprint_duckdb_result_backend == "s3":
+            try:
+                validate_blueprint_s3_location(
+                    self._blueprint_duckdb_output_s3_bucket,
+                    self._blueprint_duckdb_output_s3_prefix,
+                )
+                self._blueprint_duckdb_input_s3_prefixes = (
+                    validate_blueprint_s3_input_prefixes(
+                        self._blueprint_duckdb_input_s3_prefixes
+                    )
+                )
+            except ValueError as exc:
+                raise GatewayConfigurationError(
+                    "DuckDB Blueprint S3 result location is invalid"
+                ) from exc
+        self._blueprint_duckdb_object_store = blueprint_duckdb_object_store
+
+    def _blueprint_duckdb_output_uri(self, tenant_id: str, run_id: UUID) -> str:
+        if self._blueprint_duckdb_result_backend == "s3":
+            return blueprint_s3_output_uri(
+                self._blueprint_duckdb_output_s3_bucket,
+                self._blueprint_duckdb_output_s3_prefix,
+                tenant_id,
+                run_id,
+            )
+        root = self._blueprint_duckdb_output_root
+        if root is None:
+            raise GatewayConfigurationError(
+                "GDA_BLUEPRINT_DUCKDB_OUTPUT_ROOT is required for DuckDB Blueprint admission"
+            )
+        if not root.is_absolute():
+            raise GatewayConfigurationError(
+                "DuckDB Blueprint output root must be an absolute path"
+            )
+        return (root.resolve() / f"{run_id}.parquet").as_uri()
 
     def _get_engine(self):
         engine = self._engine or get_engine()
@@ -396,7 +678,7 @@ class PlatformGateway:
                 raise GatewayNotFoundError("platform object was not found") from exc
             if state == "42501":
                 raise GatewayForbiddenError("platform tenant access was denied") from exc
-            if state in {"22023", "22P02", "23502", "23503", "23514"}:
+            if state in {"22023", "22P02", "23502", "23503", "23514", "55000"}:
                 raise GatewayValidationError("platform contract was rejected") from exc
             raise GatewayUnavailableError("platform database operation failed") from exc
         except SQLAlchemyError as exc:
@@ -1105,6 +1387,804 @@ class PlatformGateway:
                 values.append(ConsumerBindingMigrationState.model_validate(value))
             return tuple(values)
 
+    def record_gis_service_consumer_binding_migration_impact(
+        self,
+        impact: GISServiceConsumerBindingMigrationImpact,
+    ) -> GatewayWriteResult:
+        """Record one exact GIS release impact through the guarded recorder."""
+        with self._transaction(impact.tenant_id) as connection:
+            result = connection.execute(
+                text(
+                    """
+                    SELECT impact_id, created
+                      FROM gda_control.record_gis_service_consumer_binding_migration_impact(
+                          :tenant_id,
+                          CAST(:impact_id AS uuid),
+                          CAST(:source_service_consumer_binding_id AS uuid),
+                          CAST(:source_binding_sha256 AS char(64)),
+                          :service_urn, :consumer_ref,
+                          CAST(:source_service_definition_version_id AS uuid),
+                          CAST(:source_service_release_binding_id AS uuid),
+                          CAST(:target_service_definition_version_id AS uuid),
+                          CAST(:target_service_release_binding_id AS uuid),
+                          :source_product_urn,
+                          CAST(:from_product_version_id AS uuid),
+                          CAST(:to_product_version_id AS uuid),
+                          CAST(:migration_state_id AS uuid),
+                          CAST(:notification_id AS uuid),
+                          :recorded_by, :recorded_at,
+                          CAST(:impact_sha256 AS char(64))
+                      )
+                    """
+                ),
+                impact.model_dump(mode="python"),
+            ).mappings().one()
+            stored = self._load_gis_service_consumer_binding_migration_impacts(
+                connection, impact.tenant_id, impact.notification_id
+            )
+            matching = next(
+                (item for item in stored if item.impact_id == impact.impact_id),
+                None,
+            )
+            if matching is None or matching != impact:
+                raise GatewayConflictError(
+                    "GIS service migration impact identity has different content"
+                )
+            return GatewayWriteResult(matching, bool(result["created"]))
+
+    def list_gis_service_consumer_binding_migration_impacts(
+        self,
+        tenant_id: str,
+        incident_id: UUID,
+        notification_id: UUID,
+    ) -> tuple[GISServiceConsumerBindingMigrationImpact, ...]:
+        """List exact GIS release impacts attached to one product notice."""
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            return self._load_gis_service_consumer_binding_migration_impacts(
+                connection, tenant, notification_id
+            )
+
+    @staticmethod
+    def _gis_service_migration_cutover_from_row(
+        row,
+    ) -> GISServiceMigrationCutover:
+        return GISServiceMigrationCutover.model_validate(dict(row))
+
+    def cutover_gis_service_migration(
+        self,
+        request: GISServiceMigrationCutoverRequest,
+    ) -> GISServiceMigrationCutover:
+        """Atomically move one service after every source consumer is ready."""
+        with self._transaction(request.tenant_id) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT *
+                          FROM gda_control.cutover_gis_service_migration(
+                              :tenant_id, CAST(:cutover_id AS uuid), :service_urn,
+                              CAST(:source_endpoint_revision_id AS uuid),
+                              CAST(:target_endpoint_revision_id AS uuid),
+                              CAST(:source_service_definition_version_id AS uuid),
+                              CAST(:source_service_release_binding_id AS uuid),
+                              CAST(:target_service_definition_version_id AS uuid),
+                              CAST(:target_service_release_binding_id AS uuid),
+                              :source_product_urn,
+                              CAST(:from_product_version_id AS uuid),
+                              CAST(:to_product_version_id AS uuid),
+                              :expected_state_version, :actor_subject, :reason,
+                              :idempotency_key, :occurred_at
+                          )
+                        """
+                    ),
+                    request.model_dump(mode="python"),
+                )
+                .mappings()
+                .one()
+            )
+            return self._gis_service_migration_cutover_from_row(row)
+
+    def list_gis_service_migration_cutovers(
+        self,
+        tenant_id: str,
+        service_urn: str,
+    ) -> tuple[GISServiceMigrationCutover, ...]:
+        """List immutable migration cutovers for one governed GIS service."""
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT tenant_id, cutover_id, service_urn,
+                               source_endpoint_revision_id,
+                               target_endpoint_revision_id,
+                               source_service_definition_version_id,
+                               source_service_release_binding_id,
+                               target_service_definition_version_id,
+                               target_service_release_binding_id,
+                               source_product_urn, from_product_version_id,
+                               to_product_version_id, source_binding_count,
+                               impact_count, acknowledged_count,
+                               target_binding_count, impact_set_sha256,
+                               acknowledgement_set_sha256,
+                               target_binding_set_sha256, from_state_version,
+                               to_state_version, activation_event_id,
+                               cache_transition_mode, actor_subject, reason,
+                               idempotency_key, occurred_at, cutover_sha256
+                          FROM gda_control.gis_service_migration_cutover
+                         WHERE tenant_id = :tenant_id
+                           AND service_urn = :service_urn
+                         ORDER BY occurred_at, cutover_id
+                        """
+                    ),
+                    {"tenant_id": tenant, "service_urn": service_urn},
+                )
+                .mappings()
+                .all()
+            )
+            return tuple(
+                self._gis_service_migration_cutover_from_row(row) for row in rows
+            )
+
+    @staticmethod
+    def _gis_service_migration_rollback_from_row(
+        row,
+    ) -> GISServiceMigrationRollback:
+        return GISServiceMigrationRollback.model_validate(dict(row))
+
+    def rollback_gis_service_migration(
+        self,
+        request: GISServiceMigrationRollbackRequest,
+    ) -> GISServiceMigrationRollback:
+        """Atomically restore a cutover source under Incident or approval authority."""
+        with self._transaction(request.tenant_id) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT *
+                          FROM gda_control.rollback_gis_service_migration(
+                              :tenant_id, CAST(:rollback_id AS uuid),
+                              CAST(:cutover_id AS uuid), :cutover_sha256,
+                              :service_urn,
+                              CAST(:from_endpoint_revision_id AS uuid),
+                              CAST(:to_endpoint_revision_id AS uuid),
+                              :expected_state_version, :authorization_kind,
+                              :authorization_ref, :actor_subject, :reason,
+                              :idempotency_key, :occurred_at
+                          )
+                        """
+                    ),
+                    request.model_dump(mode="python"),
+                )
+                .mappings()
+                .one()
+            )
+            return self._gis_service_migration_rollback_from_row(row)
+
+    def list_gis_service_migration_rollbacks(
+        self,
+        tenant_id: str,
+        service_urn: str,
+    ) -> tuple[GISServiceMigrationRollback, ...]:
+        """List immutable migration rollback receipts for one GIS service."""
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT tenant_id, rollback_id, cutover_id,
+                               cutover_sha256, service_urn,
+                               from_endpoint_revision_id,
+                               to_endpoint_revision_id,
+                               from_service_definition_version_id,
+                               from_service_release_binding_id,
+                               to_service_definition_version_id,
+                               to_service_release_binding_id,
+                               source_product_urn, from_product_version_id,
+                               to_product_version_id, current_binding_count,
+                               current_consumer_count, rollback_binding_count,
+                               rollback_consumer_count,
+                               rollback_binding_set_sha256,
+                               from_state_version, to_state_version,
+                               activation_event_id, cache_transition_mode,
+                               authorization_kind, authorization_ref,
+                               authorization_sha256, authorization_status,
+                               authorization_state_version, actor_subject,
+                               reason, idempotency_key, occurred_at,
+                               rollback_sha256
+                          FROM gda_control.gis_service_migration_rollback
+                         WHERE tenant_id = :tenant_id
+                           AND service_urn = :service_urn
+                         ORDER BY occurred_at, rollback_id
+                        """
+                    ),
+                    {"tenant_id": tenant, "service_urn": service_urn},
+                )
+                .mappings()
+                .all()
+            )
+            return tuple(
+                self._gis_service_migration_rollback_from_row(row) for row in rows
+            )
+
+    @staticmethod
+    def _gis_service_endpoint_warmup_from_row(
+        row,
+    ) -> GISServiceEndpointWarmupReceipt:
+        return GISServiceEndpointWarmupReceipt.model_validate(dict(row))
+
+    def record_gis_service_endpoint_warmup(
+        self,
+        receipt: GISServiceEndpointWarmupReceipt,
+    ) -> GatewayWriteResult:
+        """Record Run-bound warmup evidence for one immutable endpoint release."""
+        with self._transaction(receipt.tenant_id) as connection:
+            return self._record_gis_service_endpoint_warmup(connection, receipt)
+
+    @classmethod
+    def _record_gis_service_endpoint_warmup(
+        cls,
+        connection,
+        receipt: GISServiceEndpointWarmupReceipt,
+    ) -> GatewayWriteResult:
+        result = (
+            connection.execute(
+                text(
+                    """
+                    SELECT warmup_id, created
+                      FROM gda_control.record_gis_service_endpoint_warmup(
+                          :tenant_id, CAST(:warmup_id AS uuid), :service_urn,
+                          CAST(:endpoint_revision_id AS uuid),
+                          CAST(:deployment_revision_id AS uuid),
+                          CAST(:service_definition_version_id AS uuid),
+                          CAST(:service_release_binding_id AS uuid),
+                          CAST(:cache_policy_version_id AS uuid),
+                          :cache_namespace, CAST(:run_id AS uuid),
+                          CAST(:evidence_artifact_id AS uuid),
+                          :requested_sample_count, :successful_sample_count,
+                          CAST(:sample_set_sha256 AS char(64)),
+                          CAST(:provider_receipt_sha256 AS char(64)),
+                          :started_at, :completed_at, :valid_until,
+                          :recorded_by, :recorded_at,
+                          CAST(:warmup_sha256 AS char(64))
+                      )
+                    """
+                ),
+                receipt.model_dump(mode="python"),
+            )
+            .mappings()
+            .one()
+        )
+        stored = cls._load_gis_service_endpoint_warmups(
+            connection,
+            receipt.tenant_id,
+            receipt.service_urn,
+            receipt.endpoint_revision_id,
+        )
+        matching = next(
+            (item for item in stored if item.warmup_id == receipt.warmup_id),
+            None,
+        )
+        if matching is None or matching != receipt:
+            raise GatewayConflictError(
+                "GIS endpoint warmup identity has different content"
+            )
+        return GatewayWriteResult(matching, bool(result["created"]))
+
+    def admit_gis_service_endpoint_warmup_run(
+        self,
+        request: GISServiceEndpointWarmupRunRequest,
+        *,
+        subject_context: SubjectContext,
+    ) -> GISServiceEndpointWarmupRunAdmission:
+        """Atomically bind an exact Martin warmup plan to Run and outbox."""
+        actor_subject = (
+            f"{subject_context.subject_type.value}:{subject_context.subject_id}"
+        )
+        if subject_context.tenant_id != request.tenant_id:
+            raise GatewayForbiddenError("warmup subject tenant does not match request")
+        if (
+            subject_context.subject_type is not SubjectType.WORKLOAD
+            or actor_subject != GIS_SERVICE_ENDPOINT_WARMUP_WORKLOAD
+            or subject_context.purpose != GIS_SERVICE_ENDPOINT_WARMUP_PURPOSE
+        ):
+            raise GatewayForbiddenError(
+                "GIS endpoint warmup admission requires its dedicated workload"
+            )
+
+        with self._transaction(request.tenant_id) as connection:
+            definition = self._load_definition(
+                connection, request.tenant_id, request.definition_version_id
+            )
+            if definition is None:
+                raise GatewayNotFoundError("warmup PlatformDefinitionVersion was not found")
+            if definition.capability_id != "gis-service-endpoint-warmup":
+                raise GatewayValidationError(
+                    "Run definition does not provide GIS endpoint warmup"
+                )
+            endpoint = self._load_endpoint_revision(
+                connection, request.tenant_id, request.endpoint_revision_id
+            )
+            if endpoint is None or endpoint.service_urn != request.service_urn:
+                raise GatewayNotFoundError("exact GIS endpoint revision was not found")
+            deployment = self._load_service_deployment_revision(
+                connection, request.tenant_id, endpoint.deployment_revision_id
+            )
+            if (
+                deployment is None
+                or deployment.state is not ServiceDeploymentState.READY
+                or deployment.provider_system != "martin"
+                or deployment.service_release_binding_id is None
+            ):
+                raise GatewayValidationError(
+                    "warmup requires an exact ready Martin deployment"
+                )
+            service_definition = self._load_gis_service_definition_version(
+                connection,
+                request.tenant_id,
+                deployment.service_definition_version_id,
+            )
+            if (
+                service_definition is None
+                or service_definition.service_urn != request.service_urn
+                or service_definition.service_type is not GISServiceType.VECTOR_TILE
+            ):
+                raise GatewayValidationError(
+                    "warmup endpoint does not bind a vector-tile service definition"
+                )
+            release = self._load_service_release_binding(
+                connection,
+                request.tenant_id,
+                deployment.service_release_binding_id,
+            )
+            if (
+                release is None
+                or release.service_definition_version_id
+                != service_definition.service_definition_version_id
+                or release.cache_policy_version_id is None
+                or release.tile_matrix_set_definition_version_id is None
+                or release.mvt_serving_projection_version_id is None
+            ):
+                raise GatewayValidationError(
+                    "Martin deployment lacks a complete immutable release binding"
+                )
+            cache_policy = self._load_cache_policy_version(
+                connection, request.tenant_id, release.cache_policy_version_id
+            )
+            tile_matrix_set = self._load_tile_matrix_set_definition_version(
+                connection,
+                request.tenant_id,
+                release.tile_matrix_set_definition_version_id,
+            )
+            serving_projection = self._load_mvt_serving_projection_version(
+                connection,
+                request.tenant_id,
+                release.mvt_serving_projection_version_id,
+            )
+            if cache_policy is None or tile_matrix_set is None or serving_projection is None:
+                raise GatewayNotFoundError("warmup release components were not found")
+            if (
+                cache_policy.service_definition_version_id
+                != service_definition.service_definition_version_id
+                or tile_matrix_set.service_definition_version_id
+                != service_definition.service_definition_version_id
+                or tile_matrix_set.layer_definition_version_id
+                != release.layer_definition_version_id
+                or serving_projection.service_definition_version_id
+                != service_definition.service_definition_version_id
+                or serving_projection.layer_definition_version_id
+                != release.layer_definition_version_id
+            ):
+                raise GatewayValidationError(
+                    "warmup release components do not share one exact service lineage"
+                )
+            expected_endpoint_contract = {
+                "schema": "gda.mvt_endpoint.v1",
+                "provider_layer_ref": "gda_mvt_serving_projection",
+                "provider_query": {
+                    "serving_projection_version_id": str(
+                        serving_projection.mvt_serving_projection_version_id
+                    )
+                },
+            }
+            if (
+                endpoint.endpoint_protocol is not EndpointProtocol.MVT
+                or endpoint.endpoint_contract != expected_endpoint_contract
+                or any(
+                    sample.z < tile_matrix_set.min_zoom
+                    or sample.z > tile_matrix_set.max_zoom
+                    for sample in request.samples
+                )
+            ):
+                raise GatewayValidationError(
+                    "endpoint contract or samples do not match the release tile matrix"
+                )
+            source_output_resource_version_id = connection.execute(
+                text(
+                    """
+                    SELECT output_resource_version_id
+                      FROM gda_control.data_product_version
+                     WHERE tenant_id = :tenant_id
+                       AND product_urn = :product_urn
+                       AND data_product_version_id = :product_version_id
+                    """
+                ),
+                {
+                    "tenant_id": request.tenant_id,
+                    "product_urn": service_definition.source_product_urn,
+                    "product_version_id": (
+                        service_definition.source_data_product_version_id
+                    ),
+                },
+            ).scalar_one_or_none()
+            if source_output_resource_version_id is None:
+                raise GatewayNotFoundError(
+                    "warmup source DataProduct output ResourceVersion was not found"
+                )
+            if (
+                serving_projection.source_output_resource_version_id
+                != source_output_resource_version_id
+            ):
+                raise GatewayValidationError(
+                    "serving projection does not read the service source product output"
+                )
+
+            plan_values = {
+                "schema": "gda.gis_service_endpoint_warmup_execution_plan.v1",
+                "tenant_id": request.tenant_id,
+                "run_id": request.run_id,
+                "definition_version_id": request.definition_version_id,
+                "definition_sha256": definition.definition_sha256,
+                "service_urn": request.service_urn,
+                "service_definition_version_id": (
+                    service_definition.service_definition_version_id
+                ),
+                "endpoint_revision_id": endpoint.endpoint_revision_id,
+                "endpoint_sha256": endpoint.endpoint_sha256,
+                "consumer_endpoint_uri": endpoint.endpoint_uri,
+                "deployment_revision_id": deployment.deployment_revision_id,
+                "deployment_sha256": deployment.deployment_sha256,
+                "service_release_binding_id": release.service_release_binding_id,
+                "release_binding_sha256": release.binding_sha256,
+                "cache_policy_version_id": cache_policy.cache_policy_version_id,
+                "cache_policy_sha256": cache_policy.policy_sha256,
+                "cache_namespace": cache_policy.cache_namespace,
+                "cache_max_age_seconds": cache_policy.cache_max_age_seconds,
+                "tile_matrix_set_definition_version_id": (
+                    tile_matrix_set.tile_matrix_set_definition_version_id
+                ),
+                "tile_matrix_set_sha256": tile_matrix_set.definition_sha256,
+                "mvt_serving_projection_version_id": (
+                    serving_projection.mvt_serving_projection_version_id
+                ),
+                "serving_projection_sha256": serving_projection.projection_sha256,
+                "source_output_resource_version_id": (
+                    source_output_resource_version_id
+                ),
+                "provider_system": "martin",
+                "provider_layer_ref": "gda_mvt_serving_projection",
+                "samples": request.samples,
+                "sample_set_sha256": martin_mvt_warmup_sample_set_fingerprint(
+                    request.samples
+                ),
+            }
+            execution_plan = GISServiceEndpointWarmupExecutionPlan(
+                **plan_values,
+                plan_sha256=gis_service_endpoint_warmup_plan_fingerprint(plan_values),
+            )
+            run = PlatformRun(
+                tenant_id=request.tenant_id,
+                run_id=request.run_id,
+                definition_version_id=request.definition_version_id,
+                orchestration_class=definition.orchestration_class,
+                subject_context=subject_context,
+                input_bindings=(
+                    ResourceBinding(
+                        binding_name="source_product_output",
+                        resource_version_id=source_output_resource_version_id,
+                        semantic_type="gda.gis_service.warmup_source",
+                    ),
+                ),
+                idempotency_key=request.idempotency_key,
+                config_fingerprint=execution_plan.plan_sha256,
+                submitted_at=request.submitted_at,
+            )
+            run_result, _ = self._put_run(connection, run, request_dispatch=False)
+            plan_manifest = execution_plan.model_dump(mode="json", by_alias=True)
+            plan_payload = json.dumps(
+                plan_manifest, ensure_ascii=True, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
+            plan_artifact = Artifact(
+                tenant_id=request.tenant_id,
+                artifact_id=uuid5(
+                    request.run_id,
+                    f"gda.gis-service-warmup.plan:{execution_plan.plan_sha256}",
+                ),
+                artifact_key=f"gis-warmup-plan-{request.run_id.hex}",
+                artifact_role=ArtifactRole.EXECUTION_PLAN,
+                storage_uri=(
+                    f"s3://gda-control/gis-service-warmup-plans/{request.run_id}.json"
+                ),
+                media_type="application/json",
+                content_sha256=canonical_json_fingerprint(plan_manifest),
+                size_bytes=len(plan_payload),
+                run_id=request.run_id,
+                manifest=plan_manifest,
+                created_by=actor_subject,
+                created_at=request.submitted_at,
+            )
+            artifact_result = self._put_artifact(connection, plan_artifact)
+            dedupe_key = (
+                f"gis_service.endpoint_warmup:{request.tenant_id}:"
+                f"{request.run_id}:{execution_plan.plan_sha256}"
+            )
+            command = PlatformCommand(
+                tenant_id=request.tenant_id,
+                command_id=uuid5(request.run_id, dedupe_key),
+                run_id=request.run_id,
+                command_type=PlatformCommandType.GIS_SERVICE_ENDPOINT_WARMUP,
+                execution_plan_artifact_id=plan_artifact.artifact_id,
+                dedupe_key=dedupe_key,
+                actor_subject=GIS_SERVICE_ENDPOINT_WARMUP_WORKLOAD,
+                payload={
+                    "schema": GIS_SERVICE_ENDPOINT_WARMUP_COMMAND_SCHEMA,
+                    "run_id": str(request.run_id),
+                    "execution_plan_artifact_id": str(plan_artifact.artifact_id),
+                    "execution_plan_sha256": execution_plan.plan_sha256,
+                    "sample_set_sha256": execution_plan.sample_set_sha256,
+                    "endpoint_revision_id": str(endpoint.endpoint_revision_id),
+                    "service_release_binding_id": str(
+                        release.service_release_binding_id
+                    ),
+                    "provider_system": "martin",
+                },
+                max_attempts=5,
+                available_at=request.submitted_at,
+                created_at=request.submitted_at,
+            )
+            command_result = self._put_command(connection, command)
+            return GISServiceEndpointWarmupRunAdmission(
+                run=run_result.value,
+                execution_plan=execution_plan,
+                execution_plan_artifact=artifact_result.value,
+                command=command_result.value,
+                run_created=run_result.created,
+                artifact_created=artifact_result.created,
+                command_created=command_result.created,
+            )
+
+    def get_gis_service_endpoint_warmup_execution_plan(
+        self,
+        tenant_id: str,
+        artifact_id: UUID,
+    ) -> GISServiceEndpointWarmupExecutionPlan:
+        artifact = self.get_artifact(tenant_id, artifact_id)
+        if artifact.artifact_role is not ArtifactRole.EXECUTION_PLAN:
+            raise GatewayValidationError("warmup plan Artifact has the wrong role")
+        try:
+            plan = GISServiceEndpointWarmupExecutionPlan.model_validate(
+                artifact.manifest
+            )
+        except ValueError as exc:
+            raise GatewayValidationError("warmup execution plan is invalid") from exc
+        if artifact.content_sha256 != canonical_json_fingerprint(artifact.manifest):
+            raise GatewayValidationError("warmup plan Artifact content hash is invalid")
+        return plan
+
+    def settle_gis_service_endpoint_warmup_success(
+        self,
+        settlement: GISServiceEndpointWarmupSettlement,
+        *,
+        actor_subject: str = GIS_SERVICE_ENDPOINT_WARMUP_WORKLOAD,
+        reason: str = "Martin origin warmup samples passed",
+    ) -> GISServiceEndpointWarmupSettlementResult:
+        """Atomically commit evidence, Run success, and migration 220 receipt."""
+        plan = settlement.execution_plan
+        if actor_subject != GIS_SERVICE_ENDPOINT_WARMUP_WORKLOAD:
+            raise GatewayForbiddenError("warmup settlement actor is not authorized")
+        with self._transaction(plan.tenant_id) as connection:
+            plan_artifact_id = settlement.observation.evidence.get(
+                "execution_plan_artifact_id"
+            )
+            try:
+                plan_artifact_uuid = UUID(str(plan_artifact_id))
+            except ValueError as exc:
+                raise GatewayValidationError(
+                    "warmup observation lacks its execution plan Artifact"
+                ) from exc
+            stored_plan_artifact = self._load_artifact(
+                connection, plan.tenant_id, plan_artifact_uuid
+            )
+            if (
+                stored_plan_artifact is None
+                or stored_plan_artifact.manifest
+                != plan.model_dump(mode="json", by_alias=True)
+                or stored_plan_artifact.content_sha256
+                != canonical_json_fingerprint(stored_plan_artifact.manifest)
+            ):
+                raise GatewayValidationError(
+                    "settlement does not match the admitted execution plan"
+                )
+            created = False
+            for result in (
+                self._put_observation(connection, settlement.observation),
+                self._put_artifact(connection, settlement.evidence_artifact),
+                self._put_quality_result(connection, settlement.quality_result),
+                self._put_lineage(connection, settlement.lineage_event),
+            ):
+                created = created or result.created
+            details = {
+                "schema": "gda.run_success_evidence.v1",
+                **settlement.success_evidence.model_dump(mode="json"),
+            }
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.finalize_gis_service_endpoint_warmup_success(
+                        :tenant_id, :run_id, :expected_state_version,
+                        :actor_subject, :reason, CAST(:details AS jsonb)
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": plan.tenant_id,
+                    "run_id": plan.run_id,
+                    "expected_state_version": settlement.expected_state_version,
+                    "actor_subject": actor_subject,
+                    "reason": reason,
+                    "details": _json(details),
+                },
+            ).scalar_one()
+            recorded_at = connection.execute(
+                text("SELECT clock_timestamp()")
+            ).scalar_one()
+            receipt_values = {
+                "tenant_id": plan.tenant_id,
+                "warmup_id": settlement.warmup_id,
+                "service_urn": plan.service_urn,
+                "endpoint_revision_id": plan.endpoint_revision_id,
+                "deployment_revision_id": plan.deployment_revision_id,
+                "service_definition_version_id": (
+                    plan.service_definition_version_id
+                ),
+                "service_release_binding_id": plan.service_release_binding_id,
+                "cache_policy_version_id": plan.cache_policy_version_id,
+                "cache_namespace": plan.cache_namespace,
+                "run_id": plan.run_id,
+                "evidence_artifact_id": settlement.evidence_artifact.artifact_id,
+                "requested_sample_count": (
+                    settlement.provider_receipt.requested_sample_count
+                ),
+                "successful_sample_count": (
+                    settlement.provider_receipt.successful_sample_count
+                ),
+                "sample_set_sha256": settlement.provider_receipt.sample_set_sha256,
+                "provider_receipt_sha256": (
+                    settlement.provider_receipt.receipt_sha256
+                ),
+                "started_at": settlement.provider_receipt.started_at,
+                "completed_at": settlement.provider_receipt.completed_at,
+                "valid_until": settlement.valid_until,
+                "recorded_by": actor_subject,
+            }
+            existing_receipt = next(
+                (
+                    item
+                    for item in self._load_gis_service_endpoint_warmups(
+                        connection,
+                        plan.tenant_id,
+                        plan.service_urn,
+                        plan.endpoint_revision_id,
+                    )
+                    if item.warmup_id == settlement.warmup_id
+                ),
+                None,
+            )
+            if existing_receipt is not None:
+                expected_existing = {
+                    **receipt_values,
+                    "recorded_at": existing_receipt.recorded_at,
+                }
+                expected_existing["warmup_sha256"] = (
+                    gis_service_endpoint_warmup_fingerprint(expected_existing)
+                )
+                if existing_receipt != GISServiceEndpointWarmupReceipt(
+                    **expected_existing
+                ):
+                    raise GatewayConflictError(
+                        "GIS warmup replay differs from its settled receipt"
+                    )
+                run = self._load_run(connection, plan.tenant_id, plan.run_id)
+                if run is None:
+                    raise GatewayNotFoundError(
+                        "settled warmup PlatformRun was not found"
+                    )
+                return GISServiceEndpointWarmupSettlementResult(
+                    run=run,
+                    receipt=existing_receipt,
+                    evidence_created=created,
+                    receipt_created=False,
+                )
+            receipt_values["recorded_at"] = recorded_at
+            receipt = GISServiceEndpointWarmupReceipt(
+                **receipt_values,
+                warmup_sha256=gis_service_endpoint_warmup_fingerprint(
+                    receipt_values
+                ),
+            )
+            receipt_result = self._record_gis_service_endpoint_warmup(
+                connection, receipt
+            )
+            run = self._load_run(connection, plan.tenant_id, plan.run_id)
+            if run is None:
+                raise GatewayNotFoundError("settled warmup PlatformRun was not found")
+            return GISServiceEndpointWarmupSettlementResult(
+                run=run,
+                receipt=receipt_result.value,
+                evidence_created=created,
+                receipt_created=receipt_result.created,
+            )
+
+    def list_gis_service_endpoint_warmups(
+        self,
+        tenant_id: str,
+        service_urn: str,
+        endpoint_revision_id: UUID | None = None,
+    ) -> tuple[GISServiceEndpointWarmupReceipt, ...]:
+        """List immutable warmup receipts for one service or exact endpoint."""
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            return self._load_gis_service_endpoint_warmups(
+                connection, tenant, service_urn, endpoint_revision_id
+            )
+
+    @classmethod
+    def _load_gis_service_endpoint_warmups(
+        cls,
+        connection,
+        tenant_id: str,
+        service_urn: str,
+        endpoint_revision_id: UUID | None,
+    ) -> tuple[GISServiceEndpointWarmupReceipt, ...]:
+        rows = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, warmup_id, service_urn,
+                           endpoint_revision_id, deployment_revision_id,
+                           service_definition_version_id,
+                           service_release_binding_id, cache_policy_version_id,
+                           cache_namespace, run_id, evidence_artifact_id,
+                           requested_sample_count, successful_sample_count,
+                           sample_set_sha256, provider_receipt_sha256,
+                           started_at, completed_at, valid_until, recorded_by,
+                           recorded_at, warmup_sha256
+                      FROM gda_control.gis_service_endpoint_warmup
+                     WHERE tenant_id = :tenant_id
+                       AND service_urn = :service_urn
+                       AND (
+                           CAST(:endpoint_revision_id AS uuid) IS NULL
+                           OR endpoint_revision_id =
+                              CAST(:endpoint_revision_id AS uuid)
+                       )
+                     ORDER BY completed_at, warmup_id
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "service_urn": service_urn,
+                    "endpoint_revision_id": endpoint_revision_id,
+                },
+            )
+            .mappings()
+            .all()
+        )
+        return tuple(cls._gis_service_endpoint_warmup_from_row(row) for row in rows)
+
     @staticmethod
     def _consumer_binding_notification_from_row(
         row,
@@ -1112,6 +2192,50 @@ class PlatformGateway:
         value = dict(row)
         value["provider_receipt"] = _as_json(value["provider_receipt"])
         return ConsumerBindingMigrationNotification.model_validate(value)
+
+    @staticmethod
+    def _gis_service_consumer_binding_migration_impact_from_row(
+        row,
+    ) -> GISServiceConsumerBindingMigrationImpact:
+        return GISServiceConsumerBindingMigrationImpact.model_validate(dict(row))
+
+    @classmethod
+    def _load_gis_service_consumer_binding_migration_impacts(
+        cls,
+        connection,
+        tenant_id: str,
+        notification_id: UUID,
+    ) -> tuple[GISServiceConsumerBindingMigrationImpact, ...]:
+        rows = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, impact_id,
+                           source_service_consumer_binding_id,
+                           source_binding_sha256, service_urn, consumer_ref,
+                           source_service_definition_version_id,
+                           source_service_release_binding_id,
+                           target_service_definition_version_id,
+                           target_service_release_binding_id,
+                           source_product_urn, from_product_version_id,
+                           to_product_version_id, migration_state_id,
+                           notification_id, recorded_by, recorded_at,
+                           impact_sha256
+                      FROM gda_control.gis_service_consumer_binding_migration_impact
+                     WHERE tenant_id = :tenant_id
+                       AND notification_id = :notification_id
+                     ORDER BY recorded_at, impact_id
+                    """
+                ),
+                {"tenant_id": tenant_id, "notification_id": notification_id},
+            )
+            .mappings()
+            .all()
+        )
+        return tuple(
+            cls._gis_service_consumer_binding_migration_impact_from_row(row)
+            for row in rows
+        )
 
     @classmethod
     def _consumer_binding_notification_envelope(
@@ -1137,6 +2261,9 @@ class PlatformGateway:
             notification=notification,
             binding=binding,
             migration_state=migration_state,
+            gis_service_impacts=cls._load_gis_service_consumer_binding_migration_impacts(
+                connection, notification.tenant_id, notification.notification_id
+            ),
         )
 
     @classmethod
@@ -2856,6 +3983,2222 @@ class PlatformGateway:
             )
             return result
 
+    def admit_blueprint_test_run(
+        self,
+        request: DataProductBlueprintTestRunRequest,
+        *,
+        subject_context: SubjectContext,
+    ) -> GatewayWriteResult:
+        """Admit a Blueprint test as an immutable PlatformRun plus plan Artifact.
+
+        This is intentionally an admission boundary. It does not invoke a
+        provider, create a product version, or claim that the test succeeded.
+        The server recompiles the definition and report, then binds every
+        supplied input version into the durable execution plan.
+        """
+        blueprint = request.blueprint
+        if subject_context.tenant_id != blueprint.tenant_id:
+            raise GatewayForbiddenError("test admission subject tenant does not match Blueprint")
+        registration = compile_data_product_blueprint(blueprint)
+        report = build_data_product_blueprint_test_report(
+            blueprint,
+            definition=registration.definition,
+        )
+        if report.verdict != "passed":
+            raise GatewayValidationError("Blueprint contract tests did not pass")
+
+        with self._transaction(blueprint.tenant_id) as connection:
+            stored_definition = self._load_definition(
+                connection,
+                blueprint.tenant_id,
+                blueprint.definition_version_id,
+            )
+            if stored_definition is None:
+                raise GatewayNotFoundError(
+                    "Blueprint definition must be registered before test admission"
+                )
+            if stored_definition != registration.definition:
+                raise GatewayConflictError(
+                    "stored definition differs from the server-rebuilt Blueprint definition"
+                )
+
+            source_refs = set(blueprint.source_refs)
+            resolved_inputs: list[tuple[ResourceBinding, ResourceVersion]] = []
+            resolved_resource_urns: set[str] = set()
+            for binding in request.input_bindings:
+                version = self._load_resource_version(
+                    connection,
+                    blueprint.tenant_id,
+                    binding.resource_version_id,
+                )
+                if version is None:
+                    raise GatewayNotFoundError(
+                        "Blueprint test input ResourceVersion "
+                        f"{binding.resource_version_id} was not found"
+                    )
+                if version.resource_urn not in source_refs:
+                    raise GatewayValidationError(
+                        "test input ResourceVersion is not one of the Blueprint sources"
+                    )
+                if version.resource_urn in resolved_resource_urns:
+                    raise GatewayValidationError(
+                        "each Blueprint source must have exactly one test input binding"
+                    )
+                resolved_resource_urns.add(version.resource_urn)
+                resolved_inputs.append((binding, version))
+            resolved_refs = {version.resource_urn for _, version in resolved_inputs}
+            if resolved_refs != source_refs:
+                missing = sorted(source_refs - resolved_refs)
+                raise GatewayValidationError(
+                    f"test admission must bind every Blueprint source; missing: {missing}"
+                )
+
+            duckdb_pipeline = None
+            provider_contract: dict[str, Any] = {
+                "schema": "gda.data_product_blueprint_provider_binding.v1",
+                "engine": str(blueprint.pipeline.get("engine") or "unspecified"),
+                "pipeline_sha256": canonical_json_fingerprint(blueprint.pipeline),
+            }
+            if blueprint.pipeline.get("engine") == "duckdb":
+                try:
+                    duckdb_pipeline = DuckDBBlueprintPipeline.model_validate(
+                        blueprint.pipeline
+                    )
+                except ValueError as exc:
+                    raise GatewayValidationError(
+                        "Blueprint DuckDB pipeline contract is invalid"
+                    ) from exc
+                if (
+                    subject_context.subject_type is not SubjectType.WORKLOAD
+                    or (
+                        f"{subject_context.subject_type.value}:"
+                        f"{subject_context.subject_id}"
+                    )
+                    != DUCKDB_BLUEPRINT_WORKLOAD
+                ):
+                    raise GatewayForbiddenError(
+                        "DuckDB Blueprint admission requires its dedicated workload identity"
+                    )
+                provider_contract.update(
+                    {
+                        "workload_subject": DUCKDB_BLUEPRINT_WORKLOAD,
+                        "output_uri": self._blueprint_duckdb_output_uri(
+                            blueprint.tenant_id,
+                            request.run_id,
+                        ),
+                    }
+                )
+
+            input_manifest = []
+            for binding, version in sorted(
+                resolved_inputs, key=lambda item: item[0].binding_name
+            ):
+                item: dict[str, Any] = {
+                    "binding_name": binding.binding_name,
+                    "resource_version_id": str(version.resource_version_id),
+                    "resource_urn": version.resource_urn,
+                    "version_key": version.version_key,
+                    "content_sha256": version.content_sha256,
+                    "semantic_type": binding.semantic_type,
+                }
+                if duckdb_pipeline is not None:
+                    architecture = self._load_resource_version_architecture_projection(
+                        connection,
+                        blueprint.tenant_id,
+                        version.resource_version_id,
+                    )
+                    if not architecture.architecture_ready:
+                        raise GatewayValidationError(
+                            "DuckDB Blueprint inputs require a complete architecture binding"
+                        )
+                    location = architecture.physical_location
+                    schema = architecture.schema_version_record
+                    contract = architecture.data_contract_version_record
+                    architecture_binding = architecture.binding
+                    assert location is not None
+                    assert schema is not None
+                    assert contract is not None
+                    assert architecture_binding is not None
+                    local_location = location.provider_system == "duckdb"
+                    object_location = location.provider_system == "s3"
+                    try:
+                        if local_location:
+                            parts = urlsplit(location.provider_locator)
+                            valid_locator = (
+                                parts.scheme == "file"
+                                and not parts.netloc
+                                and parts.path.startswith("/")
+                                and not parts.query
+                                and not parts.fragment
+                                and location.revision_ref is None
+                            )
+                        elif object_location:
+                            parse_blueprint_s3_uri(location.provider_locator)
+                            S3ObjectVersionEvidence(
+                                version_id=str(location.revision_ref or ""),
+                                etag="admitted",
+                            )
+                            valid_locator = bool(location.revision_ref) and (
+                                self._blueprint_duckdb_result_backend == "s3"
+                                and blueprint_s3_input_allowed(
+                                    location.provider_locator,
+                                    self._blueprint_duckdb_input_s3_prefixes,
+                                )
+                            )
+                        else:
+                            valid_locator = False
+                        if local_location:
+                            valid_locator = valid_locator and (
+                                self._blueprint_duckdb_result_backend == "local"
+                            )
+                    except ValueError:
+                        valid_locator = False
+                    if (
+                        not valid_locator
+                        or location.location_kind != "parquet"
+                        or location.checksum_algorithm != "sha256"
+                        or location.content_checksum != version.content_sha256
+                    ):
+                        raise GatewayValidationError(
+                            "DuckDB Blueprint inputs require an immutable, content-bound "
+                            "Parquet location"
+                        )
+                    item["physical_location"] = {
+                        "physical_location_id": str(location.physical_location_id),
+                        "location_kind": location.location_kind,
+                        "provider_system": location.provider_system,
+                        "provider_namespace": location.provider_namespace,
+                        "provider_locator": location.provider_locator,
+                        "snapshot_ref": location.snapshot_ref,
+                        "revision_ref": location.revision_ref,
+                        "checksum_algorithm": location.checksum_algorithm,
+                        "content_checksum": location.content_checksum,
+                        "object_version_id": location.revision_ref,
+                        "location_sha256": location.location_sha256,
+                        "schema_version_id": str(schema.schema_version_id),
+                        "schema_sha256": schema.schema_sha256,
+                        "data_contract_version_id": str(
+                            contract.data_contract_version_id
+                        ),
+                        "contract_sha256": contract.contract_sha256,
+                        "architecture_binding_sha256": (
+                            architecture_binding.binding_sha256
+                        ),
+                    }
+                input_manifest.append(item)
+            plan_manifest = {
+                "schema": "gda.data_product_blueprint_test_execution_plan.v1",
+                "execution_mode": "admission_only",
+                "provider_execution_required": True,
+                "tenant_id": blueprint.tenant_id,
+                "product_urn": blueprint.product_urn,
+                "version_key": blueprint.version_key,
+                "definition_version_id": str(blueprint.definition_version_id),
+                "blueprint_sha256": blueprint.blueprint_sha256,
+                "definition_sha256": registration.definition.definition_sha256,
+                "test_report_sha256": report.test_report_sha256,
+                "inputs": input_manifest,
+                "provider_contract": provider_contract,
+            }
+            plan_fingerprint = canonical_json_fingerprint(plan_manifest)
+            plan_manifest["plan_sha256"] = plan_fingerprint
+            run = PlatformRun(
+                tenant_id=blueprint.tenant_id,
+                run_id=request.run_id,
+                definition_version_id=blueprint.definition_version_id,
+                orchestration_class=registration.definition.orchestration_class,
+                subject_context=subject_context,
+                input_bindings=tuple(
+                    binding for binding, _ in resolved_inputs
+                ),
+                idempotency_key=request.idempotency_key,
+                config_fingerprint=plan_fingerprint,
+                submitted_at=blueprint.created_at,
+            )
+            run_result, _ = self._put_run(
+                connection,
+                run,
+                request_dispatch=False,
+            )
+            stored_run = run_result.value
+            plan_id = uuid5(
+                stored_run.run_id,
+                f"gda.data_product_blueprint.test.plan:{report.test_report_sha256}",
+            )
+            plan_payload = json.dumps(
+                plan_manifest,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+            execution_plan = Artifact(
+                tenant_id=blueprint.tenant_id,
+                artifact_id=plan_id,
+                artifact_key=f"blueprint-test-plan-{stored_run.run_id.hex}",
+                artifact_role=ArtifactRole.EXECUTION_PLAN,
+                storage_uri=(
+                    f"s3://gda-control/test-plans/{stored_run.run_id}.json"
+                ),
+                media_type="application/json",
+                content_sha256=canonical_json_fingerprint(plan_manifest),
+                size_bytes=len(plan_payload),
+                run_id=stored_run.run_id,
+                manifest=plan_manifest,
+                created_by=subject_context.subject_type.value + ":" + subject_context.subject_id,
+                created_at=blueprint.created_at,
+            )
+            artifact_result = self._put_artifact(connection, execution_plan)
+            provider_command_result = None
+            if duckdb_pipeline is not None:
+                command_dedupe_key = (
+                    "blueprint-provider.execute:"
+                    f"{stored_run.run_id}:{plan_fingerprint}"
+                )
+                provider_command = PlatformCommand(
+                    tenant_id=blueprint.tenant_id,
+                    command_id=uuid5(stored_run.run_id, command_dedupe_key),
+                    run_id=stored_run.run_id,
+                    command_type=PlatformCommandType.BLUEPRINT_PROVIDER_EXECUTE,
+                    execution_plan_artifact_id=artifact_result.value.artifact_id,
+                    dedupe_key=command_dedupe_key,
+                    actor_subject=DUCKDB_BLUEPRINT_WORKLOAD,
+                    payload={
+                        "schema": (
+                            "gda.data_product_blueprint_duckdb_execute_command.v1"
+                        ),
+                        "run_id": str(stored_run.run_id),
+                        "execution_plan_artifact_id": str(
+                            artifact_result.value.artifact_id
+                        ),
+                        "execution_plan_sha256": plan_fingerprint,
+                        "definition_version_id": str(
+                            blueprint.definition_version_id
+                        ),
+                        "definition_sha256": (
+                            registration.definition.definition_sha256
+                        ),
+                        "engine": "duckdb",
+                        "attempt_no": 1,
+                    },
+                    max_attempts=5,
+                    available_at=blueprint.created_at,
+                    created_at=blueprint.created_at,
+                )
+                provider_command_result = self._put_command(
+                    connection,
+                    provider_command,
+                )
+            admission = DataProductBlueprintTestRunAdmission(
+                tenant_id=blueprint.tenant_id,
+                definition_version_id=blueprint.definition_version_id,
+                definition_sha256=registration.definition.definition_sha256,
+                test_report=report,
+                run=stored_run,
+                execution_plan=artifact_result.value,
+                provider_command=(
+                    provider_command_result.value
+                    if provider_command_result is not None
+                    else None
+                ),
+            )
+            return GatewayWriteResult(
+                admission,
+                run_result.created
+                or artifact_result.created
+                or (
+                    provider_command_result is not None
+                    and provider_command_result.created
+                ),
+            )
+
+    @staticmethod
+    def _load_blueprint_test_plan(connection, tenant_id: str, run_id: UUID) -> Artifact:
+        plan_id = connection.execute(
+            text(
+                """
+                SELECT artifact_id
+                FROM gda_control.artifact
+                WHERE tenant_id = :tenant_id
+                  AND run_id = :run_id
+                  AND artifact_role = 'execution_plan'
+                  AND manifest ->> 'schema' =
+                      'gda.data_product_blueprint_test_execution_plan.v1'
+                ORDER BY created_at, artifact_id
+                LIMIT 1
+                """
+            ),
+            {"tenant_id": tenant_id, "run_id": run_id},
+        ).scalar_one_or_none()
+        if plan_id is None:
+            raise GatewayNotFoundError("Blueprint test execution plan was not found")
+        plan = PlatformGateway._load_artifact(connection, tenant_id, plan_id)
+        if plan is None:
+            raise GatewayNotFoundError("Blueprint test execution plan was not found")
+        manifest = plan.manifest
+        claimed_plan_sha256 = manifest.get("plan_sha256")
+        fingerprint_input = dict(manifest)
+        fingerprint_input.pop("plan_sha256", None)
+        if (
+            manifest.get("execution_mode") != "admission_only"
+            or manifest.get("provider_execution_required") is not True
+            or claimed_plan_sha256 != canonical_json_fingerprint(fingerprint_input)
+            or plan.content_sha256 != canonical_json_fingerprint(manifest)
+        ):
+            raise GatewayConflictError(
+                "Blueprint test execution plan is not an intact executable admission"
+            )
+        return plan
+
+    @staticmethod
+    def _blueprint_duckdb_ids(run_id: UUID, plan_sha256: str) -> dict[str, UUID]:
+        return {
+            "output_version": uuid5(
+                run_id,
+                f"gda.blueprint-duckdb.output-resource-version:{plan_sha256}",
+            ),
+            "output_artifact": uuid5(
+                run_id,
+                f"gda.blueprint-duckdb.output-artifact:{plan_sha256}",
+            ),
+            "quality_evidence": uuid5(
+                run_id,
+                f"gda.blueprint-duckdb.quality-evidence:{plan_sha256}",
+            ),
+            "quality_result": uuid5(
+                run_id,
+                f"gda.blueprint-duckdb.quality-result:{plan_sha256}",
+            ),
+            "observation": uuid5(
+                run_id,
+                f"gda.blueprint-duckdb.attempt:{plan_sha256}:1",
+            ),
+        }
+
+    def _build_blueprint_duckdb_spec(
+        self,
+        connection,
+        run: PlatformRun,
+        plan: Artifact,
+    ) -> DuckDBBlueprintExecutionSpec:
+        manifest = plan.manifest
+        definition = self._load_definition(
+            connection,
+            run.tenant_id,
+            run.definition_version_id,
+        )
+        if definition is None:
+            raise GatewayNotFoundError("Blueprint definition was not found")
+        if definition.definition_sha256 != manifest.get("definition_sha256"):
+            raise GatewayConflictError(
+                "Blueprint execution plan definition binding has changed"
+            )
+        try:
+            pipeline = DuckDBBlueprintPipeline.model_validate(
+                definition.definition_document.get("pipeline")
+            )
+        except ValueError as exc:
+            raise GatewayValidationError(
+                "Blueprint definition does not contain a valid DuckDB pipeline"
+            ) from exc
+        provider_contract = manifest.get("provider_contract") or {}
+        if (
+            provider_contract.get("engine") != "duckdb"
+            or provider_contract.get("workload_subject") != DUCKDB_BLUEPRINT_WORKLOAD
+            or provider_contract.get("pipeline_sha256")
+            != canonical_json_fingerprint(
+                definition.definition_document.get("pipeline")
+            )
+            or not provider_contract.get("output_uri")
+        ):
+            raise GatewayConflictError(
+                "Blueprint execution plan does not bind the DuckDB provider"
+            )
+
+        inputs = []
+        for item in manifest.get("inputs") or ():
+            location = item.get("physical_location") or {}
+            try:
+                inputs.append(
+                    DuckDBBlueprintInput(
+                        binding_name=item["binding_name"],
+                        resource_version_id=UUID(item["resource_version_id"]),
+                        resource_urn=item["resource_urn"],
+                        content_sha256=item["content_sha256"],
+                        physical_location_id=UUID(
+                            location["physical_location_id"]
+                        ),
+                        location_sha256=location["location_sha256"],
+                        provider_system=location["provider_system"],
+                        provider_locator=location["provider_locator"],
+                        content_checksum=location["content_checksum"],
+                        checksum_algorithm=location["checksum_algorithm"],
+                        object_version_id=location.get("object_version_id"),
+                    )
+                )
+            except (KeyError, TypeError, ValueError) as exc:
+                raise GatewayConflictError(
+                    "Blueprint execution plan has an invalid DuckDB input binding"
+                ) from exc
+        return DuckDBBlueprintExecutionSpec(
+            tenant_id=run.tenant_id,
+            run_id=run.run_id,
+            execution_plan_artifact_id=plan.artifact_id,
+            execution_plan_sha256=manifest["plan_sha256"],
+            definition_version_id=definition.definition_version_id,
+            definition_sha256=definition.definition_sha256,
+            attempt_no=1,
+            pipeline=pipeline,
+            inputs=tuple(inputs),
+            output_uri=provider_contract["output_uri"],
+            admitted_at=plan.created_at,
+        )
+
+    def prepare_blueprint_duckdb_test_run(
+        self,
+        tenant_id: str,
+        request: DuckDBBlueprintExecutionRequest,
+        *,
+        actor_subject: str,
+    ) -> GatewayWriteResult:
+        """Fence a DuckDB attempt and return only its immutable execution package."""
+        if actor_subject != DUCKDB_BLUEPRINT_WORKLOAD:
+            raise GatewayForbiddenError(
+                "DuckDB Blueprint execution requires its dedicated workload identity"
+            )
+        with self._transaction(tenant_id) as connection:
+            run = self._load_run(connection, tenant_id, request.run_id)
+            if run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            if self._run_actor(run) != actor_subject:
+                raise GatewayForbiddenError(
+                    "DuckDB provider actor does not match the admitted Run workload"
+                )
+            if run.status == RunStatus.SUCCEEDED:
+                raise GatewayConflictError("DuckDB Blueprint test Run already succeeded")
+            plan = self._load_blueprint_test_plan(connection, tenant_id, run.run_id)
+            spec = self._build_blueprint_duckdb_spec(connection, run, plan)
+            created = False
+            for from_status, to_status, schema, reason in (
+                (
+                    RunStatus.ACCEPTED,
+                    RunStatus.DISPATCHING,
+                    "gda.blueprint_duckdb_provider_dispatch.v1",
+                    "dispatch admitted Blueprint to DuckDB provider",
+                ),
+                (
+                    RunStatus.DISPATCHING,
+                    RunStatus.RUNNING,
+                    "gda.blueprint_duckdb_provider_start.v1",
+                    "start admitted Blueprint in DuckDB provider",
+                ),
+            ):
+                if run.status != from_status:
+                    continue
+                connection.execute(
+                    text(
+                        """
+                        SELECT gda_control.transition_platform_run(
+                            :tenant_id, :run_id, :expected_state_version,
+                            :to_status, :actor_subject, :reason,
+                            CAST(:details AS jsonb)
+                        )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant_id,
+                        "run_id": run.run_id,
+                        "expected_state_version": run.state_version,
+                        "to_status": to_status.value,
+                        "actor_subject": actor_subject,
+                        "reason": reason,
+                        "details": _json(
+                            {
+                                "schema": schema,
+                                "execution_plan_artifact_id": str(plan.artifact_id),
+                                "execution_plan_sha256": spec.execution_plan_sha256,
+                                "attempt_no": spec.attempt_no,
+                            }
+                        ),
+                    },
+                ).scalar_one()
+                run = self._load_run(connection, tenant_id, run.run_id)
+                if run is None:
+                    raise GatewayNotFoundError("PlatformRun was not found")
+                created = True
+            if run.status not in {RunStatus.RUNNING, RunStatus.RECONCILING}:
+                raise GatewayConflictError(
+                    f"Blueprint test Run in {run.status.value} cannot execute in DuckDB"
+                )
+            return GatewayWriteResult(spec, created)
+
+    def _load_blueprint_duckdb_execution(
+        self,
+        connection,
+        run: PlatformRun,
+        plan: Artifact,
+    ) -> DataProductBlueprintTestExecution:
+        plan_sha256 = str(plan.manifest["plan_sha256"])
+        ids = self._blueprint_duckdb_ids(run.run_id, plan_sha256)
+        output_version = self._load_resource_version(
+            connection,
+            run.tenant_id,
+            ids["output_version"],
+        )
+        output_artifact = self._load_artifact(
+            connection,
+            run.tenant_id,
+            ids["output_artifact"],
+        )
+        quality_evidence = self._load_artifact(
+            connection,
+            run.tenant_id,
+            ids["quality_evidence"],
+        )
+        quality_result = self._load_quality_result(
+            connection,
+            run.tenant_id,
+            ids["quality_result"],
+        )
+        observation = self._load_observation(
+            connection,
+            run.tenant_id,
+            ids["observation"],
+        )
+        if any(
+            item is None
+            for item in (
+                output_version,
+                output_artifact,
+                quality_evidence,
+                quality_result,
+                observation,
+            )
+        ):
+            raise GatewayConflictError(
+                "succeeded DuckDB Blueprint Run has incomplete evidence"
+            )
+        lineage_events = []
+        for item in plan.manifest.get("inputs") or ():
+            source_id = UUID(item["resource_version_id"])
+            lineage_id = uuid5(
+                run.run_id,
+                f"gda.blueprint-duckdb.lineage:{source_id}:{plan_sha256}",
+            )
+            event = self._load_lineage(connection, run.tenant_id, lineage_id)
+            if event is None:
+                raise GatewayConflictError(
+                    "succeeded DuckDB Blueprint Run has incomplete lineage"
+                )
+            lineage_events.append(event)
+        assert output_version is not None
+        assert output_artifact is not None
+        assert quality_evidence is not None
+        assert quality_result is not None
+        assert observation is not None
+        success_evidence = RunSuccessEvidence(
+            tenant_id=run.tenant_id,
+            run_id=run.run_id,
+            attempt_observation_id=observation.observation_id,
+            output_artifact_id=output_artifact.artifact_id,
+            quality_result_id=quality_result.quality_result_id,
+            lineage_event_id=lineage_events[0].lineage_event_id,
+            evidence_sha256=run_success_evidence_fingerprint(
+                tenant_id=run.tenant_id,
+                run_id=run.run_id,
+                attempt_observation_id=observation.observation_id,
+                output_artifact_id=output_artifact.artifact_id,
+                quality_result_id=quality_result.quality_result_id,
+                lineage_event_id=lineage_events[0].lineage_event_id,
+            ),
+        )
+        return DataProductBlueprintTestExecution(
+            tenant_id=run.tenant_id,
+            run=run,
+            output_resource_version=output_version,
+            attempt_observation=observation,
+            output_artifact=output_artifact,
+            quality_evidence_artifact=quality_evidence,
+            quality_result=quality_result,
+            lineage_events=tuple(lineage_events),
+            success_evidence=success_evidence,
+            executor_mode="duckdb_provider",
+        )
+
+    def complete_blueprint_duckdb_test_run(
+        self,
+        receipt: DuckDBBlueprintProviderReceipt,
+        *,
+        actor_subject: str,
+        reason: str,
+    ) -> GatewayWriteResult:
+        """Atomically project a verified DuckDB receipt into shared success evidence."""
+        if actor_subject != DUCKDB_BLUEPRINT_WORKLOAD:
+            raise GatewayForbiddenError(
+                "DuckDB Blueprint completion requires its dedicated workload identity"
+            )
+        try:
+            verify_duckdb_blueprint_output(
+                receipt,
+                object_store=self._blueprint_duckdb_object_store,
+            )
+        except DuckDBBlueprintProviderError as exc:
+            raise GatewayValidationError(str(exc)) from exc
+        with self._transaction(receipt.tenant_id) as connection:
+            run = self._load_run(connection, receipt.tenant_id, receipt.run_id)
+            if run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            if self._run_actor(run) != actor_subject:
+                raise GatewayForbiddenError(
+                    "DuckDB provider actor does not match the admitted Run workload"
+                )
+            plan = self._load_blueprint_test_plan(
+                connection,
+                receipt.tenant_id,
+                receipt.run_id,
+            )
+            spec = self._build_blueprint_duckdb_spec(connection, run, plan)
+            if (
+                receipt.execution_plan_artifact_id
+                != spec.execution_plan_artifact_id
+                or receipt.execution_plan_sha256 != spec.execution_plan_sha256
+                or receipt.definition_version_id != spec.definition_version_id
+                or receipt.definition_sha256 != spec.definition_sha256
+                or receipt.attempt_no != spec.attempt_no
+                or receipt.output_uri != spec.output_uri
+            ):
+                raise GatewayConflictError(
+                    "DuckDB provider receipt does not bind the admitted execution spec"
+                )
+            spatial_output = receipt.spatial_output_evidence
+            if spec.pipeline.require_spatial:
+                if (
+                    not receipt.spatial_extension_loaded
+                    or receipt.spatial_extension_evidence is None
+                    or spatial_output is None
+                    or spatial_output.srid != spec.pipeline.spatial_output_srid
+                ):
+                    raise GatewayConflictError(
+                        "DuckDB spatial receipt does not satisfy the admitted pipeline"
+                    )
+            elif (
+                receipt.spatial_extension_loaded
+                or receipt.spatial_extension_evidence is not None
+                or spatial_output is not None
+            ):
+                raise GatewayConflictError(
+                    "non-spatial DuckDB pipeline cannot submit spatial evidence"
+                )
+            if run.status == RunStatus.SUCCEEDED:
+                existing = self._load_blueprint_duckdb_execution(
+                    connection,
+                    run,
+                    plan,
+                )
+                if (
+                    existing.attempt_observation.evidence.get("receipt_sha256")
+                    != receipt.receipt_sha256
+                ):
+                    raise GatewayConflictError(
+                        "DuckDB Blueprint Run already has a different provider receipt"
+                    )
+                return GatewayWriteResult(existing, False)
+            if run.status not in {RunStatus.RUNNING, RunStatus.RECONCILING}:
+                raise GatewayConflictError(
+                    f"Blueprint test Run in {run.status.value} cannot accept DuckDB success"
+                )
+
+            ids = self._blueprint_duckdb_ids(
+                run.run_id,
+                spec.execution_plan_sha256,
+            )
+            output_resource_urn = build_resource_urn(
+                receipt.tenant_id,
+                "dataset",
+                f"blueprint-duckdb-output-{run.run_id.hex}",
+            )
+            output_resource = Resource(
+                tenant_id=receipt.tenant_id,
+                resource_urn=output_resource_urn,
+                resource_kind="dataset",
+                authority_system="gda-duckdb-provider",
+                authority_locator=f"blueprint-test:{run.run_id}",
+                owner_ref=actor_subject,
+                governance_ref={
+                    "schema": "gda.blueprint_duckdb_output.v1",
+                    "definition_version_id": str(run.definition_version_id),
+                    "execution_plan_sha256": spec.execution_plan_sha256,
+                },
+            )
+            output_version = ResourceVersion(
+                tenant_id=receipt.tenant_id,
+                resource_urn=output_resource_urn,
+                resource_version_id=ids["output_version"],
+                version_key=f"duckdb-test-{run.run_id.hex[:16]}",
+                content_sha256=receipt.output_content_sha256,
+                authority_version_ref={
+                    "schema": DUCKDB_BLUEPRINT_PROVIDER_RECEIPT_SCHEMA,
+                    "receipt_sha256": receipt.receipt_sha256,
+                    "provider_version": receipt.provider_version,
+                },
+                created_by=actor_subject,
+                created_at=receipt.observed_at,
+            )
+            receipt_document = receipt.model_dump(mode="json", by_alias=True)
+            output_manifest = {
+                "schema": "gda.blueprint_duckdb_output.v1",
+                "executor_mode": "duckdb_provider",
+                "provider_receipt": receipt_document,
+                "execution_plan_sha256": spec.execution_plan_sha256,
+                "output_rows": receipt.output_rows,
+                "output_columns": list(receipt.output_columns),
+            }
+            if receipt.output_storage_evidence is not None:
+                output_manifest["storage_evidence"] = (
+                    receipt.output_storage_evidence.model_dump(
+                        mode="json",
+                        by_alias=True,
+                    )
+                )
+            output_artifact = Artifact(
+                tenant_id=receipt.tenant_id,
+                artifact_id=ids["output_artifact"],
+                artifact_key=f"blueprint-duckdb-output-{run.run_id.hex}",
+                artifact_role=ArtifactRole.OUTPUT,
+                storage_uri=receipt.output_uri,
+                media_type="application/vnd.apache.parquet",
+                content_sha256=receipt.output_content_sha256,
+                size_bytes=receipt.output_size_bytes,
+                run_id=run.run_id,
+                resource_version_id=output_version.resource_version_id,
+                manifest=output_manifest,
+                created_by=actor_subject,
+                created_at=receipt.observed_at,
+            )
+            quality_evaluator = "workload:blueprint-quality-evaluator"
+            quality_metrics = {
+                "schema": "gda.blueprint_duckdb_quality.v1",
+                "executor_mode": "duckdb_provider",
+                "execution_plan_sha256": spec.execution_plan_sha256,
+                "receipt_sha256": receipt.receipt_sha256,
+                "input_count": len(spec.inputs),
+                "input_rows": receipt.input_rows,
+                "input_bytes": receipt.input_bytes,
+                "output_rows": receipt.output_rows,
+                "output_size_bytes": receipt.output_size_bytes,
+                "output_content_sha256": receipt.output_content_sha256,
+                "source_checksums_verified": True,
+                "external_access_disabled": receipt.external_access == "disabled",
+                "row_limit_satisfied": (
+                    receipt.output_rows <= spec.pipeline.max_output_rows
+                ),
+                "spatial_requirement_satisfied": (
+                    not spec.pipeline.require_spatial
+                    or (
+                        receipt.spatial_extension_loaded
+                        and receipt.spatial_extension_evidence is not None
+                        and spatial_output is not None
+                        and spatial_output.srid
+                        == spec.pipeline.spatial_output_srid
+                    )
+                ),
+                "spatial_extension_evidence": (
+                    None
+                    if receipt.spatial_extension_evidence is None
+                    else receipt.spatial_extension_evidence.model_dump(
+                        mode="json", by_alias=True
+                    )
+                ),
+                "spatial_output_evidence": (
+                    None
+                    if spatial_output is None
+                    else spatial_output.model_dump(mode="json", by_alias=True)
+                ),
+                "checks_passed": True,
+            }
+            quality_evidence = Artifact(
+                tenant_id=receipt.tenant_id,
+                artifact_id=ids["quality_evidence"],
+                artifact_key=f"blueprint-duckdb-quality-{run.run_id.hex}",
+                artifact_role=ArtifactRole.EVIDENCE,
+                storage_uri=(
+                    f"s3://gda-control/duckdb-test-quality/{run.run_id}.json"
+                ),
+                media_type="application/json",
+                content_sha256=canonical_json_fingerprint(quality_metrics),
+                size_bytes=len(_json(quality_metrics).encode("utf-8")),
+                run_id=run.run_id,
+                resource_version_id=output_version.resource_version_id,
+                manifest=quality_metrics,
+                created_by=quality_evaluator,
+                created_at=receipt.observed_at,
+            )
+            quality_result = QualityResult(
+                tenant_id=receipt.tenant_id,
+                quality_result_id=ids["quality_result"],
+                run_id=run.run_id,
+                resource_version_id=output_version.resource_version_id,
+                rule_version_ref="gda:blueprint-duckdb-conformance/v1",
+                verdict=QualityVerdict.PASSED,
+                metrics=quality_metrics,
+                evidence_artifact_id=quality_evidence.artifact_id,
+                result_sha256=quality_result_fingerprint(
+                    tenant_id=receipt.tenant_id,
+                    run_id=run.run_id,
+                    resource_version_id=output_version.resource_version_id,
+                    rule_version_ref="gda:blueprint-duckdb-conformance/v1",
+                    verdict=QualityVerdict.PASSED,
+                    metrics=quality_metrics,
+                    evidence_artifact_id=quality_evidence.artifact_id,
+                    evaluated_by=quality_evaluator,
+                    evaluated_at=receipt.observed_at,
+                ),
+                evaluated_by=quality_evaluator,
+                evaluated_at=receipt.observed_at,
+            )
+            observation_evidence = {
+                **receipt_document,
+                "executor_mode": "duckdb_provider",
+                "output_artifact_id": str(output_artifact.artifact_id),
+                "quality_result_id": str(quality_result.quality_result_id),
+            }
+            observation = FrameworkAttemptObservation(
+                tenant_id=receipt.tenant_id,
+                observation_id=ids["observation"],
+                run_id=run.run_id,
+                attempt_no=receipt.attempt_no,
+                framework_kind=FrameworkKind.DUCKDB,
+                external_namespace="gda-blueprint-duckdb",
+                external_run_id=str(run.run_id),
+                external_attempt_id=f"attempt-{receipt.attempt_no}",
+                observed_state="success",
+                observation_sha256=canonical_json_fingerprint(
+                    observation_evidence
+                ),
+                evidence=observation_evidence,
+                observed_at=receipt.observed_at,
+            )
+
+            created = False
+            for result in (
+                self._put_resource(connection, output_resource),
+                self._put_resource_version(connection, output_version),
+                self._put_artifact(connection, output_artifact),
+                self._put_artifact(connection, quality_evidence),
+                self._put_quality_result(connection, quality_result),
+                self._put_observation(connection, observation),
+            ):
+                created = created or result.created
+
+            lineage_events = []
+            for item in spec.inputs:
+                lineage_id = uuid5(
+                    run.run_id,
+                    "gda.blueprint-duckdb.lineage:"
+                    f"{item.resource_version_id}:{spec.execution_plan_sha256}",
+                )
+                facets = {
+                    "schema": "gda.blueprint_duckdb_lineage.v1",
+                    "executor_mode": "duckdb_provider",
+                    "binding_name": item.binding_name,
+                    "execution_plan_sha256": spec.execution_plan_sha256,
+                    "receipt_sha256": receipt.receipt_sha256,
+                }
+                event = LineageEvent(
+                    tenant_id=receipt.tenant_id,
+                    lineage_event_id=lineage_id,
+                    event_type=LineageEventType.DERIVE,
+                    source_resource_version_id=item.resource_version_id,
+                    target_resource_version_id=output_version.resource_version_id,
+                    producer=actor_subject,
+                    event_sha256=canonical_json_fingerprint(
+                        {
+                            "schema": "gda.blueprint_duckdb_lineage.v1",
+                            "lineage_event_id": str(lineage_id),
+                            "source_resource_version_id": str(
+                                item.resource_version_id
+                            ),
+                            "target_resource_version_id": str(
+                                output_version.resource_version_id
+                            ),
+                            "run_id": str(run.run_id),
+                            "definition_version_id": str(
+                                run.definition_version_id
+                            ),
+                            "artifact_id": str(output_artifact.artifact_id),
+                            "facets": facets,
+                        }
+                    ),
+                    run_id=run.run_id,
+                    definition_version_id=run.definition_version_id,
+                    artifact_id=output_artifact.artifact_id,
+                    facets=facets,
+                    occurred_at=receipt.observed_at,
+                )
+                lineage_events.append(event)
+                lineage_result = self._put_lineage(connection, event)
+                created = created or lineage_result.created
+
+            success_evidence = RunSuccessEvidence(
+                tenant_id=receipt.tenant_id,
+                run_id=run.run_id,
+                attempt_observation_id=observation.observation_id,
+                output_artifact_id=output_artifact.artifact_id,
+                quality_result_id=quality_result.quality_result_id,
+                lineage_event_id=lineage_events[0].lineage_event_id,
+                evidence_sha256=run_success_evidence_fingerprint(
+                    tenant_id=receipt.tenant_id,
+                    run_id=run.run_id,
+                    attempt_observation_id=observation.observation_id,
+                    output_artifact_id=output_artifact.artifact_id,
+                    quality_result_id=quality_result.quality_result_id,
+                    lineage_event_id=lineage_events[0].lineage_event_id,
+                ),
+            )
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.finalize_blueprint_test_run_success(
+                        :tenant_id, :run_id, :expected_state_version,
+                        :actor_subject, :reason, CAST(:details AS jsonb)
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": receipt.tenant_id,
+                    "run_id": run.run_id,
+                    "expected_state_version": run.state_version,
+                    "actor_subject": actor_subject,
+                    "reason": reason,
+                    "details": _json(
+                        {
+                            "schema": "gda.run_success_evidence.v1",
+                            **success_evidence.model_dump(mode="json"),
+                        }
+                    ),
+                },
+            ).scalar_one()
+            completed_run = self._load_run(
+                connection,
+                receipt.tenant_id,
+                run.run_id,
+            )
+            if completed_run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            return GatewayWriteResult(
+                DataProductBlueprintTestExecution(
+                    tenant_id=receipt.tenant_id,
+                    run=completed_run,
+                    output_resource_version=output_version,
+                    attempt_observation=observation,
+                    output_artifact=output_artifact,
+                    quality_evidence_artifact=quality_evidence,
+                    quality_result=quality_result,
+                    lineage_events=tuple(lineage_events),
+                    success_evidence=success_evidence,
+                    executor_mode="duckdb_provider",
+                ),
+                created,
+            )
+
+    def execute_blueprint_duckdb_test_run(
+        self,
+        tenant_id: str,
+        request: DuckDBBlueprintExecutionRequest,
+        *,
+        actor_subject: str,
+        provider: DuckDBBlueprintProvider | None = None,
+    ) -> GatewayWriteResult:
+        """Run the local DuckDB provider outside control-plane transactions."""
+        if (
+            provider is None
+            and self._blueprint_duckdb_result_backend == "s3"
+            and self._blueprint_duckdb_object_store is None
+        ):
+            raise GatewayConfigurationError(
+                "S3 DuckDB Blueprint execution requires the managed worker"
+            )
+        with self._transaction(tenant_id) as connection:
+            run = self._load_run(connection, tenant_id, request.run_id)
+            if run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            if actor_subject != DUCKDB_BLUEPRINT_WORKLOAD:
+                raise GatewayForbiddenError(
+                    "DuckDB Blueprint execution requires its dedicated workload identity"
+                )
+            if self._run_actor(run) != actor_subject:
+                raise GatewayForbiddenError(
+                    "DuckDB provider actor does not match the admitted Run workload"
+                )
+            if run.status == RunStatus.SUCCEEDED:
+                plan = self._load_blueprint_test_plan(
+                    connection,
+                    tenant_id,
+                    run.run_id,
+                )
+                return GatewayWriteResult(
+                    self._load_blueprint_duckdb_execution(
+                        connection,
+                        run,
+                        plan,
+                    ),
+                    False,
+                )
+        prepared = self.prepare_blueprint_duckdb_test_run(
+            tenant_id,
+            request,
+            actor_subject=actor_subject,
+        )
+        executor = provider or DuckDBBlueprintProvider(
+            object_store=self._blueprint_duckdb_object_store,
+            workspace_root=self._blueprint_duckdb_output_root,
+        )
+        try:
+            receipt = executor.execute(prepared.value)
+        except DuckDBBlueprintProviderUnavailableError as exc:
+            raise GatewayUnavailableError(
+                "DuckDB Blueprint provider dependency is unavailable"
+            ) from exc
+        except DuckDBBlueprintProviderError as exc:
+            self.fail_blueprint_test_run(
+                tenant_id,
+                DataProductBlueprintTestExecutionFailureRequest(
+                    run_id=request.run_id,
+                    error_code=exc.code,
+                    reason="DuckDB Blueprint provider execution failed",
+                ),
+                actor_subject=actor_subject,
+            )
+            raise GatewayValidationError(str(exc)) from exc
+        return self.complete_blueprint_duckdb_test_run(
+            receipt,
+            actor_subject=actor_subject,
+            reason=request.reason,
+        )
+
+    def execute_blueprint_test_run(
+        self,
+        tenant_id: str,
+        request: DataProductBlueprintTestExecutionRequest,
+        *,
+        actor_subject: str,
+    ) -> GatewayWriteResult:
+        """Execute one admitted Blueprint test through a deterministic local provider.
+
+        The executor emits a provider receipt and all evidence required by the
+        shared success authority. It is intentionally named and marked as a
+        local deterministic executor; it is not a production provider
+        conformance result and never publishes a DataProductVersion.
+        """
+        quality_evaluator = "workload:blueprint-quality-evaluator"
+        if not actor_subject.startswith("workload:"):
+            raise GatewayForbiddenError(
+                "deterministic Blueprint test execution requires workload identity"
+            )
+        if actor_subject == quality_evaluator:
+            raise GatewayForbiddenError(
+                "test executor and quality evaluator must be independent workloads"
+            )
+
+        with self._transaction(tenant_id) as connection:
+            run = self._load_run(connection, tenant_id, request.run_id)
+            if run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            if run.subject_context.subject_type != SubjectType.WORKLOAD:
+                raise GatewayValidationError(
+                    "deterministic Blueprint test requires a workload-admitted Run"
+                )
+            if self._run_actor(run) != actor_subject:
+                raise GatewayForbiddenError(
+                    "test executor actor does not match the admitted Run workload"
+                )
+
+            plan_id = connection.execute(
+                text(
+                    """
+                    SELECT artifact_id
+                    FROM gda_control.artifact
+                    WHERE tenant_id = :tenant_id
+                      AND run_id = :run_id
+                      AND artifact_role = 'execution_plan'
+                      AND manifest ->> 'schema' =
+                          'gda.data_product_blueprint_test_execution_plan.v1'
+                    ORDER BY created_at, artifact_id
+                    LIMIT 1
+                    """
+                ),
+                {"tenant_id": tenant_id, "run_id": request.run_id},
+            ).scalar_one_or_none()
+            if plan_id is None:
+                raise GatewayNotFoundError(
+                    "Blueprint test execution plan was not found"
+                )
+            plan = self._load_artifact(connection, tenant_id, plan_id)
+            if plan is None:
+                raise GatewayNotFoundError(
+                    "Blueprint test execution plan was not found"
+                )
+            manifest = plan.manifest
+            if (
+                manifest.get("execution_mode") != "admission_only"
+                or manifest.get("provider_execution_required") is not True
+                or not manifest.get("plan_sha256")
+            ):
+                raise GatewayConflictError(
+                    "Blueprint test execution plan is not an executable admission"
+                )
+            input_manifest = tuple(manifest.get("inputs") or ())
+            if not input_manifest:
+                raise GatewayValidationError(
+                    "Blueprint test execution plan has no admitted inputs"
+                )
+
+            created = False
+            if run.status == RunStatus.ACCEPTED:
+                connection.execute(
+                    text(
+                        """
+                        SELECT gda_control.transition_platform_run(
+                            :tenant_id, :run_id, :expected_state_version,
+                            'dispatching', :actor_subject, :reason,
+                            CAST(:details AS jsonb)
+                        )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant_id,
+                        "run_id": run.run_id,
+                        "expected_state_version": run.state_version,
+                        "actor_subject": actor_subject,
+                        "reason": "admit deterministic local Blueprint executor",
+                        "details": _json(
+                            {
+                                "schema": "gda.blueprint_test_executor_admission.v1",
+                                "execution_plan_artifact_id": str(plan.artifact_id),
+                            }
+                        ),
+                    },
+                ).scalar_one()
+                run = self._load_run(connection, tenant_id, run.run_id)
+                if run is None:
+                    raise GatewayNotFoundError("PlatformRun was not found")
+                created = True
+            if run.status == RunStatus.DISPATCHING:
+                connection.execute(
+                    text(
+                        """
+                        SELECT gda_control.transition_platform_run(
+                            :tenant_id, :run_id, :expected_state_version,
+                            'running', :actor_subject, :reason,
+                            CAST(:details AS jsonb)
+                        )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant_id,
+                        "run_id": run.run_id,
+                        "expected_state_version": run.state_version,
+                        "actor_subject": actor_subject,
+                        "reason": "start deterministic local Blueprint executor",
+                        "details": _json(
+                            {
+                                "schema": "gda.blueprint_test_executor_start.v1",
+                                "execution_plan_artifact_id": str(plan.artifact_id),
+                            }
+                        ),
+                    },
+                ).scalar_one()
+                run = self._load_run(connection, tenant_id, run.run_id)
+                if run is None:
+                    raise GatewayNotFoundError("PlatformRun was not found")
+                created = True
+            if run.status not in {
+                RunStatus.RUNNING,
+                RunStatus.RECONCILING,
+                RunStatus.SUCCEEDED,
+            }:
+                raise GatewayConflictError(
+                    f"Blueprint test Run in {run.status.value} cannot be executed"
+                )
+
+            output_resource_urn = build_resource_urn(
+                tenant_id,
+                "dataset",
+                f"blueprint-test-output-{run.run_id.hex}",
+            )
+            output_resource = Resource(
+                tenant_id=tenant_id,
+                resource_urn=output_resource_urn,
+                resource_kind="dataset",
+                authority_system="gda-deterministic-local",
+                authority_locator=f"blueprint-test:{run.run_id}",
+                owner_ref=actor_subject,
+                governance_ref={
+                    "schema": "gda.blueprint_test_output.v1",
+                    "definition_version_id": str(run.definition_version_id),
+                },
+            )
+            output_manifest = {
+                "schema": "gda.blueprint_test_output.v1",
+                "executor_mode": "deterministic_local",
+                "execution_plan_sha256": manifest["plan_sha256"],
+                "definition_version_id": str(run.definition_version_id),
+                "test_report_sha256": manifest["test_report_sha256"],
+                "input_content_sha256": [
+                    item["content_sha256"] for item in input_manifest
+                ],
+                "verdict": "passed",
+            }
+            output_content_sha256 = canonical_json_fingerprint(output_manifest)
+            output_version_id = uuid5(
+                run.run_id,
+                f"gda.blueprint-test.output-resource-version:{manifest['plan_sha256']}",
+            )
+            output_version = ResourceVersion(
+                tenant_id=tenant_id,
+                resource_urn=output_resource_urn,
+                resource_version_id=output_version_id,
+                version_key=f"blueprint-test-{run.run_id.hex[:16]}",
+                content_sha256=output_content_sha256,
+                authority_version_ref={
+                    "schema": "gda.blueprint_test_output.v1",
+                    "execution_plan_sha256": manifest["plan_sha256"],
+                },
+                created_by=actor_subject,
+                created_at=plan.created_at,
+            )
+            resource_result = self._put_resource(connection, output_resource)
+            version_result = self._put_resource_version(connection, output_version)
+            created = created or resource_result.created or version_result.created
+
+            output_artifact_id = uuid5(
+                run.run_id,
+                f"gda.blueprint-test.output-artifact:{manifest['plan_sha256']}",
+            )
+            output_artifact = Artifact(
+                tenant_id=tenant_id,
+                artifact_id=output_artifact_id,
+                artifact_key=f"blueprint-test-output-{run.run_id.hex}",
+                artifact_role=ArtifactRole.OUTPUT,
+                storage_uri=f"s3://gda-control/test-outputs/{run.run_id}.json",
+                media_type="application/json",
+                content_sha256=output_content_sha256,
+                size_bytes=len(
+                    json.dumps(output_manifest, sort_keys=True, separators=(",", ":"))
+                ),
+                run_id=run.run_id,
+                resource_version_id=output_version_id,
+                manifest=output_manifest,
+                created_by=actor_subject,
+                created_at=plan.created_at,
+            )
+            output_result = self._put_artifact(connection, output_artifact)
+            created = created or output_result.created
+
+            quality_metrics = {
+                "schema": "gda.blueprint_test_quality.v1",
+                "executor_mode": "deterministic_local",
+                "test_report_sha256": manifest["test_report_sha256"],
+                "input_count": len(input_manifest),
+                "output_content_sha256": output_content_sha256,
+                "checks_passed": True,
+            }
+            quality_evidence_id = uuid5(
+                run.run_id,
+                f"gda.blueprint-test.quality-evidence:{manifest['plan_sha256']}",
+            )
+            quality_evidence = Artifact(
+                tenant_id=tenant_id,
+                artifact_id=quality_evidence_id,
+                artifact_key=f"blueprint-test-quality-{run.run_id.hex}",
+                artifact_role=ArtifactRole.EVIDENCE,
+                storage_uri=f"s3://gda-control/test-quality/{run.run_id}.json",
+                media_type="application/json",
+                content_sha256=canonical_json_fingerprint(quality_metrics),
+                size_bytes=len(
+                    json.dumps(quality_metrics, sort_keys=True, separators=(",", ":"))
+                ),
+                run_id=run.run_id,
+                resource_version_id=output_version_id,
+                manifest=quality_metrics,
+                created_by=quality_evaluator,
+                created_at=plan.created_at,
+            )
+            quality_evidence_result = self._put_artifact(connection, quality_evidence)
+            created = created or quality_evidence_result.created
+            quality_result_id = uuid5(
+                run.run_id,
+                f"gda.blueprint-test.quality-result:{manifest['plan_sha256']}",
+            )
+            quality_result = QualityResult(
+                tenant_id=tenant_id,
+                quality_result_id=quality_result_id,
+                run_id=run.run_id,
+                resource_version_id=output_version_id,
+                rule_version_ref="gda:blueprint-test-contract/v1",
+                verdict=QualityVerdict.PASSED,
+                metrics=quality_metrics,
+                evidence_artifact_id=quality_evidence_id,
+                result_sha256=quality_result_fingerprint(
+                    tenant_id=tenant_id,
+                    run_id=run.run_id,
+                    resource_version_id=output_version_id,
+                    rule_version_ref="gda:blueprint-test-contract/v1",
+                    verdict=QualityVerdict.PASSED,
+                    metrics=quality_metrics,
+                    evidence_artifact_id=quality_evidence_id,
+                    evaluated_by=quality_evaluator,
+                    evaluated_at=plan.created_at,
+                ),
+                evaluated_by=quality_evaluator,
+                evaluated_at=plan.created_at,
+            )
+            quality_result_write = self._put_quality_result(connection, quality_result)
+            created = created or quality_result_write.created
+
+            observation_id = uuid5(
+                run.run_id,
+                f"gda.blueprint-test.attempt:{manifest['plan_sha256']}",
+            )
+            observation_evidence = {
+                "schema": "gda.blueprint_test_executor_receipt.v1",
+                "executor_mode": "deterministic_local",
+                "execution_plan_sha256": manifest["plan_sha256"],
+                "test_report_sha256": manifest["test_report_sha256"],
+                "output_artifact_id": str(output_artifact_id),
+                "quality_result_id": str(quality_result_id),
+            }
+            observation = FrameworkAttemptObservation(
+                tenant_id=tenant_id,
+                observation_id=observation_id,
+                run_id=run.run_id,
+                attempt_no=1,
+                framework_kind=FrameworkKind.DUCKDB,
+                external_namespace="gda-deterministic-local",
+                external_run_id=str(run.run_id),
+                observed_state="success",
+                observation_sha256=canonical_json_fingerprint(observation_evidence),
+                evidence=observation_evidence,
+                observed_at=plan.created_at,
+            )
+            observation_result = self._put_observation(connection, observation)
+            created = created or observation_result.created
+
+            lineage_events: list[LineageEvent] = []
+            for item in input_manifest:
+                source_id = UUID(item["resource_version_id"])
+                lineage_id = uuid5(
+                    run.run_id,
+                    f"gda.blueprint-test.lineage:{source_id}:{manifest['plan_sha256']}",
+                )
+                lineage_facets = {
+                    "schema": "gda.blueprint_test_lineage.v1",
+                    "executor_mode": "deterministic_local",
+                    "binding_name": item["binding_name"],
+                    "execution_plan_sha256": manifest["plan_sha256"],
+                }
+                lineage_events.append(
+                    LineageEvent(
+                        tenant_id=tenant_id,
+                        lineage_event_id=lineage_id,
+                        event_type=LineageEventType.DERIVE,
+                        source_resource_version_id=source_id,
+                        target_resource_version_id=output_version_id,
+                        producer=actor_subject,
+                        event_sha256=canonical_json_fingerprint(
+                            {
+                                "schema": "gda.blueprint_test_lineage.v1",
+                                "lineage_event_id": str(lineage_id),
+                                "source_resource_version_id": str(source_id),
+                                "target_resource_version_id": str(output_version_id),
+                                "run_id": str(run.run_id),
+                                "definition_version_id": str(run.definition_version_id),
+                                "artifact_id": str(output_artifact_id),
+                                "facets": lineage_facets,
+                            }
+                        ),
+                        run_id=run.run_id,
+                        definition_version_id=run.definition_version_id,
+                        artifact_id=output_artifact_id,
+                        facets=lineage_facets,
+                        occurred_at=plan.created_at,
+                    )
+                )
+            for event in lineage_events:
+                lineage_result = self._put_lineage(connection, event)
+                created = created or lineage_result.created
+
+            success_evidence = RunSuccessEvidence(
+                tenant_id=tenant_id,
+                run_id=run.run_id,
+                attempt_observation_id=observation_id,
+                output_artifact_id=output_artifact_id,
+                quality_result_id=quality_result_id,
+                lineage_event_id=lineage_events[0].lineage_event_id,
+                evidence_sha256=run_success_evidence_fingerprint(
+                    tenant_id=tenant_id,
+                    run_id=run.run_id,
+                    attempt_observation_id=observation_id,
+                    output_artifact_id=output_artifact_id,
+                    quality_result_id=quality_result_id,
+                    lineage_event_id=lineage_events[0].lineage_event_id,
+                ),
+            )
+            details = {
+                "schema": "gda.run_success_evidence.v1",
+                **success_evidence.model_dump(mode="json"),
+            }
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.finalize_blueprint_test_run_success(
+                        :tenant_id, :run_id, :expected_state_version,
+                        :actor_subject, :reason, CAST(:details AS jsonb)
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "run_id": run.run_id,
+                    "expected_state_version": run.state_version,
+                    "actor_subject": actor_subject,
+                    "reason": request.reason,
+                    "details": _json(details),
+                },
+            ).scalar_one()
+            completed_run = self._load_run(connection, tenant_id, run.run_id)
+            if completed_run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            execution = DataProductBlueprintTestExecution(
+                tenant_id=tenant_id,
+                run=completed_run,
+                output_resource_version=output_version,
+                attempt_observation=observation_result.value,
+                output_artifact=output_result.value,
+                quality_evidence_artifact=quality_evidence_result.value,
+                quality_result=quality_result_write.value,
+                lineage_events=tuple(lineage_events),
+                success_evidence=success_evidence,
+            )
+            return GatewayWriteResult(execution, created)
+
+    def fail_blueprint_test_run(
+        self,
+        tenant_id: str,
+        request: DataProductBlueprintTestExecutionFailureRequest,
+        *,
+        actor_subject: str,
+    ) -> GatewayWriteResult:
+        """Record an idempotent failure for an admitted deterministic test Run."""
+        if not actor_subject.startswith("workload:"):
+            raise GatewayForbiddenError(
+                "deterministic Blueprint test failure requires workload identity"
+            )
+
+        with self._transaction(tenant_id) as connection:
+            run = self._load_run(connection, tenant_id, request.run_id)
+            if run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            if run.subject_context.subject_type != SubjectType.WORKLOAD:
+                raise GatewayValidationError(
+                    "deterministic Blueprint test requires a workload-admitted Run"
+                )
+            if self._run_actor(run) != actor_subject:
+                raise GatewayForbiddenError(
+                    "test failure actor does not match the admitted Run workload"
+                )
+
+            plan_id = connection.execute(
+                text(
+                    """
+                    SELECT artifact_id
+                    FROM gda_control.artifact
+                    WHERE tenant_id = :tenant_id
+                      AND run_id = :run_id
+                      AND artifact_role = 'execution_plan'
+                      AND manifest ->> 'schema' =
+                          'gda.data_product_blueprint_test_execution_plan.v1'
+                    ORDER BY created_at, artifact_id
+                    LIMIT 1
+                    """
+                ),
+                {"tenant_id": tenant_id, "run_id": request.run_id},
+            ).scalar_one_or_none()
+            if plan_id is None:
+                raise GatewayNotFoundError(
+                    "Blueprint test execution plan was not found"
+                )
+
+            details = {
+                "schema": "gda.blueprint_test_executor_failure.v1",
+                "execution_plan_artifact_id": str(plan_id),
+                "error_code": request.error_code,
+            }
+            if run.status == RunStatus.FAILED:
+                event = connection.execute(
+                    text(
+                        """
+                        SELECT actor_subject, reason, details
+                        FROM gda_control.platform_run_event
+                        WHERE tenant_id = :tenant_id
+                          AND run_id = :run_id
+                          AND sequence_no = :sequence_no
+                          AND to_status = 'failed'
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant_id,
+                        "run_id": request.run_id,
+                        "sequence_no": run.state_version,
+                    },
+                ).mappings().one_or_none()
+                if event is not None and (
+                    event["actor_subject"] == actor_subject
+                    and event["reason"] == request.reason
+                    and _as_json(event["details"]) == details
+                ):
+                    return GatewayWriteResult(run, False)
+                raise GatewayConflictError(
+                    "failed Blueprint test Run has a different terminal verdict"
+                )
+            if run.status in {
+                RunStatus.SUCCEEDED,
+                RunStatus.CANCELLED,
+                RunStatus.TIMED_OUT,
+            }:
+                raise GatewayConflictError(
+                    f"Blueprint test Run in {run.status.value} cannot be failed"
+                )
+
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.transition_platform_run(
+                        :tenant_id, :run_id, :expected_state_version,
+                        'failed', :actor_subject, :reason,
+                        CAST(:details AS jsonb)
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "run_id": request.run_id,
+                    "expected_state_version": run.state_version,
+                    "actor_subject": actor_subject,
+                    "reason": request.reason,
+                    "details": _json(details),
+                },
+            ).scalar_one()
+            failed_run = self._load_run(connection, tenant_id, request.run_id)
+            if failed_run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            return GatewayWriteResult(failed_run, True)
+
+    def complete_blueprint_test_run_cancellation(
+        self,
+        tenant_id: str,
+        request: DataProductBlueprintTestCancellationRequest,
+        *,
+        actor_subject: str,
+    ) -> GatewayWriteResult:
+        """Converge a governed cancellation through the shared Run authority."""
+        if not actor_subject.startswith("workload:"):
+            raise GatewayForbiddenError(
+                "deterministic Blueprint test cancellation requires workload identity"
+            )
+
+        with self._transaction(tenant_id) as connection:
+            run = self._load_run(connection, tenant_id, request.run_id)
+            if run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            if run.subject_context.subject_type != SubjectType.WORKLOAD:
+                raise GatewayValidationError(
+                    "deterministic Blueprint test requires a workload-admitted Run"
+                )
+            if self._run_actor(run) != actor_subject:
+                raise GatewayForbiddenError(
+                    "test cancellation actor does not match the admitted Run workload"
+                )
+            plan_id = connection.execute(
+                text(
+                    """
+                    SELECT artifact_id
+                    FROM gda_control.artifact
+                    WHERE tenant_id = :tenant_id
+                      AND run_id = :run_id
+                      AND artifact_role = 'execution_plan'
+                      AND manifest ->> 'schema' =
+                          'gda.data_product_blueprint_test_execution_plan.v1'
+                    ORDER BY created_at, artifact_id
+                    LIMIT 1
+                    """
+                ),
+                {"tenant_id": tenant_id, "run_id": request.run_id},
+            ).scalar_one_or_none()
+            if plan_id is None:
+                raise GatewayNotFoundError(
+                    "Blueprint test execution plan was not found"
+                )
+
+            details = {
+                "schema": "gda.blueprint_test_executor_cancel.v1",
+                "execution_plan_artifact_id": str(plan_id),
+                "external_cancel_ref": request.external_cancel_ref,
+            }
+            if run.status == RunStatus.CANCELLED:
+                event = connection.execute(
+                    text(
+                        """
+                        SELECT actor_subject, reason, details
+                        FROM gda_control.platform_run_event
+                        WHERE tenant_id = :tenant_id
+                          AND run_id = :run_id
+                          AND sequence_no = :sequence_no
+                          AND to_status = 'cancelled'
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant_id,
+                        "run_id": request.run_id,
+                        "sequence_no": run.state_version,
+                    },
+                ).mappings().one_or_none()
+                if event is not None and (
+                    event["actor_subject"] == actor_subject
+                    and event["reason"] == request.reason
+                    and _as_json(event["details"]) == details
+                ):
+                    return GatewayWriteResult(run, False)
+                raise GatewayConflictError(
+                    "cancelled Blueprint test Run has a different terminal verdict"
+                )
+            if run.status not in {RunStatus.CANCELLING, RunStatus.RECONCILING}:
+                raise GatewayConflictError(
+                    "Blueprint test cancellation requires a cancelling or reconciling Run"
+                )
+
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.transition_platform_run(
+                        :tenant_id, :run_id, :expected_state_version,
+                        'cancelled', :actor_subject, :reason,
+                        CAST(:details AS jsonb)
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "run_id": request.run_id,
+                    "expected_state_version": run.state_version,
+                    "actor_subject": actor_subject,
+                    "reason": request.reason,
+                    "details": _json(details),
+                },
+            ).scalar_one()
+            cancelled_run = self._load_run(connection, tenant_id, request.run_id)
+            if cancelled_run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            return GatewayWriteResult(cancelled_run, True)
+
+    def reconcile_blueprint_test_provider(
+        self,
+        request: DataProductBlueprintProviderReconcileRequest,
+        *,
+        actor_subject: str,
+    ) -> GatewayWriteResult:
+        """Atomically apply a content-bound provider receipt to a reconciling Run."""
+        if not actor_subject.startswith("workload:"):
+            raise GatewayForbiddenError(
+                "Blueprint provider reconciliation requires workload identity"
+            )
+
+        tenant_id = request.tenant_id
+        observation = request.attempt_observation
+        converged_status = RunStatus(request.provider_state)
+        with self._transaction(tenant_id) as connection:
+            run = self._load_run(connection, tenant_id, request.run_id)
+            if run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            if run.subject_context.subject_type != SubjectType.WORKLOAD:
+                raise GatewayValidationError(
+                    "Blueprint provider reconciliation requires a workload-admitted Run"
+                )
+            if self._run_actor(run) != actor_subject:
+                raise GatewayForbiddenError(
+                    "provider reconcile actor does not match the admitted Run workload"
+                )
+
+            plan = self._load_artifact(
+                connection,
+                tenant_id,
+                request.execution_plan_artifact_id,
+            )
+            if plan is None:
+                raise GatewayNotFoundError("Blueprint test execution plan was not found")
+            plan_manifest = plan.manifest
+            if (
+                plan.run_id != run.run_id
+                or plan.artifact_role != ArtifactRole.EXECUTION_PLAN
+                or plan_manifest.get("schema")
+                != "gda.data_product_blueprint_test_execution_plan.v1"
+                or plan_manifest.get("plan_sha256") != run.config_fingerprint
+            ):
+                raise GatewayValidationError(
+                    "provider reconciliation plan does not match the admitted Blueprint Run"
+                )
+
+            observation_result = self._put_observation(connection, observation)
+            event = connection.execute(
+                text(
+                    """
+                    SELECT to_status, details
+                    FROM gda_control.platform_run_event
+                    WHERE tenant_id = :tenant_id
+                      AND run_id = :run_id
+                      AND details ->> 'schema' = :schema
+                      AND details ->> 'observation_id' = :observation_id
+                    ORDER BY sequence_no
+                    LIMIT 1
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "run_id": run.run_id,
+                    "schema": DATA_PRODUCT_BLUEPRINT_PROVIDER_RECONCILE_SCHEMA,
+                    "observation_id": str(observation.observation_id),
+                },
+            ).mappings().one_or_none()
+            if event is not None:
+                details = _as_json(event["details"])
+                if (
+                    event["to_status"] != converged_status.value
+                    or details.get("reconcile_receipt_sha256")
+                    != request.reconcile_receipt_sha256
+                ):
+                    raise GatewayConflictError(
+                        "provider observation already has a different reconciliation verdict"
+                    )
+                current_run = self._load_run(connection, tenant_id, run.run_id)
+                if current_run is None:
+                    raise GatewayNotFoundError("PlatformRun was not found")
+                reconciliation = DataProductBlueprintProviderReconciliation(
+                    tenant_id=tenant_id,
+                    run=current_run,
+                    execution_plan=plan,
+                    attempt_observation=observation_result.value,
+                    provider_state=request.provider_state,
+                    converged_status=converged_status,
+                    reconcile_receipt_sha256=request.reconcile_receipt_sha256,
+                    observation_created=observation_result.created,
+                    transitioned=False,
+                )
+                return GatewayWriteResult(reconciliation, observation_result.created)
+
+            if run.status != RunStatus.RECONCILING:
+                raise GatewayConflictError(
+                    "provider reconciliation requires a reconciling Blueprint Run"
+                )
+            details = {
+                "schema": DATA_PRODUCT_BLUEPRINT_PROVIDER_RECONCILE_SCHEMA,
+                "execution_plan_artifact_id": str(plan.artifact_id),
+                "observation_id": str(observation.observation_id),
+                "reconcile_receipt_sha256": request.reconcile_receipt_sha256,
+                "provider_state": request.provider_state,
+                "framework_kind": observation.framework_kind.value,
+                "external_namespace": observation.external_namespace,
+                "external_run_id": observation.external_run_id,
+                "external_attempt_id": observation.external_attempt_id,
+            }
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.transition_platform_run(
+                        :tenant_id, :run_id, :expected_state_version,
+                        :to_status, :actor_subject, :reason,
+                        CAST(:details AS jsonb)
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "run_id": run.run_id,
+                    "expected_state_version": run.state_version,
+                    "to_status": converged_status.value,
+                    "actor_subject": actor_subject,
+                    "reason": request.reason,
+                    "details": _json(details),
+                },
+            ).scalar_one()
+            current_run = self._load_run(connection, tenant_id, run.run_id)
+            if current_run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            reconciliation = DataProductBlueprintProviderReconciliation(
+                tenant_id=tenant_id,
+                run=current_run,
+                execution_plan=plan,
+                attempt_observation=observation_result.value,
+                provider_state=request.provider_state,
+                converged_status=converged_status,
+                reconcile_receipt_sha256=request.reconcile_receipt_sha256,
+                observation_created=observation_result.created,
+                transitioned=True,
+            )
+            return GatewayWriteResult(reconciliation, True)
+
+    def record_blueprint_provider_cancellation_timeout(
+        self,
+        request: DataProductBlueprintProviderCancellationTimeoutRequest,
+        *,
+        actor_subject: str,
+    ) -> GatewayWriteResult:
+        """Open a DataIncident and fail a Blueprint Run after cancel retries exhaust."""
+        if not actor_subject.startswith("workload:"):
+            raise GatewayForbiddenError(
+                "Blueprint provider cancellation timeout requires workload identity"
+            )
+
+        tenant_id = request.tenant_id
+        observation = request.attempt_observation
+        dedupe_key = f"blueprint-cancel-timeout:{observation.observation_id}"
+        incident_id = uuid5(request.run_id, dedupe_key)
+        with self._transaction(tenant_id) as connection:
+            run = self._load_run(connection, tenant_id, request.run_id)
+            if run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            if run.subject_context.subject_type != SubjectType.WORKLOAD:
+                raise GatewayValidationError(
+                    "Blueprint provider cancellation timeout requires a workload-admitted Run"
+                )
+            if self._run_actor(run) != actor_subject:
+                raise GatewayForbiddenError(
+                    "provider timeout actor does not match the admitted Run workload"
+                )
+
+            plan = self._load_artifact(
+                connection,
+                tenant_id,
+                request.execution_plan_artifact_id,
+            )
+            if plan is None:
+                raise GatewayNotFoundError("Blueprint test execution plan was not found")
+            plan_manifest = plan.manifest
+            if (
+                plan.run_id != run.run_id
+                or plan.artifact_role != ArtifactRole.EXECUTION_PLAN
+                or plan_manifest.get("schema")
+                != "gda.data_product_blueprint_test_execution_plan.v1"
+                or plan_manifest.get("plan_sha256") != run.config_fingerprint
+            ):
+                raise GatewayValidationError(
+                    "provider timeout plan does not match the admitted Blueprint Run"
+                )
+
+            observation_result = self._put_observation(connection, observation)
+            event = connection.execute(
+                text(
+                    """
+                    SELECT to_status, details
+                    FROM gda_control.platform_run_event
+                    WHERE tenant_id = :tenant_id
+                      AND run_id = :run_id
+                      AND details ->> 'schema' = 'gda.data_incident_run_failure.v1'
+                      AND details ->> 'incident_id' = :incident_id
+                    ORDER BY sequence_no
+                    LIMIT 1
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "run_id": run.run_id,
+                    "incident_id": str(incident_id),
+                },
+            ).mappings().one_or_none()
+            if event is not None:
+                if event["to_status"] != RunStatus.FAILED.value:
+                    raise GatewayConflictError(
+                        "provider timeout observation already has a different verdict"
+                    )
+                incident = self._load_incident(connection, tenant_id, incident_id)
+                if incident is None:
+                    raise GatewayConflictError(
+                        "provider timeout event is missing its DataIncident"
+                    )
+                if incident.details.get("timeout_receipt_sha256") != (
+                    request.timeout_receipt_sha256
+                ):
+                    raise GatewayConflictError(
+                        "provider timeout observation already has a different verdict"
+                    )
+                current_run = self._load_run(connection, tenant_id, run.run_id)
+                if current_run is None:
+                    raise GatewayNotFoundError("PlatformRun was not found")
+                timeout = DataProductBlueprintProviderCancellationTimeout(
+                    tenant_id=tenant_id,
+                    run=current_run,
+                    execution_plan=plan,
+                    attempt_observation=observation_result.value,
+                    provider_state=request.provider_state,
+                    reconcile_attempt=request.reconcile_attempt,
+                    max_reconcile_attempts=request.max_reconcile_attempts,
+                    incident=incident,
+                    timeout_receipt_sha256=request.timeout_receipt_sha256,
+                    observation_created=observation_result.created,
+                    incident_created=False,
+                    transitioned=False,
+                )
+                return GatewayWriteResult(timeout, False)
+
+            if run.status not in {RunStatus.CANCELLING, RunStatus.RECONCILING}:
+                raise GatewayConflictError(
+                    "provider cancellation timeout requires a cancelling or reconciling Run"
+                )
+            details = {
+                "schema": DATA_PRODUCT_BLUEPRINT_PROVIDER_CANCELLATION_TIMEOUT_SCHEMA,
+                "execution_plan_artifact_id": str(plan.artifact_id),
+                "observation_id": str(observation.observation_id),
+                "timeout_receipt_sha256": request.timeout_receipt_sha256,
+                "provider_state": request.provider_state,
+                "reconcile_attempt": request.reconcile_attempt,
+                "max_reconcile_attempts": request.max_reconcile_attempts,
+                "framework_kind": observation.framework_kind.value,
+                "external_namespace": observation.external_namespace,
+                "external_run_id": observation.external_run_id,
+                "external_attempt_id": observation.external_attempt_id,
+            }
+            incident_result = self._open_incident(
+                connection,
+                tenant_id=tenant_id,
+                run_id=run.run_id,
+                subject_resource_urn=None,
+                incident_id=incident_id,
+                dedupe_key=dedupe_key,
+                incident_type="blueprint_provider_cancellation_timeout",
+                severity=IncidentSeverity.HIGH,
+                summary=(
+                    "Blueprint provider cancellation did not converge before retry exhaustion"
+                ),
+                trigger_observation_id=observation.observation_id,
+                details=details,
+                detected_by=actor_subject,
+            )
+            current_run = self._load_run(connection, tenant_id, run.run_id)
+            if current_run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            failed_run = self._fail_run_for_incident(
+                connection,
+                current_run,
+                incident_result.value,
+                actor_subject=actor_subject,
+                reason="Blueprint provider cancellation retries exhausted",
+            )
+            timeout = DataProductBlueprintProviderCancellationTimeout(
+                tenant_id=tenant_id,
+                run=failed_run,
+                execution_plan=plan,
+                attempt_observation=observation_result.value,
+                provider_state=request.provider_state,
+                reconcile_attempt=request.reconcile_attempt,
+                max_reconcile_attempts=request.max_reconcile_attempts,
+                incident=incident_result.value,
+                timeout_receipt_sha256=request.timeout_receipt_sha256,
+                observation_created=observation_result.created,
+                incident_created=incident_result.created,
+                transitioned=True,
+            )
+            return GatewayWriteResult(timeout, True)
+
+    def retry_blueprint_test_provider(
+        self,
+        request: DataProductBlueprintProviderRetryRequest,
+        *,
+        actor_subject: str,
+    ) -> GatewayWriteResult:
+        """Record a bounded provider retry and schedule the next dispatch attempt."""
+        if not actor_subject.startswith("workload:"):
+            raise GatewayForbiddenError(
+                "Blueprint provider retry requires workload identity"
+            )
+
+        tenant_id = request.tenant_id
+        observation = request.attempt_observation
+        backoff_seconds = data_product_blueprint_provider_retry_backoff_seconds(
+            request.retry_attempt
+        )
+        retry_after = observation.observed_at + timedelta(seconds=backoff_seconds)
+        command_dedupe_key = (
+            f"blueprint-provider.retry:{request.run_id}:{observation.observation_id}"
+        )
+        retry_command = PlatformCommand(
+            tenant_id=tenant_id,
+            command_id=uuid5(request.run_id, command_dedupe_key),
+            run_id=request.run_id,
+            command_type=PlatformCommandType.BLUEPRINT_PROVIDER_RETRY,
+            execution_plan_artifact_id=request.execution_plan_artifact_id,
+            trigger_observation_id=observation.observation_id,
+            dedupe_key=command_dedupe_key,
+            actor_subject=actor_subject,
+            payload={
+                "schema": "gda.data_product_blueprint_provider_retry_command.v1",
+                "run_id": str(request.run_id),
+                "execution_plan_artifact_id": str(
+                    request.execution_plan_artifact_id
+                ),
+                "observation_id": str(observation.observation_id),
+                "provider_state": request.provider_state,
+                "retry_attempt": request.retry_attempt,
+                "max_retry_attempts": request.max_retry_attempts,
+                "backoff_seconds": backoff_seconds,
+                "retry_receipt_sha256": request.retry_receipt_sha256,
+            },
+            max_attempts=1,
+            available_at=retry_after,
+            created_at=observation.observed_at,
+        )
+        with self._transaction(tenant_id) as connection:
+            run = self._load_run(connection, tenant_id, request.run_id)
+            if run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            if run.subject_context.subject_type != SubjectType.WORKLOAD:
+                raise GatewayValidationError(
+                    "Blueprint provider retry requires a workload-admitted Run"
+                )
+            if self._run_actor(run) != actor_subject:
+                raise GatewayForbiddenError(
+                    "provider retry actor does not match the admitted Run workload"
+                )
+
+            plan = self._load_artifact(
+                connection,
+                tenant_id,
+                request.execution_plan_artifact_id,
+            )
+            if plan is None:
+                raise GatewayNotFoundError("Blueprint test execution plan was not found")
+            plan_manifest = plan.manifest
+            if (
+                plan.run_id != run.run_id
+                or plan.artifact_role != ArtifactRole.EXECUTION_PLAN
+                or plan_manifest.get("schema")
+                != "gda.data_product_blueprint_test_execution_plan.v1"
+                or plan_manifest.get("plan_sha256") != run.config_fingerprint
+            ):
+                raise GatewayValidationError(
+                    "provider retry plan does not match the admitted Blueprint Run"
+                )
+
+            observation_result = self._put_observation(connection, observation)
+            command_result = self._put_command(connection, retry_command)
+            event = connection.execute(
+                text(
+                    """
+                    SELECT to_status, details
+                    FROM gda_control.platform_run_event
+                    WHERE tenant_id = :tenant_id
+                      AND run_id = :run_id
+                      AND details ->> 'schema' = :schema
+                      AND details ->> 'observation_id' = :observation_id
+                    ORDER BY sequence_no
+                    LIMIT 1
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "run_id": run.run_id,
+                    "schema": DATA_PRODUCT_BLUEPRINT_PROVIDER_RETRY_SCHEMA,
+                    "observation_id": str(observation.observation_id),
+                },
+            ).mappings().one_or_none()
+            if event is not None:
+                details = _as_json(event["details"])
+                if (
+                    event["to_status"] != RunStatus.DISPATCHING.value
+                    or details.get("retry_receipt_sha256")
+                    != request.retry_receipt_sha256
+                ):
+                    raise GatewayConflictError(
+                        "provider retry observation already has a different verdict"
+                    )
+                current_run = self._load_run(connection, tenant_id, run.run_id)
+                if current_run is None:
+                    raise GatewayNotFoundError("PlatformRun was not found")
+                retry = DataProductBlueprintProviderRetry(
+                    tenant_id=tenant_id,
+                    run=current_run,
+                    execution_plan=plan,
+                    attempt_observation=observation_result.value,
+                    provider_state=request.provider_state,
+                    retry_attempt=request.retry_attempt,
+                    max_retry_attempts=request.max_retry_attempts,
+                    backoff_seconds=backoff_seconds,
+                    retry_after=retry_after,
+                    retry_command=command_result.value,
+                    retry_receipt_sha256=request.retry_receipt_sha256,
+                    observation_created=observation_result.created,
+                    command_created=command_result.created,
+                    transitioned=False,
+                )
+                return GatewayWriteResult(retry, False)
+
+            if run.status != RunStatus.RECONCILING:
+                raise GatewayConflictError(
+                    "provider retry requires a reconciling Blueprint Run"
+                )
+            details = {
+                "schema": DATA_PRODUCT_BLUEPRINT_PROVIDER_RETRY_SCHEMA,
+                "execution_plan_artifact_id": str(plan.artifact_id),
+                "observation_id": str(observation.observation_id),
+                "retry_receipt_sha256": request.retry_receipt_sha256,
+                "provider_state": request.provider_state,
+                "retry_attempt": request.retry_attempt,
+                "max_retry_attempts": request.max_retry_attempts,
+                "backoff_seconds": backoff_seconds,
+                "retry_after": retry_after.astimezone(UTC).isoformat().replace(
+                    "+00:00", "Z"
+                ),
+                "framework_kind": observation.framework_kind.value,
+                "external_namespace": observation.external_namespace,
+                "external_run_id": observation.external_run_id,
+                "external_attempt_id": observation.external_attempt_id,
+            }
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.transition_platform_run(
+                        :tenant_id, :run_id, :expected_state_version,
+                        'dispatching', :actor_subject, :reason,
+                        CAST(:details AS jsonb)
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "run_id": run.run_id,
+                    "expected_state_version": run.state_version,
+                    "actor_subject": actor_subject,
+                    "reason": request.reason,
+                    "details": _json(details),
+                },
+            ).scalar_one()
+            current_run = self._load_run(connection, tenant_id, run.run_id)
+            if current_run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            retry = DataProductBlueprintProviderRetry(
+                tenant_id=tenant_id,
+                run=current_run,
+                execution_plan=plan,
+                attempt_observation=observation_result.value,
+                provider_state=request.provider_state,
+                retry_attempt=request.retry_attempt,
+                max_retry_attempts=request.max_retry_attempts,
+                backoff_seconds=backoff_seconds,
+                retry_after=retry_after,
+                retry_command=command_result.value,
+                retry_receipt_sha256=request.retry_receipt_sha256,
+                observation_created=observation_result.created,
+                command_created=command_result.created,
+                transitioned=True,
+            )
+            return GatewayWriteResult(retry, True)
+
     def _load_existing_schedule_window(
         self,
         connection,
@@ -3658,7 +7001,9 @@ class PlatformGateway:
 
     @staticmethod
     def _notification_from_row(row) -> IncidentNotification:
-        return IncidentNotification.model_validate(dict(row))
+        value = dict(row)
+        value["provider_receipt"] = _as_json(value.get("provider_receipt", {}))
+        return IncidentNotification.model_validate(value)
 
     @classmethod
     def _load_incident(
@@ -3818,6 +7163,66 @@ class PlatformGateway:
                 tenant_id=tenant,
                 run_id=None,
                 subject_resource_urn=subject_resource_urn,
+                incident_id=incident_id,
+                dedupe_key=dedupe_key,
+                incident_type=incident_type,
+                severity=severity,
+                summary=summary,
+                trigger_observation_id=None,
+                details=details,
+                detected_by=detected_by,
+            )
+
+    def open_gis_service_slo_incident(
+        self,
+        *,
+        tenant_id: str,
+        service_urn: str,
+        slo_definition_ref: str,
+        active_version_ref: str,
+        definition_fingerprint: str,
+        approval_case_ref: str,
+        activation_version: int,
+        incident_id: UUID,
+        dedupe_key: str,
+        incident_type: str,
+        severity: IncidentSeverity,
+        summary: str,
+        details: dict[str, Any],
+        detected_by: str,
+    ) -> GatewayWriteResult:
+        """Open an incident only while the exact active GIS ServiceSLO is locked."""
+
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        subject = parse_resource_urn(service_urn)
+        if subject["tenant_id"] != tenant or subject["resource_kind"] != "gis_service":
+            raise GatewayForbiddenError("GIS ServiceSLO incident subject is invalid")
+        with self._transaction(tenant) as connection:
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.assert_gis_service_slo_incident_authority(
+                        :tenant_id, :service_urn, :slo_definition_ref,
+                        :active_version_ref, :definition_fingerprint,
+                        :approval_case_ref, :activation_version
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant,
+                    "service_urn": service_urn,
+                    "slo_definition_ref": slo_definition_ref,
+                    "active_version_ref": active_version_ref,
+                    "definition_fingerprint": definition_fingerprint,
+                    "approval_case_ref": approval_case_ref,
+                    "activation_version": activation_version,
+                },
+            ).scalar_one()
+            return self._open_incident(
+                connection,
+                tenant_id=tenant,
+                run_id=None,
+                subject_resource_urn=service_urn,
                 incident_id=incident_id,
                 dedupe_key=dedupe_key,
                 incident_type=incident_type,
@@ -4209,8 +7614,39 @@ class PlatformGateway:
                 for row in rows
             )
 
+    def list_incident_notifications(
+        self,
+        tenant_id: str,
+        incident_id: UUID,
+    ) -> tuple[IncidentNotification, ...]:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            if self._load_incident(connection, tenant, incident_id) is None:
+                raise GatewayNotFoundError("DataIncident was not found")
+            rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT *
+                        FROM gda_control.data_incident_notification_outbox
+                        WHERE tenant_id = :tenant_id AND incident_id = :incident_id
+                        ORDER BY incident_sequence_no, created_at, notification_id
+                        """
+                    ),
+                    {"tenant_id": tenant, "incident_id": incident_id},
+                )
+                .mappings()
+                .all()
+            )
+            return tuple(self._notification_from_row(row) for row in rows)
+
     def complete_incident_notification(
-        self, tenant_id: str, notification_id: UUID, *, worker_id: str
+        self,
+        tenant_id: str,
+        notification_id: UUID,
+        *,
+        worker_id: str,
+        provider_receipt: dict[str, Any],
     ) -> IncidentNotification:
         tenant = _TENANT_ADAPTER.validate_python(tenant_id)
         with self._transaction(tenant) as connection:
@@ -4219,7 +7655,8 @@ class PlatformGateway:
                     text(
                         """
                         SELECT * FROM gda_control.complete_data_incident_notification(
-                            :tenant_id, :notification_id, :worker_id
+                            :tenant_id, :notification_id, :worker_id,
+                            CAST(:provider_receipt AS jsonb)
                         )
                         """
                     ),
@@ -4227,6 +7664,7 @@ class PlatformGateway:
                         "tenant_id": tenant,
                         "notification_id": notification_id,
                         "worker_id": worker_id,
+                        "provider_receipt": _json(provider_receipt),
                     },
                 )
                 .mappings()
@@ -4268,6 +7706,104 @@ class PlatformGateway:
             )
             return self._notification_from_row(row)
 
+    def recover_incident_notification(
+        self,
+        tenant_id: str,
+        incident_id: UUID,
+        notification_id: UUID,
+        *,
+        expected_attempt_count: int,
+        expected_receipt_sha256: str,
+        actor_subject: str,
+        reason: str,
+    ) -> IncidentNotification:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        if expected_attempt_count < 1:
+            raise GatewayValidationError(
+                "expected notification attempt count must be positive"
+            )
+        if not actor_subject.startswith("human:"):
+            raise GatewayForbiddenError(
+                "incident notification recovery requires a human identity"
+            )
+        if not re.fullmatch(r"[0-9a-f]{64}", expected_receipt_sha256 or ""):
+            raise GatewayValidationError("expected failure receipt hash is required")
+        if not reason.strip() or len(reason.strip()) > 512:
+            raise GatewayValidationError("notification recovery reason is required")
+        with self._transaction(tenant) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT * FROM gda_control.recover_data_incident_notification(
+                            :tenant_id, :incident_id, :notification_id,
+                            :expected_attempt_count, :expected_receipt_sha256,
+                            :actor_subject, :reason
+                        )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "incident_id": incident_id,
+                        "notification_id": notification_id,
+                        "expected_attempt_count": expected_attempt_count,
+                        "expected_receipt_sha256": expected_receipt_sha256,
+                        "actor_subject": actor_subject,
+                        "reason": reason,
+                    },
+                )
+                .mappings()
+                .one()
+            )
+            return self._notification_from_row(row)
+
+    def incident_notification_recoveries(
+        self,
+        tenant_id: str,
+        incident_id: UUID,
+        notification_id: UUID,
+    ) -> tuple[IncidentNotificationRecoveryEvent, ...]:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT tenant_id, recovery_event_id, notification_id,
+                               incident_id, incident_event_id, recovery_no,
+                               actor_subject, reason, previous_status,
+                               previous_attempt_count, previous_max_attempts,
+                               previous_last_error, previous_provider_receipt,
+                               previous_receipt_sha256, previous_terminal_worker_id,
+                               previous_completed_at, occurred_at
+                        FROM gda_control.data_incident_notification_recovery_event
+                        WHERE tenant_id = :tenant_id
+                          AND incident_id = :incident_id
+                          AND notification_id = :notification_id
+                        ORDER BY recovery_no, recovery_event_id
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "incident_id": incident_id,
+                        "notification_id": notification_id,
+                    },
+                )
+                .mappings()
+                .all()
+            )
+            return tuple(
+                IncidentNotificationRecoveryEvent.model_validate(
+                    {
+                        **dict(row),
+                        "previous_provider_receipt": _as_json(
+                            row["previous_provider_receipt"]
+                        ),
+                    }
+                )
+                for row in rows
+            )
+
     @staticmethod
     def _load_quality_result(
         connection, tenant_id: str, quality_result_id: UUID
@@ -4299,9 +7835,10 @@ class PlatformGateway:
         value["metrics"] = _as_json(value["metrics"])
         return QualityResult.model_validate(value)
 
-    def record_quality_result(self, quality: QualityResult) -> GatewayWriteResult:
-        with self._transaction(quality.tenant_id) as connection:
-            inserted = connection.execute(
+    def _put_quality_result(
+        self, connection, quality: QualityResult
+    ) -> GatewayWriteResult:
+        inserted = connection.execute(
                 text(
                     """
                     INSERT INTO gda_control.quality_result (
@@ -4325,14 +7862,18 @@ class PlatformGateway:
                     "metrics": _json(quality.metrics),
                 },
             ).first()
-            stored = self._load_quality_result(
-                connection,
-                quality.tenant_id,
-                quality.quality_result_id,
-            )
-            if stored is None or stored != quality:
-                raise GatewayConflictError("QualityResult identity already has a different payload")
-            return GatewayWriteResult(stored, inserted is not None)
+        stored = self._load_quality_result(
+            connection,
+            quality.tenant_id,
+            quality.quality_result_id,
+        )
+        if stored is None or stored != quality:
+            raise GatewayConflictError("QualityResult identity already has a different payload")
+        return GatewayWriteResult(stored, inserted is not None)
+
+    def record_quality_result(self, quality: QualityResult) -> GatewayWriteResult:
+        with self._transaction(quality.tenant_id) as connection:
+            return self._put_quality_result(connection, quality)
 
     def get_quality_result(self, tenant_id: str, quality_result_id: UUID) -> QualityResult:
         with self._transaction(tenant_id) as connection:
@@ -4502,6 +8043,119 @@ class PlatformGateway:
             )
             return [self._command_from_row(row) for row in rows]
 
+    @staticmethod
+    def _gis_mvt_cache_purge_from_row(row) -> GISMVTCachePurgeTask:
+        return GISMVTCachePurgeTask.model_validate(dict(row))
+
+    def claim_gis_mvt_cache_purges(
+        self,
+        tenant_id: str,
+        worker_id: str,
+        *,
+        actor_subject: str,
+        limit: int = 10,
+        lease_seconds: int = 60,
+    ) -> tuple[GISMVTCachePurgeTask, ...]:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT * FROM gda_control.claim_gis_mvt_cache_purges(
+                            :tenant_id, :actor_subject, :worker_id,
+                            :limit, :lease_seconds
+                        )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "actor_subject": actor_subject,
+                        "worker_id": worker_id,
+                        "limit": limit,
+                        "lease_seconds": lease_seconds,
+                    },
+                )
+                .mappings()
+                .all()
+            )
+            return tuple(self._gis_mvt_cache_purge_from_row(row) for row in rows)
+
+    def complete_gis_mvt_cache_purge(
+        self,
+        tenant_id: str,
+        purge_task_id: UUID,
+        *,
+        worker_id: str,
+        matched_keys: int,
+        deleted_keys: int,
+        remaining_keys: int,
+    ) -> GISMVTCachePurgeTask:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT *
+                          FROM gda_control.complete_gis_mvt_cache_purge(
+                              :tenant_id, CAST(:purge_task_id AS uuid),
+                              :worker_id, :matched_keys, :deleted_keys,
+                              :remaining_keys
+                          )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "purge_task_id": purge_task_id,
+                        "worker_id": worker_id,
+                        "matched_keys": matched_keys,
+                        "deleted_keys": deleted_keys,
+                        "remaining_keys": remaining_keys,
+                    },
+                )
+                .mappings()
+                .one()
+            )
+            task = self._gis_mvt_cache_purge_from_row(row)
+            if task.status != GISMVTCachePurgeStatus.DONE:
+                raise GatewayValidationError("cache purge did not reach done")
+            return task
+
+    def fail_gis_mvt_cache_purge(
+        self,
+        tenant_id: str,
+        purge_task_id: UUID,
+        *,
+        worker_id: str,
+        error: str,
+        retry_delay_seconds: int = 30,
+    ) -> GISMVTCachePurgeTask:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT * FROM gda_control.fail_gis_mvt_cache_purge(
+                            :tenant_id, CAST(:purge_task_id AS uuid),
+                            :worker_id, :error, :retry_delay_seconds
+                        )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "purge_task_id": purge_task_id,
+                        "worker_id": worker_id,
+                        "error": error,
+                        "retry_delay_seconds": retry_delay_seconds,
+                    },
+                )
+                .mappings()
+                .one()
+            )
+            return self._gis_mvt_cache_purge_from_row(row)
+
     def complete_command(
         self, tenant_id: str, command_id: UUID, *, worker_id: str
     ) -> PlatformCommand:
@@ -4602,6 +8256,39 @@ class PlatformGateway:
                         reason="provider cancellation convergence retries exhausted",
                     )
             return command
+
+    def fail_gis_service_endpoint_warmup_command_terminal(
+        self,
+        tenant_id: str,
+        command_id: UUID,
+        *,
+        worker_id: str,
+        error: str,
+    ) -> PlatformCommand:
+        """Fail one claimed warmup command and its Run without retrying."""
+        with self._transaction(tenant_id) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT *
+                          FROM gda_control.
+                               fail_gis_service_endpoint_warmup_command_terminal(
+                                   :tenant_id, :command_id, :worker_id, :error
+                               )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant_id,
+                        "command_id": command_id,
+                        "worker_id": worker_id,
+                        "error": error,
+                    },
+                )
+                .mappings()
+                .one()
+            )
+            return self._command_from_row(row)
 
     def defer_dispatch_to_reconcile(
         self,
@@ -6173,6 +9860,416 @@ class PlatformGateway:
             return stored
 
     @staticmethod
+    def _cache_policy_version_from_row(row) -> CachePolicyVersion:
+        return CachePolicyVersion.model_validate(dict(row))
+
+    @classmethod
+    def _load_cache_policy_version(
+        cls,
+        connection,
+        tenant_id: str,
+        cache_policy_version_id: UUID,
+    ) -> CachePolicyVersion | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, cache_policy_version_id,
+                           service_definition_version_id, cache_policy_key,
+                           version_key, predecessor_version_id,
+                           cache_namespace, cache_max_age_seconds,
+                           cache_key_dimensions, policy_sha256,
+                           created_by, created_at
+                      FROM gda_control.cache_policy_version
+                     WHERE tenant_id = :tenant_id
+                       AND cache_policy_version_id = :cache_policy_version_id
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "cache_policy_version_id": cache_policy_version_id,
+                },
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return cls._cache_policy_version_from_row(row) if row is not None else None
+
+    def register_cache_policy_version(
+        self,
+        policy: CachePolicyVersion,
+    ) -> GatewayWriteResult:
+        with self._transaction(policy.tenant_id) as connection:
+            existing = self._load_cache_policy_version(
+                connection,
+                policy.tenant_id,
+                policy.cache_policy_version_id,
+            )
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.record_cache_policy_version(
+                        :tenant_id, :cache_policy_version_id,
+                        :service_definition_version_id, :cache_policy_key,
+                        :version_key, :predecessor_version_id,
+                        :cache_namespace, :cache_max_age_seconds,
+                        CAST(:cache_key_dimensions AS text[]),
+                        :policy_sha256, :created_by, :created_at
+                    )
+                    """
+                ),
+                {
+                    **policy.model_dump(
+                        mode="json", exclude={"cache_key_dimensions"}
+                    ),
+                    "cache_key_dimensions": [
+                        item.value for item in policy.cache_key_dimensions
+                    ],
+                },
+            ).scalar_one()
+            stored = self._load_cache_policy_version(
+                connection,
+                policy.tenant_id,
+                policy.cache_policy_version_id,
+            )
+            if stored is None or stored != policy:
+                raise GatewayConflictError(
+                    "CachePolicyVersion identity has different content"
+                )
+            return GatewayWriteResult(stored, existing is None)
+
+    def get_cache_policy_version(
+        self,
+        tenant_id: str,
+        cache_policy_version_id: UUID,
+    ) -> CachePolicyVersion:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            stored = self._load_cache_policy_version(
+                connection, tenant, cache_policy_version_id
+            )
+            if stored is None:
+                raise GatewayNotFoundError("CachePolicyVersion was not found")
+            return stored
+
+    @staticmethod
+    def _service_policy_binding_from_row(row) -> ServicePolicyBinding:
+        return ServicePolicyBinding.model_validate(dict(row))
+
+    @classmethod
+    def _load_service_policy_binding(
+        cls,
+        connection,
+        tenant_id: str,
+        service_policy_binding_id: UUID,
+    ) -> ServicePolicyBinding | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, service_policy_binding_id,
+                           service_definition_version_id,
+                           service_release_binding_id, policy_key, version_key,
+                           predecessor_version_id, action, enforcement_point,
+                           allowed_roles, consumer_binding_required_roles,
+                           required_consumer_operation, policy_sha256,
+                           created_by, created_at
+                      FROM gda_control.service_policy_binding
+                     WHERE tenant_id = :tenant_id
+                       AND service_policy_binding_id = :service_policy_binding_id
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "service_policy_binding_id": service_policy_binding_id,
+                },
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return cls._service_policy_binding_from_row(row) if row is not None else None
+
+    @classmethod
+    def _load_service_policy_binding_for_release(
+        cls,
+        connection,
+        tenant_id: str,
+        service_definition_version_id: UUID,
+        service_release_binding_id: UUID,
+    ) -> ServicePolicyBinding | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, service_policy_binding_id,
+                           service_definition_version_id,
+                           service_release_binding_id, policy_key, version_key,
+                           predecessor_version_id, action, enforcement_point,
+                           allowed_roles, consumer_binding_required_roles,
+                           required_consumer_operation, policy_sha256,
+                           created_by, created_at
+                      FROM gda_control.service_policy_binding
+                     WHERE tenant_id = :tenant_id
+                       AND service_definition_version_id =
+                            :service_definition_version_id
+                       AND service_release_binding_id =
+                            :service_release_binding_id
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "service_definition_version_id": service_definition_version_id,
+                    "service_release_binding_id": service_release_binding_id,
+                },
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return cls._service_policy_binding_from_row(row) if row is not None else None
+
+    def register_service_policy_binding(
+        self,
+        policy: ServicePolicyBinding,
+    ) -> GatewayWriteResult:
+        with self._transaction(policy.tenant_id) as connection:
+            existing = self._load_service_policy_binding(
+                connection,
+                policy.tenant_id,
+                policy.service_policy_binding_id,
+            )
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.record_service_policy_binding(
+                        :tenant_id, :service_policy_binding_id,
+                        :service_definition_version_id,
+                        :service_release_binding_id, :policy_key, :version_key,
+                        :predecessor_version_id, :action, :enforcement_point,
+                        CAST(:allowed_roles AS text[]),
+                        CAST(:consumer_binding_required_roles AS text[]),
+                        :required_consumer_operation, :policy_sha256,
+                        :created_by, :created_at
+                    )
+                    """
+                ),
+                {
+                    **policy.model_dump(
+                        mode="json",
+                        exclude={
+                            "allowed_roles",
+                            "consumer_binding_required_roles",
+                        },
+                    ),
+                    "allowed_roles": list(policy.allowed_roles),
+                    "consumer_binding_required_roles": list(
+                        policy.consumer_binding_required_roles
+                    ),
+                },
+            ).scalar_one()
+            stored = self._load_service_policy_binding(
+                connection,
+                policy.tenant_id,
+                policy.service_policy_binding_id,
+            )
+            if stored is None or stored != policy:
+                raise GatewayConflictError(
+                    "ServicePolicyBinding identity has different content"
+                )
+            return GatewayWriteResult(stored, existing is None)
+
+    def get_service_policy_binding(
+        self,
+        tenant_id: str,
+        service_policy_binding_id: UUID,
+    ) -> ServicePolicyBinding:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            stored = self._load_service_policy_binding(
+                connection, tenant, service_policy_binding_id
+            )
+            if stored is None:
+                raise GatewayNotFoundError("ServicePolicyBinding was not found")
+            return stored
+
+    @staticmethod
+    def _mvt_serving_projection_from_row(row) -> MVTServingProjectionVersion:
+        return MVTServingProjectionVersion.model_validate(dict(row))
+
+    @classmethod
+    def _load_mvt_serving_projection_version(
+        cls,
+        connection,
+        tenant_id: str,
+        mvt_serving_projection_version_id: UUID,
+    ) -> MVTServingProjectionVersion | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, mvt_serving_projection_version_id,
+                           service_definition_version_id,
+                           layer_definition_version_id, projection_key,
+                           version_key, predecessor_version_id,
+                           source_output_resource_version_id, source_schema,
+                           source_table, geometry_column, geometry_srid,
+                           feature_id_column, property_allowlist,
+                           allowed_spatial_extent, max_features_per_tile,
+                           source_content_sha256, projection_sha256,
+                           created_by, created_at
+                      FROM gda_control.mvt_serving_projection_version
+                     WHERE tenant_id = :tenant_id
+                       AND mvt_serving_projection_version_id =
+                            :mvt_serving_projection_version_id
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "mvt_serving_projection_version_id": (
+                        mvt_serving_projection_version_id
+                    ),
+                },
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return cls._mvt_serving_projection_from_row(row) if row is not None else None
+
+    def register_mvt_serving_projection_version(
+        self,
+        projection: MVTServingProjectionVersion,
+    ) -> GatewayWriteResult:
+        with self._transaction(projection.tenant_id) as connection:
+            existing = self._load_mvt_serving_projection_version(
+                connection,
+                projection.tenant_id,
+                projection.mvt_serving_projection_version_id,
+            )
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.record_mvt_serving_projection_version(
+                        :tenant_id, :mvt_serving_projection_version_id,
+                        :service_definition_version_id,
+                        :layer_definition_version_id, :projection_key,
+                        :version_key, :predecessor_version_id,
+                        :source_output_resource_version_id, :source_schema,
+                        :source_table, :geometry_column, :geometry_srid,
+                        :feature_id_column,
+                        CAST(:property_allowlist AS text[]),
+                        CAST(:allowed_spatial_extent AS double precision[]),
+                        :max_features_per_tile, :source_content_sha256,
+                        :projection_sha256, :created_by, :created_at
+                    )
+                    """
+                ),
+                {
+                    **projection.model_dump(
+                        mode="json",
+                        exclude={"property_allowlist", "allowed_spatial_extent"},
+                    ),
+                    "property_allowlist": list(projection.property_allowlist),
+                    "allowed_spatial_extent": list(projection.allowed_spatial_extent),
+                },
+            ).scalar_one()
+            stored = self._load_mvt_serving_projection_version(
+                connection,
+                projection.tenant_id,
+                projection.mvt_serving_projection_version_id,
+            )
+            if stored is None or stored != projection:
+                raise GatewayConflictError(
+                    "MVTServingProjectionVersion identity has different content"
+                )
+            return GatewayWriteResult(stored, existing is None)
+
+    def get_mvt_serving_projection_version(
+        self,
+        tenant_id: str,
+        mvt_serving_projection_version_id: UUID,
+    ) -> MVTServingProjectionVersion:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            stored = self._load_mvt_serving_projection_version(
+                connection, tenant, mvt_serving_projection_version_id
+            )
+            if stored is None:
+                raise GatewayNotFoundError(
+                    "MVTServingProjectionVersion was not found"
+                )
+            return stored
+
+    def record_mvt_serving_relation_attestation(
+        self,
+        projection: MVTServingProjectionVersion,
+        *,
+        attested_by: str,
+        attested_at: datetime,
+    ) -> GatewayWriteResult:
+        """Record a live PostGIS catalog observation for a serving projection."""
+        with self._transaction(projection.tenant_id) as connection:
+            existing = connection.execute(
+                text(
+                    """
+                    SELECT 1
+                      FROM gda_control.mvt_serving_relation_attestation
+                     WHERE tenant_id = :tenant_id
+                       AND mvt_serving_projection_version_id =
+                            :mvt_serving_projection_version_id
+                    """
+                ),
+                {
+                    "tenant_id": str(projection.tenant_id),
+                    "mvt_serving_projection_version_id": (
+                        projection.mvt_serving_projection_version_id
+                    ),
+                },
+            ).first()
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.record_mvt_serving_relation_attestation(
+                        :tenant_id, :mvt_serving_projection_version_id,
+                        :attested_by, :attested_at
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": str(projection.tenant_id),
+                    "mvt_serving_projection_version_id": (
+                        projection.mvt_serving_projection_version_id
+                    ),
+                    "attested_by": attested_by,
+                    "attested_at": attested_at,
+                },
+            ).scalar_one()
+            row = connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, mvt_serving_projection_version_id,
+                           source_schema, source_table, relation_oid,
+                           relation_kind, geometry_column, geometry_type,
+                           geometry_srid, geometry_dimensions,
+                           feature_id_column, feature_id_data_type,
+                           property_columns, property_column_types,
+                           relation_schema_sha256,
+                           attested_by, attested_at
+                      FROM gda_control.mvt_serving_relation_attestation
+                     WHERE tenant_id = :tenant_id
+                       AND mvt_serving_projection_version_id =
+                            :mvt_serving_projection_version_id
+                    """
+                ),
+                {
+                    "tenant_id": str(projection.tenant_id),
+                    "mvt_serving_projection_version_id": (
+                        projection.mvt_serving_projection_version_id
+                    ),
+                },
+            ).mappings().one()
+            stored = MVTServingRelationAttestation.model_validate(dict(row))
+            return GatewayWriteResult(stored, existing is None)
+
+    @staticmethod
     def _service_release_binding_from_row(row) -> ServiceReleaseBinding:
         return ServiceReleaseBinding.model_validate(dict(row))
 
@@ -6192,6 +10289,8 @@ class PlatformGateway:
                            layer_definition_version_id,
                            style_definition_version_id,
                            tile_matrix_set_definition_version_id,
+                           cache_policy_version_id,
+                           mvt_serving_projection_version_id,
                            release_key, binding_sha256, created_by, created_at
                       FROM gda_control.service_release_binding
                      WHERE tenant_id = :tenant_id
@@ -6228,6 +10327,8 @@ class PlatformGateway:
                         :layer_definition_version_id,
                         :style_definition_version_id,
                         :tile_matrix_set_definition_version_id,
+                        :cache_policy_version_id,
+                        :mvt_serving_projection_version_id,
                         :release_key, :binding_sha256, :created_by, :created_at
                     )
                     """
@@ -6258,6 +10359,508 @@ class PlatformGateway:
             if stored is None:
                 raise GatewayNotFoundError("ServiceReleaseBinding was not found")
             return stored
+
+    @staticmethod
+    def _jqdltb_serving_release_from_row(row: Any) -> dict[str, Any]:
+        return dict(row)
+
+    def register_jqdltb_serving_release_binding(
+        self,
+        binding: JqdltbServingReleaseBinding,
+    ) -> GatewayWriteResult:
+        values = {
+            "tenant_id": str(binding.tenant_id),
+            "data_product_version_id": binding.data_product_version_id,
+            "product_urn": binding.product_urn,
+            "manifest_sha256": binding.manifest_sha256,
+            "output_resource_version_id": binding.output_resource_version_id,
+            "service_urn": binding.service.service_urn,
+            "service_definition_version_id": binding.service.service_definition_version_id,
+            "layer_definition_version_id": binding.layer.layer_definition_version_id,
+            "mvt_serving_projection_version_id": (
+                binding.projection.mvt_serving_projection_version_id
+            ),
+            "service_release_binding_id": binding.release.service_release_binding_id,
+            "slo_binding_id": binding.slo.binding_id,
+            "serving_release_binding_sha256": binding.binding_sha256,
+            "bound_by": binding.bound_by,
+            "bound_at": binding.bound_at,
+        }
+        with self._transaction(binding.tenant_id) as connection:
+            existing = connection.execute(
+                text(
+                    """
+                    SELECT data_product_version_id
+                      FROM gda_control.jqdltb_serving_release_binding
+                     WHERE tenant_id = :tenant_id
+                       AND data_product_version_id = :data_product_version_id
+                    """
+                ),
+                values,
+            ).first()
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.record_jqdltb_serving_release_binding(
+                        :tenant_id, :data_product_version_id, :product_urn,
+                        :manifest_sha256, :output_resource_version_id,
+                        :service_urn, :service_definition_version_id,
+                        :layer_definition_version_id,
+                        :mvt_serving_projection_version_id,
+                        :service_release_binding_id, :slo_binding_id,
+                        :serving_release_binding_sha256, :bound_by, :bound_at
+                    )
+                    """
+                ),
+                values,
+            ).scalar_one()
+            row = connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, data_product_version_id, product_urn,
+                           manifest_sha256, output_resource_version_id,
+                           service_urn, service_definition_version_id,
+                           layer_definition_version_id,
+                           mvt_serving_projection_version_id,
+                           service_release_binding_id, slo_binding_id,
+                           serving_release_binding_sha256, bound_by, bound_at
+                      FROM gda_control.jqdltb_serving_release_binding
+                     WHERE tenant_id = :tenant_id
+                       AND data_product_version_id = :data_product_version_id
+                    """
+                ),
+                values,
+            ).mappings().one()
+            stored = self._jqdltb_serving_release_from_row(row)
+            expected = values
+            if stored != expected:
+                raise GatewayConflictError(
+                    "JQDLTB serving release identity has different content"
+                )
+            return GatewayWriteResult(stored, existing is None)
+
+    def get_jqdltb_serving_release_binding(
+        self,
+        tenant_id: str,
+        data_product_version_id: UUID,
+    ) -> dict[str, Any]:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, data_product_version_id, product_urn,
+                           manifest_sha256, output_resource_version_id,
+                           service_urn, service_definition_version_id,
+                           layer_definition_version_id,
+                           mvt_serving_projection_version_id,
+                           service_release_binding_id, slo_binding_id,
+                           serving_release_binding_sha256, bound_by, bound_at
+                      FROM gda_control.jqdltb_serving_release_binding
+                     WHERE tenant_id = :tenant_id
+                       AND data_product_version_id = :data_product_version_id
+                    """
+                ),
+                {
+                    "tenant_id": tenant,
+                    "data_product_version_id": data_product_version_id,
+                },
+            ).mappings().one_or_none()
+            if row is None:
+                raise GatewayNotFoundError("JQDLTB serving release was not found")
+            return self._jqdltb_serving_release_from_row(row)
+
+    @staticmethod
+    def _service_consumer_binding_from_row(row) -> ServiceConsumerBinding:
+        value = dict(row)
+        for key in ("scope", "compatibility_evidence"):
+            value[key] = _as_json(value[key])
+        return ServiceConsumerBinding.model_validate(value)
+
+    @staticmethod
+    def _service_consumer_binding_revocation_from_row(
+        row,
+    ) -> ServiceConsumerBindingRevocation:
+        return ServiceConsumerBindingRevocation.model_validate(dict(row))
+
+    @staticmethod
+    def _service_consumer_binding_renewal_from_row(
+        row,
+    ) -> ServiceConsumerBindingRenewal:
+        return ServiceConsumerBindingRenewal.model_validate(dict(row))
+
+    @classmethod
+    def _load_service_consumer_binding(
+        cls,
+        connection,
+        tenant_id: str,
+        service_consumer_binding_id: UUID,
+    ) -> ServiceConsumerBinding | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, service_consumer_binding_id, service_urn,
+                           service_definition_version_id,
+                           service_release_binding_id, consumer_ref, action,
+                           purpose, scope, credential_ref, expires_at,
+                           compatibility_fingerprint, compatibility_evidence,
+                           binding_sha256, created_by, created_at,
+                           approval_case_ref, grant_plan_sha256,
+                           renewal_of_binding_id, renewal_approval_case_ref,
+                           renewal_plan_sha256
+                      FROM gda_control.service_consumer_binding
+                     WHERE tenant_id = :tenant_id
+                       AND service_consumer_binding_id =
+                            :service_consumer_binding_id
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "service_consumer_binding_id": service_consumer_binding_id,
+                },
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return cls._service_consumer_binding_from_row(row) if row is not None else None
+
+    def register_service_consumer_binding(
+        self,
+        binding: ServiceConsumerBinding,
+    ) -> GatewayWriteResult:
+        """Record one exact-release MVT consumer grant through its recorder."""
+
+        with self._transaction(binding.tenant_id) as connection:
+            result = connection.execute(
+                text(
+                    """
+                    SELECT service_consumer_binding_id, created
+                      FROM gda_control.record_service_consumer_binding(
+                          :tenant_id,
+                          CAST(:service_consumer_binding_id AS uuid),
+                          :approval_case_ref,
+                          CAST(:grant_plan_sha256 AS char(64)),
+                          :service_urn,
+                          CAST(:service_definition_version_id AS uuid),
+                          CAST(:service_release_binding_id AS uuid),
+                          :consumer_ref, :action, :purpose,
+                          CAST(:scope AS jsonb), :credential_ref, :expires_at,
+                          CAST(:compatibility_fingerprint AS char(64)),
+                          CAST(:compatibility_evidence AS jsonb),
+                          CAST(:binding_sha256 AS char(64)),
+                          :created_by, :created_at
+                      )
+                    """
+                ),
+                {
+                    **binding.model_dump(
+                        mode="python",
+                        exclude={"scope", "compatibility_evidence"},
+                    ),
+                    "scope": _json(binding.scope),
+                    "compatibility_evidence": _json(binding.compatibility_evidence),
+                },
+            ).mappings().one()
+            stored = self._load_service_consumer_binding(
+                connection,
+                binding.tenant_id,
+                binding.service_consumer_binding_id,
+            )
+            if stored is None or stored != binding:
+                raise GatewayConflictError(
+                    "ServiceConsumerBinding identity has different content"
+                )
+            return GatewayWriteResult(stored, bool(result["created"]))
+
+    def register_service_consumer_binding_revocation(
+        self,
+        revocation: ServiceConsumerBindingRevocation,
+    ) -> GatewayWriteResult:
+        """Record one approved binding revocation through its controlled recorder."""
+
+        with self._transaction(revocation.tenant_id) as connection:
+            result = connection.execute(
+                text(
+                    """
+                    SELECT service_consumer_binding_revocation_id, created
+                      FROM gda_control.record_service_consumer_binding_revocation(
+                          :tenant_id,
+                          CAST(:service_consumer_binding_revocation_id AS uuid),
+                          CAST(:service_consumer_binding_id AS uuid),
+                          CAST(:binding_sha256 AS char(64)),
+                          :approval_case_ref,
+                          CAST(:revoke_plan_sha256 AS char(64)),
+                          :reason, :revoked_by, :revoked_at
+                      )
+                    """
+                ),
+                revocation.model_dump(mode="python"),
+            ).mappings().one()
+            stored = self._load_service_consumer_binding_revocation(
+                connection,
+                revocation.tenant_id,
+                revocation.service_consumer_binding_revocation_id,
+            )
+            if stored is None or stored != revocation:
+                raise GatewayConflictError(
+                    "ServiceConsumerBinding revocation identity has different content"
+                )
+            return GatewayWriteResult(stored, bool(result["created"]))
+
+    def register_service_consumer_binding_renewal(
+        self,
+        binding: ServiceConsumerBinding,
+        renewal: ServiceConsumerBindingRenewal,
+    ) -> GatewayWriteResult:
+        """Record an approval-bound replacement binding and its renewal fact."""
+
+        if binding.renewal_of_binding_id != renewal.source_binding_id:
+            raise GatewayValidationError("renewal target and fact source do not match")
+        if binding.service_consumer_binding_id != renewal.target_binding_id:
+            raise GatewayValidationError("renewal target and fact target do not match")
+        with self._transaction(binding.tenant_id) as connection:
+            result = connection.execute(
+                text(
+                    """
+                    SELECT service_consumer_binding_renewal_id, created
+                      FROM gda_control.record_service_consumer_binding_renewal(
+                          :tenant_id,
+                          CAST(:service_consumer_binding_renewal_id AS uuid),
+                          CAST(:source_binding_id AS uuid),
+                          CAST(:source_binding_sha256 AS char(64)),
+                          CAST(:target_binding_id AS uuid),
+                          :service_urn,
+                          CAST(:service_definition_version_id AS uuid),
+                          CAST(:service_release_binding_id AS uuid),
+                          :consumer_ref, :action, :purpose,
+                          CAST(:scope AS jsonb), :credential_ref, :expires_at,
+                          CAST(:compatibility_fingerprint AS char(64)),
+                          CAST(:compatibility_evidence AS jsonb),
+                          CAST(:target_binding_sha256 AS char(64)),
+                          :created_by, :created_at, :approval_case_ref,
+                          CAST(:renewal_plan_sha256 AS char(64)),
+                          :renewed_by, :renewed_at
+                      )
+                    """
+                ),
+                {
+                    **binding.model_dump(
+                        mode="python",
+                        exclude={
+                            "scope",
+                            "compatibility_evidence",
+                            "approval_case_ref",
+                            "grant_plan_sha256",
+                            "renewal_of_binding_id",
+                            "renewal_approval_case_ref",
+                            "renewal_plan_sha256",
+                        },
+                    ),
+                    "scope": _json(binding.scope),
+                    "compatibility_evidence": _json(binding.compatibility_evidence),
+                    "target_binding_sha256": binding.binding_sha256,
+                    "approval_case_ref": binding.renewal_approval_case_ref,
+                    "renewal_plan_sha256": binding.renewal_plan_sha256,
+                    **renewal.model_dump(
+                        mode="python",
+                        include={
+                            "service_consumer_binding_renewal_id",
+                            "source_binding_id",
+                            "source_binding_sha256",
+                            "target_binding_id",
+                            "renewed_by",
+                            "renewed_at",
+                        },
+                    ),
+                },
+            ).mappings().one()
+            stored_binding = self._load_service_consumer_binding(
+                connection, binding.tenant_id, binding.service_consumer_binding_id
+            )
+            stored_renewal = self._load_service_consumer_binding_renewal(
+                connection,
+                binding.tenant_id,
+                renewal.service_consumer_binding_renewal_id,
+            )
+            if stored_binding != binding or stored_renewal != renewal:
+                raise GatewayConflictError(
+                    "ServiceConsumerBinding renewal identity has different content"
+                )
+            return GatewayWriteResult(stored_binding, bool(result["created"]))
+
+    @classmethod
+    def _load_service_consumer_binding_renewal(
+        cls,
+        connection,
+        tenant_id: str,
+        renewal_id: UUID,
+    ) -> ServiceConsumerBindingRenewal | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, service_consumer_binding_renewal_id,
+                           source_binding_id, source_binding_sha256,
+                           target_binding_id, target_binding_sha256,
+                           approval_case_ref, renewal_plan_sha256,
+                           renewed_by, renewed_at
+                      FROM gda_control.service_consumer_binding_renewal
+                     WHERE tenant_id = :tenant_id
+                       AND service_consumer_binding_renewal_id = :renewal_id
+                    """
+                ),
+                {"tenant_id": tenant_id, "renewal_id": renewal_id},
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return cls._service_consumer_binding_renewal_from_row(row) if row is not None else None
+
+    @classmethod
+    def _load_service_consumer_binding_revocation(
+        cls,
+        connection,
+        tenant_id: str,
+        service_consumer_binding_revocation_id: UUID,
+    ) -> ServiceConsumerBindingRevocation | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, service_consumer_binding_revocation_id,
+                           service_consumer_binding_id, binding_sha256,
+                           approval_case_ref, revoke_plan_sha256, reason,
+                           context, revoked_by, revoked_at
+                      FROM gda_control.service_consumer_binding_revocation
+                     WHERE tenant_id = :tenant_id
+                       AND service_consumer_binding_revocation_id =
+                           :service_consumer_binding_revocation_id
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "service_consumer_binding_revocation_id":
+                        service_consumer_binding_revocation_id,
+                },
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return (
+            cls._service_consumer_binding_revocation_from_row(row)
+            if row is not None
+            else None
+        )
+
+    def get_service_consumer_binding_revocation(
+        self,
+        tenant_id: str,
+        service_consumer_binding_id: UUID,
+    ) -> ServiceConsumerBindingRevocation | None:
+        """Return the append-only revoke fact for one binding, if present."""
+
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT tenant_id, service_consumer_binding_revocation_id,
+                               service_consumer_binding_id, binding_sha256,
+                               approval_case_ref, revoke_plan_sha256, reason,
+                               context, revoked_by, revoked_at
+                          FROM gda_control.service_consumer_binding_revocation
+                         WHERE tenant_id = :tenant_id
+                           AND service_consumer_binding_id =
+                               :service_consumer_binding_id
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "service_consumer_binding_id": service_consumer_binding_id,
+                    },
+                )
+                .mappings()
+                .one_or_none()
+            )
+            return (
+                self._service_consumer_binding_revocation_from_row(row)
+                if row is not None
+                else None
+            )
+
+    def get_active_service_consumer_binding_for_release(
+        self,
+        tenant_id: str,
+        service_urn: str,
+        service_definition_version_id: UUID,
+        service_release_binding_id: UUID,
+        consumer_ref: str,
+    ) -> ServiceConsumerBinding | None:
+        """Resolve the one currently active MVT grant for an exact release."""
+
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT binding.tenant_id, binding.service_consumer_binding_id,
+                               binding.service_urn,
+                               service_definition_version_id,
+                               service_release_binding_id, consumer_ref, action,
+                               purpose, scope, credential_ref, expires_at,
+                               compatibility_fingerprint, compatibility_evidence,
+                               binding_sha256, created_by, created_at,
+                               approval_case_ref, grant_plan_sha256,
+                               renewal_of_binding_id, renewal_approval_case_ref,
+                               renewal_plan_sha256
+                          FROM gda_control.service_consumer_binding AS binding
+                         WHERE binding.tenant_id = :tenant_id
+                           AND binding.service_urn = :service_urn
+                           AND binding.service_definition_version_id =
+                                :service_definition_version_id
+                           AND binding.service_release_binding_id =
+                                :service_release_binding_id
+                           AND binding.consumer_ref = :consumer_ref
+                           AND binding.expires_at > clock_timestamp()
+                           AND NOT EXISTS (
+                               SELECT 1
+                                 FROM gda_control.service_consumer_binding_revocation
+                                WHERE tenant_id =
+                                      binding.tenant_id
+                                  AND service_consumer_binding_id =
+                                      binding.service_consumer_binding_id
+                           )
+                           AND NOT EXISTS (
+                               SELECT 1
+                                 FROM gda_control.service_consumer_binding_renewal
+                                WHERE tenant_id = binding.tenant_id
+                                  AND source_binding_id =
+                                      binding.service_consumer_binding_id
+                           )
+                         ORDER BY binding.created_at DESC,
+                                  binding.service_consumer_binding_id
+                         LIMIT 1
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "service_urn": service_urn,
+                        "service_definition_version_id": service_definition_version_id,
+                        "service_release_binding_id": service_release_binding_id,
+                        "consumer_ref": consumer_ref,
+                    },
+                )
+                .mappings()
+                .one_or_none()
+            )
+            return (
+                self._service_consumer_binding_from_row(row)
+                if row is not None
+                else None
+            )
 
     @staticmethod
     def _service_deployment_from_row(row) -> ServiceDeploymentRevision:
@@ -6368,6 +10971,290 @@ class PlatformGateway:
                 raise GatewayNotFoundError("ServiceDeploymentRevision was not found")
             return stored
 
+    @staticmethod
+    def _validate_gis_service_deployment_observation(
+        deployment: ServiceDeploymentRevision,
+        observation: FrameworkAttemptObservation,
+    ) -> None:
+        evidence = observation.evidence
+        expected = {
+            "schema": "gda.gis_service_deployment_observation.v2",
+            "deployment_revision_id": str(deployment.deployment_revision_id),
+            "service_definition_version_id": str(
+                deployment.service_definition_version_id
+            ),
+            "service_release_binding_id": str(
+                deployment.service_release_binding_id
+            ),
+            "provider_system": deployment.provider_system,
+            "provider_namespace": deployment.provider_namespace,
+            "provider_deployment_id": deployment.provider_deployment_id,
+            "provider_revision_ref": deployment.provider_revision_ref,
+            "config_sha256": deployment.config_sha256,
+        }
+        if deployment.service_release_binding_id is None:
+            raise GatewayValidationError(
+                "GIS deployment observation requires a release-bound deployment"
+            )
+        if observation.run_id != deployment.run_id:
+            raise GatewayValidationError(
+                "GIS deployment observation must bind the deployment PlatformRun"
+            )
+        if any(evidence.get(key) != value for key, value in expected.items()):
+            raise GatewayValidationError(
+                "GIS deployment observation does not bind the deployment identity"
+            )
+        if (
+            observation.external_namespace != deployment.provider_namespace
+            or observation.external_run_id != deployment.provider_deployment_id
+            or observation.external_attempt_id != deployment.provider_revision_ref
+        ):
+            raise GatewayValidationError(
+                "GIS deployment observation external identity does not match placement"
+            )
+        if observation.observed_state.lower() not in {
+            "success",
+            "succeeded",
+            "ready",
+            "completed",
+            "failed",
+            "error",
+            "cancelled",
+            "timed_out",
+        }:
+            raise GatewayValidationError(
+                "GIS deployment observation must be a terminal provider state"
+            )
+        endpoint_uri = evidence.get("endpoint_uri")
+        if not isinstance(endpoint_uri, str):
+            raise GatewayValidationError(
+                "GIS deployment observation requires a stable provider endpoint URI"
+            )
+        parsed_endpoint = urlsplit(endpoint_uri)
+        if (
+            parsed_endpoint.scheme != "https"
+            or not parsed_endpoint.hostname
+            or parsed_endpoint.username is not None
+            or parsed_endpoint.password is not None
+            or parsed_endpoint.query
+            or parsed_endpoint.fragment
+        ):
+            raise GatewayValidationError(
+                "GIS deployment observation endpoint URI must be credential-free HTTPS"
+            )
+        if (
+            not isinstance(evidence.get("provider_version"), str)
+            or not evidence["provider_version"].strip()
+            or not isinstance(evidence.get("health_evidence_sha256"), str)
+            or len(evidence["health_evidence_sha256"]) != 64
+            or not isinstance(evidence.get("provider_receipt"), dict)
+            or not evidence["provider_receipt"]
+        ):
+            raise GatewayValidationError(
+                "GIS deployment observation is missing provider readiness evidence"
+            )
+
+    def record_gis_service_deployment_observation(
+        self,
+        deployment_revision_id: UUID,
+        observation: FrameworkAttemptObservation,
+    ) -> GatewayWriteResult:
+        """Record terminal provider evidence only for one deploying GIS revision."""
+        with self._transaction(observation.tenant_id) as connection:
+            deployment = self._load_service_deployment_revision(
+                connection,
+                observation.tenant_id,
+                deployment_revision_id,
+            )
+            if deployment is None:
+                raise GatewayNotFoundError("ServiceDeploymentRevision was not found")
+            if deployment.state is not ServiceDeploymentState.DEPLOYING:
+                raise GatewayConflictError(
+                    "GIS deployment can record terminal evidence only while deploying"
+                )
+            if observation.observed_at < deployment.updated_at:
+                raise GatewayValidationError(
+                    "GIS deployment observation predates the deploying transition"
+                )
+            self._validate_gis_service_deployment_observation(
+                deployment,
+                observation,
+            )
+            connection.execute(
+                text(
+                    "SELECT set_config("
+                    "'gda.gis_service_deployment_observation_allowed', '1', true)"
+                )
+            )
+            return self._put_observation(connection, observation)
+
+    def settle_gis_service_deployment_terminal(
+        self,
+        deployment_revision_id: UUID,
+        observation: FrameworkAttemptObservation,
+        *,
+        expected_state_version: int,
+        actor_subject: str,
+        reason: str,
+        idempotency_key: str,
+        occurred_at: datetime,
+    ) -> GISServiceDeploymentTerminalSettlement:
+        """Atomically record release-bound terminal evidence and settle its revision."""
+        if not actor_subject.startswith("workload:"):
+            raise GatewayForbiddenError(
+                "GIS deployment terminal settlement requires workload identity"
+            )
+        if occurred_at.tzinfo is None or occurred_at.utcoffset() is None:
+            raise GatewayValidationError("deployment settlement time requires a timezone")
+        if occurred_at < observation.observed_at:
+            raise GatewayValidationError(
+                "deployment settlement cannot precede provider observation"
+            )
+        try:
+            target_state = service_deployment_terminal_state(observation.observed_state)
+        except ValueError as exc:
+            raise GatewayValidationError(str(exc)) from exc
+
+        with self._transaction(observation.tenant_id) as connection:
+            deployment = self._load_service_deployment_revision(
+                connection,
+                observation.tenant_id,
+                deployment_revision_id,
+            )
+            if deployment is None:
+                raise GatewayNotFoundError("ServiceDeploymentRevision was not found")
+            if deployment.state not in {
+                ServiceDeploymentState.DEPLOYING,
+                target_state,
+            }:
+                raise GatewayConflictError(
+                    "GIS deployment terminal settlement requires deploying revision "
+                    "or an exact terminal replay"
+                )
+            if (
+                deployment.state is ServiceDeploymentState.DEPLOYING
+                and observation.observed_at < deployment.updated_at
+            ):
+                raise GatewayValidationError(
+                    "GIS deployment observation predates the deploying transition"
+                )
+            self._validate_gis_service_deployment_observation(deployment, observation)
+            connection.execute(
+                text(
+                    "SELECT set_config("
+                    "'gda.gis_service_deployment_observation_allowed', '1', true)"
+                )
+            )
+            observation_result = self._put_observation(connection, observation)
+            settled = self._transition_service_deployment_revision(
+                connection,
+                observation.tenant_id,
+                deployment_revision_id,
+                expected_state_version=expected_state_version,
+                to_state=target_state,
+                provider_observation_id=observation.observation_id,
+                actor_subject=actor_subject,
+                reason=reason,
+                idempotency_key=idempotency_key,
+                occurred_at=occurred_at,
+            )
+            return GISServiceDeploymentTerminalSettlement(
+                tenant_id=observation.tenant_id,
+                deployment=settled,
+                observation=observation_result.value,
+                observation_created=observation_result.created,
+            )
+
+    @staticmethod
+    def _service_deployment_event_from_row(row) -> ServiceDeploymentEvent:
+        return ServiceDeploymentEvent.model_validate(dict(row))
+
+    def list_service_deployment_events(
+        self,
+        tenant_id: str,
+        deployment_revision_id: UUID,
+    ) -> tuple[ServiceDeploymentEvent, ...]:
+        """Read the immutable, tenant-scoped transition timeline for one revision."""
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            if (
+                self._load_service_deployment_revision(
+                    connection,
+                    tenant,
+                    deployment_revision_id,
+                )
+                is None
+            ):
+                raise GatewayNotFoundError("ServiceDeploymentRevision was not found")
+            rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT tenant_id, event_id, deployment_revision_id,
+                               sequence_no, from_state, to_state,
+                               provider_observation_id, actor_subject, reason,
+                               idempotency_key, event_sha256, occurred_at
+                          FROM gda_control.service_deployment_event
+                         WHERE tenant_id = :tenant_id
+                           AND deployment_revision_id = :deployment_revision_id
+                         ORDER BY sequence_no ASC, event_id ASC
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "deployment_revision_id": deployment_revision_id,
+                    },
+                )
+                .mappings()
+                .all()
+            )
+            return tuple(self._service_deployment_event_from_row(row) for row in rows)
+
+    def _transition_service_deployment_revision(
+        self,
+        connection,
+        tenant_id: str,
+        deployment_revision_id: UUID,
+        *,
+        expected_state_version: int,
+        to_state: ServiceDeploymentState | str,
+        provider_observation_id: UUID | None,
+        actor_subject: str,
+        reason: str,
+        idempotency_key: str,
+        occurred_at: datetime,
+    ) -> ServiceDeploymentRevision:
+        state = ServiceDeploymentState(to_state)
+        connection.execute(
+            text(
+                """
+                SELECT gda_control.transition_service_deployment_revision(
+                    :tenant_id, :deployment_revision_id,
+                    :expected_state_version, :to_state,
+                    :provider_observation_id, :actor_subject, :reason,
+                    :idempotency_key, :occurred_at
+                )
+                """
+            ),
+            {
+                "tenant_id": tenant_id,
+                "deployment_revision_id": deployment_revision_id,
+                "expected_state_version": expected_state_version,
+                "to_state": state.value,
+                "provider_observation_id": provider_observation_id,
+                "actor_subject": actor_subject,
+                "reason": reason,
+                "idempotency_key": idempotency_key,
+                "occurred_at": occurred_at.astimezone(UTC),
+            },
+        ).scalar_one()
+        stored = self._load_service_deployment_revision(
+            connection, tenant_id, deployment_revision_id
+        )
+        if stored is None:
+            raise GatewayNotFoundError("ServiceDeploymentRevision was not found")
+        return stored
+
     def transition_service_deployment_revision(
         self,
         tenant_id: str,
@@ -6382,39 +11269,21 @@ class PlatformGateway:
         occurred_at: datetime,
     ) -> ServiceDeploymentRevision:
         tenant = _TENANT_ADAPTER.validate_python(tenant_id)
-        state = ServiceDeploymentState(to_state)
         if occurred_at.tzinfo is None or occurred_at.utcoffset() is None:
             raise GatewayValidationError("deployment transition time requires a timezone")
         with self._transaction(tenant) as connection:
-            connection.execute(
-                text(
-                    """
-                    SELECT gda_control.transition_service_deployment_revision(
-                        :tenant_id, :deployment_revision_id,
-                        :expected_state_version, :to_state,
-                        :provider_observation_id, :actor_subject, :reason,
-                        :idempotency_key, :occurred_at
-                    )
-                    """
-                ),
-                {
-                    "tenant_id": tenant,
-                    "deployment_revision_id": deployment_revision_id,
-                    "expected_state_version": expected_state_version,
-                    "to_state": state.value,
-                    "provider_observation_id": provider_observation_id,
-                    "actor_subject": actor_subject,
-                    "reason": reason,
-                    "idempotency_key": idempotency_key,
-                    "occurred_at": occurred_at.astimezone(UTC),
-                },
-            ).scalar_one()
-            stored = self._load_service_deployment_revision(
-                connection, tenant, deployment_revision_id
+            return self._transition_service_deployment_revision(
+                connection,
+                tenant,
+                deployment_revision_id,
+                expected_state_version=expected_state_version,
+                to_state=to_state,
+                provider_observation_id=provider_observation_id,
+                actor_subject=actor_subject,
+                reason=reason,
+                idempotency_key=idempotency_key,
+                occurred_at=occurred_at,
             )
-            if stored is None:
-                raise GatewayNotFoundError("ServiceDeploymentRevision was not found")
-            return stored
 
     @staticmethod
     def _endpoint_revision_from_row(row) -> EndpointRevision:
@@ -6533,6 +11402,9 @@ class PlatformGateway:
         active_layer = None
         active_style = None
         active_tile_matrix_set = None
+        active_cache_policy = None
+        active_service_policy = None
+        active_mvt_serving_projection = None
         if root["active_endpoint_revision_id"] is not None:
             active_endpoint = cls._load_endpoint_revision(
                 connection,
@@ -6589,6 +11461,32 @@ class PlatformGateway:
                         raise GatewayConflictError(
                             "active TileMatrixSetDefinitionVersion is missing"
                         )
+                if active_release.cache_policy_version_id is not None:
+                    active_cache_policy = cls._load_cache_policy_version(
+                        connection,
+                        tenant_id,
+                        active_release.cache_policy_version_id,
+                    )
+                    if active_cache_policy is None:
+                        raise GatewayConflictError("active CachePolicyVersion is missing")
+                if active_release.mvt_serving_projection_version_id is not None:
+                    active_mvt_serving_projection = (
+                        cls._load_mvt_serving_projection_version(
+                            connection,
+                            tenant_id,
+                            active_release.mvt_serving_projection_version_id,
+                        )
+                    )
+                    if active_mvt_serving_projection is None:
+                        raise GatewayConflictError(
+                            "active MVTServingProjectionVersion is missing"
+                        )
+                active_service_policy = cls._load_service_policy_binding_for_release(
+                    connection,
+                    tenant_id,
+                    active_deployment.service_definition_version_id,
+                    active_release.service_release_binding_id,
+                )
         return GISServiceControlProjection(
             tenant_id=root["tenant_id"],
             service_urn=root["service_urn"],
@@ -6600,6 +11498,9 @@ class PlatformGateway:
             active_layer_definition_version=active_layer,
             active_style_definition_version=active_style,
             active_tile_matrix_set_definition_version=active_tile_matrix_set,
+            active_cache_policy_version=active_cache_policy,
+            active_service_policy_binding=active_service_policy,
+            active_mvt_serving_projection_version=active_mvt_serving_projection,
             created_at=root["created_at"],
             updated_at=root["updated_at"],
         )
@@ -6617,6 +11518,311 @@ class PlatformGateway:
             if projection is None:
                 raise GatewayNotFoundError("GIS service was not found")
             return projection
+
+    @staticmethod
+    def _gis_service_slo_binding_from_row(row: Any) -> GISServiceSLOBinding:
+        return GISServiceSLOBinding.model_validate(dict(row))
+
+    def bind_gis_service_slo(
+        self,
+        binding: GISServiceSLOBinding,
+    ) -> GatewayWriteResult:
+        with self._transaction(binding.tenant_id) as connection:
+            existing = connection.execute(
+                text(
+                    """
+                    SELECT binding_id
+                    FROM gda_control.gis_service_slo_binding
+                    WHERE tenant_id = :tenant_id AND service_urn = :service_urn
+                      AND slo_definition_ref = :slo_definition_ref
+                      AND activation_version = :activation_version
+                    """
+                ),
+                {
+                    "tenant_id": binding.tenant_id,
+                    "service_urn": binding.service_urn,
+                    "slo_definition_ref": binding.slo_definition_ref,
+                    "activation_version": binding.activation_version,
+                },
+            ).first()
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.bind_gis_service_slo(
+                        :tenant_id, :binding_id, :service_urn,
+                        :slo_definition_ref, :active_version_ref,
+                        :definition_fingerprint, :approval_case_ref,
+                        :activation_version, :bound_by, :binding_reason,
+                        :bound_at
+                    )
+                    """
+                ),
+                binding.model_dump(mode="json"),
+            ).scalar_one()
+            row = connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, binding_id, service_urn,
+                           slo_definition_ref, active_version_ref,
+                           definition_fingerprint, approval_case_ref,
+                           activation_version, bound_by, binding_reason, bound_at
+                    FROM gda_control.gis_service_slo_binding
+                    WHERE tenant_id = :tenant_id AND binding_id = :binding_id
+                    """
+                ),
+                {"tenant_id": binding.tenant_id, "binding_id": binding.binding_id},
+            ).mappings().one_or_none()
+            if row is None:
+                raise GatewayNotFoundError("GIS ServiceSLO binding was not visible")
+            stored = self._gis_service_slo_binding_from_row(row)
+            if stored.model_copy(update={"bound_at": binding.bound_at}) != binding:
+                raise GatewayConflictError(
+                    "GIS ServiceSLO binding identity already has different evidence"
+                )
+            return GatewayWriteResult(stored, existing is None)
+
+    def get_gis_service_slo_binding(
+        self,
+        tenant_id: str,
+        service_urn: str,
+    ) -> GISServiceSLOBinding:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, binding_id, service_urn,
+                           slo_definition_ref, active_version_ref,
+                           definition_fingerprint, approval_case_ref,
+                           activation_version, bound_by, binding_reason, bound_at
+                    FROM gda_control.gis_service_slo_binding b
+                    JOIN gda_control.slo_definition_activation a
+                      ON a.tenant_id = b.tenant_id
+                     AND a.slo_definition_ref = b.slo_definition_ref
+                     AND a.active_version_ref = b.active_version_ref
+                     AND a.active_fingerprint = b.definition_fingerprint
+                     AND a.approval_case_ref = b.approval_case_ref
+                     AND a.activation_version = b.activation_version
+                    WHERE b.tenant_id = :tenant_id AND b.service_urn = :service_urn
+                    ORDER BY bound_at DESC, binding_id DESC
+                    LIMIT 1
+                    """
+                ),
+                {"tenant_id": tenant, "service_urn": service_urn},
+            ).mappings().one_or_none()
+            if row is None:
+                raise GatewayNotFoundError("GIS ServiceSLO binding was not found")
+            return self._gis_service_slo_binding_from_row(row)
+
+    def get_active_gis_service_slo_binding(
+        self,
+        tenant_id: str,
+        service_urn: str,
+        *,
+        slo_definition_ref: str,
+        active_version_ref: str,
+        definition_fingerprint: str,
+        approval_case_ref: str,
+        activation_version: int,
+    ) -> GISServiceSLOBinding:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = connection.execute(
+                text(
+                    """
+                    SELECT b.tenant_id, b.binding_id, b.service_urn,
+                           b.slo_definition_ref, b.active_version_ref,
+                           b.definition_fingerprint, b.approval_case_ref,
+                           b.activation_version, b.bound_by, b.binding_reason,
+                           b.bound_at
+                    FROM gda_control.gis_service_slo_binding b
+                    JOIN gda_control.slo_definition_activation a
+                      ON a.tenant_id = b.tenant_id
+                     AND a.slo_definition_ref = b.slo_definition_ref
+                     AND a.active_version_ref = b.active_version_ref
+                     AND a.active_fingerprint = b.definition_fingerprint
+                     AND a.approval_case_ref = b.approval_case_ref
+                     AND a.activation_version = b.activation_version
+                    WHERE b.tenant_id = :tenant_id
+                      AND b.service_urn = :service_urn
+                      AND b.slo_definition_ref = :slo_definition_ref
+                      AND b.active_version_ref = :active_version_ref
+                      AND b.definition_fingerprint = :definition_fingerprint
+                      AND b.approval_case_ref = :approval_case_ref
+                      AND b.activation_version = :activation_version
+                    """
+                ),
+                {
+                    "tenant_id": tenant,
+                    "service_urn": service_urn,
+                    "slo_definition_ref": slo_definition_ref,
+                    "active_version_ref": active_version_ref,
+                    "definition_fingerprint": definition_fingerprint,
+                    "approval_case_ref": approval_case_ref,
+                    "activation_version": activation_version,
+                },
+            ).mappings().one_or_none()
+            if row is None:
+                raise GatewayNotFoundError(
+                    "GIS ServiceSLO binding is absent or no longer active"
+                )
+            return self._gis_service_slo_binding_from_row(row)
+
+    def get_gis_service_slo_binding_for_authority(
+        self,
+        tenant_id: str,
+        service_urn: str,
+        *,
+        slo_definition_ref: str,
+        active_version_ref: str,
+        definition_fingerprint: str,
+        approval_case_ref: str,
+        activation_version: int,
+    ) -> GISServiceSLOBinding:
+        """Return the immutable binding for an exact activation, including history."""
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, binding_id, service_urn,
+                           slo_definition_ref, active_version_ref,
+                           definition_fingerprint, approval_case_ref,
+                           activation_version, bound_by, binding_reason, bound_at
+                    FROM gda_control.gis_service_slo_binding
+                    WHERE tenant_id = :tenant_id AND service_urn = :service_urn
+                      AND slo_definition_ref = :slo_definition_ref
+                      AND active_version_ref = :active_version_ref
+                      AND definition_fingerprint = :definition_fingerprint
+                      AND approval_case_ref = :approval_case_ref
+                      AND activation_version = :activation_version
+                    """
+                ),
+                {
+                    "tenant_id": tenant,
+                    "service_urn": service_urn,
+                    "slo_definition_ref": slo_definition_ref,
+                    "active_version_ref": active_version_ref,
+                    "definition_fingerprint": definition_fingerprint,
+                    "approval_case_ref": approval_case_ref,
+                    "activation_version": activation_version,
+                },
+            ).mappings().one_or_none()
+            if row is None:
+                raise GatewayNotFoundError(
+                    "GIS ServiceSLO binding for the SLO authority was not found"
+                )
+            return self._gis_service_slo_binding_from_row(row)
+
+    @staticmethod
+    def _gis_service_slo_reconciliation_from_row(
+        row: Any,
+    ) -> GISServiceSLOReconciliationTask:
+        return GISServiceSLOReconciliationTask.model_validate(dict(row))
+
+    def claim_gis_service_slo_reconciliations(
+        self,
+        tenant_id: str,
+        worker_id: str,
+        *,
+        actor_subject: str,
+        limit: int = 10,
+        lease_seconds: int = 60,
+    ) -> tuple[GISServiceSLOReconciliationTask, ...]:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT * FROM gda_control.claim_gis_service_slo_reconciliations(
+                            :tenant_id, :actor_subject, :worker_id,
+                            :limit, :lease_seconds
+                        )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "actor_subject": actor_subject,
+                        "worker_id": worker_id,
+                        "limit": limit,
+                        "lease_seconds": lease_seconds,
+                    },
+                )
+                .mappings()
+                .all()
+            )
+            return tuple(
+                self._gis_service_slo_reconciliation_from_row(row) for row in rows
+            )
+
+    def complete_gis_service_slo_reconciliation(
+        self,
+        tenant_id: str,
+        task_id: UUID,
+        *,
+        worker_id: str,
+        bound_at: datetime | None = None,
+    ) -> GISServiceSLOReconciliationTask:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT *
+                        FROM gda_control.complete_gis_service_slo_reconciliation(
+                            :tenant_id, CAST(:task_id AS uuid), :worker_id,
+                            :bound_at
+                        )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "task_id": str(task_id),
+                        "worker_id": worker_id,
+                        "bound_at": bound_at,
+                    },
+                )
+                .mappings()
+                .one()
+            )
+            return self._gis_service_slo_reconciliation_from_row(row)
+
+    def fail_gis_service_slo_reconciliation(
+        self,
+        tenant_id: str,
+        task_id: UUID,
+        *,
+        worker_id: str,
+        error: str,
+        retry_delay_seconds: int = 30,
+    ) -> GISServiceSLOReconciliationTask:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT *
+                        FROM gda_control.fail_gis_service_slo_reconciliation(
+                            :tenant_id, CAST(:task_id AS uuid), :worker_id,
+                            :error, :retry_delay_seconds
+                        )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "task_id": str(task_id),
+                        "worker_id": worker_id,
+                        "error": error,
+                        "retry_delay_seconds": retry_delay_seconds,
+                    },
+                )
+                .mappings()
+                .one()
+            )
+            return self._gis_service_slo_reconciliation_from_row(row)
 
     def activate_gis_service_endpoint(
         self,
@@ -6669,6 +11875,7 @@ def build_gateway_report(
     role_migration: Path | None = None,
     command_migration: Path | None = None,
     success_migration: Path | None = None,
+    blueprint_test_success_migration: Path | None = None,
     cancel_migration: Path | None = None,
     incident_migration: Path | None = None,
     incident_subject_migration: Path | None = None,
@@ -6677,12 +11884,27 @@ def build_gateway_report(
     master_metadata_projection_migration: Path | None = None,
     notification_migration: Path | None = None,
     consumer_binding_notification_migration: Path | None = None,
+    gis_service_consumer_migration_impact_migration: Path | None = None,
+    gis_service_migration_cutover_migration: Path | None = None,
+    gis_service_migration_rollback_migration: Path | None = None,
+    gis_service_endpoint_warmup_migration: Path | None = None,
+    gis_service_endpoint_warmup_command_migration: Path | None = None,
+    gis_mvt_cache_purge_outbox_migration: Path | None = None,
+    gis_service_slo_binding_migration: Path | None = None,
+    gis_service_slo_reconciliation_migration: Path | None = None,
+    gis_service_slo_incident_migration: Path | None = None,
+    jqdltb_serving_release_migration: Path | None = None,
+    jqdltb_serving_endpoint_promotion_migration: Path | None = None,
+    ogc_api_features_endpoint_contract_migration: Path | None = None,
     run_event_delivery_migration: Path | None = None,
     metadata_fabric_migration: Path | None = None,
     gateway_source: Path | None = None,
     routes_source: Path | None = None,
     command_consumer_source: Path | None = None,
     command_worker_source: Path | None = None,
+    gis_service_endpoint_warmup_consumer_source: Path | None = None,
+    gis_service_endpoint_warmup_worker_source: Path | None = None,
+    gis_service_slo_reconciliation_worker_source: Path | None = None,
     notification_worker_source: Path | None = None,
     consumer_binding_notification_worker_source: Path | None = None,
     run_event_delivery_worker_source: Path | None = None,
@@ -6697,6 +11919,9 @@ def build_gateway_report(
         "role_migration": (role_migration or GATEWAY_ROLE_MIGRATION).resolve(),
         "command_migration": (command_migration or COMMAND_OUTBOX_MIGRATION).resolve(),
         "success_migration": (success_migration or SUCCESS_VERDICT_MIGRATION).resolve(),
+        "blueprint_test_success_migration": (
+            blueprint_test_success_migration or BLUEPRINT_TEST_SUCCESS_MIGRATION
+        ).resolve(),
         "cancel_migration": (cancel_migration or CANCEL_COMMAND_MIGRATION).resolve(),
         "incident_migration": (incident_migration or DATA_INCIDENT_MIGRATION).resolve(),
         "incident_subject_migration": (
@@ -6716,9 +11941,67 @@ def build_gateway_report(
         "notification_migration": (
             notification_migration or INCIDENT_NOTIFICATION_MIGRATION
         ).resolve(),
+        "notification_receipt_migration": (
+            INCIDENT_NOTIFICATION_RECEIPT_MIGRATION
+        ).resolve(),
+        "notification_receipt_strict_migration": (
+            INCIDENT_NOTIFICATION_RECEIPT_STRICT_MIGRATION
+        ).resolve(),
+        "notification_recovery_migration": (
+            INCIDENT_NOTIFICATION_RECOVERY_MIGRATION
+        ).resolve(),
         "consumer_binding_notification_migration": (
             consumer_binding_notification_migration
             or CONSUMER_BINDING_NOTIFICATION_MIGRATION
+        ).resolve(),
+        "gis_service_consumer_migration_impact_migration": (
+            gis_service_consumer_migration_impact_migration
+            or GIS_SERVICE_CONSUMER_MIGRATION_IMPACT_MIGRATION
+        ).resolve(),
+        "gis_service_migration_cutover_migration": (
+            gis_service_migration_cutover_migration
+            or GIS_SERVICE_MIGRATION_CUTOVER_MIGRATION
+        ).resolve(),
+        "gis_service_migration_rollback_migration": (
+            gis_service_migration_rollback_migration
+            or GIS_SERVICE_MIGRATION_ROLLBACK_MIGRATION
+        ).resolve(),
+        "gis_service_endpoint_warmup_migration": (
+            gis_service_endpoint_warmup_migration
+            or GIS_SERVICE_ENDPOINT_WARMUP_MIGRATION
+        ).resolve(),
+        "gis_service_endpoint_warmup_command_migration": (
+            gis_service_endpoint_warmup_command_migration
+            or GIS_SERVICE_ENDPOINT_WARMUP_COMMAND_MIGRATION
+        ).resolve(),
+        "gis_mvt_cache_purge_outbox_migration": (
+            gis_mvt_cache_purge_outbox_migration
+            or GIS_MVT_CACHE_PURGE_OUTBOX_MIGRATION
+        ).resolve(),
+        "gis_service_slo_binding_migration": (
+            gis_service_slo_binding_migration
+            or GIS_SERVICE_SLO_BINDING_MIGRATION
+        ).resolve(),
+        "gis_service_slo_reconciliation_migration": (
+            gis_service_slo_reconciliation_migration
+            or GIS_SERVICE_SLO_RECONCILIATION_MIGRATION
+        ).resolve(),
+        "gis_service_slo_incident_migration": (
+            gis_service_slo_incident_migration or GIS_SERVICE_SLO_INCIDENT_MIGRATION
+        ).resolve(),
+        "jqdltb_serving_release_migration": (
+            jqdltb_serving_release_migration or JQDLTB_SERVING_RELEASE_MIGRATION
+        ).resolve(),
+        "jqdltb_serving_endpoint_promotion_migration": (
+            jqdltb_serving_endpoint_promotion_migration
+            or JQDLTB_SERVING_ENDPOINT_PROMOTION_MIGRATION
+        ).resolve(),
+        "mvt_serving_relation_attestation_migration": (
+            MVT_SERVING_RELATION_ATTESTATION_MIGRATION
+        ).resolve(),
+        "ogc_api_features_endpoint_contract_migration": (
+            ogc_api_features_endpoint_contract_migration
+            or OGC_API_FEATURES_ENDPOINT_CONTRACT_MIGRATION
         ).resolve(),
         "run_event_delivery_migration": (
             run_event_delivery_migration or RUN_EVENT_DELIVERY_MIGRATION
@@ -6730,6 +12013,18 @@ def build_gateway_report(
         "routes_source": (routes_source or GATEWAY_ROUTES_SOURCE).resolve(),
         "command_consumer_source": (command_consumer_source or COMMAND_CONSUMER_SOURCE).resolve(),
         "command_worker_source": (command_worker_source or COMMAND_WORKER_SOURCE).resolve(),
+        "gis_service_endpoint_warmup_consumer_source": (
+            gis_service_endpoint_warmup_consumer_source
+            or GIS_SERVICE_ENDPOINT_WARMUP_CONSUMER_SOURCE
+        ).resolve(),
+        "gis_service_endpoint_warmup_worker_source": (
+            gis_service_endpoint_warmup_worker_source
+            or GIS_SERVICE_ENDPOINT_WARMUP_WORKER_SOURCE
+        ).resolve(),
+        "gis_service_slo_reconciliation_worker_source": (
+            gis_service_slo_reconciliation_worker_source
+            or GIS_SERVICE_SLO_RECONCILIATION_WORKER_SOURCE
+        ).resolve(),
         "notification_worker_source": (
             notification_worker_source or INCIDENT_NOTIFICATION_WORKER_SOURCE
         ).resolve(),
@@ -6802,6 +12097,13 @@ def build_gateway_report(
             "GRANT SELECT, INSERT ON gda_control.quality_result",
             "finalize_platform_run_success",
         ),
+        "blueprint_test_success_migration": (
+            "CREATE OR REPLACE FUNCTION gda_control.finalize_blueprint_test_run_success(",
+            "framework_kind = 'duckdb'",
+            "gda.blueprint_test_executor_receipt.v1",
+            "executor_mode' = 'deterministic_local'",
+            "GRANT EXECUTE ON FUNCTION gda_control.finalize_blueprint_test_run_success(",
+        ),
         "cancel_migration": (
             "ALTER TABLE gda_control.platform_command_outbox",
             "'dolphinscheduler.cancel'",
@@ -6857,6 +12159,28 @@ def build_gateway_report(
             "fail_data_incident_notification",
             "GRANT SELECT ON TABLE gda_control.data_incident_notification_outbox",
         ),
+        "notification_receipt_migration": (
+            "data_incident_notification_receipt_fingerprint",
+            "gda.data_incident_notification_receipt.v1",
+            "provider_receipt JSONB NOT NULL DEFAULT '{}'::jsonb",
+            "terminal_worker_id TEXT",
+            "complete_data_incident_notification(\n    p_tenant_id TEXT,",
+            "provider receipt is invalid",
+        ),
+        "notification_receipt_strict_migration": (
+            "complete_data_incident_notification(",
+            "gda.alertmanager_provider_receipt.v1",
+            "provider receipt is invalid",
+            "claimed_until > clock_timestamp()",
+        ),
+        "notification_recovery_migration": (
+            "data_incident_notification_recovery_event",
+            "recover_data_incident_notification",
+            "previous_receipt_sha256",
+            "notification manual recovery limit reached",
+            "FORCE ROW LEVEL SECURITY",
+            "GRANT SELECT ON TABLE gda_control.data_incident_notification_recovery_event",
+        ),
         "consumer_binding_notification_migration": (
             "consumer_binding_migration_notification_outbox",
             "enqueue_consumer_binding_migration_notification",
@@ -6867,6 +12191,124 @@ def build_gateway_report(
             "consumer_binding_notification_receipt_fingerprint",
             "terminal notification evidence is not backed by a valid outbox receipt",
             "FORCE ROW LEVEL SECURITY",
+        ),
+        "gis_service_consumer_migration_impact_migration": (
+            "gis_service_consumer_binding_migration_impact",
+            "guard_gis_service_consumer_binding_migration_impact_insert",
+            "record_gis_service_consumer_binding_migration_impact",
+            "FORCE ROW LEVEL SECURITY",
+            "REVOKE ALL ON TABLE gda_control.gis_service_consumer_binding_migration_impact",
+            (
+                "GRANT EXECUTE ON FUNCTION "
+                "gda_control.record_gis_service_consumer_binding_migration_impact"
+            ),
+        ),
+        "gis_service_migration_cutover_migration": (
+            "gis_service_migration_cutover",
+            "cutover_gis_service_migration",
+            "activate_gis_service_endpoint_unverified",
+            "cross-product GIS endpoint activation requires migration cutover authority",
+            "release_namespace_rollover",
+            "FORCE ROW LEVEL SECURITY",
+            "REVOKE ALL ON TABLE gda_control.gis_service_migration_cutover",
+            "GRANT EXECUTE ON FUNCTION gda_control.cutover_gis_service_migration",
+        ),
+        "gis_service_migration_rollback_migration": (
+            "gis_service_migration_rollback",
+            "rollback_gis_service_migration",
+            "gis_service_migration_rollback_operation_fingerprint",
+            "gda.gis_service_migration.rollback.v1",
+            "migration cutover or rollback authority",
+            "release_namespace_rollover",
+            "FORCE ROW LEVEL SECURITY",
+            "REVOKE ALL ON TABLE gda_control.gis_service_migration_rollback",
+            "GRANT EXECUTE ON FUNCTION gda_control.rollback_gis_service_migration",
+        ),
+        "gis_service_endpoint_warmup_migration": (
+            "gis_service_endpoint_warmup",
+            "record_gis_service_endpoint_warmup",
+            "gis_service_endpoint_warmup_fingerprint",
+            "gis-service-endpoint-warmup",
+            "warmup Run lacks evidence-gated success",
+            "guard_gis_service_migration_destination_warmup",
+            "FORCE ROW LEVEL SECURITY",
+            "REVOKE ALL ON TABLE gda_control.gis_service_endpoint_warmup",
+            "GRANT EXECUTE ON FUNCTION gda_control.record_gis_service_endpoint_warmup",
+        ),
+        "gis_service_endpoint_warmup_command_migration": (
+            "ALTER TABLE gda_control.platform_command_outbox",
+            "'gis_service.endpoint_warmup'",
+            "finalize_gis_service_endpoint_warmup_success(",
+            "gda.gis_service_endpoint_warmup_execution_plan.v1",
+            "gda.gis_service_endpoint_warmup_receipt.v1",
+            "gda.gis_service_endpoint_warmup_quality.v1",
+            "gda.gis_service_endpoint_warmup_lineage.v1",
+            "fail_gis_service_endpoint_warmup_command_terminal(",
+            "FROM PUBLIC, gda_control_gateway",
+            ") TO gda_control_gateway;",
+        ),
+        "gis_mvt_cache_purge_outbox_migration": (
+            "gis_mvt_cache_purge_outbox",
+            "gis_mvt_cache_generation",
+            "enqueue_gis_mvt_cache_purge",
+            "AFTER INSERT ON gda_control.gis_service_migration_cutover",
+            "AFTER INSERT ON gda_control.gis_service_migration_rollback",
+            "FOR UPDATE SKIP LOCKED",
+            "claim_gis_mvt_cache_purges",
+            "complete_gis_mvt_cache_purge",
+            "fail_gis_mvt_cache_purge",
+            "FORCE ROW LEVEL SECURITY",
+            "GRANT SELECT ON TABLE gda_control.gis_mvt_cache_purge_outbox",
+        ),
+        "gis_service_slo_binding_migration": (
+            "gis_service_slo_binding",
+            "bind_gis_service_slo",
+            "exact active authority",
+            "FORCE ROW LEVEL SECURITY",
+            "GRANT SELECT ON TABLE gda_control.gis_service_slo_binding",
+        ),
+        "gis_service_slo_reconciliation_migration": (
+            "gis_service_slo_reconciliation_outbox",
+            "enqueue_slo_activation_gis_service_reconciliation",
+            "AFTER INSERT OR UPDATE ON gda_control.slo_definition_activation",
+            "FOR UPDATE SKIP LOCKED",
+            "claim_gis_service_slo_reconciliations",
+            "complete_gis_service_slo_reconciliation",
+            "fail_gis_service_slo_reconciliation",
+            "activation superseded before reconciliation",
+            "FORCE ROW LEVEL SECURITY",
+            "GRANT SELECT ON TABLE gda_control.gis_service_slo_reconciliation_outbox",
+        ),
+        "gis_service_slo_incident_migration": (
+            "assert_gis_service_slo_incident_authority",
+            "FOR SHARE",
+            "exact active authority",
+            "GIS ServiceSLO incident has no exact binding",
+            "REVOKE ALL ON FUNCTION gda_control.assert_gis_service_slo_incident_authority",
+            "GRANT EXECUTE ON FUNCTION gda_control.assert_gis_service_slo_incident_authority",
+        ),
+        "jqdltb_serving_release_migration": (
+            "jqdltb_serving_release_binding",
+            "record_jqdltb_serving_release_binding",
+            "JQDLTB serving binding requires the current DataProductVersion",
+            "FORCE ROW LEVEL SECURITY",
+            "GRANT SELECT ON TABLE gda_control.jqdltb_serving_release_binding",
+            "GRANT EXECUTE ON FUNCTION gda_control.record_jqdltb_serving_release_binding",
+        ),
+        "jqdltb_serving_endpoint_promotion_migration": (
+            "enforce_jqdltb_serving_endpoint_binding",
+            "gda.jqdltb_mapping_binding.v1",
+            "JQDLTB endpoint promotion requires an exact serving release binding",
+            "trg_gda_jqdltb_active_endpoint_serving_binding",
+        ),
+        "ogc_api_features_endpoint_contract_migration": (
+            "validate_ogc_api_features_endpoint_contract",
+            "validate_ogc_api_features_activation",
+            "gda.ogc_api_features_endpoint.v1",
+            "collection_id",
+            "BEFORE INSERT ON gda_control.endpoint_revision",
+            "BEFORE INSERT ON gda_control.gis_service_endpoint_activation_event",
+            "REVOKE ALL ON FUNCTION gda_control.validate_ogc_api_features_activation",
         ),
         "run_event_delivery_migration": (
             "CREATE TABLE IF NOT EXISTS gda_control.platform_run_event_delivery_outbox",
@@ -6905,9 +12347,13 @@ def build_gateway_report(
             "def record_cancellation_terminal_mismatch(",
             "def transition_incident(",
             "def open_resource_incident(",
+            "def open_gis_service_slo_incident(",
             "def claim_incident_notifications(",
+            "def list_incident_notifications(",
             "def complete_incident_notification(",
             "def fail_incident_notification(",
+            "def recover_incident_notification(",
+            "def incident_notification_recoveries(",
             "def claim_platform_run_event_deliveries(",
             "def complete_platform_run_event_delivery(",
             "def fail_platform_run_event_delivery(",
@@ -6925,12 +12371,27 @@ def build_gateway_report(
             "def complete_consumer_binding_migration_notification(",
             "def fail_consumer_binding_migration_notification(",
             "def list_consumer_binding_migration_notifications(",
+            "def record_gis_service_consumer_binding_migration_impact(",
+            "def list_gis_service_consumer_binding_migration_impacts(",
+            "def record_gis_service_endpoint_warmup(",
+            "def list_gis_service_endpoint_warmups(",
+            "def admit_gis_service_endpoint_warmup_run(",
+            "def settle_gis_service_endpoint_warmup_success(",
+            "def fail_gis_service_endpoint_warmup_command_terminal(",
             "def claim_master_metadata_projections(",
             "def complete_master_metadata_projection(",
             "def fail_master_metadata_projection(",
             "def claim_commands(",
+            "def claim_gis_mvt_cache_purges(",
+            "def complete_gis_mvt_cache_purge(",
+            "def fail_gis_mvt_cache_purge(",
+            "def claim_gis_service_slo_reconciliations(",
+            "def complete_gis_service_slo_reconciliation(",
+            "def fail_gis_service_slo_reconciliation(",
             "def record_quality_result(",
             "def finalize_run_success(",
+            "def reconcile_blueprint_test_provider(",
+            "def execute_blueprint_duckdb_test_run(",
             "def record_lineage_batch(",
             "def query_lineage(",
             "def assess_lineage_impact(",
@@ -6946,9 +12407,13 @@ def build_gateway_report(
             "_capability_contract_guard",
             "create_data_product_blueprint",
             "preview_data_product_blueprint",
+            "reconcile_data_product_blueprint_test_provider",
+            "execute_data_product_blueprint_duckdb_test_run",
             "create_data_product_blueprint_review",
             "platform_create_data_product_blueprint",
             "platform_preview_data_product_blueprint",
+            "platform_reconcile_data_product_blueprint_test_provider",
+            "platform_execute_data_product_blueprint_duckdb_test_run",
             "platform_create_data_product_blueprint_review",
             "create_dolphinscheduler_callback",
             "create_quality_result",
@@ -6956,6 +12421,9 @@ def build_gateway_report(
             "create_manual_dataops_run",
             "create_dataops_cancel",
             "list_data_incidents",
+            "list_incident_notifications",
+            "list_incident_notification_recoveries",
+            "recover_incident_notification",
             "transition_data_incident",
             "reconcile_slo_alertmanager_webhook",
             "create_approval_case",
@@ -6999,12 +12467,48 @@ def build_gateway_report(
             "evaluate_worker_liveness",
             "DOLPHINSCHEDULER_TOKEN_FILE",
         ),
+        "gis_service_endpoint_warmup_consumer_source": (
+            "class GISServiceEndpointWarmupConsumer",
+            "class LocalWarmupReceiptStore",
+            "class S3WarmupReceiptStore",
+            'IfNoneMatch="*"',
+            "VersionId=version_id",
+            "get_object_lock_configuration",
+            '"storage_evidence": publication.storage_evidence',
+            "MartinVectorTileProvider",
+            "self.gateway.claim_commands(",
+            "self.gateway.settle_gis_service_endpoint_warmup_success(",
+            "self.gateway.complete_command(",
+            "self.gateway.fail_gis_service_endpoint_warmup_command_terminal(",
+        ),
+        "gis_service_endpoint_warmup_worker_source": (
+            "class GISServiceEndpointWarmupWorker",
+            "class GISServiceEndpointWarmupWorkerConfig",
+            "GISServiceEndpointWarmupConsumer",
+            "MartinVectorTileProvider",
+            "LocalWarmupReceiptStore",
+            "build_s3_warmup_receipt_store",
+            'receipt_backend: Literal["local", "s3"]',
+            "receipt_store.probe()",
+            "self.stop_event.wait(",
+            "signal.SIGTERM",
+        ),
+        "gis_service_slo_reconciliation_worker_source": (
+            "class GISServiceSLOReconciliationWorker",
+            "class GISServiceSLOReconciliationWorkerConfig",
+            "self.gateway.claim_gis_service_slo_reconciliations(",
+            "self.gateway.complete_gis_service_slo_reconciliation(",
+            "self.gateway.fail_gis_service_slo_reconciliation(",
+            "signal.SIGTERM",
+            "stop_event.wait(",
+        ),
         "notification_worker_source": (
             "class IncidentNotificationWorker",
             "class AlertmanagerV2Client",
             "self.gateway.claim_incident_notifications(",
             "self.gateway.complete_incident_notification(",
             "self.gateway.fail_incident_notification(",
+            "provider_receipt=provider_receipt",
         ),
         "consumer_binding_notification_worker_source": (
             "class ConsumerBindingNotificationWorker",
@@ -7084,6 +12588,12 @@ def build_gateway_report(
             or forbidden
             in texts.get("master_metadata_projection_migration", "")
             or forbidden in texts.get("notification_migration", "")
+            or forbidden in texts.get("notification_receipt_migration", "")
+            or forbidden in texts.get("notification_receipt_strict_migration", "")
+            or forbidden in texts.get("notification_recovery_migration", "")
+            or forbidden in texts.get("gis_service_endpoint_warmup_migration", "")
+            or forbidden
+            in texts.get("gis_service_endpoint_warmup_command_migration", "")
             or forbidden in texts.get("metadata_fabric_migration", "")
         ):
             errors.append(f"gateway role contains forbidden privilege: {forbidden}")
@@ -7099,6 +12609,20 @@ def build_gateway_report(
     ):
         if forbidden in worker_source:
             errors.append(f"command worker contains forbidden authority marker: {forbidden}")
+    warmup_consumer_source = texts.get(
+        "gis_service_endpoint_warmup_consumer_source", ""
+    )
+    for forbidden in (
+        ".activate_gis_service_endpoint(",
+        ".cutover_gis_service_migration(",
+        ".rollback_gis_service_migration(",
+        ".finalize_run_success(",
+    ):
+        if forbidden in warmup_consumer_source:
+            errors.append(
+                "GIS warmup consumer contains forbidden authority marker: "
+                f"{forbidden}"
+            )
     schedule_source = texts.get("schedule_controller_source", "")
     for forbidden in ("croniter", "APScheduler", "while True", "start_workflow("):
         if forbidden in schedule_source:
@@ -7117,7 +12641,7 @@ def build_gateway_report(
         "schema": GATEWAY_SCHEMA_VERSION,
         "status": "valid" if not errors else "invalid",
         "database_role": GATEWAY_DATABASE_ROLE,
-        "route_count": 26,
+        "route_count": 29,
         "files": files,
         "missing_markers": missing_markers,
         "errors": errors,

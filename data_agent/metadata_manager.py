@@ -174,7 +174,8 @@ class MetadataManager:
                 text(f"""
                     SELECT id, asset_name, display_name,
                            technical_metadata, business_metadata,
-                           operational_metadata, created_at
+                           operational_metadata, lineage_metadata,
+                           created_at, updated_at
                     FROM agent_data_assets
                     WHERE {where_clause}
                     ORDER BY {sort_by} DESC

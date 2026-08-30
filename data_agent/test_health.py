@@ -1,7 +1,7 @@
 """Tests for health check and system diagnostics module."""
 
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 
 class TestLivenessCheck(unittest.TestCase):
@@ -38,6 +38,7 @@ class TestDatabaseCheck(unittest.TestCase):
         result = check_database()
         self.assertEqual(result["status"], "ok")
         self.assertGreaterEqual(result["latency_ms"], 0)
+        self.assertNotIn("connection_capacity", result)
 
     @patch("data_agent.health.get_engine")
     def test_db_error(self, mock_engine):
@@ -46,6 +47,60 @@ class TestDatabaseCheck(unittest.TestCase):
         result = check_database()
         self.assertEqual(result["status"], "error")
         self.assertIn("connection refused", result["detail"])
+
+    def test_connection_capacity_is_sanitized_and_bounded(self):
+        from data_agent.health import _read_database_connection_capacity
+
+        result_proxy = MagicMock()
+        result_proxy.mappings.return_value.one.return_value = {
+            "max_connections": 200,
+            "superuser_reserved_connections": 5,
+            "reserved_connections": 2,
+            "current_connections": 73,
+        }
+        connection = MagicMock()
+        connection.execute.return_value = result_proxy
+
+        capacity = _read_database_connection_capacity(connection, lambda sql: sql)
+
+        self.assertEqual(capacity["application_capacity"], 193)
+        self.assertEqual(capacity["remaining_connections"], 127)
+        self.assertEqual(capacity["application_remaining"], 120)
+        self.assertEqual(capacity["utilization_percent"], 36.5)
+        self.assertNotIn("password", str(capacity).lower())
+
+    @patch(
+        "data_agent.health.get_connection_budget",
+        return_value={"declared_server_max_connections": 200},
+    )
+    @patch(
+        "data_agent.health.get_pool_status",
+        return_value={"configured_capacity": 40},
+    )
+    @patch("data_agent.health.get_engine")
+    def test_admin_database_check_includes_capacity(
+        self, mock_engine, _mock_pool, _mock_budget
+    ):
+        result_proxy = MagicMock()
+        result_proxy.mappings.return_value.one.return_value = {
+            "max_connections": 200,
+            "superuser_reserved_connections": 5,
+            "reserved_connections": 0,
+            "current_connections": 20,
+        }
+        connection = MagicMock()
+        connection.execute.side_effect = [MagicMock(), result_proxy]
+        mock_engine.return_value.connect.return_value.__enter__ = lambda _: connection
+        mock_engine.return_value.connect.return_value.__exit__ = MagicMock(
+            return_value=False
+        )
+
+        from data_agent.health import check_database
+        result = check_database(include_capacity=True)
+
+        self.assertTrue(result["connection_capacity"]["matches_declared_limit"])
+        self.assertTrue(result["connection_capacity"]["process_pool_fits"])
+        self.assertEqual(result["connection_pool"]["configured_capacity"], 40)
 
 
 class TestCloudStorageCheck(unittest.TestCase):
@@ -102,31 +157,29 @@ class TestCloudStorageCheck(unittest.TestCase):
 class TestRedisCheck(unittest.TestCase):
     """Redis health check should handle ok/unconfigured states."""
 
-    @patch("data_agent.health.get_stream_engine")
-    def test_redis_ok(self, mock_get):
-        engine = MagicMock()
-        engine._use_redis = True
-        engine._redis = MagicMock()
-        mock_get.return_value = engine
+    @patch("data_agent.redis_client.check_redis_health")
+    def test_redis_ok(self, mock_health):
+        mock_health.return_value = {"status": "ok", "version": "7.0"}
         from data_agent.health import check_redis
         result = check_redis()
         self.assertEqual(result["status"], "ok")
 
-    @patch("data_agent.health.get_stream_engine")
-    def test_redis_unconfigured_no_redis(self, mock_get):
-        engine = MagicMock()
-        engine._use_redis = False
-        engine._redis = None
-        mock_get.return_value = engine
+    @patch("data_agent.redis_client.check_redis_health")
+    def test_redis_unconfigured_no_redis(self, mock_health):
+        mock_health.return_value = {
+            "status": "unconfigured",
+            "detail": "redis package not installed",
+        }
         from data_agent.health import check_redis
         result = check_redis()
         self.assertEqual(result["status"], "unconfigured")
 
-    @patch("data_agent.health.get_stream_engine", return_value=None)
-    def test_redis_no_engine(self, _mock):
+    @patch("data_agent.redis_client.check_redis_health")
+    def test_redis_error(self, mock_health):
+        mock_health.return_value = {"status": "error", "detail": "connection refused"}
         from data_agent.health import check_redis
         result = check_redis()
-        self.assertEqual(result["status"], "unconfigured")
+        self.assertEqual(result["status"], "error")
 
 
 class TestSessionServiceCheck(unittest.TestCase):
@@ -164,6 +217,48 @@ class TestReadinessCheck(unittest.TestCase):
         result = readiness_check()
         self.assertEqual(result["status"], "ok")
 
+    @patch("data_agent.health.check_governed_query_security")
+    @patch("data_agent.health.check_metadata_providers")
+    @patch("data_agent.health.check_database")
+    def test_ready_when_query_security_is_disabled(
+        self, mock_db, mock_providers, mock_security
+    ):
+        mock_db.return_value = {"status": "ok", "latency_ms": 1.0}
+        mock_providers.return_value = {"status": "ok"}
+        mock_security.return_value = {"status": "disabled", "required": False}
+        from data_agent.health import readiness_check
+
+        result = readiness_check()
+
+        self.assertEqual(result["status"], "ok")
+
+    @patch("data_agent.health.check_metadata_providers")
+    @patch("data_agent.health.check_database")
+    def test_not_ready_when_required_query_security_resolver_is_missing(
+        self, mock_db, mock_providers
+    ):
+        mock_db.return_value = {"status": "ok", "latency_ms": 1.0}
+        mock_providers.return_value = {
+            "status": "ok",
+            "providers": {},
+            "blocking": [],
+        }
+        with patch.dict(
+            "os.environ", {"GDA_GOVERNED_QUERY_SECURITY_REQUIRED": "1"}, clear=False
+        ):
+            from data_agent.governed_query_security import (
+                configure_governed_query_security_port_resolver,
+            )
+            from data_agent.health import readiness_check
+
+            configure_governed_query_security_port_resolver(None)
+            result = readiness_check()
+
+        self.assertEqual(result["status"], "not_ready")
+        security = result["checks"]["governed_query_security"]
+        self.assertEqual(security["status"], "not_ready")
+        self.assertTrue(security["required"])
+
     @patch("data_agent.health.check_database")
     def test_not_ready_db_error(self, mock_db):
         mock_db.return_value = {"status": "error", "latency_ms": 0, "detail": "refused"}
@@ -178,6 +273,24 @@ class TestReadinessCheck(unittest.TestCase):
         result = readiness_check()
         # Unconfigured DB = local-only mode, still considered ready
         self.assertEqual(result["status"], "ok")
+
+    @patch("data_agent.health.check_metadata_providers")
+    @patch("data_agent.health.check_database")
+    def test_not_ready_when_configured_metadata_provider_is_down(self, mock_db, mock_providers):
+        mock_db.return_value = {"status": "ok", "latency_ms": 1.0}
+        mock_providers.return_value = {
+            "status": "not_ready",
+            "providers": {
+                "gravitino": {"status": "unavailable", "retryable": True}
+            },
+            "blocking": ["gravitino"],
+        }
+        from data_agent.health import readiness_check
+
+        result = readiness_check()
+
+        self.assertEqual(result["status"], "not_ready")
+        self.assertEqual(result["checks"]["metadata_providers"]["blocking"], ["gravitino"])
 
 
 class TestSystemStatus(unittest.TestCase):

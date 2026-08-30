@@ -6,7 +6,7 @@
 
 **Related roadmap**: [GIS Data Agent 总体架构 Roadmap](../roadmap.md) AR-2
 
-**Related**: ADR-106, ADR-166, ADR-171, ADR-172, ADR-173
+**Related**: ADR-106, ADR-166, ADR-171, ADR-172, ADR-173, ADR-175
 
 ## Context
 
@@ -42,7 +42,8 @@ requires all of the following before a successful provider commit:
 - primary, standby and promoted source have the same PostgreSQL `system_identifier`;
 - the standby is observed in recovery and replays the exact mutation target LSN and row before
   promotion;
-- the old primary is stopped before promotion;
+- the old primary has an explicit `stop_and_detach` fencing witness before promotion: the
+  container is stopped, its source network is detached, and a post-fence write probe is rejected;
 - the promoted source is not in recovery and its timeline increments exactly once;
 - the publication and replayed row are present after promotion;
 - the original logical slot remains present with the same database, name, plugin, type and cluster
@@ -66,7 +67,7 @@ must not advance either accepted or quarantine FileSink output.
 
 ## Verification
 
-- PostgreSQL 16.14 uses `system_identifier=7670536130765070376`. Primary and recovering standby are
+- PostgreSQL 16.14 uses `system_identifier=7671164979134124066`. Primary and recovering standby are
   on timeline 1; after promotion and checkpoint, the source is out of recovery on timeline 2.
 - `pg_stat_replication` observes the standby as asynchronous `streaming`. The projected revision-2
   mutation commits at `0/3000390`; standby receive and replay LSN both reach exactly `0/3000390`, and
@@ -78,18 +79,25 @@ must not advance either accepted or quarantine FileSink output.
   `logical_replication_slot_missing_after_promotion`.
 - The stable source alias is attached to the promoted server only after the stopped primary is
   detached, and Docker network metadata confirms that exact alias. A revision-3 probe advances the
-  promoted source to `0/3000920`; over the following 2.0-second observation, FileSink counts remain
+  promoted source to `0/30008E8`; over the following 2.0-second observation, FileSink counts remain
   exactly `5/0`, with zero accepted and quarantine delta.
 - Flink is still `RUNNING` when the controller decision is observed and becomes `CANCELED` by
   controller action. Connector exception and retry exhaustion are separate, unclaimed evidence.
 - SourceSync checkpoint remains version 0 with no commit. Artifact, QualityResult, LineageEvent,
   target ResourceVersion and successful provider-admission counts are all zero; PlatformRun ends
   `failed`.
-- All 12 provider gates and 9 top-level gates pass. The primary, standby, Flink, random control
-  database, named standby volume and work directory are removed; persistent SourceSync tables remain
-  empty.
+- All 13 provider gates, 20 top-level checks and 11 cleanup gates pass. The primary, standby, Flink,
+  random control database, named standby volume and work directory are removed; persistent SourceSync
+  tables remain empty.
+- The companion split-brain provider keeps the old primary running and attached while promoting the
+  standby. Both writers accept divergent revisions on the same road, the old alias remains on the old
+  primary, and admission rejects with the fencing failure codes before any alias transfer. The
+  standalone provider does not invoke SourceSync. See [ADR-175](adr-175-postgresql-cdc-split-brain-fencing-admission.md).
 - Report: `.tmp/source-sync-certification/chongqing-osm-postgres-cdc-failover-report.json`, SHA-256
-  `f28ac7763c3f7e24c48f36adc965b3e271ec0accf359e5d548125fae8847f223`.
+  `0b484dfe466b75a07099fff3ce12701d58a012a47182e0aaecf4efecb3ee654c`. The same certification
+  records recovery plan `7e687270e2a494b3dcae8b90108281e18e2d0a28903cc59291bfd555e5dff4c2` and
+  resnapshot admission `e56ede9622f674d8250e6ccaa3dcbdecbeaa955e3010617f9f284f76a9b000eb`;
+  provider gates are `13/13`, top-level checks `20/20`, and cleanup gates `11/11`.
 
 ## Trade-offs and Consequences
 
@@ -98,11 +106,24 @@ must not advance either accepted or quarantine FileSink output.
 - Failing closed favors data integrity over availability. Recovery needs an approved resnapshot,
   point-in-time reconciliation or a separately certified slot synchronization mechanism and a new
   Run.
+- The certified resnapshot path executes a real promoted-standby full read and governed commit:
+  three rows produce output, independent quality, quarantine, lineage and metadata evidence, and
+  the new snapshot checkpoint advances `0 -> 1` while the old CDC checkpoint remains `0`. A real
+  DolphinScheduler 3.4.2 workflow dispatch then observes `SUCCESS`, and persisted `RunSuccessEvidence`
+  moves the new Run from `reconciling` to `succeeded`; this is an isolated development certification,
+  not a production SLO claim.
+- The isolated recovery controller now submits a standard `DataOpsScheduleWindowSpec` instead of
+  impersonating a manual trigger. Its schedule identity binds the recovery-plan SHA-256; the workload
+  atomically creates the invocation, policy Artifact, Run and existing DolphinScheduler dispatch
+  outbox command. This proves an automatic trigger vertical slice, not production slot-loss detection
+  or a continuously deployed recovery-controller service.
 - PostgreSQL 16 behavior is not evidence for PostgreSQL 17+ failover slots. Any native failover-slot
   adoption requires version-specific synchronization, promotion, lag, loss and replay certification.
-- The test proves ordered stop/promotion, exact replay and zero post-failover sink growth. It does not
-  measure production RPO/RTO, automatic reconnect/backoff exhaustion, fencing under split brain,
-  multi-cluster HA, Kubernetes recovery or CDC-to-Iceberg exactly-once behavior.
+- The test proves ordered stop/promotion, explicit stop-and-detach fencing, exact replay and zero
+  post-failover sink growth. The companion test proves fail-closed rejection after a split-brain
+  write, but neither test provides an automatic fencing service or split-brain prevention.
+  Production RPO/RTO, automatic reconnect/backoff exhaustion, multi-cluster HA, Kubernetes recovery
+  and CDC-to-Iceberg exactly-once behavior remain unclaimed.
 - No broker, second slot, service or scheduler is added. The temporary physical standby and SCRAM
   credential exist only inside the isolated certification and are destroyed during cleanup.
 
@@ -111,5 +132,5 @@ must not advance either accepted or quarantine FileSink output.
 - production PostgreSQL adopts native failover slots or another synchronized logical-slot mechanism;
 - recovery policy defines an approved resnapshot or point-in-time cursor reconciliation workflow;
 - measured failover RPO/RTO and workload fan-out justify an external durable event boundary;
-- DNS/service discovery, fencing, split-brain prevention or multi-zone promotion enter scope;
+- an automatic fencing service, split-brain prevention protocol or multi-zone promotion enters scope;
 - the CDC target changes from the provisional FileSink to direct Iceberg streaming commits.

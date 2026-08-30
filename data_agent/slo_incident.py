@@ -241,6 +241,24 @@ class SLOIncidentReconciler:
                 raise SLOIncidentValidationError(
                     "firing SLO alert does not bind the exact active authority"
                 )
+            if (
+                parse_resource_urn(definition.service_resource_urn)["resource_kind"]
+                == "gis_service"
+            ):
+                try:
+                    self._gateway.get_gis_service_slo_binding_for_authority(
+                        tenant_id,
+                        definition.service_resource_urn,
+                        slo_definition_ref=definition.slo_definition_ref,
+                        active_version_ref=definition.slo_version_ref,
+                        definition_fingerprint=definition.definition_fingerprint,
+                        approval_case_ref=activation.approval_case_ref,
+                        activation_version=activation.activation_version,
+                    )
+                except GatewayNotFoundError as exc:
+                    raise SLOIncidentValidationError(
+                        "firing GIS SLO alert has no exact ServiceSLO binding"
+                    ) from exc
             return definition, activation
 
         event = _activation_event(
@@ -252,6 +270,24 @@ class SLOIncidentReconciler:
             raise SLOIncidentValidationError(
                 "resolved SLO alert has no approved activation evidence"
             )
+        if (
+            parse_resource_urn(definition.service_resource_urn)["resource_kind"]
+            == "gis_service"
+        ):
+            try:
+                self._gateway.get_gis_service_slo_binding_for_authority(
+                    tenant_id,
+                    definition.service_resource_urn,
+                    slo_definition_ref=definition.slo_definition_ref,
+                    active_version_ref=definition.slo_version_ref,
+                    definition_fingerprint=definition.definition_fingerprint,
+                    approval_case_ref=event.approval_case_ref,
+                    activation_version=int(event.details.get("activation_version", 0)),
+                )
+            except (GatewayNotFoundError, TypeError, ValueError) as exc:
+                raise SLOIncidentValidationError(
+                    "resolved GIS SLO alert has no exact ServiceSLO binding"
+                ) from exc
         return definition, event
 
     @staticmethod
@@ -317,21 +353,38 @@ class SLOIncidentReconciler:
                 if alert.labels["severity"] == "critical"
                 else IncidentSeverity.MEDIUM
             )
-            result = self._gateway.open_resource_incident(
-                tenant_id=tenant_id,
-                subject_resource_urn=definition.service_resource_urn,
-                incident_id=incident_id,
-                dedupe_key=dedupe_key,
-                incident_type="slo_error_budget_burn",
-                severity=severity,
-                summary=(
+            incident_kwargs = {
+                "tenant_id": tenant_id,
+                "incident_id": incident_id,
+                "dedupe_key": dedupe_key,
+                "incident_type": "slo_error_budget_burn",
+                "severity": severity,
+                "summary": (
                     f"SLO error budget burn for "
                     f"{parse_resource_urn(definition.service_resource_urn)['resource_id']} "
                     f"({alert.labels['burn_window']})"
                 ),
-                details=details,
-                detected_by=detector_subject,
-            )
+                "details": details,
+                "detected_by": detector_subject,
+            }
+            if (
+                parse_resource_urn(definition.service_resource_urn)["resource_kind"]
+                == "gis_service"
+            ):
+                result = self._gateway.open_gis_service_slo_incident(
+                    **incident_kwargs,
+                    service_urn=definition.service_resource_urn,
+                    slo_definition_ref=definition.slo_definition_ref,
+                    active_version_ref=definition.slo_version_ref,
+                    definition_fingerprint=definition.definition_fingerprint,
+                    approval_case_ref=authority.approval_case_ref,
+                    activation_version=authority.activation_version,
+                )
+            else:
+                result = self._gateway.open_resource_incident(
+                    **incident_kwargs,
+                    subject_resource_urn=definition.service_resource_urn,
+                )
             return SLOAlertIncidentResult(
                 alert_fingerprint=alert.fingerprint,
                 alert_status=alert.status,

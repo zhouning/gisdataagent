@@ -3,7 +3,7 @@
 Covers:
 - Risk assessment for all registry levels
 - Impact template interpolation & escalation rules
-- Plugin callback behaviour (allow, block, auto-approve, degrade)
+- Plugin callback behaviour (allow, block, fail-closed)
 - Audit integration
 - Registry completeness
 """
@@ -143,12 +143,15 @@ class TestHITLPlugin:
         assert result is None
 
     @patch.dict(os.environ, {"HITL_ENABLED": "true", "HITL_BLOCK_LEVEL": "critical"})
-    def test_no_approval_fn_auto_approves(self):
-        """CRITICAL tool with no approval function -> auto-approve."""
+    def test_no_approval_fn_blocks(self):
+        """CRITICAL tool with no approval function -> block fail-closed."""
         plugin = HITLApprovalPlugin()
         plugin._block_level = RiskLevel.CRITICAL
-        result = asyncio.run(self._call(plugin, "import_to_postgis", {"table": "t"}))
-        assert result is None
+        with patch.object(plugin, "_record_audit") as audit:
+            result = asyncio.run(self._call(plugin, "import_to_postgis", {"table": "t"}))
+        assert result["status"] == "blocked"
+        assert "审批" in result["reason"]
+        assert audit.call_args.args[3:] == ("blocked", "approval_unavailable")
 
     @patch.dict(os.environ, {"HITL_ENABLED": "true", "HITL_BLOCK_LEVEL": "critical"})
     def test_approved_returns_none(self):
@@ -160,8 +163,25 @@ class TestHITLPlugin:
             return SimpleNamespace(payload={"value": "APPROVE"})
 
         plugin.set_approval_function(fake_approve)
-        result = asyncio.run(self._call(plugin, "import_to_postgis", {"table": "t"}))
+        with patch.object(plugin, "_record_audit", return_value=True):
+            result = asyncio.run(self._call(plugin, "import_to_postgis", {"table": "t"}))
         assert result is None
+
+    @patch.dict(os.environ, {"HITL_ENABLED": "true", "HITL_BLOCK_LEVEL": "critical"})
+    def test_approved_but_audit_unavailable_blocks(self):
+        """An approved call must still block when its audit cannot be persisted."""
+        plugin = HITLApprovalPlugin()
+        plugin._block_level = RiskLevel.CRITICAL
+
+        async def fake_approve(content):
+            return SimpleNamespace(payload={"value": "APPROVE"})
+
+        plugin.set_approval_function(fake_approve)
+        with patch.object(plugin, "_record_audit", return_value=False):
+            result = asyncio.run(self._call(plugin, "import_to_postgis", {"table": "t"}))
+        assert result["status"] == "blocked"
+        assert "审计" in result["reason"]
+        assert result["tool"] == "import_to_postgis"
 
     @patch.dict(os.environ, {"HITL_ENABLED": "true", "HITL_BLOCK_LEVEL": "critical"})
     def test_rejected_returns_blocked_dict(self):
@@ -192,8 +212,8 @@ class TestHITLPlugin:
             hitl_approval.HITL_ENABLED = old_val
 
     @patch.dict(os.environ, {"HITL_ENABLED": "true", "HITL_BLOCK_LEVEL": "critical"})
-    def test_approval_fn_exception_degrades(self):
-        """If approval function raises, degrade to auto-approve."""
+    def test_approval_fn_exception_blocks(self):
+        """If approval function raises, block fail-closed."""
         plugin = HITLApprovalPlugin()
         plugin._block_level = RiskLevel.CRITICAL
 
@@ -201,8 +221,27 @@ class TestHITLPlugin:
             raise RuntimeError("Chainlit context lost")
 
         plugin.set_approval_function(exploding_fn)
-        result = asyncio.run(self._call(plugin, "import_to_postgis", {"table": "t"}))
-        assert result is None  # auto-approved on error
+        with patch.object(plugin, "_record_audit") as audit:
+            result = asyncio.run(self._call(plugin, "import_to_postgis", {"table": "t"}))
+        assert result["status"] == "blocked"
+        assert "异常" in result["reason"]
+        assert audit.call_args.args[3:] == ("blocked", "approval_error")
+
+    @patch.dict(os.environ, {"HITL_ENABLED": "true", "HITL_BLOCK_LEVEL": "critical"})
+    def test_approval_timeout_blocks(self):
+        """A missing user response must block the high-risk call."""
+        plugin = HITLApprovalPlugin()
+        plugin._block_level = RiskLevel.CRITICAL
+
+        async def timed_out(content):
+            return None
+
+        plugin.set_approval_function(timed_out)
+        with patch.object(plugin, "_record_audit") as audit:
+            result = asyncio.run(self._call(plugin, "import_to_postgis", {"table": "t"}))
+        assert result["status"] == "blocked"
+        assert "超时" in result["reason"]
+        assert audit.call_args.args[3:] == ("blocked", "timeout")
 
     @patch.dict(os.environ, {"HITL_ENABLED": "true", "HITL_BLOCK_LEVEL": "high"})
     def test_high_threshold_blocks_high_tools(self):
@@ -282,9 +321,13 @@ class TestAuditIntegration:
     @patch("data_agent.audit_logger.record_audit")
     def test_record_audit_called_on_auto_approve(self, mock_record):
         """When _record_audit is called, audit_logger.record_audit is invoked."""
+        mock_record.return_value = True
         plugin = HITLApprovalPlugin()
         risk = assess_risk("add_field", {"field_name": "x"})
-        plugin._record_audit("add_field", {"field_name": "x"}, risk, "auto_approved", "below_threshold")
+        persisted = plugin._record_audit(
+            "add_field", {"field_name": "x"}, risk, "auto_approved", "below_threshold"
+        )
+        assert persisted is True
         mock_record.assert_called_once()
 
 

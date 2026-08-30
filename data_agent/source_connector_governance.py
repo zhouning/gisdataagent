@@ -83,11 +83,38 @@ class CredentialReference(_FrozenModel):
 
 
 class DatabaseSourceConfig(_FrozenModel):
-    table: str = Field(pattern=r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$")
+    table: str | None = Field(
+        default=None,
+        pattern=r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$",
+    )
+    allowed_schemas: tuple[str, ...] = ()
+    sql: str | None = Field(default=None, min_length=1, max_length=100_000)
     geom_column: str | None = Field(
         default=None,
         pattern=r"^[A-Za-z_][A-Za-z0-9_]*$",
     )
+    discovery_mode: Literal["metadata_only", "sample"] = "sample"
+    discovery_limit: int = Field(default=5000, ge=1, le=20_000)
+    statement_timeout_ms: int = Field(default=15_000, ge=1000, le=120_000)
+    lock_timeout_ms: int = Field(default=2000, ge=100, le=30_000)
+    max_rows: int = Field(default=1000, ge=1, le=5000)
+
+    @model_validator(mode="after")
+    def _valid_database_scope(self) -> DatabaseSourceConfig:
+        identifier = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+        if any(not identifier.fullmatch(schema) for schema in self.allowed_schemas):
+            raise ValueError("allowed_schemas contains an invalid schema identifier")
+        if len(set(self.allowed_schemas)) != len(self.allowed_schemas):
+            raise ValueError("allowed_schemas must not contain duplicates")
+        if not self.table and not self.allowed_schemas:
+            raise ValueError("database source requires table or allowed_schemas")
+        if not self.table and self.discovery_mode != "metadata_only":
+            raise ValueError("database-level discovery must use metadata_only mode")
+        if self.table and self.allowed_schemas:
+            schema = self.table.split(".", 1)[0] if "." in self.table else "public"
+            if schema not in self.allowed_schemas:
+                raise ValueError("database table must be inside allowed_schemas")
+        return self
 
 
 class ObjectStorageSourceConfig(_FrozenModel):
@@ -158,10 +185,28 @@ class ProfileField(_FrozenModel):
     nullable: bool
 
 
+class ForeignKeyReference(_FrozenModel):
+    name: str | None = Field(default=None, max_length=256)
+    columns: tuple[str, ...]
+    referred_resource: str = Field(min_length=1, max_length=1000)
+    referred_columns: tuple[str, ...]
+
+
+class ResourceIndex(_FrozenModel):
+    name: str | None = Field(default=None, max_length=256)
+    columns: tuple[str, ...]
+    unique: bool = False
+
+
 class DiscoveredResource(_FrozenModel):
     name: str = Field(min_length=1, max_length=1000)
     resource_type: str = Field(min_length=1, max_length=64)
     fields: tuple[ProfileField, ...] = ()
+    primary_key: tuple[str, ...] = ()
+    foreign_keys: tuple[ForeignKeyReference, ...] = ()
+    indexes: tuple[ResourceIndex, ...] = ()
+    estimated_record_count: int | None = Field(default=None, ge=0)
+    comment: str | None = Field(default=None, max_length=4000)
     provider_version_token: str | None = None
 
 
@@ -181,6 +226,8 @@ class SourceProfile(_FrozenModel):
     fields: tuple[ProfileField, ...]
     geometry_column: str | None = None
     crs: str | None = None
+    resource_count: int = Field(default=1, ge=0)
+    metadata_only: bool = False
 
     @property
     def fingerprint(self) -> str:
@@ -391,6 +438,49 @@ async def certify_source_connector(
         )
     )
 
+    if (
+        isinstance(definition.query_config, DatabaseSourceConfig)
+        and definition.query_config.discovery_mode == "metadata_only"
+    ):
+        profile = _metadata_profile(discovery)
+        preview_evidence = _canonical_sha256(
+            {
+                "mode": "metadata_only",
+                "discovery_fingerprint": discovery.fingerprint,
+            }
+        )
+        capabilities.extend(
+            [
+                SourceCapability(
+                    operation=CapabilityOperation.PREVIEW,
+                    status=CapabilityStatus.PASSED,
+                    evidence_sha256=preview_evidence,
+                    message="metadata-only policy; no source rows sampled",
+                ),
+                SourceCapability(
+                    operation=CapabilityOperation.PROFILE,
+                    status=CapabilityStatus.PASSED,
+                    evidence_sha256=profile.fingerprint,
+                    message="profile derived from database catalog metadata",
+                ),
+            ]
+        )
+        return ConnectorCertificationReport(
+            source_id=definition.source_id,
+            source_definition_version=definition.version,
+            source_definition_fingerprint=definition.fingerprint,
+            credential_reference_fingerprint=definition.credential_reference.fingerprint,
+            connector_id=runtime_connector.SOURCE_TYPE,
+            connector_version=definition.connector_version,
+            provider=discovery.provider,
+            provider_version=discovery.provider_version,
+            certified_at=certified_at or datetime.now(UTC),
+            status=CertificationStatus.PASSED,
+            capabilities=tuple(capabilities),
+            discovery=discovery,
+            profile=profile,
+        )
+
     try:
         preview = await runtime_connector.query(
             definition.endpoint_url,
@@ -556,12 +646,43 @@ def _discovery_snapshot(raw: dict[str, Any]) -> DiscoverySnapshot:
             )
             for column in layer.get("columns") or []
         )
+        foreign_keys = tuple(
+            ForeignKeyReference(
+                name=str(item["name"]) if item.get("name") else None,
+                columns=tuple(str(value) for value in item.get("columns") or ()),
+                referred_resource=(
+                    f"{item.get('referred_schema')}.{item.get('referred_table')}"
+                ),
+                referred_columns=tuple(
+                    str(value) for value in item.get("referred_columns") or ()
+                ),
+            )
+            for item in layer.get("foreign_keys") or ()
+            if item.get("referred_schema") and item.get("referred_table")
+        )
+        indexes = tuple(
+            ResourceIndex(
+                name=str(item["name"]) if item.get("name") else None,
+                columns=tuple(str(value) for value in item.get("columns") or ()),
+                unique=bool(item.get("unique", False)),
+            )
+            for item in layer.get("indexes") or ()
+        )
         physical = layer.get("etag")
         resources.append(
             DiscoveredResource(
                 name=str(layer.get("name") or "unnamed"),
                 resource_type=str(layer.get("type") or "unknown"),
                 fields=fields,
+                primary_key=tuple(str(value) for value in layer.get("primary_key") or ()),
+                foreign_keys=foreign_keys,
+                indexes=indexes,
+                estimated_record_count=(
+                    int(layer["estimated_record_count"])
+                    if layer.get("estimated_record_count") is not None
+                    else None
+                ),
+                comment=str(layer["comment"]) if layer.get("comment") else None,
                 provider_version_token=str(physical) if physical else None,
             )
         )
@@ -571,6 +692,20 @@ def _discovery_snapshot(raw: dict[str, Any]) -> DiscoverySnapshot:
         provider=str(raw.get("provider") or raw.get("service") or "unknown"),
         provider_version=str(raw.get("provider_version") or "unknown"),
         truncated=bool(raw.get("truncated", False)),
+    )
+
+
+def _metadata_profile(discovery: DiscoverySnapshot) -> SourceProfile:
+    fields_by_identity: dict[tuple[str, str, bool], ProfileField] = {}
+    for resource in discovery.resources:
+        for field in resource.fields:
+            key = (field.name, field.data_type, field.nullable)
+            fields_by_identity[key] = field
+    return SourceProfile(
+        record_count=0,
+        resource_count=len(discovery.resources),
+        fields=tuple(fields_by_identity[key] for key in sorted(fields_by_identity)),
+        metadata_only=True,
     )
 
 

@@ -1,0 +1,140 @@
+name: gda-openmetadata-acceptance
+
+x-openmetadata-environment: &openmetadata-environment
+  OPENMETADATA_CLUSTER_NAME: gda-openmetadata-acceptance
+  LOG_LEVEL: INFO
+  AUTHENTICATION_PROVIDER: basic
+  AUTHENTICATION_ENABLE_SELF_SIGNUP: "false"
+  AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.DefaultAuthorizer
+  AUTHORIZER_REQUEST_FILTER: org.openmetadata.service.security.JwtFilter
+  AUTHORIZER_ADMIN_PRINCIPALS: "[admin]"
+  AUTHORIZER_INGESTION_PRINCIPALS: "[ingestion-bot]"
+  AUTHORIZER_PRINCIPAL_DOMAIN: open-metadata.org
+  AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN: "false"
+  PIPELINE_SERVICE_CLIENT_ENABLED: "false"
+  DB_DRIVER_CLASS: org.postgresql.Driver
+  DB_SCHEME: postgresql
+  DB_PARAMS: sslmode=disable
+  DB_USER: openmetadata_user
+  DB_USER_PASSWORD: openmetadata_password
+  DB_HOST: metadata-db
+  DB_PORT: "5432"
+  OM_DATABASE: openmetadata_db
+  DB_CONNECTION_POOL_MAX_SIZE: "20"
+  DB_CONNECTION_POOL_MIN_SIZE: "2"
+  DB_CONNECTION_POOL_MIN_IDLE: "2"
+  DB_CONNECTION_POOL_INITIAL_SIZE: "2"
+  SEARCH_TYPE: opensearch
+  ELASTICSEARCH_HOST: search
+  ELASTICSEARCH_PORT: "9200"
+  ELASTICSEARCH_SCHEME: http
+  ELASTICSEARCH_CONNECTION_TIMEOUT_SECS: "15"
+  ELASTICSEARCH_SOCKET_TIMEOUT_SECS: "120"
+  OPENMETADATA_HEAP_OPTS: -Xms512m -Xmx1024m
+  MASK_PASSWORDS_API: "true"
+
+services:
+  metadata-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: openmetadata_user
+      POSTGRES_PASSWORD: openmetadata_password
+      POSTGRES_DB: openmetadata_db
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openmetadata_user -d openmetadata_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - metadata-db-data:/var/lib/postgresql/data
+    networks:
+      - acceptance
+
+  control-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: gda_acceptance_password
+      POSTGRES_DB: gda_control_acceptance
+    ports:
+      - "127.0.0.1:${GDA_CONTROL_ACCEPTANCE_PORT:-15433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gda_control_acceptance"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    tmpfs:
+      - /var/lib/postgresql/data
+    networks:
+      - acceptance
+
+  search:
+    image: ${GDA_OPENMETADATA_SEARCH_IMAGE:-opensearchproject/opensearch:3.4.0}
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+      cluster.routing.allocation.disk.threshold_enabled: "false"
+    expose:
+      - "9200"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:9200/_cluster/health >/dev/null || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+    volumes:
+      - search-data:/usr/share/opensearch/data
+    networks:
+      - acceptance
+
+  migrate:
+    image: docker.getcollate.io/openmetadata/server:1.13.1
+    command: ["./bootstrap/openmetadata-ops.sh", "migrate"]
+    environment: *openmetadata-environment
+    depends_on:
+      metadata-db:
+        condition: service_healthy
+      search:
+        condition: service_healthy
+    networks:
+      - acceptance
+
+  openmetadata:
+    image: docker.getcollate.io/openmetadata/server:1.13.1
+    environment:
+      <<: *openmetadata-environment
+      SERVER_HOST_API_URL: http://openmetadata:8585/api
+    ports:
+      - "127.0.0.1:${GDA_OPENMETADATA_ACCEPTANCE_PORT:-18585}:8585"
+      - "127.0.0.1:${GDA_OPENMETADATA_ACCEPTANCE_ADMIN_PORT:-18586}:8586"
+    depends_on:
+      metadata-db:
+        condition: service_healthy
+      search:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8586/healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+    networks:
+      - acceptance
+
+volumes:
+  metadata-db-data:
+  search-data:
+
+networks:
+  acceptance:
+    driver: bridge

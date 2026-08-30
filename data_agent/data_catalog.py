@@ -63,13 +63,15 @@ def _generate_asset_embedding(asset_name: str, description: str = "",
         return cached
 
     try:
-        from google import genai
-        client = genai.Client()
-        response = client.models.embed_content(
-            model="text-embedding-004",
-            contents=[combined],
-        )
-        vec = response.embeddings[0].values
+        # Keep asset search on the same configured, offline-capable gateway as
+        # NL2SQL few-shot retrieval.  This must not silently bypass the model
+        # selector and call Gemini text-embedding-004 directly.
+        from .embedding_gateway import get_embeddings
+
+        vectors = get_embeddings([combined])
+        vec = vectors[0] if vectors and vectors[0] else []
+        if not vec:
+            raise RuntimeError("configured embedding backend returned no vector")
         _cache_put(combined, vec)
         return vec
     except Exception as e:

@@ -215,6 +215,85 @@ def test_execute_nl2sql_executes_corrected_sql():
     assert '"status":"ok"' in result
 
 
+def test_governed_source_bindings_filter_candidates_and_reject_unbound_sql(tmp_path):
+    from data_agent.nl2sql_executor import (
+        _apply_governed_source_bindings,
+        _ungoverned_sql_source,
+    )
+
+    governed = tmp_path / "land.parquet"
+    governed.write_bytes(b"PAR1")
+    payload = {
+        "candidate_tables": [
+            {
+                "table_name": "land_snapshot",
+                "columns": [],
+                "execution_bindings": {
+                    "lake": {"projection_path": "/untrusted/land.parquet"}
+                },
+            },
+            {"table_name": "other_snapshot", "columns": []},
+        ]
+    }
+    bindings = {
+        "land_snapshot": {
+            "binding_id": "00000000-0000-4000-8000-000000000601",
+            "physical_locator": str(governed),
+        }
+    }
+
+    filtered = _apply_governed_source_bindings(payload, "lake", bindings)
+
+    assert [item["table_name"] for item in filtered["candidate_tables"]] == [
+        "land_snapshot"
+    ]
+    assert (
+        filtered["candidate_tables"][0]["execution_bindings"]["lake"][
+            "projection_path"
+        ]
+        == str(governed)
+    )
+    assert _ungoverned_sql_source("SELECT * FROM land_snapshot", bindings) == ""
+    assert (
+        _ungoverned_sql_source("SELECT * FROM other_snapshot", bindings)
+        == "other_snapshot"
+    )
+
+
+def test_llm_evidence_aggregation_keeps_all_calls_and_unknown_cost():
+    from data_agent.nl2sql_executor import (
+        _aggregate_llm_evidence,
+        _record_llm_evidence,
+    )
+    from data_agent.user_context import current_nl2sql_llm_calls
+
+    token = current_nl2sql_llm_calls.set([])
+    try:
+        _record_llm_evidence({
+            "provider": "openai",
+            "latency_ms": 100,
+            "usage": {"prompt_tokens": 10, "completion_tokens": 3, "total_tokens": 13},
+        })
+        _record_llm_evidence({
+            "provider": "openai",
+            "latency_ms": 50,
+            "usage": {"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 7},
+        })
+        usage = _aggregate_llm_evidence()
+    finally:
+        current_nl2sql_llm_calls.reset(token)
+
+    assert usage == {
+        "calls": 2,
+        "latency_ms": 150,
+        "input_tokens": 15,
+        "output_tokens": 5,
+        "total_tokens": 20,
+        "estimated_cost_usd": None,
+        "cost_status": "unavailable",
+    }
+
+
 def test_gemma_semantic_prompt_treats_export_requests_as_safe_limited_selects():
     from data_agent.nl2sql_executor import _build_gemma_semantic_prompt
 
@@ -282,6 +361,18 @@ def test_extract_sql_prefers_outer_query_over_nested_select_fragment():
     assert _extract_sql(sql) == sql
 
 
+def test_referenced_sql_tables_excludes_cte_aliases():
+    from data_agent.nl2sql_executor import _referenced_sql_tables
+
+    sql = (
+        "WITH large_parcels AS (SELECT geometry FROM parcels WHERE area > 100) "
+        "SELECT COUNT(*) FROM large_parcels p WHERE EXISTS "
+        "(SELECT 1 FROM roads r WHERE ST_Intersects(p.geometry, r.geometry))"
+    )
+
+    assert set(_referenced_sql_tables(sql)) == {"parcels", "roads"}
+
+
 def test_safe_preview_fallback_selects_all_for_backup_request():
     from data_agent.nl2sql_executor import _build_safe_preview_sql
 
@@ -299,6 +390,44 @@ def test_safe_preview_fallback_selects_all_for_backup_request():
     )
 
     assert sql == "SELECT * FROM places LIMIT 1000"
+
+
+def test_safe_preview_fallback_bounds_chinese_show_all_map_request():
+    from data_agent.nl2sql_executor import _build_safe_preview_sql
+
+    sql = _build_safe_preview_sql(
+        "把所有的建筑物数据全部显示在地图上，不要遗漏任何一栋。",
+        {
+            "candidate_tables": [{
+                "table_name": "cq_buildings_2021",
+                "columns": [
+                    {"column_name": "Id", "needs_quoting": True},
+                    {"column_name": "geometry", "is_geometry": True},
+                ],
+            }],
+        },
+    )
+
+    assert sql == "SELECT * FROM cq_buildings_2021 LIMIT 1000"
+
+
+def test_safe_preview_fallback_does_not_treat_aggregate_scope_as_export():
+    from data_agent.nl2sql_executor import _build_safe_preview_sql
+
+    payload = {
+        "candidate_tables": [{
+            "table_name": "parcels",
+            "columns": [
+                {"column_name": "land_type", "quoted_ref": "land_type"},
+                {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True},
+            ],
+        }],
+    }
+
+    assert _build_safe_preview_sql(
+        "计算所有茶园图斑几何合并后的总面积",
+        payload,
+    ) == ""
 
 
 def test_safe_preview_fallback_prefers_exact_table_mention_over_first_candidate():
@@ -360,6 +489,214 @@ def test_safe_preview_fallback_prefers_geometry_table_for_coordinate_request():
     )
 
     assert sql == "SELECT name, geometry FROM city_poi LIMIT 1000"
+
+
+def test_unbounded_full_row_preview_requires_safe_limit():
+    from data_agent.nl2sql_executor import _is_unbounded_full_row_preview
+
+    payload = {
+        "candidate_tables": [{
+            "table_name": "roads",
+            "columns": [{"column_name": "name", "quoted_ref": "name"}],
+        }],
+    }
+    question = "把所有道路数据都导出来"
+
+    assert _is_unbounded_full_row_preview(question, "SELECT * FROM roads", payload)
+    assert not _is_unbounded_full_row_preview(
+        question,
+        "SELECT * FROM roads LIMIT 1000",
+        payload,
+    )
+
+
+def test_unbounded_export_projection_requires_safe_limit():
+    from data_agent.nl2sql_executor import _is_unbounded_full_row_preview
+
+    payload = {
+        "candidate_tables": [{
+            "table_name": "roads",
+            "columns": [
+                {"column_name": "name", "quoted_ref": "name"},
+                {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True},
+            ],
+        }],
+    }
+
+    assert _is_unbounded_full_row_preview(
+        "把所有道路的几何数据导出来看看。",
+        "SELECT geometry FROM roads",
+        payload,
+    )
+    assert _is_unbounded_full_row_preview(
+        "SELECT * FROM roads;",
+        "SELECT * FROM roads",
+        payload,
+    )
+    assert not _is_unbounded_full_row_preview(
+        "统计所有道路数量",
+        "SELECT COUNT(*) FROM roads",
+        payload,
+    )
+
+
+def test_refuses_requested_business_metric_missing_from_governed_schema():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "intent": "aggregation",
+        "candidate_tables": [{
+            "table_name": "roads",
+            "table_aliases": ["道路"],
+            "columns": [
+                {"column_name": "name", "aliases": ["道路名称"]},
+                {"column_name": "maxspeed", "aliases": ["最高限速"]},
+            ],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "道路数据里每条路的限速和车道数量是多少？",
+        payload,
+    )
+
+
+def test_refuses_arbitrary_ungoverned_metric_without_dataset_vocabulary():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "intent": "aggregation",
+        "candidate_tables": [{
+            "table_name": "asset_records",
+            "table_aliases": ["资产"],
+            "columns": [
+                {"column_name": "asset_key", "aliases": ["资产编号"]},
+                {"column_name": "temperature_c", "aliases": ["温度"]},
+            ],
+        }],
+    }
+    question = "每个资产的温度和冷链损耗率是多少？"
+    assert _should_refuse_nl2sql_question(question, payload) is True
+    payload["candidate_tables"][0]["columns"].append(
+        {"column_name": "loss_ratio", "aliases": ["冷链损耗率"]}
+    )
+    assert _should_refuse_nl2sql_question(question, payload) is False
+
+
+def test_governed_field_description_satisfies_business_metric_grounding():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "intent": "aggregation",
+        "candidate_tables": [{
+            "table_name": "population",
+            "columns": [{
+                "column_name": "pop_value",
+                "semantic_domain": "POPULATION",
+                "description": "统计期末常住人口，单位为万人",
+                "aliases": [],
+            }],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "按常住人口排名各行政区",
+        payload,
+    ) is False
+
+
+def test_dataset_noun_phrase_is_not_misclassified_as_unknown_metric():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "intent": "attribute_filter",
+        "candidate_tables": [{
+            "table_name": "asset_records",
+            "table_aliases": ["资产", "资产数据"],
+            "columns": [{
+                "column_name": "temperature_c",
+                "aliases": ["温度"],
+            }],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "帮我从资产数据里找出温度超过 20 度的记录。",
+        payload,
+    ) is False
+
+
+def test_refuses_named_business_dataset_missing_from_candidate_catalog():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "intent": "spatial_relation",
+        "candidate_tables": [{
+            "table_name": "roads",
+            "display_name": "Road network",
+            "table_aliases": ["道路", "道路网"],
+            "columns": [{"column_name": "geometry", "is_geometry": True}],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "查询洪水淹没区数据与道路的相交范围。",
+        payload,
+    ) is True
+    payload["candidate_tables"].append({
+        "table_name": "flood_zones",
+        "display_name": "Flood zones",
+        "table_aliases": ["洪水淹没区"],
+        "columns": [{"column_name": "geometry", "is_geometry": True}],
+    })
+    assert _should_refuse_nl2sql_question(
+        "查询洪水淹没区数据与道路的相交范围。",
+        payload,
+    ) is False
+
+
+def test_refuses_available_capacity_when_schema_only_has_entity_count():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "intent": "aggregation",
+        "candidate_tables": [{
+            "table_name": "parking_facilities",
+            "table_aliases": ["停车场"],
+            "columns": [
+                {"column_name": "facility_id", "aliases": ["停车场编号"]},
+                {"column_name": "total_spaces", "aliases": ["停车位总数"]},
+            ],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question("有多少个停车场？", payload) is False
+    assert _should_refuse_nl2sql_question("还有多少空余停车位？", payload) is True
+    payload["candidate_tables"][0]["columns"].append({
+        "column_name": "available_spaces",
+        "aliases": ["空余停车位", "剩余车位"],
+    })
+    assert _should_refuse_nl2sql_question("还有多少空余停车位？", payload) is False
+
+
+def test_refuses_missing_build_year_even_when_intent_is_aggregation():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "intent": "aggregation",
+        "candidate_tables": [{
+            "table_name": "buildings",
+            "columns": [
+                {"column_name": "Id", "aliases": ["建筑标识"]},
+                {"column_name": "Floor", "aliases": ["楼层"]},
+            ],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "2020 年之后建成的建筑物有多少栋？",
+        payload,
+    )
 
 
 def test_refuse_nl2sql_question_detects_write_intent():
@@ -484,6 +821,10 @@ def test_refuse_nl2sql_question_detects_unsupported_business_metric():
         "查询重庆市各区县的空气质量指数（AQI）分布情况。",
         payload,
     ) is True
+    assert _should_refuse_nl2sql_question(
+        "我想知道道路数据里，有没有一个叫“拥堵指数”的指标？有的话帮我查一下。",
+        payload,
+    ) is True
 
 
 def test_refuse_nl2sql_question_skips_metric_guard_for_grounded_non_unknown_intent():
@@ -539,6 +880,45 @@ def test_refuse_nl2sql_question_allows_filter_literals_units_and_format_hints():
     ) is False
 
 
+def test_refuse_nl2sql_question_allows_parenthetical_business_explanations():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "candidate_tables": [{
+            "table_name": "cq_amap_poi_2024",
+            "columns": [
+                {"column_name": "名称", "aliases": ["POI名称"]},
+                {"column_name": "类型", "aliases": ["POI类型"]},
+                {"column_name": "电话", "aliases": []},
+            ],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "找出包含三甲医院（类型 或 名称 中包含）的 POI 名称和电话。",
+        payload,
+    ) is False
+
+
+def test_refuse_nl2sql_question_allows_parenthetical_range_note():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "candidate_tables": [{
+            "table_name": "cq_land_use_dltb",
+            "columns": [
+                {"column_name": "TBMJ", "aliases": ["图斑面积"]},
+                {"column_name": "DLMC", "aliases": ["地类名称"]},
+            ],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "图斑面积（TBMJ）在 10000 到 50000 平方米之间（含端点）且地类名称（DLMC）包含林字。",
+        payload,
+    ) is False
+
+
 def test_refuse_nl2sql_question_allows_sql_functions_keywords_and_sort_hints():
     from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
 
@@ -561,6 +941,32 @@ def test_refuse_nl2sql_question_allows_sql_functions_keywords_and_sort_hints():
     ) is False
     assert _should_refuse_nl2sql_question(
         "对每条 fclass 为 'primary' 的有名字道路（name IS NOT NULL），按 objectid 升序返回。",
+        payload,
+    ) is False
+    assert _should_refuse_nl2sql_question(
+        "计算 cq_osm_roads_2021 所有道路长度（使用 ST_Length，不转 geography）。",
+        payload,
+    ) is False
+
+    payload["candidate_tables"].extend([
+        {
+            "table_name": "cq_dltb",
+            "columns": [
+                {"column_name": "dlmc"},
+                {"column_name": "shape", "is_geometry": True},
+            ],
+        },
+        {
+            "table_name": "cq_baidu_aoi_2024",
+            "columns": [
+                {"column_name": "名称", "aliases": ["AOI 名称"]},
+                {"column_name": "第一分类"},
+                {"column_name": "shape", "is_geometry": True},
+            ],
+        },
+    ])
+    assert _should_refuse_nl2sql_question(
+        "找出百度 AOI 与 cq_dltb 村庄图斑相交（使用 EXISTS 子查询）。",
         payload,
     ) is False
 
@@ -649,6 +1055,66 @@ def test_refuse_nl2sql_question_allows_computable_count_ranking_and_sorting():
 
     assert _should_refuse_nl2sql_question("按道路等级分组，统计每种等级的道路总条数，并按条数从大到小排序。", payload) is False
     assert _should_refuse_nl2sql_question("按 objectid 排序取第一个图斑。", payload) is False
+
+
+def test_refuse_nl2sql_question_treats_ranking_presentation_as_command_not_metric():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = {
+        "intent": "aggregation",
+        "candidate_tables": [{
+            "table_name": "land_parcels",
+            "table_aliases": ["地块"],
+            "columns": [
+                {"column_name": "owner_name", "aliases": ["权属单位"]},
+                {"column_name": "area", "aliases": ["面积"]},
+            ],
+        }],
+    }
+
+    assert _should_refuse_nl2sql_question(
+        "哪些权属单位拥有的地块数量最多？请列出排名前 5 的单位和总面积。",
+        payload,
+    ) is False
+
+
+def test_missing_requested_spatial_relation_detection_requires_two_candidates():
+    from data_agent.nl2sql_executor import (
+        _generated_sql_missing_requested_spatial_relation,
+    )
+
+    payload = {
+        "candidate_tables": [
+            {"table_name": "land_parcels"},
+            {"table_name": "roads"},
+        ],
+    }
+    question = "统计有道路穿过的水田地块总面积"
+
+    assert _generated_sql_missing_requested_spatial_relation(
+        question,
+        "SELECT SUM(area) FROM land_parcels WHERE land_type = '水田'",
+        payload,
+    ) is True
+    assert _generated_sql_missing_requested_spatial_relation(
+        question,
+        "SELECT SUM(p.area) FROM land_parcels p JOIN roads r "
+        "ON ST_Intersects(p.geometry, r.geometry) WHERE p.land_type = '水田'",
+        payload,
+    ) is False
+
+
+def test_refuse_nl2sql_question_treats_enum_values_as_grounded():
+    from data_agent.nl2sql_executor import _should_refuse_nl2sql_question
+
+    payload = _cq_context("cq_osm_roads_2021")
+    payload["intent"] = "unknown"
+
+    question = (
+        "我想知道哪些主干道（含 primary 和 motorway）的限速超过了 100，"
+        "把这些路的名字列出来。"
+    )
+    assert _should_refuse_nl2sql_question(question, payload) is False
 
 
 # --- Phase 2: self-correction tests ---
@@ -745,23 +1211,54 @@ def test_execute_nl2sql_skip_curate_on_reject():
     mock_curate.assert_not_called()
 
 
-def test_retry_with_llm_sets_timeout_and_retry_options():
-    """Retry path should set explicit API timeout to avoid hanging the UI."""
+def test_retry_with_llm_uses_same_configured_generation_route():
+    """Execution repair must not bypass the configured local model route."""
     from data_agent.nl2sql_executor import _retry_with_llm
 
-    mock_resp = MagicMock()
-    mock_resp.text = 'SELECT 1'
-    mock_client = MagicMock()
-    mock_client.models.generate_content.return_value = mock_resp
-
-    with patch('google.genai.Client', return_value=mock_client):
+    with patch(
+        "data_agent.nl2sql_executor._generate_gemma_sql",
+        return_value="```sql\nSELECT 1\n```",
+    ) as configured_generate, patch(
+        "data_agent.llm_client.generate_text",
+    ) as legacy_generate:
         result = _retry_with_llm('q', 'bad sql', 'syntax error', {'t': []})
 
     assert result == 'SELECT 1'
-    kwargs = mock_client.models.generate_content.call_args.kwargs
-    config = kwargs['config']
-    assert getattr(config, 'temperature', None) == 0.0
-    assert getattr(config, 'http_options', None) is not None
+    configured_generate.assert_called_once()
+    legacy_generate.assert_not_called()
+
+
+def test_retry_with_llm_retries_misbound_column_using_table_scoped_schema():
+    from data_agent.nl2sql_executor import _retry_with_llm
+
+    schemas = {
+        "assets": [
+            {"column_name": "asset_id", "needs_quoting": False},
+            {"column_name": "temperature", "needs_quoting": False},
+        ],
+        "owners": [
+            {"column_name": "owner_id", "needs_quoting": False},
+            {"column_name": "owner_name", "needs_quoting": False},
+        ],
+    }
+    generated = [
+        "SELECT a.owner_name FROM assets a",
+        "SELECT o.owner_name FROM owners o",
+    ]
+    with patch(
+        "data_agent.nl2sql_executor._generate_gemma_sql",
+        side_effect=generated,
+    ) as configured_generate:
+        result = _retry_with_llm(
+            "list owner names",
+            "SELECT a.owner_name FROM assets a",
+            "column does not exist",
+            schemas,
+        )
+
+    assert result == "SELECT o.owner_name FROM owners o"
+    assert configured_generate.call_count == 2
+    assert "does not belong" in configured_generate.call_args_list[1].args[0]
 
 
 def test_execute_nl2sql_no_retry_when_llm_returns_none():
@@ -905,10 +1402,13 @@ def test_gemma_semantic_rewrite_counts_distinct_buildings_on_road_join():
     assert "semantic_distinct_join_count" in corrections
 
 
-def test_run_nl2semantic2sql_builds_gemma_context_and_executes():
+def test_run_nl2semantic2sql_builds_gemma_context_and_executes(monkeypatch):
     from data_agent import nl2sql_executor
 
+    monkeypatch.setenv("NL2SQL_AGENT_FAMILY", "gemma")
+
     payload = _cq_context("cq_osm_roads_2021")
+    payload["candidate_tables"][0]["table_aliases"] = ["道路"]
     payload.update({
         "grounding_prompt": "GROUNDING",
         "few_shots": [],
@@ -937,6 +1437,44 @@ def test_run_nl2semantic2sql_builds_gemma_context_and_executes():
     assert result["status"] == "ok"
     assert result["sql"] == FakeResult.sql
     assert result["corrections"] == ["semantic_value_group"]
+
+
+def test_run_nl2semantic2sql_retries_direct_path_on_execution_failure():
+    from data_agent import nl2sql_executor
+
+    payload = _cq_context("cq_osm_roads_2021")
+    payload.update({
+        "grounding_prompt": "GROUNDING",
+        "few_shots": [],
+        "_hint_injection_stats": {"candidate_tables": 1, "few_shots": 0},
+    })
+
+    class FakeResult:
+        rejected = False
+        reject_reason = ""
+        corrections = []
+
+        def __init__(self, sql):
+            self.sql = sql
+
+    execution_results = [
+        '{"status":"error","error":"column bad_name does not exist"}',
+        '{"status":"ok","rows":1,"data":[{"count":2}]}',
+    ]
+    with patch("data_agent.nl2sql_executor.build_nl2sql_context", return_value=payload), \
+         patch("data_agent.nl2sql_executor._generate_gemma_sql", return_value="SELECT name FROM cq_osm_roads_2021"), \
+         patch("data_agent.nl2sql_executor._retry_with_llm", return_value="SELECT COUNT(*) FROM cq_osm_roads_2021") as mock_retry, \
+         patch("data_agent.nl2sql_executor.postprocess_sql", side_effect=lambda sql, *a, **kw: FakeResult(sql)), \
+         patch("data_agent.nl2sql_executor.execute_safe_sql", side_effect=execution_results) as mock_exec, \
+         patch("data_agent.nl2sql_executor._auto_curate"):
+        result = json.loads(nl2sql_executor.run_nl2semantic2sql("统计道路数量"))
+
+    assert result["status"] == "ok"
+    assert result["sql"] == "SELECT COUNT(*) FROM cq_osm_roads_2021"
+    assert result["self_correction"]["attempted"] == 1
+    assert "execution_feedback_retry:1" in result["corrections"]
+    assert mock_retry.call_count == 1
+    assert mock_exec.call_count == 2
 
 
 def test_run_nl2semantic2sql_hydrates_sql_referenced_table_for_alias_rewrite():
@@ -1021,7 +1559,7 @@ def test_run_nl2semantic2sql_retries_ungrounded_sql_referenced_table():
     assert result["status"] == "ok"
     assert "mp_parcel" not in result["sql"]
     assert "cq_land_use_dltb" in result["sql"]
-    assert "gemma_ungrounded_table_retry" in result["corrections"]
+    assert "nl2sql_ungrounded_table_retry" in result["corrections"]
 
 
 def test_run_nl2semantic2sql_uses_active_qwen_family_for_context(monkeypatch):
@@ -1059,7 +1597,47 @@ def test_run_nl2semantic2sql_uses_active_qwen_family_for_context(monkeypatch):
     assert result["status"] == "ok"
 
 
-def test_run_nl2semantic2sql_qwen_prompt_includes_family_harness_notes(monkeypatch):
+def test_run_nl2semantic2sql_infers_qwen_family_from_configured_model(monkeypatch):
+    from data_agent.nl2sql_executor import _active_direct_harness_family
+
+    monkeypatch.delenv("NL2SQL_AGENT_FAMILY", raising=False)
+    monkeypatch.delenv("NL2SQL_AGENT_MODEL", raising=False)
+    monkeypatch.setenv("GDA_LLM_MODEL", "Qwen3.6:27b")
+
+    assert _active_direct_harness_family() == "qwen"
+
+
+def test_run_nl2semantic2sql_retries_direct_harness_placeholder(monkeypatch):
+    from data_agent import nl2sql_executor
+
+    payload = _cq_context("cq_osm_roads_2021")
+    payload.update({
+        "grounding_prompt": "GROUNDING",
+        "few_shots": [],
+        "_hint_injection_stats": {"candidate_tables": 1, "few_shots": 0},
+    })
+
+    class FakeResult:
+        rejected = False
+        reject_reason = ""
+        corrections = []
+        sql = "SELECT COUNT(*) FROM cq_osm_roads_2021"
+
+    generated = ["SELECT 1", FakeResult.sql]
+    with patch("data_agent.nl2sql_executor.build_nl2sql_context", return_value=payload), \
+         patch("data_agent.nl2sql_executor._generate_gemma_sql", side_effect=generated) as mock_generate, \
+         patch("data_agent.nl2sql_executor.postprocess_sql", return_value=FakeResult()), \
+         patch("data_agent.nl2sql_executor.execute_safe_sql", return_value='{"status":"ok","rows":1,"data":[{"count":7}]}'), \
+         patch("data_agent.nl2sql_executor._auto_curate"):
+        result = json.loads(nl2sql_executor.run_nl2semantic2sql("统计道路数量"))
+
+    assert result["status"] == "ok"
+    assert result["sql"] == FakeResult.sql
+    assert mock_generate.call_count == 2
+    assert "nl2sql_placeholder_retry:1" in result["corrections"]
+
+
+def test_run_nl2semantic2sql_qwen_prompt_includes_shared_product_harness_notes(monkeypatch):
     from data_agent import nl2sql_executor
 
     payload = _cq_context("cq_dltb", "cq_baidu_aoi_2024")
@@ -1092,11 +1670,46 @@ def test_run_nl2semantic2sql_qwen_prompt_includes_family_harness_notes(monkeypat
 
     prompt = captured["prompt"]
     assert result["status"] == "ok"
-    assert "Qwen family harness notes" in prompt
+    assert "Shared product harness notes" in prompt
     assert "Do not append clauses after a semicolon" in prompt
-    assert "geometry column is `shape`" in prompt
-    assert "ST_Contains" in prompt and "not geography" in prompt
+    assert "exact geometry column" in prompt
+    assert "ST_Contains" in prompt and "geometry operands" in prompt
+    assert "geography casts" in prompt
     assert "write/destructive" in prompt
+    assert "Do not add an unrelated JOIN" in prompt
+    assert "Return exactly the columns" in prompt
+    assert "IS NOT NULL" in prompt
+    assert "nearest/最近的 K 个" in prompt
+    assert "count the entity named by the question" in prompt
+
+
+def test_direct_harness_prompt_is_identical_across_model_families():
+    from data_agent.nl2sql_executor import _build_family_semantic_prompt
+
+    base_payload = {
+        "grounding_prompt": "GROUNDING",
+        "_hint_injection_stats": {
+            "candidate_tables": 2,
+            "few_shots": 0,
+            "family": "gemma",
+        },
+    }
+    gemma_prompt = _build_family_semantic_prompt(
+        "gemma", "count governed entities", base_payload
+    )
+    qwen_payload = {
+        **base_payload,
+        "_hint_injection_stats": {
+            **base_payload["_hint_injection_stats"],
+            "family": "qwen",
+        },
+    }
+    qwen_prompt = _build_family_semantic_prompt(
+        "qwen", "count governed entities", qwen_payload
+    )
+
+    assert gemma_prompt == qwen_prompt
+    assert '"family"' not in gemma_prompt
 
 
 def test_sql_reference_hydration_uses_physical_schema_fallback():
@@ -1242,6 +1855,37 @@ def test_run_nl2semantic2sql_uses_preview_fallback_when_postprocess_rejects_all_
     assert result["status"] == "ok"
     assert result["sql"] == "SELECT * FROM cq_land_use_dltb LIMIT 1000"
     assert "safe_preview_fallback" in result["corrections"]
+    mock_exec.assert_called_once_with("SELECT * FROM cq_land_use_dltb LIMIT 1000")
+
+
+def test_run_nl2semantic2sql_bounds_an_accepted_unlimited_full_row_preview():
+    from data_agent import nl2sql_executor
+
+    payload = _cq_context("cq_land_use_dltb")
+    payload.update({
+        "grounding_prompt": "GROUNDING",
+        "few_shots": [],
+        "_hint_injection_stats": {"candidate_tables": 1, "few_shots": 0},
+    })
+
+    class AcceptedResult:
+        rejected = False
+        reject_reason = ""
+        corrections = []
+
+        def __init__(self, sql):
+            self.sql = sql
+
+    with patch("data_agent.nl2sql_executor.build_nl2sql_context", return_value=payload), \
+         patch("data_agent.nl2sql_executor._generate_gemma_sql", return_value="SELECT * FROM cq_land_use_dltb"), \
+         patch("data_agent.nl2sql_executor.postprocess_sql", side_effect=lambda sql, *args, **kwargs: AcceptedResult(sql)), \
+         patch("data_agent.nl2sql_executor.execute_safe_sql", return_value='{"status":"ok","rows":1000,"data":[]}') as mock_exec, \
+         patch("data_agent.nl2sql_executor._auto_curate"):
+        result = json.loads(nl2sql_executor.run_nl2semantic2sql("展示全部土地利用数据"))
+
+    assert result["status"] == "ok"
+    assert result["sql"] == "SELECT * FROM cq_land_use_dltb LIMIT 1000"
+    assert "safe_preview_limit" in result["corrections"]
     mock_exec.assert_called_once_with("SELECT * FROM cq_land_use_dltb LIMIT 1000")
 
 
@@ -1755,3 +2399,37 @@ def test_generate_gemma_sql_retries_transient_completion_error(monkeypatch):
     assert calls[0]["extra_body"] == {"think": False}
     assert calls[0]["timeout"] == 600
     mock_sleep.assert_called_once_with(1)
+
+
+def test_configured_deepseek_sql_generation_retries_empty_response(monkeypatch):
+    from data_agent.nl2sql_executor import _generate_gemma_sql
+    from data_agent.openai_compatible_llm import LLMServiceError
+
+    monkeypatch.setenv("GDA_LLM_PROVIDER", "deepseek")
+    monkeypatch.setenv("GDA_LLM_BASE_URL", "https://api.deepseek.com")
+    monkeypatch.setenv("GDA_LLM_MODEL", "deepseek-v4-flash")
+    monkeypatch.setenv("GDA_LLM_API_KEY", "sk-test")
+    monkeypatch.setenv("GDA_LLM_API_STYLE", "responses")
+    monkeypatch.setenv("GDA_NL2SQL_GENERATION_RETRIES", "2")
+    monkeypatch.setenv("GDA_NL2SQL_MAX_OUTPUT_TOKENS", "8192")
+
+    evidence = {
+        "provider": "deepseek",
+        "model": "deepseek-v4-flash",
+        "api_style": "responses",
+    }
+    with patch(
+        "data_agent.openai_compatible_llm.chat_completion",
+        side_effect=[
+            LLMServiceError("deepseek LLM returned an empty response"),
+            ("SELECT COUNT(*) FROM cq_osm_roads_2021", evidence),
+        ],
+    ) as mock_completion, patch("data_agent.nl2sql_executor.time.sleep") as mock_sleep:
+        sql = _generate_gemma_sql("prompt")
+
+    assert sql == "SELECT COUNT(*) FROM cq_osm_roads_2021"
+    assert mock_completion.call_count == 2
+    assert mock_completion.call_args.kwargs["max_tokens"] == 8192
+    assert evidence["generation_attempt"] == 2
+    assert evidence["generation_attempt_limit"] == 2
+    mock_sleep.assert_called_once_with(10.0)

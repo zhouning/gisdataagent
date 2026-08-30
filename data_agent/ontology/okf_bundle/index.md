@@ -22,6 +22,6 @@ knowledge, provenance, and computation-contract companion.
 
 # Sources And Runtime References
 
-* [Ontology package](/sources/ontology-package.md) - OWL/RDF package V2.0.1 and content digest.
+* [Ontology package](/sources/ontology-package.md) - OWL/RDF package V2.1.0 and content digest.
 * [Customer demo bundle](/sources/customer-demo-bundle.md) - version-locked geospatial scenario artifacts.
 * [Scenario executor](/references/executors/ontology-demo-executor.md) - deterministic execution contract.

@@ -1,15 +1,40 @@
 """Data Distribution REST routes — requests, reviews, packaging, access stats (v15.0)."""
 
+import asyncio
 import logging
+from pathlib import Path
 
 from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse
+from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
+from ..governed_query_result_access_security import (
+    GOVERNED_QUERY_RESULT_ACCESS_SECURITY_PURPOSE,
+)
+from ..governed_query_result_delivery import (
+    GovernedQueryResultDeliveryForbidden,
+    GovernedQueryResultDeliveryService,
+    GovernedQueryResultDeliveryUnavailable,
+)
+from ..governed_query_security import (
+    GovernedQuerySecurityError,
+    resolve_governed_query_security_ports,
+)
 from ..user_context import current_tenant_id
 from .helpers import _get_user_from_request, _require_admin, _set_user_context
 
 logger = logging.getLogger("data_agent.api.distribution_routes")
+DISTRIBUTION_PACKAGE_RESULT_ACCESS_ACTION = "distribution.package.download.access"
+
+
+class _DistributionPackageResolutionError(RuntimeError):
+    def __init__(self, result: dict):
+        super().__init__("distribution package is unavailable")
+        self.result = result
+
+
+def _result_delivery() -> GovernedQueryResultDeliveryService:
+    return GovernedQueryResultDeliveryService()
 
 
 async def dreq_create(request: Request):
@@ -128,17 +153,65 @@ async def distribution_package_download(request: Request):
     user = _get_user_from_request(request)
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    username, _ = _set_user_context(user)
+    username, role = _set_user_context(user)
     from ..data_distribution import get_distribution_package
 
-    result = get_distribution_package(request.path_params.get("package_id", ""), username)
-    if result.get("status") == "error":
+    package_id = str(request.path_params.get("package_id", ""))
+    tenant_id = current_tenant_id.get() or "local-dev"
+
+    def read_package() -> tuple[dict, bytes]:
+        result = get_distribution_package(package_id, username)
+        if result.get("status") == "error":
+            raise _DistributionPackageResolutionError(result)
+        return result, Path(result["file_path"]).read_bytes()
+
+    try:
+        security_ports = resolve_governed_query_security_ports(tenant_id)
+        result, payload = await asyncio.to_thread(
+            _result_delivery().execute,
+            tenant_id=tenant_id,
+            actor_subject=f"human:{username}",
+            roles=(role,),
+            purpose_code=GOVERNED_QUERY_RESULT_ACCESS_SECURITY_PURPOSE,
+            channel="distribution_result",
+            adapter_id="gda.distribution-package.download.v1",
+            consumption_mode="download",
+            resource_refs=(
+                f"gda://{tenant_id}/distribution_package/{package_id}",
+            ),
+            request_payload={"package_id": package_id},
+            action=DISTRIBUTION_PACKAGE_RESULT_ACCESS_ACTION,
+            operation=read_package,
+            security_reader=None if security_ports is None else security_ports[0],
+        )
+    except _DistributionPackageResolutionError as exc:
+        result = exc.result
         status_code = 404 if result.get("error_code") == "package_not_found" else 503
         return JSONResponse({"error": result["message"]}, status_code=status_code)
-    return FileResponse(
-        result["file_path"],
+    except GovernedQueryResultDeliveryForbidden:
+        return JSONResponse(
+            {"error": "Distribution package access was denied"},
+            status_code=403,
+        )
+    except (
+        GovernedQueryResultDeliveryUnavailable,
+        GovernedQuerySecurityError,
+    ):
+        return JSONResponse(
+            {"error": "Distribution package security is unavailable"},
+            status_code=503,
+        )
+    except OSError:
+        return JSONResponse(
+            {"error": "Distribution package is unavailable"},
+            status_code=503,
+        )
+    return Response(
+        payload,
         media_type="application/zip",
-        filename=result["zip_name"],
+        headers={
+            "Content-Disposition": f'attachment; filename="{result["zip_name"]}"'
+        },
     )
 
 

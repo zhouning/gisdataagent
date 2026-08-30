@@ -13,7 +13,14 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       TZ: Asia/Shanghai
-    command: ["postgres", "-c", "timezone=Asia/Shanghai"]
+    command:
+      - postgres
+      - -c
+      - timezone=Asia/Shanghai
+      - -c
+      - max_connections=${POSTGRES_MAX_CONNECTIONS:-150}
+      - -c
+      - superuser_reserved_connections=${POSTGRES_SUPERUSER_RESERVED_CONNECTIONS:-5}
     ports:
       - "5433:5432"
     volumes:
@@ -42,6 +49,31 @@ services:
     networks:
       - gemma4-demo-net
 
+  migrate:
+    image: gis-data-agent:dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_DATABASE: gis_agent
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      MIGRATION_RUNTIME_DB_ROLE: agent_user
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        python -m data_agent.migration_runner migrate
+        bash /app/scripts/grant-platform-gateway-role.sh
+    networks:
+      - gemma4-demo-net
+
   app:
     image: gis-data-agent:dev
     build:
@@ -51,6 +83,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     ports:
@@ -65,11 +99,19 @@ services:
       POSTGRES_USER: agent_user
       POSTGRES_PASSWORD: change_me_strong_password
       PGTZ: Asia/Shanghai
-      POSTGRES_ADMIN_USER: postgres
-      POSTGRES_ADMIN_PASSWORD: postgres
       DATABASE_URL: postgresql://agent_user:change_me_strong_password@db:5432/gis_agent
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-150}
+      POSTGRES_CONNECTION_RESERVE: ${POSTGRES_CONNECTION_RESERVE:-20}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-20}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
+      ASYNC_POOL_MIN: ${ASYNC_POOL_MIN:-2}
+      ASYNC_POOL_MAX: ${ASYNC_POOL_MAX:-10}
 
       REDIS_URL: redis://redis:6379/0
+      GDA_GIS_MVT_CACHE_REDIS_URL: ${GDA_GIS_MVT_CACHE_REDIS_URL:-redis://redis:6379/1}
+      GDA_GIS_MVT_CACHE_KEY_PREFIX: ${GDA_GIS_MVT_CACHE_KEY_PREFIX:-gda:mvt:response:v1}
+      GDA_GIS_MVT_CACHE_MAX_OBJECT_BYTES: ${GDA_GIS_MVT_CACHE_MAX_OBJECT_BYTES:-1048576}
+      GDA_GIS_MVT_CACHE_TIMEOUT_SECONDS: ${GDA_GIS_MVT_CACHE_TIMEOUT_SECONDS:-0.5}
 
       GOOGLE_GENAI_USE_VERTEXAI: "FALSE"
       GOOGLE_CLOUD_PROJECT: local-dev-placeholder
@@ -97,9 +139,45 @@ services:
       DYNAMIC_PLANNER: "true"
     volumes:
       - gemma4_demo_uploads:/app/data_agent/uploads
-      - /Users/zhouning/arcgis-farmland-mpc:/app/paper9-demo:ro
-      - /Users/zhouning/farmland_mpc_runs/bishan:/app/bishan-runs:ro
-      - /Users/zhouning/arcgis-farmland-mpc/runs/dongxing:/app/dongxing-runs:ro
+      - ${PAPER9_HOST_REPO:-/Users/zhouning/paper9-mnr-offline-package}:/app/paper9-demo:ro
+      - ${PAPER9_BISHAN_RUNS_HOST:-/Users/zhouning/farmland_mpc_runs/bishan}:/app/bishan-runs:ro
+      - ${PAPER9_DONGXING_RUNS_HOST:-/Users/zhouning/arcgis-farmland-mpc/runs/dongxing}:/app/dongxing-runs:ro
+    networks:
+      - gemma4-demo-net
+
+  # Optional exact generic-SLO activation -> GIS ServiceSLO binding reconciler.
+  gis-service-slo-reconciliation-worker:
+    image: gis-data-agent:dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    profiles:
+      - gis-slo
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ["python", "-m", "data_agent.gis_service_slo_reconciliation_worker"]
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_DATABASE: gis_agent
+      POSTGRES_USER: agent_user
+      POSTGRES_PASSWORD: change_me_strong_password
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-150}
+      POSTGRES_CONNECTION_RESERVE: ${POSTGRES_CONNECTION_RESERVE:-20}
+      DB_POOL_SIZE: ${GDA_WORKER_DB_POOL_SIZE:-2}
+      DB_MAX_OVERFLOW: "0"
+      ASYNC_POOL_MIN: "0"
+      ASYNC_POOL_MAX: "1"
+      GDA_GIS_SLO_RECONCILIATION_TENANT_ID: ${GDA_GIS_SLO_RECONCILIATION_TENANT_ID:-}
+      GDA_GIS_SLO_RECONCILIATION_WORKER_ID: ${GDA_GIS_SLO_RECONCILIATION_WORKER_ID:-worker:gis-slo-reconciliation:gemma4-demo}
+      GDA_GIS_SLO_RECONCILIATION_BATCH_SIZE: ${GDA_GIS_SLO_RECONCILIATION_BATCH_SIZE:-10}
+      GDA_GIS_SLO_RECONCILIATION_LEASE_SECONDS: ${GDA_GIS_SLO_RECONCILIATION_LEASE_SECONDS:-60}
+      GDA_GIS_SLO_RECONCILIATION_RETRY_SECONDS: ${GDA_GIS_SLO_RECONCILIATION_RETRY_SECONDS:-30}
+      GDA_GIS_SLO_RECONCILIATION_POLL_SECONDS: ${GDA_GIS_SLO_RECONCILIATION_POLL_SECONDS:-5}
     networks:
       - gemma4-demo-net
 

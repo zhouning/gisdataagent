@@ -40,6 +40,12 @@ from data_agent.observability import (
 setup_logging()
 logger = get_logger("app")
 from data_agent.model_requirements import configured_models_require_google_cloud_project
+from data_agent.model_gateway import apply_gemini_transport_policy
+
+# Apply the explicit native/direct Gemini deployment before any module-level
+# Google GenAI clients are created. This prevents a stale shell gateway URL
+# from hijacking the Chainlit routing client.
+apply_gemini_transport_policy()
 
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
@@ -92,7 +98,7 @@ try:
     from data_agent.report_generator import generate_word_report
     from data_agent.user_context import (
         current_user_id, current_session_id, current_user_role,
-        current_trace_id, get_user_upload_dir
+        current_trace_id, current_nl2sql_requested_engine, get_user_upload_dir
     )
     from data_agent.audit_logger import (
         record_audit,
@@ -106,7 +112,7 @@ except ImportError:
     import report_generator
     from user_context import (
         current_user_id, current_session_id, current_user_role,
-        get_user_upload_dir
+        current_nl2sql_requested_engine, get_user_upload_dir
     )
     from audit_logger import (
         record_audit,
@@ -125,10 +131,11 @@ except ImportError:
     generate_word_report = report_generator.generate_word_report
     ARCPY_AVAILABLE = getattr(agent, 'ARCPY_AVAILABLE', False)
 
-# The migration Job/CLI is the only schema writer. A configured database with
-# pending migrations or ledger drift must block application startup.
-from data_agent.migration_runner import verify_schema_state
-verify_schema_state(allow_unconfigured=_LITE_MODE)
+# Release automation enforces the complete migration head. Runtime startup
+# rejects ledger drift but does not couple every module to unrelated pending
+# control-plane migrations; each capability verifies its own dependencies.
+from data_agent.migration_runner import verify_runtime_schema_state
+verify_runtime_schema_state(allow_unconfigured=_LITE_MODE)
 
 # When the governed-query security gate is required, install the repository's
 # durable tenant resolver unless an explicit resolver was already configured.
@@ -3767,6 +3774,545 @@ async def _handle_uwm_multistage_chat_message(user_text: str, user_id: str) -> N
     ).send()
 
 
+async def _handle_liveability_demo_message(
+    user_text: str,
+    user_id: str,
+    role: str,
+) -> bool:
+    """Run free-form NL2Semantic2SQL on the selected Liveability source."""
+
+    from data_agent.liveability_nl2sql import (
+        SEMANTIC_LAYER_PATH,
+        SOURCE_ID,
+        describe_liveability_nl2sql_request,
+        format_liveability_nl2sql_response,
+        resolve_liveability_nl2sql_request,
+        run_liveability_nl2sql_request,
+    )
+    from data_agent.abu_dhabi_left_chat_nl2sql import (
+        apply_left_chat_execution_admission,
+    )
+
+    selected_source_id = cl.user_session.get("selected_virtual_source_id")
+    request = resolve_liveability_nl2sql_request(
+        user_text,
+        continue_selected_source=selected_source_id == SOURCE_ID,
+    )
+    if request is None:
+        return False
+
+    if role not in {"admin", "analyst"}:
+        denied = {
+            "zh": "当前账号没有执行 Liveability 自由问数的权限。",
+            "en": "The current account is not authorized to run Liveability free-form queries.",
+            "ar": "الحساب الحالي غير مخوّل لتنفيذ الاستعلامات الحرة لبيانات جودة الحياة.",
+        }[request.language]
+        await cl.Message(content=denied).send()
+        try:
+            record_audit(
+                user_id,
+                ACTION_RBAC_DENIED,
+                status="denied",
+                details={
+                    "intent": "LIVEABILITY_NL2SQL",
+                    **describe_liveability_nl2sql_request(request),
+                },
+            )
+        except Exception:
+            pass
+        return True
+
+    if not request.accepted:
+        await cl.Message(
+            content=format_liveability_nl2sql_response(request, {})
+        ).send()
+        return True
+
+    if request.explicit_source_selection:
+        cl.user_session.set("selected_virtual_source_id", SOURCE_ID)
+        cl.user_session.set("selected_nl2sql_scope", "liveability")
+
+    admission, rejection = apply_left_chat_execution_admission(
+        "liveability", request.question
+    )
+    if rejection is not None:
+        response = format_liveability_nl2sql_response(request, rejection)
+        await cl.Message(
+            content=response,
+            metadata={
+                "routing_info": {
+                    "intent": "LIVEABILITY_NL2SQL",
+                    "pipeline": "governed_virtual_nl2semantic2sql",
+                    "pipeline_name": "Abu Dhabi Liveability Free-form NL2SQL",
+                },
+                "liveability_nl2sql": describe_liveability_nl2sql_request(
+                    request, rejection, source_id=SOURCE_ID
+                ),
+                "admission": admission,
+            },
+        ).send()
+        cl.user_session.set("last_response_text", response)
+        return True
+
+    progress_text = {
+        "zh": "正在规划并执行 Liveability 问数（语义治理、虚拟只读来源）…",
+        "en": "Planning and running the Liveability query (governed semantics, virtual read-only source)…",
+        "ar": "جارٍ تخطيط وتنفيذ استعلام جودة الحياة (دلالات محكومة ومصدر افتراضي للقراءة فقط)…",
+    }[request.language]
+    progress = cl.Message(content=progress_text)
+    await progress.send()
+
+    try:
+        query_started = time.perf_counter()
+        source_id = int(os.environ.get("GDA_ABU_DHABI_LIVEABILITY_SOURCE_ID", "12"))
+        owner = os.environ.get("GDA_ABU_DHABI_SOURCE_OWNER", "abu-dhabi-site-operator")
+        report = await run_liveability_nl2sql_request(
+            request,
+            source_id=source_id,
+            owner=owner,
+        )
+        total_ms = round((time.perf_counter() - query_started) * 1000, 3)
+        report.setdefault("timing", {})["total_ms"] = total_ms
+        response = format_liveability_nl2sql_response(request, report)
+        from data_agent.abu_dhabi_nl2sql_presentation import (
+            build_nl2sql_answer_presentation,
+        )
+
+        presentation = build_nl2sql_answer_presentation(
+            report,
+            semantic_layer_path=SEMANTIC_LAYER_PATH,
+            language=request.language,
+            total_ms=total_ms,
+        )
+        request_audit = describe_liveability_nl2sql_request(
+            request,
+            report,
+            source_id=source_id,
+        )
+        routing_metadata = {
+            "routing_info": {
+                "intent": "LIVEABILITY_NL2SQL",
+                "pipeline": "governed_virtual_nl2semantic2sql",
+                "pipeline_name": "Abu Dhabi Liveability NL2Semantic2SQL",
+            },
+            "liveability_nl2sql": request_audit,
+            "report": {
+                "status": report.get("status"),
+                "model": report.get("model"),
+                "source": report.get("source"),
+                "static_validation": report.get("static_validation"),
+            },
+        }
+        if request_audit.get("clarification"):
+            routing_metadata["nl2sql_clarification"] = request_audit["clarification"] | {
+                "question": request_audit.get("question") or request.question,
+                "scope": "liveability",
+            }
+        if presentation is not None:
+            routing_metadata["nl2sql_presentation"] = presentation
+        progress.content = response
+        progress.metadata = routing_metadata
+        await progress.update()
+        cl.user_session.set("last_response_text", response)
+        cl.user_session.set(
+            "last_context",
+            {
+                "pipeline": "LIVEABILITY_NL2SQL",
+                "source_id": source_id,
+                "language": request.language,
+                "summary": response[:800],
+            },
+        )
+        try:
+            record_audit(
+                user_id,
+                ACTION_PIPELINE_COMPLETE,
+                status="success" if report.get("status") == "ok" else "failure",
+                details={
+                    "intent": "LIVEABILITY_NL2SQL",
+                    "model": (report.get("model") or {}).get("adk_route"),
+                    "result_status": report.get("status"),
+                    **describe_liveability_nl2sql_request(
+                        request,
+                        report,
+                        source_id=source_id,
+                    ),
+                },
+            )
+        except Exception:
+            pass
+    except Exception:
+        # Keep database/provider diagnostics out of application logs and UI.
+        logger.warning(
+            "[LiveabilityNL2SQL] governed virtual execution failed for user=%s",
+            user_id,
+        )
+        progress.content = format_liveability_nl2sql_response(
+            request,
+            {"status": "error"},
+        )
+        await progress.update()
+    return True
+
+
+async def _handle_abu_dhabi_federated_message(
+    user_text: str,
+    user_id: str,
+    role: str,
+) -> bool:
+    """Run reviewed cross-source Liveability + Makani aggregate contracts."""
+
+    from data_agent.abu_dhabi_federated_nl2sql import (
+        FEDERATED_SEMANTIC_PATH,
+        describe_abu_dhabi_federated_request,
+        format_abu_dhabi_federated_response,
+        resolve_abu_dhabi_federated_request,
+        run_abu_dhabi_federated_request,
+    )
+    from data_agent.abu_dhabi_left_chat_nl2sql import (
+        apply_left_chat_execution_admission,
+    )
+
+    selected_scope = cl.user_session.get("selected_nl2sql_scope")
+    request = resolve_abu_dhabi_federated_request(
+        user_text,
+        continue_selected_scope=(
+            selected_scope == "abu_dhabi_federated"
+            and not user_text.lstrip().startswith("@")
+        ),
+    )
+    if request is None:
+        return False
+
+    if role not in {"admin", "analyst"}:
+        denied = {
+            "zh": "当前账号没有执行 Liveability 与 Makani 跨库问数的权限。",
+            "en": (
+                "The current account is not authorized to run cross-source "
+                "Liveability and Makani queries."
+            ),
+            "ar": (
+                "الحساب الحالي غير مخوّل لتنفيذ استعلامات مشتركة "
+                "لبيانات جودة الحياة ومكاني."
+            ),
+        }[request.language]
+        await cl.Message(content=denied).send()
+        try:
+            record_audit(
+                user_id,
+                ACTION_RBAC_DENIED,
+                status="denied",
+                details={
+                    "intent": "ABU_DHABI_FEDERATED_NL2SQL",
+                    **describe_abu_dhabi_federated_request(request),
+                },
+            )
+        except Exception:
+            pass
+        return True
+
+    if not request.accepted:
+        await cl.Message(
+            content=format_abu_dhabi_federated_response(request, {})
+        ).send()
+        return True
+
+    if request.explicit_scope_selection:
+        cl.user_session.set("selected_nl2sql_scope", "abu_dhabi_federated")
+
+    admission, rejection = apply_left_chat_execution_admission(
+        "federated", request.question
+    )
+    if rejection is not None:
+        response = format_abu_dhabi_federated_response(request, rejection)
+        await cl.Message(
+            content=response,
+            metadata={
+                "routing_info": {
+                    "intent": "ABU_DHABI_FEDERATED_NL2SQL",
+                    "pipeline": "governed_cross_source_nl2semantic2sql",
+                    "pipeline_name": "Abu Dhabi Liveability + Makani Federation",
+                },
+                "abu_dhabi_federated_nl2sql": (
+                    describe_abu_dhabi_federated_request(request, rejection)
+                ),
+                "admission": admission,
+            },
+        ).send()
+        cl.user_session.set("last_response_text", response)
+        return True
+
+    progress_text = {
+        "zh": (
+            "正在分别查询 Liveability 与 Makani 两个受治理只读来源，"
+            "并在应用层合并汇总结果…"
+        ),
+        "en": (
+            "Querying the governed read-only Liveability and Makani sources "
+            "independently, then merging aggregate sections in the application…"
+        ),
+        "ar": (
+            "جارٍ الاستعلام بصورة مستقلة من مصدري جودة الحياة ومكاني "
+            "المحكومين للقراءة فقط، ثم دمج أقسام التجميع في التطبيق…"
+        ),
+    }[request.language]
+    progress = cl.Message(content=progress_text)
+    await progress.send()
+
+    try:
+        owner = os.environ.get(
+            "GDA_ABU_DHABI_SOURCE_OWNER", "abu-dhabi-site-operator"
+        )
+        report = await run_abu_dhabi_federated_request(
+            request,
+            semantic_layer_path=FEDERATED_SEMANTIC_PATH,
+            owner=owner,
+        )
+        response = format_abu_dhabi_federated_response(request, report)
+        audit_metadata = describe_abu_dhabi_federated_request(request, report)
+        progress.content = response
+        progress.metadata = {
+            "routing_info": {
+                "intent": "ABU_DHABI_FEDERATED_NL2SQL",
+                "pipeline": "governed_cross_source_nl2semantic2sql",
+                "pipeline_name": "Abu Dhabi Liveability + Makani Federation",
+            },
+            "abu_dhabi_federated_nl2sql": audit_metadata,
+            "report": {
+                "status": report.get("status"),
+                "contract": report.get("contract"),
+                "sources": report.get("sources"),
+            },
+        }
+        await progress.update()
+        cl.user_session.set("last_response_text", response)
+        cl.user_session.set(
+            "last_context",
+            {
+                "pipeline": "ABU_DHABI_FEDERATED_NL2SQL",
+                "source_ids": audit_metadata.get("source_ids"),
+                "language": request.language,
+                "summary": response[:800],
+            },
+        )
+        try:
+            record_audit(
+                user_id,
+                ACTION_PIPELINE_COMPLETE,
+                status=(
+                    "success"
+                    if report.get("status") in {"ok", "rejected"}
+                    else "failure"
+                ),
+                details={
+                    "intent": "ABU_DHABI_FEDERATED_NL2SQL",
+                    "result_status": report.get("status"),
+                    **audit_metadata,
+                },
+            )
+        except Exception:
+            pass
+    except Exception:
+        logger.warning(
+            "[AbuDhabiFederatedNL2SQL] governed execution failed for user=%s",
+            user_id,
+        )
+        progress.content = format_abu_dhabi_federated_response(
+            request,
+            {"status": "error"},
+        )
+        await progress.update()
+    return True
+
+
+async def _handle_makani_demo_message(
+    user_text: str,
+    user_id: str,
+    role: str,
+) -> bool:
+    """Run free-form NL2Semantic2SQL on the selected Makani source."""
+
+    from data_agent.makani_nl2sql import (
+        SEMANTIC_LAYER_PATH,
+        SOURCE_ID,
+        describe_makani_nl2sql_request,
+        format_makani_nl2sql_response,
+        resolve_makani_nl2sql_request,
+        run_makani_nl2sql_request,
+    )
+    from data_agent.abu_dhabi_left_chat_nl2sql import (
+        apply_left_chat_execution_admission,
+    )
+
+    selected_source_id = cl.user_session.get("selected_virtual_source_id")
+    request = resolve_makani_nl2sql_request(
+        user_text,
+        continue_selected_source=selected_source_id == SOURCE_ID,
+    )
+    if request is None:
+        return False
+
+    if role not in {"admin", "analyst"}:
+        denied = {
+            "zh": "当前账号没有执行 Makani 自由问数的权限。",
+            "en": "The current account is not authorized to run Makani free-form queries.",
+            "ar": (
+                "الحساب الحالي غير مخوّل لتنفيذ استعلامات مكاني الحرة."
+            ),
+        }[request.language]
+        await cl.Message(content=denied).send()
+        try:
+            record_audit(
+                user_id,
+                ACTION_RBAC_DENIED,
+                status="denied",
+                details={
+                    "intent": "MAKANI_NL2SQL",
+                    **describe_makani_nl2sql_request(request),
+                },
+            )
+        except Exception:
+            pass
+        return True
+
+    if not request.accepted:
+        await cl.Message(content=format_makani_nl2sql_response(request, {})).send()
+        return True
+
+    if request.explicit_source_selection:
+        cl.user_session.set("selected_virtual_source_id", SOURCE_ID)
+        cl.user_session.set("selected_nl2sql_scope", "makani")
+
+    admission, rejection = apply_left_chat_execution_admission(
+        "makani", request.question
+    )
+    if rejection is not None:
+        response = format_makani_nl2sql_response(request, rejection)
+        await cl.Message(
+            content=response,
+            metadata={
+                "routing_info": {
+                    "intent": "MAKANI_NL2SQL",
+                    "pipeline": "governed_virtual_nl2semantic2sql",
+                    "pipeline_name": "Abu Dhabi Makani Free-form NL2SQL",
+                },
+                "makani_nl2sql": describe_makani_nl2sql_request(
+                    request, rejection, source_id=SOURCE_ID
+                ),
+                "admission": admission,
+            },
+        ).send()
+        cl.user_session.set("last_response_text", response)
+        return True
+
+    progress_text = {
+        "zh": (
+            "正在规划并执行 Makani 问数"
+            "（语义治理、虚拟只读来源）…"
+        ),
+        "en": (
+            "Planning and running the Makani query "
+            "(governed semantics, virtual read-only source)…"
+        ),
+        "ar": (
+            "جارٍ تخطيط وتنفيذ استعلام مكاني "
+            "(دلالات محكومة ومصدر افتراضي للقراءة فقط)…"
+        ),
+    }[request.language]
+    progress = cl.Message(content=progress_text)
+    await progress.send()
+
+    try:
+        query_started = time.perf_counter()
+        source_id = int(os.environ.get("GDA_ABU_DHABI_MAKANI_SOURCE_ID", "13"))
+        owner = os.environ.get("GDA_ABU_DHABI_SOURCE_OWNER", "abu-dhabi-site-operator")
+        report = await run_makani_nl2sql_request(
+            request,
+            source_id=source_id,
+            owner=owner,
+        )
+        total_ms = round((time.perf_counter() - query_started) * 1000, 3)
+        report.setdefault("timing", {})["total_ms"] = total_ms
+        response = format_makani_nl2sql_response(request, report)
+        from data_agent.abu_dhabi_nl2sql_presentation import (
+            build_nl2sql_answer_presentation,
+        )
+
+        presentation = build_nl2sql_answer_presentation(
+            report,
+            semantic_layer_path=SEMANTIC_LAYER_PATH,
+            language=request.language,
+            total_ms=total_ms,
+        )
+        request_audit = describe_makani_nl2sql_request(
+            request,
+            report,
+            source_id=source_id,
+        )
+        progress.content = response
+        progress.metadata = {
+            "routing_info": {
+                "intent": "MAKANI_NL2SQL",
+                "pipeline": "governed_virtual_nl2semantic2sql",
+                "pipeline_name": "Abu Dhabi Makani NL2Semantic2SQL",
+            },
+            "makani_nl2sql": request_audit,
+            "report": {
+                "status": report.get("status"),
+                "model": report.get("model"),
+                "source": report.get("source"),
+                "static_validation": report.get("static_validation"),
+            },
+        }
+        if request_audit.get("clarification"):
+            progress.metadata["nl2sql_clarification"] = request_audit["clarification"] | {
+                "question": request_audit.get("question") or request.question,
+                "scope": "makani",
+            }
+        if presentation is not None:
+            progress.metadata["nl2sql_presentation"] = presentation
+        await progress.update()
+        cl.user_session.set("last_response_text", response)
+        cl.user_session.set(
+            "last_context",
+            {
+                "pipeline": "MAKANI_NL2SQL",
+                "source_id": source_id,
+                "language": request.language,
+                "summary": response[:800],
+            },
+        )
+        try:
+            record_audit(
+                user_id,
+                ACTION_PIPELINE_COMPLETE,
+                status="success" if report.get("status") == "ok" else "failure",
+                details={
+                    "intent": "MAKANI_NL2SQL",
+                    "model": (report.get("model") or {}).get("adk_route"),
+                    "result_status": report.get("status"),
+                    **describe_makani_nl2sql_request(
+                        request,
+                        report,
+                        source_id=source_id,
+                    ),
+                },
+            )
+        except Exception:
+            pass
+    except Exception:
+        logger.warning(
+            "[MakaniNL2SQL] governed virtual execution failed for user=%s",
+            user_id,
+        )
+        progress.content = format_makani_nl2sql_response(
+            request,
+            {"status": "error"},
+        )
+        await progress.update()
+    return True
+
+
 @cl.on_message
 async def main(message: cl.Message):
     """Handle user message with File Upload Support and RBAC."""
@@ -3776,7 +4322,32 @@ async def main(message: cl.Message):
 
     # Re-set context variables (ContextVar is per-async-task)
     trace_id = _set_user_context(user_id, session_id, role)
+    message_metadata = getattr(message, "metadata", None) or {}
+    requested_nl2sql_engine = str(
+        message_metadata.get("nl2sql_execution_engine") or "postgis"
+    ).strip().lower()
+    if requested_nl2sql_engine not in {"postgis", "lake", "auto"}:
+        logger.warning(
+            "[Trace:%s] Invalid NL2SQL execution engine %r; using postgis",
+            trace_id,
+            requested_nl2sql_engine,
+        )
+        requested_nl2sql_engine = "postgis"
+    current_nl2sql_requested_engine.set(requested_nl2sql_engine)
+    cl.user_session.set("nl2sql_execution_engine", requested_nl2sql_engine)
     logger.info("[Trace:%s] Message received user=%s role=%s", trace_id, user_id, role)
+
+    user_text = message.content
+    cl.user_session.set("last_user_message", user_text)
+
+    # Source-scoped GPT-5.1 routes run the product NL2Semantic2SQL guards
+    # against registered virtual databases before the general planner.
+    if await _handle_abu_dhabi_federated_message(user_text, user_id, role):
+        return
+    if await _handle_makani_demo_message(user_text, user_id, role):
+        return
+    if await _handle_liveability_demo_message(user_text, user_id, role):
+        return
 
     if configured_models_require_google_cloud_project() and not os.environ.get("GOOGLE_CLOUD_PROJECT"):
         await cl.Message(content="Error: `GOOGLE_CLOUD_PROJECT` not found.").send()
@@ -3857,10 +4428,6 @@ async def main(message: cl.Message):
             await cl.Message(
                 content=t("multimodal.pdf_extracted", pages=total_pages, chars=len(pdf_context))
             ).send()
-
-    # Construct User Prompt
-    user_text = message.content
-    cl.user_session.set("last_user_message", user_text)
 
     from data_agent.uwm.livability_s2.chat_flow import (
         is_s2_chat_message,

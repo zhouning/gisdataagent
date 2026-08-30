@@ -79,6 +79,12 @@ def render_approval_case_alert(
         summary = f"Approval required: {approval_case.action}"
         actor = event.actor_subject if event is not None else approval_case.requester_subject
         reason = event.reason if event is not None else approval_case.request_reason
+    elif kind is ApprovalCaseNotificationKind.ESCALATED:
+        lifecycle_status = "escalated"
+        stage = notification.escalation_stage or 1
+        summary = f"Approval SLA escalation (stage {stage}): {approval_case.action}"
+        actor = notification.escalation_actor_subject or "workload:approval-sla-monitor"
+        reason = notification.escalation_reason or "ApprovalCase SLA escalation is due"
     elif kind is ApprovalCaseNotificationKind.EXPIRED:
         lifecycle_status = "expired"
         summary = f"Approval SLA expired: {approval_case.action}"
@@ -114,6 +120,15 @@ def render_approval_case_alert(
     }
     if kind is ApprovalCaseNotificationKind.DECIDED and approval_case.decided_at is not None:
         alert["endsAt"] = _rfc3339(approval_case.decided_at)
+    if kind is ApprovalCaseNotificationKind.ESCALATED:
+        alert["labels"]["severity"] = (
+            "critical" if notification.escalation_stage == 2 else "warning"
+        )
+        alert["annotations"]["gda_escalation_stage"] = str(notification.escalation_stage)
+        alert["annotations"]["gda_escalation_target"] = (
+            notification.escalation_target_subject or "unknown"
+        )
+        alert["annotations"]["gda_on_call_ref"] = notification.escalation_on_call_ref or "unknown"
     if route_namespace is not None:
         alert["labels"]["namespace"] = route_namespace
     return alert
@@ -236,6 +251,9 @@ class ApprovalCaseNotificationWorker:
     def run_once(self) -> ApprovalCaseNotificationCycle:
         started_at = time.monotonic()
         try:
+            materialize = getattr(self.authority, "materialize_sla_escalations", None)
+            if callable(materialize):
+                materialize(self.config.tenant_id, limit=self.config.batch_size)
             envelopes = self.authority.claim_notifications(
                 self.config.tenant_id,
                 self.config.worker_id,

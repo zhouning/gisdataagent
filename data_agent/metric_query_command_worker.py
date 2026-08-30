@@ -29,6 +29,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError, SQLAlchemyError
 
 from .db_engine import get_engine
+from .metric_observation import MetricObservationAuthority
 from .metric_query_command_consumer import (
     POSTGIS_WORKLOAD,
     MetricQueryCommandBatchResult,
@@ -842,6 +843,7 @@ def main(argv: list[str] | None = None) -> int:
             provider,
             gateway=gateway,
             authority=authority,
+            observation_authority=MetricObservationAuthority(platform_engine),
         )
         worker = MetricQueryCommandWorker(
             consumer,

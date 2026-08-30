@@ -102,6 +102,43 @@ def _validation_only_semantic_manifest() -> dict:
 
 
 class TestLakehousePublisher(unittest.TestCase):
+    def test_equality_delete_admission_allows_single_current_spec(self):
+        from data_agent.fusion.lakehouse_publisher import (
+            ICEBERG_EQUALITY_DELETE_ADMISSION_SCHEMA,
+            build_iceberg_equality_delete_admission,
+        )
+
+        admission = build_iceberg_equality_delete_admission([1], 1)
+
+        self.assertEqual(admission["schema"], ICEBERG_EQUALITY_DELETE_ADMISSION_SCHEMA)
+        self.assertEqual(admission["status"], "admitted")
+        self.assertTrue(admission["admitted"])
+        self.assertEqual(admission["reason_codes"], [])
+        self.assertEqual(admission["evidence"]["data_spec_ids"], [1])
+
+    def test_equality_delete_admission_rejects_mixed_specs(self):
+        from data_agent.fusion.lakehouse_publisher import build_iceberg_equality_delete_admission
+
+        admission = build_iceberg_equality_delete_admission([0, 1], 1)
+
+        self.assertEqual(admission["status"], "rejected")
+        self.assertFalse(admission["admitted"])
+        self.assertIn("mixed_partition_specs_detected", admission["reason_codes"])
+        self.assertIn("cross_spec_equality_delete_unsupported", admission["reason_codes"])
+        self.assertIn(
+            "controlled_rewrite_required_before_equality_delete", admission["reason_codes"]
+        )
+
+    def test_equality_delete_admission_is_fail_closed_on_invalid_evidence(self):
+        from data_agent.fusion.lakehouse_publisher import build_iceberg_equality_delete_admission
+
+        admission = build_iceberg_equality_delete_admission([], None)
+
+        self.assertEqual(admission["status"], "rejected")
+        self.assertFalse(admission["admitted"])
+        self.assertIn("data_spec_ids_required", admission["reason_codes"])
+        self.assertIn("current_spec_id_required", admission["reason_codes"])
+
     def test_build_iceberg_publish_spec_from_semantic_manifest(self):
         from data_agent.fusion.lakehouse_publisher import (
             ICEBERG_PUBLISH_SCHEMA,

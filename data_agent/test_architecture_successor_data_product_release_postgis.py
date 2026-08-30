@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -28,6 +29,7 @@ from data_agent.platform_contracts import (
     ApprovalCaseStatus,
     Artifact,
     ArtifactRole,
+    IncidentSeverity,
     Resource,
     ResourceVersion,
 )
@@ -44,6 +46,7 @@ MIGRATIONS = tuple(
         "092_platform_control_ledger.sql",
         "094_platform_control_gateway.sql",
         "096_platform_success_verdict.sql",
+        "098_platform_data_incident.sql",
         "100_data_product_registry.sql",
         "101_data_product_promotion.sql",
         "102_source_schema_drift_ledger.sql",
@@ -56,6 +59,10 @@ MIGRATIONS = tuple(
         "114_data_architecture_provider_observation.sql",
         "115_architecture_successor_adoption_lock.sql",
         "116_architecture_successor_data_product_release.sql",
+        "123_resource_bound_data_incident.sql",
+        "149_consumer_binding.sql",
+        "150_consumer_binding_migration_state.sql",
+        "151_data_product_rollback_authority.sql",
     )
 )
 
@@ -325,6 +332,18 @@ def test_real_atomic_architecture_successor_product_release() -> None:
         assert replay["idempotent_replay"]
         assert not replay["architecture_release_created"]
 
+        rollback_incident_id = uuid4()
+        gateway.open_resource_incident(
+            tenant_id=product.tenant_id,
+            subject_resource_urn=product.product_urn,
+            incident_id=rollback_incident_id,
+            dedupe_key="architecture-release-rollback",
+            incident_type="architecture_release_regression",
+            severity=IncidentSeverity.HIGH,
+            summary="certification rollback of architecture successor",
+            details={"release_plan_sha256": release_plan.plan_sha256},
+            detected_by="workload:architecture-certifier",
+        )
         rolled_back = registry.rollback(
             product.tenant_id,
             product.product_slug,
@@ -332,6 +351,7 @@ def test_real_atomic_architecture_successor_product_release() -> None:
             actor_subject="human:data-product-owner",
             reason="exercise approved rollback pointer",
             idempotency_key="rollback-parcels-v2",
+            incident_id=rollback_incident_id,
             occurred_at=successor_product_version.published_at + timedelta(minutes=1),
         )
         assert rolled_back["pointer_changed"]

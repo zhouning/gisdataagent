@@ -1,6 +1,6 @@
 """Tests for the connection pool singleton (db_engine.py)."""
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import data_agent.db_engine as db_engine
 
@@ -36,6 +36,15 @@ class TestGetEngine(unittest.TestCase):
         args, kwargs = mock_create.call_args
         # URL should be passed as first positional arg
         self.assertEqual(args[0], "postgresql://u:p@localhost/db")
+
+    @patch("data_agent.db_engine.create_engine")
+    def test_explicit_zero_overflow_is_preserved(self, mock_create):
+        db_engine._create_sa_engine(
+            "postgresql://u:p@localhost/db", pool_size=5, max_overflow=0
+        )
+
+        self.assertEqual(mock_create.call_args.kwargs["pool_size"], 5)
+        self.assertEqual(mock_create.call_args.kwargs["max_overflow"], 0)
 
 
 class TestResetEngine(unittest.TestCase):

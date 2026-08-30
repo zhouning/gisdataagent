@@ -42,6 +42,7 @@ interface MapLayer {
   // FlatGeobuf properties
   fgb?: string;
   geom_type?: string;
+  scenarioTimeline?: { runId: string; endpoint: string; timeValues: string[]; elapsedMinutes: number[]; periodCount: number; totalNodeCount?: number };
 }
 
 interface Map3DViewProps {
@@ -51,6 +52,7 @@ interface Map3DViewProps {
   basemap?: string;
   basemaps?: Record<string, string>;
   basemapMetadata?: Record<string, { min_zoom?: number; max_zoom?: number }>;
+  scenarioData?: Record<string, any>;
 }
 
 interface TooltipInfo {
@@ -103,7 +105,7 @@ function hexToRgba(hex: string, alpha = 200): [number, number, number, number] {
 }
 
 function isCategorizedLegendLayer(layer: MapLayer) {
-  return (layer.type === 'categorized' || layer.type === 'fgb')
+  return (layer.type === 'categorized' || layer.type === 'fgb' || layer.type === 'bubble')
     && Boolean(layer.category_colors || layer.style_map);
 }
 
@@ -138,7 +140,7 @@ function rasterBasemapStyle(
 }
 
 export default function Map3DView({
-  layers, center, zoom, basemap, basemaps, basemapMetadata,
+  layers, center, zoom, basemap, basemaps, basemapMetadata, scenarioData,
 }: Map3DViewProps) {
   const [layerData, setLayerData] = useState<Record<string, any>>({});
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
@@ -195,18 +197,24 @@ export default function Map3DView({
   useEffect(() => {
     const fetchLayers = async () => {
       const newData: Record<string, any> = {};
+      const fetchedGeojson: Record<string, any> = {};
+      const fetchedFgb: Record<string, any> = {};
       for (const layer of layers) {
         // MVT layers don't need pre-fetched data
         if (layer.type === 'mvt') continue;
 
         if (layer.geojsonData) {
           newData[layer.name] = layer.geojsonData;
-        } else if (layer.type === 'fgb' && layer.fgb) {
+        } else if (layer.fgb) {
           // FlatGeobuf: fetch the whole file with auth cookies, then deserialize
           // from a Uint8Array. Streaming via `deserialize(url)` is unusable here
           // because flatgeobuf's http-reader doesn't pass `credentials:'include'`
           // and our /api/user/files route is JWT-gated.
           try {
+            if (fetchedFgb[layer.fgb]) {
+              newData[layer.name] = fetchedFgb[layer.fgb];
+              continue;
+            }
             const { deserialize } = await import('flatgeobuf/lib/mjs/geojson.js');
             const fgbUrl = `/api/user/files/${layer.fgb}`;
             const resp = await fetch(fgbUrl, { credentials: 'include' });
@@ -217,15 +225,25 @@ export default function Map3DView({
             const buf = new Uint8Array(await resp.arrayBuffer());
             const fc: any = deserialize(buf);
             // deserialize(Uint8Array) returns a FeatureCollection
+            fetchedFgb[layer.fgb] = fc;
             newData[layer.name] = fc;
           } catch (e) {
             console.warn(`[Map3DView] Failed to parse FlatGeobuf ${layer.fgb}:`, e);
           }
         } else if (layer.geojson) {
           try {
+            // Several diagnostic layers intentionally share one result file.
+            // Fetch and parse each private GeoJSON only once, then reuse the
+            // parsed FeatureCollection for the alternate renderer/metric.
+            if (fetchedGeojson[layer.geojson]) {
+              newData[layer.name] = fetchedGeojson[layer.geojson];
+              continue;
+            }
             const resp = await fetch(`/api/user/files/${layer.geojson}`, { credentials: 'include' });
             if (resp.ok) {
-              newData[layer.name] = await resp.json();
+              const payload = await resp.json();
+              fetchedGeojson[layer.geojson] = payload;
+              newData[layer.name] = payload;
             }
           } catch (e) {
             console.warn(`Failed to fetch GeoJSON for layer ${layer.name}:`, e);
@@ -283,7 +301,7 @@ export default function Map3DView({
       if (layerVisibility[layer.name] === false) return null;
 
       const fillColor = hexToRgba(layer.style?.fillColor || '#4682B4', Math.round((layer.style?.fillOpacity ?? 0.7) * 255));
-      const lineColor = hexToRgba(layer.style?.color || '#333333', 200);
+      const lineColor = hexToRgba(layer.style?.color || '#333333', Math.round((layer.style?.opacity ?? 0.8) * 255));
 
       // MVT vector tile layer — no pre-fetched data needed
       if (layer.type === 'mvt' && layer.tile_url) {
@@ -304,7 +322,9 @@ export default function Map3DView({
       }
 
       // FlatGeobuf layers render as GeoJSON once loaded
-      const data = layerData[layer.name];
+      const data = layer.scenarioTimeline
+        ? scenarioData?.[layer.name] || layerData[layer.name]
+        : layerData[layer.name];
       if (!data) return null;
 
       // Extrusion layer (3D polygons)
@@ -405,10 +425,22 @@ export default function Map3DView({
             }
             return 50;
           },
-          getFillColor: fillColor,
+          getFillColor: (f: any) => {
+            if (layer.category_column && layer.category_colors && f.properties) {
+              const raw = String(f.properties[layer.category_column] ?? '');
+              const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
+              const categoryColor = layer.category_colors[raw] || layer.category_colors[intForm];
+              if (categoryColor) return hexToRgba(categoryColor, Math.round((layer.style?.fillOpacity ?? 0.85) * 255));
+            }
+            if (layer.value_column && layer.breaks && f.properties) {
+              const val = Number(f.properties[layer.value_column]) || 0;
+              return getBreakColor(val, layer.breaks, layer.color_scheme);
+            }
+            return fillColor;
+          },
           radiusMinPixels: 3,
           radiusMaxPixels: 30,
-          onHover,
+          onHover: (info: any) => onLayerHover(info, layer),
         });
       }
 
@@ -506,12 +538,18 @@ export default function Map3DView({
           }
           return fillColor;
         },
-        getLineColor: lineColor,
+        getLineColor: (f: any) => {
+          if (layer.value_column && layer.breaks && f.properties) {
+            const val = Number(f.properties[layer.value_column]) || 0;
+            return getBreakColor(val, layer.breaks, layer.color_scheme);
+          }
+          return lineColor;
+        },
         lineWidthMinPixels: 1,
-        onHover,
+        onHover: (info: any) => onLayerHover(info, layer),
       });
     }).filter(Boolean);
-  }, [layers, layerData, onHover, onLayerHover, layerVisibility]);
+  }, [layers, layerData, onHover, onLayerHover, layerVisibility, scenarioData]);
 
   return (
     <div className="map-3d-container" style={{ position: 'relative', width: '100%', height: '100%' }}>

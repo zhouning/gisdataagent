@@ -354,6 +354,86 @@ def _mcp_ingest_entity_authority_batch(
     return json.dumps(result.model_dump(mode="json"), ensure_ascii=False)
 
 
+def _mcp_schedule_approval_case_batch_escalation(
+    tenant_id: str,
+    actor_subject: str,
+    items: list[dict[str, Any]],
+) -> str:
+    """Schedule bounded ApprovalCase SLA escalations with case-level outcomes."""
+
+    from pydantic import ValidationError
+
+    from .approval_case_authority import ApprovalCaseAuthorityError
+    from .approval_case_batch import (
+        ApprovalCaseBatchEscalationRequest,
+        execute_approval_case_batch_escalation,
+    )
+    from .user_context import current_tenant_id, current_user_id, current_user_role
+
+    context_tenant = current_tenant_id.get().strip()
+    if not context_tenant:
+        return json.dumps(
+            {
+                "status": "error",
+                "code": "tenant_context_required",
+                "message": "MCP_TENANT is required for ApprovalCase escalation",
+            },
+            ensure_ascii=False,
+        )
+    if current_user_role.get().strip() not in {"admin", "platform_operator"}:
+        return json.dumps(
+            {
+                "status": "error",
+                "code": "platform_role_required",
+                "message": "Platform operator role is required",
+            },
+            ensure_ascii=False,
+        )
+    if tenant_id != context_tenant:
+        return json.dumps(
+            {
+                "status": "error",
+                "code": "tenant_mismatch",
+                "message": "Request tenant_id must match the MCP tenant",
+            },
+            ensure_ascii=False,
+        )
+    context_actor = f"agent:{current_user_id.get().strip() or 'mcp-agent'}"
+    if actor_subject != context_actor:
+        return json.dumps(
+            {
+                "status": "error",
+                "code": "actor_mismatch",
+                "message": "actor_subject must match the MCP agent identity",
+            },
+            ensure_ascii=False,
+        )
+    try:
+        request = ApprovalCaseBatchEscalationRequest.model_validate(
+            {
+                "tenant_id": tenant_id,
+                "actor_subject": actor_subject,
+                "items": items,
+            }
+        )
+        result = execute_approval_case_batch_escalation(request)
+    except ValidationError as exc:
+        return json.dumps(
+            {
+                "status": "error",
+                "code": "contract_validation_failed",
+                "message": str(exc),
+            },
+            ensure_ascii=False,
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return json.dumps(
+            {"status": "error", "code": exc.code, "message": str(exc)},
+            ensure_ascii=False,
+        )
+    return json.dumps(result.model_dump(mode="json"), ensure_ascii=False)
+
+
 def _mcp_reconcile_entity_data_package(
     tenant_id: str,
     previous_baseline: dict[str, Any],
@@ -2017,6 +2097,9 @@ def _get_tool_functions() -> Dict[str, Callable]:
         "run_analysis_pipeline": _mcp_run_pipeline,
         "execute_governed_query": _mcp_execute_governed_query,
         "ingest_entity_authority_batch": _mcp_ingest_entity_authority_batch,
+        "schedule_approval_case_batch_escalation": (
+            _mcp_schedule_approval_case_batch_escalation
+        ),
         "reconcile_entity_data_package": _mcp_reconcile_entity_data_package,
         "execute_postgis_projection_repair": _mcp_execute_postgis_projection_repair,
         "generate_federated_projection_compensation_proposal": (
@@ -2342,6 +2425,14 @@ TOOL_DEFINITIONS: List[Dict[str, Any]] = [
             "Link 类型和 Link 断言，并强制租户、执行身份、幂等和技术基线边界。"
         ),
         "annotations": _DESTRUCTIVE,
+    },
+    {
+        "name": "schedule_approval_case_batch_escalation",
+        "description": (
+            "为最多 100 个 ApprovalCase 安排 SLA 升级；每个 case 独立执行授权、"
+            "状态版本和幂等检查，并按输入顺序返回成功、冲突、不存在或拒绝结果。"
+        ),
+        "annotations": _WRITE_SAFE,
     },
     {
         "name": "reconcile_entity_data_package",

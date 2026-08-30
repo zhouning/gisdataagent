@@ -21,6 +21,59 @@ PRODUCTION_GATE_SCHEMA = "mmfe.production_publish_gate.v1"
 SUPPORTED_OBJECT_STORES = {"s3"}
 SUPPORTED_SPATIAL_ENGINES = {"sedona", "none"}
 PUBLISH_ENVIRONMENTS = {"production", "validation", "development"}
+ICEBERG_EQUALITY_DELETE_ADMISSION_SCHEMA = "mmfe.iceberg_equality_delete_admission.v1"
+
+
+def build_iceberg_equality_delete_admission(
+    data_spec_ids: list[int] | tuple[int, ...] | set[int],
+    current_spec_id: int | None,
+    *,
+    rewrite_completed: bool = False,
+) -> dict[str, Any]:
+    """Fail closed when equality delete would span multiple Iceberg specs."""
+    reasons: list[str] = []
+    normalized_ids: list[int] = []
+    if not isinstance(data_spec_ids, (list, tuple, set)):
+        reasons.append("data_spec_ids_must_be_a_collection")
+    else:
+        for value in data_spec_ids:
+            if isinstance(value, bool) or not isinstance(value, int):
+                reasons.append("data_spec_ids_must_contain_integers")
+                continue
+            normalized_ids.append(value)
+    normalized_ids = sorted(set(normalized_ids))
+    if not normalized_ids:
+        reasons.append("data_spec_ids_required")
+    if (
+        current_spec_id is None
+        or isinstance(current_spec_id, bool)
+        or not isinstance(current_spec_id, int)
+    ):
+        reasons.append("current_spec_id_required")
+    elif normalized_ids and current_spec_id not in normalized_ids:
+        reasons.append("current_spec_id_not_present_in_data_specs")
+    mixed_specs = len(normalized_ids) > 1
+    if mixed_specs:
+        reasons.extend(
+            ("mixed_partition_specs_detected", "cross_spec_equality_delete_unsupported")
+        )
+        if not rewrite_completed:
+            reasons.append("controlled_rewrite_required_before_equality_delete")
+    admitted = not reasons
+    return {
+        "schema": ICEBERG_EQUALITY_DELETE_ADMISSION_SCHEMA,
+        "operation": "equality_delete",
+        "status": "admitted" if admitted else "rejected",
+        "admitted": admitted,
+        "reason_codes": reasons,
+        "provider_capability": "equality-delete-current-spec-only",
+        "evidence": {
+            "data_spec_ids": normalized_ids,
+            "current_spec_id": current_spec_id,
+            "mixed_partition_specs": mixed_specs,
+            "rewrite_completed": bool(rewrite_completed),
+        },
+    }
 
 
 def build_iceberg_publish_spec(

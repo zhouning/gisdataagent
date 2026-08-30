@@ -14,9 +14,19 @@ from typing import Any, Protocol
 from urllib.parse import urlsplit
 from uuid import UUID, uuid5
 
+from pydantic import ValidationError
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 
+from .metric_observation import (
+    MetricObservationAuthority,
+    MetricObservationBatchProjection,
+    MetricObservationError,
+    MetricObservationProjectionSpec,
+    MetricObservationResultProjection,
+    MetricObservationRowProjection,
+    metric_observation_row_fingerprint,
+)
 from .metric_query import MetricFilterOperator, MetricQueryPlan
 from .metric_query_execution import (
     MetricQueryCacheStatus,
@@ -144,6 +154,106 @@ def _json_value(value: Any) -> Any:
     raise MetricQueryProviderContractError(
         f"query result contains unsupported value type {type(value).__name__}"
     )
+
+
+def _scalar_observation_projection(
+    plan: MetricQueryPlan,
+    rows: list[dict[str, Any]],
+    result_sha256: str,
+) -> MetricObservationResultProjection | None:
+    """Derive an observation only when one result row is unambiguously scalar."""
+
+    if plan.physical_intent.group_by_columns or len(rows) != 1:
+        return None
+    row = rows[0]
+    if set(row) != {"metric_value"}:
+        return None
+    dimensions: dict[str, Any] = {}
+    for item in plan.physical_intent.filters:
+        if item.operator is not MetricFilterOperator.EQ:
+            continue
+        value = item.values[0]
+        if isinstance(value, float):
+            value = format(value, ".17g")
+        dimensions[item.dimension] = value
+    time_range = plan.physical_intent.time_range
+    try:
+        projection = MetricObservationProjectionSpec(
+            value=row["metric_value"],
+            dimensions=dimensions,
+            window_start=None if time_range is None else time_range.start,
+            window_end=None if time_range is None else time_range.end,
+        )
+        return MetricObservationResultProjection(
+            result_sha256=result_sha256,
+            result_row_fingerprint=metric_observation_row_fingerprint(row),
+            projection=projection,
+        )
+    except ValidationError as exc:
+        raise MetricQueryProviderContractError(
+            "scalar metric result cannot satisfy the observation contract"
+        ) from exc
+
+
+def _grouped_observation_projection(
+    plan: MetricQueryPlan,
+    rows: list[dict[str, Any]],
+    result_sha256: str,
+) -> MetricObservationBatchProjection | None:
+    """Derive a bounded, complete projection from an ordered grouped result."""
+
+    intent = plan.physical_intent
+    if not intent.group_by_columns or not rows or len(rows) > 10_000:
+        return None
+    if len(intent.group_by_columns) != len(intent.group_by_dimensions):
+        # Plans admitted before logical grouping names were retained remain
+        # executable but cannot be projected without guessing semantics.
+        return None
+    result_columns = (*intent.group_by_columns, "metric_value")
+    equality_dimensions: dict[str, Any] = {}
+    for item in intent.filters:
+        if item.operator is not MetricFilterOperator.EQ:
+            continue
+        value = item.values[0]
+        if isinstance(value, float):
+            value = format(value, ".17g")
+        equality_dimensions[item.dimension] = value
+    projections: list[MetricObservationRowProjection] = []
+    time_range = intent.time_range
+    try:
+        for index, row in enumerate(rows):
+            if tuple(row) != result_columns:
+                raise ValueError("grouped metric result columns do not match its plan")
+            dimensions = dict(equality_dimensions)
+            for dimension, column in zip(
+                intent.group_by_dimensions, intent.group_by_columns, strict=True
+            ):
+                value = row[column]
+                if isinstance(value, float):
+                    value = format(value, ".17g")
+                dimensions[dimension] = value
+            projections.append(
+                MetricObservationRowProjection(
+                    result_row_index=index,
+                    result_row_fingerprint=metric_observation_row_fingerprint(row),
+                    projection=MetricObservationProjectionSpec(
+                        value=row["metric_value"],
+                        dimensions=dimensions,
+                        window_start=None if time_range is None else time_range.start,
+                        window_end=None if time_range is None else time_range.end,
+                    ),
+                )
+            )
+        return MetricObservationBatchProjection(
+            result_sha256=result_sha256,
+            result_rows=len(rows),
+            result_columns=result_columns,
+            projections=tuple(projections),
+        )
+    except (ValidationError, ValueError) as exc:
+        raise MetricQueryProviderContractError(
+            "grouped metric result cannot satisfy the observation contract"
+        ) from exc
 
 
 def _sqlstate(exc: DBAPIError) -> str | None:
@@ -418,6 +528,12 @@ class PostGISMetricQueryProvider:
             separators=(",", ":"),
         ).encode("utf-8")
         result_sha256 = hashlib.sha256(payload).hexdigest()
+        observation_projection = _scalar_observation_projection(
+            plan, canonical_rows, result_sha256
+        )
+        observation_batch_projection = _grouped_observation_projection(
+            plan, canonical_rows, result_sha256
+        )
         publication = self._write_result(plan, run_id, payload)
         duration_ms = min(86_400_000, max(0, round((time.monotonic() - started) * 1000)))
         return MetricQueryProviderResult(
@@ -436,6 +552,24 @@ class PostGISMetricQueryProvider:
                 "transaction_read_only": read_only == "on",
                 "statement_timeout_ms": self.statement_timeout_ms,
                 "storage_evidence": publication.storage_evidence(),
+                **(
+                    {}
+                    if observation_projection is None
+                    else {
+                        "metric_observation_projection": (
+                            observation_projection.model_dump(mode="json")
+                        )
+                    }
+                ),
+                **(
+                    {}
+                    if observation_batch_projection is None
+                    else {
+                        "metric_observation_batch_projection": (
+                            observation_batch_projection.model_dump(mode="json")
+                        )
+                    }
+                ),
             },
             rows_returned=len(rows),
             rows_scanned=int(evidence["rows_scanned"]),
@@ -453,6 +587,7 @@ class MetricQueryCommandConsumer:
         *,
         gateway: PlatformGateway | None = None,
         authority: MetricQueryExecutionAuthority | None = None,
+        observation_authority: MetricObservationAuthority | None = None,
     ):
         expected_subject = METRIC_QUERY_WORKLOADS.get(provider.engine_name)
         if expected_subject is None or provider.workload_subject != expected_subject:
@@ -462,6 +597,9 @@ class MetricQueryCommandConsumer:
         self.provider = provider
         self.gateway = gateway or PlatformGateway()
         self.authority = authority or MetricQueryExecutionAuthority()
+        self.observation_authority = (
+            observation_authority or MetricObservationAuthority()
+        )
 
     @staticmethod
     def _retry_delay(command: PlatformCommand) -> int:
@@ -552,8 +690,8 @@ class MetricQueryCommandConsumer:
         command: PlatformCommand,
         start_observation_id: UUID,
         result: MetricQueryProviderResult,
-    ) -> None:
-        self.authority.complete(
+    ) -> MetricQueryRunRecord:
+        return self.authority.complete(
             command.tenant_id,
             command.run_id,
             MetricQueryCompletionSpec(
@@ -575,6 +713,87 @@ class MetricQueryCommandConsumer:
             actor_subject=self.provider.workload_subject,
             expected_state_version=2,
         )
+
+    def _reconcile_observation(self, record: MetricQueryRunRecord) -> bool:
+        plan = record.admission.plan
+        query_observation = record.observation
+        if (
+            query_observation is None
+            or query_observation.outcome is not MetricQueryOutcome.SUCCEEDED
+            or query_observation.result_artifact_id is None
+            or query_observation.result_sha256 is None
+        ):
+            return False
+        artifact = self.gateway.get_artifact(
+            record.admission.tenant_id,
+            query_observation.result_artifact_id,
+        )
+        raw_projection = artifact.manifest.get("metric_observation_projection")
+        raw_batch = artifact.manifest.get("metric_observation_batch_projection")
+        if raw_projection is not None and raw_batch is not None:
+            raise MetricQueryProviderContractError(
+                "metric result contains conflicting observation projection evidence"
+            )
+        if raw_projection is None and raw_batch is None:
+            return False
+        if raw_batch is not None:
+            try:
+                batch = MetricObservationBatchProjection.model_validate(raw_batch)
+            except ValidationError as exc:
+                raise MetricQueryProviderContractError(
+                    "metric result contains invalid grouped observation evidence"
+                ) from exc
+            if (
+                not plan.physical_intent.group_by_columns
+                or query_observation.rows_returned != batch.result_rows
+                or artifact.run_id != record.admission.run_id
+                or artifact.content_sha256 != query_observation.result_sha256
+                or batch.result_sha256 != query_observation.result_sha256
+                or artifact.manifest.get("result_schema")
+                != "gda.metric_query_result.v1"
+                or tuple(artifact.manifest.get("columns") or ())
+                != batch.result_columns
+            ):
+                raise MetricQueryProviderContractError(
+                    "grouped observation projection is not bound to exact result evidence"
+                )
+            self.observation_authority.project_batch(
+                record.admission.tenant_id,
+                record.admission.run_id,
+                batch,
+                actor_subject=self.provider.workload_subject,
+                role="platform_operator",
+            )
+            return True
+        try:
+            assert raw_projection is not None
+            projection = MetricObservationResultProjection.model_validate(raw_projection)
+        except ValidationError as exc:
+            raise MetricQueryProviderContractError(
+                "metric result contains invalid observation projection evidence"
+            ) from exc
+        if (
+            plan.physical_intent.group_by_columns
+            or query_observation.rows_returned != 1
+            or artifact.run_id != record.admission.run_id
+            or artifact.content_sha256 != query_observation.result_sha256
+            or projection.result_sha256 != query_observation.result_sha256
+            or artifact.manifest.get("result_schema")
+            != "gda.metric_query_result.v1"
+            or tuple(artifact.manifest.get("columns") or ())
+            != projection.result_columns
+        ):
+            raise MetricQueryProviderContractError(
+                "metric result observation projection is not bound to exact result evidence"
+            )
+        self.observation_authority.project(
+            record.admission.tenant_id,
+            record.admission.run_id,
+            projection.projection,
+            actor_subject=self.provider.workload_subject,
+            role="platform_operator",
+        )
+        return True
 
     def _complete_failure(
         self,
@@ -627,6 +846,7 @@ class MetricQueryCommandConsumer:
                 record = self.authority.get(command.tenant_id, command.run_id)
                 self._validate_command(command, record)
                 if record.run.status in TERMINAL_RUN_STATUSES:
+                    self._reconcile_observation(record)
                     self.gateway.complete_command(
                         command.tenant_id,
                         command.command_id,
@@ -678,7 +898,10 @@ class MetricQueryCommandConsumer:
                     completed += 1
                     query_failed += 1
                     continue
-                self._complete_success(command, start_observation_id, result)
+                completed_record = self._complete_success(
+                    command, start_observation_id, result
+                )
+                self._reconcile_observation(completed_record)
                 self.gateway.complete_command(
                     command.tenant_id,
                     command.command_id,
@@ -686,7 +909,11 @@ class MetricQueryCommandConsumer:
                 )
                 completed += 1
                 query_succeeded += 1
-            except (MetricQueryExecutionError, PlatformGatewayError):
+            except (
+                MetricObservationError,
+                MetricQueryExecutionError,
+                PlatformGatewayError,
+            ):
                 delivery = self.gateway.fail_command(
                     command.tenant_id,
                     command.command_id,

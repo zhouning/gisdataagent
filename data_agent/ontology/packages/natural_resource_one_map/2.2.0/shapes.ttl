@@ -1,0 +1,99 @@
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix gda: <https://ontology.gis-data-agent.local/natural-resource/one-map/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+gda:AgriculturalStructureAdjustmentShape a sh:NodeShape ;
+    sh:sparql [ sh:message "农业结构调整必须在耕地与非耕农用地状态之间双向转换。"@zh ;
+            sh:select """
+            SELECT $this WHERE {
+              $this <https://ontology.gis-data-agent.local/natural-resource/one-map/property/hasSourceState> ?source ;
+                    <https://ontology.gis-data-agent.local/natural-resource/one-map/property/hasTargetState> ?target .
+              FILTER (
+                (EXISTS { ?source a <https://ontology.gis-data-agent.local/natural-resource/one-map/class/CultivatedLandUseState> } &&
+                 NOT EXISTS { ?target a <https://ontology.gis-data-agent.local/natural-resource/one-map/class/NonCultivatedAgriculturalLandUseState> }) ||
+                (EXISTS { ?source a <https://ontology.gis-data-agent.local/natural-resource/one-map/class/NonCultivatedAgriculturalLandUseState> } &&
+                 NOT EXISTS { ?target a <https://ontology.gis-data-agent.local/natural-resource/one-map/class/CultivatedLandUseState> }) ||
+                (NOT EXISTS { ?source a <https://ontology.gis-data-agent.local/natural-resource/one-map/class/CultivatedLandUseState> } &&
+                 NOT EXISTS { ?source a <https://ontology.gis-data-agent.local/natural-resource/one-map/class/NonCultivatedAgriculturalLandUseState> })
+              )
+            }
+        """ ] ;
+    sh:targetClass <https://ontology.gis-data-agent.local/natural-resource/one-map/class/AgriculturalStructureAdjustment> .
+
+gda:ClassConceptShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:nodeKind sh:Literal ;
+            sh:path dcterms:identifier ],
+        [ sh:minCount 1 ;
+            sh:nodeKind sh:Literal ;
+            sh:path skos:prefLabel ],
+        [ sh:minCount 1 ;
+            sh:nodeKind sh:IRI ;
+            sh:path prov:wasDerivedFrom ] ;
+    sh:targetClass owl:Class .
+
+gda:ConstructionOccupationShape a sh:NodeShape ;
+    sh:property [ sh:class <https://ontology.gis-data-agent.local/natural-resource/one-map/class/ConstructionLandUseState> ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path <https://ontology.gis-data-agent.local/natural-resource/one-map/property/hasTargetState> ],
+        [ sh:minCount 1 ;
+            sh:path <https://ontology.gis-data-agent.local/natural-resource/one-map/property/authorizedBy> ],
+        [ sh:class <https://ontology.gis-data-agent.local/natural-resource/one-map/class/AgriculturalLandUseState> ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path <https://ontology.gis-data-agent.local/natural-resource/one-map/property/hasSourceState> ] ;
+    sh:targetClass <https://ontology.gis-data-agent.local/natural-resource/one-map/class/ConstructionOccupation> .
+
+gda:LandUseTransitionShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:path prov:wasDerivedFrom ],
+        [ sh:datatype xsd:dateTime ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path <https://ontology.gis-data-agent.local/natural-resource/one-map/property/occurredAt> ],
+        [ sh:class <https://ontology.gis-data-agent.local/natural-resource/one-map/class/LandParcel> ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path <https://ontology.gis-data-agent.local/natural-resource/one-map/property/affectsParcel> ],
+        [ sh:class <https://ontology.gis-data-agent.local/natural-resource/one-map/class/LandUseState> ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path <https://ontology.gis-data-agent.local/natural-resource/one-map/property/hasTargetState> ],
+        [ sh:class <https://ontology.gis-data-agent.local/natural-resource/one-map/class/LandUseState> ;
+            sh:maxCount 1 ;
+            sh:minCount 1 ;
+            sh:path <https://ontology.gis-data-agent.local/natural-resource/one-map/property/hasSourceState> ],
+        [ sh:class <https://ontology.gis-data-agent.local/natural-resource/one-map/class/LegalBasis> ;
+            sh:minCount 1 ;
+            sh:path <https://ontology.gis-data-agent.local/natural-resource/one-map/property/supportedBy> ] ;
+    sh:targetClass <https://ontology.gis-data-agent.local/natural-resource/one-map/class/LandUseTransition> .
+
+gda:ValueDomainShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:nodeKind sh:Literal ;
+            sh:path skos:prefLabel ],
+        [ sh:minCount 1 ;
+            sh:nodeKind sh:IRI ;
+            sh:path prov:wasDerivedFrom ],
+        [ sh:minCount 1 ;
+            sh:nodeKind sh:Literal ;
+            sh:path dcterms:identifier ] ;
+    sh:targetClass skos:ConceptScheme .
+
+gda:ValueMemberShape a sh:NodeShape ;
+    sh:property [ sh:minCount 1 ;
+            sh:nodeKind sh:Literal ;
+            sh:path dcterms:identifier ],
+        [ sh:minCount 1 ;
+            sh:nodeKind sh:IRI ;
+            sh:path prov:wasDerivedFrom ],
+        [ sh:minCount 1 ;
+            sh:nodeKind sh:Literal ;
+            sh:path skos:prefLabel ] ;
+    sh:targetClass skos:Concept .
+

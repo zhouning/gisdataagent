@@ -1,0 +1,84 @@
+name: gisdataagent-dolphinscheduler-sandbox
+
+services:
+  metadata-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dolphinscheduler
+      POSTGRES_USER: dolphinscheduler
+      POSTGRES_PASSWORD: ${DOLPHINSCHEDULER_DB_PASSWORD:?set by sandbox bootstrap}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dolphinscheduler -d dolphinscheduler"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - dolphinscheduler-metadata:/var/lib/postgresql/data
+    networks:
+      - dolphinscheduler-sandbox
+
+  schema-init:
+    image: apache/dolphinscheduler-standalone-server:3.4.2
+    restart: "no"
+    depends_on:
+      metadata-db:
+        condition: service_healthy
+    environment:
+      DATABASE: postgresql
+      SPRING_DATASOURCE_URL: jdbc:postgresql://metadata-db:5432/dolphinscheduler
+      SPRING_DATASOURCE_USERNAME: dolphinscheduler
+      SPRING_DATASOURCE_PASSWORD: ${DOLPHINSCHEDULER_DB_PASSWORD:?set by sandbox bootstrap}
+      JAVA_OPTS: -server -Xms256m -Xmx1024m
+    entrypoint:
+      ["/bin/bash", "/opt/dolphinscheduler/tools/bin/upgrade-schema.sh"]
+    networks:
+      - dolphinscheduler-sandbox
+
+  dolphinscheduler:
+    build:
+      context: .
+      dockerfile: deploy/dolphinscheduler-sandbox/Dockerfile
+    image: gisdataagent-dolphinscheduler-sandbox:3.4.2-pstree
+    restart: unless-stopped
+    depends_on:
+      metadata-db:
+        condition: service_healthy
+      schema-init:
+        condition: service_completed_successfully
+    environment:
+      DATABASE: postgresql
+      SPRING_PROFILES_ACTIVE: postgresql
+      SPRING_DATASOURCE_URL: jdbc:postgresql://metadata-db:5432/dolphinscheduler
+      SPRING_DATASOURCE_USERNAME: dolphinscheduler
+      SPRING_DATASOURCE_PASSWORD: ${DOLPHINSCHEDULER_DB_PASSWORD:?set by sandbox bootstrap}
+      JAVA_OPTS: -server -Xms512m -Xmx2048m
+      TZ: Asia/Tokyo
+    ports:
+      - "127.0.0.1:${DOLPHINSCHEDULER_API_PORT:-12345}:12345"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://127.0.0.1:12345/dolphinscheduler/actuator/health >/dev/null",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    volumes:
+      - dolphinscheduler-local-resources:/tmp/dolphinscheduler
+      - type: bind
+        source: ${GDA_DATAOPS_EXECUTOR_TOKEN_FILE:-./.tmp/dolphinscheduler-sandbox/executor-token}
+        target: /run/secrets/gda-dataops-executor-token
+        read_only: true
+    networks:
+      - dolphinscheduler-sandbox
+
+volumes:
+  dolphinscheduler-metadata:
+  dolphinscheduler-local-resources:
+
+networks:
+  dolphinscheduler-sandbox:
+    driver: bridge

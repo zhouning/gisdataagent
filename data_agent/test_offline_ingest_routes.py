@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import zipfile
 
 from starlette.applications import Starlette
 from starlette.testclient import TestClient
@@ -35,6 +37,48 @@ def test_resumable_http_contract_without_chainlit_auth(tmp_path, monkeypatch):
     response = client.post(f"/api/offline-ingest/sessions/{session_id}/finalize")
     assert response.status_code == 200
     assert response.json()["asset"]["kind"] == "raster"
+
+
+def test_browser_filegdb_zip_can_continue_from_finalize_to_ingest(tmp_path, monkeypatch):
+    monkeypatch.setenv("GDA_OFFLINE_INGEST_AUTH_REQUIRED", "false")
+    monkeypatch.setenv("GDA_FILE_LAKE_ROOT", str(tmp_path / "lake"))
+    payload_buffer = io.BytesIO()
+    with zipfile.ZipFile(payload_buffer, "w") as archive:
+        archive.writestr("delivery/DLTB.gdb/a00000001.gdbtable", b"fixture")
+    payload = payload_buffer.getvalue()
+    client = TestClient(Starlette(routes=get_offline_ingest_routes()))
+    created = client.post(
+        "/api/offline-ingest/sessions",
+        json={
+            "filename": "DLTB.gdb.zip",
+            "size": len(payload),
+            "chunk_size": 1024 * 1024,
+            "asset_kind": "filegdb_bundle",
+        },
+    ).json()
+    session_id = created["session_id"]
+    assert client.put(
+        f"/api/offline-ingest/sessions/{session_id}/chunks/0",
+        content=payload,
+        headers={"x-chunk-sha256": hashlib.sha256(payload).hexdigest()},
+    ).status_code == 200
+    assert client.post(f"/api/offline-ingest/sessions/{session_id}/finalize").status_code == 200
+
+    response = client.post(
+        f"/api/offline-ingest/sessions/{session_id}/ingest",
+        json={"run_quality": False},
+    )
+
+    assert response.status_code == 202
+    result = response.json()
+    assert result["archive_expansion"]["gdb_paths"] == ["delivery/DLTB.gdb"]
+    assert result["run"]["assets"][0]["kind"] == "filegdb_bundle"
+    repeated = client.post(
+        f"/api/offline-ingest/sessions/{session_id}/ingest",
+        json={"run_quality": False},
+    )
+    assert repeated.status_code == 200
+    assert repeated.json()["resumed"] is True
 
 
 def test_contract_catalog_reports_unconfigured_state(monkeypatch):
@@ -94,8 +138,10 @@ def test_offline_semantic_catalog_is_available_without_database(tmp_path, monkey
 def test_semantic_project_route_returns_projection(monkeypatch):
     monkeypatch.setenv("GDA_OFFLINE_INGEST_AUTH_REQUIRED", "false")
     from data_agent.dltb_vertical_demo import DLTBVerticalDemo
+    captured = {}
 
     def fake_build(self, plan_id, **kwargs):
+        captured.update(kwargs)
         return {
             "status": "succeeded",
             "projection": {
@@ -114,3 +160,5 @@ def test_semantic_project_route_returns_projection(monkeypatch):
     )
     assert response.status_code == 200
     assert response.json()["projection"]["semantic_source"] == "land_parcel_current"
+    assert captured["publish_postgis"] is True
+    assert captured["postgis_table_name"] == "land_parcel_current"

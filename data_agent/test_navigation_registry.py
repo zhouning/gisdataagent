@@ -16,8 +16,21 @@ def _items(payload):
 
 def test_default_navigation_is_complete_and_unique():
     items = registry._registry_items()
-    assert len(items) == 69
+    assert len(items) == 73
     assert len({item["tab_key"] for item in items}) == len(items)
+    assert "abu_dhabi_nl2sql" not in {item["tab_key"] for item in items}
+    offline_ingest = next(
+        item for item in items if item["tab_key"] == "offline_ingest"
+    )
+    assert offline_ingest["section_key"] == "ingest"
+    irrigation_demo = next(
+        item for item in items if item["tab_key"] == "irrigation_demo"
+    )
+    assert irrigation_demo["section_key"] == "world_models"
+    abu_dhabi_flood = next(
+        item for item in items if item["tab_key"] == "abu_dhabi_flood_world_model"
+    )
+    assert abu_dhabi_flood["section_key"] == "world_models"
 
     with patch.object(registry, "_policies", return_value={}):
         payload = registry.get_effective_navigation()

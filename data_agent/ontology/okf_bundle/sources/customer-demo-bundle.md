@@ -4,8 +4,8 @@ title: Natural-resource ontology customer demo bundle V1.0.0
 description: Version-locked planning parcels, constraints, construction zones, mappings, and scenario summaries.
 tags: [geospatial, demo, source]
 status: stable
-generated: { by: gda-natural-resource-demo-builder/1.0, at: 2026-08-04T10:24:56Z }
-verified: { by: process:gda-demo-manifest-gate, at: 2026-08-04T10:24:56Z }
+generated: { by: gda-natural-resource-demo-builder/1.0, at: 2026-08-05T08:20:40Z }
+verified: { by: process:gda-demo-manifest-gate, at: 2026-08-05T08:20:40Z }
 sources:
   - id: source-archive
     resource: planning-institute-customer-sample-archive

@@ -729,6 +729,93 @@ def verify_schema_state(*, allow_unconfigured: bool = False) -> MigrationReport:
     )
 
 
+def verify_runtime_schema_state(
+    *,
+    required_migrations: Sequence[str] = (),
+    allow_unconfigured: bool = False,
+) -> MigrationReport:
+    """Verify runtime compatibility without requiring unrelated migration heads.
+
+    ``verify_schema_state`` remains the release and migration-authority gate.
+    Runtime modules use this narrower boundary so a pending migration owned by
+    another capability does not make the whole application unavailable.
+    """
+
+    report = get_schema_report()
+    if report.status == "database_unconfigured" and allow_unconfigured:
+        logger.info("[Migrations] Database unconfigured in explicit non-DB mode")
+        return report
+
+    required = tuple(dict.fromkeys(str(value) for value in required_migrations))
+    catalog_ids = {migration.migration_id for migration in discover_migrations()}
+    unknown_required = tuple(value for value in required if value not in catalog_ids)
+    pending_required = tuple(value for value in required if value in report.pending)
+    required_checksum_drift = tuple(
+        sorted(
+            item["migration_id"]
+            for item in report.checksum_mismatches
+            if item.get("migration_id") in required
+        )
+    )
+    required_missing_checksums = tuple(
+        sorted(set(report.missing_checksums) & set(required))
+    )
+    required_metadata_drift = tuple(
+        sorted(
+            item["migration_id"]
+            for item in report.metadata_mismatches
+            if item.get("migration_id") in required
+        )
+    )
+    required_duplicate_drift = tuple(
+        sorted(set(report.duplicate_applied_ids) & set(required))
+    )
+    if (
+        report.status in {"database_unconfigured", "ledger_missing"}
+        or unknown_required
+        or pending_required
+        or required_checksum_drift
+        or required_missing_checksums
+        or required_metadata_drift
+        or required_duplicate_drift
+    ):
+        detail = json.dumps(
+            {
+                "status": "runtime_incompatible",
+                "pending_required": pending_required,
+                "required_checksum_drift": required_checksum_drift,
+                "required_missing_checksums": required_missing_checksums,
+                "required_metadata_drift": required_metadata_drift,
+                "required_duplicate_drift": required_duplicate_drift,
+                "unknown_required": unknown_required,
+                "unrelated_pending": tuple(
+                    value for value in report.pending if value not in pending_required
+                ),
+            },
+            sort_keys=True,
+        )
+        raise MigrationStateError(
+            "Database schema is missing migrations required by this runtime "
+            f"capability: {detail}",
+            report,
+        )
+
+    if report.status == "drift" or report.pending:
+        logger.warning(
+            "[Migrations] Runtime compatible with unrelated control-plane drift: "
+            "%d pending, %d checksum mismatches, %d metadata mismatches",
+            len(report.pending),
+            len(report.checksum_mismatches),
+            len(report.metadata_mismatches),
+        )
+    else:
+        logger.info(
+            "[Migrations] Runtime schema compatible; schema fingerprint %s",
+            report.database_fingerprint,
+        )
+    return report
+
+
 @dataclass(frozen=True)
 class ProbeSpec:
     name: str

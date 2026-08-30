@@ -272,6 +272,60 @@ def verify_python_modules(
     )
 
 
+def verify_duckdb_spatial(
+    root: Path, python: Path | None, checks: list[dict[str, Any]]
+) -> None:
+    """Load the bundled extension and execute a real spatial expression."""
+    if not python:
+        return
+    extension = (
+        root
+        / "payload"
+        / "middleware"
+        / "duckdb"
+        / "extensions"
+        / "spatial.duckdb_extension"
+    )
+    if not extension.is_file():
+        check(
+            checks,
+            "duckdb_spatial",
+            "critical",
+            "fail",
+            str(extension),
+            "补齐 DuckDB 1.4.3 Windows AMD64 Spatial 离线扩展。",
+        )
+        return
+    env = os.environ.copy()
+    code = (
+        "import duckdb,json; "
+        f"p={str(extension)!r}; "
+        "c=duckdb.connect(':memory:'); "
+        "c.execute(\"LOAD '\" + p.replace(\"'\", \"''\") + \"'\"); "
+        "area=c.execute("
+        "\"SELECT ST_Area(ST_GeomFromText('POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))'))\""
+        ").fetchone()[0]; "
+        "print(json.dumps({'version': duckdb.__version__, 'area': area}))"
+    )
+    code_status, output = _run_python(python, code, env)
+    try:
+        result = json.loads(output.splitlines()[-1]) if code_status == 0 else {}
+    except (ValueError, IndexError):
+        result = {}
+    ok = result.get("version") == "1.4.3" and abs(float(result.get("area")) - 1.0) < 1e-9
+    check(
+        checks,
+        "duckdb_spatial",
+        "critical",
+        "pass" if ok else "fail",
+        output or "extension load or ST_Area failed",
+        (
+            "确认 duckdb==1.4.3，并使用 v1.4.3/windows_amd64 的已解压 "
+            "spatial.duckdb_extension 重新构建离线包。"
+        ),
+    )
+
+
 def verify_ontology_and_contract(root: Path, profile: str, checks: list[dict[str, Any]]) -> None:
     ontology = root / "config" / "ontology" / "natural_resource_one_map" / "2.3.0" / "manifest.json"
     active = root / "config" / "ontology" / "natural_resource_one_map" / "active.json"
@@ -465,6 +519,7 @@ def main() -> int:
         verify_artifacts(root, manifest, args.profile, checks)
     python = verify_python_runtime(root, checks, args.phase)
     verify_python_modules(root, python, args.profile, checks)
+    verify_duckdb_spatial(root, python, checks)
     if args.phase != "artifact":
         verify_ontology_and_contract(root, args.profile, checks)
     if args.profile == "production":

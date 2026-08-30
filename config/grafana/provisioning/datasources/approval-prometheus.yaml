@@ -1,0 +1,21 @@
+apiVersion: 1
+
+deleteDatasources:
+  - name: GDA Prometheus
+    orgId: 1
+
+datasources:
+  - name: GDA Prometheus
+    uid: gda-prometheus
+    type: prometheus
+    access: proxy
+    orgId: 1
+    url: $GDA_GRAFANA_PROMETHEUS_URL
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      manageAlerts: false
+      prometheusType: Prometheus
+      prometheusVersion: 3.5.0
+      timeInterval: 30s

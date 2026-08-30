@@ -1,0 +1,198 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gis-agent-approval-notification-worker
+  namespace: gis-agent
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gis-agent-approval-notification-worker
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: gis-agent-approval-notification-worker
+    app.kubernetes.io/component: approval-notification
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gis-agent-approval-notification-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gis-agent-approval-notification-worker
+        app.kubernetes.io/component: approval-notification
+    spec:
+      serviceAccountName: gis-agent-approval-notification-worker
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: gis-agent-approval-notification-worker
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: gis-agent-approval-notification-worker
+      containers:
+        - name: worker
+          image: gis-data-agent:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - python
+            - -m
+            - data_agent.approval_case_notification_worker
+          ports:
+            - name: metrics
+              containerPort: 9465
+              protocol: TCP
+          env:
+            - name: POSTGRES_HOST
+              value: postgres
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DATABASE
+              value: gis_agent
+            - name: POSTGRES_USER
+              value: agent_user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gis-agent-approval-notification-runtime
+                  key: postgres-password
+            - name: POSTGRES_ADMIN_USER
+              value: ""
+            - name: POSTGRES_ADMIN_PASSWORD
+              value: ""
+            - name: POSTGRES_MAX_CONNECTIONS
+              value: "200"
+            - name: POSTGRES_CONNECTION_RESERVE
+              value: "20"
+            - name: DB_POOL_SIZE
+              value: "5"
+            - name: DB_MAX_OVERFLOW
+              value: "0"
+            - name: ASYNC_POOL_MIN
+              value: "0"
+            - name: ASYNC_POOL_MAX
+              value: "1"
+            - name: GDA_APPROVAL_NOTIFICATION_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: gis-agent-approval-notification-runtime
+                  key: tenant-id
+            - name: GDA_APPROVAL_NOTIFICATION_WORKER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: GDA_APPROVAL_NOTIFICATION_ROUTE_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: GDA_ALERTMANAGER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gis-agent-approval-notification-runtime
+                  key: alertmanager-url
+            - name: GDA_ALERTMANAGER_BEARER_TOKEN_FILE
+              value: /var/run/secrets/gis-agent/alertmanager/token
+            - name: GDA_APPROVAL_NOTIFICATION_BATCH_SIZE
+              value: "10"
+            - name: GDA_APPROVAL_NOTIFICATION_LEASE_SECONDS
+              value: "60"
+            - name: GDA_APPROVAL_NOTIFICATION_RETRY_SECONDS
+              value: "30"
+            - name: GDA_APPROVAL_NOTIFICATION_POLL_SECONDS
+              value: "5"
+            - name: GDA_APPROVAL_NOTIFICATION_METRICS_PORT
+              value: "9465"
+            - name: GDA_ALERTMANAGER_TIMEOUT_SECONDS
+              value: "10"
+          volumeMounts:
+            - name: alertmanager-token
+              mountPath: /var/run/secrets/gis-agent/alertmanager
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            tcpSocket:
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+          livenessProbe:
+            tcpSocket:
+              port: metrics
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 2
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: alertmanager-token
+          secret:
+            secretName: gis-agent-approval-notification-runtime
+            defaultMode: 0440
+            items:
+              - key: alertmanager-token
+                path: token
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gis-agent-approval-notification-worker
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: gis-agent-approval-notification-worker
+    app.kubernetes.io/component: approval-notification
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: gis-agent-approval-notification-worker
+  ports:
+    - name: metrics
+      port: 9465
+      targetPort: metrics
+      protocol: TCP
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gis-agent-approval-notification-worker
+  namespace: gis-agent
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gis-agent-approval-notification-worker

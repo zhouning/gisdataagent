@@ -20,21 +20,42 @@ from typing import Any
 import geopandas as gpd
 import pandas as pd
 
-ONTOLOGY = {
-    "key": "natural-resource-one-map",
-    "version": "2.0.1",
-    "package_id": "natural-resource-one-map:2.0.1:953dac97c1be4d96",
-    "sha256": "953dac97c1be4d9683247da42dea022128471b15b9c677215d913fa209bd1200",
-    "namespace": "https://gisdataagent.local/ontology/natural-resource/2.0.1/",
-}
+ONTOLOGY_PACKAGE_ROOT = (
+    Path(__file__).resolve().parents[1]
+    / "data_agent"
+    / "ontology"
+    / "packages"
+    / "natural_resource_one_map"
+)
 
-ONTOLOGY_STATS = {
-    "domain_classes": 96,
-    "schema_artifacts": 3932,
-    "skos_concepts": 1066,
-    "mappings": 422,
-    "rdf_triples": 528252,
-}
+
+def _active_ontology() -> tuple[dict[str, Any], dict[str, int]]:
+    active = json.loads((ONTOLOGY_PACKAGE_ROOT / "active.json").read_text(encoding="utf-8"))
+    version = str(active["semantic_version"])
+    manifest = json.loads(
+        (ONTOLOGY_PACKAGE_ROOT / version / "manifest.json").read_text(encoding="utf-8")
+    )
+    if manifest["content_sha256"] != active["content_sha256"]:
+        raise RuntimeError("active ontology pointer does not match the immutable package manifest")
+    stats = manifest["stats"]
+    ontology = {
+        "key": manifest["ontology_key"],
+        "version": manifest["semantic_version"],
+        "package_id": manifest["package_id"],
+        "sha256": manifest["content_sha256"],
+        "namespace": manifest["namespace_uri"],
+    }
+    ontology_stats = {
+        "domain_classes": int(stats["domain_class_count"]),
+        "schema_artifacts": int(stats["schema_artifact_count"]),
+        "skos_concepts": int(stats.get("kind_ReferenceConcept", 0)),
+        "mappings": int(stats["mapping_count"]),
+        "rdf_triples": int(stats["rdf_triple_count"]),
+    }
+    return ontology, ontology_stats
+
+
+ONTOLOGY, ONTOLOGY_STATS = _active_ontology()
 
 STATE_MAP = {
     "水田": ("CultivatedLandUseState", "耕地利用状态"),

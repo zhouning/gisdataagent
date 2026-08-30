@@ -2,15 +2,15 @@
 type: Domain Knowledge
 title: Land-use transition model
 description: Ontology states, transition processes, constraints, and evidence requirements used in auxiliary review.
-resource: https://gisdataagent.local/ontology/natural-resource/2.0.1/class/LandUseTransition
+resource: https://ontology.gis-data-agent.local/natural-resource/one-map/class/LandUseTransition
 tags: [land-use, transition, evidence]
 status: stable
-generated: { by: gda-ontology-publisher/2.0.1, at: 2026-08-04T10:24:56Z }
-verified: { by: process:gda-ontology-release-gate, at: 2026-08-04T10:24:56Z }
+generated: { by: gda-ontology-publisher/2.1.0, at: 2026-08-05T08:16:25Z }
+verified: { by: process:gda-ontology-release-gate, at: 2026-08-05T08:16:25Z }
 sources:
   - id: ontology-package
     resource: /sources/ontology-package.md
-    title: Natural-resource ontology immutable package V2.0.1
+    title: Natural-resource ontology immutable package V2.1.0
 ---
 
 # Meaning

@@ -8,15 +8,21 @@ requires-python = ">=3.11"
 dependencies = [
     "google-adk==2.3.0",
     "google-genai>=2.8,<3",
+    # ADK's LiteLLM connector requires >=1.84; this also excludes the
+    # compromised 1.82.7/1.82.8 releases called out in the ADK advisory.
+    "litellm>=1.84,<2.0",
     "chainlit>=2.0",
     "geopandas>=0.14",
+    "geoalchemy2>=0.18",
+    "geopy>=2.4",
     "shapely>=2.0",
     "pandas>=2.0",
     "numpy>=1.24",
     "scipy>=1.11",
     "scikit-learn>=1.4",
     "statsmodels>=0.14",
-    "duckdb>=0.10",
+    "duckdb==1.5.5",
+    "sqlglot>=25.0.0",
     "pyyaml>=6.0",
     "python-dotenv>=1.0",
     "httpx>=0.27",
@@ -30,6 +36,8 @@ dependencies = [
     "python-docx>=1.0",
     "argon2-cffi>=25.0",
     "PyJWT>=2.8",
+    # Deterministic terminal platform surface
+    "textual==8.1.1",
 ]
 
 [project.optional-dependencies]
@@ -41,6 +49,19 @@ mmfe = [
     "psycopg2-binary>=2.9",
     "rasterio>=1.3",
     "sqlalchemy>=2.0",
+]
+
+# Scientific file readers used by the GWM/GeoTransport adapters. Keeping this
+# profile separate preserves the lightweight install while making the import
+# boundary explicit for contributors and CI jobs that run those adapters.
+scientific = [
+    "h5py==3.16.0",
+]
+
+# Standards ingestion profile. PDF extraction is optional for deployments
+# that only ingest structured source data.
+documents = [
+    "PyMuPDF==1.27.2.2",
 ]
 
 # Full deployment — PostGIS + DRL + World Model + Remote Sensing + all toolsets
@@ -58,13 +79,21 @@ full = [
     "rasterstats>=0.19",
     # Spatial statistics
     "pysal>=24.1",
+    # 2.5.4 incorrectly resolves numba/llvmlite releases that reject Python 3.11.
+    "segregation==2.5.3",
     "esda>=2.5",
     "libpysal>=4.9",
     "mapclassify>=2.6",
     # Knowledge graph
     "networkx>=3.2",
+    "rdflib>=7.1,<8.0",
+    "pyshacl>=0.30,<1.0",
+    "owlrl>=7.1,<8.0",
     # World model
     "imageio>=2.34",
+    "h5py==3.16.0",
+    # Standards PDF extraction
+    "PyMuPDF==1.27.2.2",
     # A2A protocol
     "a2a-sdk>=0.3",
     # Redis (distributed mode)
@@ -75,6 +104,12 @@ full = [
     "boto3>=1.42",
     # Vector tiles
     "aiofiles>=24.0",
+    "mercantile==1.2.1",
+]
+
+# Durable AgentOps worker runtime. Kept out of Lite mode and pinned for replay.
+agentops-temporal = [
+    "temporalio==1.32.0",
 ]
 
 # Development / testing
@@ -82,10 +117,19 @@ dev = [
     "pytest>=9.0",
     "pytest-asyncio>=0.23",
     "coverage>=7.0",
+    "ruff>=0.9",
 ]
 
 [project.scripts]
 gis-agent = "data_agent.lite_mode:_cli_main"
+gda-nl2sql-pilot = "data_agent.multilingual_nl2sql_pilot:main"
+gda-free-form-nl2sql-eval = "data_agent.free_form_nl2sql_benchmark:main"
+gda-nl2semantic2sql-pairwise-compare = "data_agent.nl2semantic2sql_pairwise_comparison:main"
+gda-federated-nl2sql-eval = "data_agent.abu_dhabi_federated_benchmark:main"
+gda-source-operator = "data_agent.virtual_source_operator:main"
+gda-gis-analysis-worker = "data_agent.gis_analysis_command_worker:main"
+gda-metric-query-worker = "data_agent.metric_query_command_worker:main"
+gda-duckdb-blueprint-worker = "data_agent.duckdb_blueprint_command_worker:main"
 
 [build-system]
 requires = ["setuptools>=68.0"]
@@ -96,6 +140,8 @@ include = ["data_agent*", "geocausal*"]
 
 [tool.setuptools.package-data]
 data_agent = [
+    "mcp_servers.yaml",
+    "migrations/*.sql",
     "benchmarks/twm_runtime_v1/*.json",
     "scca_samples/data/*.csv",
     "scca_samples/spatial/county_data/*",
@@ -107,3 +153,10 @@ data_agent = [
 filterwarnings = [
     "ignore:BaseAgentConfig is deprecated.*:DeprecationWarning",
 ]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

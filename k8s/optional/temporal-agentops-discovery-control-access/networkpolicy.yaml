@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: gis-agent-postgres-agentops-discovery-access
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: gda-agentops-sandbox
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gis-agent-agentops-discovery
+      ports:
+        - protocol: TCP
+          port: 5432

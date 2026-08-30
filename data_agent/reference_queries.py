@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import Optional
 
 import numpy as np
@@ -46,10 +47,33 @@ class ReferenceQueryStore:
 
         # Dedup check: if very similar query exists (cosine > 0.92), skip
         if embedding:
-            existing = self.search(query_text, top_k=1, _embedding=embedding)
-            if existing and existing[0].get("score", 0) > 0.92:
-                logger.info("Skipping duplicate reference query (score=%.3f)", existing[0]["score"])
-                return existing[0]["id"]
+            existing = self.search(query_text, top_k=5, _embedding=embedding)
+            requested_engine = next(
+                (
+                    str(tag).casefold().split(":", 1)[1]
+                    for tag in (tags or [])
+                    if str(tag).casefold().startswith("engine:")
+                    and ":" in str(tag)
+                ),
+                None,
+            )
+            for candidate in existing:
+                if candidate.get("score", 0) <= 0.92:
+                    continue
+                candidate_engines = {
+                    str(tag).casefold().split(":", 1)[1]
+                    for tag in (candidate.get("tags") or [])
+                    if str(tag).casefold().startswith("engine:")
+                    and ":" in str(tag)
+                }
+                if requested_engine and candidate_engines and requested_engine not in candidate_engines:
+                    continue
+                logger.info(
+                    "Skipping duplicate reference query (score=%.3f, engine=%s)",
+                    candidate["score"],
+                    requested_engine or "untyped",
+                )
+                return candidate["id"]
 
         try:
             with engine.connect() as conn:
@@ -205,6 +229,7 @@ class ReferenceQueryStore:
         top_k: int = 5,
         pipeline_type: Optional[str] = None,
         task_type: Optional[str] = None,
+        domain_id: Optional[str] = None,
         _embedding: Optional[list[float]] = None,
     ) -> list[dict]:
         """Embedding-based search for similar reference queries."""
@@ -224,6 +249,9 @@ class ReferenceQueryStore:
         if task_type:
             clauses.append("task_type = :task")
             params["task"] = task_type
+        if domain_id:
+            clauses.append("domain_id = :domain_id")
+            params["domain_id"] = domain_id
         where = " AND ".join(clauses)
 
         try:
@@ -233,7 +261,7 @@ class ReferenceQueryStore:
                         SELECT id, query_text, description, response_summary,
                                tags, pipeline_type, task_type, source,
                                feedback_id, use_count, success_count,
-                               embedding
+                               embedding, domain_id
                         FROM agent_reference_queries
                         WHERE {where}
                     """),
@@ -276,6 +304,7 @@ class ReferenceQueryStore:
                     "use_count": r[9],
                     "success_count": r[10],
                     "score": round(score, 4),
+                    "domain_id": r[12] if len(r) > 12 else None,
                 }
                 for score, r in scored[:top_k]
             ]
@@ -323,7 +352,8 @@ class ReferenceQueryStore:
                     SELECT COUNT(*),
                            COUNT(*) FILTER (WHERE source = 'auto'),
                            COUNT(*) FILTER (WHERE source = 'manual'),
-                           COUNT(*) FILTER (WHERE source = 'seed')
+                           COUNT(*) FILTER (WHERE source = 'seed'),
+                           COUNT(*) FILTER (WHERE source = 'benchmark_curated')
                     FROM agent_reference_queries
                 """)).fetchone()
                 return {
@@ -331,6 +361,7 @@ class ReferenceQueryStore:
                     "auto": row[1] if row else 0,
                     "manual": row[2] if row else 0,
                     "seed": row[3] if row else 0,
+                    "benchmark_curated": row[4] if row and len(row) > 4 else 0,
                 }
         except Exception as e:
             logger.warning("Failed to get ref query stats: %s", e)
@@ -377,10 +408,18 @@ class ReferenceQueryStore:
 # ---------------------------------------------------------------------------
 
 
-def fetch_nl2sql_few_shots(query: str, top_k: int = 3, domain_id: Optional[str] = None) -> str:
+def fetch_nl2sql_few_shots(
+    query: str,
+    top_k: int = 3,
+    domain_id: Optional[str] = None,
+    execution_engine: Optional[str] = None,
+    include_metadata: bool = False,
+) -> str | dict:
     """Fetch reference queries as NL2SQL few-shot examples.
 
     Domain-priority search: same domain first, then global fallback.
+    When ``execution_engine`` is provided, only tagged examples for that
+    dialect are returned; untagged historical examples remain PostGIS-only.
     Returns formatted prompt section or empty string.
     """
     try:
@@ -388,10 +427,23 @@ def fetch_nl2sql_few_shots(query: str, top_k: int = 3, domain_id: Optional[str] 
         hits = []
         # Priority 1: same domain
         if domain_id:
-            domain_hits = store.search(query, top_k=top_k, task_type="nl2sql")
-            hits = [h for h in domain_hits if h.get("domain_id") == domain_id]
-        # Priority 2: global fallback
-        if len(hits) < top_k:
+            domain_hits = store.search(
+                query,
+                top_k=top_k,
+                task_type="nl2sql",
+                domain_id=domain_id,
+            )
+            hits = list(domain_hits)
+        # Priority 2: optional global fallback.  Cross-domain examples can
+        # dominate a prompt through lexical similarity while teaching the
+        # wrong relation role (for example a building-to-POI nearest-neighbour
+        # example for a building-to-road question).  Keep domain isolation as
+        # the production default; legacy/global behavior remains opt-in.
+        allow_cross_domain = os.environ.get(
+            "GDA_NL2SQL_ALLOW_CROSS_DOMAIN_FEWSHOT",
+            "0",
+        ).strip().casefold() in {"1", "true", "on", "enabled"}
+        if len(hits) < top_k and (not domain_id or allow_cross_domain):
             remaining = top_k - len(hits)
             all_hits = store.search(query, top_k=top_k + 5, task_type="nl2sql")
             seen_ids = {h["id"] for h in hits}
@@ -400,13 +452,83 @@ def fetch_nl2sql_few_shots(query: str, top_k: int = 3, domain_id: Optional[str] 
                     hits.append(h)
                     if len(hits) >= top_k:
                         break
+        # Benchmark-curated examples are useful for reproducing a published
+        # dataset score, but they contain dataset-specific table/field names.
+        # They must never enter the default product prompt for arbitrary user
+        # data.  An explicit opt-in keeps benchmark comparisons auditable.
+        allow_benchmark = os.environ.get(
+            "GDA_NL2SQL_ALLOW_BENCHMARK_FEWSHOT", "0"
+        ).strip().casefold() in {"1", "true", "on", "enabled"}
+        if not allow_benchmark:
+            hits = [
+                hit
+                for hit in hits
+                if str(hit.get("source") or "").casefold() != "benchmark_curated"
+            ]
+        min_score = float(os.environ.get("GDA_NL2SQL_FEWSHOT_MIN_SCORE", "0.35"))
+        hits = [
+            hit
+            for hit in hits
+            if hit.get("score") is None or float(hit.get("score") or 0.0) >= min_score
+        ]
+        if os.environ.get("GDA_NL2SQL_ALLOW_UNREVIEWED_FEWSHOT", "0") != "1":
+            # Merely executable SQL is not a semantic correctness signal.
+            # Keep auto-curated candidates out of prompts until feedback has
+            # marked them successful at least once.
+            hits = [
+                hit
+                for hit in hits
+                if str(hit.get("source") or "").casefold() not in {"auto", "auto_curate"}
+                or int(hit.get("success_count") or 0) > 0
+            ]
+        if execution_engine:
+            # Reference queries created before engine-aware few-shot support do
+            # not carry an engine tag. They are safe for the historical
+            # PostGIS route, but must not be injected into DuckDB prompts where
+            # PostgreSQL casts/operators (for example ::geography or <->) can
+            # teach the wrong dialect. A query tagged with engine:postgis,
+            # engine:duckdb, engine:lake, or engine:any is explicit.
+            wanted = execution_engine.strip().casefold()
+            if wanted == "lake":
+                wanted = "duckdb"
+            compatible = []
+            for hit in hits:
+                tags = {str(tag).casefold() for tag in (hit.get("tags") or [])}
+                tagged = {
+                    tag.split(":", 1)[1]
+                    for tag in tags
+                    if tag.startswith("engine:") and ":" in tag
+                }
+                if not tagged:
+                    if wanted == "postgis":
+                        compatible.append(hit)
+                elif wanted in tagged or "any" in tagged:
+                    compatible.append(hit)
+            hits = compatible
         if not hits:
-            return ""
+            return {"prompt": "", "hits": []} if include_metadata else ""
         lines = ["参考查询示例:"]
         for h in hits:
             lines.append(f"- 问: {h['query_text']}")
             if h.get("response_summary"):
                 lines.append(f"  SQL: {h['response_summary']}")
-        return "\n".join(lines)
+        prompt = "\n".join(lines)
+        if include_metadata:
+            return {
+                "prompt": prompt,
+                "hits": [
+                    {
+                        "id": hit.get("id"),
+                        "question": hit.get("query_text") or "",
+                        "sql": hit.get("response_summary") or "",
+                        "score": hit.get("score"),
+                        "domain_id": hit.get("domain_id"),
+                        "source": hit.get("source"),
+                        "tags": hit.get("tags") or [],
+                    }
+                    for hit in hits
+                ],
+            }
+        return prompt
     except Exception:
-        return ""
+        return {"prompt": "", "hits": []} if include_metadata else ""

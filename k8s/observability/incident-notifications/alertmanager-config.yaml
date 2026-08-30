@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: gis-agent-incident-notifications
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: gis-agent-incident-notification-worker
+    app.kubernetes.io/component: incident-notification
+spec:
+  route:
+    receiver: incident-oncall
+    groupBy: [alertname, namespace, gda_tenant, gda_incident_type]
+    groupWait: 5s
+    groupInterval: 5m
+    repeatInterval: 4h
+    matchers:
+      - name: alertname
+        value: GDADataIncident|GDAIncidentNotification.*
+        matchType: =~
+  receivers:
+    - name: incident-oncall
+      webhookConfigs:
+        - urlSecret:
+            name: gis-agent-incident-oncall
+            key: webhook-url
+          sendResolved: true

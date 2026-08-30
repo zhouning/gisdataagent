@@ -103,9 +103,13 @@ if ($state.profile -eq 'production') {
         $candidate = Join-Path ${env:ProgramFiles} 'Ollama\ollama.exe'
         if (Test-Path -LiteralPath $candidate) { $ollama = $candidate }
     }
-    if ($ollama) {
+    $llmProvider = ([string]$env:GDA_LLM_PROVIDER).Trim().ToLowerInvariant()
+    $usesBundledOllama = [string]::IsNullOrWhiteSpace($llmProvider) -or $llmProvider -eq 'ollama'
+    if ($ollama -and $usesBundledOllama) {
         Get-Process -Name 'ollama' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
         if (-not (Wait-Tcp '127.0.0.1' 11434 1)) { Start-LoggedProcess 'ollama' $ollama @('serve') | Out-Null }
+    } elseif (-not $usesBundledOllama) {
+        Write-Host "Skipping bundled Ollama because GDA_LLM_PROVIDER=$llmProvider; using configured OpenAI-compatible service."
     }
     $prometheus = Get-ChildItem -LiteralPath (Join-Path $InstallRoot 'middleware\prometheus') -Filter 'prometheus.exe' -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($prometheus) {
@@ -116,6 +120,26 @@ if ($state.profile -eq 'production') {
         $env:GF_PATHS_DATA = Join-Path $state.data_root 'grafana'
         $env:GF_PATHS_LOGS = Join-Path $env:GDA_LOG_DIR 'grafana'
         Start-LoggedProcess 'grafana' $grafana.FullName @('--homepath', $grafana.Directory.Parent.FullName) | Out-Null
+    }
+}
+
+$configuredProvider = ([string]$env:GDA_LLM_PROVIDER).Trim().ToLowerInvariant()
+if ($configuredProvider -in @('lm_studio', 'openai_compatible')) {
+    $modelVerifier = Join-Path $InstallRoot 'scripts\verify_openai_compatible_models.py'
+    if (-not (Test-Path -LiteralPath $modelVerifier)) {
+        throw "模型预检脚本不存在：$modelVerifier"
+    }
+    $modelReport = Join-Path $env:GDA_LOG_DIR 'model-service-preflight.json'
+    & $python $modelVerifier --output $modelReport
+    $modelPreflightExitCode = $LASTEXITCODE
+    if ($modelPreflightExitCode -ne 0) {
+        $requiredValue = ([string]$env:GDA_MODEL_PREFLIGHT_REQUIRED).Trim().ToLowerInvariant()
+        $modelPreflightRequired = [string]::IsNullOrWhiteSpace($requiredValue) -or `
+            $requiredValue -in @('1', 'true', 'yes', 'on')
+        if ($modelPreflightRequired) {
+            throw "LM Studio/OpenAI-compatible 模型预检失败；请查看 $modelReport"
+        }
+        Write-Warning "模型预检失败但未配置为阻断；请查看 $modelReport"
     }
 }
 

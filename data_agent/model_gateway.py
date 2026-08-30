@@ -7,21 +7,75 @@ Supports four model backends:
 - **litellm**: Any LiteLLM-compatible model (OpenAI, Anthropic, local, etc.)
 - **lm_studio**: Local models via LM Studio OpenAI-compatible API (offline)
 
-Models are registered in ModelRegistry with backend metadata.  The
+Models are registered in ModelRegistry with backend metadata. The
 ``create_model()`` factory returns the appropriate ADK model wrapper
-(``Gemini`` or ``LiteLlm``) based on the backend field.
+(``Gemini`` or ``LiteLlm``) based on the backend field. Python ADK reaches
+OpenAI through LiteLLM using the ``openai/<model-id>`` model string.
 
 Environment variables:
 - MODEL_FAST / MODEL_STANDARD / MODEL_PREMIUM — tier defaults
 - LM_STUDIO_BASE_URL — LM Studio endpoint (default http://localhost:1234/v1)
 - LM_STUDIO_MODEL — default local model name (default gemma-3-4b)
-- MODEL_BACKEND — global default backend: gemini | deepseek | litellm | lm_studio (default gemini)
+- MODEL_BACKEND — global default backend: gemini | openai | deepseek | litellm | lm_studio (default gemini)
+- GDA_GEMINI_TRANSPORT — ``native``/``direct`` for the official Gemini API,
+  or ``openai_compatible`` for an explicitly configured Gemini gateway. When
+  unset, an existing ``GDA_LLM_BASE_URL``/``GOOGLE_GEMINI_BASE_URL`` keeps
+  its legacy gateway behavior.
 """
 import os
 
 from .observability import get_logger
 
 logger = get_logger("model_gateway")
+
+
+def apply_gemini_transport_policy() -> None:
+    """Apply explicit Gemini transport selection to process-wide SDK env.
+
+    The google-genai client reads ``GOOGLE_GEMINI_BASE_URL`` directly, so a
+    stale shell-level gateway variable can bypass the model gateway entirely.
+    Explicit native/direct deployments must remove that override; an unset
+    transport intentionally preserves the legacy gateway behavior.
+    """
+    transport = os.environ.get("GDA_GEMINI_TRANSPORT", "").strip().casefold()
+    if transport not in {"", "native", "direct", "openai_compatible", "gateway"}:
+        raise ValueError(
+            "GDA_GEMINI_TRANSPORT must be native, direct, or openai_compatible"
+        )
+    if transport in {"native", "direct"}:
+        os.environ.pop("GOOGLE_GEMINI_BASE_URL", None)
+
+
+def resolve_nl2sql_model_name(
+    default: str = "gpt-5.1",
+    *,
+    scope: str | None = None,
+) -> str:
+    """Resolve the model used by a product NL2SQL entry point.
+
+    Product routes must not pin a provider-specific model in their source.
+    Deployments can select a model family through the shared ``GDA_LLM_MODEL``
+    setting, while a source-specific override remains available for controlled
+    evaluation.  The legacy default is retained for environments that have no
+    model configuration at all; the Abu Dhabi runtime's ``data_agent/.env``
+    selects Gemini explicitly.
+    """
+
+    names: list[str] = []
+    if scope:
+        normalized = "".join(
+            character if character.isalnum() else "_"
+            for character in str(scope).upper()
+        ).strip("_")
+        if normalized:
+            names.append(f"GDA_{normalized}_NL2SQL_MODEL")
+    names.extend(("GDA_NL2SQL_MODEL", "GDA_LLM_MODEL", "NL2SQL_AGENT_MODEL"))
+    for name in names:
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    configured_standard = os.environ.get("MODEL_STANDARD", "").strip()
+    return configured_standard or default
 
 
 # =====================================================================
@@ -32,7 +86,7 @@ class ModelRegistry:
     """Registry of available models with metadata.
 
     Each model entry contains:
-    - backend: "gemini" | "deepseek" | "litellm" | "lm_studio"
+    - backend: "gemini" | "openai" | "deepseek" | "litellm" | "lm_studio"
     - tier: "fast" | "standard" | "premium" | "local"
     - api_base: (optional) override API endpoint for local models
     - cost_per_1k_input / output: pricing for cost tracking
@@ -73,6 +127,69 @@ class ModelRegistry:
             "latency_p50_ms": 2500,
             "max_context_tokens": 2_000_000,
             "capabilities": ["complex_reasoning", "planning", "coding", "analysis"],
+        },
+        # --- Online: OpenAI GPT-5.6 family via LiteLLM --------------------
+        # ADK Python reaches OpenAI through LiteLLM. These models support both
+        # Chat Completions and Responses; LiteLlm uses Chat Completions so ADK
+        # tool calling and streaming stay on the normal agent path.
+        # Cost hints below match the pinned LiteLLM 1.95 offline model map;
+        # they are USD per 1K tokens, which is this registry's accounting unit.
+        "gpt-5.6-luna": {
+            "backend": "openai",
+            "tier": "fast",
+            "online": True,
+            "cost_per_1k_input": 0.001,
+            "cost_per_1k_output": 0.006,
+            "latency_p50_ms": 900,
+            "max_context_tokens": 1_050_000,
+            "capabilities": ["classification", "extraction", "summarization",
+                             "reasoning", "analysis", "generation", "coding"],
+            "api_base": "https://api.openai.com/v1",
+            "api_key_env": "OPENAI_API_KEY",
+            "model_id": "openai/gpt-5.6-luna",
+        },
+        "gpt-5.6-terra": {
+            "backend": "openai",
+            "tier": "standard",
+            "online": True,
+            "cost_per_1k_input": 0.0025,
+            "cost_per_1k_output": 0.015,
+            "latency_p50_ms": 1300,
+            "max_context_tokens": 1_050_000,
+            "capabilities": ["reasoning", "analysis", "generation",
+                             "classification", "coding"],
+            "api_base": "https://api.openai.com/v1",
+            "api_key_env": "OPENAI_API_KEY",
+            "model_id": "openai/gpt-5.6-terra",
+        },
+        "gpt-5.6-sol": {
+            "backend": "openai",
+            "tier": "premium",
+            "online": True,
+            "cost_per_1k_input": 0.005,
+            "cost_per_1k_output": 0.03,
+            "latency_p50_ms": 2500,
+            "max_context_tokens": 1_050_000,
+            "capabilities": ["complex_reasoning", "planning", "coding",
+                             "analysis", "generation"],
+            "api_base": "https://api.openai.com/v1",
+            "api_key_env": "OPENAI_API_KEY",
+            "model_id": "openai/gpt-5.6-sol",
+        },
+        # The official alias routes to the Sol snapshot.
+        "gpt-5.6": {
+            "backend": "openai",
+            "tier": "premium",
+            "online": True,
+            "cost_per_1k_input": 0.005,
+            "cost_per_1k_output": 0.03,
+            "latency_p50_ms": 2500,
+            "max_context_tokens": 1_050_000,
+            "capabilities": ["complex_reasoning", "planning", "coding",
+                             "analysis", "generation"],
+            "api_base": "https://api.openai.com/v1",
+            "api_key_env": "OPENAI_API_KEY",
+            "model_id": "openai/gpt-5.6",
         },
         # --- Online: DeepSeek v4 ---
         "deepseek-v4-flash": {
@@ -198,6 +315,20 @@ class ModelRegistry:
             "online": True,
             "cost_per_1k_input": 1.50 / 1000,
             "cost_per_1k_output": 9.00 / 1000,
+            "latency_p50_ms": 1500,
+            "max_context_tokens": 1_048_576,
+            "capabilities": ["reasoning", "analysis", "generation",
+                             "classification", "coding", "complex_reasoning"],
+        },
+        # Gemini 3.7 Flash — the current LAN/customer evaluation model. Keep
+        # this as a first-class catalog entry so deployments do not depend on
+        # GDA_LLM_MODEL auto-registration to expose its backend and tier.
+        "gemini-3.7-flash": {
+            "backend": "gemini",
+            "tier": "standard",
+            "online": True,
+            "cost_per_1k_input": 0.0,
+            "cost_per_1k_output": 0.0,
             "latency_p50_ms": 1500,
             "max_context_tokens": 1_048_576,
             "capabilities": ["reasoning", "analysis", "generation",
@@ -398,6 +529,63 @@ class ModelRegistry:
             lm_model = os.environ.get("LM_STUDIO_MODEL")
             if lm_model and lm_model not in cls.models:
                 cls.register_model(lm_model, backend="lm_studio", tier="local")
+            local_model = os.environ.get("GDA_LLM_MODEL", "").strip()
+            if local_model and local_model not in cls.models:
+                configured_provider = os.environ.get(
+                    "GDA_LLM_PROVIDER", ""
+                ).strip().casefold().replace("-", "_")
+                if configured_provider == "gemini" or (
+                    not configured_provider
+                    and local_model.startswith(("gemini-", "gemma-"))
+                ):
+                    # Explicit Gemini selections must stay on the native ADK
+                    # Gemini wrapper.  Treating an environment-only model as
+                    # a local OpenAI-compatible model makes LiteLLM send the
+                    # raw id to an OpenAI endpoint and yields model_not_found.
+                    cls.register_model(
+                        local_model,
+                        backend="gemini",
+                        tier="standard",
+                        online=True,
+                        capabilities=[
+                            "classification", "extraction", "summarization",
+                            "reasoning", "analysis", "generation", "coding",
+                        ],
+                    )
+                elif configured_provider == "openai" or (
+                    not configured_provider
+                    and local_model.startswith(("gpt-", "chatgpt-"))
+                ):
+                    cls.register_model(
+                        local_model,
+                        backend="openai",
+                        tier="standard",
+                        api_base=_get_openai_base_url(),
+                        model_id=(
+                            local_model
+                            if local_model.startswith("openai/")
+                            else f"openai/{local_model}"
+                        ),
+                        api_key_env="OPENAI_API_KEY",
+                        online=True,
+                        capabilities=[
+                            "classification", "extraction", "summarization",
+                            "reasoning", "analysis", "generation", "coding",
+                        ],
+                    )
+                else:
+                    cls.register_model(
+                        local_model,
+                        backend="lm_studio",
+                        tier="local",
+                        api_base=_get_lm_studio_base_url(),
+                        model_id=local_model,
+                        online=False,
+                        capabilities=[
+                            "classification", "extraction", "summarization",
+                            "reasoning", "analysis", "generation", "coding",
+                        ],
+                    )
 
     @classmethod
     def register_model(cls, name: str, *, backend: str = "litellm",
@@ -412,7 +600,7 @@ class ModelRegistry:
 
         Args:
             name: Model identifier (e.g. "openai/gpt-4o", "ollama/llama3").
-            backend: "gemini", "deepseek", "litellm", or "lm_studio".
+            backend: "gemini", "openai", "deepseek", "litellm", or "lm_studio".
             tier: "fast", "standard", "premium", or "local".
             api_base: Override API endpoint (e.g. "http://localhost:1234/v1").
             online: Whether internet is required (auto-detected from backend).
@@ -546,8 +734,15 @@ class ModelRegistry:
 # =====================================================================
 
 def _get_lm_studio_base_url() -> str:
-    """Get LM Studio API base URL from env var."""
-    return os.environ.get("LM_STUDIO_BASE_URL", "http://localhost:1234/v1")
+    """Get the configured OpenAI-compatible API base URL."""
+    from .openai_compatible_llm import normalize_openai_base_url
+
+    configured = (
+        os.environ.get("GDA_LLM_BASE_URL")
+        or os.environ.get("LM_STUDIO_BASE_URL")
+        or "http://localhost:1234/v1"
+    )
+    return normalize_openai_base_url(configured)
 
 
 def create_model(model_name: str):
@@ -557,8 +752,8 @@ def create_model(model_name: str):
     - Gemini models → google.adk.models.google_llm.Gemini
     - LiteLLM/LM Studio models → google.adk.models.lite_llm.LiteLlm
 
-    For LM Studio models, the OpenAI-compatible API base URL is set
-    via the LM_STUDIO_BASE_URL environment variable.
+    For OpenAI and local compatible models, the API base URL is normalized from
+    the registry entry or the corresponding environment variable.
 
     Returns:
         BaseLlm instance (Gemini or LiteLlm).
@@ -569,6 +764,8 @@ def create_model(model_name: str):
 
     if backend == "gemini":
         return _create_gemini_model(model_name)
+    elif backend == "openai":
+        return _create_openai_model(model_name, info)
     elif backend == "deepseek":
         return _create_deepseek_model(model_name, info)
     elif backend == "qwen":
@@ -584,6 +781,13 @@ def _detect_backend(model_name: str) -> str:
     """Infer backend from model name prefix when not in registry."""
     if model_name.startswith("gemini"):
         return "gemini"
+    if model_name.startswith(("gpt-", "chatgpt-")):
+        configured_provider = os.environ.get(
+            "GDA_LLM_PROVIDER", ""
+        ).strip().casefold().replace("-", "_")
+        if configured_provider in {"ollama", "lm_studio", "openai_compatible"}:
+            return "lm_studio"
+        return "openai"
     if model_name.startswith("gemma-"):
         return "gemini"  # Gemma models via Gemini API
     if model_name.startswith("deepseek"):
@@ -612,6 +816,7 @@ def family_of(model_obj) -> str:
                       substring BEFORE the class-name fallback.
       - "deepseek"  : LiteLlm wrapping a deepseek-v* model
       - "qwen"      : LiteLlm wrapping a Qwen / dashscope model
+      - "openai"    : LiteLlm wrapping an OpenAI GPT model
       - "lm_studio" : LiteLlm pointing at LM Studio's local OpenAI endpoint
       - "litellm"   : LiteLlm with no recognised family signature
       - "unknown"   : anything else
@@ -634,6 +839,8 @@ def family_of(model_obj) -> str:
         api_base = os.environ.get("OPENAI_API_BASE", "")
         if "localhost" in api_base or "127.0.0.1" in api_base or "1234" in api_base:
             return "lm_studio"
+        if "/gpt-" in model_str or model_str.startswith(("gpt-", "chatgpt-")):
+            return "openai"
         return "litellm"
     return "unknown"
 
@@ -655,6 +862,44 @@ def _create_gemini_model(model_name: str):
     2.5 family we keep the old thinking_budget path (set via THINKING_BUDGET
     if needed; current code does not use this).
     """
+    # Honor an explicitly configured Gemini OpenAI-compatible gateway. The
+    # native ADK Gemini client does not consume this deployment override, so
+    # route through LiteLLM when a gateway URL is present. Without an explicit
+    # override, retain the native Google Gemini path.
+    transport = os.environ.get("GDA_GEMINI_TRANSPORT", "").strip().casefold()
+    apply_gemini_transport_policy()
+    # ``direct`` is deliberately an explicit deployment choice. It prevents a
+    # stale GOOGLE_GEMINI_BASE_URL inherited from a shell or old proxy setup
+    # from silently routing customer traffic through an exhausted gateway.
+    compatible_base = ""
+    if transport not in {"native", "direct"}:
+        compatible_base = (
+            os.environ.get("GDA_LLM_BASE_URL", "").strip()
+            or os.environ.get("GOOGLE_GEMINI_BASE_URL", "").strip()
+        )
+    if compatible_base:
+        from google.adk.models.lite_llm import LiteLlm
+
+        from .openai_compatible_llm import normalize_openai_base_url
+
+        api_key = (
+            os.environ.get("GEMINI_API_KEY", "").strip()
+            or os.environ.get("GOOGLE_API_KEY", "").strip()
+            or os.environ.get("GDA_LLM_API_KEY", "").strip()
+        )
+        if not api_key:
+            raise RuntimeError(
+                "GEMINI_API_KEY (or GOOGLE_API_KEY/GDA_LLM_API_KEY) not set"
+            )
+        os.environ["OPENAI_API_BASE"] = normalize_openai_base_url(compatible_base)
+        os.environ["OPENAI_API_KEY"] = api_key
+        effective_name = (
+            model_name
+            if str(model_name).startswith("openai/")
+            else f"openai/{model_name}"
+        )
+        return LiteLlm(model=effective_name)
+
     from google.adk.models.google_llm import Gemini
     from google.genai import types
 
@@ -692,6 +937,69 @@ def _create_gemini_model(model_name: str):
             attempts=3,
         ),
     )
+
+
+def _get_openai_base_url() -> str:
+    """Get the OpenAI API base URL, accepting a copied endpoint safely."""
+    from .openai_compatible_llm import normalize_openai_base_url
+
+    return normalize_openai_base_url(
+        os.environ.get("GDA_LLM_BASE_URL")
+        or os.environ.get("OPENAI_BASE_URL")
+        or "https://api.openai.com/v1"
+    )
+
+
+def _create_openai_model(model_name: str, info: dict):
+    """Create an OpenAI GPT model through ADK's LiteLLM connector."""
+    from google.adk.models.lite_llm import LiteLlm
+
+    from .openai_compatible_llm import normalize_openai_base_url
+
+    # An explicit GDA_LLM_BASE_URL is a deployment override. Otherwise use the
+    # registry endpoint, then the standard OpenAI base URL.
+    configured_base = (
+        os.environ.get("GDA_LLM_BASE_URL")
+        or info.get("api_base")
+        or os.environ.get("OPENAI_BASE_URL")
+        or "https://api.openai.com/v1"
+    )
+    api_base = normalize_openai_base_url(configured_base)
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip() or os.environ.get(
+        "GDA_LLM_API_KEY", ""
+    ).strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY (or GDA_LLM_API_KEY) not set")
+
+    effective_name = str(info.get("model_id") or model_name)
+    if not effective_name.startswith("openai/"):
+        effective_name = f"openai/{effective_name}"
+    os.environ["OPENAI_API_BASE"] = api_base
+    os.environ["OPENAI_API_KEY"] = api_key
+
+    kwargs: dict = {}
+    # Keep the default low for interactive GIS tool loops; callers can opt up.
+    # GPT-5.1 has a narrower official effort set than newer GPT-5 models.
+    effort = os.environ.get(
+        "GDA_OPENAI_REASONING_EFFORT",
+        os.environ.get("OPENAI_REASONING_EFFORT", "low"),
+    ).strip().casefold()
+    if effort and ("gpt-5" in effective_name.lower() or info.get("reasoning")):
+        supported_efforts = {"none", "low", "medium", "high", "xhigh", "max"}
+        if "gpt-5.1" in effective_name.lower():
+            supported_efforts = {"none", "low", "medium", "high"}
+        if effort not in supported_efforts:
+            supported = ", ".join(sorted(supported_efforts))
+            raise ValueError(
+                f"{effective_name} does not support reasoning effort {effort!r}; "
+                f"supported values: {supported}"
+            )
+        kwargs["reasoning_effort"] = effort
+    if info.get("extra_body"):
+        kwargs["extra_body"] = info["extra_body"]
+    if info.get("request_timeout") is not None:
+        kwargs["timeout"] = info["request_timeout"]
+    return LiteLlm(model=effective_name, **kwargs)
 
 
 class _GeminiWithThinkingLevel:
@@ -734,18 +1042,46 @@ class _GeminiWithThinkingLevel:
 
 
 def _create_lm_studio_model(model_name: str, info: dict):
-    """Create a LiteLLM model pointing to LM Studio's OpenAI-compatible API."""
+    """Create a LiteLLM model pointing to an OpenAI-compatible local API."""
     from google.adk.models.lite_llm import LiteLlm
 
-    api_base = info.get("api_base", _get_lm_studio_base_url())
+    from .openai_compatible_llm import normalize_openai_base_url
 
-    # LiteLLM uses "openai/" prefix for OpenAI-compatible endpoints
-    litellm_name = f"openai/{model_name}" if "/" not in model_name else model_name
+    api_base = normalize_openai_base_url(
+        os.environ.get("GDA_LLM_BASE_URL")
+        or info.get("api_base")
+        or _get_lm_studio_base_url()
+    )
+    effective_model = info.get("model_id") or model_name
 
-    # Set env vars that litellm needs
-    os.environ.setdefault("OPENAI_API_KEY", "lm-studio")
+    provider = os.environ.get("GDA_LLM_PROVIDER", "").strip().casefold()
+    if not provider:
+        from .openai_compatible_llm import infer_llm_provider
+
+        provider = infer_llm_provider(api_base)
+
+    if provider == "ollama":
+        # LiteLLM's native ollama_chat adapter targets /api/chat and supports
+        # think=false reliably, whereas some Ollama OpenAI-compat releases
+        # ignore a top-level think flag. Keep the base URL without /v1.
+        ollama_base = api_base[:-3] if api_base.endswith("/v1") else api_base
+        os.environ["OLLAMA_API_BASE"] = ollama_base
+        litellm_name = (
+            str(effective_model)
+            if str(effective_model).startswith("ollama_chat/")
+            else f"ollama_chat/{effective_model}"
+        )
+        return LiteLlm(model=litellm_name, extra_body={"think": False})
+
+    # LM Studio and other local servers use the OpenAI-compatible adapter.
+    litellm_name = (
+        f"openai/{effective_model}" if not str(effective_model).startswith("openai/")
+        else str(effective_model)
+    )
+    os.environ.setdefault(
+        "OPENAI_API_KEY", os.environ.get("GDA_LLM_API_KEY") or "lm-studio"
+    )
     os.environ["OPENAI_API_BASE"] = api_base
-
     return LiteLlm(model=litellm_name)
 
 

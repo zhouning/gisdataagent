@@ -939,6 +939,35 @@ class McpHubManager:
         polling, checksums, and persistence.  It deliberately returns only the
         tool payload and never logs arguments or responses.
         """
+        from .governed_external_access import GovernedExternalAccessService
+        from .governed_query_security import resolve_governed_query_security_ports
+        from .user_context import (
+            current_tenant_id,
+            current_user_id,
+            current_user_role,
+        )
+
+        tenant_id = current_tenant_id.get().strip()
+        role = current_user_role.get().strip() or "anonymous"
+        subject_id = current_user_id.get().strip() or "mcp-agent"
+        security_ports = resolve_governed_query_security_ports(tenant_id)
+        return await GovernedExternalAccessService().execute_async(
+            tenant_id=tenant_id,
+            actor_subject=f"agent:{subject_id}",
+            roles=(role,),
+            channel="mcp",
+            adapter_id="gda.mcp.remote-tool.v1",
+            access_mode="invoke",
+            resource_refs=(f"mcp:{server_name}/tools/{tool_name}",),
+            request_payload={"arguments": args},
+            action="mcp.remote-tool.invoke",
+            operation=lambda: self._call_tool_unchecked(server_name, tool_name, args),
+            security_reader=security_ports[0] if security_ports else None,
+        )
+
+    async def _call_tool_unchecked(
+        self, server_name: str, tool_name: str, args: dict
+    ) -> dict:
         status = self._servers.get(server_name)
         if not status:
             raise RuntimeError(f"MCP server '{server_name}' is not configured")

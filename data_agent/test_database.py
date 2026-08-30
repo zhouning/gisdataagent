@@ -6,6 +6,18 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 from data_agent.database_tools import get_db_connection_url, query_database, import_to_postgis
 
 class TestDatabase(unittest.TestCase):
+    @patch.dict(os.environ, {
+        "DATABASE_URL": "postgresql+asyncpg://agent:p%40ss@db:5432/gis",
+        "POSTGRES_USER": "legacy",
+        "POSTGRES_PASSWORD": "legacy",
+        "POSTGRES_DATABASE": "legacy",
+    }, clear=False)
+    def test_explicit_database_url_is_preferred_and_normalized(self):
+        self.assertEqual(
+            get_db_connection_url(),
+            "postgresql://agent:p%40ss@db:5432/gis",
+        )
+
     def test_connection_string(self):
         url = get_db_connection_url()
         self.assertIsNotNone(url)

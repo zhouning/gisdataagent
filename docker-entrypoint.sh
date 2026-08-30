@@ -55,6 +55,9 @@ fi
 # -----------------------------------------------------------------------
 # 3. Generate data_agent/.env from current container environment
 # -----------------------------------------------------------------------
+if [ "${GDA_SKIP_RUNTIME_ENV_FILE:-0}" = "1" ]; then
+    echo "[ENV] Runtime environment file generation disabled."
+else
 ENV_FILE="/app/data_agent/.env"
 echo "[ENV] Writing $ENV_FILE from environment variables..."
 cat > "$ENV_FILE" <<ENVEOF
@@ -63,10 +66,24 @@ export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 export POSTGRES_DATABASE="${POSTGRES_DATABASE:-gis_agent}"
 export POSTGRES_USER="${POSTGRES_USER:-agent_user}"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
+export POSTGRES_MAX_CONNECTIONS="${POSTGRES_MAX_CONNECTIONS:-}"
+export POSTGRES_CONNECTION_RESERVE="${POSTGRES_CONNECTION_RESERVE:-10}"
+export DB_POOL_PROCESS_COUNT="${DB_POOL_PROCESS_COUNT:-1}"
+export DB_POOL_SIZE="${DB_POOL_SIZE:-20}"
+export DB_MAX_OVERFLOW="${DB_MAX_OVERFLOW:-30}"
+export ASYNC_POOL_MIN="${ASYNC_POOL_MIN:-5}"
+export ASYNC_POOL_MAX="${ASYNC_POOL_MAX:-20}"
 GOOGLE_GENAI_USE_VERTEXAI=${GOOGLE_GENAI_USE_VERTEXAI:-}
 GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-}
 GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION:-global}
 GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+OPENAI_API_KEY=${OPENAI_API_KEY:-}
+OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+GDA_LLM_PROVIDER=${GDA_LLM_PROVIDER:-}
+GDA_LLM_BASE_URL=${GDA_LLM_BASE_URL:-}
+GDA_LLM_MODEL=${GDA_LLM_MODEL:-}
+GDA_LLM_API_KEY=${GDA_LLM_API_KEY:-}
+GDA_OPENAI_REASONING_EFFORT=${GDA_OPENAI_REASONING_EFFORT:-low}
 ROUTER_MODEL=${ROUTER_MODEL:-}
 MODEL_FAST=${MODEL_FAST:-}
 MODEL_STANDARD=${MODEL_STANDARD:-}
@@ -110,10 +127,22 @@ fi
 [ -n "$AUDIT_LOG_RETENTION_DAYS" ] && echo "AUDIT_LOG_RETENTION_DAYS=${AUDIT_LOG_RETENTION_DAYS}" >> "$ENV_FILE"
 
 echo "[ENV] Generated."
+fi
+
+export PYTHONPATH="/app:${PYTHONPATH}"
 
 # -----------------------------------------------------------------------
-# 4. Start Chainlit
+# 4. Run an explicitly configured service command
+# -----------------------------------------------------------------------
+# Docker Compose and Kubernetes reuse this image for workers. Preserve the
+# database/env bootstrap above, then hand control to their configured command.
+if [ "$#" -gt 0 ]; then
+    echo "[START] Launching configured command: $*"
+    exec "$@"
+fi
+
+# -----------------------------------------------------------------------
+# 5. Start the default web application
 # -----------------------------------------------------------------------
 echo "[START] Launching Chainlit on 0.0.0.0:${PORT:-8080}..."
-export PYTHONPATH="/app:${PYTHONPATH}"
 exec /app/.venv/bin/chainlit run /app/data_agent/app.py --host 0.0.0.0 --port ${PORT:-8080}

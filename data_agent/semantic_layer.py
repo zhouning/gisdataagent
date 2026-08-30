@@ -13,10 +13,12 @@ Provides:
 The core value: agents no longer guess that 'zmj' = area or 'dlmc' = land use type.
 Instead, a [语义上下文] block is injected into the prompt with pre-resolved mappings.
 """
+
 import os
 import json
 import time
 import yaml
+from contextvars import ContextVar
 from difflib import SequenceMatcher
 from typing import Optional
 
@@ -40,6 +42,14 @@ T_SEMANTIC_DOMAINS = "agent_semantic_domains"
 _catalog_cache: Optional[dict] = None
 _CATALOG_PATH = os.path.join(os.path.dirname(__file__), "semantic_catalog.yaml")
 
+# An explicit DLTB projection query must resolve against the catalog that owns
+# that projection.  A ContextVar keeps concurrent browser requests isolated;
+# the environment variables remain the deployment-wide fallback.
+current_offline_semantic_catalog_path: ContextVar[str | None] = ContextVar(
+    "current_offline_semantic_catalog_path",
+    default=None,
+)
+
 
 def _load_offline_semantic_sources() -> list[dict]:
     """Load file-backed semantic projections for air-gapped/lite mode.
@@ -51,6 +61,9 @@ def _load_offline_semantic_sources() -> list[dict]:
     """
 
     candidates = []
+    request_catalog = current_offline_semantic_catalog_path.get()
+    if request_catalog:
+        candidates.append(request_catalog)
     configured = os.environ.get("GDA_OFFLINE_SEMANTIC_CATALOG", "").strip()
     if configured:
         candidates.append(configured)
@@ -99,6 +112,20 @@ _sources_cache_time: float = 0
 _registry_cache: dict = {}  # table_name → (rows, timestamp)
 
 
+def _has_semantic_source_query_policy(conn) -> bool:
+    try:
+        count = conn.execute(
+            text(
+                "SELECT COUNT(*) FROM information_schema.columns "
+                f"WHERE table_schema='public' AND table_name='{T_SEMANTIC_SOURCES}' "
+                "AND column_name IN ('nl2sql_enabled', 'nl2sql_priority')"
+            )
+        ).scalar()
+        return int(count or 0) == 2
+    except Exception:
+        return False
+
+
 def _get_cached_sources(conn) -> list:
     """Get all semantic sources with 5-minute TTL cache (Redis → memory → DB)."""
     global _sources_cache, _sources_cache_time
@@ -107,6 +134,7 @@ def _get_cached_sources(conn) -> list:
     if _sources_cache is not None and (time.time() - _sources_cache_time < _CACHE_TTL):
         try:
             from .observability import record_cache_op
+
             record_cache_op("semantic_sources", "hit")
         except Exception:
             pass
@@ -115,16 +143,19 @@ def _get_cached_sources(conn) -> list:
     # 2. Check Redis cache
     try:
         from .redis_client import get_redis_sync
+
         r = get_redis_sync()
         if r:
             cached = r.get("semantic:sources")
             if cached:
                 import json as _json
+
                 rows = _json.loads(cached)
                 _sources_cache = [tuple(row) for row in rows]
                 _sources_cache_time = time.time()
                 try:
                     from .observability import record_cache_op
+
                     record_cache_op("semantic_sources", "hit_redis")
                 except Exception:
                     pass
@@ -134,15 +165,18 @@ def _get_cached_sources(conn) -> list:
 
     try:
         from .observability import record_cache_op
+
         record_cache_op("semantic_sources", "miss")
     except Exception:
         pass
 
     # 3. Query DB
-    has_sources = conn.execute(text(
-        "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
-        f"WHERE table_schema = 'public' AND table_name = '{T_SEMANTIC_SOURCES}')"
-    )).scalar()
+    has_sources = conn.execute(
+        text(
+            "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+            f"WHERE table_schema = 'public' AND table_name = '{T_SEMANTIC_SOURCES}')"
+        )
+    ).scalar()
 
     if not has_sources:
         _sources_cache = []
@@ -151,26 +185,38 @@ def _get_cached_sources(conn) -> list:
 
     # Check whether migration 082 (derived_synonyms column) has been applied.
     # Fall back to synonyms-only query on pre-082 environments.
-    has_derived_syn = conn.execute(text(
-        "SELECT EXISTS (SELECT 1 FROM information_schema.columns "
-        "WHERE table_name='agent_semantic_sources' "
-        "  AND column_name='derived_synonyms')"
-    )).scalar()
+    has_derived_syn = conn.execute(
+        text(
+            "SELECT EXISTS (SELECT 1 FROM information_schema.columns "
+            "WHERE table_name='agent_semantic_sources' "
+            "  AND column_name='derived_synonyms')"
+        )
+    ).scalar()
 
+    has_query_policy = _has_semantic_source_query_policy(conn)
+    policy_columns = (
+        ", nl2sql_enabled, nl2sql_priority" if has_query_policy else ""
+    )
     if has_derived_syn:
-        rows = conn.execute(text(f"""
+        rows = conn.execute(
+            text(f"""
             SELECT table_name, display_name, description,
                    geometry_type, srid,
                    (COALESCE(synonyms, '[]'::jsonb)
                     || COALESCE(derived_synonyms, '[]'::jsonb)) AS synonyms
+                   {policy_columns}
             FROM {T_SEMANTIC_SOURCES}
-        """)).fetchall()
+        """)
+        ).fetchall()
     else:
-        rows = conn.execute(text(f"""
+        rows = conn.execute(
+            text(f"""
             SELECT table_name, display_name, description,
                    geometry_type, srid, synonyms
+                   {policy_columns}
             FROM {T_SEMANTIC_SOURCES}
-        """)).fetchall()
+        """)
+        ).fetchall()
 
     _sources_cache = rows
     _sources_cache_time = time.time()
@@ -178,9 +224,11 @@ def _get_cached_sources(conn) -> list:
     # 4. Write to Redis
     try:
         from .redis_client import get_redis_sync
+
         r = get_redis_sync()
         if r:
             import json as _json
+
             r.setex("semantic:sources", _CACHE_TTL, _json.dumps([list(row) for row in rows]))
     except Exception:
         pass
@@ -204,13 +252,16 @@ def _get_cached_registry(conn, table_names: list) -> list:
     if uncached:
         bind_params = {f"t{i}": t for i, t in enumerate(uncached)}
         placeholders = ", ".join(f":t{i}" for i in range(len(uncached)))
-        rows = conn.execute(text(f"""
+        rows = conn.execute(
+            text(f"""
             SELECT table_name, column_name, semantic_domain,
                    aliases, unit, description, is_geometry,
                    COALESCE(value_semantics, '{{}}'::jsonb) AS value_semantics
             FROM {T_SEMANTIC_REGISTRY}
             WHERE table_name IN ({placeholders})
-        """), bind_params).fetchall()
+        """),
+            bind_params,
+        ).fetchall()
 
         # Group by table for caching
         by_table: dict = {t: [] for t in uncached}
@@ -236,6 +287,7 @@ def invalidate_semantic_cache(table_name: str = None):
     # Clear Redis cache
     try:
         from .redis_client import get_redis_sync
+
         r = get_redis_sync()
         if r:
             r.delete("semantic:sources")
@@ -252,6 +304,7 @@ def invalidate_semantic_cache(table_name: str = None):
 # ---------------------------------------------------------------------------
 # DB Table Initialization
 # ---------------------------------------------------------------------------
+
 
 def ensure_semantic_tables():
     """Create semantic registry tables if they don't exist. Called at startup."""
@@ -291,6 +344,7 @@ def ensure_semantic_tables():
 # Synonym Matching (simple, no ML)
 # ---------------------------------------------------------------------------
 
+
 def _contains_cjk(text: str) -> bool:
     """Return True when text contains a CJK unified ideograph."""
     return any("\u4e00" <= ch <= "\u9fff" for ch in text or "")
@@ -321,7 +375,7 @@ def _match_aliases(user_text: str, aliases: list, fuzzy: bool = True) -> float:
         if fuzzy and len(alias_lower) >= 4:
             for seg_len in range(min(len(user_lower), len(alias_lower)), 2, -1):
                 for start in range(len(user_lower) - seg_len + 1):
-                    seg = user_lower[start:start + seg_len]
+                    seg = user_lower[start : start + seg_len]
                     if len(seg) >= 3 and seg in alias_lower:
                         # ASCII-only segments need ≥5 chars to avoid English
                         # stop words ("the", "for", "and") matching CJK aliases
@@ -388,10 +442,12 @@ def _match_hierarchy(user_text: str, domain_info: dict) -> Optional[dict]:
         if _match_aliases(user_text, parent_aliases + [parent_name]) > 0:
             child_entries = []
             for child_name, child_info in children.items():
-                child_entries.append({
-                    "name": child_name,
-                    "code_prefix": child_info.get("code_prefix", ""),
-                })
+                child_entries.append(
+                    {
+                        "name": child_name,
+                        "code_prefix": child_info.get("code_prefix", ""),
+                    }
+                )
             return {
                 "level": "parent",
                 "parent": parent_name,
@@ -432,6 +488,7 @@ def _match_equivalences(matched_columns: dict, catalog: dict) -> list:
 # Core Resolution
 # ---------------------------------------------------------------------------
 
+
 def resolve_semantic_context(user_text: str) -> dict:
     """
     [Semantic Tool] Resolve user text against semantic registry and static catalog.
@@ -452,12 +509,20 @@ def resolve_semantic_context(user_text: str) -> dict:
         metric_hints, hierarchy_matches, equivalences, and sql_filters.
     """
     import os as _abl_os
+
     if _abl_os.environ.get("NL2SQL_DISABLE_SEMANTIC") == "1":
         return {
-            "sources": [], "matched_columns": {}, "spatial_ops": [],
-            "region_filter": None, "metric_hints": [],
-            "hierarchy_matches": [], "equivalences": [], "sql_filters": [],
-            "table_hints": [], "column_hints": {}, "large_tables": [],
+            "sources": [],
+            "matched_columns": {},
+            "spatial_ops": [],
+            "region_filter": None,
+            "metric_hints": [],
+            "hierarchy_matches": [],
+            "equivalences": [],
+            "sql_filters": [],
+            "table_hints": [],
+            "column_hints": {},
+            "large_tables": [],
         }
     catalog = _load_catalog()
     result = {
@@ -480,20 +545,30 @@ def resolve_semantic_context(user_text: str) -> dict:
                 rows = _get_cached_sources(conn)
 
                 for row in rows:
-                    tbl, disp, desc, geom_type, srid, syns = row
+                    tbl, disp, desc, geom_type, srid, syns = row[:6]
+                    nl2sql_enabled = bool(row[6]) if len(row) > 6 else True
+                    nl2sql_priority = int(row[7] or 0) if len(row) > 7 else 0
+                    explicit_table_request = str(tbl).casefold() in (user_text or "").casefold()
+                    if not nl2sql_enabled and not explicit_table_request:
+                        continue
                     syn_list = syns if isinstance(syns, list) else json.loads(syns or "[]")
                     # Also match against table_name and display_name
                     all_aliases = syn_list + [tbl, disp] if disp else syn_list + [tbl]
                     score = _match_aliases(user_text, all_aliases)
                     if score > 0:
-                        result["sources"].append({
-                            "table_name": tbl,
-                            "display_name": disp or tbl,
-                            "description": desc or "",
-                            "geometry_type": geom_type,
-                            "srid": srid,
-                            "confidence": score,
-                        })
+                        result["sources"].append(
+                            {
+                                "table_name": tbl,
+                                "display_name": disp or tbl,
+                                "description": desc or "",
+                                "geometry_type": geom_type,
+                                "srid": srid,
+                                "confidence": score,
+                                "source_kind": "postgis",
+                                "nl2sql_enabled": nl2sql_enabled,
+                                "nl2sql_priority": nl2sql_priority,
+                            }
+                        )
 
                 # --- 1b. Column-reverse-lookup: recover tables missed by synonym matching ---
                 matched_table_names = {s["table_name"] for s in result["sources"]}
@@ -504,22 +579,36 @@ def resolve_semantic_context(user_text: str) -> dict:
                     reverse_hits: dict = {}
                     for crow in rev_col_rows:
                         r_tbl, r_col, _, aliases_raw, _, _, _, _ = crow
-                        alias_list = aliases_raw if isinstance(aliases_raw, list) else json.loads(aliases_raw or "[]")
+                        alias_list = (
+                            aliases_raw
+                            if isinstance(aliases_raw, list)
+                            else json.loads(aliases_raw or "[]")
+                        )
                         col_score = _match_aliases(user_text, alias_list + [r_col])
                         if col_score > 0:
                             reverse_hits[r_tbl] = max(reverse_hits.get(r_tbl, 0), col_score)
                     for r_tbl, best_score in reverse_hits.items():
                         row_match = next((r for r in rows if r[0] == r_tbl), None)
                         if row_match:
-                            _, disp, desc, geom_type, srid, _ = row_match
-                            result["sources"].append({
-                                "table_name": r_tbl,
-                                "display_name": disp or r_tbl,
-                                "description": desc or "",
-                                "geometry_type": geom_type,
-                                "srid": srid,
-                                "confidence": best_score * 0.8,
-                            })
+                            _, disp, desc, geom_type, srid, _ = row_match[:6]
+                            nl2sql_enabled = bool(row_match[6]) if len(row_match) > 6 else True
+                            nl2sql_priority = int(row_match[7] or 0) if len(row_match) > 7 else 0
+                            explicit_table_request = str(r_tbl).casefold() in (user_text or "").casefold()
+                            if not nl2sql_enabled and not explicit_table_request:
+                                continue
+                            result["sources"].append(
+                                {
+                                    "table_name": r_tbl,
+                                    "display_name": disp or r_tbl,
+                                    "description": desc or "",
+                                    "geometry_type": geom_type,
+                                    "srid": srid,
+                                    "confidence": best_score * 0.8,
+                                    "source_kind": "postgis",
+                                    "nl2sql_enabled": nl2sql_enabled,
+                                    "nl2sql_priority": nl2sql_priority,
+                                }
+                            )
 
                 # --- 2. Match column annotations from DB ---
                 matched_tables = [s["table_name"] for s in result["sources"]]
@@ -528,22 +617,32 @@ def resolve_semantic_context(user_text: str) -> dict:
 
                     for crow in col_rows:
                         tbl, col, domain, aliases_raw, unit, cdesc, is_geom, value_sem = crow
-                        alias_list = aliases_raw if isinstance(aliases_raw, list) else json.loads(aliases_raw or "[]")
-                        vs = value_sem if isinstance(value_sem, dict) else (json.loads(value_sem or "{}") if value_sem else {})
+                        alias_list = (
+                            aliases_raw
+                            if isinstance(aliases_raw, list)
+                            else json.loads(aliases_raw or "[]")
+                        )
+                        vs = (
+                            value_sem
+                            if isinstance(value_sem, dict)
+                            else (json.loads(value_sem or "{}") if value_sem else {})
+                        )
                         col_score = _match_aliases(user_text, alias_list)
                         if col_score > 0 or is_geom or vs:
                             if tbl not in result["matched_columns"]:
                                 result["matched_columns"][tbl] = []
-                            result["matched_columns"][tbl].append({
-                                "column_name": col,
-                                "semantic_domain": domain,
-                                "aliases": alias_list,
-                                "unit": unit,
-                                "description": cdesc or "",
-                                "is_geometry": is_geom,
-                                "value_semantics": vs,
-                                "confidence": col_score,
-                            })
+                            result["matched_columns"][tbl].append(
+                                {
+                                    "column_name": col,
+                                    "semantic_domain": domain,
+                                    "aliases": alias_list,
+                                    "unit": unit,
+                                    "description": cdesc or "",
+                                    "is_geometry": is_geom,
+                                    "value_semantics": vs,
+                                    "confidence": col_score,
+                                }
+                            )
 
                 # --- 2b. Load agent_semantic_hints for matched tables ---
                 # Emits `table_hints` (scope_type in {table, dataset}) and
@@ -554,20 +653,26 @@ def resolve_semantic_context(user_text: str) -> dict:
                 if matched_tables:
                     try:
                         prefixes = [t + ".%" for t in matched_tables]
-                        hint_rows = conn.execute(text("""
+                        hint_rows = conn.execute(
+                            text("""
                             SELECT scope_type, scope_ref, hint_kind,
                                    hint_text_zh, hint_text_en,
                                    severity, trigger_keywords
                             FROM agent_semantic_hints
                             WHERE scope_ref = ANY(:tables)
                                OR scope_ref LIKE ANY(:prefixes)
-                        """), {"tables": matched_tables, "prefixes": prefixes}).fetchall()
+                        """),
+                            {"tables": matched_tables, "prefixes": prefixes},
+                        ).fetchall()
 
                         user_lower = (user_text or "").lower()
                         for hrow in hint_rows:
                             h_scope_type, h_ref, h_kind, h_zh, h_en, h_sev, h_trig = hrow
-                            trig_list = h_trig if isinstance(h_trig, list) else (
-                                json.loads(h_trig or "[]") if h_trig else [])
+                            trig_list = (
+                                h_trig
+                                if isinstance(h_trig, list)
+                                else (json.loads(h_trig or "[]") if h_trig else [])
+                            )
                             if h_sev != "critical" and trig_list:
                                 if not any(k.lower() in user_lower for k in trig_list):
                                     continue
@@ -591,47 +696,74 @@ def resolve_semantic_context(user_text: str) -> dict:
     # These are intentionally read-only.  The query route validates the
     # projection id and reads the governed GeoParquet; the resolver only adds
     # metadata and field semantics to the prompt context.
+    request_catalog = current_offline_semantic_catalog_path.get()
     for source in _load_offline_semantic_sources():
         table_name = source.get("table_name") or source.get("semantic_source")
         if not table_name:
             continue
-        if any(item.get("table_name") == table_name for item in result["sources"]):
-            continue
-        aliases = list(source.get("synonyms") or []) + [str(table_name), str(source.get("display_name") or "")]
+        existing_index = next(
+            (
+                index
+                for index, item in enumerate(result["sources"])
+                if item.get("table_name") == table_name
+            ),
+            None,
+        )
+        if existing_index is not None:
+            # A query carrying an explicit projection must never use a stale
+            # same-named DB registration.  Replace only the source envelope;
+            # DB column hints remain useful and are merged below.
+            if request_catalog:
+                result["sources"].pop(existing_index)
+            else:
+                continue
+        aliases = list(source.get("synonyms") or []) + [
+            str(table_name),
+            str(source.get("display_name") or ""),
+        ]
         score = _match_aliases(user_text, aliases)
         if score <= 0 and not any(
             _match_aliases(user_text, list(field.get("aliases") or []) + [str(name)]) > 0
             for name, field in (source.get("fields") or {}).items()
         ):
             continue
-        result["sources"].append({
-            "table_name": table_name,
-            "display_name": source.get("display_name") or table_name,
-            "description": source.get("description") or "",
-            "geometry_type": source.get("geometry_type"),
-            "srid": source.get("srid"),
-            "confidence": max(score, 0.55),
-            "source_kind": "offline_projection",
-            "projection_id": source.get("projection_id"),
-            "production_eligible": source.get("production_eligible", False),
-        })
+        result["sources"].append(
+            {
+                "table_name": table_name,
+                "display_name": source.get("display_name") or table_name,
+                "description": source.get("description") or "",
+                "geometry_type": source.get("geometry_type"),
+                "srid": source.get("srid"),
+                "confidence": max(score, 0.55),
+                "source_kind": "offline_projection",
+                "projection_id": source.get("projection_id"),
+                "projection_path": source.get("projection_path"),
+                "postgis_table_name": source.get("postgis_table_name"),
+                "execution_bindings": source.get("execution_bindings") or {},
+                "production_eligible": source.get("production_eligible", False),
+                "nl2sql_enabled": source.get("nl2sql_enabled", True),
+                "nl2sql_priority": int(source.get("nl2sql_priority") or 0),
+            }
+        )
         for semantic_name, field in (source.get("fields") or {}).items():
             physical = field.get("source_field") or semantic_name
             aliases = list(field.get("aliases") or []) + [semantic_name, str(physical)]
             col_score = _match_aliases(user_text, aliases)
             if col_score <= 0 and not field.get("required"):
                 continue
-            result["matched_columns"].setdefault(table_name, []).append({
-                "column_name": physical,
-                "semantic_domain": field.get("property") or field.get("domain"),
-                "aliases": aliases,
-                "unit": field.get("unit") or "",
-                "description": field.get("label") or "",
-                "is_geometry": False,
-                "value_semantics": {},
-                "confidence": max(col_score, 0.5),
-                "offline_projection": True,
-            })
+            result["matched_columns"].setdefault(table_name, []).append(
+                {
+                    "column_name": physical,
+                    "semantic_domain": field.get("property") or field.get("domain"),
+                    "aliases": aliases,
+                    "unit": field.get("unit") or "",
+                    "description": field.get("label") or "",
+                    "is_geometry": False,
+                    "value_semantics": field.get("value_semantics") or {},
+                    "confidence": max(col_score, 0.5),
+                    "offline_projection": True,
+                }
+            )
 
     # --- 3. Static catalog: match column domains for unresolved terms ---
     domains = catalog.get("domains", {})
@@ -640,20 +772,24 @@ def resolve_semantic_context(user_text: str) -> dict:
         score = _match_aliases(user_text, aliases)
         if score >= 0.5:
             # Add as a hint (not tied to a specific table)
-            result["matched_columns"].setdefault("_static_hints", []).append({
-                "semantic_domain": domain_name,
-                "description": domain_info.get("description", ""),
-                "typical_unit": domain_info.get("typical_unit", ""),
-                "confidence": score * 0.5,  # lower weight for static
-            })
+            result["matched_columns"].setdefault("_static_hints", []).append(
+                {
+                    "semantic_domain": domain_name,
+                    "description": domain_info.get("description", ""),
+                    "typical_unit": domain_info.get("typical_unit", ""),
+                    "confidence": score * 0.5,  # lower weight for static
+                }
+            )
 
         # --- 3b. Hierarchy matching for this domain ---
         hierarchy_match = _match_hierarchy(user_text, domain_info)
         if hierarchy_match:
-            result.setdefault("hierarchy_matches", []).append({
-                "domain": domain_name,
-                **hierarchy_match,
-            })
+            result.setdefault("hierarchy_matches", []).append(
+                {
+                    "domain": domain_name,
+                    **hierarchy_match,
+                }
+            )
 
     # --- 4. Match column equivalences ---
     equiv_matches = _match_equivalences(result["matched_columns"], catalog)
@@ -681,22 +817,26 @@ def resolve_semantic_context(user_text: str) -> dict:
     for op_name, op_info in spatial_ops.items():
         aliases = op_info.get("aliases", [])
         if _match_aliases(user_text, aliases) > 0:
-            result["spatial_ops"].append({
-                "operation": op_name,
-                "tool_name": op_info.get("tool_name", ""),
-            })
+            result["spatial_ops"].append(
+                {
+                    "operation": op_name,
+                    "tool_name": op_info.get("tool_name", ""),
+                }
+            )
 
     # --- 7. Match metric templates ---
     metric_templates = catalog.get("metric_templates", {})
     for metric_name, metric_info in metric_templates.items():
         synonyms = metric_info.get("synonyms", [])
         if _match_aliases(user_text, synonyms) > 0:
-            result["metric_hints"].append({
-                "metric": metric_name,
-                "description": metric_info.get("description", ""),
-                "pattern": metric_info.get("pattern", ""),
-                "unit": metric_info.get("unit", ""),
-            })
+            result["metric_hints"].append(
+                {
+                    "metric": metric_name,
+                    "description": metric_info.get("description", ""),
+                    "pattern": metric_info.get("pattern", ""),
+                    "unit": metric_info.get("unit", ""),
+                }
+            )
 
     # --- 8. Match user-defined custom domains from DB ---
     if engine:
@@ -704,14 +844,20 @@ def resolve_semantic_context(user_text: str) -> dict:
             with engine.connect() as conn:
                 _inject_user_context(conn)
                 try:
-                    dom_rows = conn.execute(text(f"""
+                    dom_rows = conn.execute(
+                        text(f"""
                         SELECT domain_name, parent_category, children, aliases
                         FROM {T_SEMANTIC_DOMAINS}
-                    """)).fetchall()
+                    """)
+                    ).fetchall()
 
                     for row in dom_rows:
                         dname, parent_cat, children_raw, aliases_arr = row
-                        children_list = children_raw if isinstance(children_raw, list) else json.loads(children_raw or "[]")
+                        children_list = (
+                            children_raw
+                            if isinstance(children_raw, list)
+                            else json.loads(children_raw or "[]")
+                        )
                         aliases_list = list(aliases_arr) if aliases_arr else []
 
                         # Check parent-level match
@@ -719,32 +865,41 @@ def resolve_semantic_context(user_text: str) -> dict:
                         if _match_aliases(user_text, all_aliases) > 0:
                             child_entries = []
                             for child in children_list:
-                                child_entries.append({
-                                    "name": child.get("name", ""),
-                                    "code_prefix": child.get("code_prefix", ""),
-                                })
-                            result.setdefault("hierarchy_matches", []).append({
-                                "domain": dname,
-                                "level": "parent",
-                                "parent": parent_cat or dname,
-                                "name": parent_cat or dname,
-                                "children": child_entries,
-                                "source": "custom",
-                            })
+                                child_entries.append(
+                                    {
+                                        "name": child.get("name", ""),
+                                        "code_prefix": child.get("code_prefix", ""),
+                                    }
+                                )
+                            result.setdefault("hierarchy_matches", []).append(
+                                {
+                                    "domain": dname,
+                                    "level": "parent",
+                                    "parent": parent_cat or dname,
+                                    "name": parent_cat or dname,
+                                    "children": child_entries,
+                                    "source": "custom",
+                                }
+                            )
                             continue
 
                         # Check child-level matches
                         for child in children_list:
                             child_aliases = child.get("aliases", [])
-                            if _match_aliases(user_text, child_aliases + [child.get("name", "")]) > 0:
-                                result.setdefault("hierarchy_matches", []).append({
-                                    "domain": dname,
-                                    "level": "child",
-                                    "parent": parent_cat or dname,
-                                    "name": child.get("name", ""),
-                                    "code_prefix": child.get("code_prefix", ""),
-                                    "source": "custom",
-                                })
+                            if (
+                                _match_aliases(user_text, child_aliases + [child.get("name", "")])
+                                > 0
+                            ):
+                                result.setdefault("hierarchy_matches", []).append(
+                                    {
+                                        "domain": dname,
+                                        "level": "child",
+                                        "parent": parent_cat or dname,
+                                        "name": child.get("name", ""),
+                                        "code_prefix": child.get("code_prefix", ""),
+                                        "source": "custom",
+                                    }
+                                )
                                 break
                 except Exception:
                     pass  # table may not exist yet
@@ -762,6 +917,7 @@ def resolve_semantic_context(user_text: str) -> dict:
 # ---------------------------------------------------------------------------
 # Context Prompt Builder
 # ---------------------------------------------------------------------------
+
 
 def build_context_prompt(resolved: dict) -> str:
     """Build [语义上下文] block for injection into the LLM prompt.
@@ -868,20 +1024,23 @@ def build_context_prompt(resolved: dict) -> str:
         conf = hint.get("confidence", 0)
         conf_tag = "[高置信]" if conf >= 0.4 else "[低置信]"
         parts.append(
-            f"域提示 {conf_tag}: {hint['semantic_domain']} — "
-            f"{hint.get('description', '')}"
+            f"域提示 {conf_tag}: {hint['semantic_domain']} — {hint.get('description', '')}"
         )
 
     if not parts:
         return ""
 
-    return "[语义上下文]\n" + "\n".join(parts) + \
-           "\n\n优先使用以上语义映射，减少对 describe_table 的依赖。"
+    return (
+        "[语义上下文]\n"
+        + "\n".join(parts)
+        + "\n\n优先使用以上语义映射，减少对 describe_table 的依赖。"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Auto-Registration (called from describe_table on first encounter)
 # ---------------------------------------------------------------------------
+
 
 def auto_register_table(table_name: str, owner_username: str) -> dict:
     """Auto-register semantic annotations for a table by matching column names
@@ -910,37 +1069,47 @@ def auto_register_table(table_name: str, owner_username: str) -> dict:
             _inject_user_context(conn)
 
             # Check if already registered
-            exists = conn.execute(text(
-                f"SELECT COUNT(*) FROM {T_SEMANTIC_SOURCES} WHERE table_name = :t"
-            ), {"t": table_name}).scalar()
+            exists = conn.execute(
+                text(f"SELECT COUNT(*) FROM {T_SEMANTIC_SOURCES} WHERE table_name = :t"),
+                {"t": table_name},
+            ).scalar()
             if exists > 0:
                 return {"status": "skipped", "message": f"Table '{table_name}' already registered"}
 
             # Get column info
-            columns = conn.execute(text(
-                "SELECT column_name, data_type FROM information_schema.columns "
-                "WHERE table_name = :t ORDER BY ordinal_position"
-            ), {"t": table_name}).fetchall()
+            columns = conn.execute(
+                text(
+                    "SELECT column_name, data_type FROM information_schema.columns "
+                    "WHERE table_name = :t ORDER BY ordinal_position"
+                ),
+                {"t": table_name},
+            ).fetchall()
 
             if not columns:
                 return {"status": "error", "message": f"Table '{table_name}' not found"}
 
             # Detect geometry info
-            geom_info = conn.execute(text(
-                "SELECT type, srid FROM geometry_columns "
-                "WHERE f_table_schema = 'public' AND f_table_name = :t LIMIT 1"
-            ), {"t": table_name}).fetchone()
+            geom_info = conn.execute(
+                text(
+                    "SELECT type, srid FROM geometry_columns "
+                    "WHERE f_table_schema = 'public' AND f_table_name = :t LIMIT 1"
+                ),
+                {"t": table_name},
+            ).fetchone()
 
             geometry_type = geom_info[0] if geom_info else None
             srid = geom_info[1] if geom_info else None
 
             # Register table-level metadata
-            conn.execute(text(f"""
+            conn.execute(
+                text(f"""
                 INSERT INTO {T_SEMANTIC_SOURCES}
                     (table_name, display_name, geometry_type, srid, owner_username)
                 VALUES (:t, :t, :gt, :srid, :owner)
                 ON CONFLICT (table_name) DO NOTHING
-            """), {"t": table_name, "gt": geometry_type, "srid": srid, "owner": owner_username})
+            """),
+                {"t": table_name, "gt": geometry_type, "srid": srid, "owner": owner_username},
+            )
 
             # Match each column against catalog domains
             annotations = 0
@@ -973,19 +1142,26 @@ def auto_register_table(table_name: str, owner_username: str) -> dict:
                         unit = d_info.get("typical_unit", "")
                         desc = d_info.get("description", "")
 
-                    conn.execute(text(f"""
+                    conn.execute(
+                        text(f"""
                         INSERT INTO {T_SEMANTIC_REGISTRY}
                             (table_name, column_name, semantic_domain, aliases,
                              unit, description, is_geometry, owner_username)
                         VALUES (:t, :col, :domain, CAST(:aliases AS jsonb),
                                 :unit, :desc, :is_geom, :owner)
                         ON CONFLICT (table_name, column_name) DO NOTHING
-                    """), {
-                        "t": table_name, "col": col_name,
-                        "domain": matched_domain, "aliases": json.dumps(matched_aliases),
-                        "unit": unit, "desc": desc,
-                        "is_geom": is_geom, "owner": owner_username,
-                    })
+                    """),
+                        {
+                            "t": table_name,
+                            "col": col_name,
+                            "domain": matched_domain,
+                            "aliases": json.dumps(matched_aliases),
+                            "unit": unit,
+                            "desc": desc,
+                            "is_geom": is_geom,
+                            "owner": owner_username,
+                        },
+                    )
                     annotations += 1
 
             conn.commit()
@@ -1002,6 +1178,7 @@ def auto_register_table(table_name: str, owner_username: str) -> dict:
 # ---------------------------------------------------------------------------
 # ADK Tool Functions (CRUD)
 # ---------------------------------------------------------------------------
+
 
 def register_semantic_annotation(
     table_name: str,
@@ -1044,7 +1221,8 @@ def register_semantic_annotation(
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
-            conn.execute(text(f"""
+            conn.execute(
+                text(f"""
                 INSERT INTO {T_SEMANTIC_REGISTRY}
                     (table_name, column_name, semantic_domain, aliases,
                      unit, description, owner_username, updated_at)
@@ -1056,15 +1234,23 @@ def register_semantic_annotation(
                     unit = :unit,
                     description = :desc,
                     updated_at = NOW()
-            """), {
-                "t": table_name, "col": column_name,
-                "domain": semantic_domain, "aliases": json.dumps(aliases),
-                "unit": unit, "desc": description, "owner": owner,
-            })
+            """),
+                {
+                    "t": table_name,
+                    "col": column_name,
+                    "domain": semantic_domain,
+                    "aliases": json.dumps(aliases),
+                    "unit": unit,
+                    "desc": description,
+                    "owner": owner,
+                },
+            )
             conn.commit()
         invalidate_semantic_cache(table_name)
-        return {"status": "success",
-                "message": f"Annotation saved: {table_name}.{column_name} → {semantic_domain}"}
+        return {
+            "status": "success",
+            "message": f"Annotation saved: {table_name}.{column_name} → {semantic_domain}",
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -1107,7 +1293,8 @@ def register_source_metadata(
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
-            conn.execute(text(f"""
+            conn.execute(
+                text(f"""
                 INSERT INTO {T_SEMANTIC_SOURCES}
                     (table_name, display_name, description, synonyms,
                      suggested_analyses, owner_username, updated_at)
@@ -1119,17 +1306,66 @@ def register_source_metadata(
                     synonyms = CAST(:syns AS jsonb),
                     suggested_analyses = CAST(:analyses AS jsonb),
                     updated_at = NOW()
-            """), {
-                "t": table_name, "disp": display_name, "desc": description,
-                "syns": json.dumps(syns), "analyses": json.dumps(analyses),
-                "owner": owner,
-            })
+            """),
+                {
+                    "t": table_name,
+                    "disp": display_name,
+                    "desc": description,
+                    "syns": json.dumps(syns),
+                    "analyses": json.dumps(analyses),
+                    "owner": owner,
+                },
+            )
             conn.commit()
         invalidate_semantic_cache(table_name)
-        return {"status": "success",
-                "message": f"Source metadata saved for '{table_name}'"}
+        return {"status": "success", "message": f"Source metadata saved for '{table_name}'"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+def configure_source_nl2sql_policy(
+    table_name: str,
+    *,
+    enabled: bool,
+    priority: int,
+) -> dict:
+    """Set governed NL2SQL participation and precedence for one source."""
+
+    if priority < -1000 or priority > 1000:
+        return {"status": "error", "message": "nl2sql_priority must be between -1000 and 1000"}
+    engine = get_engine()
+    if not engine:
+        return {"status": "error", "message": "Database not configured"}
+    try:
+        with engine.begin() as conn:
+            if not _has_semantic_source_query_policy(conn):
+                return {
+                    "status": "error",
+                    "message": "migration 155_semantic_source_nl2sql_policy.sql is required",
+                }
+            result = conn.execute(
+                text(
+                    f"UPDATE {T_SEMANTIC_SOURCES} "
+                    "SET nl2sql_enabled=:enabled, nl2sql_priority=:priority, updated_at=NOW() "
+                    "WHERE table_name=:table_name"
+                ),
+                {
+                    "enabled": bool(enabled),
+                    "priority": int(priority),
+                    "table_name": table_name,
+                },
+            )
+            if int(result.rowcount or 0) != 1:
+                return {"status": "error", "message": f"Semantic source '{table_name}' not found"}
+        invalidate_semantic_cache(table_name)
+        return {
+            "status": "success",
+            "table_name": table_name,
+            "nl2sql_enabled": bool(enabled),
+            "nl2sql_priority": int(priority),
+        }
+    except Exception as exc:
+        return {"status": "error", "message": str(exc)}
 
 
 def describe_table_semantic(table_name: str) -> dict:
@@ -1157,28 +1393,35 @@ def describe_table_semantic(table_name: str) -> dict:
         fields = offline_source.get("fields") or {}
         columns = []
         for semantic_name, field in fields.items():
-            columns.append({
-                "column_name": field.get("source_field") or semantic_name,
-                "semantic_name": semantic_name,
-                "data_type": "file-backed",
-                "semantic_domain": field.get("property") or field.get("domain"),
-                "aliases": field.get("aliases") or [],
-                "unit": field.get("unit") or "",
-                "description": field.get("label") or "",
-                "is_geometry": False,
-                "offline_projection": True,
-            })
-        columns.append({
-            "column_name": "geometry",
-            "semantic_name": "geometry",
-            "data_type": "geometry",
-            "semantic_domain": "SpatialGeometry",
-            "aliases": ["空间", "几何", "geometry"],
-            "unit": "",
-            "description": "图斑空间几何",
-            "is_geometry": True,
-            "offline_projection": True,
-        })
+            columns.append(
+                {
+                    "column_name": field.get("source_field") or semantic_name,
+                    "semantic_name": semantic_name,
+                    "data_type": field.get("data_type") or "file-backed",
+                    "semantic_domain": field.get("property") or field.get("domain"),
+                    "aliases": field.get("aliases") or [],
+                    "unit": field.get("unit") or "",
+                    "description": field.get("label") or "",
+                    "is_geometry": bool(field.get("is_geometry", False)),
+                    "value_semantics": field.get("value_semantics") or {},
+                    "offline_projection": True,
+                }
+            )
+        has_geometry_field = any(column.get("is_geometry") for column in columns)
+        if offline_source.get("geometry_type") and not has_geometry_field:
+            columns.append(
+                {
+                    "column_name": "geometry",
+                    "semantic_name": "geometry",
+                    "data_type": "geometry",
+                    "semantic_domain": "SpatialGeometry",
+                    "aliases": ["空间", "几何", "geometry"],
+                    "unit": "",
+                    "description": "空间几何",
+                    "is_geometry": True,
+                    "offline_projection": True,
+                }
+            )
         lines = [f"表 '{table_name}' ({offline_source.get('display_name') or table_name})"]
         if offline_source.get("description"):
             lines.append(f"描述: {offline_source['description']}")
@@ -1199,9 +1442,21 @@ def describe_table_semantic(table_name: str) -> dict:
             "suggested_analyses": offline_source.get("suggested_analyses") or [],
             "source_kind": "offline_projection",
             "projection_id": offline_source.get("projection_id"),
+            "projection_path": offline_source.get("projection_path"),
+            "postgis_table_name": offline_source.get("postgis_table_name"),
+            "execution_bindings": offline_source.get("execution_bindings") or {},
+            "metric_crs": offline_source.get("metric_crs"),
             "production_eligible": offline_source.get("production_eligible", False),
+            "nl2sql_enabled": offline_source.get("nl2sql_enabled", True),
+            "nl2sql_priority": int(offline_source.get("nl2sql_priority") or 0),
         }
-        return {"status": "success", "columns": columns, "source_metadata": source_meta, "message": "\n".join(lines)}
+        return {
+            "status": "success",
+            "columns": columns,
+            "source": source_meta,
+            "source_metadata": source_meta,
+            "message": "\n".join(lines),
+        }
 
     engine = get_engine()
     if not engine:
@@ -1214,15 +1469,21 @@ def describe_table_semantic(table_name: str) -> dict:
             # Support schema-qualified names (e.g. "bird_debit_card.gasstations")
             if "." in table_name:
                 schema_part, bare_name = table_name.rsplit(".", 1)
-                columns = conn.execute(text(
-                    "SELECT column_name, data_type FROM information_schema.columns "
-                    "WHERE table_schema = :s AND table_name = :t ORDER BY ordinal_position"
-                ), {"s": schema_part, "t": bare_name}).fetchall()
+                columns = conn.execute(
+                    text(
+                        "SELECT column_name, data_type FROM information_schema.columns "
+                        "WHERE table_schema = :s AND table_name = :t ORDER BY ordinal_position"
+                    ),
+                    {"s": schema_part, "t": bare_name},
+                ).fetchall()
             else:
-                columns = conn.execute(text(
-                    "SELECT column_name, data_type FROM information_schema.columns "
-                    "WHERE table_name = :t ORDER BY ordinal_position"
-                ), {"t": table_name}).fetchall()
+                columns = conn.execute(
+                    text(
+                        "SELECT column_name, data_type FROM information_schema.columns "
+                        "WHERE table_name = :t ORDER BY ordinal_position"
+                    ),
+                    {"t": table_name},
+                ).fetchall()
 
             if not columns:
                 return {"status": "error", "message": f"Table '{table_name}' not found"}
@@ -1230,20 +1491,26 @@ def describe_table_semantic(table_name: str) -> dict:
             # Get semantic annotations
             annotations = {}
             try:
-                ann_rows = conn.execute(text(f"""
+                ann_rows = conn.execute(
+                    text(f"""
                     SELECT column_name, semantic_domain, aliases, unit, description, is_geometry,
                            COALESCE(value_semantics, '{{}}'::jsonb) AS value_semantics
                     FROM {T_SEMANTIC_REGISTRY}
                     WHERE table_name = :t
-                """), {"t": table_name}).fetchall()
+                """),
+                    {"t": table_name},
+                ).fetchall()
                 for row in ann_rows:
                     col, domain, aliases_raw, unit, desc, is_geom, value_sem = row
-                    alias_list = aliases_raw if isinstance(aliases_raw, list) else json.loads(aliases_raw or "[]")
-                    value_semantics = (
-                        value_sem if isinstance(value_sem, dict)
-                        else json.loads(value_sem or "{}")
+                    alias_list = (
+                        aliases_raw
+                        if isinstance(aliases_raw, list)
+                        else json.loads(aliases_raw or "[]")
                     )
-                    annotations[col] = {
+                    value_semantics = (
+                        value_sem if isinstance(value_sem, dict) else json.loads(value_sem or "{}")
+                    )
+                    annotations[str(col).casefold()] = {
                         "semantic_domain": domain,
                         "aliases": alias_list,
                         "unit": unit or "",
@@ -1257,20 +1524,30 @@ def describe_table_semantic(table_name: str) -> dict:
             # Get source metadata
             source_meta = None
             try:
-                src_row = conn.execute(text(f"""
+                policy_columns = ", nl2sql_enabled, nl2sql_priority" if _has_semantic_source_query_policy(conn) else ""
+                src_row = conn.execute(
+                    text(f"""
                     SELECT display_name, description, geometry_type, srid,
-                           synonyms, suggested_analyses
+                           synonyms, suggested_analyses{policy_columns}
                     FROM {T_SEMANTIC_SOURCES}
                     WHERE table_name = :t
-                """), {"t": table_name}).fetchone()
+                """),
+                    {"t": table_name},
+                ).fetchone()
                 if src_row:
                     source_meta = {
                         "display_name": src_row[0] or "",
                         "description": src_row[1] or "",
                         "geometry_type": src_row[2],
                         "srid": src_row[3],
-                        "synonyms": src_row[4] if isinstance(src_row[4], list) else json.loads(src_row[4] or "[]"),
-                        "suggested_analyses": src_row[5] if isinstance(src_row[5], list) else json.loads(src_row[5] or "[]"),
+                        "synonyms": src_row[4]
+                        if isinstance(src_row[4], list)
+                        else json.loads(src_row[4] or "[]"),
+                        "suggested_analyses": src_row[5]
+                        if isinstance(src_row[5], list)
+                        else json.loads(src_row[5] or "[]"),
+                        "nl2sql_enabled": bool(src_row[6]) if len(src_row) > 6 else True,
+                        "nl2sql_priority": int(src_row[7] or 0) if len(src_row) > 7 else 0,
                     }
             except Exception:
                 pass
@@ -1279,8 +1556,9 @@ def describe_table_semantic(table_name: str) -> dict:
             enriched = []
             for col_name, data_type in columns:
                 entry = {"column_name": col_name, "data_type": data_type}
-                if col_name in annotations:
-                    entry.update(annotations[col_name])
+                annotation = annotations.get(str(col_name).casefold())
+                if annotation:
+                    entry.update(annotation)
                 enriched.append(entry)
 
             # Build message
@@ -1311,6 +1589,7 @@ def describe_table_semantic(table_name: str) -> dict:
             return {
                 "status": "success",
                 "columns": enriched,
+                "source": source_meta,
                 "source_metadata": source_meta,
                 "message": "\n".join(lines),
             }
@@ -1332,7 +1611,8 @@ def list_semantic_sources() -> dict:
             return {
                 "status": "success",
                 "sources": offline_sources,
-                "message": f"已注册 {len(offline_sources)} 个离线语义数据源:\n" + "\n".join(
+                "message": f"已注册 {len(offline_sources)} 个离线语义数据源:\n"
+                + "\n".join(
                     f"- {item.get('table_name') or item.get('semantic_source')} ({item.get('display_name') or ''})"
                     for item in offline_sources
                 ),
@@ -1343,29 +1623,39 @@ def list_semantic_sources() -> dict:
         with engine.connect() as conn:
             _inject_user_context(conn)
 
-            rows = conn.execute(text(f"""
+            has_query_policy = _has_semantic_source_query_policy(conn)
+            policy_columns = ", nl2sql_enabled, nl2sql_priority" if has_query_policy else ""
+            order_clause = "nl2sql_priority DESC, table_name" if has_query_policy else "table_name"
+            rows = conn.execute(
+                text(f"""
                 SELECT table_name, display_name, description,
-                       geometry_type, srid, synonyms, suggested_analyses
+                       geometry_type, srid, synonyms, suggested_analyses{policy_columns}
                 FROM {T_SEMANTIC_SOURCES}
-                ORDER BY table_name
-            """)).fetchall()
+                ORDER BY {order_clause}
+            """)
+            ).fetchall()
 
             sources = []
             lines = []
             registered_names = set()
             for row in rows:
-                tbl, disp, desc, gt, srid, syns, analyses = row
+                tbl, disp, desc, gt, srid, syns, analyses = row[:7]
                 syn_list = syns if isinstance(syns, list) else json.loads(syns or "[]")
                 ana_list = analyses if isinstance(analyses, list) else json.loads(analyses or "[]")
-                sources.append({
-                    "table_name": tbl,
-                    "display_name": disp or tbl,
-                    "description": desc or "",
-                    "geometry_type": gt,
-                    "srid": srid,
-                    "synonyms": syn_list,
-                    "suggested_analyses": ana_list,
-                })
+                sources.append(
+                    {
+                        "table_name": tbl,
+                        "display_name": disp or tbl,
+                        "description": desc or "",
+                        "geometry_type": gt,
+                        "srid": srid,
+                        "synonyms": syn_list,
+                        "suggested_analyses": ana_list,
+                        "source_kind": "postgis",
+                        "nl2sql_enabled": bool(row[7]) if len(row) > 7 else True,
+                        "nl2sql_priority": int(row[8] or 0) if len(row) > 8 else 0,
+                    }
+                )
                 registered_names.add(tbl)
                 label = f"- {tbl}"
                 if disp and disp != tbl:
@@ -1376,9 +1666,16 @@ def list_semantic_sources() -> dict:
                     label += f" — {desc}"
                 lines.append(label)
 
+            request_catalog = current_offline_semantic_catalog_path.get()
             for item in offline_sources:
                 tbl = item.get("table_name") or item.get("semantic_source")
-                if not tbl or tbl in registered_names:
+                if not tbl:
+                    continue
+                if tbl in registered_names and request_catalog:
+                    sources = [source for source in sources if source.get("table_name") != tbl]
+                    registered_names.discard(tbl)
+                    lines = [line for line in lines if not line.startswith(f"- {tbl}")]
+                if tbl in registered_names:
                     continue
                 sources.append(item)
                 lines.append(f"- {tbl} ({item.get('display_name') or tbl}) — 离线文件语义投影")
@@ -1387,7 +1684,8 @@ def list_semantic_sources() -> dict:
                 "status": "success",
                 "sources": sources,
                 "message": f"已注册 {len(sources)} 个语义数据源:\n" + "\n".join(lines)
-                           if sources else "暂无已注册的语义数据源。",
+                if sources
+                else "暂无已注册的语义数据源。",
             }
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -1396,6 +1694,7 @@ def list_semantic_sources() -> dict:
 # ---------------------------------------------------------------------------
 # Query Expansion & SQL Filter Generation
 # ---------------------------------------------------------------------------
+
 
 def expand_hierarchy(domain: str, term: str) -> list:
     """Expand a term through the hierarchy of a domain.
@@ -1427,10 +1726,12 @@ def expand_hierarchy(domain: str, term: str) -> list:
             for sub_name, sub_info in child_info.get("sub_children", {}).items():
                 sub_aliases = sub_info.get("aliases", [])
                 if _match_aliases(term, sub_aliases + [sub_name], fuzzy=False) > 0:
-                    results.append({
-                        "name": sub_name,
-                        "code_prefix": sub_info.get("code_prefix", ""),
-                    })
+                    results.append(
+                        {
+                            "name": sub_name,
+                            "code_prefix": sub_info.get("code_prefix", ""),
+                        }
+                    )
                     return results  # sub-child match is terminal
 
         # Check if term matches a specific child
@@ -1441,24 +1742,30 @@ def expand_hierarchy(domain: str, term: str) -> list:
                 sub_children = child_info.get("sub_children", {})
                 if sub_children:
                     for sub_name, sub_info in sub_children.items():
-                        results.append({
-                            "name": sub_name,
-                            "code_prefix": sub_info.get("code_prefix", ""),
-                        })
+                        results.append(
+                            {
+                                "name": sub_name,
+                                "code_prefix": sub_info.get("code_prefix", ""),
+                            }
+                        )
                 else:
-                    results.append({
-                        "name": child_name,
-                        "code_prefix": child_info.get("code_prefix", ""),
-                    })
+                    results.append(
+                        {
+                            "name": child_name,
+                            "code_prefix": child_info.get("code_prefix", ""),
+                        }
+                    )
                 return results
 
         # Check if term matches parent → expand all children
         if _match_aliases(term, parent_aliases + [parent_name], fuzzy=False) > 0:
             for child_name, child_info in children.items():
-                results.append({
-                    "name": child_name,
-                    "code_prefix": child_info.get("code_prefix", ""),
-                })
+                results.append(
+                    {
+                        "name": child_name,
+                        "code_prefix": child_info.get("code_prefix", ""),
+                    }
+                )
             return results
 
     # 2. Check user-defined domains from DB
@@ -1467,34 +1774,53 @@ def expand_hierarchy(domain: str, term: str) -> list:
         try:
             with engine.connect() as conn:
                 _inject_user_context(conn)
-                rows = conn.execute(text(f"""
+                rows = conn.execute(
+                    text(f"""
                     SELECT domain_name, parent_category, children, aliases
                     FROM {T_SEMANTIC_DOMAINS}
                     WHERE domain_name = :domain
-                """), {"domain": domain}).fetchall()
+                """),
+                    {"domain": domain},
+                ).fetchall()
 
                 for row in rows:
                     _, parent_cat, children_json, aliases_arr = row
-                    children_list = children_json if isinstance(children_json, list) else json.loads(children_json or "[]")
+                    children_list = (
+                        children_json
+                        if isinstance(children_json, list)
+                        else json.loads(children_json or "[]")
+                    )
                     aliases_list = list(aliases_arr) if aliases_arr else []
 
                     # Check if term matches parent category
-                    if parent_cat and _match_aliases(term, [parent_cat] + aliases_list, fuzzy=False) > 0:
+                    if (
+                        parent_cat
+                        and _match_aliases(term, [parent_cat] + aliases_list, fuzzy=False) > 0
+                    ):
                         for child in children_list:
-                            results.append({
-                                "name": child.get("name", ""),
-                                "code_prefix": child.get("code_prefix", ""),
-                            })
+                            results.append(
+                                {
+                                    "name": child.get("name", ""),
+                                    "code_prefix": child.get("code_prefix", ""),
+                                }
+                            )
                         return results
 
                     # Check individual children
                     for child in children_list:
                         child_aliases = child.get("aliases", [])
-                        if _match_aliases(term, child_aliases + [child.get("name", "")], fuzzy=False) > 0:
-                            results.append({
-                                "name": child.get("name", ""),
-                                "code_prefix": child.get("code_prefix", ""),
-                            })
+                        if (
+                            _match_aliases(
+                                term, child_aliases + [child.get("name", "")], fuzzy=False
+                            )
+                            > 0
+                        ):
+                            results.append(
+                                {
+                                    "name": child.get("name", ""),
+                                    "code_prefix": child.get("code_prefix", ""),
+                                }
+                            )
                             return results
         except Exception:
             pass
@@ -1520,31 +1846,41 @@ def generate_semantic_filters(semantic_context: dict) -> dict:
     for h in semantic_context.get("hierarchy_matches", []):
         if h["level"] == "sub_child":
             prefix = h.get("code_prefix", "")
-            if prefix:
-                filters.append({
-                    "description": f"筛选{h['name']} (编码 {prefix}*, 属于 {h.get('child', '')} → {h['parent']})",
-                    "sql": f"dlbm LIKE '{prefix}%'",
-                    "column_hint": "dlbm",
-                })
+            name = str(h.get("name") or "").replace("'", "''")
+            if name:
+                filters.append(
+                    {
+                        "description": (
+                            f"精确筛选{h['name']} (属于 {h.get('child', '')} → {h['parent']})"
+                        ),
+                        "sql": f"dlmc = '{name}'",
+                        "column_hint": "dlmc",
+                        "fallback_sql": f"dlbm LIKE '{prefix}%'" if prefix else "",
+                    }
+                )
         elif h["level"] == "child":
             prefix = h.get("code_prefix", "")
             if prefix:
-                filters.append({
-                    "description": f"筛选{h['name']} (编码 {prefix}*)",
-                    "sql": f"dlbm LIKE '{prefix}%'",
-                    "column_hint": "dlbm",
-                })
+                filters.append(
+                    {
+                        "description": f"筛选{h['name']} (编码 {prefix}*)",
+                        "sql": f"dlbm LIKE '{prefix}%'",
+                        "column_hint": "dlbm",
+                    }
+                )
         elif h["level"] == "parent":
             children = h.get("children", [])
             prefixes = [c["code_prefix"] for c in children if c.get("code_prefix")]
             if prefixes:
                 conditions = " OR ".join(f"dlbm LIKE '{p}%'" for p in prefixes)
                 names = ", ".join(c["name"] for c in children)
-                filters.append({
-                    "description": f"筛选{h['name']}（含 {names}）",
-                    "sql": f"({conditions})",
-                    "column_hint": "dlbm",
-                })
+                filters.append(
+                    {
+                        "description": f"筛选{h['name']}（含 {names}）",
+                        "sql": f"({conditions})",
+                        "column_hint": "dlbm",
+                    }
+                )
 
     # 2. Region filter → province list SQL
     region = semantic_context.get("region_filter")
@@ -1563,6 +1899,7 @@ def generate_semantic_filters(semantic_context: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Hierarchy Browsing (ADK Tool)
 # ---------------------------------------------------------------------------
+
 
 def browse_hierarchy(domain: str = "LAND_USE") -> dict:
     """
@@ -1641,6 +1978,7 @@ def browse_hierarchy(domain: str = "LAND_USE") -> dict:
 # Custom Domain Registration (ADK Tool)
 # ---------------------------------------------------------------------------
 
+
 def register_semantic_domain(
     domain_name: str,
     parent_category: str = "",
@@ -1675,7 +2013,10 @@ def register_semantic_domain(
         children = json.loads(children_json)
         aliases = json.loads(aliases_json)
         if not isinstance(children, list) or not isinstance(aliases, list):
-            return {"status": "error", "message": "children_json and aliases_json must be JSON arrays"}
+            return {
+                "status": "error",
+                "message": "children_json and aliases_json must be JSON arrays",
+            }
     except json.JSONDecodeError as e:
         return {"status": "error", "message": f"Invalid JSON: {e}"}
 
@@ -1684,7 +2025,8 @@ def register_semantic_domain(
     try:
         with engine.connect() as conn:
             _inject_user_context(conn)
-            conn.execute(text(f"""
+            conn.execute(
+                text(f"""
                 INSERT INTO {T_SEMANTIC_DOMAINS}
                     (domain_name, parent_category, children, aliases,
                      unit, description, owner_username, updated_at)
@@ -1697,18 +2039,24 @@ def register_semantic_domain(
                     unit = :unit,
                     description = :desc,
                     updated_at = NOW()
-            """), {
-                "name": domain_name, "parent": parent_category,
-                "children": json.dumps(children), "aliases": aliases,
-                "unit": unit, "desc": description, "owner": owner,
-            })
+            """),
+                {
+                    "name": domain_name,
+                    "parent": parent_category,
+                    "children": json.dumps(children),
+                    "aliases": aliases,
+                    "unit": unit,
+                    "desc": description,
+                    "owner": owner,
+                },
+            )
             conn.commit()
 
         invalidate_semantic_cache()
         return {
             "status": "success",
             "message": f"已注册自定义语义域 '{domain_name}'"
-                       + (f"，含 {len(children)} 个子类" if children else ""),
+            + (f"，含 {len(children)} 个子类" if children else ""),
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -1717,6 +2065,7 @@ def register_semantic_domain(
 # ---------------------------------------------------------------------------
 # Column Equivalence Auto-Discovery (ADK Tool)
 # ---------------------------------------------------------------------------
+
 
 def discover_column_equivalences(table_name: str) -> dict:
     """
@@ -1743,10 +2092,13 @@ def discover_column_equivalences(table_name: str) -> dict:
         with engine.connect() as conn:
             _inject_user_context(conn)
 
-            columns = conn.execute(text(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_name = :t ORDER BY ordinal_position"
-            ), {"t": table_name}).fetchall()
+            columns = conn.execute(
+                text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name = :t ORDER BY ordinal_position"
+                ),
+                {"t": table_name},
+            ).fetchall()
 
             if not columns:
                 return {"status": "error", "message": f"Table '{table_name}' not found"}
@@ -1762,7 +2114,7 @@ def discover_column_equivalences(table_name: str) -> dict:
 
                 for suffix in CODE_SUFFIXES:
                     if code_lower.endswith(suffix):
-                        prefix = code_lower[:-len(suffix)]
+                        prefix = code_lower[: -len(suffix)]
                         matched_suffix = suffix
                         break
 
@@ -1774,11 +2126,13 @@ def discover_column_equivalences(table_name: str) -> dict:
                     name_lower = name_col.lower()
                     for name_suffix in NAME_SUFFIXES:
                         if name_lower == prefix + name_suffix:
-                            discovered.append({
-                                "columns": [code_col, name_col],
-                                "relationship": "code_name",
-                                "description": f"{code_col} ↔ {name_col}",
-                            })
+                            discovered.append(
+                                {
+                                    "columns": [code_col, name_col],
+                                    "relationship": "code_name",
+                                    "description": f"{code_col} ↔ {name_col}",
+                                }
+                            )
                             break
 
             if not discovered:
@@ -1792,7 +2146,7 @@ def discover_column_equivalences(table_name: str) -> dict:
                 "status": "success",
                 "equivalences": discovered,
                 "message": f"在表 '{table_name}' 中发现 {len(discovered)} 对等价列:\n"
-                           + "\n".join(f"- {e['columns'][0]} ↔ {e['columns'][1]}" for e in discovered),
+                + "\n".join(f"- {e['columns'][0]} ↔ {e['columns'][1]}" for e in discovered),
             }
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -1801,6 +2155,7 @@ def discover_column_equivalences(table_name: str) -> dict:
 # ---------------------------------------------------------------------------
 # Semantic Model Export (ADK Tool)
 # ---------------------------------------------------------------------------
+
 
 def export_semantic_model(format: str = "json") -> dict:
     """
@@ -1836,14 +2191,15 @@ def export_semantic_model(format: str = "json") -> dict:
 
                 # Sources
                 try:
-                    src_rows = conn.execute(text(f"""
+                    src_rows = conn.execute(
+                        text(f"""
                         SELECT table_name, display_name, geometry_type, srid
                         FROM {T_SEMANTIC_SOURCES}
                         ORDER BY table_name
-                    """)).fetchall()
+                    """)
+                    ).fetchall()
                     model["db_sources"] = [
-                        {"table": r[0], "display": r[1] or r[0],
-                         "geom": r[2], "srid": r[3]}
+                        {"table": r[0], "display": r[1] or r[0], "geom": r[2], "srid": r[3]}
                         for r in src_rows
                     ]
                 except Exception:
@@ -1851,28 +2207,32 @@ def export_semantic_model(format: str = "json") -> dict:
 
                 # Annotation count
                 try:
-                    cnt = conn.execute(text(
-                        f"SELECT COUNT(*) FROM {T_SEMANTIC_REGISTRY}"
-                    )).scalar()
+                    cnt = conn.execute(text(f"SELECT COUNT(*) FROM {T_SEMANTIC_REGISTRY}")).scalar()
                     model["db_annotations_count"] = cnt or 0
                 except Exception:
                     pass
 
                 # Custom domains
                 try:
-                    dom_rows = conn.execute(text(f"""
+                    dom_rows = conn.execute(
+                        text(f"""
                         SELECT domain_name, parent_category, children, description
                         FROM {T_SEMANTIC_DOMAINS}
                         ORDER BY domain_name
-                    """)).fetchall()
+                    """)
+                    ).fetchall()
                     for row in dom_rows:
-                        children = row[2] if isinstance(row[2], list) else json.loads(row[2] or "[]")
-                        model["custom_domains"].append({
-                            "domain": row[0],
-                            "parent": row[1] or "",
-                            "children_count": len(children),
-                            "description": row[3] or "",
-                        })
+                        children = (
+                            row[2] if isinstance(row[2], list) else json.loads(row[2] or "[]")
+                        )
+                        model["custom_domains"].append(
+                            {
+                                "domain": row[0],
+                                "parent": row[1] or "",
+                                "children_count": len(children),
+                                "description": row[3] or "",
+                            }
+                        )
                 except Exception:
                     pass
         except Exception:
@@ -1910,8 +2270,14 @@ def export_semantic_model(format: str = "json") -> dict:
 T_SEMANTIC_METRICS = "agent_semantic_metrics"
 
 
-def register_metric(metric_name: str, definition: str, domain: str = "",
-                    description: str = "", unit: str = "", aliases: str = "") -> dict:
+def register_metric(
+    metric_name: str,
+    definition: str,
+    domain: str = "",
+    description: str = "",
+    unit: str = "",
+    aliases: str = "",
+) -> dict:
     """
     [Semantic Tool] Register a business metric definition.
 
@@ -1933,7 +2299,8 @@ def register_metric(metric_name: str, definition: str, domain: str = "",
     owner = current_user_id.get() or "system"
     try:
         with engine.connect() as conn:
-            result = conn.execute(text(f"""
+            result = conn.execute(
+                text(f"""
                 INSERT INTO {T_SEMANTIC_METRICS}
                     (metric_name, definition, domain, description, unit, aliases, owner_username)
                 VALUES (:name, :def, :domain, :desc, :unit, :aliases, :owner)
@@ -1942,11 +2309,17 @@ def register_metric(metric_name: str, definition: str, domain: str = "",
                     domain = EXCLUDED.domain, description = EXCLUDED.description,
                     unit = EXCLUDED.unit, aliases = EXCLUDED.aliases
                 RETURNING id
-            """), {
-                "name": metric_name.strip(), "def": definition.strip(),
-                "domain": domain, "desc": description, "unit": unit,
-                "aliases": aliases, "owner": owner,
-            })
+            """),
+                {
+                    "name": metric_name.strip(),
+                    "def": definition.strip(),
+                    "domain": domain,
+                    "desc": description,
+                    "unit": unit,
+                    "aliases": aliases,
+                    "owner": owner,
+                },
+            )
             row = result.fetchone()
             conn.commit()
             return {"status": "success", "id": row[0], "metric_name": metric_name}
@@ -1970,11 +2343,13 @@ def resolve_metric(user_text: str) -> dict:
 
     try:
         with engine.connect() as conn:
-            rows = conn.execute(text(f"""
+            rows = conn.execute(
+                text(f"""
                 SELECT id, metric_name, definition, domain, description, unit, aliases
                 FROM {T_SEMANTIC_METRICS}
                 ORDER BY metric_name
-            """)).fetchall()
+            """)
+            ).fetchall()
 
         if not rows:
             return {"status": "success", "matched": False, "message": "No metrics registered"}
@@ -2002,6 +2377,7 @@ def resolve_metric(user_text: str) -> dict:
                         best_score = score
                 # Fuzzy match
                 from difflib import SequenceMatcher
+
                 ratio = SequenceMatcher(None, user_lower, candidate.lower()).ratio()
                 if ratio > best_score and ratio >= 0.5:
                     best_match = r
@@ -2012,16 +2388,24 @@ def resolve_metric(user_text: str) -> dict:
 
         if best_match and best_score >= 0.5:
             return {
-                "status": "success", "matched": True,
+                "status": "success",
+                "matched": True,
                 "metric": {
-                    "id": best_match[0], "name": best_match[1],
-                    "definition": best_match[2], "domain": best_match[3],
-                    "description": best_match[4], "unit": best_match[5],
+                    "id": best_match[0],
+                    "name": best_match[1],
+                    "definition": best_match[2],
+                    "domain": best_match[3],
+                    "description": best_match[4],
+                    "unit": best_match[5],
                 },
                 "confidence": round(best_score, 2),
                 "message": f"度量 '{best_match[1]}' 的定义: {best_match[2]}",
             }
-        return {"status": "success", "matched": False, "message": f"No metric matching '{user_text}'"}
+        return {
+            "status": "success",
+            "matched": False,
+            "message": f"No metric matching '{user_text}'",
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -2043,21 +2427,33 @@ def list_metrics(domain: str = None) -> dict:
     try:
         with engine.connect() as conn:
             if domain:
-                rows = conn.execute(text(f"""
+                rows = conn.execute(
+                    text(f"""
                     SELECT id, metric_name, definition, domain, description, unit
                     FROM {T_SEMANTIC_METRICS} WHERE domain = :domain
                     ORDER BY metric_name
-                """), {"domain": domain}).fetchall()
+                """),
+                    {"domain": domain},
+                ).fetchall()
             else:
-                rows = conn.execute(text(f"""
+                rows = conn.execute(
+                    text(f"""
                     SELECT id, metric_name, definition, domain, description, unit
                     FROM {T_SEMANTIC_METRICS} ORDER BY metric_name
-                """)).fetchall()
+                """)
+                ).fetchall()
 
-        metrics = [{
-            "id": r[0], "name": r[1], "definition": r[2],
-            "domain": r[3], "description": r[4], "unit": r[5],
-        } for r in rows]
+        metrics = [
+            {
+                "id": r[0],
+                "name": r[1],
+                "definition": r[2],
+                "domain": r[3],
+                "description": r[4],
+                "unit": r[5],
+            }
+            for r in rows
+        ]
 
         return {"status": "success", "count": len(metrics), "metrics": metrics}
     except Exception as e:
@@ -2117,21 +2513,30 @@ def seed_builtin_metrics() -> int:
     try:
         with engine.connect() as conn:
             for m in _BUILTIN_METRICS:
-                existing = conn.execute(text(
-                    f"SELECT 1 FROM {T_SEMANTIC_METRICS} "
-                    f"WHERE metric_name = :name AND owner_username = 'system'"
-                ), {"name": m["metric_name"]}).fetchone()
+                existing = conn.execute(
+                    text(
+                        f"SELECT 1 FROM {T_SEMANTIC_METRICS} "
+                        f"WHERE metric_name = :name AND owner_username = 'system'"
+                    ),
+                    {"name": m["metric_name"]},
+                ).fetchone()
                 if existing:
                     continue
-                conn.execute(text(f"""
+                conn.execute(
+                    text(f"""
                     INSERT INTO {T_SEMANTIC_METRICS}
                         (metric_name, definition, domain, description, unit, aliases, owner_username)
                     VALUES (:name, :def, :domain, :desc, :unit, :aliases, 'system')
-                """), {
-                    "name": m["metric_name"], "def": m["definition"],
-                    "domain": m["domain"], "desc": m["description"],
-                    "unit": m["unit"], "aliases": m["aliases"],
-                })
+                """),
+                    {
+                        "name": m["metric_name"],
+                        "def": m["definition"],
+                        "domain": m["domain"],
+                        "desc": m["description"],
+                        "unit": m["unit"],
+                        "aliases": m["aliases"],
+                    },
+                )
                 inserted += 1
             conn.commit()
     except Exception as e:

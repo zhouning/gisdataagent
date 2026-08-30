@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
+from math import isfinite
 from typing import Any, Literal
+from urllib.parse import urlsplit
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from fastapi.routing import APIRoute
@@ -17,6 +20,7 @@ from pydantic import (
     Field,
     TypeAdapter,
     ValidationError,
+    field_validator,
     model_validator,
 )
 from starlette.requests import Request
@@ -32,12 +36,32 @@ from ..approval_case_authority import (
     ApprovalCasePage,
     ApprovalCaseValidationError,
 )
+from ..approval_case_batch import (
+    ApprovalCaseBatchEscalationRequest,
+    execute_approval_case_batch_escalation,
+)
 from ..architecture_change_approval import (
     ArchitectureChangeApprovalError,
     ArchitectureChangeApprovalService,
     ArchitectureChangeReview,
 )
+from ..architecture_change_assessment import (
+    ArchitectureChangeAssessmentError,
+    ArchitectureChangeAssessmentService,
+    AssessedArchitectureChangeReview,
+)
+from ..architecture_successor_adoption import (
+    ArchitectureSuccessorAdoptionError,
+    ArchitectureSuccessorAdoptionService,
+    ArchitectureSuccessorPlan,
+)
+from ..architecture_successor_data_product_release import (
+    ArchitectureSuccessorDataProductReleaseError,
+    ArchitectureSuccessorDataProductReleasePlan,
+    ArchitectureSuccessorDataProductReleaseService,
+)
 from ..capability_registry import (
+    APPROVAL_CASE_BATCH_ESCALATION,
     CAPABILITY_FINGERPRINT_HEADER,
     CHONGQING_DATA_PACKAGE_RECONCILE,
     CHONGQING_DATA_PACKAGE_RECONCILIATION_JOB_CANCEL,
@@ -127,13 +151,33 @@ from ..cross_store_projection_compensation_trust import (
     CustomerCompensationApprovalTrustConfigurationError,
     load_customer_compensation_approval_trust_registry,
 )
-from ..data_architecture_ledger import ResourceVersionArchitectureReconciliation
+from ..data_architecture_ledger import (
+    DataArchitectureRegistration,
+    ResourceVersionArchitectureReconciliation,
+)
 from ..data_product_blueprint import (
     DataProductBlueprint,
+    DataProductBlueprintProviderCancellationTimeoutRequest,
+    DataProductBlueprintProviderReconcileRequest,
+    DataProductBlueprintProviderRetryRequest,
+    DataProductBlueprintReleaseBinding,
     DataProductBlueprintReview,
+    DataProductBlueprintTestCancellationRequest,
+    DataProductBlueprintTestExecutionFailureRequest,
+    DataProductBlueprintTestExecutionRequest,
+    DataProductBlueprintTestRunRequest,
     build_data_product_blueprint_approval_case,
     build_data_product_blueprint_preview,
+    build_data_product_blueprint_test_report,
     compile_data_product_blueprint,
+)
+from ..data_product_registry import (
+    DataProductConflictError,
+    DataProductNotFoundError,
+    DataProductRegistry,
+    DataProductRegistryError,
+    DataProductSpec,
+    DataProductVersionSpec,
 )
 from ..dataops_cancel import (
     DataOpsCancelRequest,
@@ -145,6 +189,7 @@ from ..dataops_manual import (
     ManualDataOpsRunRequest,
     ManualDataOpsRunResponse,
 )
+from ..duckdb_blueprint_provider import DuckDBBlueprintExecutionRequest
 from ..entity_authority_batch import (
     EntityAuthorityBatchRequest,
     execute_entity_authority_batch,
@@ -167,14 +212,48 @@ from ..entity_link_authority import (
     EntityLinkNotFoundError,
     EntityLinkValidationError,
 )
+from ..gis_mvt_access import (
+    GOVERNED_MVT_ACCESS_PURPOSE,
+    MVTAccessDeniedError,
+    MVTAccessService,
+    MVTAccessUnavailableError,
+)
+from ..gis_mvt_response_cache import (
+    MVTResponseCache,
+    MVTResponseCacheEntry,
+    get_mvt_response_cache,
+    mvt_response_cache_key,
+    mvt_response_cache_namespace,
+)
+from ..gis_ogc_api_features_access import (
+    GOVERNED_OGC_FEATURES_ACCESS_ACTION,
+    GOVERNED_OGC_FEATURES_ACCESS_PURPOSE,
+    OGCFeaturesAccessDeniedError,
+    OGCFeaturesAccessService,
+    OGCFeaturesAccessUnavailableError,
+)
 from ..gis_provider_runtime import (
     GISProviderContractError,
     GISProviderUnavailable,
     MartinVectorTileProvider,
     MVTProviderReleaseContext,
+    OGCAPIFeaturesProvider,
+    OGCAPIFeaturesReleaseContext,
+    ProviderTileResponse,
     martin_provider_manifest,
+    pygeoapi_provider_manifest,
 )
-from ..gis_service_control_plane import EndpointProtocol, GISServiceType
+from ..gis_service_control_plane import (
+    EndpointProtocol,
+    EndpointRevision,
+    GISServiceSLOBinding,
+    GISServiceType,
+    ServiceDeploymentEvent,
+    ServiceDeploymentRevision,
+    ServiceDeploymentState,
+    endpoint_revision_fingerprint,
+    service_deployment_fingerprint,
+)
 from ..lakehouse_projection_service import (
     LakehouseProjectionRepairRequest,
     LakehouseProjectionServiceConfigurationError,
@@ -241,6 +320,9 @@ from ..platform_contracts import (
     Artifact,
     DataIncident,
     FrameworkAttemptObservation,
+    FrameworkKind,
+    IncidentNotification,
+    IncidentNotificationRecoveryEvent,
     IncidentStatus,
     LineageEvent,
     NonEmptyText,
@@ -277,7 +359,11 @@ from ..platform_gateway import (
     PlatformGateway,
     PlatformGatewayError,
 )
-from ..platform_lineage import ImpactChangeType, LineageQuerySpec
+from ..platform_lineage import (
+    ImpactChangeType,
+    LineageImpactAssessment,
+    LineageQuerySpec,
+)
 from ..platform_openlineage import (
     OpenLineageIngestionItem,
     OpenLineageIngestionResult,
@@ -292,6 +378,10 @@ from ..postgis_projection_service import (
     PostGISProjectionServiceForbiddenError,
     PostGISProjectionServiceValidationError,
     execute_postgis_projection_repair,
+)
+from ..postgis_schema_evidence import (
+    PostgisSchemaCompatibilityAssessment,
+    PostgisSchemaSnapshot,
 )
 from ..rdf_projection_service import (
     RDFProjectionRepairRequest,
@@ -372,14 +462,206 @@ class MVTGatewayEndpointContract(StrictRequest):
     )
 
     @model_validator(mode="after")
-    def _governed_publication_query(self) -> MVTGatewayEndpointContract:
-        publication_id = self.provider_query.get("publication_id")
-        if publication_id is None:
-            raise ValueError("MVT provider_query must bind publication_id")
+    def _governed_serving_projection_query(self) -> MVTGatewayEndpointContract:
+        if self.provider_layer_ref != "gda_mvt_serving_projection":
+            raise ValueError("MVT provider_layer_ref must be the governed serving projection")
+        projection_id = self.provider_query.get("serving_projection_version_id")
+        if projection_id is None or len(self.provider_query) != 1:
+            raise ValueError("MVT provider_query must bind only serving_projection_version_id")
         try:
-            UUID(publication_id)
+            UUID(projection_id)
         except ValueError as exc:
-            raise ValueError("MVT publication_id must be a UUID") from exc
+            raise ValueError("MVT serving_projection_version_id must be a UUID") from exc
+        return self
+
+
+class OGCAPIFeaturesGatewayEndpointContract(StrictRequest):
+    """Release-bound collection identity consumed by the Features route."""
+
+    contract_schema: Literal["gda.ogc_api_features_endpoint.v1"] = Field(alias="schema")
+    collection_id: str = Field(
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    )
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        populate_by_name=True,
+    )
+
+
+class GISServiceEndpointActivationRequest(StrictRequest):
+    """One immutable, compare-and-swap update to a GIS service endpoint pointer."""
+
+    endpoint_revision_id: UUID
+    expected_state_version: int = Field(ge=0)
+    reason: NonEmptyText
+    idempotency_key: NonEmptyText
+    occurred_at: datetime
+
+    @field_validator("occurred_at")
+    @classmethod
+    def _occurred_at_is_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("occurred_at must include a timezone")
+        return value.astimezone(UTC)
+
+
+class GISServiceDeploymentTransitionRequest(StrictRequest):
+    """One immutable transition in the governed GIS deployment state machine."""
+
+    expected_state_version: int = Field(ge=0)
+    to_state: ServiceDeploymentState
+    provider_observation_id: UUID | None = None
+    reason: NonEmptyText
+    idempotency_key: NonEmptyText
+    occurred_at: datetime
+
+    @field_validator("occurred_at")
+    @classmethod
+    def _occurred_at_is_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("occurred_at must include a timezone")
+        return value.astimezone(UTC)
+
+    @model_validator(mode="after")
+    def _observation_matches_target_state(self) -> GISServiceDeploymentTransitionRequest:
+        if self.to_state is ServiceDeploymentState.PLANNED:
+            raise ValueError("a deployment cannot transition to planned")
+        terminal = self.to_state in {
+            ServiceDeploymentState.READY,
+            ServiceDeploymentState.FAILED,
+        }
+        if terminal != (self.provider_observation_id is not None):
+            raise ValueError(
+                "ready or failed requires provider_observation_id; deploying forbids it"
+            )
+        return self
+
+
+class GISServiceEndpointRegistrationRequest(StrictRequest):
+    """Immutable endpoint metadata produced after a deployment is ready."""
+
+    endpoint_revision_id: UUID
+    endpoint_protocol: EndpointProtocol
+    endpoint_uri: str = Field(min_length=1, max_length=2048)
+    endpoint_contract: dict[str, Any]
+    created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def _created_at_is_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("created_at must include a timezone")
+        return value.astimezone(UTC)
+
+
+class GISServiceDeploymentRegistrationRequest(StrictRequest):
+    """An immutable, planned placement of one atomic GIS service release."""
+
+    deployment_revision_id: UUID
+    service_definition_version_id: UUID
+    service_release_binding_id: UUID
+    run_id: UUID
+    revision_key: str = Field(pattern=r"^r[0-9]+$")
+    provider_system: str = Field(
+        pattern=r"^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$"
+    )
+    provider_namespace: str = Field(min_length=1, max_length=512)
+    provider_deployment_id: str = Field(min_length=1, max_length=512)
+    provider_revision_ref: str = Field(min_length=1, max_length=512)
+    config_sha256: Sha256
+    created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def _created_at_is_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("created_at must include a timezone")
+        return value.astimezone(UTC)
+
+
+class GISServiceDeploymentObservationRequest(StrictRequest):
+    """Terminal provider evidence with server-owned GIS deployment bindings."""
+
+    observation_id: UUID
+    attempt_no: int = Field(ge=1)
+    framework_kind: FrameworkKind
+    observed_state: Literal[
+        "success",
+        "succeeded",
+        "ready",
+        "completed",
+        "failed",
+        "error",
+        "cancelled",
+        "timed_out",
+    ]
+    provider_version: NonEmptyText
+    endpoint_uri: str = Field(min_length=1, max_length=2048)
+    health_evidence_sha256: Sha256
+    provider_receipt: dict[str, Any] = Field(min_length=1)
+    observed_at: datetime
+
+    @field_validator("endpoint_uri")
+    @classmethod
+    def _stable_endpoint_uri(cls, value: str) -> str:
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme != "https"
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("endpoint_uri must be a credential-free HTTPS URI")
+        return value
+
+    @field_validator("observed_at")
+    @classmethod
+    def _observed_at_is_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("observed_at must include a timezone")
+        return value.astimezone(UTC)
+
+
+class GISServiceDeploymentTerminalSettlementRequest(
+    GISServiceDeploymentObservationRequest
+):
+    """Provider terminal evidence and deployment transition settled atomically."""
+
+    expected_state_version: int = Field(ge=0)
+    reason: NonEmptyText
+    idempotency_key: NonEmptyText
+    occurred_at: datetime
+
+    @field_validator("occurred_at")
+    @classmethod
+    def _occurred_at_is_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("occurred_at must include a timezone")
+        return value.astimezone(UTC)
+
+    @model_validator(mode="after")
+    def _settlement_follows_observation(
+        self,
+    ) -> GISServiceDeploymentTerminalSettlementRequest:
+        if self.occurred_at < self.observed_at:
+            raise ValueError("occurred_at cannot precede observed_at")
+        return self
+
+
+class GISServiceDeploymentEventListResponse(StrictRequest):
+    """Immutable deployment lifecycle evidence, ordered by transition sequence."""
+
+    items: tuple[ServiceDeploymentEvent, ...]
+    count: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def _consistent_count(self) -> GISServiceDeploymentEventListResponse:
+        if self.count != len(self.items):
+            raise ValueError("count must equal the number of deployment events")
         return self
 
 
@@ -464,6 +746,28 @@ class DataIncidentListResponse(StrictRequest):
     count: int = Field(ge=0)
 
 
+class IncidentNotificationListResponse(StrictRequest):
+    items: tuple[IncidentNotification, ...]
+    count: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def _consistent_count(self) -> IncidentNotificationListResponse:
+        if self.count != len(self.items):
+            raise ValueError("count must equal the number of notifications")
+        return self
+
+
+class IncidentNotificationRecoveryListResponse(StrictRequest):
+    items: tuple[IncidentNotificationRecoveryEvent, ...]
+    recovery_count: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def _consistent_count(self) -> IncidentNotificationRecoveryListResponse:
+        if self.recovery_count != len(self.items):
+            raise ValueError("recovery_count must equal the number of recovery events")
+        return self
+
+
 class ResourceVersionListResponse(StrictRequest):
     items: tuple[ResourceVersion, ...]
     count: int = Field(ge=0)
@@ -481,6 +785,117 @@ class ArchitectureChangeReviewResponse(StrictRequest):
     reconciliation: ResourceVersionArchitectureReconciliation
     review: ArchitectureChangeReview
     approval_case: ApprovalCase
+
+
+class ArchitectureChangeAssessmentRequest(StrictRequest):
+    """Evidence references and bounded traversal limits for a schema-drift review."""
+
+    baseline_schema_snapshot: PostgisSchemaSnapshot
+    candidate_schema_snapshot: PostgisSchemaSnapshot
+    baseline_schema_artifact_id: UUID
+    candidate_schema_artifact_id: UUID
+    request_reason: NonEmptyText
+    expires_in_hours: int = Field(default=72, ge=1, le=168)
+    max_lineage_depth: int = Field(default=6, ge=1, le=12)
+    max_lineage_edges: int = Field(default=500, ge=1, le=1000)
+
+
+class ArchitectureChangeAssessmentResponse(StrictRequest):
+    base_review: ArchitectureChangeReview
+    compatibility: PostgisSchemaCompatibilityAssessment
+    impact: LineageImpactAssessment
+    review: AssessedArchitectureChangeReview
+    approval_case: ApprovalCase
+
+
+class ArchitectureSuccessorAdoptionApprovalRequest(StrictRequest):
+    """Submit one evidence-bound successor plan for an independent decision."""
+
+    assessed_approval_case_ref: ResourceURNText
+    successor_resource_version: ResourceVersion
+    successor_architecture: DataArchitectureRegistration
+    request_reason: NonEmptyText
+    expires_in_hours: int = Field(default=72, ge=1, le=168)
+
+
+class ArchitectureSuccessorAdoptionApprovalResponse(StrictRequest):
+    plan: ArchitectureSuccessorPlan
+    approval_case: ApprovalCase
+
+
+class ArchitectureSuccessorAdoptionExecuteRequest(StrictRequest):
+    """Execute the exact successor plan bound by an approved AdoptionCase."""
+
+    plan: ArchitectureSuccessorPlan
+    adoption_approval_case_ref: ResourceURNText
+
+
+class ArchitectureSuccessorDataProductReleaseApprovalRequest(StrictRequest):
+    """Request publication approval for one adopted successor product version."""
+
+    plan: ArchitectureSuccessorDataProductReleasePlan
+    request_reason: NonEmptyText
+    expires_in_hours: int = Field(default=72, ge=1, le=168)
+
+
+class ArchitectureSuccessorDataProductReleaseApprovalResponse(StrictRequest):
+    plan: ArchitectureSuccessorDataProductReleasePlan
+    approval_case: ApprovalCase
+
+
+class ArchitectureSuccessorDataProductReleasePublishRequest(StrictRequest):
+    """Publish the exact DataProduct release plan bound by a Release ApprovalCase."""
+
+    plan: ArchitectureSuccessorDataProductReleasePlan
+    release_approval_case_ref: ResourceURNText
+    idempotency_key: NonEmptyText
+    reason: NonEmptyText
+
+
+class ArchitectureSuccessorDataProductReleasePublishResponse(StrictRequest):
+    plan: ArchitectureSuccessorDataProductReleasePlan
+    publication: dict[str, Any]
+
+
+class DataProductBlueprintReleasePublishRequest(StrictRequest):
+    """Publish one immutable Blueprint release through the product authority."""
+
+    product: DataProductSpec
+    version: DataProductVersionSpec
+    blueprint_release_binding: DataProductBlueprintReleaseBinding
+    idempotency_key: NonEmptyText
+    reason: NonEmptyText
+
+    @model_validator(mode="after")
+    def _manifest_binding_matches(
+        self,
+    ) -> DataProductBlueprintReleasePublishRequest:
+        manifest_binding = self.version.distribution_manifest.get("blueprint_release")
+        if manifest_binding is None:
+            raise ValueError(
+                "version distribution_manifest must include blueprint_release"
+            )
+        if canonical_json_fingerprint(manifest_binding) != canonical_json_fingerprint(
+            self.blueprint_release_binding.model_dump(mode="json", by_alias=True)
+        ):
+            raise ValueError(
+                "blueprint_release_binding must match version distribution_manifest"
+            )
+        if (
+            self.product.tenant_id != self.version.tenant_id
+            or self.product.product_urn != self.version.product_urn
+        ):
+            raise ValueError("product and version identities must match")
+        if self.blueprint_release_binding.tenant_id != self.product.tenant_id:
+            raise ValueError("Blueprint release tenant must match product tenant")
+        return self
+
+
+class DataProductBlueprintReleasePublishResponse(StrictRequest):
+    product: DataProductSpec
+    version: DataProductVersionSpec
+    blueprint_release_binding: DataProductBlueprintReleaseBinding
+    publication: dict[str, Any]
 
 
 class SLODefinitionStageRequest(StrictRequest):
@@ -538,6 +953,19 @@ class SLOPrometheusRulePreviewResponse(SLOActiveDefinitionResponse):
 class SLODefinitionEventListResponse(StrictRequest):
     items: tuple[SLODefinitionEvent, ...]
     count: int = Field(ge=0)
+
+
+class GISServiceSLOBindingRequest(StrictRequest):
+    """Bind a service to the exact currently active generic SLO version."""
+
+    slo_definition_id: str = Field(
+        min_length=1,
+        max_length=128,
+        pattern=r"^[a-z0-9][a-z0-9._-]{0,127}$",
+    )
+    version: int = Field(ge=1, le=1_000_000)
+    expected_activation_version: int = Field(ge=1)
+    reason: NonEmptyText
 
 
 class MasterSourceObservationRequest(StrictRequest):
@@ -639,6 +1067,12 @@ class DataIncidentTransitionRequest(StrictRequest):
     to_status: IncidentStatus
     reason: NonEmptyText
     details: dict[str, Any] = Field(default_factory=dict)
+
+
+class IncidentNotificationRecoveryRequest(StrictRequest):
+    expected_attempt_count: int = Field(ge=1)
+    expected_receipt_sha256: Sha256
+    reason: NonEmptyText
 
 
 class ApprovalCaseCreateRequest(StrictRequest):
@@ -994,6 +1428,21 @@ def _gis_mvt_principal(request: Request) -> GatewayPrincipal | JSONResponse:
     return principal
 
 
+def _gis_ogc_features_principal(request: Request) -> GatewayPrincipal | JSONResponse:
+    """Authenticate operators and bound data consumers for Features reads."""
+    principal = _authenticated_principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.role not in _PLATFORM_ROLES | _GIS_CONSUMER_ROLES:
+        return _error(
+            request,
+            403,
+            "gis_consumer_role_required",
+            "A GIS operator or consumer role is required",
+        )
+    return principal
+
+
 def _validation_details(error: ValidationError) -> list[dict[str, str]]:
     return [
         {
@@ -1024,6 +1473,18 @@ async def _parse(request: Request, model: type[BaseModel]) -> BaseModel | JSONRe
 
 def _gateway() -> PlatformGateway:
     return PlatformGateway()
+
+
+def _mvt_access_service() -> MVTAccessService:
+    return MVTAccessService()
+
+
+def _ogc_features_access_service() -> OGCFeaturesAccessService:
+    return OGCFeaturesAccessService()
+
+
+def _mvt_response_cache() -> MVTResponseCache:
+    return get_mvt_response_cache()
 
 
 def _approval_case_authority() -> ApprovalCaseAuthority:
@@ -1082,6 +1543,28 @@ def _slo_alert_detector_subject() -> str:
 def _architecture_change_approval_service() -> ArchitectureChangeApprovalService:
     return ArchitectureChangeApprovalService(
         _gateway(),
+        _approval_case_authority(),
+    )
+
+
+def _architecture_change_assessment_service() -> ArchitectureChangeAssessmentService:
+    return ArchitectureChangeAssessmentService(
+        _gateway(),
+        _approval_case_authority(),
+    )
+
+
+def _architecture_successor_adoption_service() -> ArchitectureSuccessorAdoptionService:
+    return ArchitectureSuccessorAdoptionService(
+        _gateway(),
+        _approval_case_authority(),
+    )
+
+
+def _architecture_successor_data_product_release_service(
+) -> ArchitectureSuccessorDataProductReleaseService:
+    return ArchitectureSuccessorDataProductReleaseService(
+        DataProductRegistry(),
         _approval_case_authority(),
     )
 
@@ -1330,6 +1813,34 @@ def _master_entity_ref(
         )
 
 
+def _gis_service_ref(
+    request: Request,
+    principal: GatewayPrincipal,
+) -> str | JSONResponse:
+    service_id = request.path_params.get("service_id", "")
+    try:
+        return build_resource_urn(principal.tenant_id, "gis_service", service_id)
+    except ValueError:
+        return _error(
+            request,
+            400,
+            "invalid_gis_service_id",
+            "service_id must be a canonical lowercase resource identifier",
+        )
+
+
+def _gis_deployment_revision_id(request: Request) -> UUID | JSONResponse:
+    try:
+        return UUID(request.path_params.get("deployment_revision_id", ""))
+    except ValueError:
+        return _error(
+            request,
+            400,
+            "invalid_gis_deployment_revision_id",
+            "deployment_revision_id must be a UUID",
+        )
+
+
 def _master_entity_version_refs(
     request: Request,
     principal: GatewayPrincipal,
@@ -1393,12 +1904,670 @@ def _tenant_matches(
     return None
 
 
+async def get_gis_service_control_projection(request: Request) -> JSONResponse:
+    """Return the tenant-scoped active GIS service projection."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    service_urn = _gis_service_ref(request, principal)
+    if isinstance(service_urn, JSONResponse):
+        return service_urn
+    try:
+        projection = await asyncio.to_thread(
+            _gateway().get_gis_service_control_projection,
+            principal.tenant_id,
+            service_urn,
+        )
+        return _success(request, projection)
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def get_gis_service_slo(request: Request) -> JSONResponse:
+    """Return the latest exact active SLO binding for a GIS service."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    service_urn = _gis_service_ref(request, principal)
+    if isinstance(service_urn, JSONResponse):
+        return service_urn
+    try:
+        binding = await asyncio.to_thread(
+            _gateway().get_gis_service_slo_binding,
+            principal.tenant_id,
+            service_urn,
+        )
+        return _success(request, binding)
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def bind_gis_service_slo(request: Request) -> JSONResponse:
+    """Bind a GIS service to an existing, independently approved active SLO."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.role != "admin":
+        return _error(
+            request,
+            403,
+            "gis_service_slo_binding_admin_required",
+            "GIS ServiceSLO binding requires an administrator",
+        )
+    submission = await _parse(request, GISServiceSLOBindingRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    service_urn = _gis_service_ref(request, principal)
+    if isinstance(service_urn, JSONResponse):
+        return service_urn
+    slo_definition_ref = build_resource_urn(
+        principal.tenant_id,
+        "slo_definition",
+        submission.slo_definition_id,
+    )
+    try:
+        definition, activation = await asyncio.to_thread(
+            _slo_authority().active,
+            principal.tenant_id,
+            slo_definition_ref,
+        )
+        if definition.version != submission.version:
+            return _error(
+                request,
+                409,
+                "gis_service_slo_version_not_active",
+                "Requested SLO version is not the active authority",
+            )
+        if activation.activation_version != submission.expected_activation_version:
+            return _error(
+                request,
+                409,
+                "gis_service_slo_activation_conflict",
+                "SLO activation version changed before binding",
+            )
+        if definition.service_resource_urn != service_urn:
+            return _error(
+                request,
+                422,
+                "gis_service_slo_service_mismatch",
+                "Active SLO belongs to a different service",
+            )
+        binding_id = uuid5(
+            NAMESPACE_URL,
+            "|".join(
+                (
+                    "gda.gis_service_slo_binding.v1",
+                    principal.tenant_id,
+                    service_urn,
+                    definition.slo_version_ref,
+                    str(activation.activation_version),
+                )
+            ),
+        )
+        binding = GISServiceSLOBinding(
+            tenant_id=principal.tenant_id,
+            binding_id=binding_id,
+            service_urn=service_urn,
+            slo_definition_ref=definition.slo_definition_ref,
+            active_version_ref=definition.slo_version_ref,
+            definition_fingerprint=definition.definition_fingerprint,
+            approval_case_ref=activation.approval_case_ref,
+            activation_version=activation.activation_version,
+            bound_by=principal.actor_ref,
+            binding_reason=submission.reason,
+            bound_at=_utc_now(),
+        )
+        result = await asyncio.to_thread(_gateway().bind_gis_service_slo, binding)
+        return _success(
+            request,
+            result.value,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except ValidationError as exc:
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "GIS ServiceSLO binding does not satisfy the platform contract",
+            _validation_details(exc),
+        )
+    except SLOAuthorityError as exc:
+        return _slo_error(request, exc)
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def _bound_gis_service_deployment(
+    request: Request,
+    principal: GatewayPrincipal,
+    gateway: PlatformGateway,
+) -> BaseModel | JSONResponse:
+    service_urn = _gis_service_ref(request, principal)
+    if isinstance(service_urn, JSONResponse):
+        return service_urn
+    deployment_revision_id = _gis_deployment_revision_id(request)
+    if isinstance(deployment_revision_id, JSONResponse):
+        return deployment_revision_id
+    try:
+        deployment = await asyncio.to_thread(
+            gateway.get_service_deployment_revision,
+            principal.tenant_id,
+            deployment_revision_id,
+        )
+        definition = await asyncio.to_thread(
+            gateway.get_gis_service_definition_version,
+            principal.tenant_id,
+            deployment.service_definition_version_id,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+    if definition.service_urn != service_urn:
+        return _error(
+            request,
+            404,
+            "gis_service_deployment_not_found",
+            "Deployment revision does not belong to this GIS service",
+        )
+    return deployment
+
+
+async def get_gis_service_deployment(request: Request) -> JSONResponse:
+    """Return one deployment revision after tenant and service ownership checks."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    deployment = await _bound_gis_service_deployment(
+        request,
+        principal,
+        _gateway(),
+    )
+    if isinstance(deployment, JSONResponse):
+        return deployment
+    return _success(request, deployment)
+
+
+async def list_gis_service_deployment_events(request: Request) -> JSONResponse:
+    """Return the immutable transition timeline after service ownership checks."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    gateway = _gateway()
+    deployment = await _bound_gis_service_deployment(request, principal, gateway)
+    if isinstance(deployment, JSONResponse):
+        return deployment
+    try:
+        events = await asyncio.to_thread(
+            gateway.list_service_deployment_events,
+            principal.tenant_id,
+            deployment.deployment_revision_id,
+        )
+        return _success(
+            request,
+            GISServiceDeploymentEventListResponse(
+                items=events,
+                count=len(events),
+            ),
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+def _gis_service_deployment_observation(
+    principal: GatewayPrincipal,
+    deployment: ServiceDeploymentRevision,
+    submission: GISServiceDeploymentObservationRequest,
+) -> FrameworkAttemptObservation:
+    evidence = {
+        "schema": "gda.gis_service_deployment_observation.v2",
+        "deployment_revision_id": str(deployment.deployment_revision_id),
+        "service_definition_version_id": str(
+            deployment.service_definition_version_id
+        ),
+        "service_release_binding_id": str(deployment.service_release_binding_id),
+        "provider_system": deployment.provider_system,
+        "provider_version": submission.provider_version,
+        "provider_namespace": deployment.provider_namespace,
+        "provider_deployment_id": deployment.provider_deployment_id,
+        "provider_revision_ref": deployment.provider_revision_ref,
+        "config_sha256": deployment.config_sha256,
+        "endpoint_uri": submission.endpoint_uri,
+        "health_evidence_sha256": submission.health_evidence_sha256,
+        "provider_receipt": submission.provider_receipt,
+        "reported_by": principal.actor_ref,
+    }
+    return FrameworkAttemptObservation(
+        tenant_id=principal.tenant_id,
+        observation_id=submission.observation_id,
+        run_id=deployment.run_id,
+        attempt_no=submission.attempt_no,
+        framework_kind=submission.framework_kind,
+        external_namespace=deployment.provider_namespace,
+        external_run_id=deployment.provider_deployment_id,
+        external_attempt_id=deployment.provider_revision_ref,
+        observed_state=submission.observed_state,
+        observation_sha256=canonical_json_fingerprint(evidence),
+        evidence=evidence,
+        observed_at=submission.observed_at,
+    )
+
+
+async def record_gis_service_deployment_observation(request: Request) -> JSONResponse:
+    """Record terminal provider evidence without executing a provider operation."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type is not SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "gis_service_deployment_workload_required",
+            "GIS service deployment observations require workload identity",
+        )
+    submission = await _parse(request, GISServiceDeploymentObservationRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    gateway = _gateway()
+    deployment = await _bound_gis_service_deployment(request, principal, gateway)
+    if isinstance(deployment, JSONResponse):
+        return deployment
+    try:
+        observation = _gis_service_deployment_observation(
+            principal,
+            deployment,
+            submission,
+        )
+        result = await asyncio.to_thread(
+            gateway.record_gis_service_deployment_observation,
+            deployment.deployment_revision_id,
+            observation,
+        )
+        return _success(
+            request,
+            result.value,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except ValidationError as exc:
+        return _error(
+            request,
+            422,
+            "gis_service_deployment_observation_invalid",
+            "GIS service deployment observation does not satisfy the platform contract",
+            _validation_details(exc),
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def settle_gis_service_deployment_terminal(request: Request) -> JSONResponse:
+    """Atomically admit terminal provider evidence and settle a deployment revision."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type is not SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "gis_service_deployment_workload_required",
+            "GIS service deployment terminal settlement requires workload identity",
+        )
+    submission = await _parse(request, GISServiceDeploymentTerminalSettlementRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    gateway = _gateway()
+    deployment = await _bound_gis_service_deployment(request, principal, gateway)
+    if isinstance(deployment, JSONResponse):
+        return deployment
+    try:
+        observation = _gis_service_deployment_observation(
+            principal,
+            deployment,
+            submission,
+        )
+        settlement = await asyncio.to_thread(
+            gateway.settle_gis_service_deployment_terminal,
+            deployment.deployment_revision_id,
+            observation,
+            expected_state_version=submission.expected_state_version,
+            actor_subject=principal.actor_ref,
+            reason=submission.reason,
+            idempotency_key=submission.idempotency_key,
+            occurred_at=submission.occurred_at,
+        )
+        return _success(
+            request,
+            settlement,
+            status_code=201 if settlement.observation_created else 200,
+            created=settlement.observation_created,
+        )
+    except ValidationError as exc:
+        return _error(
+            request,
+            422,
+            "gis_service_deployment_settlement_invalid",
+            "GIS service deployment terminal settlement does not satisfy the platform contract",
+            _validation_details(exc),
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def register_gis_service_deployment(request: Request) -> JSONResponse:
+    """Register one planned, release-bound deployment revision for a GIS service."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type is not SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "gis_service_deployment_workload_required",
+            "GIS service deployment registration requires workload identity",
+        )
+    submission = await _parse(request, GISServiceDeploymentRegistrationRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    service_urn = _gis_service_ref(request, principal)
+    if isinstance(service_urn, JSONResponse):
+        return service_urn
+    gateway = _gateway()
+    try:
+        definition = await asyncio.to_thread(
+            gateway.get_gis_service_definition_version,
+            principal.tenant_id,
+            submission.service_definition_version_id,
+        )
+        release = await asyncio.to_thread(
+            gateway.get_service_release_binding,
+            principal.tenant_id,
+            submission.service_release_binding_id,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+    if definition.service_urn != service_urn or (
+        release.service_definition_version_id
+        != submission.service_definition_version_id
+    ):
+        return _error(
+            request,
+            404,
+            "gis_service_release_not_found",
+            "Service definition or release does not belong to this GIS service",
+        )
+    deployment_values = {
+        "tenant_id": principal.tenant_id,
+        "deployment_revision_id": submission.deployment_revision_id,
+        "service_definition_version_id": submission.service_definition_version_id,
+        "service_release_binding_id": submission.service_release_binding_id,
+        "run_id": submission.run_id,
+        "revision_key": submission.revision_key,
+        "provider_system": submission.provider_system,
+        "provider_namespace": submission.provider_namespace,
+        "provider_deployment_id": submission.provider_deployment_id,
+        "provider_revision_ref": submission.provider_revision_ref,
+        "config_sha256": submission.config_sha256,
+        "state": ServiceDeploymentState.PLANNED,
+        "state_version": 0,
+        "created_by": principal.actor_ref,
+        "created_at": submission.created_at,
+        "updated_at": submission.created_at,
+    }
+    try:
+        deployment = ServiceDeploymentRevision(
+            **deployment_values,
+            deployment_sha256=service_deployment_fingerprint(deployment_values),
+        )
+        result = await asyncio.to_thread(
+            gateway.register_service_deployment_revision,
+            deployment,
+        )
+        return _success(
+            request,
+            result.value,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "gis_service_deployment_invalid",
+            "GIS service deployment does not satisfy the platform contract",
+            details,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def transition_gis_service_deployment(request: Request) -> JSONResponse:
+    """Advance a deployment using Run-bound provider evidence."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type is not SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "gis_service_deployment_workload_required",
+            "GIS service deployment transitions require workload identity",
+        )
+    transition = await _parse(request, GISServiceDeploymentTransitionRequest)
+    if isinstance(transition, JSONResponse):
+        return transition
+    gateway = _gateway()
+    deployment = await _bound_gis_service_deployment(request, principal, gateway)
+    if isinstance(deployment, JSONResponse):
+        return deployment
+    try:
+        updated = await asyncio.to_thread(
+            gateway.transition_service_deployment_revision,
+            principal.tenant_id,
+            deployment.deployment_revision_id,
+            expected_state_version=transition.expected_state_version,
+            to_state=transition.to_state,
+            provider_observation_id=transition.provider_observation_id,
+            actor_subject=principal.actor_ref,
+            reason=transition.reason,
+            idempotency_key=transition.idempotency_key,
+            occurred_at=transition.occurred_at,
+        )
+        return _success(request, updated)
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def register_gis_service_endpoint(request: Request) -> JSONResponse:
+    """Register an immutable provider endpoint for a ready GIS deployment."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type is not SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "gis_service_endpoint_workload_required",
+            "GIS service endpoint registration requires workload identity",
+        )
+    submission = await _parse(request, GISServiceEndpointRegistrationRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    gateway = _gateway()
+    deployment = await _bound_gis_service_deployment(request, principal, gateway)
+    if isinstance(deployment, JSONResponse):
+        return deployment
+    service_urn = _gis_service_ref(request, principal)
+    if isinstance(service_urn, JSONResponse):
+        return service_urn
+    endpoint_values = {
+        "tenant_id": principal.tenant_id,
+        "endpoint_revision_id": submission.endpoint_revision_id,
+        "service_urn": service_urn,
+        "deployment_revision_id": deployment.deployment_revision_id,
+        "endpoint_protocol": submission.endpoint_protocol,
+        "endpoint_uri": submission.endpoint_uri,
+        "endpoint_contract": submission.endpoint_contract,
+        "created_by": principal.actor_ref,
+        "created_at": submission.created_at,
+    }
+    try:
+        endpoint = EndpointRevision(
+            **endpoint_values,
+            endpoint_sha256=endpoint_revision_fingerprint(endpoint_values),
+        )
+        result = await asyncio.to_thread(gateway.register_endpoint_revision, endpoint)
+        return _success(
+            request,
+            result.value,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "gis_service_endpoint_invalid",
+            "GIS service endpoint does not satisfy the platform contract",
+            details,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def activate_gis_service_endpoint(request: Request) -> JSONResponse:
+    """Atomically switch the active GIS endpoint pointer after deployment readiness."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.role != "admin":
+        return _error(
+            request,
+            403,
+            "gis_service_activation_admin_required",
+            "GIS service endpoint activation requires an administrator",
+        )
+    submission = await _parse(request, GISServiceEndpointActivationRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    service_urn = _gis_service_ref(request, principal)
+    if isinstance(service_urn, JSONResponse):
+        return service_urn
+    try:
+        projection = await asyncio.to_thread(
+            _gateway().activate_gis_service_endpoint,
+            principal.tenant_id,
+            service_urn,
+            submission.endpoint_revision_id,
+            expected_state_version=submission.expected_state_version,
+            actor_subject=principal.actor_ref,
+            reason=submission.reason,
+            idempotency_key=submission.idempotency_key,
+            occurred_at=submission.occurred_at,
+        )
+        return _success(request, projection)
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+def _martin_provider_endpoint() -> str:
+    """Return the trusted in-cluster Martin origin used by the Gateway.
+
+    EndpointRevision.endpoint_uri is the consumer-visible HTTPS address.  It is
+    intentionally not reused as a provider origin: doing so would let the
+    Gateway bypass its own internal network boundary or recursively call the
+    public route it is serving.
+    """
+    endpoint = os.environ.get("MARTIN_URL", "").strip().rstrip("/")
+    parsed = urlsplit(endpoint)
+    if (
+        not endpoint
+        or parsed.scheme not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise GatewayConfigurationError(
+            "MARTIN_URL must be a credential-free HTTP(S) provider origin"
+        )
+    return endpoint
+
+
+def _pygeoapi_provider_endpoint() -> str:
+    """Return the trusted in-cluster pygeoapi origin used by the Gateway."""
+    endpoint = os.environ.get("PYGEOAPI_URL", "").strip().rstrip("/")
+    parsed = urlsplit(endpoint)
+    if (
+        not endpoint
+        or parsed.scheme not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise GatewayConfigurationError(
+            "PYGEOAPI_URL must be a credential-free HTTP(S) provider origin"
+        )
+    return endpoint
+
+
+def _pygeoapi_provider_version(deployment: Any) -> str:
+    """Resolve a manifest version from explicit config or deployment metadata."""
+    configured = os.environ.get("PYGEOAPI_PROVIDER_VERSION", "").strip()
+    if configured:
+        return configured
+    revision = str(getattr(deployment, "provider_revision_ref", ""))
+    match = re.search(r"(?:pygeoapi[- /])?([0-9]+(?:\.[0-9A-Za-z]+)+)", revision)
+    return match.group(1) if match else "0.21.0"
+
+
+def _ogc_features_query(
+    request: Request,
+) -> tuple[int, tuple[float, float, float, float] | None] | JSONResponse:
+    """Parse bounded OGC API Features query parameters at the Gateway edge."""
+    limit_values = request.query_params.getlist("limit")
+    if len(limit_values) > 1:
+        return _error(request, 400, "invalid_limit", "limit must be specified once")
+    limit_text = limit_values[0] if limit_values else "100"
+    try:
+        limit = int(limit_text)
+    except (TypeError, ValueError):
+        return _error(request, 400, "invalid_limit", "limit must be an integer")
+    if limit < 1 or limit > 1000:
+        return _error(request, 400, "invalid_limit", "limit must be between 1 and 1000")
+
+    bbox_values = request.query_params.getlist("bbox")
+    if len(bbox_values) > 1:
+        return _error(request, 400, "invalid_bbox", "bbox must be specified once")
+    if not bbox_values or not bbox_values[0].strip():
+        return limit, None
+    parts = [item.strip() for item in bbox_values[0].split(",")]
+    if len(parts) != 4:
+        return _error(
+            request,
+            400,
+            "invalid_bbox",
+            "bbox must contain four comma-separated coordinates",
+        )
+    try:
+        bbox = tuple(float(item) for item in parts)
+    except ValueError:
+        return _error(request, 400, "invalid_bbox", "bbox coordinates must be numbers")
+    if not all(isfinite(item) for item in bbox) or bbox[0] > bbox[2] or bbox[1] > bbox[3]:
+        return _error(request, 400, "invalid_bbox", "bbox must be a finite ordered extent")
+    return limit, bbox
+
+
 async def get_gis_mvt_tile(request: Request) -> Response:
     """Serve an active, release-versioned MVT tile through the control gateway.
 
-    Operators retain the operational path. Other authenticated principals must
-    hold an active, version-compatible DataProduct ConsumerBinding with the
-    ``read`` operation before the provider is called.
+    The authenticated HTTP principal, release policy, ConsumerBinding, and
+    static serving projection are sealed into one audited access decision
+    before the internal Martin request can occur.
     """
 
     principal = _gis_mvt_principal(request)
@@ -1452,12 +2621,45 @@ async def get_gis_mvt_tile(request: Request) -> Response:
     definition = projection.active_service_definition_version
     release = projection.active_release_binding
     tile_matrix_set = projection.active_tile_matrix_set_definition_version
-    if any(value is None for value in (endpoint, deployment, definition, release, tile_matrix_set)):
+    cache_policy = projection.active_cache_policy_version
+    service_policy = projection.active_service_policy_binding
+    serving_projection = projection.active_mvt_serving_projection_version
+    if any(
+        value is None
+        for value in (
+            endpoint,
+            deployment,
+            definition,
+            release,
+            tile_matrix_set,
+        )
+    ):
         return _error(
             request,
             409,
             "gis_service_not_tile_ready",
             "active GIS service projection is incomplete for MVT",
+        )
+    if cache_policy is None:
+        return _error(
+            request,
+            409,
+            "cache_policy_required",
+            "active MVT release does not have a cache policy",
+        )
+    if service_policy is None:
+        return _error(
+            request,
+            409,
+            "service_policy_required",
+            "active MVT release does not have a Gateway service policy",
+        )
+    if serving_projection is None:
+        return _error(
+            request,
+            409,
+            "serving_projection_required",
+            "active MVT release does not have a serving projection",
         )
     if release.release_key != release_key:
         return _error(
@@ -1467,33 +2669,19 @@ async def get_gis_mvt_tile(request: Request) -> Response:
             "requested release_key is not the active release",
         )
 
-    if principal.role not in _PLATFORM_ROLES:
+    binding = None
+    if principal.role in service_policy.consumer_binding_required_roles:
         try:
             binding = await asyncio.to_thread(
-                _gateway().get_active_consumer_binding_for_product_version,
+                _gateway().get_active_service_consumer_binding_for_release,
                 principal.tenant_id,
-                definition.source_product_urn,
-                definition.source_data_product_version_id,
+                service_urn,
+                definition.service_definition_version_id,
+                release.service_release_binding_id,
                 principal.actor_ref,
             )
         except PlatformGatewayError as exc:
             return _gateway_error(request, exc)
-        if binding is None:
-            return _error(
-                request,
-                403,
-                "consumer_binding_required",
-                "An active ConsumerBinding for this GIS product version is required",
-            )
-        operations = binding.scope.get("operations")
-        if not isinstance(operations, list) or "read" not in operations:
-            return _error(
-                request,
-                403,
-                "consumer_scope_denied",
-                "The active ConsumerBinding does not grant MVT read access",
-            )
-
     if (
         z < tile_matrix_set.min_zoom
         or z > tile_matrix_set.max_zoom
@@ -1540,43 +2728,492 @@ async def get_gis_mvt_tile(request: Request) -> Response:
 
     try:
         endpoint_contract = MVTGatewayEndpointContract.model_validate(endpoint.endpoint_contract)
+        if (
+            endpoint_contract.provider_query.get("serving_projection_version_id")
+            != str(serving_projection.mvt_serving_projection_version_id)
+        ):
+            raise ValueError("MVT endpoint serving projection does not match active release")
         context = MVTProviderReleaseContext.from_release(
             release,
             tile_matrix_set,
+            serving_projection,
             service_type=definition.service_type,
             provider_layer_ref=endpoint_contract.provider_layer_ref,
             provider_query=endpoint_contract.provider_query,
         )
-        tile = await MartinVectorTileProvider(
-            endpoint.endpoint_uri,
-            manifest=martin_provider_manifest(),
-        ).fetch_tile(context, z, x, y)
-    except ValidationError as exc:
+    except (ValidationError, ValueError) as exc:
         return _error(
             request,
             409,
             "invalid_mvt_endpoint_contract",
             "active endpoint contract is not admissible",
-            _validation_details(exc),
+            _validation_details(exc) if isinstance(exc, ValidationError) else None,
         )
+    except GatewayConfigurationError as exc:
+        return _error(request, 503, "provider_configuration_error", str(exc))
     except GISProviderContractError as exc:
         return _error(request, 502, "provider_contract_error", str(exc))
     except GISProviderUnavailable as exc:
         return _error(request, 503, "provider_unavailable", str(exc))
 
-    headers = {
-        "Cache-Control": "private, no-store",
-        "Vary": "Authorization, Accept-Encoding",
+    request_id = _request_id(request)
+    try:
+        subject_context = SubjectContext(
+            tenant_id=principal.tenant_id,
+            subject_id=principal.subject_id,
+            subject_type=principal.subject_type,
+            roles=(principal.role,),
+            purpose=GOVERNED_MVT_ACCESS_PURPOSE,
+            trace_id=request_id,
+        )
+    except ValidationError as exc:
+        return _error(
+            request,
+            400,
+            "invalid_mvt_request_context",
+            "MVT request identity context is invalid",
+            _validation_details(exc),
+        )
+
+    access_service = _mvt_access_service()
+    try:
+        admission = await asyncio.to_thread(
+            access_service.admit,
+            request_id=request_id,
+            subject_context=subject_context,
+            service_urn=service_urn,
+            definition=definition,
+            release=release,
+            service_policy=service_policy,
+            serving_projection=serving_projection,
+            service_consumer_binding=binding,
+            z=z,
+            x=x,
+            y=y,
+        )
+    except MVTAccessDeniedError as exc:
+        return _error(request, 403, exc.code, exc.message)
+    except MVTAccessUnavailableError:
+        return _error(
+            request,
+            503,
+            "mvt_access_audit_unavailable",
+            "MVT access audit is unavailable",
+        )
+
+    # The request decision above remains the authorization boundary. The
+    # shared key contains only stable release/policy/projection/identity
+    # versions; the per-request decision hash is deliberately audit-only.
+    cache_context = {
+        "schema": "gda.gis_mvt_shared_cache_key.v3",
+        "namespace": cache_policy.cache_namespace,
+        "tenant_id": principal.tenant_id,
+        "service_urn": service_urn,
+        "service_release_binding_id": str(release.service_release_binding_id),
+        "service_release_sha256": release.binding_sha256,
+        "cache_policy_version_id": str(cache_policy.cache_policy_version_id),
+        "cache_policy_sha256": cache_policy.policy_sha256,
+        "service_policy_binding_id": str(service_policy.service_policy_binding_id),
+        "service_policy_sha256": service_policy.policy_sha256,
+        "mvt_serving_projection_version_id": str(
+            serving_projection.mvt_serving_projection_version_id
+        ),
+        "mvt_serving_projection_sha256": serving_projection.projection_sha256,
+        "endpoint_state_version": projection.endpoint_state_version,
+        "endpoint_revision_id": str(endpoint.endpoint_revision_id),
+        "endpoint_sha256": endpoint.endpoint_sha256,
+        "principal": principal.actor_ref,
+        "service_consumer_binding_id": (
+            str(getattr(binding, "service_consumer_binding_id", "operator"))
+            if binding is not None
+            else "operator"
+        ),
+        "service_consumer_binding_sha256": (
+            getattr(binding, "binding_sha256", "operator")
+            if binding is not None
+            else "operator"
+        ),
+        "tile": {"z": z, "x": x, "y": y},
+    }
+    cache_object_key = mvt_response_cache_key(cache_context)
+    cache_namespace_token = mvt_response_cache_namespace(cache_context)
+    response_cache = _mvt_response_cache()
+    cached_entry = None
+    try:
+        cached_entry = await response_cache.get(cache_object_key)
+    except Exception:
+        # A cache is a performance projection. Authorization and its audit
+        # remain fail-closed; a cache outage simply reads Martin.
+        cached_entry = None
+
+    delivery_source = "redis_cache" if cached_entry is not None else "provider"
+    if cached_entry is not None:
+        tile = ProviderTileResponse(
+            content=cached_entry.content,
+            status_code=200,
+            media_type=cached_entry.media_type,
+            etag=None,
+        )
+    else:
+        try:
+            tile = await MartinVectorTileProvider(
+                _martin_provider_endpoint(),
+                manifest=martin_provider_manifest(),
+            ).fetch_tile(context, z, x, y)
+        except GatewayConfigurationError as exc:
+            try:
+                await asyncio.to_thread(access_service.record_failure, admission, error=exc)
+            except MVTAccessUnavailableError:
+                return _error(
+                    request,
+                    503,
+                    "mvt_access_audit_unavailable",
+                    "MVT access audit is unavailable",
+                )
+            return _error(request, 503, "provider_configuration_error", str(exc))
+        except GISProviderContractError as exc:
+            try:
+                await asyncio.to_thread(access_service.record_failure, admission, error=exc)
+            except MVTAccessUnavailableError:
+                return _error(
+                    request,
+                    503,
+                    "mvt_access_audit_unavailable",
+                    "MVT access audit is unavailable",
+                )
+            return _error(request, 502, "provider_contract_error", str(exc))
+        except GISProviderUnavailable as exc:
+            try:
+                await asyncio.to_thread(access_service.record_failure, admission, error=exc)
+            except MVTAccessUnavailableError:
+                return _error(
+                    request,
+                    503,
+                    "mvt_access_audit_unavailable",
+                    "MVT access audit is unavailable",
+                )
+            return _error(request, 503, "provider_unavailable", str(exc))
+
+    try:
+        await asyncio.to_thread(
+            access_service.record_success,
+            admission,
+            content=tile.content,
+            status_code=tile.status_code,
+            media_type=tile.media_type,
+            delivery_source=delivery_source,
+        )
+    except MVTAccessUnavailableError:
+        return _error(
+            request,
+            503,
+            "mvt_access_audit_unavailable",
+            "MVT access audit is unavailable",
+        )
+
+    base_headers = {
+        "Vary": "Authorization, Cookie, Accept-Encoding",
         "X-Content-Type-Options": "nosniff",
         "X-GDA-Service-Release": release.release_key,
         "X-GDA-Endpoint-State-Version": str(projection.endpoint_state_version),
+        "X-GDA-Shared-Cache": (
+            "hit"
+            if delivery_source == "redis_cache"
+            else "miss" if response_cache.enabled else "bypass"
+        ),
     }
-    if tile.etag is not None:
-        headers["ETag"] = tile.etag
+    if tile.status_code != 200:
+        headers = {**base_headers, "Cache-Control": "private, no-store"}
+        return Response(
+            tile.content,
+            status_code=tile.status_code,
+            media_type=tile.media_type,
+            headers=headers,
+        )
+
+    if delivery_source == "provider" and tile.content:
+        try:
+            await response_cache.put(
+                cache_object_key,
+                MVTResponseCacheEntry.from_response(tile.content, tile.media_type),
+                ttl_seconds=min(cache_policy.cache_max_age_seconds, 300),
+            )
+        except Exception:
+            pass
+    content_sha256 = hashlib.sha256(tile.content).hexdigest()
+    etag = '"' + hashlib.sha256(
+        f"{cache_object_key}:{content_sha256}".encode("ascii")
+    ).hexdigest() + '"'
+    headers = {
+        **base_headers,
+        "Cache-Control": (
+            f"private, max-age={cache_policy.cache_max_age_seconds}, must-revalidate"
+        ),
+        "ETag": etag,
+        "X-GDA-Cache-Generation": cache_namespace_token,
+        "X-GDA-Cache-Namespace": (
+            f"{cache_policy.cache_namespace}-{cache_namespace_token[:24]}"
+        ),
+    }
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers=headers)
     return Response(
         tile.content,
         status_code=tile.status_code,
         media_type=tile.media_type,
+        headers=headers,
+    )
+
+
+async def get_gis_ogc_api_features_items(request: Request) -> Response:
+    """Serve an audited, exact-release OGC API Features read through Gateway."""
+    principal = _gis_ogc_features_principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+
+    service_urn = request.query_params.get("service_urn")
+    if not service_urn:
+        return _error(
+            request,
+            400,
+            "service_urn_required",
+            "service_urn query parameter is required",
+        )
+    try:
+        parsed_service = parse_resource_urn(service_urn)
+    except ValueError:
+        return _error(request, 400, "invalid_service_urn", "service_urn is invalid")
+    if (
+        parsed_service["tenant_id"] != principal.tenant_id
+        or parsed_service["resource_kind"] != "gis_service"
+    ):
+        return _error(
+            request,
+            403,
+            "service_tenant_mismatch",
+            "service_urn does not belong to the authenticated tenant",
+        )
+
+    release_key = request.path_params.get("release_key", "")
+    if re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", release_key) is None:
+        return _error(request, 400, "invalid_release_key", "release_key is invalid")
+    collection_id = request.path_params.get("collection_id", "")
+    query = _ogc_features_query(request)
+    if isinstance(query, JSONResponse):
+        return query
+    limit, bbox = query
+
+    try:
+        projection = await asyncio.to_thread(
+            _gateway().get_gis_service_control_projection,
+            principal.tenant_id,
+            service_urn,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+    endpoint = projection.active_endpoint_revision
+    deployment = projection.active_deployment_revision
+    definition = projection.active_service_definition_version
+    release = projection.active_release_binding
+    layer = projection.active_layer_definition_version
+    service_policy = projection.active_service_policy_binding
+    if any(value is None for value in (endpoint, deployment, definition, release, layer)):
+        return _error(
+            request,
+            409,
+            "gis_service_not_feature_ready",
+            "active GIS service projection is incomplete for OGC API Features",
+        )
+    if service_policy is None:
+        return _error(
+            request,
+            409,
+            "service_policy_required",
+            "active OGC API Features release does not have a Gateway service policy",
+        )
+    if service_policy.action != GOVERNED_OGC_FEATURES_ACCESS_ACTION:
+        return _error(
+            request,
+            409,
+            "service_policy_action_mismatch",
+            "active service policy is not an OGC API Features read policy",
+        )
+    if release.release_key != release_key:
+        return _error(
+            request,
+            409,
+            "active_release_mismatch",
+            "requested release_key is not the active release",
+        )
+    if endpoint.endpoint_protocol is not EndpointProtocol.OGC_API_FEATURES:
+        return _error(
+            request,
+            409,
+            "endpoint_protocol_mismatch",
+            "active endpoint is not an OGC API Features endpoint",
+        )
+    if definition.service_type is not GISServiceType.FEATURE:
+        return _error(
+            request,
+            409,
+            "service_type_mismatch",
+            "active GIS service is not a feature service",
+        )
+    if deployment.state.value != "ready":
+        return _error(
+            request,
+            409,
+            "deployment_not_ready",
+            "active GIS deployment is not ready",
+        )
+    if deployment.provider_system != "pygeoapi":
+        return _error(
+            request,
+            409,
+            "provider_not_supported",
+            "the governed OGC API Features route currently supports pygeoapi only",
+        )
+
+    binding = None
+    if principal.role in service_policy.consumer_binding_required_roles:
+        try:
+            binding = await asyncio.to_thread(
+                _gateway().get_active_service_consumer_binding_for_release,
+                principal.tenant_id,
+                service_urn,
+                definition.service_definition_version_id,
+                release.service_release_binding_id,
+                principal.actor_ref,
+            )
+        except PlatformGatewayError as exc:
+            return _gateway_error(request, exc)
+
+    access_service = _ogc_features_access_service()
+    try:
+        contract = OGCAPIFeaturesGatewayEndpointContract.model_validate(
+            endpoint.endpoint_contract
+        )
+        if contract.collection_id != layer.layer_key or contract.collection_id != collection_id:
+            return _error(
+                request,
+                409,
+                "collection_mismatch",
+                "requested collection does not match the active release layer",
+            )
+        context = OGCAPIFeaturesReleaseContext.from_release(
+            release,
+            definition,
+            layer,
+            collection_id=contract.collection_id,
+        )
+        request_id = _request_id(request)
+        subject_context = SubjectContext(
+            tenant_id=principal.tenant_id,
+            subject_id=principal.subject_id,
+            subject_type=principal.subject_type,
+            roles=(principal.role,),
+            purpose=GOVERNED_OGC_FEATURES_ACCESS_PURPOSE,
+            trace_id=request_id,
+        )
+        admission = await asyncio.to_thread(
+            access_service.admit,
+            request_id=request_id,
+            subject_context=subject_context,
+            service_urn=service_urn,
+            definition=definition,
+            release=release,
+            service_policy=service_policy,
+            service_consumer_binding=binding,
+            collection_id=contract.collection_id,
+            limit=limit,
+            bbox=bbox,
+        )
+        provider_origin = _pygeoapi_provider_endpoint()
+        provider = OGCAPIFeaturesProvider(
+            provider_origin,
+            manifest=pygeoapi_provider_manifest(
+                _pygeoapi_provider_version(deployment)
+            ),
+        )
+        try:
+            items = await provider.fetch_items(context, limit=limit, bbox=bbox)
+        except (GatewayConfigurationError, GISProviderContractError, GISProviderUnavailable) as exc:
+            try:
+                await asyncio.to_thread(access_service.record_failure, admission, error=exc)
+            except OGCFeaturesAccessUnavailableError:
+                return _error(
+                    request,
+                    503,
+                    "ogc_features_access_audit_unavailable",
+                    "OGC API Features access audit is unavailable",
+                )
+            if isinstance(exc, GatewayConfigurationError):
+                return _error(request, 503, "provider_configuration_error", str(exc))
+            if isinstance(exc, GISProviderContractError):
+                return _error(request, 502, "provider_contract_error", str(exc))
+            return _error(request, 503, "provider_unavailable", str(exc))
+        try:
+            await asyncio.to_thread(
+                access_service.record_success,
+                admission,
+                content=items.content,
+                status_code=items.status_code,
+                media_type=items.media_type,
+                feature_count=items.feature_count,
+            )
+        except OGCFeaturesAccessUnavailableError:
+            return _error(
+                request,
+                503,
+                "ogc_features_access_audit_unavailable",
+                "OGC API Features access audit is unavailable",
+            )
+    except ValidationError as exc:
+        return _error(
+            request,
+            409,
+            "invalid_ogc_api_features_endpoint_contract",
+            "active OGC API Features endpoint contract is not admissible",
+            _validation_details(exc),
+        )
+    except (ValueError, GISProviderContractError) as exc:
+        return _error(
+            request,
+            502,
+            "provider_contract_error",
+            str(exc),
+        )
+    except GatewayConfigurationError as exc:
+        return _error(request, 503, "provider_configuration_error", str(exc))
+    except GISProviderUnavailable as exc:
+        return _error(request, 503, "provider_unavailable", str(exc))
+    except OGCFeaturesAccessDeniedError as exc:
+        return _error(request, 403, exc.code, exc.message)
+    except OGCFeaturesAccessUnavailableError:
+        return _error(
+            request,
+            503,
+            "ogc_features_access_audit_unavailable",
+            "OGC API Features access audit is unavailable",
+        )
+
+    headers = {
+        "Cache-Control": "private, no-store",
+        "Vary": "Authorization, Cookie, Accept",
+        "X-Content-Type-Options": "nosniff",
+        "X-GDA-Service-Release": release.release_key,
+        "X-GDA-Endpoint-State-Version": str(projection.endpoint_state_version),
+        "X-GDA-Collection-Id": context.collection_id,
+    }
+    if items.etag:
+        headers["ETag"] = items.etag
+    if request.headers.get("if-none-match") and items.etag == request.headers.get("if-none-match"):
+        return Response(status_code=304, headers=headers)
+    return Response(
+        items.content,
+        status_code=items.status_code,
+        media_type=items.media_type,
         headers=headers,
     )
 
@@ -1715,6 +3352,40 @@ async def list_approval_cases(request: Request) -> JSONResponse:
                 has_more=page.has_more,
             ),
         )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+
+
+async def schedule_approval_case_batch_escalation(request: Request) -> JSONResponse:
+    """Schedule a bounded set of independent ApprovalCase SLA escalations."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    contract_error = _capability_contract_guard(
+        request,
+        APPROVAL_CASE_BATCH_ESCALATION,
+    )
+    if contract_error is not None:
+        return contract_error
+    submission = await _parse(request, ApprovalCaseBatchEscalationRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    if mismatch := _tenant_matches(request, principal, submission.tenant_id):
+        return mismatch
+    if submission.actor_subject != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "actor_mismatch",
+            "Request actor_subject must match the authenticated actor",
+        )
+    try:
+        result = await asyncio.to_thread(
+            execute_approval_case_batch_escalation,
+            submission,
+        )
+        return _success(request, result)
     except ApprovalCaseAuthorityError as exc:
         return _approval_case_error(request, exc)
 
@@ -2974,6 +4645,395 @@ async def preview_data_product_blueprint(request: Request) -> JSONResponse:
         return _gateway_error(request, exc)
 
 
+async def test_data_product_blueprint(request: Request) -> JSONResponse:
+    """Run deterministic Blueprint contract tests without provider side effects."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    blueprint = await _parse(request, DataProductBlueprint)
+    if isinstance(blueprint, JSONResponse):
+        return blueprint
+    if mismatch := _tenant_matches(request, principal, blueprint.tenant_id):
+        return mismatch
+    if blueprint.created_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "actor_mismatch",
+            "created_by must match authenticated actor",
+        )
+    try:
+        report = build_data_product_blueprint_test_report(blueprint)
+        return _success(request, report)
+    except ValueError as exc:
+        return _error(request, 422, "blueprint_test_failed", str(exc))
+
+
+async def admit_data_product_blueprint_test_run(request: Request) -> JSONResponse:
+    """Admit a Blueprint test into the shared PlatformRun authority."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    submission = await _parse(request, DataProductBlueprintTestRunRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    blueprint = submission.blueprint
+    if mismatch := _tenant_matches(request, principal, blueprint.tenant_id):
+        return mismatch
+    if blueprint.created_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "actor_mismatch",
+            "created_by must match authenticated actor",
+        )
+    try:
+        subject_context = SubjectContext(
+            tenant_id=principal.tenant_id,
+            subject_id=principal.subject_id,
+            subject_type=principal.subject_type,
+            roles=(principal.role,),
+            purpose="data_product_blueprint_test_admission",
+            trace_id=request.headers.get("x-request-id"),
+        )
+        result = await asyncio.to_thread(
+            _gateway().admit_blueprint_test_run,
+            submission,
+            subject_context=subject_context,
+        )
+        return _success(
+            request,
+            result.value,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "blueprint_test_admission_failed",
+            str(exc),
+            details,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def execute_data_product_blueprint_test_run(request: Request) -> JSONResponse:
+    """Execute an admitted Blueprint test with the named deterministic local provider."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type != SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "workload_identity_required",
+            "Deterministic Blueprint test execution requires workload identity",
+        )
+    submission = await _parse(request, DataProductBlueprintTestExecutionRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    try:
+        path_run_id = UUID(request.path_params["run_id"])
+    except (KeyError, ValueError):
+        return _error(request, 400, "invalid_run_id", "run_id must be a UUID")
+    if submission.run_id != path_run_id:
+        return _error(
+            request,
+            422,
+            "run_id_mismatch",
+            "Request run_id must match the path run_id",
+        )
+    try:
+        result = await asyncio.to_thread(
+            _gateway().execute_blueprint_test_run,
+            principal.tenant_id,
+            submission,
+            actor_subject=principal.actor_ref,
+        )
+        return _success(
+            request,
+            result.value,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def execute_data_product_blueprint_duckdb_test_run(
+    request: Request,
+) -> JSONResponse:
+    """Execute an admitted Blueprint through the bounded real DuckDB provider."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type != SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "workload_identity_required",
+            "DuckDB Blueprint execution requires workload identity",
+        )
+    submission = await _parse(request, DuckDBBlueprintExecutionRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    try:
+        path_run_id = UUID(request.path_params["run_id"])
+    except (KeyError, ValueError):
+        return _error(request, 400, "invalid_run_id", "run_id must be a UUID")
+    if submission.run_id != path_run_id:
+        return _error(
+            request,
+            422,
+            "run_id_mismatch",
+            "Request run_id must match the path run_id",
+        )
+    try:
+        result = await asyncio.to_thread(
+            _gateway().execute_blueprint_duckdb_test_run,
+            principal.tenant_id,
+            submission,
+            actor_subject=principal.actor_ref,
+        )
+        return _success(
+            request,
+            result.value,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def fail_data_product_blueprint_test_run(request: Request) -> JSONResponse:
+    """Record a workload-owned deterministic Blueprint test failure."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type != SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "workload_identity_required",
+            "Deterministic Blueprint test failure requires workload identity",
+        )
+    submission = await _parse(request, DataProductBlueprintTestExecutionFailureRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    try:
+        path_run_id = UUID(request.path_params["run_id"])
+    except (KeyError, ValueError):
+        return _error(request, 400, "invalid_run_id", "run_id must be a UUID")
+    if submission.run_id != path_run_id:
+        return _error(
+            request,
+            422,
+            "run_id_mismatch",
+            "Request run_id must match the path run_id",
+        )
+    try:
+        result = await asyncio.to_thread(
+            _gateway().fail_blueprint_test_run,
+            principal.tenant_id,
+            submission,
+            actor_subject=principal.actor_ref,
+        )
+        return _success(
+            request,
+            result.value,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def cancel_data_product_blueprint_test_run(request: Request) -> JSONResponse:
+    """Converge a previously governed Blueprint test cancellation."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type != SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "workload_identity_required",
+            "Deterministic Blueprint test cancellation requires workload identity",
+        )
+    submission = await _parse(request, DataProductBlueprintTestCancellationRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    try:
+        path_run_id = UUID(request.path_params["run_id"])
+    except (KeyError, ValueError):
+        return _error(request, 400, "invalid_run_id", "run_id must be a UUID")
+    if submission.run_id != path_run_id:
+        return _error(
+            request,
+            422,
+            "run_id_mismatch",
+            "Request run_id must match the path run_id",
+        )
+    try:
+        result = await asyncio.to_thread(
+            _gateway().complete_blueprint_test_run_cancellation,
+            principal.tenant_id,
+            submission,
+            actor_subject=principal.actor_ref,
+        )
+        return _success(
+            request,
+            result.value,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def reconcile_data_product_blueprint_test_provider(
+    request: Request,
+) -> JSONResponse:
+    """Apply an authenticated execution-provider receipt to a reconciling Run."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type != SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "workload_identity_required",
+            "Blueprint provider reconciliation requires workload identity",
+        )
+    submission = await _parse(request, DataProductBlueprintProviderReconcileRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    if mismatch := _tenant_matches(request, principal, submission.tenant_id):
+        return mismatch
+    try:
+        path_run_id = UUID(request.path_params["run_id"])
+    except (KeyError, ValueError):
+        return _error(request, 400, "invalid_run_id", "run_id must be a UUID")
+    if submission.run_id != path_run_id:
+        return _error(
+            request,
+            422,
+            "run_id_mismatch",
+            "Request run_id must match the path run_id",
+        )
+    try:
+        result = await asyncio.to_thread(
+            _gateway().reconcile_blueprint_test_provider,
+            submission,
+            actor_subject=principal.actor_ref,
+        )
+        return _success(
+            request,
+            result.value,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def record_data_product_blueprint_provider_cancellation_timeout(
+    request: Request,
+) -> JSONResponse:
+    """Record a high-severity incident when provider cancellation retries exhaust."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type != SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "workload_identity_required",
+            "Blueprint provider cancellation timeout requires workload identity",
+        )
+    submission = await _parse(
+        request, DataProductBlueprintProviderCancellationTimeoutRequest
+    )
+    if isinstance(submission, JSONResponse):
+        return submission
+    if mismatch := _tenant_matches(request, principal, submission.tenant_id):
+        return mismatch
+    try:
+        path_run_id = UUID(request.path_params["run_id"])
+    except (KeyError, ValueError):
+        return _error(request, 400, "invalid_run_id", "run_id must be a UUID")
+    if submission.run_id != path_run_id:
+        return _error(
+            request,
+            422,
+            "run_id_mismatch",
+            "Request run_id must match the path run_id",
+        )
+    try:
+        result = await asyncio.to_thread(
+            _gateway().record_blueprint_provider_cancellation_timeout,
+            submission,
+            actor_subject=principal.actor_ref,
+        )
+        return _success(
+            request,
+            result.value,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def retry_data_product_blueprint_test_provider(
+    request: Request,
+) -> JSONResponse:
+    """Schedule a bounded provider retry with an immutable backoff decision."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type != SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "workload_identity_required",
+            "Blueprint provider retry requires workload identity",
+        )
+    submission = await _parse(request, DataProductBlueprintProviderRetryRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    if mismatch := _tenant_matches(request, principal, submission.tenant_id):
+        return mismatch
+    try:
+        path_run_id = UUID(request.path_params["run_id"])
+    except (KeyError, ValueError):
+        return _error(request, 400, "invalid_run_id", "run_id must be a UUID")
+    if submission.run_id != path_run_id:
+        return _error(
+            request,
+            422,
+            "run_id_mismatch",
+            "Request run_id must match the path run_id",
+        )
+    try:
+        result = await asyncio.to_thread(
+            _gateway().retry_blueprint_test_provider,
+            submission,
+            actor_subject=principal.actor_ref,
+        )
+        return _success(
+            request,
+            result.value,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
 async def create_data_product_blueprint_review(request: Request) -> JSONResponse:
     """Compile a Blueprint and admit its exact change set to ApprovalCase."""
     principal = _principal(request)
@@ -3042,6 +5102,90 @@ async def create_data_product_blueprint_review(request: Request) -> JSONResponse
         return _gateway_error(request, exc)
     except ApprovalCaseAuthorityError as exc:
         return _approval_case_error(request, exc)
+
+
+async def publish_data_product_blueprint_release(request: Request) -> JSONResponse:
+    """Publish an approved Blueprint release through DataProductRegistry."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type is not SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "workload_identity_required",
+            "Blueprint release publication requires workload identity",
+        )
+    submission = await _parse(request, DataProductBlueprintReleasePublishRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    if mismatch := _tenant_matches(request, principal, submission.product.tenant_id):
+        return mismatch
+    if submission.version.published_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "actor_mismatch",
+            "version.published_by must match authenticated workload",
+        )
+    if mismatch := _tenant_matches(
+        request,
+        principal,
+        submission.blueprint_release_binding.tenant_id,
+    ):
+        return mismatch
+    try:
+        publication = await asyncio.to_thread(
+            DataProductRegistry().publish,
+            submission.product,
+            submission.version,
+            idempotency_key=submission.idempotency_key,
+            reason=submission.reason,
+            blueprint_release_binding=submission.blueprint_release_binding,
+        )
+        result = DataProductBlueprintReleasePublishResponse(
+            product=submission.product,
+            version=submission.version,
+            blueprint_release_binding=submission.blueprint_release_binding,
+            publication=publication,
+        )
+        replay = bool(publication.get("idempotent_replay"))
+        return _success(
+            request,
+            result,
+            status_code=200 if replay else 201,
+            created=not replay,
+        )
+    except DataProductConflictError as exc:
+        return _error(
+            request,
+            409,
+            "data_product_blueprint_release_conflict",
+            str(exc),
+        )
+    except DataProductNotFoundError as exc:
+        return _error(
+            request,
+            404,
+            "data_product_blueprint_release_not_found",
+            str(exc),
+        )
+    except DataProductRegistryError as exc:
+        return _error(
+            request,
+            503,
+            "data_product_registry_unavailable",
+            str(exc),
+        )
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "data_product_blueprint_release_invalid",
+            "Blueprint DataProduct release does not satisfy the platform contract",
+            details,
+        )
 
 
 async def create_run(request: Request) -> JSONResponse:
@@ -4413,6 +6557,123 @@ async def get_data_incident(request: Request) -> JSONResponse:
         return _gateway_error(request, exc)
 
 
+def _incident_notification_ids(
+    request: Request,
+    *,
+    require_notification: bool,
+) -> tuple[UUID, UUID | None] | JSONResponse:
+    try:
+        incident_id = UUID(request.path_params["incident_id"])
+        notification_id = (
+            UUID(request.path_params["notification_id"])
+            if require_notification
+            else None
+        )
+    except (KeyError, ValueError):
+        field = "incident_id or notification_id" if require_notification else "incident_id"
+        return _error(
+            request,
+            400,
+            "invalid_incident_notification_id",
+            f"{field} must be a UUID",
+        )
+    return incident_id, notification_id
+
+
+async def list_incident_notifications(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    identifiers = _incident_notification_ids(request, require_notification=False)
+    if isinstance(identifiers, JSONResponse):
+        return identifiers
+    incident_id, _ = identifiers
+    try:
+        notifications = await asyncio.to_thread(
+            _gateway().list_incident_notifications,
+            principal.tenant_id,
+            incident_id,
+        )
+        return _success(
+            request,
+            IncidentNotificationListResponse(
+                items=notifications,
+                count=len(notifications),
+            ),
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def list_incident_notification_recoveries(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    identifiers = _incident_notification_ids(request, require_notification=True)
+    if isinstance(identifiers, JSONResponse):
+        return identifiers
+    incident_id, notification_id = identifiers
+    assert notification_id is not None
+    try:
+        recoveries = await asyncio.to_thread(
+            _gateway().incident_notification_recoveries,
+            principal.tenant_id,
+            incident_id,
+            notification_id,
+        )
+        return _success(
+            request,
+            IncidentNotificationRecoveryListResponse(
+                items=recoveries,
+                recovery_count=len(recoveries),
+            ),
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def recover_incident_notification(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type is not SubjectType.HUMAN:
+        return _error(
+            request,
+            403,
+            "human_identity_required",
+            "DataIncident notification recovery requires a human identity",
+        )
+    if principal.role != "admin":
+        return _error(
+            request,
+            403,
+            "incident_notification_recovery_admin_required",
+            "DataIncident notification recovery requires an administrator",
+        )
+    recovery = await _parse(request, IncidentNotificationRecoveryRequest)
+    if isinstance(recovery, JSONResponse):
+        return recovery
+    identifiers = _incident_notification_ids(request, require_notification=True)
+    if isinstance(identifiers, JSONResponse):
+        return identifiers
+    incident_id, notification_id = identifiers
+    assert notification_id is not None
+    try:
+        notification = await asyncio.to_thread(
+            _gateway().recover_incident_notification,
+            principal.tenant_id,
+            incident_id,
+            notification_id,
+            expected_attempt_count=recovery.expected_attempt_count,
+            expected_receipt_sha256=recovery.expected_receipt_sha256,
+            actor_subject=principal.actor_ref,
+            reason=recovery.reason,
+        )
+        return _success(request, notification)
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
 async def transition_data_incident(request: Request) -> JSONResponse:
     principal = _principal(request)
     if isinstance(principal, JSONResponse):
@@ -5230,6 +7491,429 @@ async def create_resource_version_architecture_review(request: Request) -> JSONR
         )
 
 
+async def create_resource_version_postgis_architecture_assessment(
+    request: Request,
+) -> JSONResponse:
+    """Admit a compatibility- and lineage-bound schema drift review."""
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    submission = await _parse(request, ArchitectureChangeAssessmentRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    try:
+        resource_version_id = UUID(request.path_params["resource_version_id"])
+    except (KeyError, ValueError):
+        return _error(
+            request,
+            400,
+            "invalid_resource_version_id",
+            "resource_version_id must be a UUID",
+        )
+    requested_at = _utc_now()
+    try:
+        result = await asyncio.to_thread(
+            _architecture_change_assessment_service().request_review,
+            tenant_id=principal.tenant_id,
+            resource_version_id=resource_version_id,
+            baseline_snapshot=submission.baseline_schema_snapshot,
+            candidate_snapshot=submission.candidate_schema_snapshot,
+            baseline_schema_artifact_id=submission.baseline_schema_artifact_id,
+            candidate_schema_artifact_id=submission.candidate_schema_artifact_id,
+            requester_subject=principal.actor_ref,
+            request_reason=submission.request_reason,
+            owner_ref=os.environ.get(
+                "GDA_APPROVAL_CASE_OWNER_REF",
+                "team:data-platform",
+            ),
+            requested_at=requested_at,
+            expires_at=requested_at + timedelta(hours=submission.expires_in_hours),
+            evaluated_at=requested_at,
+            max_lineage_depth=submission.max_lineage_depth,
+            max_lineage_edges=submission.max_lineage_edges,
+        )
+        return _success(
+            request,
+            ArchitectureChangeAssessmentResponse(
+                base_review=result.base_review,
+                compatibility=result.compatibility,
+                impact=result.impact,
+                review=result.review,
+                approval_case=result.approval_case,
+            ),
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except ArchitectureChangeAssessmentError as exc:
+        return _error(
+            request,
+            422,
+            "architecture_change_assessment_failed",
+            str(exc),
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "architecture_change_assessment_invalid",
+            "Architecture change assessment does not satisfy the platform contract",
+            details,
+        )
+
+
+def _successor_adoption_actor_error(
+    request: Request,
+    principal: GatewayPrincipal,
+    successor: ResourceVersion,
+    architecture: DataArchitectureRegistration,
+) -> JSONResponse | None:
+    """Ensure the authenticated workload owns the final successor authority."""
+
+    if principal.subject_type is not SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "workload_identity_required",
+            "Architecture successor adoption requires a workload identity",
+        )
+    if successor.created_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "actor_mismatch",
+            "successor created_by must match authenticated actor",
+        )
+    if architecture.binding.bound_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "actor_mismatch",
+            "successor architecture bound_by must match authenticated actor",
+        )
+    return None
+
+
+async def create_resource_version_architecture_successor_adoption_approval(
+    request: Request,
+) -> JSONResponse:
+    """Build a successor plan and create its second, adoption-specific ApprovalCase."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    submission = await _parse(request, ArchitectureSuccessorAdoptionApprovalRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    try:
+        resource_version_id = UUID(request.path_params["resource_version_id"])
+    except (KeyError, ValueError):
+        return _error(
+            request,
+            400,
+            "invalid_resource_version_id",
+            "resource_version_id must be a UUID",
+        )
+    successor = submission.successor_resource_version
+    architecture = submission.successor_architecture
+    if mismatch := _tenant_matches(request, principal, successor.tenant_id):
+        return mismatch
+    if successor.predecessor_version_id != resource_version_id:
+        return _error(
+            request,
+            422,
+            "successor_predecessor_mismatch",
+            "successor predecessor_version_id must match resource_version_id",
+        )
+    if actor_error := _successor_adoption_actor_error(
+        request,
+        principal,
+        successor,
+        architecture,
+    ):
+        return actor_error
+    requested_at = _utc_now()
+    try:
+        result = await asyncio.to_thread(
+            _architecture_successor_adoption_service().request_adoption,
+            tenant_id=principal.tenant_id,
+            assessed_approval_case_ref=submission.assessed_approval_case_ref,
+            successor_resource_version=successor,
+            successor_architecture=architecture,
+            requester_subject=principal.actor_ref,
+            request_reason=submission.request_reason,
+            owner_ref=os.environ.get(
+                "GDA_APPROVAL_CASE_OWNER_REF",
+                "team:data-platform",
+            ),
+            requested_at=requested_at,
+            expires_at=requested_at + timedelta(hours=submission.expires_in_hours),
+        )
+        return _success(
+            request,
+            ArchitectureSuccessorAdoptionApprovalResponse(
+                plan=result.plan,
+                approval_case=result.approval_case,
+            ),
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except ArchitectureSuccessorAdoptionError as exc:
+        return _error(
+            request,
+            422,
+            "architecture_successor_adoption_invalid",
+            str(exc),
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "architecture_successor_adoption_invalid",
+            "Architecture successor adoption does not satisfy the platform contract",
+            details,
+        )
+
+
+async def adopt_resource_version_architecture_successor(request: Request) -> JSONResponse:
+    """Atomically adopt an approved, immutable successor plan."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    submission = await _parse(request, ArchitectureSuccessorAdoptionExecuteRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    try:
+        resource_version_id = UUID(request.path_params["resource_version_id"])
+    except (KeyError, ValueError):
+        return _error(
+            request,
+            400,
+            "invalid_resource_version_id",
+            "resource_version_id must be a UUID",
+        )
+    plan = submission.plan
+    if mismatch := _tenant_matches(request, principal, plan.tenant_id):
+        return mismatch
+    if plan.predecessor_resource_version_id != resource_version_id:
+        return _error(
+            request,
+            422,
+            "successor_predecessor_mismatch",
+            "successor plan predecessor must match resource_version_id",
+        )
+    if actor_error := _successor_adoption_actor_error(
+        request,
+        principal,
+        plan.successor_resource_version,
+        plan.successor_architecture,
+    ):
+        return actor_error
+    try:
+        result = await asyncio.to_thread(
+            _architecture_successor_adoption_service().adopt,
+            plan,
+            adoption_approval_case_ref=submission.adoption_approval_case_ref,
+            evaluated_at=_utc_now(),
+        )
+        return _success(
+            request,
+            result.value,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "architecture_successor_adoption_invalid",
+            "Architecture successor adoption does not satisfy the platform contract",
+            details,
+        )
+
+
+def _successor_data_product_release_actor_error(
+    request: Request,
+    principal: GatewayPrincipal,
+    plan: ArchitectureSuccessorDataProductReleasePlan,
+) -> JSONResponse | None:
+    """Keep release authority with the workload named by the product version."""
+
+    if principal.subject_type is not SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "workload_identity_required",
+            "Architecture successor product release requires a workload identity",
+        )
+    if plan.successor_data_product_version.published_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "actor_mismatch",
+            "successor product published_by must match authenticated actor",
+        )
+    return None
+
+
+async def create_architecture_successor_data_product_release_approval(
+    request: Request,
+) -> JSONResponse:
+    """Create the independent ApprovalCase required before product publication."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    submission = await _parse(
+        request,
+        ArchitectureSuccessorDataProductReleaseApprovalRequest,
+    )
+    if isinstance(submission, JSONResponse):
+        return submission
+    plan = submission.plan
+    if mismatch := _tenant_matches(request, principal, plan.tenant_id):
+        return mismatch
+    if actor_error := _successor_data_product_release_actor_error(
+        request,
+        principal,
+        plan,
+    ):
+        return actor_error
+    requested_at = _utc_now()
+    try:
+        result = await asyncio.to_thread(
+            _architecture_successor_data_product_release_service().request_release,
+            plan,
+            requester_subject=principal.actor_ref,
+            request_reason=submission.request_reason,
+            owner_ref=os.environ.get(
+                "GDA_APPROVAL_CASE_OWNER_REF",
+                "team:data-platform",
+            ),
+            requested_at=requested_at,
+            expires_at=requested_at + timedelta(hours=submission.expires_in_hours),
+        )
+        return _success(
+            request,
+            ArchitectureSuccessorDataProductReleaseApprovalResponse(
+                plan=result.plan,
+                approval_case=result.approval_case,
+            ),
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except ArchitectureSuccessorDataProductReleaseError as exc:
+        return _error(
+            request,
+            422,
+            "architecture_successor_data_product_release_invalid",
+            str(exc),
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "architecture_successor_data_product_release_invalid",
+            "Architecture successor product release does not satisfy the platform contract",
+            details,
+        )
+
+
+async def publish_architecture_successor_data_product_release(
+    request: Request,
+) -> JSONResponse:
+    """Atomically publish an approved successor DataProduct release plan."""
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    submission = await _parse(
+        request,
+        ArchitectureSuccessorDataProductReleasePublishRequest,
+    )
+    if isinstance(submission, JSONResponse):
+        return submission
+    plan = submission.plan
+    if mismatch := _tenant_matches(request, principal, plan.tenant_id):
+        return mismatch
+    if actor_error := _successor_data_product_release_actor_error(
+        request,
+        principal,
+        plan,
+    ):
+        return actor_error
+    try:
+        publication = await asyncio.to_thread(
+            _architecture_successor_data_product_release_service().publish,
+            plan,
+            release_approval_case_ref=submission.release_approval_case_ref,
+            idempotency_key=submission.idempotency_key,
+            reason=submission.reason,
+        )
+        return _success(
+            request,
+            ArchitectureSuccessorDataProductReleasePublishResponse(
+                plan=plan,
+                publication=publication,
+            ),
+            status_code=201 if not publication.get("idempotent_replay") else 200,
+            created=not publication.get("idempotent_replay"),
+        )
+    except DataProductConflictError as exc:
+        return _error(
+            request,
+            409,
+            "architecture_successor_data_product_release_conflict",
+            str(exc),
+        )
+    except DataProductNotFoundError as exc:
+        return _error(
+            request,
+            404,
+            "architecture_successor_data_product_release_not_found",
+            str(exc),
+        )
+    except DataProductRegistryError as exc:
+        return _error(
+            request,
+            503,
+            "data_product_registry_unavailable",
+            str(exc),
+        )
+    except ArchitectureSuccessorDataProductReleaseError as exc:
+        return _error(
+            request,
+            422,
+            "architecture_successor_data_product_release_invalid",
+            str(exc),
+        )
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "architecture_successor_data_product_release_invalid",
+            "Architecture successor product release does not satisfy the platform contract",
+            details,
+        )
+
+
 async def get_resource_version_lineage(request: Request) -> JSONResponse:
     principal = _principal(request)
     if isinstance(principal, JSONResponse):
@@ -5379,6 +8063,12 @@ def get_platform_gateway_routes() -> list[APIRoute]:
             list_approval_cases,
             method="GET",
             operation_id="platform_list_approval_cases",
+        ),
+        _platform_route(
+            f"{base}/approval-cases/escalation-batches",
+            schedule_approval_case_batch_escalation,
+            method="POST",
+            operation_id="platform_schedule_approval_case_batch_escalation",
         ),
         _platform_route(
             f"{base}/approval-cases/{{case_id}}",
@@ -5555,6 +8245,60 @@ def get_platform_gateway_routes() -> list[APIRoute]:
             operation_id="platform_preview_data_product_blueprint",
         ),
         _platform_route(
+            f"{base}/data-product-blueprints/tests",
+            test_data_product_blueprint,
+            method="POST",
+            operation_id="platform_test_data_product_blueprint",
+        ),
+        _platform_route(
+            f"{base}/data-product-blueprints/test-runs",
+            admit_data_product_blueprint_test_run,
+            method="POST",
+            operation_id="platform_admit_data_product_blueprint_test_run",
+        ),
+        _platform_route(
+            f"{base}/data-product-blueprints/test-runs/{{run_id}}/execute",
+            execute_data_product_blueprint_test_run,
+            method="POST",
+            operation_id="platform_execute_data_product_blueprint_test_run",
+        ),
+        _platform_route(
+            f"{base}/data-product-blueprints/test-runs/{{run_id}}/providers/duckdb/execute",
+            execute_data_product_blueprint_duckdb_test_run,
+            method="POST",
+            operation_id="platform_execute_data_product_blueprint_duckdb_test_run",
+        ),
+        _platform_route(
+            f"{base}/data-product-blueprints/test-runs/{{run_id}}/fail",
+            fail_data_product_blueprint_test_run,
+            method="POST",
+            operation_id="platform_fail_data_product_blueprint_test_run",
+        ),
+        _platform_route(
+            f"{base}/data-product-blueprints/test-runs/{{run_id}}/cancel",
+            cancel_data_product_blueprint_test_run,
+            method="POST",
+            operation_id="platform_cancel_data_product_blueprint_test_run",
+        ),
+        _platform_route(
+            f"{base}/data-product-blueprints/test-runs/{{run_id}}/reconcile",
+            reconcile_data_product_blueprint_test_provider,
+            method="POST",
+            operation_id="platform_reconcile_data_product_blueprint_test_provider",
+        ),
+        _platform_route(
+            f"{base}/data-product-blueprints/test-runs/{{run_id}}/cancel-timeout",
+            record_data_product_blueprint_provider_cancellation_timeout,
+            method="POST",
+            operation_id="platform_record_data_product_blueprint_provider_cancellation_timeout",
+        ),
+        _platform_route(
+            f"{base}/data-product-blueprints/test-runs/{{run_id}}/retry",
+            retry_data_product_blueprint_test_provider,
+            method="POST",
+            operation_id="platform_retry_data_product_blueprint_test_provider",
+        ),
+        _platform_route(
             f"{base}/data-product-blueprints/reviews",
             create_data_product_blueprint_review,
             method="POST",
@@ -5710,6 +8454,24 @@ def get_platform_gateway_routes() -> list[APIRoute]:
             operation_id="platform_get_data_incident",
         ),
         _platform_route(
+            f"{base}/incidents/{{incident_id}}/notifications",
+            list_incident_notifications,
+            method="GET",
+            operation_id="platform_list_incident_notifications",
+        ),
+        _platform_route(
+            f"{base}/incidents/{{incident_id}}/notifications/{{notification_id}}/recoveries",
+            list_incident_notification_recoveries,
+            method="GET",
+            operation_id="platform_list_incident_notification_recoveries",
+        ),
+        _platform_route(
+            f"{base}/incidents/{{incident_id}}/notifications/{{notification_id}}/recoveries",
+            recover_incident_notification,
+            method="POST",
+            operation_id="platform_recover_incident_notification",
+        ),
+        _platform_route(
             f"{base}/incidents/{{incident_id}}/transitions",
             transition_data_incident,
             method="POST",
@@ -5818,6 +8580,42 @@ def get_platform_gateway_routes() -> list[APIRoute]:
             operation_id="platform_create_resource_version_architecture_review",
         ),
         _platform_route(
+            f"{base}/resource-versions/{{resource_version_id}}/architecture/reconciliation/postgis-assessments/approval-cases",
+            create_resource_version_postgis_architecture_assessment,
+            method="POST",
+            operation_id="platform_create_resource_version_postgis_architecture_assessment",
+        ),
+        _platform_route(
+            f"{base}/resource-versions/{{resource_version_id}}/architecture/successor-adoptions/approval-cases",
+            create_resource_version_architecture_successor_adoption_approval,
+            method="POST",
+            operation_id="platform_create_resource_version_architecture_successor_adoption_approval",
+        ),
+        _platform_route(
+            f"{base}/resource-versions/{{resource_version_id}}/architecture/successor-adoptions",
+            adopt_resource_version_architecture_successor,
+            method="POST",
+            operation_id="platform_adopt_resource_version_architecture_successor",
+        ),
+        _platform_route(
+            f"{base}/data-products/architecture-successor-releases/approval-cases",
+            create_architecture_successor_data_product_release_approval,
+            method="POST",
+            operation_id="platform_create_architecture_successor_data_product_release_approval",
+        ),
+        _platform_route(
+            f"{base}/data-products/architecture-successor-releases",
+            publish_architecture_successor_data_product_release,
+            method="POST",
+            operation_id="platform_publish_architecture_successor_data_product_release",
+        ),
+        _platform_route(
+            f"{base}/data-products/blueprint-releases",
+            publish_data_product_blueprint_release,
+            method="POST",
+            operation_id="platform_publish_data_product_blueprint_release",
+        ),
+        _platform_route(
             f"{base}/resource-versions/{{resource_version_id}}/lineage",
             get_resource_version_lineage,
             method="GET",
@@ -5830,9 +8628,81 @@ def get_platform_gateway_routes() -> list[APIRoute]:
             operation_id="platform_get_resource_version_impact",
         ),
         _platform_route(
+            f"{base}/gis/services/{{service_id}}/control-projection",
+            get_gis_service_control_projection,
+            method="GET",
+            operation_id="platform_get_gis_service_control_projection",
+        ),
+        _platform_route(
+            f"{base}/gis/services/{{service_id}}/slo",
+            get_gis_service_slo,
+            method="GET",
+            operation_id="platform_get_gis_service_slo",
+        ),
+        _platform_route(
+            f"{base}/gis/services/{{service_id}}/slo-binding",
+            bind_gis_service_slo,
+            method="POST",
+            operation_id="platform_bind_gis_service_slo",
+        ),
+        _platform_route(
+            f"{base}/gis/services/{{service_id}}/deployments/{{deployment_revision_id}}",
+            get_gis_service_deployment,
+            method="GET",
+            operation_id="platform_get_gis_service_deployment",
+        ),
+        _platform_route(
+            f"{base}/gis/services/{{service_id}}/deployments/{{deployment_revision_id}}/events",
+            list_gis_service_deployment_events,
+            method="GET",
+            operation_id="platform_list_gis_service_deployment_events",
+        ),
+        _platform_route(
+            f"{base}/gis/services/{{service_id}}/deployments/{{deployment_revision_id}}/observations",
+            record_gis_service_deployment_observation,
+            method="POST",
+            operation_id="platform_record_gis_service_deployment_observation",
+        ),
+        _platform_route(
+            f"{base}/gis/services/{{service_id}}/deployments/{{deployment_revision_id}}/terminal-settlements",
+            settle_gis_service_deployment_terminal,
+            method="POST",
+            operation_id="platform_settle_gis_service_deployment_terminal",
+        ),
+        _platform_route(
+            f"{base}/gis/services/{{service_id}}/deployments",
+            register_gis_service_deployment,
+            method="POST",
+            operation_id="platform_register_gis_service_deployment",
+        ),
+        _platform_route(
+            f"{base}/gis/services/{{service_id}}/deployments/{{deployment_revision_id}}/transitions",
+            transition_gis_service_deployment,
+            method="POST",
+            operation_id="platform_transition_gis_service_deployment",
+        ),
+        _platform_route(
+            f"{base}/gis/services/{{service_id}}/deployments/{{deployment_revision_id}}/endpoints",
+            register_gis_service_endpoint,
+            method="POST",
+            operation_id="platform_register_gis_service_endpoint",
+        ),
+        _platform_route(
+            f"{base}/gis/services/{{service_id}}/activation",
+            activate_gis_service_endpoint,
+            method="POST",
+            operation_id="platform_activate_gis_service_endpoint",
+        ),
+        _platform_route(
             f"{base}/gis/tiles/{{release_key}}/{{z:int}}/{{x:int}}/{{y:int}}.pbf",
             get_gis_mvt_tile,
             method="GET",
             operation_id="platform_get_gis_mvt_tile",
+        ),
+        _platform_route(
+            f"{base}/gis/features/{{release_key}}/collections/{{collection_id}}/items",
+            get_gis_ogc_api_features_items,
+            method="GET",
+            operation_id="platform_get_gis_ogc_api_features_items",
         ),
     ]

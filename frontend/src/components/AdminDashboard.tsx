@@ -705,7 +705,7 @@ function ModelsSection() {
               <td style={{ fontWeight: 600 }}>Embedding（向量模型）</td>
               <td>
                 <select
-                  value={edits.embedding_model || config.embedding_model || 'text-embedding-004'}
+                  value={edits.embedding_model || config.embedding_model || 'nomic-embed-text-v2-moe'}
                   onChange={e => handleEmbeddingChange(e.target.value)}
                   style={{ fontSize: 12, padding: '4px 8px', borderRadius: 4, border: '1px solid #d1d5db', width: '100%' }}
                 >

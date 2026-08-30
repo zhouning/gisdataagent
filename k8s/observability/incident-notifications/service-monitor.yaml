@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gis-agent-incident-notification-worker
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: gis-agent-incident-notification-worker
+    app.kubernetes.io/component: incident-notification
+spec:
+  jobLabel: app.kubernetes.io/name
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gis-agent-incident-notification-worker
+  namespaceSelector:
+    matchNames: [gis-agent]
+  endpoints:
+    - port: metrics
+      path: /metrics
+      scheme: http
+      interval: 30s
+      scrapeTimeout: 10s

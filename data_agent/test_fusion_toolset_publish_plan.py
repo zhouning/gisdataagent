@@ -364,7 +364,8 @@ class TestPlanSemanticProductPublishTool(unittest.TestCase):
             )
 
             self.assertEqual(result["status"], "ok")
-            self.assertEqual(result["schema"], "mmfe.okf_export.v1")
+            self.assertEqual(result["schema"], "mmfe.okf_export.v2")
+            self.assertEqual(result["okf_version"], "0.2")
             self.assertTrue(result["valid"], result["errors"])
             self.assertTrue(os.path.exists(result["index_path"]))
             self.assertTrue(os.path.exists(result["dataset_doc"]))

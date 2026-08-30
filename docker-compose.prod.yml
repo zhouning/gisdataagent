@@ -22,6 +22,8 @@ services:
 
   app:
     restart: always
+    environment:
+      GDA_GOVERNED_QUERY_SECURITY_REQUIRED: "1"
     deploy:
       resources:
         limits:
@@ -47,6 +49,22 @@ services:
         limits:
           cpus: "4"
           memory: 8G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  duckdb-blueprint-worker:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
         reservations:
           cpus: "0.5"
           memory: 1G

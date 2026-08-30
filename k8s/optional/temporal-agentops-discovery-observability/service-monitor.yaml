@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gis-agent-agentops-discovery
+  labels:
+    app.kubernetes.io/name: gis-agent-agentops-discovery
+    app.kubernetes.io/component: agentops-discovery
+spec:
+  jobLabel: app.kubernetes.io/name
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gis-agent-agentops-discovery
+  namespaceSelector:
+    matchNames: [gda-agentops-sandbox]
+  endpoints:
+    - port: metrics
+      path: /metrics
+      scheme: http
+      interval: 30s
+      scrapeTimeout: 10s

@@ -2,8 +2,8 @@
 Human-in-the-Loop (HITL) Approval Plugin for GIS Data Agent.
 
 Uses ADK BasePlugin.before_tool_callback() to intercept high-risk tool
-calls before execution.  In a Chainlit session the user sees an approval
-dialog; in evaluation / test mode the call is auto-approved.
+calls before execution. In a Chainlit session the user sees an approval
+dialog. Blocking-risk calls fail closed when approval is unavailable.
 
 Environment variables
 ---------------------
@@ -233,10 +233,14 @@ class HITLApprovalPlugin(BasePlugin):
             self._record_audit(tool_name, tool_args, risk, "auto_approved", "below_threshold")
             return None
 
-        # No approval function (eval / test mode) — auto-approve
+        # A blocking-risk call must never proceed without an approval path.
         if self._approval_fn is None:
-            self._record_audit(tool_name, tool_args, risk, "auto_approved", "no_approval_fn")
-            return None
+            self._record_audit(tool_name, tool_args, risk, "blocked", "approval_unavailable")
+            return {
+                "status": "blocked",
+                "reason": "高风险操作缺少可用的人工审批通道",
+                "tool": tool_name,
+            }
 
         # Build approval message
         message = self._build_approval_message(risk)
@@ -245,20 +249,34 @@ class HITLApprovalPlugin(BasePlugin):
         try:
             response = await self._approval_fn(message)
         except Exception as exc:
-            # Approval mechanism failed — degrade to auto-approve
-            print(f"[HITL] Approval function error, auto-approving: {exc}")
-            self._record_audit(tool_name, tool_args, risk, "auto_approved", "approval_error")
-            return None
+            # An unavailable approval mechanism must fail closed.
+            print(f"[HITL] Approval function error, blocking tool call: {exc}")
+            self._record_audit(tool_name, tool_args, risk, "blocked", "approval_error")
+            return {
+                "status": "blocked",
+                "reason": "人工审批服务异常，已阻断高风险操作",
+                "tool": tool_name,
+            }
 
         # Timeout — AskActionMessage returns None
         if response is None:
-            self._record_audit(tool_name, tool_args, risk, "auto_approved", "timeout")
-            return None
+            self._record_audit(tool_name, tool_args, risk, "blocked", "timeout")
+            return {
+                "status": "blocked",
+                "reason": "人工审批超时，已阻断高风险操作",
+                "tool": tool_name,
+            }
 
         # Parse response
         value = _extract_action_value(response)
         if value == "APPROVE":
-            self._record_audit(tool_name, tool_args, risk, "approved", "user")
+            if not self._record_audit(tool_name, tool_args, risk, "approved", "user"):
+                print("[HITL] Approval audit unavailable, blocking tool call")
+                return {
+                    "status": "blocked",
+                    "reason": "审批结果无法写入审计日志，已阻断高风险操作",
+                    "tool": tool_name,
+                }
             return None
         else:
             self._record_audit(tool_name, tool_args, risk, "rejected", "user")
@@ -298,14 +316,14 @@ class HITLApprovalPlugin(BasePlugin):
         risk: dict,
         decision: str,
         reason: str,
-    ) -> None:
-        """Record HITL decision to audit log (non-fatal)."""
+    ) -> bool:
+        """Record a HITL decision and report whether it was persisted."""
         try:
             from data_agent.audit_logger import record_audit, ACTION_HITL_APPROVAL
             from data_agent.user_context import current_user_id
 
             username = current_user_id.get("system")
-            record_audit(
+            return record_audit(
                 username=username,
                 action=ACTION_HITL_APPROVAL,
                 status=decision,
@@ -317,7 +335,7 @@ class HITLApprovalPlugin(BasePlugin):
                 },
             )
         except Exception:
-            pass  # Audit failure must not block execution
+            return False
 
 
 def _extract_action_value(response: Any) -> str:

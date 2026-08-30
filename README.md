@@ -2,7 +2,18 @@
 
 **中文** | [English](./README_en.md)
 
-本项目是基于 Gemma 4 的 GIS Data Agent，面向自然语言 GIS 数据发现、耕地空间布局优化、NL2Semantic2SQL 和 WorldModel v2.1 规划场景，重点展示原生工具调用、多智能体工作流和持久化记忆能力。
+本项目是基于 Gemma 4 的 GIS Data Agent，面向自然语言 GIS 数据发现、耕地空间布局优化、NL2Semantic2SQL 和 Paper9 县域规划场景，重点展示 Google ADK 原生工具调用、受控多步规划、硬约束审计、有限恢复和已验证经验记忆。
+
+### DLTB 两阶段演示入口
+
+地类图斑（DLTB）演示已经明确拆成两条可独立验收的链路：
+
+1. `scripts/run_dltb_semantic_demo.py`：从 FileGDB 探查、Raw 入湖、质量、数据模型标准化、本体引用、语义投影到受控智能问数；兼容旧命令 `scripts/run_dltb_vertical_demo.py`。
+2. `scripts/run_dltb_paper9_demo.py`：从 DLTB + DEM 执行 Paper9 World Model v2.1 的 Tool 1 Prepare、Tool 2 Sample、Tool 3 Train、Tool 4 Plan 和硬约束审计，对应页面右侧“世界模型 v2.1”。
+
+完整讲解、Windows 命令和重庆样例验证口径见 [`docs/reports/dltb_two_stage_demo_script_2026-08-07.md`](docs/reports/dltb_two_stage_demo_script_2026-08-07.md)。阶段 1 的报告通过阶段 2 的 `--upstream-report` 交接；重庆样例只证明技术链路可执行，不构成宁夏权威生产资格。
+
+阶段 1 默认使用本地 Qwen 的 NL2Semantic2SQL 生成 PostgreSQL/PostGIS SQL；无数据库的离线开发机可显式选择 `--semantic-execution-engine lake` 验证 DuckDB 数据湖 SQL，不能把该诊断路径误写成 PostGIS 已连接。
 
 本仓库当前 README 面向 Gemma 4 开发者大赛赛道 A：AI Agent 组织，重点展示：
 
@@ -18,9 +29,11 @@
 | 比赛要求 | 本项目交付 |
 |---|---|
 | 核心代码包含 Gemma 4 调用逻辑 | `data_agent/model_gateway.py` 注册 Gemma 4 26B，Docker 环境变量固定所有演示模型层级 |
-| 原生函数调用和工具调用 | ADK `FunctionTool` / `LongRunningFunctionTool`，运行日志展示 `drl_model`、`visualize_interactive_map`、`run_nl2semantic2sql` 和 `world_model_v21_status -> world_model_v21_pipeline` |
-| 多步规划 | `Farmland Optimization Workflow` 多智能体工作流；WorldModel v2.1 A/B/C/D 流程：Prepare、Sample、Train、Plan |
-| 记忆机制 | `PostgresMemoryService`、`save_memory`、`recall_memories`、`auto_extract`、运行日志记忆统计 |
+| 原生函数调用和工具调用 | ADK `FunctionTool` / `LongRunningFunctionTool`；Paper9 Agent 暴露 10 个细粒度工具，Gemma 4 根据工具响应选择下一步 |
+| 受控多步规划 | `status -> inspect -> recall -> pipeline/plan -> audit -> commit/replan/HITL`；A/B/C/D 为底层算法阶段，不冒充模型动态规划 |
+| 记忆机制 | 仅通过硬约束校验且空间产物完整的 Paper9 结果可进入 append-only verified episodic memory；未审计结果拒绝写入 |
+| Agent 可靠性 | 3 个分支各 10 次真实 Gemma 4 + ADK 运行，30/30 行为契约通过；算法工具使用确定性替身，真实 Paper9 产物单独取证 |
+| 工程质量 | 决赛关键测试 69 passed、接口兼容测试 52 passed；Ruff、Python 编译、前端生产构建和 Compose 解析通过，非阻断警告单独登记 |
 | 演示视频 5 分钟以内 | [docs/gemma4_ai_agent_demo_script.md](docs/gemma4_ai_agent_demo_script.md) |
 | 技术报告 | [docs/gemma4_ai_agent_technical_report.md](docs/gemma4_ai_agent_technical_report.md) |
 | 记忆和工具调用代码说明 | [docs/gemma4_ai_agent_code_walkthrough.md](docs/gemma4_ai_agent_code_walkthrough.md) |
@@ -58,7 +71,7 @@
 |---|---|---|---|
 | 耕地空间布局优化 | [zhouning/farmland-drl-optimization](https://github.com/zhouning/farmland-drl-optimization) | *Constrained Farmland Layout Optimization under Cultivated-Land Balance: A Two-Site Test of Dimension-Invariant Reinforcement Learning*，已投稿 *Land Use Policy* | 无 `@` 数据发现后自动进入 `Farmland Optimization Workflow`，调用 `drl_model` 和 `visualize_interactive_map`，输出优化后矢量、PNG、地图图层和 PDF 报告 |
 | NL2Semantic2SQL | [zhouning/nl2geosql-reproduction](https://github.com/zhouning/nl2geosql-reproduction) | *Schema-Aware Grounding Effects in PostGIS Natural-Language-to-SQL: A Subset-Decomposed Evaluation Across Eleven LLMs*，已投稿 *Computers & Geosciences* | `@NL2SQL` 触发 `run_nl2semantic2sql`，将中文空间问题映射到语义层、schema grounding、PostGIS SQL 生成和只读执行护栏 |
-| WorldModel v2.1 | [zhouning/arcgis-farmland-mpc](https://github.com/zhouning/arcgis-farmland-mpc) | *Reproducible model-based AI planning for county-scale farmland consolidation in fragmented mountain landscapes*，已投稿 Nature Portfolio 子刊 *Communications Earth & Environment* | `@WorldModelV21` 触发 `world_model_v21_status -> world_model_v21_pipeline`，把 Prepare / Sample / Train / Plan 四阶段封装为可复用的县域 MPC 规划工具链 |
+| Paper9 / WorldModel v2.1 | [zhouning/arcgis-farmland-mpc](https://github.com/zhouning/arcgis-farmland-mpc) | *Reproducible model-based AI planning for county-scale farmland consolidation in fragmented mountain landscapes*，已投稿 Nature Portfolio 子刊 *Communications Earth & Environment* | `@WorldModelV21` 触发受控自主链路，将 Paper9 0.3.3 / paper9v2 2.2.3 包装为可审计的县域 MPC 工具链 |
 
 三个场景对应的技术难点分别是：
 
@@ -142,6 +155,18 @@
   -> 结果摘要 + 可选地图图层
 ```
 
+问数页面默认使用 PostGIS，也可以在输入框上方切换到“数据湖”。两种模式共用数据模型、本体和
+语义层，只替换物理执行器：
+
+```text
+NL2Semantic2SQL -> PostgreSQL/PostGIS                 （默认，复杂空间查询/在线服务）
+NL2Semantic2SQL -> DuckDB -> 治理 GeoParquet         （无需再次装载，批量属性/聚合）
+```
+
+湖上 SQL 只能查询语义目录发布的 GeoParquet 视图，禁止任意 `read_parquet`、写操作和扩展安装，
+结果会返回执行引擎、SQL 方言和 projection ID。重庆 DLTB 的三道固定问题已完成 PostGIS、数据湖 SQL 与 GeoPandas 三引擎对账，详见
+[`docs/reports/dltb_dual_nl2sql_engine_validation_2026-08-08.md`](docs/reports/dltb_dual_nl2sql_engine_validation_2026-08-08.md)。
+
 已验证空间查询包括：
 
 | 查询 | 关键 PostGIS 处理 | 已验证结果 |
@@ -152,18 +177,32 @@
 
 为什么不是普通 NL2SQL：空间 SQL 需要处理 `geometry/geography` 单位、SRID、空间谓词、距离、面积、长度和空间连接去重。项目通过语义层 grounding 和 PostGIS 执行护栏降低 LLM 直接生成空间 SQL 的不稳定性。
 
-### 3. WorldModel v2.1
+### 3. Paper9 受控自主规划
 
 用户输入短句即可运行县域 MPC 规划：
 
 ```text
-@WorldModelV21 请先检查世界模型 v2.1 状态，然后使用 dongxing 数据集运行一次快速县域 MPC 规划。
+@WorldModelV21 请使用 bishan 数据集运行一次快速县域 MPC 规划，完成硬约束审计，并仅在通过后保存已验证经验。
 ```
 
-Gemma 4 推荐工具轨迹：
+首次审计通过时，Gemma 4 的完整工具轨迹是：
 
 ```text
-world_model_v21_status -> world_model_v21_pipeline
+world_model_v21_status
+-> paper9_inspect_resources
+-> paper9_recall_verified_episodes
+-> world_model_v21_pipeline
+-> paper9_audit_run
+-> paper9_commit_verified_episode
+```
+
+首次审计失败时，只允许一次重规划：
+
+```text
+... -> paper9_audit_run(attempt=0, retryable=true)
+-> world_model_v21_plan
+-> paper9_audit_run(attempt=1)
+-> commit_verified_episode 或 stop_and_request_human_review
 ```
 
 `world_model_v21_pipeline` 展示完整 A/B/C/D 阶段：
@@ -182,12 +221,31 @@ world_model_v21_status -> world_model_v21_pipeline
 | `bishan` / `璧山` | `/app/bishan-runs/prepared` | `/app/bishan-runs/prepared/ensemble_seed0` |
 | `dongxing` / `东兴` | `/app/dongxing-runs/prepared` | `/app/dongxing-runs/prepared/ensemble_seed0` |
 
-已验证结果：
+当前版本绑定与真实 Tool 4 验证：
 
-| 数据集 | 地块块数 | 图斑数 | `steps_run` | `total_reward` |
+| 项目 | 结果 |
+|---|---:|
+| Python 包 / 算法 | `paper9-mnr-offline-package 0.3.3` / `paper9v2 2.2.3` |
+| Paper9 commit | `848514383948474e4b6387f171aea8a9272821db` |
+| 输入空间记录 / 环境图斑 / blocks | 101,657 / 53,004 / 2,640 |
+| MPC 步数 / 置换 | 100 / 424 对 |
+| 耕地面积变化 | `+0.211604 ha` |
+| 平均坡度变化 | `-0.815402%` |
+| 连片度变化 | `+0.028379` |
+| 百亩方面积变化 | `+29.980491 ha` |
+| 硬约束校验 | 通过 |
+
+本次本机验证使用 0.3.3 / 2.2.3 代码执行 Tool 4，但复用了 2026-06-27 旧流程生成的 Prepare / ONNX 产物，且输入被识别为旧三位测试编码。它不能表述为 v2.2.3 真实权威四库的完整 A/B/C/D 重训。
+
+Gemma 4 + ADK 编排可靠性基线：
+
+| 场景 | 通过率 | 固定轨迹工具数 | 平均延迟 | P95 延迟 |
 |---|---:|---:|---:|---:|
-| Bishan | 2640 | 53004 | 100 | 66.43446147434678 |
-| Dongxing | 3711 | 76377 | 100 | 112.63640181479221 |
+| 首次审计通过 | 10/10 | 6 | 7.97 s | 9.53 s |
+| 版本不兼容后停止 | 10/10 | 2 | 3.24 s | 4.88 s |
+| 一次重规划后通过 | 10/10 | 8 | 13.57 s | 15.31 s |
+
+30/30 的 Wilson 95% 区间为 88.65%–100%；每个 10/10 场景的区间为 72.25%–100%。该基线使用真实 Gemma 4 26B 与 Google ADK，Paper9 工具响应为确定性替身，专门测量工具选择和分支控制，不代表 30 次算法重跑。
 
 地图按 `CHG_FLAG` 展示优化变化：
 
@@ -205,10 +263,12 @@ flowchart TB
   A --> T["ADK 工具集"]
   T --> F["数据发现 + Farmland DRL 优化"]
   T --> N["NL2Semantic2SQL 引擎"]
-  T --> W["WorldModel v2.1 引擎"]
-  T --> MEM["记忆工具"]
+  T --> W["Paper9 model-based planning"]
+  W --> G["版本与资源检查 + 硬约束校验"]
+  G --> MEM["仅通过结果进入 verified memory"]
   F --> FS1["用户上传 Shapefile / ZIP / PNG / PDF 报告"]
   N --> PG["PostgreSQL + PostGIS + pgvector"]
+  N --> LAKE["DuckDB + governed GeoParquet"]
   MEM --> PG
   W --> FS["Paper9 仓库 + Bishan/Dongxing 运行数据"]
   A --> LOG["Chainlit Thread/Step 运行日志"]
@@ -219,12 +279,15 @@ flowchart TB
 | 模块 | 文件 |
 |---|---|
 | Gemma 4 模型网关 | `data_agent/model_gateway.py`, `docker-compose.gemma4-demo.yml` |
-| ADK 路由 | `data_agent/agent.py` |
+| ADK 路由与单一行为契约 | `data_agent/agent.py`, `data_agent/paper9_agent_prompt.py` |
 | 无 @ 数据发现与耕地优化 | `data_agent/toolsets/file_tools.py`, `data_agent/data_catalog.py`, `data_agent/gis_processors.py`, `data_agent/drl_engine.py`, `data_agent/pipeline_helpers.py` |
 | NL2Semantic2SQL 直接工具事件 | `data_agent/nl2semantic2sql_direct_agent.py` |
 | NL2SQL 执行护栏 | `data_agent/nl2sql_executor.py`, `data_agent/nl2sql_grounding.py`, `data_agent/nl2sql_semantic_rewrite.py`, `data_agent/sql_postprocessor.py` |
-| WorldModel v2.1 工具 | `data_agent/toolsets/world_model_v21_tools.py`, `data_agent/world_model_v21.py` |
-| 记忆机制 | `data_agent/conversation_memory.py`, `data_agent/memory.py` |
+| 数据湖 SQL 适配器 | `data_agent/lake_sql_executor.py`, `scripts/compare_nl2sql_engines.py` |
+| Paper9 工具与适配器 | `data_agent/toolsets/world_model_v21_tools.py`, `data_agent/world_model_v21.py` |
+| Paper9 审计与 verified memory | `data_agent/paper9_agent_governance.py` |
+| Agent 行为评测 | `data_agent/paper9_agent_evaluation.py`, `scripts/run_paper9_adk_reliability_eval.py` |
+| 通用记忆机制 | `data_agent/conversation_memory.py`, `data_agent/memory.py` |
 | 运行日志 | `data_agent/app.py`, `data_agent/frontend_api.py`, `frontend/src/components/datapanel/AgentRunLogsTab.tsx` |
 | Word / PDF 报告导出 | `data_agent/report_generator.py`, `data_agent/app.py` |
 
@@ -234,20 +297,18 @@ flowchart TB
 
 - Docker Desktop，或带 Compose 的 Docker Engine。
 - 可访问已加载 `Gemma4:26b` 的 Ollama 主机。
-- 本地 Paper9 / Bishan / Dongxing 路径与 `docker-compose.gemma4-demo.yml` 中的挂载一致；如果路径不同，启动前先调整挂载项。
+- Paper9 0.3.3 源码目录和已准备的 Bishan / Dongxing 资源；通过 `.env.finals` 配置主机路径。
 
-当前演示 compose 文件需要以下本地挂载：
+从模板生成本机配置，并填写绝对路径：
 
-```yaml
-- /Users/zhouning/arcgis-farmland-mpc:/app/paper9-demo:ro
-- /Users/zhouning/farmland_mpc_runs/bishan:/app/bishan-runs:ro
-- /Users/zhouning/arcgis-farmland-mpc/runs/dongxing:/app/dongxing-runs:ro
+```bash
+cp .env.finals.example .env.finals
 ```
 
 ### 启动
 
 ```bash
-docker compose -f docker-compose.gemma4-demo.yml up -d --build
+docker compose --env-file .env.finals -f docker-compose.gemma4-demo.yml up -d --build
 ```
 
 打开：
@@ -292,6 +353,9 @@ docker compose -f docker-compose.gemma4-demo.yml down
 | `NL2SQL_LLM_SCHEMA_MAPPER_MODEL` | `gemma4-26b-ollama` | NL2SQL schema mapper 模型 |
 | `EMBEDDING_MODEL` | `nomic-embed-text-v2-moe` | few-shot 和语义检索 embedding；使用非固定 IP 的 Ollama embedding 别名 |
 | `OLLAMA_API_BASE` | `${OLLAMA_API_BASE:-http://host.docker.internal:11434}` | 宿主机本机 Ollama 服务地址；比赛现场可通过环境变量覆盖 |
+| `PAPER9_HOST_REPO` | `/absolute/path/to/paper9-mnr-offline-package` | 主机端 Paper9 0.3.3 源码目录，容器内只读挂载到 `/app/paper9-demo` |
+| `PAPER9_BISHAN_RUNS_HOST` | `/absolute/path/to/bishan-runs` | 主机端 Bishan Prepare / ONNX 资源 |
+| `PAPER9_DONGXING_RUNS_HOST` | `/absolute/path/to/dongxing-runs` | 主机端 Dongxing 资源；主 Demo 默认使用 Bishan |
 | `PAPER9_FARMLAND_MPC_REPO` | `/app/paper9-demo` | WorldModel v2.1 Paper9 仓库 |
 | `PAPER9_FARMLAND_MPC_DEFAULT_PREPARED_DIR` | `/app/bishan-runs/prepared` | 默认 Bishan 准备数据 |
 | `PAPER9_FARMLAND_MPC_DEFAULT_ENSEMBLE_DIR` | `/app/bishan-runs/prepared/ensemble_seed0` | 默认 Bishan ONNX 集成模型 |
@@ -338,22 +402,12 @@ NL2Semantic2SQL：
 WorldModel v2.1：
 
 ```text
-@WorldModelV21 请先检查世界模型 v2.1 状态，然后使用 bishan 数据集运行一次快速县域 MPC 规划。
+@WorldModelV21 请使用 bishan 数据集运行一次快速县域 MPC 规划，完成硬约束审计，并仅在通过后保存已验证经验。
 ```
 
-```text
-@WorldModelV21 请先检查世界模型 v2.1 状态，然后使用 dongxing 数据集运行一次快速县域 MPC 规划。
-```
+演示结束后直接展示 `paper9_commit_verified_episode` 和下一任务中的 `paper9_recall_verified_episodes`，不要用手工保存的聊天摘要代替 Agent 的 verified episodic memory。
 
-记忆：
-
-```text
-请把本次演示保存为记忆：Gemma 4 完成了斑竹村耕地空间布局优化、桥梁道路与建筑物相交的空间 NL2Semantic2SQL 查询，世界模型 v2.1 完成了 Bishan 和 Dongxing 县域 MPC 规划。关键词：Gemma4空间演示。
-```
-
-```text
-检索关键词“Gemma4空间演示”的记忆。
-```
+规划完成后点击“导出 PDF 报告”，系统会从本次运行的优化空间图层、MPC 汇总、函数调用轨迹、硬约束审计和经验提交记录生成专用报告。报告包含真实变化地图、关键指标看板、Gemma 4 + Google ADK 六步调用图、逐函数用时、审计表和交付物摘要；数值不从聊天文本推断，也不复用其他运行的静态图片。
 
 完整录制指南：
 
@@ -399,6 +453,11 @@ GET /api/agent/run-logs
 | [docs/gemma4_ai_agent_technical_report.md](docs/gemma4_ai_agent_technical_report.md) | 技术报告：模型选择、架构、场景和部署 |
 | [docs/gemma4_ai_agent_code_walkthrough.md](docs/gemma4_ai_agent_code_walkthrough.md) | 面向无 `@` 耕地优化、`nl2semantic2sql` 和 `worldmodelv2.1` 的记忆、工具调用代码说明 |
 | [docs/gemma4_ai_agent_demo_script.md](docs/gemma4_ai_agent_demo_script.md) | 5 分钟演示脚本和本地复测证据 |
+| [docs/finals/README.md](docs/finals/README.md) | 决赛资料入口与证据状态 |
+| [docs/finals/scoring_evidence_matrix.md](docs/finals/scoring_evidence_matrix.md) | 五项评分维度的证据、口径与缺口 |
+| [docs/finals/quality_gate_report.md](docs/finals/quality_gate_report.md) | 精确测试集合、构建结果、运行状态与已知警告 |
+| [docs/finals/demo_runbook.md](docs/finals/demo_runbook.md) | 5 分钟现场流程、视频备份与故障预案 |
+| [docs/finals/qa.md](docs/finals/qa.md) | 3 分钟 Q&A 答案口径 |
 | [docs/assets/gemma4_host228_scale_sweep_summary.csv](docs/assets/gemma4_host228_scale_sweep_summary.csv) | Gemma 4 模型规格评测依据 |
 | [docs/assets/gemma4_host228_scale_sweep.svg](docs/assets/gemma4_host228_scale_sweep.svg) | 模型规格评测图 |
 

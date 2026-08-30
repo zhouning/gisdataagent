@@ -7,6 +7,7 @@ service cannot silently duplicate or skip records between offset pages.
 
 import asyncio
 import logging
+import math
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -62,6 +63,7 @@ class ArcGISQuerySnapshot:
     page_concurrency: int = 1
     nullable_out_fields: tuple[str, ...] = ()
     default_null_out_fields: tuple[str, ...] = ()
+    request_timeout_seconds: float = HTTP_TIMEOUT
 
     @property
     def record_count(self) -> int:
@@ -126,6 +128,35 @@ def _error_result(data: dict) -> dict | None:
         "code": error.get("code"),
         "message": error.get("message", str(error)),
     }
+
+
+def _sanitize_geojson_geometry(geometry: Any) -> dict | None:
+    """Keep a feature row when ArcGIS emits a malformed/null geometry."""
+    if not isinstance(geometry, dict):
+        return None
+
+    def valid_coordinates(value: Any) -> bool:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return math.isfinite(float(value))
+        if isinstance(value, (list, tuple)):
+            return bool(value) and all(valid_coordinates(item) for item in value)
+        return False
+
+    if geometry.get("type") == "GeometryCollection":
+        geometries = geometry.get("geometries")
+        if not isinstance(geometries, list) or not geometries:
+            return None
+        if any(_sanitize_geojson_geometry(item) is None for item in geometries):
+            return None
+    elif not valid_coordinates(geometry.get("coordinates")):
+        return None
+    try:
+        from shapely.geometry import shape
+
+        shape(geometry)
+    except (AttributeError, TypeError, ValueError):
+        return None
+    return geometry
 
 
 async def _get_json(
@@ -990,11 +1021,13 @@ class ArcGISRestConnector(BaseConnector):
         headers = build_auth_headers(auth_config)
         use_where_clause = False
         page_query_strategy = getattr(snapshot, "page_query_strategy", "auto")
-        if page_query_strategy not in {"auto", "where"}:
-            raise ValueError("snapshot page query strategy must be auto or where")
+        if page_query_strategy not in {"auto", "where", "object_ids"}:
+            raise ValueError(
+                "snapshot page query strategy must be auto, where, or object_ids"
+            )
         page_concurrency = (
             max(1, int(getattr(snapshot, "page_concurrency", 1)))
-            if page_query_strategy == "where"
+            if page_query_strategy in {"where", "object_ids"}
             else 1
         )
         progress = progress_callback
@@ -1005,7 +1038,14 @@ class ArcGISRestConnector(BaseConnector):
                 async with progress_lock:
                     await progress_callback()
 
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        request_timeout = float(
+            getattr(snapshot, "request_timeout_seconds", HTTP_TIMEOUT)
+        )
+        if not 1.0 <= request_timeout <= 600.0:
+            raise ValueError(
+                "snapshot request timeout seconds must be between 1 and 600"
+            )
+        async with httpx.AsyncClient(timeout=request_timeout) as client:
             async def fetch_page(start: int) -> tuple[int, tuple[Any, ...], dict]:
                 nonlocal use_where_clause
                 object_ids = snapshot.object_ids[start : start + bounded_page_size]
@@ -1015,7 +1055,16 @@ class ArcGISRestConnector(BaseConnector):
                     "outSR": "4326",
                     "f": "geojson",
                 }
-                if page_query_strategy == "where" or use_where_clause:
+                if page_query_strategy == "object_ids":
+                    data = await self._query_snapshot_page_by_object_ids(
+                        client,
+                        snapshot,
+                        headers,
+                        object_ids,
+                        common_params,
+                        progress_callback=progress,
+                    )
+                elif page_query_strategy == "where" or use_where_clause:
                     data = await self._query_snapshot_page_by_where(
                         client, snapshot, headers, object_ids, common_params,
                         progress_callback=progress,
@@ -1086,7 +1135,9 @@ class ArcGISRestConnector(BaseConnector):
                     normalized_features = [
                         {
                             **feature,
-                            "geometry": feature.get("geometry"),
+                            "geometry": _sanitize_geojson_geometry(
+                                feature.get("geometry")
+                            ),
                         }
                         for feature in features
                     ]
@@ -1107,6 +1158,79 @@ class ArcGISRestConnector(BaseConnector):
                     task.cancel()
                 if pending:
                     await asyncio.gather(*pending, return_exceptions=True)
+
+    async def _query_snapshot_page_by_object_ids(
+        self,
+        client,
+        snapshot: ArcGISQuerySnapshot,
+        headers: dict,
+        object_ids: tuple[Any, ...],
+        common_params: dict[str, str],
+        *,
+        progress_callback: Callable[[], Awaitable[None]] | None = None,
+    ) -> dict:
+        """Query exact IDs and split large responses without a WHERE fallback."""
+
+        try:
+            data = await _get_json(
+                client,
+                snapshot.query_url,
+                params={
+                    "objectIds": ",".join(str(value) for value in object_ids),
+                    **common_params,
+                },
+                headers=headers,
+                method="POST",
+                max_attempts=1,
+            )
+            if error := _error_result(data):
+                raise _ArcGISResponseError(error["message"])
+            self._validate_snapshot_page(
+                data,
+                snapshot.object_id_field,
+                object_ids,
+            )
+        except Exception as exc:
+            if len(object_ids) <= 1:
+                raise
+            middle = len(object_ids) // 2
+            logger.warning(
+                "ArcGIS objectIds page of %d IDs failed for %s; splitting the batch: %s",
+                len(object_ids),
+                snapshot.query_url,
+                exc,
+            )
+            left = await self._query_snapshot_page_by_object_ids(
+                client,
+                snapshot,
+                headers,
+                object_ids[:middle],
+                common_params,
+                progress_callback=progress_callback,
+            )
+            right = await self._query_snapshot_page_by_object_ids(
+                client,
+                snapshot,
+                headers,
+                object_ids[middle:],
+                common_params,
+                progress_callback=progress_callback,
+            )
+            left_features = left.get("features", [])
+            right_features = right.get("features", [])
+            if not isinstance(left_features, list) or not isinstance(
+                right_features, list
+            ):
+                raise _ArcGISResponseError(
+                    "ArcGIS split objectIds response did not contain feature arrays"
+                ) from exc
+            return {
+                "type": "FeatureCollection",
+                "features": [*left_features, *right_features],
+            }
+        if progress_callback is not None:
+            await progress_callback()
+        return data
 
     async def _query_snapshot_page_by_where(
         self,
@@ -1201,7 +1325,7 @@ class ArcGISRestConnector(BaseConnector):
                     *snapshot.nullable_out_fields,
                 )),
                 "returnGeometry": "false",
-                "f": "geojson",
+                "f": "json",
             },
             headers=headers,
             method="POST",
@@ -1217,15 +1341,15 @@ class ArcGISRestConnector(BaseConnector):
         requested_ids = {str(value) for value in object_ids}
         supplemental_by_id: dict[str, dict] = {}
         for feature in supplemental_features:
-            properties = (
-                feature.get("properties") if isinstance(feature, dict) else None
+            attributes = (
+                feature.get("attributes") if isinstance(feature, dict) else None
             )
-            if not isinstance(properties, dict):
+            if not isinstance(attributes, dict):
                 raise _ArcGISResponseError(
-                    "ArcGIS nullable-field feature did not contain properties"
+                    "ArcGIS nullable-field feature did not contain attributes"
                 )
             object_id = self._property_value(
-                properties, snapshot.object_id_field,
+                attributes, snapshot.object_id_field,
             )
             if object_id is None or str(object_id) not in requested_ids:
                 raise _ArcGISResponseError(
@@ -1235,7 +1359,7 @@ class ArcGISRestConnector(BaseConnector):
                 raise _ArcGISResponseError(
                     "ArcGIS nullable-field response returned a duplicate object ID"
                 )
-            supplemental_by_id[str(object_id)] = properties
+            supplemental_by_id[str(object_id)] = attributes
 
         primary_features = primary_data.get("features")
         if not isinstance(primary_features, list):

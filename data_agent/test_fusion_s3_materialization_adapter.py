@@ -2,6 +2,7 @@
 
 import hashlib
 import importlib.util
+import io
 import sys
 import tempfile
 import types
@@ -143,6 +144,66 @@ class TestS3MaterializationAdapter(unittest.TestCase):
             result["target_uri"],
             "s3://gis-agent-lakehouse/curated/mmfe/sample.geoparquet",
         )
+
+    def test_immutable_materialization_verifies_readback_and_skips_same_bytes(self):
+        from data_agent.fusion.s3_materialization_adapter import materialize_file_to_s3
+
+        stored = {}
+
+        class MissingObject(Exception):
+            response = {"Error": {"Code": "NoSuchKey"}}
+
+        class FakeS3Client:
+            def get_object(self, *, Bucket, Key):
+                try:
+                    body = stored[(Bucket, Key)]
+                except KeyError as exc:
+                    raise MissingObject() from exc
+                return {"Body": io.BytesIO(body)}
+
+            def put_object(self, *, Bucket, Key, Body, **kwargs):
+                stored[(Bucket, Key)] = Body
+
+        class FakeBoto3(types.SimpleNamespace):
+            def client(self, service, **kwargs):
+                return FakeS3Client()
+
+        fake_botocore = types.ModuleType("botocore")
+        fake_config_module = types.ModuleType("botocore.config")
+
+        class FakeBotoConfig:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+
+        fake_config_module.Config = FakeBotoConfig
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "snapshot.json"
+            source.write_text('{"records":2}\n', encoding="utf-8")
+            modules = {
+                "boto3": FakeBoto3(),
+                "botocore": fake_botocore,
+                "botocore.config": fake_config_module,
+            }
+            with mock.patch.dict(sys.modules, modules):
+                first = materialize_file_to_s3(
+                    {
+                        "source_path": str(source),
+                        "target_uri": "s3://gis-agent-lakehouse/ods/snapshot.json",
+                        "immutable": True,
+                    }
+                )
+                second = materialize_file_to_s3(
+                    {
+                        "source_path": str(source),
+                        "target_uri": "s3://gis-agent-lakehouse/ods/snapshot.json",
+                        "immutable": True,
+                    }
+                )
+
+        self.assertTrue(first["created"])
+        self.assertTrue(first["verified"])
+        self.assertFalse(second["created"])
+        self.assertTrue(second["verified"])
 
 
 if __name__ == "__main__":

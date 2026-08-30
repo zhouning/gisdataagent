@@ -62,6 +62,16 @@ def _pdm() -> dict:
                 ],
             },
         ],
+        "relationships": [
+            {
+                "source": "cq_dltb",
+                "target": "std_region",
+                "source_field": "region_id",
+                "type": "references",
+                "cardinality": "N:1",
+                "method": "region_id foreign key",
+            }
+        ],
     }
 
 
@@ -80,9 +90,10 @@ def test_export_pdm_to_ea_xmi_emits_minimal_uml_document():
     assert "地类编码" in xml
 
     class_count = xml.count('xmi:type="uml:Class"')
-    attr_count = xml.count('xmi:type="uml:Property"')
+    attr_count = xml.count("<ownedAttribute")
     assert class_count == 2
     assert attr_count == 4
+    assert xml.count('xmi:type="uml:Association"') == 1
 
 
 def test_export_pdm_to_ea_xmi_is_deterministic():
@@ -124,6 +135,10 @@ def test_export_pdm_to_ea_xmi_round_trips_through_existing_parser(tmp_path: Path
     assert parsed.top_package_name == "自然资源数据模型"
     assert parsed.stats.total_classes == 2
     assert parsed.stats.total_attributes == 4
+    assert parsed.stats.total_associations == 1
+    assert len(parsed.associations[0].ends) == 2
+    multiplicities = {(end.lower, end.upper) for end in parsed.associations[0].ends}
+    assert multiplicities == {("0", "*"), ("1", "1")}
     class_by_name = {c.name_decoded: c for c in parsed.classes}
     assert "土地利用图斑" in class_by_name
 
@@ -135,6 +150,27 @@ def test_export_pdm_to_ea_xmi_round_trips_through_existing_parser(tmp_path: Path
     assert attrs["面积"].upper == "1"
     assert attrs["面积"].type_name == "numeric"
     assert attrs["几何图形"].type_name == "string"
+
+
+def test_export_pdm_to_ea_xmi_can_group_classes_by_domain(tmp_path: Path):
+    pdm = _pdm()
+    pdm["entities"][0]["domain"] = "land"
+    pdm["entities"][1]["domain"] = "geo"
+    xml = export_pdm_to_ea_xmi(
+        pdm,
+        package_name="DMT候选模型",
+        group_by_domain=True,
+        domain_labels={"land": "土地与规划", "geo": "行政地理"},
+    )
+    target = tmp_path / "grouped_model.xmi"
+    target.write_text(xml, encoding="utf-8")
+
+    parsed = parse_xmi_file(target)
+    paths = {klass.name_decoded: klass.package_path for klass in parsed.classes}
+
+    assert "土地与规划 (land)" in paths["土地利用图斑"]
+    assert "行政地理 (geo)" in paths["行政区"]
+    assert parsed.stats.total_associations == 1
 
 
 def test_export_pdm_to_ea_xmi_emits_xml_declaration_and_trailing_newline():

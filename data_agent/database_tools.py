@@ -35,7 +35,21 @@ T_USER_TOOLS = f"{TABLE_PREFIX}user_tools"
 T_VIRTUAL_SOURCES = f"{TABLE_PREFIX}virtual_sources"
 
 def get_db_connection_url():
-    """Constructs database URL from environment variables."""
+    """Return the shared database URL, preferring an explicit ``DATABASE_URL``.
+
+    Workloads such as AgentOps discovery receive one complete URL from a
+    Secret.  The legacy component variables remain supported for Compose and
+    local tooling, but a synchronous SQLAlchemy engine must not receive an
+    asyncpg driver URL.
+    """
+    direct_url = os.environ.get("DATABASE_URL", "").strip()
+    if direct_url:
+        if direct_url.startswith("postgresql+asyncpg://"):
+            return direct_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+        if direct_url.startswith("postgres://"):
+            return direct_url.replace("postgres://", "postgresql://", 1)
+        return direct_url
+
     user = os.environ.get("POSTGRES_USER")
     password = os.environ.get("POSTGRES_PASSWORD")
     host = os.environ.get("POSTGRES_HOST", "localhost")

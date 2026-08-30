@@ -9,7 +9,7 @@ installed_digest="$(test -f "${digest_path}" && head -n 1 "${digest_path}" || tr
 
 if [[ "${bootstrap_digest}" != "${installed_digest}" ]]; then
     mkdir -p "${database_dir}"
-    find "${database_dir}" -mindepth 1 -maxdepth 1 -delete
+    find "${database_dir}" -mindepth 1 -delete
     "${JENA_HOME}/bin/tdb2.tdbloader" --loc="${database_dir}" "${bootstrap_path}"
     printf '%s\n' "${bootstrap_digest}" > "${digest_path}"
 fi

@@ -65,16 +65,6 @@ _HINTS: list[dict] = [
         "hint_text_en": "Prefer TBMJ for per-parcel filtering/sum; use ST_Area(geometry::geography) for aggregated/geometry-operation areas.",
         "trigger_keywords": ["面积", "m²", "平方米", "平方千米", "公顷", "求和"],
     },
-    # Rule 7: prefer cq_dltb when no year specified
-    {
-        "scope_type": "dataset",
-        "scope_ref": "cq_dltb",
-        "hint_kind": "category_choice",
-        "severity": "info",
-        "hint_text_zh": "问题无具体年份/版本时, 优先使用 cq_dltb (基础数据, 小写列名: bsm/dlbm/dlmc/tbmj/shape)。",
-        "hint_text_en": "When question is year-agnostic, prefer cq_dltb (base data, lowercase columns).",
-        "trigger_keywords": ["地类", "图斑", "耕地", "林地"],
-    },
     # Rule 8: 类型 not 类别
     {
         "scope_type": "column",
@@ -95,6 +85,37 @@ _HINTS: list[dict] = [
         "hint_text_en": "Filter hospital/school/restaurant POIs via \"类型\" LIKE '%医院%' etc. (fuzzy, not exact).",
         "trigger_keywords": ["医院", "学校", "三甲", "餐厅", "酒店", "POI"],
         "sample_sql": "SELECT \"名称\" FROM cq_amap_poi_2024 WHERE \"类型\" LIKE '%三甲%' OR \"类型\" LIKE '%医院%'",
+    },
+    {
+        "scope_type": "table",
+        "scope_ref": "cq_amap_poi_2024",
+        "hint_kind": "other",
+        "severity": "warn",
+        "hint_text_zh": (
+            "‘三甲医院’不是稳定的连续类型字面值；筛选时使用 "
+            "(\"名称\" LIKE '%三甲%' OR \"类型\" LIKE '%三甲%') "
+            "AND \"类型\" LIKE '%医院%'，不要只写 \"类型\" LIKE '%三甲医院%'。"
+        ),
+        "hint_text_en": (
+            "Treat 'tertiary grade-A hospital' as two semantic conditions: "
+            "(\"名称\" LIKE '%三甲%' OR \"类型\" LIKE '%三甲%') "
+            "AND \"类型\" LIKE '%医院%'; do not use only \"类型\" LIKE '%三甲医院%'."
+        ),
+        "trigger_keywords": ["三甲医院", "三甲", "三级甲等"],
+        "sample_sql": (
+            "SELECT \"名称\" FROM cq_amap_poi_2024 "
+            "WHERE (\"名称\" LIKE '%三甲%' OR \"类型\" LIKE '%三甲%') "
+            "AND \"类型\" LIKE '%医院%'"
+        ),
+    },
+    {
+        "scope_type": "column",
+        "scope_ref": "cq_amap_poi_2024.名称",
+        "hint_kind": "filter_default",
+        "severity": "info",
+        "hint_text_zh": "自然语言中的地点名默认按名称包含匹配（LIKE '%地点名%'）；只有用户明确要求精确匹配时才使用等号。",
+        "hint_text_en": "Match natural-language place names with LIKE '%name%' by default; use equality only when the user explicitly requests an exact match.",
+        "trigger_keywords": ["地点", "名称", "名字", "为中心", "POI", "兴趣点"],
     },
     # Rule 10: 第一分类 vs 类型
     {
@@ -149,16 +170,6 @@ _HINTS: list[dict] = [
             "全市", "合计", "区县", "各区", "哪些区",
             "区县排", "区县的",
         ],
-    },
-    # Rule 17: cq_historic_districts SRID 4610
-    {
-        "scope_type": "table",
-        "scope_ref": "cq_historic_districts",
-        "hint_kind": "srid_note",
-        "severity": "warn",
-        "hint_text_zh": "cq_historic_districts.shape 存储于 SRID 4610 (与其他表 SRID 4326 不同); 做空间 join 前用 ST_Transform(shape, 4326)。",
-        "hint_text_en": "cq_historic_districts.shape is stored in SRID 4610 (other tables in 4326); use ST_Transform(shape, 4326) before spatial join.",
-        "trigger_keywords": ["历史街区", "历史文化", "历史保护"],
     },
 ]
 
@@ -238,12 +249,29 @@ _VALUE_SEMANTICS: list[tuple[str, str, dict]] = [
     }),
     ("cq_osm_roads_2021", "osm_id", {"identifier": True}),
     ("cq_land_use_dltb", "BSM", {"identifier": True, "sql_aliases": ["bsm"]}),
-    ("cq_buildings_2021", "Id", {"identifier": True, "sql_aliases": ["id"]}),
+    ("cq_buildings_2021", "Id", {
+        "identifier": False,
+        "non_unique_identifier": True,
+        "distinct_count_forbidden": True,
+        "sql_aliases": ["id"],
+    }),
+    ("cq_buildings_2021", "geometry", {
+        "entity_key": True,
+        "entity_key_basis": "verified_unique_geometry",
+        "stable_target_order": "centroid_xy",
+    }),
     ("cq_amap_poi_2024", "ID", {"identifier": True, "sql_aliases": ["id"]}),
-    ("cq_amap_poi_2024", "名称", {"sql_aliases": ["name"]}),
+    ("cq_amap_poi_2024", "名称", {
+        "sql_aliases": ["name"],
+        "default_string_match": "contains",
+    }),
     ("cq_amap_poi_2024", "地址", {"sql_aliases": ["address"]}),
     ("cq_amap_poi_2024", "电话", {"sql_aliases": ["phone", "tel"]}),
-    ("cq_amap_poi_2024", "类型", {"sql_aliases": ["type", "category"]}),
+    ("cq_amap_poi_2024", "类型", {
+        "sql_aliases": ["type", "category"],
+        "hierarchy_separator": ";",
+        "hierarchy_separator_label": "分号",
+    }),
     ("cq_amap_poi_2024", "区域ID", {
         "join_condition_overrides": [{
             "other_table": "cq_district_population",
@@ -296,6 +324,28 @@ _VALUE_SEMANTICS: list[tuple[str, str, dict]] = [
 ]
 
 
+# Reproducible semantic-source authority.  These settings used to live only
+# in one benchmark database, which made a fresh/offline deployment select a
+# different physical DLTB version for the same business object.
+_SOURCE_POLICIES: list[tuple[str, bool, int]] = [
+    ("cq_land_use_dltb", True, 100),
+    ("cq_dltb", True, 0),
+]
+
+
+_FIELD_ALIASES: list[tuple[str, str, list[str]]] = [
+    (
+        "cq_historic_districts",
+        "bhlsjzsl",
+        ["历史建筑数量", "受保护历史建筑数量", "保护历史建筑数量"],
+    ),
+    ("cq_baidu_search_index_2023", "odjsmc", ["出发城市", "来源城市", "起点城市"]),
+    ("cq_baidu_search_index_2023", "ddjsmc", ["目的地城市", "到达城市", "目的城市"]),
+    ("cq_baidu_search_index_2023", "pcsscs", ["PC搜索次数", "电脑端搜索次数"]),
+    ("cq_baidu_search_index_2023", "ydsscs", ["移动端搜索次数", "手机端搜索次数"]),
+]
+
+
 # ---------------------------------------------------------------------------
 # Synonyms augmentation — expand fuzzy-match aliases on agent_semantic_sources
 # so common colloquial vocabulary ("楼", "道路", "银行", "户籍人口") routes to
@@ -306,12 +356,14 @@ _EXTRA_SYNONYMS: list[tuple[str, list[str]]] = [
     ("cq_buildings_2021", ["楼", "栋楼", "高楼", "建筑", "建筑物", "楼房", "住房", "房屋"]),
     ("cq_amap_poi_2024", [
         "POI", "兴趣点", "门店", "医院", "三甲医院", "学校", "银行", "药店",
-        "餐厅", "酒店", "加油站", "超市", "商场",
+        "餐厅", "酒店", "加油站", "超市", "商场", "车站", "火车站", "高铁站",
+        "重庆北站", "地点", "地方", "场所",
     ]),
     ("cq_baidu_aoi_2024", ["AOI", "兴趣区", "商圈", "景区", "旅游景点", "评分", "消费"]),
     ("cq_osm_roads_2021", [
         "道路", "道路数据", "路网", "公路", "街道", "单行路", "单行道",
         "主干道", "次干道", "快速路", "高速公路", "桥梁", "隧道",
+        "路",
     ]),
     ("cq_district_population", [
         "区县人口", "户籍人口", "常住人口", "城镇人口", "区县",
@@ -323,10 +375,12 @@ _EXTRA_SYNONYMS: list[tuple[str, list[str]]] = [
     ("cq_unicom_commuting_2023", ["通勤", "职住", "通勤数据", "上下班"]),
     ("cq_dltb", [
         "地类", "地类图斑", "图斑", "土地利用", "耕地", "林地", "草地",
-        "水域", "建设用地", "农用地",
+        "水域", "建设用地", "农用地", "地块", "用地", "水田", "旱地",
+        "有林地", "茶园", "村庄", "村庄用地",
     ]),
     ("cq_land_use_dltb", [
         "土地利用现状", "地类图斑", "DLTB", "图斑面积", "用地图斑",
+        "土地利用地块", "地块", "水田", "旱地", "有林地", "茶园", "村庄用地",
     ]),
 ]
 
@@ -347,8 +401,10 @@ def seed_semantic_hints_cq(owner: str = "audit") -> dict:
     hints_written = 0
     vs_written = 0
     vs_skipped: list[str] = []
-    srid_fixed = False
+    geometry_metadata_updated = 0
     syn_augmented = 0
+    field_aliases_augmented = 0
+    source_policies_updated = 0
 
     with engine.begin() as conn:
         # --- 1. Upsert agent_semantic_hints rows ---
@@ -359,6 +415,21 @@ def seed_semantic_hints_cq(owner: str = "audit") -> dict:
             )
         """)).scalar()
         if has_hints_table:
+            # Source precedence is governed by migration 155 and the semantic
+            # source policy. Remove the old CQ-specific prompt rule that
+            # otherwise contradicts an operator-selected authoritative source.
+            conn.execute(text("""
+                DELETE FROM agent_semantic_hints
+                WHERE source_tag = 'cq_migration_069'
+                  AND (
+                    (scope_ref = 'cq_dltb'
+                     AND hint_kind = 'category_choice'
+                     AND hint_text_zh LIKE '问题无具体年份/版本时%')
+                    OR
+                    (scope_ref = 'cq_historic_districts'
+                     AND hint_kind = 'srid_note')
+                  )
+            """))
             for h in _HINTS:
                 conn.execute(text("""
                     INSERT INTO agent_semantic_hints
@@ -412,18 +483,72 @@ def seed_semantic_hints_cq(owner: str = "audit") -> dict:
             })
             vs_written += 1
 
-        # --- 3. Conditional SRID patch for cq_historic_districts ---
-        srid_row = conn.execute(text("""
-            SELECT srid FROM agent_semantic_sources
-            WHERE table_name = 'cq_historic_districts'
-        """)).fetchone()
-        if srid_row is not None and srid_row[0] != 4610:
+        # --- 2b. Merge business aliases without replacing standard metadata ---
+        for table_name, column_name, extra_aliases in _FIELD_ALIASES:
+            row = conn.execute(text("""
+                SELECT COALESCE(aliases, '[]'::jsonb)
+                FROM agent_semantic_registry
+                WHERE table_name = :t AND column_name = :c
+                LIMIT 1
+            """), {"t": table_name, "c": column_name}).fetchone()
+            if row is None:
+                continue
+            current = row[0] if isinstance(row[0], list) else json.loads(row[0] or "[]")
+            merged = list(dict.fromkeys(list(current) + extra_aliases))
+            if merged == list(current):
+                continue
             conn.execute(text("""
+                UPDATE agent_semantic_registry
+                SET aliases = CAST(:aliases AS jsonb), updated_at = NOW()
+                WHERE table_name = :t AND column_name = :c
+            """), {
+                "aliases": json.dumps(merged, ensure_ascii=False),
+                "t": table_name,
+                "c": column_name,
+            })
+            field_aliases_augmented += 1
+
+        # --- 2c. Persist source authority for repeatable deployments ---
+        for table_name, enabled, priority in _SOURCE_POLICIES:
+            result = conn.execute(text("""
                 UPDATE agent_semantic_sources
-                SET srid = 4610, updated_at = NOW()
-                WHERE table_name = 'cq_historic_districts'
-            """))
-            srid_fixed = True
+                SET nl2sql_enabled = :enabled,
+                    nl2sql_priority = :priority,
+                    updated_at = NOW()
+                WHERE table_name = :table_name
+                  AND (nl2sql_enabled IS DISTINCT FROM :enabled
+                       OR nl2sql_priority IS DISTINCT FROM :priority)
+            """), {
+                "enabled": enabled,
+                "priority": priority,
+                "table_name": table_name,
+            })
+            source_policies_updated += int(result.rowcount or 0)
+
+        # --- 3. Synchronize geometry metadata from the physical database ---
+        # geometry_columns is authoritative.  Semantic metadata must describe
+        # the deployed table instead of imposing a benchmark-era SRID on it.
+        result = conn.execute(text("""
+            WITH physical_geometry AS (
+                SELECT DISTINCT ON (f_table_name)
+                    f_table_name AS table_name,
+                    type AS geometry_type,
+                    srid
+                FROM geometry_columns
+                WHERE f_table_schema = 'public'
+                  AND srid > 0
+                ORDER BY f_table_name, f_geometry_column
+            )
+            UPDATE agent_semantic_sources AS source
+            SET srid = physical.srid,
+                geometry_type = physical.geometry_type,
+                updated_at = NOW()
+            FROM physical_geometry AS physical
+            WHERE source.table_name = physical.table_name
+              AND (source.srid IS DISTINCT FROM physical.srid
+                   OR source.geometry_type IS DISTINCT FROM physical.geometry_type)
+        """))
+        geometry_metadata_updated = int(result.rowcount or 0)
 
         # --- 4. Augment agent_semantic_sources.synonyms (fuzzy-match aliases) ---
         for table_name, extra_syns in _EXTRA_SYNONYMS:
@@ -452,8 +577,13 @@ def seed_semantic_hints_cq(owner: str = "audit") -> dict:
         "hints": hints_written,
         "value_semantics": vs_written,
         "value_semantics_skipped": vs_skipped,
-        "srid_fixed": srid_fixed,
+        # Keep the legacy result key for callers that only checked whether a
+        # correction happened, while exposing the general synchronization count.
+        "srid_fixed": geometry_metadata_updated > 0,
+        "geometry_metadata_updated": geometry_metadata_updated,
         "synonyms_augmented": syn_augmented,
+        "field_aliases_augmented": field_aliases_augmented,
+        "source_policies_updated": source_policies_updated,
     }
 
 

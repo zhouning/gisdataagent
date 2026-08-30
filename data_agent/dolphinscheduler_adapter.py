@@ -44,6 +44,8 @@ from .platform_authorization import (
 from .platform_contracts import (
     Artifact,
     FrameworkAttemptObservation,
+    JqdltbTransformationContract,
+    JqdltbTransformationMode,
     PlatformDefinitionVersion,
     PlatformRun,
     RunStatus,
@@ -58,7 +60,13 @@ DOLPHINSCHEDULER_API_PROFILE = "3.4"
 DOLPHINSCHEDULER_ADAPTER_SCHEMA = "gda.dolphinscheduler_adapter.v1"
 DOLPHINSCHEDULER_BINDING_SCHEMA = "gda.dolphinscheduler_definition_binding.v1"
 DOLPHINSCHEDULER_BINDING_MEDIA_TYPE = "application/vnd.gda.dolphinscheduler-binding+json"
+DOLPHINSCHEDULER_JQDLTB_PLAN_SCHEMA = "gda.dolphinscheduler_jqdltb_transformation_plan.v1"
+DOLPHINSCHEDULER_JQDLTB_PLAN_MEDIA_TYPE = (
+    "application/vnd.gda.dolphinscheduler-jqdltb-transformation-plan+json"
+)
 DOLPHINSCHEDULER_RELEASE_URL = "https://github.com/apache/dolphinscheduler/releases/tag/3.4.2"
+DOLPHINSCHEDULER_CAPABILITY_SCHEMA = "gda.dolphinscheduler_capability.v1"
+_CANCEL_STOP_CAPABILITIES = frozenset({"unknown", "certified", "conformance_probe"})
 _TENANT_ADAPTER = TypeAdapter(TenantId)
 _WORKFLOW_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _.-]{0,254}$")
 _SECRET_KEYS = frozenset(
@@ -160,6 +168,10 @@ class DolphinSchedulerProfile(_FrozenModel):
     timezone_name: str = Field(default="UTC", min_length=1, max_length=64)
     request_timeout_seconds: float = Field(default=15.0, gt=0, le=300)
     reconciliation_page_limit: int = Field(default=5, ge=1, le=100)
+    cancel_terminal_stop_capability: Literal[
+        "unknown", "certified", "conformance_probe"
+    ] = "unknown"
+    cancel_terminal_stop_evidence_ref: str | None = Field(default=None, max_length=512)
     api_profile: Literal["3.4"] = DOLPHINSCHEDULER_API_PROFILE
     server_version: Literal["3.4.2"] = DOLPHINSCHEDULER_SERVER_VERSION
 
@@ -174,6 +186,20 @@ class DolphinSchedulerProfile(_FrozenModel):
     def _separate_policy_evaluator(self) -> DolphinSchedulerProfile:
         if self.workload_subject == self.policy_evaluator_subject:
             raise ValueError("policy evaluator must be independent from adapter workload")
+        return self
+
+    @model_validator(mode="after")
+    def _cancel_capability_evidence(self) -> DolphinSchedulerProfile:
+        if self.cancel_terminal_stop_capability not in _CANCEL_STOP_CAPABILITIES:
+            raise ValueError("cancel terminal STOP capability is invalid")
+        evidence_ref = self.cancel_terminal_stop_evidence_ref
+        if self.cancel_terminal_stop_capability == "unknown" and evidence_ref is not None:
+            raise ValueError("unknown cancel capability cannot carry evidence")
+        if self.cancel_terminal_stop_capability != "unknown":
+            if not evidence_ref or any(character.isspace() for character in evidence_ref):
+                raise ValueError(
+                    "certified cancel capability requires a non-empty evidence reference"
+                )
         return self
 
     @field_validator("base_url")
@@ -202,6 +228,43 @@ class DolphinSchedulerProfile(_FrozenModel):
         except ZoneInfoNotFoundError as exc:
             raise ValueError("timezone_name must identify an IANA timezone") from exc
         return value
+
+
+class DolphinSchedulerCapabilityReport(_FrozenModel):
+    """Version-bound provider capability admission evidence."""
+
+    schema_version: Literal[DOLPHINSCHEDULER_CAPABILITY_SCHEMA] = (
+        DOLPHINSCHEDULER_CAPABILITY_SCHEMA
+    )
+    provider: Literal["apache_dolphinscheduler"] = "apache_dolphinscheduler"
+    api_profile: Literal["3.4"]
+    server_version: Literal["3.4.2"]
+    cancel_terminal_stop_capability: Literal[
+        "unknown", "certified", "conformance_probe"
+    ]
+    cancel_terminal_stop_evidence_ref: str | None = None
+    cancel_admission: Literal["rejected", "allowed", "probe_only"]
+    capability_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+    @model_validator(mode="after")
+    def _fingerprint_is_bound(self) -> DolphinSchedulerCapabilityReport:
+        expected = canonical_json_fingerprint(
+            self.model_dump(mode="json", exclude={"capability_sha256"})
+        )
+        if expected != self.capability_sha256:
+            raise ValueError("DolphinScheduler capability fingerprint is invalid")
+        if self.cancel_terminal_stop_capability == "unknown":
+            if (
+                self.cancel_admission != "rejected"
+                or self.cancel_terminal_stop_evidence_ref is not None
+            ):
+                raise ValueError("unknown cancel capability must be rejected without evidence")
+        elif self.cancel_terminal_stop_capability == "certified":
+            if self.cancel_admission != "allowed" or not self.cancel_terminal_stop_evidence_ref:
+                raise ValueError("certified cancel capability must be production-allowed")
+        elif self.cancel_admission != "probe_only" or not self.cancel_terminal_stop_evidence_ref:
+            raise ValueError("conformance probe capability must remain probe-only")
+        return self
 
 
 class DolphinSchedulerWorkflowDocument(_FrozenModel):
@@ -287,6 +350,25 @@ class DolphinSchedulerBindingEnvelope(_FrozenModel):
     binding: DolphinSchedulerDefinitionBinding
 
 
+class DolphinSchedulerJqdltbTransformationPlanEnvelope(_FrozenModel):
+    """Provider binding plus the exact approved JQDLTB execution contract."""
+
+    plan_schema: Literal[DOLPHINSCHEDULER_JQDLTB_PLAN_SCHEMA] = Field(
+        default=DOLPHINSCHEDULER_JQDLTB_PLAN_SCHEMA,
+        alias="schema",
+    )
+    binding: DolphinSchedulerDefinitionBinding
+    transformation_contract: JqdltbTransformationContract
+
+    @model_validator(mode="after")
+    def _executable_contract(self) -> Self:
+        if self.transformation_contract.mode is not JqdltbTransformationMode.EXECUTE:
+            raise ValueError("JQDLTB scheduler plan requires an executable contract")
+        if self.transformation_contract.tenant_id != self.binding.tenant_id:
+            raise ValueError("JQDLTB scheduler plan tenant does not match binding")
+        return self
+
+
 class DolphinSchedulerInstance(_FrozenModel):
     instance_id: int = Field(gt=0)
     workflow_definition_code: int = Field(gt=0)
@@ -338,6 +420,31 @@ def _binding_storage_uri(tenant_id: str, artifact_id: UUID) -> str:
     return f"postgresql://gda-control/execution-plans/{tenant_id}/{artifact_id}"
 
 
+def _jqdltb_plan_artifact_id(
+    binding: DolphinSchedulerDefinitionBinding,
+    contract: JqdltbTransformationContract,
+) -> UUID:
+    identity = {
+        "binding": binding.model_dump(mode="json"),
+        "contract_sha256": contract.contract_sha256,
+        "plan_sha256": contract.plan_sha256,
+    }
+    return uuid5(
+        binding.definition_version_id,
+        f"dolphinscheduler-jqdltb-transformation:{canonical_json_fingerprint(identity)}",
+    )
+
+
+def _jqdltb_plan_artifact_key(
+    binding: DolphinSchedulerDefinitionBinding,
+    contract: JqdltbTransformationContract,
+) -> str:
+    return (
+        f"dolphinscheduler-jqdltb-transformation:{binding.workflow_definition_code}:"
+        f"v{binding.workflow_definition_version}:{contract.plan_sha256[:12]}"
+    )
+
+
 def build_dolphinscheduler_binding_artifact(
     binding: DolphinSchedulerDefinitionBinding,
     *,
@@ -366,10 +473,89 @@ def build_dolphinscheduler_binding_artifact(
     )
 
 
+def build_dolphinscheduler_jqdltb_transformation_plan_artifact(
+    binding: DolphinSchedulerDefinitionBinding,
+    contract: JqdltbTransformationContract,
+    *,
+    created_by: str,
+    created_at: datetime,
+) -> Artifact:
+    """Build an execution plan that carries one approved JQDLTB contract."""
+    if contract.mode is not JqdltbTransformationMode.EXECUTE:
+        raise DolphinSchedulerContractError(
+            "JQDLTB scheduler plan requires an executable contract"
+        )
+    if contract.tenant_id != binding.tenant_id:
+        raise DolphinSchedulerContractError("JQDLTB plan tenant does not match binding")
+    envelope = DolphinSchedulerJqdltbTransformationPlanEnvelope(
+        binding=binding,
+        transformation_contract=contract,
+    )
+    manifest = envelope.model_dump(mode="json", by_alias=True)
+    artifact_id = _jqdltb_plan_artifact_id(binding, contract)
+    content = canonical_json_bytes(manifest)
+    return Artifact(
+        tenant_id=binding.tenant_id,
+        artifact_id=artifact_id,
+        artifact_key=_jqdltb_plan_artifact_key(binding, contract),
+        artifact_role="execution_plan",
+        storage_uri=_binding_storage_uri(binding.tenant_id, artifact_id),
+        media_type=DOLPHINSCHEDULER_JQDLTB_PLAN_MEDIA_TYPE,
+        content_sha256=canonical_json_fingerprint(manifest),
+        size_bytes=len(content),
+        run_id=None,
+        resource_version_id=binding.definition_version_id,
+        manifest=manifest,
+        created_by=created_by,
+        created_at=created_at,
+    )
+
+
+def parse_dolphinscheduler_jqdltb_transformation_plan_artifact(
+    artifact: Artifact,
+) -> tuple[DolphinSchedulerDefinitionBinding, JqdltbTransformationContract]:
+    """Validate and return the scheduler binding and its approved contract."""
+    try:
+        envelope = DolphinSchedulerJqdltbTransformationPlanEnvelope.model_validate(
+            artifact.manifest
+        )
+    except Exception as exc:
+        raise DolphinSchedulerContractError(
+            "JQDLTB scheduler plan manifest does not satisfy the envelope contract"
+        ) from exc
+    binding = envelope.binding
+    contract = envelope.transformation_contract
+    artifact_id = _jqdltb_plan_artifact_id(binding, contract)
+    expected = {
+        "tenant_id": binding.tenant_id,
+        "artifact_id": artifact_id,
+        "artifact_key": _jqdltb_plan_artifact_key(binding, contract),
+        "artifact_role": "execution_plan",
+        "storage_uri": _binding_storage_uri(binding.tenant_id, artifact_id),
+        "media_type": DOLPHINSCHEDULER_JQDLTB_PLAN_MEDIA_TYPE,
+        "content_sha256": canonical_json_fingerprint(artifact.manifest),
+        "size_bytes": len(canonical_json_bytes(artifact.manifest)),
+        "run_id": None,
+        "resource_version_id": binding.definition_version_id,
+    }
+    actual = artifact.model_dump(mode="python", include=set(expected))
+    actual["artifact_role"] = getattr(artifact.artifact_role, "value", artifact.artifact_role)
+    if any(actual[name] != value for name, value in expected.items()):
+        raise DolphinSchedulerContractError(
+            "JQDLTB scheduler plan artifact metadata does not match its manifest"
+        )
+    return binding, contract
+
+
 def parse_dolphinscheduler_binding_artifact(
     artifact: Artifact,
 ) -> DolphinSchedulerDefinitionBinding:
     """Validate every immutable artifact field before returning its binding."""
+    if artifact.manifest.get("schema") == DOLPHINSCHEDULER_JQDLTB_PLAN_SCHEMA:
+        binding, _contract = parse_dolphinscheduler_jqdltb_transformation_plan_artifact(
+            artifact
+        )
+        return binding
     try:
         envelope = DolphinSchedulerBindingEnvelope.model_validate(artifact.manifest)
     except Exception as exc:
@@ -877,6 +1063,40 @@ class DolphinSchedulerAdapter:
         self.client = client or DolphinSchedulerClient(profile)
         self.clock = clock or (lambda: datetime.now(UTC))
 
+    def capability_report(self) -> DolphinSchedulerCapabilityReport:
+        """Derive bounded capabilities from the pinned provider profile."""
+        capability = self.profile.cancel_terminal_stop_capability
+        admission = {
+            "unknown": "rejected",
+            "certified": "allowed",
+            "conformance_probe": "probe_only",
+        }[capability]
+        payload = {
+            "api_profile": self.profile.api_profile,
+            "server_version": self.profile.server_version,
+            "cancel_terminal_stop_capability": capability,
+            "cancel_terminal_stop_evidence_ref": self.profile.cancel_terminal_stop_evidence_ref,
+            "cancel_admission": admission,
+        }
+        return DolphinSchedulerCapabilityReport(
+            **payload,
+            capability_sha256=canonical_json_fingerprint(
+                {
+                    "schema_version": DOLPHINSCHEDULER_CAPABILITY_SCHEMA,
+                    "provider": "apache_dolphinscheduler",
+                    **payload,
+                }
+            ),
+        )
+
+    def _require_cancel_capability(self) -> DolphinSchedulerCapabilityReport:
+        report = self.capability_report()
+        if report.cancel_admission == "rejected":
+            raise DolphinSchedulerContractError(
+                "cancel admission rejected: provider terminal STOP capability is not certified"
+            )
+        return report
+
     def persist_binding(
         self,
         binding: DolphinSchedulerDefinitionBinding,
@@ -1337,6 +1557,7 @@ class DolphinSchedulerAdapter:
         actor_subject: str,
         policy_decision_artifact_id: UUID,
     ) -> PlatformRun:
+        capability = self._require_cancel_capability()
         tenant = _TENANT_ADAPTER.validate_python(tenant_id)
         run = self.gateway.get_run(tenant, run_id)
         binding, execution_plan_artifact = self._resolve_binding(tenant, binding)
@@ -1365,7 +1586,11 @@ class DolphinSchedulerAdapter:
                 RunStatus.CANCELLING,
                 actor_subject,
                 "cancellation requested for DolphinScheduler workflow",
-                {"workflow_instance_id": match.instance_id},
+                {
+                    "workflow_instance_id": match.instance_id,
+                    "cancel_admission": capability.cancel_admission,
+                    "capability_sha256": capability.capability_sha256,
+                },
             )
         elif run.status != RunStatus.CANCELLING:
             raise DolphinSchedulerContractError(
@@ -1405,6 +1630,9 @@ def build_dolphinscheduler_adapter_report(
         "parse_dolphinscheduler_binding_artifact",
         "dispatch requires immutable policy decision references",
         "validate_run_authorization_evidence",
+        "DOLPHINSCHEDULER_CAPABILITY_SCHEMA",
+        "def capability_report(",
+        "provider terminal STOP capability is not certified",
     )
     missing = [marker for marker in required if marker not in source]
     if missing:

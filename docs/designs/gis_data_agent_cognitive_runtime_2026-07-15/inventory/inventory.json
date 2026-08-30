@@ -1,0 +1,455 @@
+{
+  "generated_at": "2026-07-15T06:00:18.510631+00:00",
+  "cwd": "/Users/zhouning/gisdataagent",
+  "docx": {
+    "path": "docs/semantic_fusion_engine_technical_spec.docx",
+    "exists": true,
+    "size_bytes": 43035,
+    "sha256": "29ea781dbb9215edc03710545a2fdc62048d2259179ebafa736a4347f7ff210e",
+    "headings": [
+      {
+        "text": "一、总体架构：7 阶段流水线",
+        "style_id": "Heading1",
+        "style_name": "heading 1"
+      },
+      {
+        "text": "二、10 种融合策略",
+        "style_id": "Heading1",
+        "style_name": "heading 1"
+      },
+      {
+        "text": "三、4 层渐进式语义字段匹配（核心创新）",
+        "style_id": "Heading1",
+        "style_name": "heading 1"
+      },
+      {
+        "text": "Layer 1 — 精确匹配",
+        "style_id": "Heading2",
+        "style_name": "heading 2"
+      },
+      {
+        "text": "Layer 1.5 — 本体推理匹配（opt-in）",
+        "style_id": "Heading2",
+        "style_name": "heading 2"
+      },
+      {
+        "text": "Layer 2 — 等价组匹配",
+        "style_id": "Heading2",
+        "style_name": "heading 2"
+      },
+      {
+        "text": "Layer 2.5 — 两条可选路径",
+        "style_id": "Heading2",
+        "style_name": "heading 2"
+      },
+      {
+        "text": "Layer 3 — 单位感知匹配",
+        "style_id": "Heading2",
+        "style_name": "heading 2"
+      },
+      {
+        "text": "Layer 4 — 分词模糊匹配",
+        "style_id": "Heading2",
+        "style_name": "heading 2"
+      },
+      {
+        "text": "四、10 项融合质量验证（S7 阶段详情）",
+        "style_id": "Heading1",
+        "style_name": "heading 1"
+      },
+      {
+        "text": "五、v2.0 增强模块",
+        "style_id": "Heading1",
+        "style_name": "heading 1"
+      },
+      {
+        "text": "六、关键数字摘要",
+        "style_id": "Heading1",
+        "style_name": "heading 1"
+      }
+    ],
+    "paragraph_count": 207,
+    "table_count": 5,
+    "image_count": 0,
+    "tracked_insertions": 0,
+    "tracked_deletions": 0
+  },
+  "code_roots": [
+    {
+      "path": "/Users/zhouning/gisdataagent",
+      "exists": true,
+      "git_commit": "1421e005b227524ce35d537688a140bd2d8d16e7",
+      "file_count": 113943,
+      "total_bytes": 17036360336,
+      "extensions": {
+        ".py": 40814,
+        ".md": 37079,
+        ".json": 7443,
+        ".npy": 6802,
+        ".png": 4467,
+        ".csv": 3242,
+        ".tsx": 2756,
+        ".sql": 2470,
+        ".yaml": 2007,
+        ".dita": 858,
+        ".txt": 556,
+        "[no extension]": 445,
+        ".pdf": 397,
+        ".docx": 353,
+        ".svg": 338,
+        ".xml": 338,
+        ".sh": 286,
+        ".tif": 280,
+        ".geojson": 253,
+        ".ts": 237,
+        ".yml": 208,
+        ".html": 198,
+        ".zip": 184,
+        ".pptx": 107,
+        ".jsonl": 105,
+        ".toml": 105,
+        ".dbf": 90,
+        ".prj": 88,
+        ".shp": 88,
+        ".shx": 88,
+        ".atx": 85,
+        ".js": 79,
+        ".pt": 78,
+        ".cpg": 53,
+        ".ditamap": 52,
+        ".example": 52,
+        ".dot": 44,
+        ".gdbtable": 41,
+        ".gdbtablx": 41,
+        ".gdbindexes": 36
+      },
+      "marker_files": [
+        {
+          "path": "requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": "Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": "pyproject.toml",
+          "kind": "python"
+        },
+        {
+          "path": "docker-compose.yml",
+          "kind": "docker-compose"
+        },
+        {
+          "path": "docker/mmfe-spark-runtime/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": "docker/postgis-pgvector/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": "frontend/package.json",
+          "kind": "node"
+        },
+        {
+          "path": "k8s/overlays/local-kind/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": "k8s/overlays/docker-desktop/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": "k8s/base/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": "gis-skill-sdk/pyproject.toml",
+          "kind": "python"
+        },
+        {
+          "path": "subsystems/tool-mcp-servers/blender-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": "subsystems/tool-mcp-servers/qgis-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": "subsystems/tool-mcp-servers/arcgis-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": "subsystems/reference-data/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": "subsystems/reference-data/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": "subsystems/cad-parser/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": "subsystems/cad-parser/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": "subsystems/cv-service/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": "subsystems/cv-service/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".tmp/twm_standard_1128/自然资源一张图数据库标准1128/pyproject.toml",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/pyproject.toml",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/docker-compose.yml",
+          "kind": "docker-compose"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/docker/mmfe-spark-runtime/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/docker/postgis-pgvector/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/frontend/package.json",
+          "kind": "node"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/k8s/overlays/local-kind/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/k8s/overlays/docker-desktop/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/k8s/base/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/gis-skill-sdk/pyproject.toml",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/subsystems/tool-mcp-servers/blender-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/subsystems/tool-mcp-servers/qgis-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/subsystems/tool-mcp-servers/arcgis-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/subsystems/reference-data/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/subsystems/reference-data/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/subsystems/cad-parser/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/subsystems/cad-parser/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/subsystems/cv-service/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/subsystems/cv-service/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/development-control-demand22/helm/gis-data-agent/Chart.yaml",
+          "kind": "helm"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/pyproject.toml",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/docker-compose.yml",
+          "kind": "docker-compose"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/docker/mmfe-spark-runtime/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/docker/postgis-pgvector/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/frontend/package.json",
+          "kind": "node"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/k8s/overlays/local-kind/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/k8s/overlays/docker-desktop/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/k8s/base/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/gis-skill-sdk/pyproject.toml",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/subsystems/tool-mcp-servers/blender-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/subsystems/tool-mcp-servers/qgis-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/subsystems/tool-mcp-servers/arcgis-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/subsystems/reference-data/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/subsystems/reference-data/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/subsystems/cad-parser/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/subsystems/cad-parser/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/subsystems/cv-service/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/subsystems/cv-service/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/parcel-state-demand3/helm/gis-data-agent/Chart.yaml",
+          "kind": "helm"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/pyproject.toml",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/docker-compose.yml",
+          "kind": "docker-compose"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/docker/mmfe-spark-runtime/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/docker/postgis-pgvector/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/frontend/package.json",
+          "kind": "node"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/k8s/overlays/local-kind/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/k8s/overlays/docker-desktop/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/k8s/base/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/gis-skill-sdk/pyproject.toml",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/subsystems/tool-mcp-servers/blender-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/subsystems/tool-mcp-servers/qgis-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/subsystems/tool-mcp-servers/arcgis-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/subsystems/reference-data/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/subsystems/reference-data/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/digital-readiness-demand17/subsystems/cad-parser/requirements.txt",
+          "kind": "python"
+        }
+      ],
+      "java_annotations": {},
+      "top_packages": [],
+      "sample_declared_types": [],
+      "api_hints": []
+    }
+  ],
+  "ea_artifacts": []
+}

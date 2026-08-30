@@ -209,6 +209,22 @@ approval_notification_last_success_timestamp = _safe_gauge(
     "Unix timestamp of the last successful ApprovalCase notification cycle",
     [],
 )
+incident_notification_operations = _safe_counter(
+    "gda_incident_notification_operations_total",
+    "DataIncident notification worker operations by outcome",
+    ["outcome"],
+)
+incident_notification_cycle_duration = _safe_histogram(
+    "gda_incident_notification_cycle_duration_seconds",
+    "DataIncident notification worker cycle latency",
+    [],
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30),
+)
+incident_notification_last_success_timestamp = _safe_gauge(
+    "gda_incident_notification_last_success_timestamp_seconds",
+    "Unix timestamp of the last successful DataIncident notification cycle",
+    [],
+)
 consumer_binding_notification_operations = _safe_counter(
     "gda_consumer_binding_notification_operations_total",
     "ConsumerBinding migration notification worker operations by outcome",
@@ -223,6 +239,23 @@ consumer_binding_notification_cycle_duration = _safe_histogram(
 consumer_binding_notification_last_success_timestamp = _safe_gauge(
     "gda_consumer_binding_notification_last_success_timestamp_seconds",
     "Unix timestamp of the last successful ConsumerBinding notification cycle",
+    [],
+)
+
+agentops_temporal_discovery_operations = _safe_counter(
+    "gda_agentops_temporal_discovery_operations_total",
+    "AgentOps Temporal start-target discovery operations by outcome",
+    ["outcome"],
+)
+agentops_temporal_discovery_cycle_duration = _safe_histogram(
+    "gda_agentops_temporal_discovery_cycle_duration_seconds",
+    "AgentOps Temporal start-target discovery cycle latency",
+    [],
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60),
+)
+agentops_temporal_discovery_last_success_timestamp = _safe_gauge(
+    "gda_agentops_temporal_discovery_last_success_timestamp_seconds",
+    "Unix timestamp of the last successful AgentOps Temporal discovery cycle",
     [],
 )
 

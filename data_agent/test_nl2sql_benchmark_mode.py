@@ -183,6 +183,89 @@ def test_prompts_do_not_contain_cq_specific_dataset_rules():
     )
 
 
+def test_direct_harness_prompt_does_not_contain_dataset_field_examples():
+    """The local Qwen/Gemma direct path must remain data-agnostic."""
+    from data_agent.nl2sql_executor import _build_family_semantic_prompt
+
+    payload = {
+        "grounding_prompt": (
+            "table asset_records(asset_key, category_label, metric_value)"
+        ),
+        "_hint_injection_stats": {},
+    }
+    for engine in ("postgis", "lake"):
+        prompt = _build_family_semantic_prompt(
+            "qwen",
+            "count records by category",
+            payload,
+            execution_engine=engine,
+        )
+        leaks = [fp for fp in _CQ_HARDCODE_FINGERPRINTS if fp in prompt]
+        assert not leaks, (
+            f"dataset-specific fields leaked into {engine} direct prompt: {leaks}"
+        )
+
+
+def test_runtime_grounding_rules_do_not_embed_benchmark_examples():
+    """Runtime rules must be generic even when no reference SQL is retrieved."""
+    from data_agent.nl2sql_grounding import _format_grounding_prompt
+
+    payload = {
+        "candidate_tables": [
+            {
+                "table_name": "asset_records",
+                "display_name": "Asset records",
+                "columns": [
+                    {
+                        "column_name": "asset_key",
+                        "quoted_ref": "asset_key",
+                        "pg_type": "text",
+                        "aliases": ["asset identifier"],
+                    }
+                ],
+            }
+        ],
+        "semantic_hints": {},
+        "intent": "aggregation",
+    }
+    prompt = _format_grounding_prompt(payload)
+    leaked_examples = (
+        "patient JOIN laboratory",
+        "List patients",
+        "40 层",
+        'COUNT(DISTINCT "Id")',
+        "Diagnosis",
+        "first_name",
+    )
+    assert not [item for item in leaked_examples if item in prompt]
+
+
+def test_product_nl2sql_sources_do_not_embed_cq_answers_or_fields():
+    root = Path(__file__).resolve().parent
+    product_sources = (
+        "nl2sql_executor.py",
+        "nl2sql_grounding.py",
+        "sql_postprocessor.py",
+        "reference_queries.py",
+    )
+    fingerprints = (
+        "CQ_GEO_",
+        "cq_land_use_dltb",
+        "cq_buildings_2021",
+        "cq_amap_poi_2024",
+        "重庆大学",
+        "admin_division_code != 500000",
+        'COUNT(DISTINCT "Id")',
+    )
+    leaks = {}
+    for relative in product_sources:
+        source = (root / relative).read_text(encoding="utf-8")
+        hits = [value for value in fingerprints if value in source]
+        if hits:
+            leaks[relative] = hits
+    assert not leaks, f"CQ benchmark knowledge leaked into product NL2SQL sources: {leaks}"
+
+
 def test_common_schema_quoting_rules_are_dataset_agnostic():
     """Common quoting rules may exist, but must not carry CQ-specific logic.
 
@@ -218,7 +301,11 @@ def test_seed_semantic_hints_cq_has_expected_rules():
     assert "cq_district_population.行政区划代码" in scope_refs
     assert "cq_osm_roads_2021.maxspeed" in scope_refs
     assert "cq_land_use_dltb.SHAPE_Area" in scope_refs
-    assert "cq_historic_districts" in scope_refs
+    assert not any(
+        h["scope_ref"] == "cq_historic_districts"
+        and h["hint_kind"] == "srid_note"
+        for h in _HINTS
+    ), "Physical SRID metadata must come from geometry_columns, not a seeded hint"
 
     # value_semantics covers expected columns
     vs_cols = {(t, c) for t, c, _ in _VALUE_SEMANTICS}

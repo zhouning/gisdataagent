@@ -25,17 +25,18 @@ export default function StandardsTab({userRole = "", username = ""}: Props) {
 
   return (
     <div style={{display:"flex", flexDirection:"column", height:"100%"}}>
-      <div style={{display:"flex", gap:8, padding:8, borderBottom:"1px solid #eee"}}>
+      <div style={{display:"flex", gap:4, padding:"7px 8px", borderBottom:"1px solid #dbe3ea", background:"#f8fafc", overflowX:"auto", flexShrink:0}}>
         {(["ingest","analyze","draft","review","publish","derive","market"] as Sub[]).map(k => (
           <button key={k}
             onClick={()=>setSub(k)}
             disabled={!enabled.has(k)}
-            style={{padding:"4px 10px",
-              background: sub===k ? "#0a7" : "transparent",
+            style={{padding:"4px 8px", fontSize:11,
+              background: sub===k ? "#1464a5" : "#fff",
               color: sub===k ? "#fff" : "#444",
-              border:"1px solid #ccc", borderRadius:4,
+              border:"1px solid #cbd5e1", borderRadius:6,
               opacity: enabled.has(k) ? 1 : 0.4,
-              cursor: enabled.has(k) ? "pointer" : "not-allowed"}}>
+              cursor: enabled.has(k) ? "pointer" : "not-allowed",
+              whiteSpace:"nowrap", flex:"0 0 auto"}}>
             {({ingest:"采集", analyze:"分析", draft:"起草",
                review:"审定", publish:"发布", derive:"派生",
                market:"市场"} as Record<Sub,string>)[k]}

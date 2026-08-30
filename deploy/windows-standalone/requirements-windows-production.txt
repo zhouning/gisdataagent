@@ -15,7 +15,14 @@ libpysal==4.14.0
 mapclassify==2.10.0
 boto3==1.42.55
 aiofiles==24.1.0
-litellm>=1.75.5,<2.0
+# ADK LiteLLM connector requires >=1.84; exclude the compromised 1.82.7/
+# 1.82.8 releases and keep the offline profile aligned with requirements.txt.
+litellm>=1.84,<2.0
+
+# Production adapters used by the GWM/MMFE scientific path and standards
+# ingestion. These stay out of the deterministic core profile.
+h5py==3.16.0
+PyMuPDF==1.27.2.2
 
 # Paper9 (farmland-mpc) runtime. Model files and ONNX assets are separate
 # immutable artifacts in the bundle manifest.

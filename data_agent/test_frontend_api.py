@@ -20,13 +20,22 @@ def _run_async(coro):
     return loop.run_until_complete(coro)
 
 
-def _make_request(path="/", query_params=None, cookies=None, path_params=None, method="GET", body=None):
+def _make_request(
+    path="/",
+    query_params=None,
+    cookies=None,
+    path_params=None,
+    method="GET",
+    body=None,
+    headers=None,
+):
     """Create a mock Starlette Request."""
     req = MagicMock()
     req.cookies = cookies or {}
     req.query_params = query_params or {}
     req.path_params = path_params or {}
     req.method = method
+    req.headers = headers or {}
     if body is not None:
         req.json = AsyncMock(return_value=body)
     else:
@@ -102,11 +111,48 @@ class TestCatalogAPI(unittest.TestCase):
     @patch("data_agent.frontend_api._get_user_from_request")
     def test_catalog_search_success(self, mock_user):
         mock_user.return_value = _make_user()
+        from data_agent.capability_registry import (
+            CAPABILITY_FINGERPRINT_HEADER,
+            CATALOG_ASSET_SEARCH,
+        )
         from data_agent.frontend_api import _api_catalog_search
+
         with patch("data_agent.data_catalog.get_engine", return_value=None):
             resp = _run_async(
-                _api_catalog_search(_make_request(query_params={"q": "land use"})))
+                _api_catalog_search(
+                    _make_request(
+                        query_params={"q": "land use"},
+                        headers={
+                            CAPABILITY_FINGERPRINT_HEADER: (
+                                CATALOG_ASSET_SEARCH.fingerprint
+                            )
+                        },
+                    )
+                )
+            )
         self.assertEqual(resp.status_code, 200)
+
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_catalog_search_rejects_contract_drift_before_search(self, mock_user):
+        mock_user.return_value = _make_user()
+        from data_agent.capability_registry import CAPABILITY_FINGERPRINT_HEADER
+        from data_agent.frontend_api import _api_catalog_search
+
+        with patch("data_agent.data_catalog.search_data_assets") as search:
+            resp = _run_async(
+                _api_catalog_search(
+                    _make_request(
+                        query_params={"q": "land use"},
+                        headers={CAPABILITY_FINGERPRINT_HEADER: "f" * 64},
+                    )
+                )
+            )
+
+        self.assertEqual(resp.status_code, 409)
+        payload = json.loads(resp.body)
+        self.assertEqual(payload["code"], "capability_contract_mismatch")
+        self.assertEqual(payload["capability_id"], "catalog.asset.search")
+        search.assert_not_called()
 
     @patch("data_agent.frontend_api.get_engine", return_value=None)
     @patch("data_agent.frontend_api._get_user_from_request")
@@ -376,6 +422,17 @@ class TestBasemapConfigAPI(unittest.TestCase):
         self.assertTrue(body["tianditu_enabled"])
         self.assertEqual(body["tianditu_token"], "test_tk_123")
         self.assertTrue(body["gaode_enabled"])
+        self.assertEqual(len(body["basemaps"]), 5)
+        self.assertEqual(
+            {item["service"] for item in body["basemaps"]},
+            {
+                "DMT_Basemap_2022",
+                "DMT_Basemap_2025_District",
+                "DMT_Basemap_GCS_NoCache",
+                "DMT_Basemap_WM",
+                "DMT_GreenFeatures",
+            },
+        )
 
     @patch.dict("os.environ", {"TIANDITU_TOKEN": ""}, clear=False)
     @patch("data_agent.frontend_api._get_user_from_request")
@@ -388,6 +445,30 @@ class TestBasemapConfigAPI(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         body = json.loads(resp.body)
         self.assertFalse(body["tianditu_enabled"])
+
+    @patch("data_agent.basemaps.fetch_dmt_basemap_tile", new_callable=AsyncMock)
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_dmt_basemap_tile_success(self, mock_user, mock_fetch):
+        mock_user.return_value = _make_user()
+        mock_fetch.return_value = (b"png-data", "image/png")
+        from data_agent.frontend_api import _api_dmt_basemap_tile
+
+        resp = _run_async(_api_dmt_basemap_tile(_make_request(path_params={
+            "basemap_id": "dmt-basemap-wm", "z": 9, "x": 332, "y": 220,
+        })))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.media_type, "image/png")
+        self.assertEqual(resp.body, b"png-data")
+        mock_fetch.assert_awaited_once_with("dmt-basemap-wm", 9, 332, 220)
+
+    @patch("data_agent.frontend_api._get_user_from_request", return_value=None)
+    def test_dmt_basemap_tile_unauthorized(self, _mock):
+        from data_agent.frontend_api import _api_dmt_basemap_tile
+
+        resp = _run_async(_api_dmt_basemap_tile(_make_request(path_params={
+            "basemap_id": "dmt-basemap-wm", "z": 9, "x": 332, "y": 220,
+        })))
+        self.assertEqual(resp.status_code, 401)
 
 
 class TestRouteMount(unittest.TestCase):

@@ -23,11 +23,16 @@ vendor/
   paper9/source/* or paper9/farmland_mpc-*.whl
   paper9/wheelhouse/*.whl
   paper9/models/...
+  middleware/duckdb/v1.4.3/windows_amd64/spatial.duckdb_extension
   monitoring/prometheus/prometheus-*.windows-amd64.zip
   monitoring/grafana/grafana-*.windows-amd64.zip
 ```
 
 文件名允许带补丁版本，`bundle-manifest.json` 中的 glob 要求每项恰好匹配一个安装介质。
+DuckDB Spatial 扩展不是 Python wheel，必须提供与 `requirements-windows-core.txt` 中
+DuckDB `1.4.3` 完全一致的、已解压的 Windows AMD64 文件：
+`middleware/duckdb/v1.4.3/windows_amd64/spatial.duckdb_extension`。构建器不会在现场
+执行 `INSTALL spatial`，安装验收会加载该文件并运行 `ST_Area`。
 pgvector ZIP 必须在压缩包内包含 `vector.dll`、`vector.control` 和至少一个
 `vector--*.sql`；安装器会在现场解压并复制到 PostgreSQL 的 `lib`/`share\extension`。
 构建前要从官方发布页或项目批准的制品库取得文件，并把供应商校验值写入 staging 记录；

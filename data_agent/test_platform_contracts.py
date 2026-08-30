@@ -439,6 +439,48 @@ def test_data_incident_is_content_bound_and_has_one_way_remediation():
             **{**incident.model_dump(), "detected_by": "human:operator"}
         )
 
+    resource_values = {
+        "tenant_id": TENANT,
+        "incident_id": UUID("00000000-0000-4000-8000-000000000057"),
+        "run_id": None,
+        "subject_resource_urn": f"gda://{TENANT}/service/approval-notification",
+        "dedupe_key": "slo-burn:episode-1",
+        "incident_type": "slo_error_budget_burn",
+        "severity": "critical",
+        "summary": "SLO error budget is burning",
+        "trigger_observation_id": None,
+        "details": {"slo_version_ref": "slo-v1"},
+        "detected_by": "workload:slo-alert-ingestor",
+        "opened_at": NOW,
+        "updated_at": NOW,
+    }
+    resource_values["incident_sha256"] = contracts.data_incident_fingerprint(
+        **{
+            key: resource_values[key]
+            for key in (
+                "tenant_id",
+                "run_id",
+                "subject_resource_urn",
+                "dedupe_key",
+                "incident_type",
+                "severity",
+                "summary",
+                "trigger_observation_id",
+                "details",
+                "detected_by",
+                "opened_at",
+            )
+        }
+    )
+    resource_incident = contracts.DataIncident(**resource_values)
+    assert resource_incident.run_id is None
+    with pytest.raises(ValidationError, match="exactly one"):
+        contracts.DataIncident(**{**resource_values, "run_id": RUN_ID})
+    with pytest.raises(ValidationError, match="exactly one"):
+        contracts.DataIncident(
+            **{**resource_values, "subject_resource_urn": None}
+        )
+
 
 def test_incident_notification_binds_immutable_event_and_delivery_lease():
     incident_id = UUID("00000000-0000-4000-8000-000000000055")
@@ -512,6 +554,28 @@ def test_incident_notification_binds_immutable_event_and_delivery_lease():
             notification=notification.model_copy(update={"incident_sequence_no": 1}),
             incident=incident,
             event=event,
+        )
+
+    done_values = {
+        **notification.model_dump(),
+            "status": "done",
+            "completed_at": NOW,
+            "provider_receipt": {
+                "schema": "gda.alertmanager_provider_receipt.v1",
+                "provider": "alertmanager",
+                "accepted": True,
+                "http_status": 202,
+                "destination_ref": "alertmanager:default",
+                "accepted_at": "2026-08-01T12:00:00Z",
+            },
+            "receipt_sha256": "a" * 64,
+            "terminal_worker_id": "worker:test",
+    }
+    done = contracts.IncidentNotification(**done_values)
+    assert done.status is contracts.IncidentNotificationStatus.DONE
+    with pytest.raises(ValidationError, match="receipt schema"):
+        contracts.IncidentNotification(
+            **{**done_values, "provider_receipt": {"schema": "unknown"}}
         )
 
 
@@ -591,10 +655,96 @@ def test_control_ledger_contract_and_migration_catalog_are_valid():
     )
 
     assert report["status"] == "valid"
-    assert report["contract_count"] == 29
+    assert report["contract_count"] == 38
     assert Path(migration["path"]).resolve() == contracts.CONTROL_LEDGER_MIGRATION.resolve()
     assert len(report["migration"]["sha256"]) == 64
-    assert Path(migrations[-1]["filename"]).stem == "143_source_sync_quarantine_evidence"
+    migration_stems = {Path(item["filename"]).stem for item in migrations}
+    assert "123_resource_bound_data_incident" in migration_stems
+    assert "129_platform_run_event_delivery_outbox" in migration_stems
+    assert "198_blueprint_provider_retry_command" in migration_stems
+    assert "199_blueprint_duckdb_provider_success" in migration_stems
+    assert "200_blueprint_duckdb_execute_command" in migration_stems
+    assert "201_blueprint_duckdb_object_storage_evidence" in migration_stems
+    assert "202_blueprint_duckdb_spatial_receipt_evidence" in migration_stems
+
+
+def test_blueprint_provider_retry_extends_only_the_shared_command_vocabulary():
+    migration = (
+        Path(__file__).resolve().parent
+        / "migrations"
+        / "198_blueprint_provider_retry_command.sql"
+    )
+    sql = migration.read_text(encoding="utf-8")
+
+    assert "ALTER TABLE gda_control.platform_command_outbox" in sql
+    assert "'blueprint_provider.retry'" in sql
+    assert "CREATE TABLE" not in sql
+    assert "CREATE TYPE" not in sql
+
+
+def test_blueprint_duckdb_provider_extends_the_existing_success_authority():
+    migration = (
+        Path(__file__).resolve().parent
+        / "migrations"
+        / "199_blueprint_duckdb_provider_success.sql"
+    )
+    sql = migration.read_text(encoding="utf-8")
+
+    assert "CREATE OR REPLACE FUNCTION gda_control.finalize_blueprint_test_run_success" in sql
+    assert "gda.data_product_blueprint_duckdb_provider_receipt.v1" in sql
+    assert "execution_plan_artifact_id" in sql
+    assert "output_content_sha256" in sql
+    assert "independent passed Blueprint test QualityResult" in sql
+    assert "gda_control.apply_platform_run_transition" in sql
+    assert "CREATE TABLE" not in sql
+
+
+def test_blueprint_duckdb_worker_extends_only_the_shared_command_vocabulary():
+    migration = (
+        Path(__file__).resolve().parent
+        / "migrations"
+        / "200_blueprint_duckdb_execute_command.sql"
+    )
+    sql = migration.read_text(encoding="utf-8")
+
+    assert "ALTER TABLE gda_control.platform_command_outbox" in sql
+    assert "'blueprint_provider.execute'" in sql
+    assert "'blueprint_provider.retry'" in sql
+    assert "CREATE TABLE" not in sql
+    assert "CREATE TYPE" not in sql
+
+
+def test_blueprint_duckdb_s3_success_requires_exact_object_version_evidence():
+    migration = (
+        Path(__file__).resolve().parent
+        / "migrations"
+        / "201_blueprint_duckdb_object_storage_evidence.sql"
+    )
+    sql = migration.read_text(encoding="utf-8")
+
+    assert "gda.s3_object_version.v1" in sql
+    assert "version_id" in sql
+    assert "etag" in sql
+    assert "output_storage_evidence" in sql
+    assert "VALIDATE CONSTRAINT" in sql
+    assert "CREATE TABLE" not in sql
+    assert "CREATE OR REPLACE FUNCTION" not in sql
+
+
+def test_blueprint_duckdb_spatial_success_requires_extension_and_geoparquet_evidence():
+    migration = (
+        Path(__file__).resolve().parent
+        / "migrations"
+        / "202_blueprint_duckdb_spatial_receipt_evidence.sql"
+    )
+    sql = migration.read_text(encoding="utf-8")
+
+    assert "gda.duckdb_spatial_extension.v1" in sql
+    assert "gda.geoparquet_spatial_output.v1" in sql
+    assert "autoinstall_enabled" in sql
+    assert "enforce_blueprint_duckdb_spatial_success" in sql
+    assert "platform_run_event" in sql
+    assert "CREATE TABLE" not in sql
 
 
 def test_sql_contract_has_tenant_fks_rls_append_only_and_no_legacy_backfill():

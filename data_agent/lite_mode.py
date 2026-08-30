@@ -10,11 +10,19 @@ Usage:
 """
 from __future__ import annotations
 
+import hashlib
 import os
+import secrets
 
 from .observability import get_logger
 
 logger = get_logger("lite_mode")
+
+
+def _make_password_hash(password: str) -> str:
+    salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100000)
+    return f"{salt}${digest.hex()}"
 
 
 def is_lite_mode() -> bool:
@@ -62,6 +70,24 @@ def init_lite_database(db_path: str = None) -> dict:
         )
     """)
     tables_created.append("agent_users")
+
+    # Chainlit authentication uses the same canonical table name as the
+    # PostgreSQL profile.  Keep agent_users for backward compatibility with
+    # early Lite installations, but make agent_app_users authoritative.
+    adapter.execute("""
+        CREATE TABLE IF NOT EXISTS agent_app_users (
+            id BIGINT PRIMARY KEY,
+            username VARCHAR UNIQUE NOT NULL,
+            password_hash VARCHAR,
+            display_name VARCHAR,
+            email VARCHAR DEFAULT '',
+            role VARCHAR DEFAULT 'analyst',
+            tenant_id VARCHAR,
+            auth_provider VARCHAR DEFAULT 'password',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    tables_created.append("agent_app_users")
 
     # Data assets
     adapter.execute("""
@@ -118,6 +144,28 @@ def init_lite_database(db_path: str = None) -> dict:
             VALUES (1, 'admin', 'admin')
         """)
         logger.info("Seeded default admin user")
+
+    existing = adapter.execute(
+        "SELECT COUNT(*) FROM agent_app_users WHERE username = 'admin'"
+    )
+    if existing[0][0] == 0:
+        admin_password = os.environ.get("GDA_LITE_ADMIN_PASSWORD", "admin123")
+        adapter.execute(
+            """
+            INSERT INTO agent_app_users (
+                id, username, password_hash, display_name, role, auth_provider
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            [
+                1,
+                "admin",
+                _make_password_hash(admin_password),
+                "Administrator",
+                "admin",
+                "password",
+            ],
+        )
+        logger.info("Seeded Lite admin user")
 
     # Seed sample data asset
     existing = adapter.execute("SELECT COUNT(*) FROM agent_data_assets")

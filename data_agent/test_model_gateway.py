@@ -28,6 +28,7 @@ class TestModelRegistryBuiltins(unittest.TestCase):
         self.assertIn("gemini-2.5-flash", ModelRegistry.models)
         self.assertIn("gemini-2.5-pro", ModelRegistry.models)
         self.assertIn("gemini-2.0-flash", ModelRegistry.models)
+        self.assertIn("gemini-3.7-flash", ModelRegistry.models)
 
     def test_has_gemma_local_model(self):
         from data_agent.model_gateway import ModelRegistry
@@ -64,6 +65,26 @@ class TestModelRegistryBuiltins(unittest.TestCase):
         self.assertEqual(pro["api_key_env"], "DEEPSEEK_API_KEY")
         self.assertEqual(pro["model_id"], "openai/deepseek-v4-pro")
 
+    def test_has_openai_gpt56_models(self):
+        from data_agent.model_gateway import ModelRegistry
+
+        ModelRegistry._ensure_initialized()
+        expected = {
+            "gpt-5.6-luna": "fast",
+            "gpt-5.6-terra": "standard",
+            "gpt-5.6-sol": "premium",
+        }
+        for name, tier in expected.items():
+            info = ModelRegistry.models[name]
+            self.assertEqual(info["backend"], "openai")
+            self.assertEqual(info["tier"], tier)
+            self.assertTrue(info["online"])
+            self.assertEqual(info["api_key_env"], "OPENAI_API_KEY")
+            self.assertEqual(info["model_id"], f"openai/{name}")
+            self.assertEqual(info["max_context_tokens"], 1_050_000)
+            self.assertGreater(info["cost_per_1k_input"], 0.0)
+            self.assertGreater(info["cost_per_1k_output"], 0.0)
+
     def test_gemini_models_are_online(self):
         from data_agent.model_gateway import ModelRegistry
         ModelRegistry._ensure_initialized()
@@ -92,6 +113,37 @@ class TestModelRegistryBuiltins(unittest.TestCase):
             self.assertFalse(m["online"])
         names = [m["name"] for m in models]
         self.assertIn("gemma-3-4b", names)
+
+
+class TestNL2SQLModelResolution(unittest.TestCase):
+    def test_product_route_uses_source_override_before_shared_model(self):
+        from data_agent.model_gateway import resolve_nl2sql_model_name
+
+        with patch.dict(
+            os.environ,
+            {
+                "GDA_LLM_MODEL": "gemini-3.7-flash",
+                "GDA_LIVEABILITY_NL2SQL_MODEL": "gemini-2.5-pro",
+            },
+            clear=True,
+        ):
+            self.assertEqual(
+                resolve_nl2sql_model_name(scope="liveability"),
+                "gemini-2.5-pro",
+            )
+
+    def test_product_route_uses_shared_model_when_no_source_override(self):
+        from data_agent.model_gateway import resolve_nl2sql_model_name
+
+        with patch.dict(
+            os.environ,
+            {"GDA_LLM_MODEL": "gemini-3.7-flash"},
+            clear=True,
+        ):
+            self.assertEqual(
+                resolve_nl2sql_model_name(scope="makani"),
+                "gemini-3.7-flash",
+            )
 
 
 class TestModelRegistration(unittest.TestCase):
@@ -157,6 +209,60 @@ class TestModelRegistration(unittest.TestCase):
         self.assertIn("qwen3-8b", ModelRegistry.models)
         self.assertEqual(ModelRegistry.models["qwen3-8b"]["backend"], "lm_studio")
 
+    @patch.dict(
+        os.environ,
+        {
+            "GDA_LLM_PROVIDER": "openai",
+            "GDA_LLM_MODEL": "gpt-4.1",
+            "GDA_LLM_BASE_URL": "https://api.openai.com/v1",
+        },
+        clear=True,
+    )
+    def test_env_var_auto_registers_other_openai_model(self):
+        from data_agent.model_gateway import ModelRegistry
+
+        ModelRegistry.reset()
+        ModelRegistry._ensure_initialized()
+        info = ModelRegistry.models["gpt-4.1"]
+        self.assertEqual(info["backend"], "openai")
+        self.assertTrue(info["online"])
+        self.assertEqual(info["model_id"], "openai/gpt-4.1")
+
+    @patch.dict(
+        os.environ,
+        {
+            "GDA_LLM_PROVIDER": "gemini",
+            "GDA_LLM_MODEL": "gemini-3.7-flash",
+        },
+        clear=True,
+    )
+    def test_env_var_auto_registers_gemini_model_on_native_backend(self):
+        from data_agent.model_gateway import ModelRegistry
+
+        ModelRegistry.reset()
+        ModelRegistry._ensure_initialized()
+        info = ModelRegistry.models["gemini-3.7-flash"]
+        self.assertEqual(info["backend"], "gemini")
+        self.assertTrue(info["online"])
+
+    @patch.dict(
+        os.environ,
+        {
+            "GDA_LLM_PROVIDER": "ollama",
+            "GDA_LLM_MODEL": "gpt-oss-20b",
+            "GDA_LLM_BASE_URL": "http://127.0.0.1:11434/v1",
+        },
+        clear=True,
+    )
+    def test_explicit_local_provider_wins_for_gpt_named_model(self):
+        from data_agent.model_gateway import ModelRegistry
+
+        ModelRegistry.reset()
+        ModelRegistry._ensure_initialized()
+        info = ModelRegistry.models["gpt-oss-20b"]
+        self.assertEqual(info["backend"], "lm_studio")
+        self.assertFalse(info["online"])
+
 
 class TestCreateModel(unittest.TestCase):
     """create_model() factory backend selection."""
@@ -168,6 +274,42 @@ class TestCreateModel(unittest.TestCase):
     def tearDown(self):
         from data_agent.model_gateway import ModelRegistry
         ModelRegistry.reset()
+
+    @patch("google.adk.models.lite_llm.LiteLlm")
+    @patch.dict(
+        os.environ,
+        {
+            "GOOGLE_GEMINI_BASE_URL": "https://gateway.example/api/gemini",
+            "GEMINI_API_KEY": "gemini-key",
+        },
+        clear=False,
+    )
+    def test_gemini_uses_explicit_openai_compatible_gateway(self, mock_litellm):
+        from data_agent.model_gateway import _create_gemini_model
+
+        with patch.dict(os.environ, {"GDA_LLM_BASE_URL": ""}, clear=False):
+            _create_gemini_model("gemini-3.7-flash")
+
+        mock_litellm.assert_called_once_with(model="openai/gemini-3.7-flash")
+
+    @patch("google.adk.models.google_llm.Gemini")
+    @patch.dict(
+        os.environ,
+        {
+            "GDA_GEMINI_TRANSPORT": "direct",
+            "GOOGLE_GEMINI_BASE_URL": "https://gateway.example/api/gemini",
+            "GEMINI_API_KEY": "gemini-key",
+            "GEMINI_THINKING_LEVEL": "",
+        },
+        clear=False,
+    )
+    def test_gemini_direct_transport_ignores_stale_gateway(self, mock_gemini):
+        from data_agent.model_gateway import _create_gemini_model
+
+        _create_gemini_model("gemini-3.7-flash")
+
+        mock_gemini.assert_called_once()
+        assert "GOOGLE_GEMINI_BASE_URL" not in os.environ
 
     @patch("data_agent.model_gateway._create_gemini_model")
     def test_gemini_model_uses_gemini_backend(self, mock_create):
@@ -190,6 +332,66 @@ class TestCreateModel(unittest.TestCase):
         create_model("deepseek-v4-flash")
         mock_create.assert_called_once()
 
+    @patch("data_agent.model_gateway._create_openai_model")
+    def test_openai_model_uses_openai_backend(self, mock_create):
+        from data_agent.model_gateway import create_model
+
+        mock_create.return_value = MagicMock()
+        create_model("gpt-5.6-terra")
+        mock_create.assert_called_once()
+
+    @patch("google.adk.models.lite_llm.LiteLlm")
+    @patch.dict(
+        os.environ,
+        {
+            "OPENAI_API_KEY": "test-openai-key",
+            "GDA_OPENAI_REASONING_EFFORT": "low",
+        },
+        clear=False,
+    )
+    def test_create_openai_model_sets_litellm_config(self, mock_litellm):
+        from data_agent.model_gateway import _create_openai_model
+
+        _create_openai_model("gpt-5.6-terra", {
+            "api_base": "https://api.openai.com/v1",
+            "model_id": "openai/gpt-5.6-terra",
+        })
+        self.assertEqual(os.environ["OPENAI_API_BASE"], "https://api.openai.com/v1")
+        self.assertEqual(os.environ["OPENAI_API_KEY"], "test-openai-key")
+        mock_litellm.assert_called_once_with(
+            model="openai/gpt-5.6-terra",
+            reasoning_effort="low",
+        )
+
+    def test_create_openai_model_requires_api_key(self):
+        from data_agent.model_gateway import _create_openai_model
+
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "OPENAI_API_KEY"):
+                _create_openai_model("gpt-5.6-terra", {})
+
+    @patch("google.adk.models.lite_llm.LiteLlm")
+    @patch.dict(
+        os.environ,
+        {
+            "OPENAI_API_KEY": "test-openai-key",
+            "GDA_OPENAI_REASONING_EFFORT": "max",
+        },
+        clear=False,
+    )
+    def test_gpt_5_1_rejects_unsupported_reasoning_effort(self, mock_litellm):
+        from data_agent.model_gateway import _create_openai_model
+
+        with self.assertRaisesRegex(ValueError, "gpt-5.1.*supported values"):
+            _create_openai_model(
+                "gpt-5.1",
+                {
+                    "api_base": "https://api.openai.com/v1",
+                    "model_id": "openai/gpt-5.1",
+                },
+            )
+        mock_litellm.assert_not_called()
+
     @patch("google.adk.models.lite_llm.LiteLlm")
     @patch.dict(os.environ, {"DEEPSEEK_API_KEY": "test-key"}, clear=False)
     def test_create_deepseek_model_sets_openai_compat_env(self, mock_litellm):
@@ -201,7 +403,10 @@ class TestCreateModel(unittest.TestCase):
         })
         self.assertEqual(os.environ["OPENAI_API_BASE"], "https://api.deepseek.com")
         self.assertEqual(os.environ["OPENAI_API_KEY"], "test-key")
-        mock_litellm.assert_called_once_with(model="openai/deepseek-v4-flash")
+        mock_litellm.assert_called_once_with(
+            model="openai/deepseek-v4-flash",
+            extra_body={"thinking": {"type": "disabled"}},
+        )
 
     def test_create_deepseek_model_requires_dedicated_api_key(self):
         from data_agent.model_gateway import _create_deepseek_model
@@ -238,6 +443,11 @@ class TestBackendDetection(unittest.TestCase):
     def test_openai_prefix_detected(self):
         from data_agent.model_gateway import _detect_backend
         self.assertEqual(_detect_backend("openai/gpt-4o"), "litellm")
+
+    def test_gpt_model_detected_as_openai(self):
+        from data_agent.model_gateway import _detect_backend
+
+        self.assertEqual(_detect_backend("gpt-5.6-terra"), "openai")
 
     def test_ollama_prefix_detected(self):
         from data_agent.model_gateway import _detect_backend
@@ -276,7 +486,7 @@ class TestModelRouter(unittest.TestCase):
         from data_agent.model_gateway import ModelRouter
         router = ModelRouter()
         result = router.route(prefer_offline=True)
-        self.assertEqual(result, "gemma-3-4b")
+        self.assertEqual(result, "gemma4-26b-ollama")
 
     def test_route_with_task_type(self):
         from data_agent.model_gateway import ModelRouter
@@ -304,9 +514,15 @@ class TestAgentIntegration(unittest.TestCase):
 
     @patch("data_agent.model_gateway.create_model")
     def test_create_model_with_retry_delegates(self, mock_create):
-        mock_create.return_value = MagicMock()
+        # agent.py constructs module-level ADK agents during import. Return a
+        # valid model identifier so current ADK type validation can complete.
+        mock_create.return_value = "gemini-2.5-flash"
         from data_agent.agent import _create_model_with_retry
-        _create_model_with_retry("gemini-2.5-flash")
+
+        mock_create.reset_mock()
+        result = _create_model_with_retry("gemini-2.5-flash")
+
+        self.assertEqual(result, "gemini-2.5-flash")
         mock_create.assert_called_once_with("gemini-2.5-flash")
 
 

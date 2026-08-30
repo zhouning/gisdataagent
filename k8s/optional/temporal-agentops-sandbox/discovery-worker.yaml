@@ -1,0 +1,233 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gis-agent-agentops-discovery
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gis-agent-agentops-discovery
+data:
+  GDA_AGENTOPS_RECONCILER_NAMESPACE: gda-agentops-sandbox
+  GDA_AGENTOPS_RECONCILER_FRONTEND: gis-agent-temporal-frontend:7233
+  GDA_AGENTOPS_RECONCILER_CLAIM_LIMIT: "10"
+  GDA_AGENTOPS_RECONCILER_LEASE_SECONDS: "60"
+  GDA_AGENTOPS_RECONCILER_HEARTBEAT_SECONDS: "15"
+  GDA_AGENTOPS_RECONCILER_OBSERVATION_TIMEOUT_SECONDS: "30"
+  GDA_AGENTOPS_RECONCILER_POLL_SECONDS: "5"
+  GDA_AGENTOPS_RECONCILER_STATUS_FILE: /var/run/gda-status/discovery.json
+  GDA_AGENTOPS_RECONCILER_HEALTH_MAX_AGE_SECONDS: "180"
+  GDA_AGENTOPS_RECONCILER_METRICS_PORT: "9090"
+  # The sandbox has no certified shared execution-worker content plane. Keep the
+  # discovery process explicit and fail closed by using a disposable filesystem
+  # backend; production must replace this with the shared versioned S3/MinIO
+  # backend and a durable materialization volume.
+  GDA_AGENTOPS_RECONCILER_SPECIALIST_ARTIFACT_BACKEND: filesystem
+  GDA_AGENTOPS_RECONCILER_SPECIALIST_ARTIFACT_ROOT: /var/lib/gda-agentops/reconciler/content
+  GDA_AGENTOPS_RECONCILER_SPECIALIST_MATERIALIZATION_ROOT: /var/lib/gda-agentops/reconciler/materialized
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gis-agent-agentops-discovery
+  labels:
+    app.kubernetes.io/name: gis-agent-agentops-discovery
+    app.kubernetes.io/component: agentops-discovery
+spec:
+  # Opt in only after the GDA control database role and migrations 242 and 246 are live.
+  replicas: 0
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gis-agent-agentops-discovery
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gis-agent-agentops-discovery
+        app.kubernetes.io/component: agentops-discovery
+    spec:
+      serviceAccountName: gis-agent-agentops-discovery
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 60
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: gis-agent-agentops-discovery
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: discovery
+          image: gis-data-agent:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-ec"]
+          args:
+            - >-
+              export GDA_AGENTOPS_RECONCILER_TENANT_ID="$(cat /var/run/gda-runtime/tenant-id)";
+              export GDA_AGENTOPS_RECONCILER_WORKER_ID="workload:agentops-discovery:${POD_NAME}";
+              python -m data_agent.agentops_temporal_reconciler_worker image-contract;
+              exec python -m data_agent.agentops_temporal_reconciler_worker --discover
+          envFrom:
+            - configMapRef:
+                name: gis-agent-agentops-discovery
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gis-agent-agentops-discovery-runtime
+                  key: database-url
+            - name: POSTGRES_ADMIN_USER
+              value: ""
+            - name: POSTGRES_ADMIN_PASSWORD
+              value: ""
+            - name: DB_POOL_SIZE
+              value: "3"
+            - name: DB_MAX_OVERFLOW
+              value: "0"
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: HOME
+              value: /tmp
+            - name: TMPDIR
+              value: /tmp
+            - name: GDA_AGENTOPS_RECONCILER_STATUS_FILE
+              value: /var/run/gda-status/discovery.json
+            - name: GDA_AGENTOPS_RECONCILER_HEALTH_MAX_AGE_SECONDS
+              value: "180"
+            - name: GDA_AGENTOPS_RECONCILER_METRICS_PORT
+              value: "9090"
+          volumeMounts:
+            - name: runtime-identity
+              mountPath: /var/run/gda-runtime
+              readOnly: true
+            - name: worker-tmp
+              mountPath: /tmp
+            - name: worker-status
+              mountPath: /var/run/gda-status
+            - name: specialist-content
+              mountPath: /var/lib/gda-agentops/reconciler
+          ports:
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+          startupProbe:
+            exec:
+              command:
+                - python
+                - -m
+                - data_agent.agentops_temporal_reconciler_worker
+                - liveness
+                - --status-file
+                - /var/run/gda-status/discovery.json
+                - --max-age-seconds
+                - "180"
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 36
+          readinessProbe:
+            exec:
+              command:
+                - python
+                - -m
+                - data_agent.agentops_temporal_reconciler_worker
+                - health
+                - --status-file
+                - /var/run/gda-status/discovery.json
+                - --max-age-seconds
+                - "180"
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -m
+                - data_agent.agentops_temporal_reconciler_worker
+                - liveness
+                - --status-file
+                - /var/run/gda-status/discovery.json
+                - --max-age-seconds
+                - "180"
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+      volumes:
+        - name: runtime-identity
+          secret:
+            secretName: gis-agent-agentops-discovery-runtime
+            defaultMode: 0444
+            items:
+              - key: tenant-id
+                path: tenant-id
+        - name: worker-tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
+        - name: worker-status
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+        - name: specialist-content
+          emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gis-agent-agentops-discovery
+  labels:
+    app.kubernetes.io/name: gis-agent-agentops-discovery
+    app.kubernetes.io/component: agentops-discovery
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: gis-agent-agentops-discovery
+  ports:
+    - name: metrics
+      port: 9090
+      targetPort: metrics
+      protocol: TCP
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gis-agent-agentops-discovery
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gis-agent-agentops-discovery

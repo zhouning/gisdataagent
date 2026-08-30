@@ -22,17 +22,19 @@ fi
 
 # ---- Prerequisite check -----------------------------------------------------
 
-if ! command -v pg_dump &> /dev/null; then
+if [ "$DRY_RUN" = false ] && ! command -v pg_dump &> /dev/null; then
     echo "[ERROR] pg_dump not found. Install postgresql-client."
     exit 1
 fi
 
 # ---- Prepare backup directory ------------------------------------------------
 
-mkdir -p "$BACKUP_DIR"
+if [ "$DRY_RUN" = false ]; then
+    mkdir -p "$BACKUP_DIR"
+fi
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-FILENAME="${BACKUP_DIR}/gis_agent_${TIMESTAMP}.sql.gz"
+FILENAME="${BACKUP_DIR}/gis_agent_${TIMESTAMP}.dump"
 
 echo "========================================="
 echo " GIS Data Agent — Database Backup"
@@ -46,14 +48,31 @@ echo ""
 # ---- Create backup -----------------------------------------------------------
 
 if [ "$DRY_RUN" = true ]; then
-    echo "[DRY-RUN] Would run: pg_dump -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -Fc $POSTGRES_DATABASE | gzip > $FILENAME"
+    echo "[DRY-RUN] Would create a custom-format dump at $FILENAME"
 else
-    export PGPASSWORD="${POSTGRES_ADMIN_PASSWORD:-postgres}"
+    if [ -n "${POSTGRES_ADMIN_PASSWORD:-}" ]; then
+        export PGPASSWORD="$POSTGRES_ADMIN_PASSWORD"
+    fi
+    PARTIAL="${FILENAME}.partial"
+    cleanup_partial() {
+        rm -f "$PARTIAL"
+    }
+    trap cleanup_partial EXIT
 
     echo "[Backup] Dumping database..."
-    pg_dump -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -Fc "$POSTGRES_DATABASE" | gzip > "$FILENAME"
+    pg_dump \
+        -h "$POSTGRES_HOST" \
+        -p "$POSTGRES_PORT" \
+        -U "$POSTGRES_USER" \
+        --format=custom \
+        --no-owner \
+        --no-acl \
+        --file "$PARTIAL" \
+        "$POSTGRES_DATABASE"
+    mv "$PARTIAL" "$FILENAME"
+    trap - EXIT
 
-    unset PGPASSWORD
+    unset PGPASSWORD || true
 
     SIZE=$(du -h "$FILENAME" | cut -f1)
     echo "[Backup] Created: $FILENAME ($SIZE)"
@@ -63,10 +82,11 @@ fi
 
 echo "[Cleanup] Removing backups older than $RETENTION_DAYS days..."
 if [ "$DRY_RUN" = true ]; then
-    find "$BACKUP_DIR" -name "gis_agent_*.sql.gz" -mtime +"$RETENTION_DAYS" -print 2>/dev/null || true
+    find "$BACKUP_DIR" -name "gis_agent_*.dump" -mtime +"$RETENTION_DAYS" -print 2>/dev/null || true
 else
-    REMOVED=$(find "$BACKUP_DIR" -name "gis_agent_*.sql.gz" -mtime +"$RETENTION_DAYS" -delete -print 2>/dev/null | wc -l)
+    REMOVED=$(find "$BACKUP_DIR" -name "gis_agent_*.dump" -mtime +"$RETENTION_DAYS" -delete -print 2>/dev/null | wc -l)
     echo "[Cleanup] Removed $REMOVED old backup(s)."
 fi
 
+echo "[Notice] A dump is not recovery evidence; run the isolated recovery rehearsal."
 echo "[Done]"

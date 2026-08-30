@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from enum import StrEnum
 from math import isfinite
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlsplit
 from uuid import UUID
 
@@ -18,7 +19,14 @@ from pydantic import (
     model_validator,
 )
 
-from .platform_contracts import TenantId, canonical_json_fingerprint, parse_resource_urn
+from .platform_contracts import (
+    FrameworkAttemptObservation,
+    ResourceURNText,
+    Sha256,
+    TenantId,
+    canonical_json_fingerprint,
+    parse_resource_urn,
+)
 
 
 class GISServiceType(StrEnum):
@@ -33,6 +41,18 @@ class ServiceDeploymentState(StrEnum):
     DEPLOYING = "deploying"
     READY = "ready"
     FAILED = "failed"
+
+
+def service_deployment_terminal_state(
+    observed_state: str,
+) -> ServiceDeploymentState:
+    """Map a provider terminal observation into the deployment state machine."""
+    normalized = observed_state.strip().lower()
+    if normalized in {"success", "succeeded", "ready", "completed"}:
+        return ServiceDeploymentState.READY
+    if normalized in {"failed", "error", "cancelled", "timed_out"}:
+        return ServiceDeploymentState.FAILED
+    raise ValueError("provider observation is not a GIS deployment terminal state")
 
 
 class EndpointProtocol(StrEnum):
@@ -60,8 +80,70 @@ class StyleFormat(StrEnum):
     QML = "qml"
 
 
+class CacheKeyDimension(StrEnum):
+    """Stable dimensions used to partition a private MVT response."""
+
+    TENANT = "tenant"
+    SERVICE_RELEASE = "service_release"
+    PRINCIPAL = "principal"
+    TILE = "tile"
+
+
 class _FrozenContract(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, use_enum_values=False)
+
+
+class GISServiceSLOBinding(_FrozenContract):
+    """Immutable projection binding one GIS service to an exact active SLO."""
+
+    tenant_id: TenantId
+    binding_id: UUID
+    service_urn: ResourceURNText
+    slo_definition_ref: ResourceURNText
+    active_version_ref: ResourceURNText
+    definition_fingerprint: Sha256
+    approval_case_ref: ResourceURNText
+    activation_version: int = Field(ge=1)
+    bound_by: str = Field(min_length=1, max_length=512)
+    binding_reason: str = Field(min_length=1, max_length=512)
+    bound_at: datetime
+
+    @field_validator("bound_at")
+    @classmethod
+    def _bound_at_utc(cls, value: datetime) -> datetime:
+        return _utc(value)
+
+    @model_validator(mode="after")
+    def _consistent_slo_binding(self) -> GISServiceSLOBinding:
+        service = parse_resource_urn(self.service_urn)
+        definition = parse_resource_urn(self.slo_definition_ref)
+        version = parse_resource_urn(self.active_version_ref)
+        approval = parse_resource_urn(self.approval_case_ref)
+        if (
+            service["tenant_id"] != self.tenant_id
+            or service["resource_kind"] != "gis_service"
+        ):
+            raise ValueError("service_urn must identify a tenant GIS service")
+        if (
+            definition["tenant_id"] != self.tenant_id
+            or definition["resource_kind"] != "slo_definition"
+        ):
+            raise ValueError("slo_definition_ref must identify a tenant SLO definition")
+        if (
+            version["tenant_id"] != self.tenant_id
+            or version["resource_kind"] != "slo_definition"
+        ):
+            raise ValueError("active_version_ref must identify a tenant SLO version")
+        if not self.active_version_ref.startswith(f"{self.slo_definition_ref}.v"):
+            raise ValueError("active_version_ref must bind the SLO definition")
+        if (
+            approval["tenant_id"] != self.tenant_id
+            or approval["resource_kind"] != "approval_case"
+        ):
+            raise ValueError("approval_case_ref must identify a tenant ApprovalCase")
+        if not re.fullmatch(r"^(human|workload|agent):[^\s]{1,128}$", self.bound_by):
+            raise ValueError("bound_by must use a typed subject")
+        return self
 
 
 _JSON_VALUE_ADAPTER = TypeAdapter(Any)
@@ -288,6 +370,238 @@ def tile_matrix_set_definition_fingerprint(
     return _fingerprint(value, "definition_sha256")
 
 
+class CachePolicyVersion(_FrozenContract):
+    """Immutable, service-bound policy for short-lived private tile caching."""
+
+    tenant_id: TenantId
+    cache_policy_version_id: UUID
+    service_definition_version_id: UUID
+    cache_policy_key: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]{0,127}$")
+    version_key: str = Field(pattern=r"^v[0-9]+\.[0-9]+\.[0-9]+$")
+    predecessor_version_id: UUID | None = None
+    cache_namespace: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]{0,127}$")
+    cache_max_age_seconds: int = Field(ge=1, le=300)
+    cache_key_dimensions: tuple[CacheKeyDimension, ...]
+    policy_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    created_by: str = Field(min_length=1, max_length=512)
+    created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def _cache_policy_created_at_utc(cls, value: datetime) -> datetime:
+        return _utc(value)
+
+    @model_validator(mode="after")
+    def _consistent_cache_policy(self) -> CachePolicyVersion:
+        if self.predecessor_version_id == self.cache_policy_version_id:
+            raise ValueError("a cache policy cannot be its own predecessor")
+        required_dimensions = set(CacheKeyDimension)
+        if (
+            len(self.cache_key_dimensions) != len(required_dimensions)
+            or set(self.cache_key_dimensions) != required_dimensions
+        ):
+            raise ValueError(
+                "cache_key_dimensions must exactly partition tenant, service release, "
+                "principal, and tile"
+            )
+        if self.policy_sha256 != cache_policy_version_fingerprint(self):
+            raise ValueError("policy_sha256 does not match the cache policy")
+        return self
+
+
+def cache_policy_version_fingerprint(
+    value: CachePolicyVersion | dict[str, Any],
+) -> str:
+    if isinstance(value, dict):
+        value = {"predecessor_version_id": None, **value}
+    return _fingerprint(value, "policy_sha256")
+
+
+class ServicePolicyBinding(_FrozenContract):
+    """Immutable, release-bound Gateway authorization rule for GIS reads.
+
+    This is intentionally a narrow execution policy, not a generic ABAC
+    language. It declares the complete decision that the governed GIS read
+    routes can enforce today: protocol action, admitted roles and which of
+    those roles need a version-compatible ConsumerBinding.
+    """
+
+    tenant_id: TenantId
+    service_policy_binding_id: UUID
+    service_definition_version_id: UUID
+    service_release_binding_id: UUID
+    policy_key: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]{0,127}$")
+    version_key: str = Field(pattern=r"^v[0-9]+\.[0-9]+\.[0-9]+$")
+    predecessor_version_id: UUID | None = None
+    action: Literal["mvt.read", "ogc_features.read"] = "mvt.read"
+    enforcement_point: Literal["gateway"] = "gateway"
+    allowed_roles: tuple[str, ...] = Field(min_length=1, max_length=16)
+    consumer_binding_required_roles: tuple[str, ...] = Field(
+        default=(), max_length=16
+    )
+    required_consumer_operation: Literal["read"] = "read"
+    policy_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    created_by: str = Field(min_length=1, max_length=512)
+    created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def _service_policy_created_at_utc(cls, value: datetime) -> datetime:
+        return _utc(value)
+
+    @field_validator("allowed_roles", "consumer_binding_required_roles")
+    @classmethod
+    def _canonical_roles(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("service policy roles must not repeat")
+        for role in value:
+            if not isinstance(role, str) or not role or not re.fullmatch(
+                r"[a-z0-9][a-z0-9._-]{0,127}", role
+            ):
+                raise ValueError("service policy roles must be canonical identifiers")
+        return value
+
+    @model_validator(mode="after")
+    def _consistent_service_policy(self) -> ServicePolicyBinding:
+        if self.predecessor_version_id == self.service_policy_binding_id:
+            raise ValueError("a service policy cannot be its own predecessor")
+        if not set(self.consumer_binding_required_roles).issubset(self.allowed_roles):
+            raise ValueError(
+                "consumer_binding_required_roles must be included in allowed_roles"
+            )
+        if self.policy_sha256 != service_policy_binding_fingerprint(self):
+            raise ValueError("policy_sha256 does not match the service policy binding")
+        return self
+
+
+def service_policy_binding_fingerprint(
+    value: ServicePolicyBinding | dict[str, Any],
+) -> str:
+    if isinstance(value, dict):
+        value = {
+            "predecessor_version_id": None,
+            "action": "mvt.read",
+            "enforcement_point": "gateway",
+            "consumer_binding_required_roles": (),
+            "required_consumer_operation": "read",
+            **value,
+        }
+    return _fingerprint(value, "policy_sha256")
+
+
+class MVTServingProjectionVersion(_FrozenContract):
+    """Immutable Martin/PostGIS source projection for one vector-tile layer.
+
+    The projection is deliberately a concrete serving contract.  Martin gets
+    only this identifier and resolves the source table, attribute allowlist,
+    source-CRS clip, and tile feature limit inside PostGIS.
+    """
+
+    tenant_id: TenantId
+    mvt_serving_projection_version_id: UUID
+    service_definition_version_id: UUID
+    layer_definition_version_id: UUID
+    projection_key: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]{0,127}$")
+    version_key: str = Field(pattern=r"^v[0-9]+\.[0-9]+\.[0-9]+$")
+    predecessor_version_id: UUID | None = None
+    source_output_resource_version_id: UUID
+    source_schema: str = Field(pattern=r"^[A-Za-z_][A-Za-z0-9_$]{0,62}$")
+    source_table: str = Field(pattern=r"^[A-Za-z_][A-Za-z0-9_$]{0,62}$")
+    geometry_column: str = Field(pattern=r"^[A-Za-z_][A-Za-z0-9_$]{0,62}$")
+    geometry_srid: int = Field(gt=0)
+    feature_id_column: str = Field(pattern=r"^[A-Za-z_][A-Za-z0-9_$]{0,62}$")
+    property_allowlist: tuple[str, ...] = Field(default=(), max_length=16)
+    allowed_spatial_extent: tuple[float, float, float, float]
+    max_features_per_tile: int = Field(ge=100, le=100_000)
+    source_content_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    projection_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    created_by: str = Field(min_length=1, max_length=512)
+    created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def _projection_created_at_utc(cls, value: datetime) -> datetime:
+        return _utc(value)
+
+    @field_validator("allowed_spatial_extent")
+    @classmethod
+    def _projection_extent(
+        cls, value: tuple[float, float, float, float]
+    ) -> tuple[float, float, float, float]:
+        return _validate_extent(value)
+
+    @field_validator("property_allowlist")
+    @classmethod
+    def _projection_properties(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("MVT serving projection properties must not repeat")
+        for property_name in value:
+            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_$]{0,62}", property_name):
+                raise ValueError("MVT serving projection properties must be identifiers")
+        return value
+
+    @model_validator(mode="after")
+    def _consistent_projection(self) -> MVTServingProjectionVersion:
+        if self.predecessor_version_id == self.mvt_serving_projection_version_id:
+            raise ValueError("an MVT serving projection cannot be its own predecessor")
+        if self.feature_id_column in self.property_allowlist:
+            raise ValueError("MVT serving properties cannot repeat the feature ID")
+        if self.projection_sha256 != mvt_serving_projection_fingerprint(self):
+            raise ValueError("projection_sha256 does not match the MVT serving projection")
+        return self
+
+
+def mvt_serving_projection_fingerprint(
+    value: MVTServingProjectionVersion | dict[str, Any],
+) -> str:
+    if isinstance(value, dict):
+        value = {"predecessor_version_id": None, "property_allowlist": (), **value}
+    return _fingerprint(value, "projection_sha256")
+
+
+class MVTServingRelationAttestation(_FrozenContract):
+    """Immutable catalog observation for one physical MVT source relation."""
+
+    tenant_id: TenantId
+    mvt_serving_projection_version_id: UUID
+    source_schema: str = Field(pattern=r"^[A-Za-z_][A-Za-z0-9_$]{0,62}$")
+    source_table: str = Field(pattern=r"^[A-Za-z_][A-Za-z0-9_$]{0,62}$")
+    relation_oid: int = Field(gt=0)
+    relation_kind: str = Field(pattern=r"^[rvmfp]$")
+    geometry_column: str = Field(pattern=r"^[A-Za-z_][A-Za-z0-9_$]{0,62}$")
+    geometry_type: str = Field(min_length=1, max_length=64)
+    geometry_srid: int = Field(gt=0)
+    geometry_dimensions: int = Field(ge=2, le=4)
+    feature_id_column: str = Field(pattern=r"^[A-Za-z_][A-Za-z0-9_$]{0,62}$")
+    feature_id_data_type: str = Field(min_length=1, max_length=256)
+    property_columns: tuple[str, ...] = Field(max_length=16)
+    property_column_types: tuple[str, ...] = Field(max_length=16)
+    relation_schema_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    attested_by: str = Field(min_length=1, max_length=512)
+    attested_at: datetime
+
+    @field_validator("attested_at")
+    @classmethod
+    def _attestation_time_utc(cls, value: datetime) -> datetime:
+        return _utc(value)
+
+    @field_validator("property_columns")
+    @classmethod
+    def _property_columns_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("MVT relation property columns must not repeat")
+        for column in value:
+            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_$]{0,62}", column):
+                raise ValueError("MVT relation property columns must be identifiers")
+        return value
+
+    @model_validator(mode="after")
+    def _property_column_types_match(self) -> MVTServingRelationAttestation:
+        if len(self.property_columns) != len(self.property_column_types):
+            raise ValueError("MVT relation property names and types must align")
+        return self
+
+
 class ServiceReleaseBinding(_FrozenContract):
     tenant_id: TenantId
     service_release_binding_id: UUID
@@ -295,6 +609,8 @@ class ServiceReleaseBinding(_FrozenContract):
     layer_definition_version_id: UUID
     style_definition_version_id: UUID
     tile_matrix_set_definition_version_id: UUID | None = None
+    cache_policy_version_id: UUID | None = None
+    mvt_serving_projection_version_id: UUID | None = None
     release_key: str = Field(pattern=r"^v[0-9]+\.[0-9]+\.[0-9]+$")
     binding_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     created_by: str = Field(min_length=1, max_length=512)
@@ -315,9 +631,26 @@ class ServiceReleaseBinding(_FrozenContract):
 def service_release_binding_fingerprint(
     value: ServiceReleaseBinding | dict[str, Any],
 ) -> str:
-    if isinstance(value, dict):
-        value = {"tile_matrix_set_definition_version_id": None, **value}
-    return _fingerprint(value, "binding_sha256")
+    if isinstance(value, BaseModel):
+        payload = value.model_dump(mode="json", exclude={"binding_sha256"})
+    else:
+        payload = {
+            "tile_matrix_set_definition_version_id": None,
+            "cache_policy_version_id": None,
+            "mvt_serving_projection_version_id": None,
+            **value,
+        }
+        payload.pop("binding_sha256", None)
+    # Migration 203 adds this nullable column to immutable historical rows.
+    # Omit it for NULL rows so their pre-migration release fingerprints remain
+    # valid and only an actual policy binding changes release identity.
+    if payload.get("cache_policy_version_id") is None:
+        payload.pop("cache_policy_version_id", None)
+    if payload.get("mvt_serving_projection_version_id") is None:
+        payload.pop("mvt_serving_projection_version_id", None)
+    return canonical_json_fingerprint(
+        _JSON_VALUE_ADAPTER.dump_python(payload, mode="json")
+    )
 
 
 class ServiceDeploymentRevision(_FrozenContract):
@@ -387,6 +720,84 @@ def service_deployment_fingerprint(
     )
 
 
+class ServiceDeploymentEvent(_FrozenContract):
+    """One immutable transition in a GIS deployment revision timeline."""
+
+    tenant_id: TenantId
+    event_id: UUID
+    deployment_revision_id: UUID
+    sequence_no: int = Field(ge=0)
+    from_state: ServiceDeploymentState | None = None
+    to_state: ServiceDeploymentState
+    provider_observation_id: UUID | None = None
+    actor_subject: str = Field(min_length=1, max_length=512)
+    reason: str = Field(min_length=1, max_length=2048)
+    idempotency_key: str = Field(min_length=1, max_length=512)
+    event_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    occurred_at: datetime
+
+    @field_validator("occurred_at")
+    @classmethod
+    def _event_occurred_at_utc(cls, value: datetime) -> datetime:
+        return _utc(value)
+
+    @model_validator(mode="after")
+    def _consistent_transition(self) -> ServiceDeploymentEvent:
+        if self.sequence_no == 0:
+            if (
+                self.from_state is not None
+                or self.to_state is not ServiceDeploymentState.PLANNED
+                or self.provider_observation_id is not None
+            ):
+                raise ValueError("initial deployment event must record planned state")
+            return self
+        if self.from_state is None:
+            raise ValueError("deployment transition event requires from_state")
+        if not (
+            (
+                self.from_state is ServiceDeploymentState.PLANNED
+                and self.to_state is ServiceDeploymentState.DEPLOYING
+            )
+            or (
+                self.from_state is ServiceDeploymentState.DEPLOYING
+                and self.to_state
+                in {ServiceDeploymentState.READY, ServiceDeploymentState.FAILED}
+            )
+        ):
+            raise ValueError("deployment event has an invalid state transition")
+        terminal = self.to_state in {
+            ServiceDeploymentState.READY,
+            ServiceDeploymentState.FAILED,
+        }
+        if terminal != (self.provider_observation_id is not None):
+            raise ValueError("terminal deployment event must bind provider observation")
+        return self
+
+
+class GISServiceDeploymentTerminalSettlement(_FrozenContract):
+    """One atomic terminal provider observation and deployment state settlement."""
+
+    tenant_id: TenantId
+    deployment: ServiceDeploymentRevision
+    observation: FrameworkAttemptObservation
+    observation_created: bool
+
+    @model_validator(mode="after")
+    def _consistent_settlement(self) -> GISServiceDeploymentTerminalSettlement:
+        expected_state = service_deployment_terminal_state(self.observation.observed_state)
+        if self.deployment.tenant_id != self.tenant_id:
+            raise ValueError("settled deployment tenant must match")
+        if self.observation.tenant_id != self.tenant_id:
+            raise ValueError("settled observation tenant must match")
+        if self.observation.run_id != self.deployment.run_id:
+            raise ValueError("settled observation must bind the deployment Run")
+        if self.deployment.state is not expected_state:
+            raise ValueError("settled deployment state must match provider observation")
+        if self.deployment.terminal_observation_id != self.observation.observation_id:
+            raise ValueError("settled deployment must bind the terminal observation")
+        return self
+
+
 class EndpointRevision(_FrozenContract):
     tenant_id: TenantId
     endpoint_revision_id: UUID
@@ -448,6 +859,9 @@ class GISServiceControlProjection(_FrozenContract):
     active_tile_matrix_set_definition_version: (
         TileMatrixSetDefinitionVersion | None
     ) = None
+    active_cache_policy_version: CachePolicyVersion | None = None
+    active_service_policy_binding: ServicePolicyBinding | None = None
+    active_mvt_serving_projection_version: MVTServingProjectionVersion | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -487,6 +901,9 @@ class GISServiceControlProjection(_FrozenContract):
             if release_id is None:
                 if any(component is not None for component in release_components) or (
                     self.active_tile_matrix_set_definition_version is not None
+                    or self.active_cache_policy_version is not None
+                    or self.active_service_policy_binding is not None
+                    or self.active_mvt_serving_projection_version is not None
                 ):
                     raise ValueError("legacy deployment cannot expose release components")
             elif any(component is None for component in release_components):
@@ -514,4 +931,36 @@ class GISServiceControlProjection(_FrozenContract):
                     != release.tile_matrix_set_definition_version_id
                 ):
                     raise ValueError("active tile matrix set definition does not match")
+                cache_policy = self.active_cache_policy_version
+                if (cache_policy is None) != (release.cache_policy_version_id is None):
+                    raise ValueError("active cache policy projection does not match")
+                if cache_policy is not None and (
+                    cache_policy.cache_policy_version_id
+                    != release.cache_policy_version_id
+                    or cache_policy.service_definition_version_id
+                    != self.active_service_definition_version.service_definition_version_id
+                ):
+                    raise ValueError("active cache policy does not match the release")
+                service_policy = self.active_service_policy_binding
+                if service_policy is not None and (
+                    service_policy.service_definition_version_id
+                    != self.active_service_definition_version.service_definition_version_id
+                    or service_policy.service_release_binding_id
+                    != release.service_release_binding_id
+                ):
+                    raise ValueError("active service policy does not match the release")
+                serving_projection = self.active_mvt_serving_projection_version
+                if (serving_projection is None) != (
+                    release.mvt_serving_projection_version_id is None
+                ):
+                    raise ValueError("active MVT serving projection does not match")
+                if serving_projection is not None and (
+                    serving_projection.mvt_serving_projection_version_id
+                    != release.mvt_serving_projection_version_id
+                    or serving_projection.service_definition_version_id
+                    != self.active_service_definition_version.service_definition_version_id
+                    or serving_projection.layer_definition_version_id
+                    != self.active_layer_definition_version.layer_definition_version_id
+                ):
+                    raise ValueError("active MVT serving projection does not match release")
         return self

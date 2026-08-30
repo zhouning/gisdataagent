@@ -1,161 +1,318 @@
-# =============================================================================
-# CD Pipeline — Staging Deployment + Evaluation
-#
-# Triggered: After merge to main (post CI pass)
-# Phase 2 of 3-phase CI/CD (per Google AgentOps whitepaper)
-# =============================================================================
-name: CD - Staging
+# Validates a staging candidate, publishes that exact image to GHCR, and asks
+# GitHub's OIDC attestation authority to sign the registry subject. This
+# workflow does not deploy staging and cannot authorize production promotion.
+name: Publish - Staging Candidate Image
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: staging-candidate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  deploy-staging:
-    name: Deploy to Staging
+  validate-candidate:
+    name: Validate candidate and publish attested image
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgis/postgis:16-3.4
-        env:
-          POSTGRES_DB: gis_agent_staging
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: staging_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    timeout-minutes: 90
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.13
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
-          pip install -r requirements.txt
-          pip install pytest
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libspatialindex-dev \
+            postgresql-client \
+            gdal-bin \
+            libgdal-dev
 
-      - name: Run full test suite (staging validation)
-        env:
-          POSTGRES_HOST: localhost
-          POSTGRES_PORT: 5432
-          POSTGRES_DATABASE: gis_agent_staging
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: staging_password
-          DEPLOY_ENV: staging
+      - name: Install Python dependencies
         run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Generate ephemeral candidate credentials
+        run: |
+          ADMIN_PASSWORD=$(openssl rand -hex 24)
+          APP_PASSWORD=$(openssl rand -hex 24)
+          AUTH_SECRET=$(openssl rand -hex 32)
+          AWS_ACCESS_KEY=$(openssl rand -hex 16)
+          AWS_SECRET_KEY=$(openssl rand -hex 32)
+          echo "::add-mask::$ADMIN_PASSWORD"
+          echo "::add-mask::$APP_PASSWORD"
+          echo "::add-mask::$AUTH_SECRET"
+          echo "::add-mask::$AWS_ACCESS_KEY"
+          echo "::add-mask::$AWS_SECRET_KEY"
+          {
+            echo "CANDIDATE_ADMIN_PASSWORD=$ADMIN_PASSWORD"
+            echo "CANDIDATE_APP_PASSWORD=$APP_PASSWORD"
+            echo "CANDIDATE_AUTH_SECRET=$AUTH_SECRET"
+            echo "CANDIDATE_AWS_ACCESS_KEY=$AWS_ACCESS_KEY"
+            echo "CANDIDATE_AWS_SECRET_KEY=$AWS_SECRET_KEY"
+          } >> "$GITHUB_ENV"
+
+      - name: Build and start the candidate database
+        run: |
+          docker build -t gis-postgis-pgvector:candidate docker/postgis-pgvector
+          docker run --detach \
+            --name gda-staging-candidate-postgres \
+            --env POSTGRES_DB=gis_agent_staging \
+            --env POSTGRES_USER=postgres \
+            --env POSTGRES_PASSWORD="$CANDIDATE_ADMIN_PASSWORD" \
+            --publish 5432:5432 \
+            gis-postgis-pgvector:candidate
+          for _ in $(seq 1 60); do
+            if docker exec gda-staging-candidate-postgres \
+                 pg_isready -U postgres -d gis_agent_staging; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "candidate PostgreSQL did not become ready" >&2
+          exit 1
+      - name: Bootstrap database roles and extensions
+        run: |
+          docker exec -i gda-staging-candidate-postgres \
+            psql -v ON_ERROR_STOP=1 \
+              -U postgres \
+              -d gis_agent_staging \
+              -v app_password="$CANDIDATE_APP_PASSWORD" <<'SQL'
+          CREATE EXTENSION IF NOT EXISTS postgis;
+          CREATE EXTENSION IF NOT EXISTS vector;
+          CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+          CREATE EXTENSION IF NOT EXISTS pgcrypto;
+          CREATE EXTENSION IF NOT EXISTS ltree;
+          CREATE ROLE agent_user LOGIN NOSUPERUSER NOBYPASSRLS PASSWORD :'app_password';
+          GRANT CONNECT ON DATABASE gis_agent_staging TO agent_user;
+          GRANT USAGE ON SCHEMA public TO agent_user;
+          ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+            GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO agent_user;
+          ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+            GRANT USAGE, SELECT ON SEQUENCES TO agent_user;
+          SQL
+
+      - name: Run the migration authority as database administrator
+        run: |
+          mkdir -p staging-candidate-evidence
+          export POSTGRES_HOST=localhost
+          export POSTGRES_PORT=5432
+          export POSTGRES_DATABASE=gis_agent_staging
+          export POSTGRES_USER=postgres
+          export POSTGRES_PASSWORD="$CANDIDATE_ADMIN_PASSWORD"
+          python -m data_agent.migration_runner migrate \
+            --output staging-candidate-evidence/schema-admin.json
+          docker exec -i gda-staging-candidate-postgres \
+            psql -v ON_ERROR_STOP=1 -U postgres -d gis_agent_staging \
+              -c "GRANT gda_control_gateway TO agent_user"
+
+      - name: Verify the ledger through the application role
+        run: |
+          export POSTGRES_HOST=localhost
+          export POSTGRES_PORT=5432
+          export POSTGRES_DATABASE=gis_agent_staging
+          export POSTGRES_USER=agent_user
+          export POSTGRES_PASSWORD="$CANDIDATE_APP_PASSWORD"
+          python -m data_agent.migration_runner status \
+            --output staging-candidate-evidence/schema-app.json
+          python -m data_agent.migration_runner compare \
+            staging-candidate-evidence/schema-admin.json \
+            staging-candidate-evidence/schema-app.json
+
+      - name: Verify live runtime privilege contract
+        run: |
+          export POSTGRES_HOST=localhost
+          export POSTGRES_PORT=5432
+          export POSTGRES_DATABASE=gis_agent_staging
+          export POSTGRES_USER=agent_user
+          export POSTGRES_PASSWORD="$CANDIDATE_APP_PASSWORD"
+          python -m data_agent.runtime_privilege_contract \
+            --profile staging \
+            --runtime-role agent_user \
+            --output staging-candidate-evidence/runtime-privileges.json
+
+      - name: Run repository tests in the integration environment
+        run: |
+          export DATABASE_URL="postgresql://postgres:${CANDIDATE_ADMIN_PASSWORD}@localhost:5432/gis_agent_staging"
+          export POSTGRES_HOST=localhost
+          export POSTGRES_PORT=5432
+          export POSTGRES_DATABASE=gis_agent_staging
+          export POSTGRES_USER=postgres
+          export POSTGRES_PASSWORD="$CANDIDATE_ADMIN_PASSWORD"
+          export GDA_DEPLOYMENT_PROFILE=test
+          export CHAINLIT_AUTH_SECRET="$CANDIDATE_AUTH_SECRET"
           python -m pytest data_agent/ \
             --ignore=data_agent/test_knowledge_agent.py \
-            -q --tb=short --junitxml=staging-test-results.xml
+            --junitxml=staging-candidate-evidence/junit.xml \
+            -q --tb=short
 
-      - name: Upload staging test results
+      - name: Re-verify the application ledger after tests
+        run: |
+          export POSTGRES_HOST=localhost
+          export POSTGRES_PORT=5432
+          export POSTGRES_DATABASE=gis_agent_staging
+          export POSTGRES_USER=agent_user
+          export POSTGRES_PASSWORD="$CANDIDATE_APP_PASSWORD"
+          python -m data_agent.migration_runner status \
+            --output staging-candidate-evidence/schema-app.json
+          python -m data_agent.migration_runner compare \
+            staging-candidate-evidence/schema-admin.json \
+            staging-candidate-evidence/schema-app.json
+
+      - name: Re-verify runtime privilege contract after tests
+        run: |
+          export POSTGRES_HOST=localhost
+          export POSTGRES_PORT=5432
+          export POSTGRES_DATABASE=gis_agent_staging
+          export POSTGRES_USER=agent_user
+          export POSTGRES_PASSWORD="$CANDIDATE_APP_PASSWORD"
+          python -m data_agent.runtime_privilege_contract \
+            --profile staging \
+            --runtime-role agent_user \
+            --output staging-candidate-evidence/runtime-privileges.json
+
+      - name: Export strict redacted staging platform snapshot
+        run: |
+          export DATABASE_URL="postgresql://agent_user:${CANDIDATE_APP_PASSWORD}@localhost:5432/gis_agent_staging"
+          export POSTGRES_HOST=localhost
+          export POSTGRES_PORT=5432
+          export POSTGRES_DATABASE=gis_agent_staging
+          export POSTGRES_USER=agent_user
+          export POSTGRES_PASSWORD="$CANDIDATE_APP_PASSWORD"
+          export CHAINLIT_AUTH_SECRET="$CANDIDATE_AUTH_SECRET"
+          export CLOUD_STORAGE_PROVIDER=aws
+          export AWS_ACCESS_KEY_ID="$CANDIDATE_AWS_ACCESS_KEY"
+          export AWS_SECRET_ACCESS_KEY="$CANDIDATE_AWS_SECRET_KEY"
+          export AWS_S3_BUCKET=gis-agent-staging-candidate
+          export OLLAMA_API_BASE=https://model-gateway.staging-candidate.invalid
+          python -m data_agent.platform_truth snapshot \
+            --profile staging \
+            --output staging-candidate-evidence/platform.json
+
+      - name: Build the application candidate image
+        run: |
+          docker build \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            -t "gis-data-agent:${GITHUB_SHA}" .
+          IMAGE_ID=$(docker image inspect \
+            --format '{{.Id}}' "gis-data-agent:${GITHUB_SHA}")
+          echo "CANDIDATE_IMAGE_ID=$IMAGE_ID" >> "$GITHUB_ENV"
+
+      - name: Generate non-promotion candidate evidence
+        run: |
+          python -m data_agent.staging_candidate_evidence validate \
+            --schema-report staging-candidate-evidence/schema-app.json \
+            --platform-snapshot staging-candidate-evidence/platform.json \
+            --runtime-privilege-report staging-candidate-evidence/runtime-privileges.json \
+            --junit staging-candidate-evidence/junit.xml \
+            --source-revision "$GITHUB_SHA" \
+            --image-id "$CANDIDATE_IMAGE_ID" \
+            --output staging-candidate-evidence/candidate.json
+
+      - name: Set up Docker Buildx for remote manifest inspection
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push exact candidate image and resolve registry digest
+        id: registry
+        run: |
+          set -euo pipefail
+          REPOSITORY="ghcr.io/${GITHUB_REPOSITORY,,}"
+          TAGGED_IMAGE="${REPOSITORY}:${GITHUB_SHA}"
+          docker tag "gis-data-agent:${GITHUB_SHA}" "$TAGGED_IMAGE"
+          docker push "$TAGGED_IMAGE"
+
+          MANIFEST_FILE=$(mktemp)
+          docker buildx imagetools inspect \
+            "$TAGGED_IMAGE" --raw > "$MANIFEST_FILE"
+          DIGEST="sha256:$(sha256sum "$MANIFEST_FILE" | awk '{print $1}')"
+          if [[ ! "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "registry did not return a canonical sha256 manifest digest" >&2
+            exit 1
+          fi
+          docker buildx imagetools inspect "${REPOSITORY}@${DIGEST}" >/dev/null
+          {
+            echo "repository=$REPOSITORY"
+            echo "digest=$DIGEST"
+            echo "image=${REPOSITORY}@${DIGEST}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Bind candidate evidence to registry subject
+        run: |
+          EXPECTED_REPOSITORY="ghcr.io/${GITHUB_REPOSITORY,,}"
+          python -m data_agent.staging_registry_evidence validate \
+            --candidate-evidence staging-candidate-evidence/candidate.json \
+            --source-revision "$GITHUB_SHA" \
+            --local-image-id "$CANDIDATE_IMAGE_ID" \
+            --repository "${{ steps.registry.outputs.repository }}" \
+            --digest "${{ steps.registry.outputs.digest }}" \
+            --expected-repository "$EXPECTED_REPOSITORY" \
+            --output staging-candidate-evidence/registry.json
+
+      - name: Attest registry image provenance with GitHub OIDC
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ${{ steps.registry.outputs.repository }}
+          subject-digest: ${{ steps.registry.outputs.digest }}
+          push-to-registry: true
+
+      - name: Upload registry binding evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-registry-evidence-${{ github.sha }}
+          path: staging-candidate-evidence/registry.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload candidate evidence
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: staging-test-results
-          path: staging-test-results.xml
-
-  evaluate-staging:
-    name: Agent Evaluation (Staging)
-    needs: deploy-staging
-    runs-on: ubuntu-latest
-    if: ${{ vars.GOOGLE_API_KEY != '' || secrets.GOOGLE_API_KEY != '' }}
-    services:
-      postgres:
-        image: postgis/postgis:16-3.4
-        env:
-          POSTGRES_DB: gis_agent_staging
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: staging_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Run agent evaluation
-        env:
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          GOOGLE_GENAI_USE_VERTEXAI: ${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}
-          GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT }}
-          GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION || 'global' }}
-          POSTGRES_HOST: localhost
-          POSTGRES_PORT: 5432
-          POSTGRES_DATABASE: gis_agent_staging
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: staging_password
-          DEPLOY_ENV: staging
-        run: |
-          python data_agent/run_evaluation.py --num-runs 2 2>&1 | tee eval-output.log
-          echo "Evaluation complete"
-
-      - name: Record eval results to history
-        if: always()
-        env:
-          POSTGRES_HOST: localhost
-          POSTGRES_PORT: 5432
-          POSTGRES_DATABASE: gis_agent_staging
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: staging_password
-        run: |
-          python -c "
-          from data_agent.eval_history import ensure_eval_table, record_eval_result
-          import json, os
-          ensure_eval_table()
-          summary_path = 'eval_results/eval_summary.json'
-          if os.path.exists(summary_path):
-              with open(summary_path) as f:
-                  s = json.load(f)
-              for pipeline, verdict in s.get('pipeline_verdicts', {}).items():
-                  record_eval_result(
-                      pipeline=pipeline,
-                      overall_score=s.get('pass_rate', 0),
-                      pass_rate=s.get('pass_rate', 0),
-                      verdict=verdict,
-                  )
-              print(f'Recorded eval results: {s.get(\"pipeline_verdicts\", {})}')
-          "
-
-      - name: Upload evaluation results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: staging-eval-results
+          name: staging-candidate-evidence-${{ github.sha }}
           path: |
-            eval_results/
-            eval-output.log
+            staging-candidate-evidence/candidate.json
+            staging-candidate-evidence/platform.json
+            staging-candidate-evidence/runtime-privileges.json
+            staging-candidate-evidence/schema-admin.json
+            staging-candidate-evidence/schema-app.json
+          if-no-files-found: error
+          retention-days: 30
 
-  staging-approval:
-    name: Staging Sign-off
-    needs: [deploy-staging, evaluate-staging]
+  candidate-summary:
+    name: Candidate boundary summary
+    needs: validate-candidate
+    if: always()
     runs-on: ubuntu-latest
-    if: always() && needs.deploy-staging.result == 'success'
-    environment: staging  # Requires manual approval in GitHub
     steps:
-      - name: Staging validated
+      - name: Report validated candidate boundary
+        if: needs.validate-candidate.result == 'success'
         run: |
-          echo "✅ Staging validation complete."
-          echo "Tests: ${{ needs.deploy-staging.result }}"
-          echo "Eval: ${{ needs.evaluate-staging.result }}"
-          echo "Ready for production deployment."
+          echo "Candidate validation and attested registry publication passed."
+          echo "No staging deployment was performed."
+          echo "Production promotion remains blocked pending protected verification and live staging evidence."
+
+      - name: Preserve candidate validation failure
+        if: needs.validate-candidate.result != 'success'
+        run: |
+          echo "Candidate validation failed; no deployment or promotion is allowed." >&2
+          exit 1

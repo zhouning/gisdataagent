@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gis-agent-ingestion-worker
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: gis-agent-ingestion-worker
+    app.kubernetes.io/component: ingestion-worker
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gis-agent-ingestion-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gis-agent-ingestion-worker
+        app.kubernetes.io/component: ingestion-worker
+    spec:
+      serviceAccountName: gis-agent-ingestion-worker
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z postgres 5432; do
+                  echo "[init] waiting for postgres..."
+                  sleep 2
+              done
+        - name: wait-for-lakehouse
+          image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+          envFrom:
+            - configMapRef:
+                name: gis-agent-config
+            - secretRef:
+                name: gis-agent-secret
+          command:
+            - sh
+            - -c
+            - |
+              until mc alias set lake "$AWS_ENDPOINT_URL" \
+                    "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" >/dev/null 2>&1 \
+                    && mc stat "lake/$GDA_INGEST_LAKE_BUCKET" >/dev/null 2>&1; do
+                  echo "[init] waiting for lakehouse bucket..."
+                  sleep 2
+              done
+      containers:
+        - name: worker
+          image: gis-data-agent:latest
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "data_agent.data_ingestion"]
+          envFrom:
+            - configMapRef:
+                name: gis-agent-config
+            - secretRef:
+                name: gis-agent-secret
+          env:
+            - name: POSTGRES_ADMIN_USER
+              value: ""
+            - name: POSTGRES_ADMIN_PASSWORD
+              value: ""
+            - name: DB_POOL_SIZE
+              value: "5"
+            - name: DB_MAX_OVERFLOW
+              value: "0"
+            - name: ASYNC_POOL_MIN
+              value: "0"
+            - name: ASYNC_POOL_MAX
+              value: "1"
+          volumeMounts:
+            - name: lake-staging
+              mountPath: /app/data_agent/data_lake
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+      volumes:
+        - name: lake-staging
+          emptyDir:
+            sizeLimit: 20Gi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gis-agent-ingestion-worker
+  namespace: gis-agent
+automountServiceAccountToken: false

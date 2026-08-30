@@ -1,0 +1,64 @@
+flowchart TB
+    subgraph CP[控制面：设计、治理、发布与运维]
+        A[Ontology Studio / Governance\n术语·模型·映射·评审]
+        R[Canonical Model Registry\nnamespace·version·provenance·ACL]
+        C[Ontology CI/CD\nSHACL·兼容性·安全·发布·回滚]
+        O[Observability & Operations\nOTel·SLO·HA·Backup·DR]
+        A --> R --> C
+    end
+
+    subgraph IP[摄取与投影面]
+        I[Ingestion / Mapping\nStandards·XMI·JSON-LD·外部本体]
+        B[Kafka / Redpanda + Outbox\n版本化变更事件]
+        X[Projection Reconciler\nhash·checkpoint·lag·rebuild]
+        I --> R
+        C --> B --> X
+    end
+
+    subgraph KP[语义与运营知识面]
+        S[RDF / OWL / SHACL Store\nSKOS·PROV-O·GeoSPARQL·OWL-Time]
+        G[Operational Object Graph\nObject·Property·Link·State]
+        V[Search / Vector Projections\nFTS·embedding·rerank]
+        X --> S
+        X --> G
+        X --> V
+    end
+
+    subgraph RP[运行与安全面]
+        Q[Semantic Query Gateway\nSPARQL·Graph·SQL·EvidenceBundle]
+        P[Dynamic Policy Engine\nobject·property·link·action]
+        AS[Object & Action Service\nAction·Function·Interface·SDK]
+        S --> Q
+        G --> Q
+        V --> Q
+        Q --> P --> AS
+    end
+
+    subgraph DP[业务事实与能力执行面]
+        PG[(PostgreSQL / PostGIS\n业务与事务真值)]
+        SP[Standards Platform\n标准审定与发布权威]
+        CAP[Capability Plane\nSQL·PostGIS·ArcPy·TWM·MCP]
+        CR[Cognitive Runtime\nPlanning·Evidence·HITL·Evaluation]
+        SP --> I
+        PG --> I
+        AS --> CAP --> PG
+        CR --> Q
+        CR --> AS
+    end
+
+    O -.监控与恢复.-> B
+    O -.监控与恢复.-> S
+    O -.监控与恢复.-> G
+    O -.监控与恢复.-> Q
+    O -.监控与恢复.-> AS
+
+    classDef control fill:#DCEAF5,stroke:#2F6B9A,color:#17324D;
+    classDef ingest fill:#FFF0C9,stroke:#9A6B2F,color:#17324D;
+    classDef semantic fill:#E8DFF2,stroke:#6B4E8A,color:#17324D;
+    classDef runtime fill:#F9DEC2,stroke:#A55A2A,color:#17324D;
+    classDef truth fill:#DDEEDC,stroke:#507A55,color:#17324D;
+    class A,R,C,O control;
+    class I,B,X ingest;
+    class S,G,V semantic;
+    class Q,P,AS runtime;
+    class PG,SP,CAP,CR truth;

@@ -22,6 +22,10 @@ from data_agent.platform_contracts import (
     canonical_json_fingerprint,
 )
 from data_agent.platform_gateway import PlatformGateway
+from data_agent.postgresql_cdc_recovery_controller import (
+    assess_slot_continuity,
+    build_slot_incarnation,
+)
 from data_agent.source_sync_authority import SourceSyncAuthority
 from scripts.certify_chongqing_osm_flink_stream import (
     DEFAULT_FLINK_IMAGE,
@@ -75,69 +79,12 @@ def _slot_incarnation(
     creation_anchor_lsn: str,
     established_by: str,
 ) -> dict[str, Any]:
-    if not observation.get("exists"):
-        raise ValueError("slot incarnation requires an existing slot observation")
-    identity = {
-        "system_identifier": observation["system_identifier"],
-        "database_identity": observation["database_identity"],
-        "slot_name": observation["slot_name"],
-        "plugin": observation["plugin"],
-        "slot_type": observation["slot_type"],
-        "creation_anchor_lsn": creation_anchor_lsn,
-        "incarnation_ordinal": ordinal,
-        "established_by": established_by,
-    }
-    return {
-        **identity,
-        "incarnation_fingerprint": canonical_json_fingerprint(identity),
-    }
-
-
-def assess_slot_continuity(evidence: dict[str, Any]) -> dict[str, Any]:
-    """Admit only a continuously observed slot incarnation; missing proof fails closed."""
-
-    original = evidence.get("original_incarnation")
-    current = evidence.get("current_incarnation")
-    absence_witnessed = evidence.get("absence_witnessed") is True
-    reasons: list[str] = []
-    if not isinstance(original, dict) or not isinstance(current, dict):
-        reasons.append("replication_slot_continuity_evidence_missing")
-    else:
-        required = {
-            "system_identifier",
-            "database_identity",
-            "slot_name",
-            "plugin",
-            "slot_type",
-            "incarnation_fingerprint",
-        }
-        if not required.issubset(original) or not required.issubset(current):
-            reasons.append("replication_slot_continuity_evidence_incomplete")
-        elif any(original[key] != current[key] for key in required - {"incarnation_fingerprint"}):
-            reasons.append("replication_slot_identity_changed")
-        elif original["incarnation_fingerprint"] != current["incarnation_fingerprint"]:
-            reasons.append("replication_slot_incarnation_changed")
-    if absence_witnessed:
-        reasons.append("replication_slot_absence_witnessed")
-    if evidence.get("current_slot_exists") is not True:
-        reasons.append("replication_slot_current_observation_missing")
-    admitted = not reasons
-    return {
-        "schema": "gda.postgres_cdc_slot_continuity_admission.v1",
-        "admitted": admitted,
-        "disposition": "admitted" if admitted else "rejected_fail_closed",
-        "reason_codes": sorted(set(reasons)),
-        "original_incarnation_fingerprint": (
-            original.get("incarnation_fingerprint")
-            if isinstance(original, dict)
-            else None
-        ),
-        "current_incarnation_fingerprint": (
-            current.get("incarnation_fingerprint")
-            if isinstance(current, dict)
-            else None
-        ),
-    }
+    return build_slot_incarnation(
+        observation,
+        ordinal=ordinal,
+        creation_anchor_lsn=creation_anchor_lsn,
+        established_by=established_by,
+    )
 
 
 def _slot_fault_checks(evidence: dict[str, Any]) -> dict[str, bool]:

@@ -1,3 +1,5 @@
+import hashlib
+import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Event, Thread
@@ -9,6 +11,9 @@ from data_agent.cross_store_projection_consistency import (
     InMemoryProjectionCheckpointLedger,
 )
 from data_agent.cross_store_projection_recovery import InMemoryProjectionRecoveryLedger
+from data_agent.cross_store_projection_recovery_controller import (
+    StaticProjectionRecoveryControllerBinding,
+)
 from data_agent.cross_store_projection_recovery_job import (
     ProjectionRecoveryJob,
     ProjectionRecoveryJobConflictError,
@@ -21,6 +26,18 @@ from data_agent.cross_store_projection_recovery_rehearsal import (
     _receipt,
 )
 from data_agent.cross_store_projection_recovery_worker import ProjectionProviderFailure
+from data_agent.platform_runtime.cross_store_recovery import (
+    CROSS_STORE_RECOVERY_SCHEMA,
+    CrossStoreRecoveryBinding,
+)
+from data_agent.platform_runtime.cross_store_recovery_admission import (
+    CrossStoreRecoveryAdmission,
+)
+from data_agent.platform_runtime.cross_store_recovery_controller import (
+    CrossStoreRecoveryController,
+    CrossStoreRecoveryRunState,
+    InMemoryCrossStoreRecoveryControllerLedger,
+)
 
 NOW = datetime(2026, 8, 15, 19, 0, tzinfo=UTC)
 
@@ -135,6 +152,34 @@ class _BlockingProvider(_Provider):
         return super().execute(plan)
 
 
+def _controller_binding(plan, *, ledger=None):
+    payload = {
+        "schema": CROSS_STORE_RECOVERY_SCHEMA,
+        "tenant_ids": [plan.tenant_id],
+        "source_resource_version_ref": "gda://tenant/data_product/source/v1",
+        "source_content_sha256": "a" * 64,
+        "control_manifest_sha256": "b" * 64,
+        "object_manifest_sha256": "c" * 64,
+    }
+    binding = CrossStoreRecoveryBinding(
+        **{**payload, "tenant_ids": tuple(payload["tenant_ids"])},
+        binding_sha256=hashlib.sha256(
+            json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
+    )
+    binding.validate()
+    admission = CrossStoreRecoveryAdmission(
+        binding=binding,
+        persisted_tenant_ids=(plan.tenant_id,),
+        object_version_id_remap_allowed=False,
+    )
+    controller = CrossStoreRecoveryController(
+        f"projection-recovery:{projection_recovery_job_id(plan)}",
+        ledger=ledger or InMemoryCrossStoreRecoveryControllerLedger(),
+    )
+    return StaticProjectionRecoveryControllerBinding(controller, admission)
+
+
 def test_recovery_job_identity_is_plan_and_tenant_bound():
     plan = _plan()
     assert projection_recovery_job_id(plan) == projection_recovery_job_id(plan)
@@ -212,6 +257,56 @@ def test_job_worker_persists_unknown_outcome_for_later_reobservation():
     assert outcomes[0].status == "queued"
     assert outcomes[0].next_action == "reobserve_target"
     assert repository.finished[0].error_code == "provider_connection_lost"
+
+
+def test_job_worker_admits_and_completes_durable_controller_run():
+    plan = _plan()
+    repository = _Repository(_job(plan))
+    provider = _Provider()
+    projection_ledger = InMemoryProjectionRecoveryLedger()
+    controller_ledger = InMemoryCrossStoreRecoveryControllerLedger()
+    binding = _controller_binding(plan, ledger=controller_ledger)
+
+    outcomes = ProjectionRecoveryJobWorker(
+        repository=repository,
+        provider_resolver=lambda _plan: provider,
+        authority_resolver=lambda _plan: InMemoryProjectionCheckpointLedger(),
+        ledger_resolver=lambda _plan: projection_ledger,
+        controller_binding_resolver=lambda _job: binding,
+    ).run_once(plan.tenant_id, "worker:projection-test")
+
+    assert outcomes[0].status == "succeeded"
+    assert binding.controller.snapshot.state is CrossStoreRecoveryRunState.COMPLETED
+    restarted = CrossStoreRecoveryController(
+        binding.controller.run_id,
+        ledger=controller_ledger,
+    )
+    assert restarted.snapshot == binding.controller.snapshot
+    assert len(restarted.ledger.history(restarted.run_id)) == 3
+
+
+def test_job_worker_controller_reconciliation_prevents_provider_replay_after_restart():
+    plan = _plan()
+    repository = _Repository(_job(plan))
+    provider = _Provider(unknown=True)
+    projection_ledger = InMemoryProjectionRecoveryLedger()
+    controller_ledger = InMemoryCrossStoreRecoveryControllerLedger()
+    binding = _controller_binding(plan, ledger=controller_ledger)
+    worker = ProjectionRecoveryJobWorker(
+        repository=repository,
+        provider_resolver=lambda _plan: provider,
+        authority_resolver=lambda _plan: InMemoryProjectionCheckpointLedger(),
+        ledger_resolver=lambda _plan: projection_ledger,
+        controller_binding_resolver=lambda _job: binding,
+    )
+
+    first = worker.run_once(plan.tenant_id, "worker:projection-test")
+    second = worker.run_once(plan.tenant_id, "worker:projection-test")
+
+    assert first[0].next_action == "reobserve_target"
+    assert second[0].next_action == "manual_compensation"
+    assert provider.executions == 1
+    assert binding.controller.snapshot.state is CrossStoreRecoveryRunState.RECONCILIATION_REQUIRED
 
 
 def test_job_worker_drops_stale_owner_terminal_write():

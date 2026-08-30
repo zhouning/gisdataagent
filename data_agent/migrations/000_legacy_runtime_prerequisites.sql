@@ -1,5 +1,6 @@
--- AR-0 forward repair: these tables previously existed only through runtime
--- ensure_* helpers, while historical SQL migrations depend on them.
+-- AR-0 forward repair: these tables existed only through application startup
+-- helpers, while historical SQL migrations depend on them.  Keep this bridge
+-- idempotent so both fresh and established databases converge on one SQL chain.
 
 CREATE TABLE IF NOT EXISTS agent_user_tools (
     id SERIAL PRIMARY KEY,
@@ -18,7 +19,8 @@ CREATE TABLE IF NOT EXISTS agent_user_tools (
     UNIQUE(owner_username, tool_name)
 );
 
-CREATE INDEX IF NOT EXISTS idx_ut_owner ON agent_user_tools(owner_username);
+CREATE INDEX IF NOT EXISTS idx_ut_owner
+    ON agent_user_tools(owner_username);
 CREATE INDEX IF NOT EXISTS idx_ut_shared
     ON agent_user_tools(is_shared) WHERE is_shared = TRUE;
 CREATE INDEX IF NOT EXISTS idx_ut_enabled
@@ -86,9 +88,13 @@ CREATE TABLE IF NOT EXISTS agent_kb_chunks (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_kb_owner ON agent_knowledge_bases(owner_username);
+CREATE INDEX IF NOT EXISTS idx_kb_owner
+    ON agent_knowledge_bases(owner_username);
 CREATE INDEX IF NOT EXISTS idx_kb_shared
     ON agent_knowledge_bases(is_shared) WHERE is_shared = TRUE;
-CREATE INDEX IF NOT EXISTS idx_kbdoc_kb ON agent_kb_documents(kb_id);
-CREATE INDEX IF NOT EXISTS idx_kbc_doc ON agent_kb_chunks(doc_id);
-CREATE INDEX IF NOT EXISTS idx_kbc_kb ON agent_kb_chunks(kb_id);
+CREATE INDEX IF NOT EXISTS idx_kbdoc_kb
+    ON agent_kb_documents(kb_id);
+CREATE INDEX IF NOT EXISTS idx_kbc_doc
+    ON agent_kb_chunks(doc_id);
+CREATE INDEX IF NOT EXISTS idx_kbc_kb
+    ON agent_kb_chunks(kb_id);

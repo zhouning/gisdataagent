@@ -518,6 +518,169 @@ async def _api_semantic_sources_list(request: Request):
     return JSONResponse({"sources": sources, "count": len(sources)})
 
 
+async def _api_semantic_catalog(request: Request):
+    """GET /api/semantic/catalog — full table/field semantic read model.
+
+    The semantic registry only contains curated annotations. This endpoint
+    starts from the unified metadata catalog so unregistered tables and
+    metadata-only virtual sources remain visible, then overlays any table and
+    column annotations that already exist.
+    """
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _role = _set_user_context(user)
+    try:
+        limit = max(1, min(int(request.query_params.get("limit", "500")), 1000))
+        offset = max(0, int(request.query_params.get("offset", "0")))
+    except ValueError:
+        return JSONResponse({"error": "invalid pagination"}, status_code=400)
+    query = request.query_params.get("q", "").strip().casefold()
+    source_key = request.query_params.get("source_key", "").strip()
+
+    from .api.metadata_routes import _unified_catalog_items
+    from .semantic_layer import T_SEMANTIC_REGISTRY, T_SEMANTIC_SOURCES
+
+    try:
+        catalog_items = _unified_catalog_items(username, include_resources=True)
+    except Exception as exc:
+        logger.warning("semantic catalog metadata read failed: %s", str(exc))
+        catalog_items = []
+
+    table_sources: dict[str, dict] = {}
+    annotations: dict[str, dict[str, dict]] = {}
+    engine = get_engine()
+    if engine:
+        try:
+            with engine.connect() as conn:
+                source_rows = conn.execute(text(
+                    f"SELECT table_name, display_name, description, geometry_type, srid, synonyms, suggested_analyses "
+                    f"FROM {T_SEMANTIC_SOURCES}"
+                )).fetchall()
+                for row in source_rows:
+                    synonyms = row[5] if isinstance(row[5], list) else json.loads(row[5] or "[]")
+                    analyses = row[6] if isinstance(row[6], list) else json.loads(row[6] or "[]")
+                    table_sources[str(row[0])] = {
+                        "display_name": row[1] or row[0],
+                        "description": row[2] or "",
+                        "geometry_type": row[3],
+                        "srid": row[4],
+                        "synonyms": synonyms,
+                        "suggested_analyses": analyses,
+                    }
+                ann_rows = conn.execute(text(
+                    f"SELECT table_name, column_name, semantic_domain, aliases, unit, description, is_geometry, "
+                    f"COALESCE(value_semantics, '{{}}'::jsonb) FROM {T_SEMANTIC_REGISTRY}"
+                )).fetchall()
+                for row in ann_rows:
+                    table_name = str(row[0])
+                    aliases = row[3] if isinstance(row[3], list) else json.loads(row[3] or "[]")
+                    value_semantics = row[7] if isinstance(row[7], dict) else json.loads(row[7] or "{}")
+                    annotations.setdefault(table_name, {})[str(row[1]).casefold()] = {
+                        "semantic_domain": row[2],
+                        "aliases": aliases,
+                        "unit": row[4] or "",
+                        "description": row[5] or "",
+                        "is_geometry": bool(row[6]),
+                        "value_semantics": value_semantics,
+                    }
+        except Exception as exc:
+            logger.warning("semantic catalog annotation overlay failed: %s", str(exc))
+
+    tables: list[dict] = []
+    for asset in catalog_items:
+        asset_key = str(asset.get("asset_id") or "")
+        canonical_source_key = (
+            f"source:{asset.get('source_id')}"
+            if asset.get("source_id") is not None
+            else asset_key
+        )
+        if source_key and source_key not in {
+            asset_key,
+            canonical_source_key,
+            str(asset.get("source_id") or ""),
+            source_key.removeprefix("source:") if source_key.startswith("source:") else "",
+        }:
+            continue
+        source_name = asset.get("source_name") or asset.get("display_name") or asset.get("asset_name") or asset_key
+        for resource in asset.get("resources") or []:
+            table_name = str(resource.get("qualified_name") or resource.get("name") or "")
+            if not table_name:
+                continue
+            bare_name = table_name.rsplit(".", 1)[-1]
+            source_meta = table_sources.get(table_name) or table_sources.get(bare_name) or {}
+            table_annotations = annotations.get(table_name) or annotations.get(bare_name) or {}
+            columns = []
+            for column in resource.get("columns") or []:
+                column_name = str(column.get("name") or "")
+                if not column_name:
+                    continue
+                annotation = table_annotations.get(column_name.casefold()) or {}
+                columns.append({
+                    "column_name": column_name,
+                    "data_type": column.get("type") or "unknown",
+                    "nullable": column.get("nullable", True),
+                    "semantic_field": column.get("semantic_field"),
+                    "semantic_labels": column.get("semantic_labels") or {},
+                    "business_role": column.get("business_role"),
+                    "semantic_status": column.get("semantic_status"),
+                    "semantic_execution_eligible": column.get("semantic_execution_eligible") is True,
+                    "semantic_inference": column.get("semantic_inference"),
+                    "dictionary_evidence": column.get("dictionary_evidence") or {},
+                    **annotation,
+                })
+            item = {
+                "table_name": table_name,
+                "display_name": source_meta.get("display_name") or table_name,
+                "description": source_meta.get("description") or resource.get("comment") or "",
+                "geometry_type": source_meta.get("geometry_type"),
+                "srid": source_meta.get("srid"),
+                "synonyms": source_meta.get("synonyms") or [],
+                "suggested_analyses": source_meta.get("suggested_analyses") or [],
+                "source_key": canonical_source_key,
+                "source_id": asset.get("source_id"),
+                "source_name": source_name,
+                "source_type": asset.get("source_type"),
+                "ingestion_mode": asset.get("ingestion_mode"),
+                "resource_type": resource.get("resource_type") or "table",
+                "estimated_record_count": resource.get("estimated_record_count"),
+                "primary_key": resource.get("primary_key") or [],
+                "foreign_keys": resource.get("foreign_keys") or [],
+                "indexes": resource.get("indexes") or [],
+                "columns": columns,
+                "semantic_status": resource.get("semantic_status"),
+                "semantic_asset_id": resource.get("semantic_asset_id"),
+                "semantic_review_status": resource.get("semantic_review_status"),
+                "semantic_execution_eligible": resource.get("semantic_execution_eligible") is True,
+                "semantic_retrieval_eligible": resource.get("semantic_retrieval_eligible") is True,
+                "semantic_evidence": resource.get("semantic_evidence") or {},
+                "annotation_count": sum(1 for column in columns if column.get("semantic_domain") or column.get("aliases") or column.get("description") or column.get("unit")),
+            }
+            haystack = " ".join(str(item.get(key) or "") for key in ("table_name", "display_name", "description", "source_name", "source_type"))
+            if query and query not in haystack.casefold() and not any(query in str(column.get("column_name") or "").casefold() or query in str(column.get("description") or "").casefold() for column in columns):
+                continue
+            tables.append(item)
+
+    tables.sort(key=lambda item: (str(item.get("source_name") or "").casefold(), str(item.get("table_name") or "").casefold()))
+    sources = []
+    seen_sources: set[str] = set()
+    for table in tables:
+        key = str(table.get("source_key") or "")
+        if key in seen_sources:
+            continue
+        seen_sources.add(key)
+        sources.append({"source_key": key, "source_id": table.get("source_id"), "source_name": table.get("source_name"), "source_type": table.get("source_type"), "ingestion_mode": table.get("ingestion_mode")})
+    return JSONResponse({
+        "schema": "gda.semantic-catalog.v1",
+        "tables": tables[offset:offset + limit],
+        "total": len(tables),
+        "offset": offset,
+        "limit": limit,
+        "has_more": offset + limit < len(tables),
+        "sources": sources,
+    })
+
+
 async def _api_semantic_source_detail(request: Request):
     """GET /api/semantic/sources/{table} — single table details (metadata + columns)."""
     user = _get_user_from_request(request)
@@ -4450,6 +4613,13 @@ def get_frontend_api_routes():
     from .api.public_ontology_routes import get_public_ontology_routes
     from .api.ontology_demo_routes import get_ontology_demo_routes
     from .api.offline_ingest_routes import get_offline_ingest_routes
+    from .api.abu_dhabi_nl2sql_product_routes import (
+        get_abu_dhabi_nl2sql_product_routes,
+    )
+    from .api.abu_dhabi_semantic_admin_routes import (
+        get_abu_dhabi_semantic_admin_routes,
+    )
+    from .api.abu_dhabi_flood_routes import get_abu_dhabi_flood_routes
 
     return [
         Route("/api/platform/branding", endpoint=_api_platform_branding, methods=["GET"]),
@@ -4470,9 +4640,19 @@ def get_frontend_api_routes():
         # Windows/isolated-network file ingest (resumable chunks, local scans,
         # durable run manifests and diagnostic bundles).
         *get_offline_ingest_routes(),
+        # Customer-facing, evidence-only console for the governed Abu Dhabi
+        # virtual-source NL2Semantic2SQL product.
+        *get_abu_dhabi_nl2sql_product_routes(),
+        # Versioned semantic administration and metadata-only virtual-lake
+        # discovery for the same product boundary.
+        *get_abu_dhabi_semantic_admin_routes(),
+        # Interactive EPA SWMM diagnostic scenarios for the Abu Dhabi flood
+        # world-model prototype. Customer inputs and artifacts stay private.
+        *get_abu_dhabi_flood_routes(),
         Route("/api/semantic/domains", endpoint=_api_semantic_domains, methods=["GET"]),
         Route("/api/semantic/hierarchy/{domain}", endpoint=_api_semantic_hierarchy, methods=["GET"]),
         Route("/api/semantic/sources", endpoint=_api_semantic_sources_list, methods=["GET"]),
+        Route("/api/semantic/catalog", endpoint=_api_semantic_catalog, methods=["GET"]),
         Route("/api/semantic/sources/{table}", endpoint=_api_semantic_source_detail, methods=["GET"]),
         Route("/api/semantic/sources/{table}", endpoint=_api_semantic_source_upsert, methods=["PUT"]),
         Route("/api/semantic/sources/{table}", endpoint=_api_semantic_source_delete, methods=["DELETE"]),

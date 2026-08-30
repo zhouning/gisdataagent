@@ -12,7 +12,11 @@ from .db_engine import get_engine
 NAVIGATION_SCHEMA = "gda.workspace_navigation.v1"
 
 
-def _items(group_key: str, section_key: str, values: list[tuple[str, str, str]]) -> list[dict[str, Any]]:
+def _items(
+    group_key: str,
+    section_key: str,
+    values: list[tuple[str, str, str]],
+) -> list[dict[str, Any]]:
     return [
         {
             "tab_key": tab_key,
@@ -115,6 +119,7 @@ _ITEMS = (
     ])
     + _items("analysis", "general", [
         ("capabilities", "能力", "zap"), ("tools", "工具", "wrench"),
+        ("gis_workflow", "空间工作流", "git-branch"),
         ("charts", "图表", "bar-chart"), ("causal", "因果推理", "flask"),
         ("optimization", "优化", "target"), ("fusion_quality", "融合质量", "git-branch"),
     ])
@@ -140,7 +145,9 @@ _ITEMS = (
         ("ai_demand_readiness", "AI应用需求矩阵", "clipboard-check"),
     ])
     + _items("analysis", "world_models", [
-        ("worldmodel", "世界模型", "globe"), ("worldmodel_v11", "世界模型v1.1 · Paper58（阿布扎比）", "globe"),
+        ("abu_dhabi_flood_world_model", "阿布扎比 · 暴雨内涝世界模型", "droplets"),
+        ("worldmodel", "世界模型", "globe"),
+        ("worldmodel_v11", "世界模型v1.1 · Paper58（阿布扎比）", "globe"),
         ("worldmodel_v2", "世界模型v2", "globe"), ("worldmodel_v21", "世界模型v2.1", "globe"),
         ("irrigation_demo", "灌区世界模型", "droplets"),
         ("twm", "TWM", "shield"), ("uwm_livability", "城市宜居性分析（UWM）", "brain"),
@@ -322,7 +329,9 @@ def save_navigation_policies(changes: list[dict[str, Any]], updated_by: str) -> 
             try:
                 sort_order = max(0, int(sort_order))
             except (TypeError, ValueError) as exc:
-                raise ValueError(f"navigation sort_order must be an integer for: {tab_key}") from exc
+                raise ValueError(
+                    f"navigation sort_order must be an integer for: {tab_key}"
+                ) from exc
         prepared.append({
             "tab_key": tab_key,
             "visible": visible,

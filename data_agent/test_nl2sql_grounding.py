@@ -133,6 +133,86 @@ def test_build_context_fallbacks_to_list_sources_when_semantic_has_no_sources():
     assert result["candidate_tables"][0]["table_name"] == "cq_buildings_2021"
 
 
+def test_build_context_recalls_every_explicit_spatial_role_before_candidate_limit():
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic_sources = [
+        {
+            "table_name": "buildings",
+            "display_name": "建筑物",
+            "synonyms": ["建筑物"],
+            "geometry_type": "POLYGON",
+            "confidence": 0.95,
+        },
+        {
+            "table_name": "poi",
+            "display_name": "兴趣点",
+            "synonyms": ["POI", "兴趣点"],
+            "geometry_type": "POINT",
+            "confidence": 0.90,
+        },
+        {
+            "table_name": "aoi",
+            "display_name": "兴趣区",
+            "synonyms": ["AOI", "兴趣区"],
+            "geometry_type": "POLYGON",
+            "confidence": 0.88,
+        },
+    ]
+    road_source = {
+        "table_name": "roads_2021",
+        "display_name": "道路网",
+        "synonyms": ["道路", "路网"],
+        "geometry_type": "LINESTRING",
+        "confidence": 0.1,
+    }
+    semantic = {
+        "sources": semantic_sources,
+        "matched_columns": {},
+        "spatial_ops": ["ST_Distance"],
+        "region_filter": None,
+        "metric_hints": [],
+        "hierarchy_matches": [],
+        "sql_filters": [],
+        "equivalences": [],
+    }
+
+    def schema_for(table_name):
+        return {
+            "status": "success",
+            "table_name": table_name,
+            "geometry_type": next(
+                source["geometry_type"]
+                for source in semantic_sources + [road_source]
+                if source["table_name"] == table_name
+            ),
+            "srid": 4326,
+            "columns": [
+                {
+                    "column_name": "geometry",
+                    "data_type": "USER-DEFINED",
+                    "is_geometry": True,
+                    "aliases": [],
+                }
+            ],
+        }
+
+    source_list = {"status": "success", "sources": semantic_sources + [road_source]}
+    with patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.list_semantic_sources", return_value=source_list), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", side_effect=schema_for), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=""), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=1000):
+        result = build_nl2sql_context(
+            "找到一栋超高层建筑，返回离它最近的 10 条道路名称和距离",
+            family="qwen",
+        )
+
+    candidate_names = [table["table_name"] for table in result["candidate_tables"]]
+    assert "buildings" in candidate_names
+    assert "roads_2021" in candidate_names
+
+
 def test_build_context_boosts_table_with_explicit_identifier_column_names():
     from data_agent.nl2sql_grounding import build_nl2sql_context
 
@@ -362,6 +442,95 @@ def test_build_context_preserves_table_synonyms_for_grounding_prompt():
     assert "建筑" in table["table_aliases"]
     assert "楼" in table["table_aliases"]
     assert "table aliases" in result["grounding_prompt"]
+
+
+def test_grounding_prompt_emits_governed_question_table_role_bindings():
+    from data_agent.nl2sql_grounding import _format_grounding_prompt
+
+    payload = {
+        "user_question": "找出与道路相交的历史文化街区名称",
+        "candidate_tables": [
+            {
+                "table_name": "cq_historic_districts",
+                "display_name": "历史文化街区",
+                "confidence": 0.8,
+                "table_aliases": ["历史文化街区", "历史街区"],
+                "columns": [],
+            },
+            {
+                "table_name": "cq_osm_roads_2021",
+                "display_name": "重庆道路",
+                "confidence": 0.8,
+                "table_aliases": ["道路", "路网"],
+                "columns": [],
+            },
+        ],
+        "semantic_hints": {"spatial_ops": ["ST_Intersects"]},
+        "few_shots": [],
+    }
+
+    text = _format_grounding_prompt(payload, family="qwen")
+    assert "Question-to-table role bindings" in text
+    assert 'question term "道路" -> cq_osm_roads_2021' in text
+    assert 'question term "历史文化街区" -> cq_historic_districts' in text
+    assert "do not reuse a different candidate table" in text
+
+
+def test_grounding_prompt_does_not_bind_alias_to_lower_priority_source():
+    from data_agent.nl2sql_grounding import _format_grounding_prompt
+
+    payload = {
+        "user_question": "查询土地利用数据",
+        "candidate_tables": [
+            {
+                "table_name": "land_use_preferred",
+                "display_name": "土地利用现状",
+                "confidence": 0.8,
+                "nl2sql_priority": 100,
+                "table_aliases": ["土地利用现状"],
+                "columns": [],
+            },
+            {
+                "table_name": "land_use_legacy",
+                "display_name": "旧土地利用",
+                "confidence": 0.8,
+                "nl2sql_priority": 0,
+                "table_aliases": ["土地利用"],
+                "columns": [],
+            },
+        ],
+        "few_shots": [],
+    }
+
+    text = _format_grounding_prompt(payload, family="qwen")
+    assert 'question term "土地利用" -> land_use_legacy' not in text
+    assert "prefer this source over lower-priority candidates" in text
+
+
+def test_grounding_prompt_includes_governed_field_meaning():
+    from data_agent.nl2sql_grounding import _format_grounding_prompt
+
+    payload = {
+        "user_question": "统计人口",
+        "candidate_tables": [{
+            "table_name": "population",
+            "display_name": "人口统计",
+            "confidence": 0.9,
+            "columns": [{
+                "column_name": "pop_value",
+                "quoted_ref": "pop_value",
+                "pg_type": "double precision",
+                "semantic_domain": "POPULATION",
+                "description": "统计期末常住人口，单位为万人",
+                "aliases": [],
+            }],
+        }],
+        "few_shots": [],
+    }
+
+    text = _format_grounding_prompt(payload, family="qwen")
+    assert "domain=POPULATION" in text
+    assert "meaning=统计期末常住人口，单位为万人" in text
 
 
 def test_build_context_prioritizes_exact_physical_column_hits_over_alias_only_table():
@@ -1001,3 +1170,179 @@ def test_build_nl2sql_context_attaches_intent_to_payload():
         payload = build_nl2sql_context("列出 fclass = 'primary' 的道路")
     assert payload["intent"] is IntentLabel.ATTRIBUTE_FILTER
     assert "intent_source" in payload
+
+
+def test_postgis_context_filters_few_shots_by_postgis_when_engine_is_implicit():
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = {
+        "sources": [{
+            "table_name": "roads",
+            "display_name": "道路",
+            "description": "",
+            "geometry_type": "LINESTRING",
+            "confidence": 0.9,
+        }],
+        "matched_columns": {},
+        "spatial_ops": [],
+        "region_filter": None,
+        "metric_hints": [],
+        "hierarchy_matches": [],
+        "equivalences": [],
+        "sql_filters": [],
+    }
+    schema = {
+        "status": "success",
+        "table_name": "roads",
+        "columns": [{"column_name": "name", "data_type": "text", "aliases": []}],
+    }
+    bundle = {
+        "prompt": "参考查询示例:\n- 问: q\n  SQL: SELECT name FROM roads",
+        "hits": [{
+            "id": 1,
+            "question": "q",
+            "sql": "SELECT name FROM roads",
+            "score": 0.9,
+            "domain_id": "roads",
+            "source": "benchmark_curated",
+            "tags": ["engine:postgis"],
+        }],
+    }
+    with patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", return_value=schema), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=10), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=bundle) as fetch:
+        build_nl2sql_context("道路数量", family="qwen")
+
+    assert fetch.call_args.kwargs["execution_engine"] == "postgis"
+
+
+def test_reviewed_few_shot_adds_governed_missing_join_table():
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = {
+        "sources": [{
+            "table_name": "poi_current",
+            "display_name": "兴趣点",
+            "description": "",
+            "geometry_type": "POINT",
+            "confidence": 0.9,
+        }],
+        "matched_columns": {},
+        "spatial_ops": ["ST_Contains"],
+        "region_filter": None,
+        "metric_hints": [],
+        "hierarchy_matches": [],
+        "equivalences": [],
+        "sql_filters": [],
+    }
+    source_list = {
+        "status": "success",
+        "sources": [
+            {"table_name": "poi_current", "display_name": "兴趣点", "nl2sql_enabled": True},
+            {
+                "table_name": "governed_source_x93",
+                "display_name": "layer x93",
+                "nl2sql_enabled": True,
+            },
+        ],
+    }
+
+    def schema_for(table_name):
+        return {
+            "status": "success",
+            "table_name": table_name,
+            "source_metadata": {"nl2sql_enabled": True},
+            "columns": [{
+                "column_name": "geometry",
+                "data_type": "USER-DEFINED",
+                "is_geometry": True,
+                "aliases": [],
+            }],
+        }
+
+    bundle = {
+        "prompt": "reviewed spatial join",
+        "hits": [{
+            "id": 1,
+            "question": "权属范围内的兴趣点",
+            "sql": (
+                "SELECT p.name FROM poi_current p "
+                "JOIN governed_source_x93 l ON ST_Contains(l.geometry, p.geometry)"
+            ),
+            "score": 0.91,
+            "domain_id": "governed_source_x93",
+            "source": "benchmark_curated",
+            "tags": ["reviewed", "engine:postgis"],
+        }],
+    }
+    with patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.list_semantic_sources", return_value=source_list), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", side_effect=schema_for), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=bundle), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=10):
+        payload = build_nl2sql_context(
+            "权属范围内有哪些兴趣点？",
+            family="qwen",
+            execution_engine="postgis",
+        )
+
+    candidates = {item["table_name"]: item for item in payload["candidate_tables"]}
+    assert "governed_source_x93" in candidates
+    assert candidates["governed_source_x93"]["_via_few_shot"] is True
+
+
+def test_reviewed_few_shot_cannot_reenable_disabled_source():
+    from data_agent.nl2sql_grounding import build_nl2sql_context
+
+    semantic = {
+        "sources": [{
+            "table_name": "poi_current",
+            "display_name": "兴趣点",
+            "geometry_type": "POINT",
+            "confidence": 0.9,
+        }],
+        "matched_columns": {},
+        "spatial_ops": ["ST_Contains"],
+        "region_filter": None,
+        "metric_hints": [],
+        "hierarchy_matches": [],
+        "equivalences": [],
+        "sql_filters": [],
+    }
+    source_list = {
+        "status": "success",
+        "sources": [
+            {"table_name": "poi_current", "display_name": "兴趣点"},
+            {"table_name": "parcel_staging", "nl2sql_enabled": False},
+        ],
+    }
+    schema = {
+        "status": "success",
+        "columns": [{"column_name": "geometry", "data_type": "geometry", "is_geometry": True}],
+    }
+    bundle = {
+        "prompt": "reviewed spatial join",
+        "hits": [{
+            "id": 2,
+            "question": "staging join",
+            "sql": "SELECT 1 FROM poi_current p JOIN parcel_staging s ON TRUE",
+            "score": 0.9,
+            "source": "benchmark_curated",
+            "tags": ["reviewed", "engine:postgis"],
+        }],
+    }
+    with patch("data_agent.nl2sql_grounding.resolve_semantic_context", return_value=semantic), \
+         patch("data_agent.nl2sql_grounding.list_semantic_sources", return_value=source_list), \
+         patch("data_agent.nl2sql_grounding.describe_table_semantic", return_value=schema), \
+         patch("data_agent.nl2sql_grounding.fetch_nl2sql_few_shots", return_value=bundle), \
+         patch("data_agent.nl2sql_grounding._estimate_table_size", return_value=10):
+        payload = build_nl2sql_context(
+            "权属范围内有哪些兴趣点？",
+            family="qwen",
+            execution_engine="postgis",
+        )
+
+    assert "parcel_staging" not in {
+        item["table_name"] for item in payload["candidate_tables"]
+    }

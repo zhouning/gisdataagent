@@ -16,7 +16,8 @@ Add to claude_desktop_config.json → mcpServers:
       "cwd": "D:\\\\adk",
       "env": {
         "MCP_USER": "analyst1",
-        "MCP_ROLE": "analyst"
+        "MCP_ROLE": "analyst",
+        "MCP_TENANT": "tenant-a"
       }
     }
   }
@@ -25,6 +26,7 @@ Add to claude_desktop_config.json → mcpServers:
 Environment variables:
   MCP_USER  — username for file sandbox and DB context (default: "mcp_user")
   MCP_ROLE  — role for RBAC checks (default: "analyst")
+  MCP_TENANT — tenant binding required by governed platform capabilities
 
 All database/API credentials are loaded from data_agent/.env automatically.
 """
@@ -40,7 +42,12 @@ load_dotenv(_env_path)
 
 from mcp.server.fastmcp import FastMCP
 
-from .user_context import current_user_id, current_session_id, current_user_role
+from .user_context import (
+    current_session_id,
+    current_tenant_id,
+    current_user_id,
+    current_user_role,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -58,6 +65,7 @@ async def gis_lifespan(server: FastMCP):
     current_user_id.set(username)
     current_session_id.set(f"mcp_{username}")
     current_user_role.set(os.environ.get("MCP_ROLE", "analyst"))
+    current_tenant_id.set(os.environ.get("MCP_TENANT", "").strip())
 
     # Ensure user upload directory exists
     upload_dir = os.path.join(os.path.dirname(__file__), "uploads", username)

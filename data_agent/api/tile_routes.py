@@ -1,25 +1,29 @@
-"""
-Tile Routes — REST API for vector tile (MVT) serving.
+"""Private user-layer tiles and retired legacy Martin endpoint shims.
 
-Endpoints:
-- GET /api/tiles/{layer_id}/{z}/{x}/{y}.pbf         — serve a single MVT tile
-- GET /api/tiles/{layer_id}/metadata.json            — TileJSON metadata
-- DELETE /api/tiles/{layer_id}                       — cleanup tile layer
-- GET /api/tiles/martin/{table}/{z}/{x}/{y}.pbf      — Martin proxy (Phase 3)
+The user-layer endpoints serve short-lived, owner-scoped work products.  They
+are distinct from governed GIS service tiles, which are only served by the
+release-bound Platform Gateway route.  The former generic Martin table proxy is
+kept only long enough to return a stable retirement response; it never reaches
+the provider.
 """
-import os
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
 from .helpers import _get_user_from_request, _set_user_context
-from ..observability import get_logger
 
-logger = get_logger("tile_routes")
-
-# Martin tile server URL (optional, Phase 3)
-MARTIN_URL = os.environ.get("MARTIN_URL", "")
+_PRIVATE_TILE_HEADERS = {
+    "Cache-Control": "private, no-store",
+    "Pragma": "no-cache",
+    "Vary": "Authorization, Cookie, Accept-Encoding",
+    "X-Content-Type-Options": "nosniff",
+}
+_RETIRED_MARTIN_PROXY = {
+    "error": "Legacy Martin table proxy is retired",
+    "code": "legacy_martin_proxy_retired",
+    "replacement": "/api/platform/v1/gis/tiles/{release_key}/{z}/{x}/{y}.pbf",
+}
 
 
 async def _api_tile(request: Request):
@@ -50,10 +54,7 @@ async def _api_tile(request: Request):
     return Response(
         content=tile_bytes,
         media_type="application/vnd.mapbox-vector-tile",
-        headers={
-            "Cache-Control": "public, max-age=3600",
-            "Access-Control-Allow-Origin": "*",
-        },
+        headers=_PRIVATE_TILE_HEADERS,
     )
 
 
@@ -86,13 +87,15 @@ async def _api_tile_metadata(request: Request):
             (meta["bounds"][1] + meta["bounds"][3]) / 2,
             10,
         ],
-        "vector_layers": [{
-            "id": meta["layer_name"] or "default",
-            "fields": {c: "String" for c in meta.get("columns", [])},
-        }],
+        "vector_layers": [
+            {
+                "id": meta["layer_name"] or "default",
+                "fields": {c: "String" for c in meta.get("columns", [])},
+            }
+        ],
         "feature_count": meta["feature_count"],
     }
-    return JSONResponse(tilejson)
+    return JSONResponse(tilejson, headers=_PRIVATE_TILE_HEADERS)
 
 
 async def _api_tile_delete(request: Request):
@@ -104,7 +107,7 @@ async def _api_tile_delete(request: Request):
 
     layer_id = request.path_params["layer_id"]
 
-    from ..tile_server import get_layer_metadata, cleanup_tile_layer
+    from ..tile_server import cleanup_tile_layer, get_layer_metadata
 
     meta = get_layer_metadata(layer_id)
     if not meta:
@@ -113,84 +116,48 @@ async def _api_tile_delete(request: Request):
         return JSONResponse({"error": "Forbidden"}, status_code=403)
 
     cleanup_tile_layer(layer_id)
-    return JSONResponse({"status": "deleted", "layer_id": layer_id})
+    return JSONResponse(
+        {"status": "deleted", "layer_id": layer_id},
+        headers=_PRIVATE_TILE_HEADERS,
+    )
 
 
 async def _api_martin_tile(request: Request):
-    """GET /api/tiles/martin/{table}/{z}/{x}/{y}.pbf — proxy to Martin tile server."""
+    """Return a stable retirement response for the unsafe generic proxy."""
     user = _get_user_from_request(request)
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-
-    if not MARTIN_URL:
-        return JSONResponse({"error": "Martin tile server not configured"}, status_code=503)
-
-    table = request.path_params["table"]
-    z = int(request.path_params["z"])
-    x = int(request.path_params["x"])
-    y = int(request.path_params["y"])
-
-    # Sanitize table name
-    if not table.replace("_", "").isalnum():
-        return JSONResponse({"error": "Invalid table name"}, status_code=400)
-
-    try:
-        import httpx
-        martin_url = f"{MARTIN_URL}/{table}/{z}/{x}/{y}"
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(martin_url)
-
-        if resp.status_code == 204 or not resp.content:
-            return Response(status_code=204)
-        if resp.status_code != 200:
-            return Response(status_code=resp.status_code)
-
-        return Response(
-            content=resp.content,
-            media_type="application/vnd.mapbox-vector-tile",
-            headers={
-                "Cache-Control": "public, max-age=3600",
-                "Access-Control-Allow-Origin": "*",
-            },
-        )
-    except Exception as e:
-        logger.warning("[MartinProxy] Failed: %s", e)
-        return JSONResponse({"error": "Martin proxy failed"}, status_code=502)
+    return JSONResponse(
+        _RETIRED_MARTIN_PROXY,
+        status_code=410,
+        headers={"Cache-Control": "no-store", "Pragma": "no-cache"},
+    )
 
 
 async def _api_martin_catalog(request: Request):
-    """GET /api/tiles/martin/catalog — list available Martin tile sources."""
+    """Return a stable retirement response for the provider catalog endpoint."""
     user = _get_user_from_request(request)
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-
-    if not MARTIN_URL:
-        return JSONResponse({"error": "Martin not configured", "sources": []})
-
-    try:
-        import httpx
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(f"{MARTIN_URL}/catalog")
-        if resp.status_code == 200:
-            return JSONResponse(resp.json())
-        return JSONResponse({"sources": []})
-    except Exception:
-        return JSONResponse({"sources": []})
+    return JSONResponse(
+        _RETIRED_MARTIN_PROXY,
+        status_code=410,
+        headers={"Cache-Control": "no-store", "Pragma": "no-cache"},
+    )
 
 
 def get_tile_routes() -> list:
     """Export tile serving routes for registration in frontend_api.py."""
     return [
-        Route("/api/tiles/martin/catalog",
-              endpoint=_api_martin_catalog, methods=["GET"]),
-        Route("/api/tiles/martin/{table}/{z:int}/{x:int}/{y:int}.pbf",
-              endpoint=_api_martin_tile, methods=["GET"]),
-        Route("/api/tiles/{layer_id}/{z:int}/{x:int}/{y:int}.pbf",
-              endpoint=_api_tile, methods=["GET"]),
-        Route("/api/tiles/{layer_id}/metadata.json",
-              endpoint=_api_tile_metadata, methods=["GET"]),
-        Route("/api/tiles/{layer_id}",
-              endpoint=_api_tile_delete, methods=["DELETE"]),
+        Route("/api/tiles/martin/catalog", endpoint=_api_martin_catalog, methods=["GET"]),
+        Route(
+            "/api/tiles/martin/{table}/{z:int}/{x:int}/{y:int}.pbf",
+            endpoint=_api_martin_tile,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/tiles/{layer_id}/{z:int}/{x:int}/{y:int}.pbf", endpoint=_api_tile, methods=["GET"]
+        ),
+        Route("/api/tiles/{layer_id}/metadata.json", endpoint=_api_tile_metadata, methods=["GET"]),
+        Route("/api/tiles/{layer_id}", endpoint=_api_tile_delete, methods=["DELETE"]),
     ]

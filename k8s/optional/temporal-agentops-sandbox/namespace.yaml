@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gda-agentops-sandbox
+  labels:
+    app.kubernetes.io/part-of: gis-data-agent
+    app.kubernetes.io/component: agentops-runtime
+    app.kubernetes.io/environment-profile: temporal-agentops-sandbox

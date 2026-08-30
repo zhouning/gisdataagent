@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional
 
 from sqlalchemy import text
 
@@ -26,7 +25,9 @@ _ENV_DEFAULTS = {
     "tier_standard": ("MODEL_STANDARD", "gemini-2.5-flash"),
     "tier_premium": ("MODEL_PREMIUM", "gemini-2.5-pro"),
     "router_model": ("ROUTER_MODEL", "gemini-2.0-flash"),
-    "embedding_model": ("EMBEDDING_MODEL", "text-embedding-004"),
+    # Offline-first default. Gemini can still be selected explicitly through
+    # the model page or EMBEDDING_MODEL=text-embedding-004.
+    "embedding_model": ("EMBEDDING_MODEL", "nomic-embed-text-v2-moe"),
     "cost_guard_warn": ("COST_GUARD_WARN", "50000"),
     "cost_guard_abort": ("COST_GUARD_ABORT", "200000"),
     "cost_guard_usd_abort": ("COST_GUARD_USD_ABORT", "0"),
@@ -71,6 +72,15 @@ class ModelConfigManager:
         # Start with env var defaults
         for key, (env_var, default) in _ENV_DEFAULTS.items():
             self._cache[key] = os.environ.get(env_var, default)
+        # Keep the embedding model independently configurable from the chat
+        # model while retaining EMBEDDING_MODEL as the backwards-compatible
+        # name used by existing deployments.
+        embedding_env = (
+            os.environ.get("GDA_EMBEDDING_MODEL")
+            or os.environ.get("EMBEDDING_MODEL")
+            or _ENV_DEFAULTS["embedding_model"][1]
+        )
+        self._cache["embedding_model"] = embedding_env
         force_env = _truthy_env("MODEL_CONFIG_FORCE_ENV")
 
         # Override with DB values if available
@@ -93,6 +103,8 @@ class ModelConfigManager:
             for key, (env_var, _) in _ENV_DEFAULTS.items():
                 if env_var in os.environ:
                     self._cache[key] = os.environ[env_var]
+            if os.environ.get("GDA_EMBEDDING_MODEL"):
+                self._cache["embedding_model"] = os.environ["GDA_EMBEDDING_MODEL"]
             logger.info("MODEL_CONFIG_FORCE_ENV enabled; environment model config overrides DB")
 
         self._loaded = True
@@ -123,7 +135,7 @@ class ModelConfigManager:
         self._cache["router_model"] = model_name
         return self._persist("router_model", model_name, updated_by)
 
-    def get(self, key: str) -> Optional[str]:
+    def get(self, key: str) -> str | None:
         """Generic config getter."""
         self._ensure_loaded()
         return self._cache.get(key)
@@ -131,7 +143,7 @@ class ModelConfigManager:
     def get_embedding_model(self) -> str:
         """Get the active embedding model name."""
         self._ensure_loaded()
-        return self._cache.get("embedding_model", "text-embedding-004")
+        return self._cache.get("embedding_model", "nomic-embed-text-v2-moe")
 
     def set_embedding_model(self, model_name: str, updated_by: str) -> bool:
         """Set the embedding model. Persists to DB + updates cache."""
@@ -149,7 +161,11 @@ class ModelConfigManager:
 
     def set_cost_guard(self, key: str, value: str, updated_by: str) -> bool:
         """Set a CostGuard config value. key must be one of warn/abort/usd_abort."""
-        valid = {"warn": "cost_guard_warn", "abort": "cost_guard_abort", "usd_abort": "cost_guard_usd_abort"}
+        valid = {
+            "warn": "cost_guard_warn",
+            "abort": "cost_guard_abort",
+            "usd_abort": "cost_guard_usd_abort",
+        }
         config_key = valid.get(key)
         if not config_key:
             return False
@@ -164,7 +180,9 @@ class ModelConfigManager:
             self._ensure_table(engine)
             with engine.connect() as conn:
                 conn.execute(text("""
-                    INSERT INTO agent_model_config (config_key, config_value, updated_by, updated_at)
+                    INSERT INTO agent_model_config (
+                        config_key, config_value, updated_by, updated_at
+                    )
                     VALUES (:k, :v, :u, CURRENT_TIMESTAMP)
                     ON CONFLICT (config_key) DO UPDATE
                     SET config_value = :v, updated_by = :u, updated_at = CURRENT_TIMESTAMP
@@ -179,8 +197,8 @@ class ModelConfigManager:
     def get_full_config(self) -> dict:
         """Return full config for API exposure."""
         self._ensure_loaded()
-        from .model_gateway import ModelRegistry
         from .embedding_gateway import EmbeddingRegistry
+        from .model_gateway import ModelRegistry
         ModelRegistry._ensure_initialized()
         available = ModelRegistry.list_models()
         available_embeddings = EmbeddingRegistry.list_models()
@@ -198,7 +216,7 @@ class ModelConfigManager:
 
 
 # Singleton
-_manager: Optional[ModelConfigManager] = None
+_manager: ModelConfigManager | None = None
 
 
 def get_config_manager() -> ModelConfigManager:

@@ -92,7 +92,7 @@ def test_hierarchy_tool_result_has_deterministic_chat_answer(monkeypatch):
     assert "建设用地 (`ConstructionLand`)" in rendered
     assert "未利用地 (`UnusedLand`)" in rendered
     assert "耕地 (`CultivatedLand`)" in rendered
-    assert "本体 `V2.0.1`" in rendered
+    assert "本体 `V2.3.0`" in rendered
 
 
 def test_transition_tool_result_is_rendered_from_structured_evidence(monkeypatch):

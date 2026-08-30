@@ -42,6 +42,27 @@ def test_add_reference_query(mock_emb, mock_get_engine):
 
 
 @patch("data_agent.reference_queries.get_engine")
+@patch("data_agent.knowledge_base._get_embeddings", return_value=[[0.1] * 768])
+def test_add_engine_specific_reference_does_not_dedup_other_dialect(mock_emb, mock_get_engine):
+    engine, conn = _mock_engine()
+    mock_get_engine.return_value = engine
+    conn.execute.return_value.fetchone.return_value = (2,)
+    store = ReferenceQueryStore()
+    with patch.object(
+        store,
+        "search",
+        return_value=[{"id": 1, "score": 0.99, "tags": ["engine:postgis"]}],
+    ):
+        ref_id = store.add(
+            query_text="统计水田面积",
+            response_summary="SELECT SUM(TBMJ) FROM land_parcel_current",
+            tags=["engine:duckdb"],
+            task_type="nl2sql",
+        )
+    assert ref_id == 2
+
+
+@patch("data_agent.reference_queries.get_engine")
 def test_add_no_db(mock_get_engine):
     mock_get_engine.return_value = None
     store = ReferenceQueryStore()
@@ -206,6 +227,106 @@ def test_fetch_nl2sql_few_shots_empty(mock_emb, mock_get_engine):
 
     result = fetch_nl2sql_few_shots("test")
     assert result == ""
+
+
+def test_fetch_nl2sql_few_shots_returns_auditable_bundle(monkeypatch):
+    monkeypatch.setenv("GDA_NL2SQL_ALLOW_BENCHMARK_FEWSHOT", "1")
+    hits = [{
+        "id": 7,
+        "query_text": "统计道路数量",
+        "response_summary": "SELECT COUNT(*) FROM roads",
+        "score": 0.91,
+        "domain_id": "roads",
+        "source": "benchmark_curated",
+        "success_count": 0,
+        "tags": ["engine:postgis"],
+    }]
+    with patch("data_agent.reference_queries.ReferenceQueryStore.search", return_value=hits):
+        result = fetch_nl2sql_few_shots(
+            "道路有多少条",
+            domain_id="roads",
+            execution_engine="postgis",
+            include_metadata=True,
+        )
+
+    assert result["hits"][0]["id"] == 7
+    assert result["hits"][0]["score"] == 0.91
+    assert "SELECT COUNT(*) FROM roads" in result["prompt"]
+
+
+def test_fetch_nl2sql_few_shots_excludes_unverified_auto_curate(monkeypatch):
+    monkeypatch.delenv("GDA_NL2SQL_ALLOW_UNREVIEWED_FEWSHOT", raising=False)
+    hits = [{
+        "id": 8,
+        "query_text": "错误但可执行",
+        "response_summary": "SELECT 1",
+        "score": 0.99,
+        "domain_id": "roads",
+        "source": "auto_curate",
+        "success_count": 0,
+        "tags": ["engine:postgis"],
+    }]
+    with patch("data_agent.reference_queries.ReferenceQueryStore.search", return_value=hits):
+        result = fetch_nl2sql_few_shots(
+            "道路有多少条",
+            domain_id="roads",
+            execution_engine="postgis",
+        )
+
+    assert result == ""
+
+
+def test_fetch_nl2sql_few_shots_excludes_benchmark_curated_by_default(monkeypatch):
+    monkeypatch.delenv("GDA_NL2SQL_ALLOW_BENCHMARK_FEWSHOT", raising=False)
+    hits = [{
+        "id": 81,
+        "query_text": "重庆专用样例",
+        "response_summary": "SELECT * FROM cq_land_use_dltb",
+        "score": 0.99,
+        "domain_id": "cq_land_use_dltb",
+        "source": "benchmark_curated",
+        "success_count": 1,
+        "tags": ["engine:postgis"],
+    }]
+    with patch("data_agent.reference_queries.ReferenceQueryStore.search", return_value=hits):
+        result = fetch_nl2sql_few_shots(
+            "统计重庆专用样例",
+            domain_id="cq_land_use_dltb",
+            execution_engine="postgis",
+        )
+
+    assert result == ""
+
+
+def test_fetch_nl2sql_few_shots_does_not_fallback_across_domains(monkeypatch):
+    monkeypatch.delenv("GDA_NL2SQL_ALLOW_CROSS_DOMAIN_FEWSHOT", raising=False)
+    monkeypatch.delenv("GDA_NL2SQL_ALLOW_BENCHMARK_FEWSHOT", raising=False)
+    building_hit = {
+        "id": 9,
+        "query_text": "查找建筑附近的兴趣点",
+        "response_summary": "SELECT p.name FROM buildings b JOIN poi p ON true",
+        "score": 0.95,
+        "domain_id": "buildings",
+        "source": "benchmark_curated",
+        "success_count": 1,
+        "tags": ["engine:duckdb"],
+    }
+
+    def search(_query, **kwargs):
+        if kwargs.get("domain_id") == "historic_districts":
+            return []
+        return [building_hit]
+
+    with patch("data_agent.reference_queries.ReferenceQueryStore.search", side_effect=search) as mocked:
+        result = fetch_nl2sql_few_shots(
+            "哪些历史文化街区有道路穿过",
+            domain_id="historic_districts",
+            execution_engine="lake",
+            include_metadata=True,
+        )
+
+    assert result == {"prompt": "", "hits": []}
+    assert mocked.call_count == 1
 
 
 # ---------------------------------------------------------------------------

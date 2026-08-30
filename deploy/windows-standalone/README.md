@@ -31,6 +31,16 @@ python -m pip download --only-binary=:all: --platform win_amd64 --python-version
   --dest deploy\windows-standalone\vendor\wheelhouse\production `
   -r deploy\windows-standalone\requirements-windows-production.txt
 
+$duckdbExtDir = 'deploy\windows-standalone\vendor\middleware\duckdb\v1.4.3\windows_amd64'
+New-Item -ItemType Directory -Force $duckdbExtDir | Out-Null
+Invoke-WebRequest `
+  https://extensions.duckdb.org/v1.4.3/windows_amd64/spatial.duckdb_extension.gz `
+  -OutFile "$duckdbExtDir\spatial.duckdb_extension.gz"
+$source = [IO.File]::OpenRead("$duckdbExtDir\spatial.duckdb_extension.gz")
+$target = [IO.File]::Create("$duckdbExtDir\spatial.duckdb_extension")
+$gzip = [IO.Compression.GZipStream]::new($source, [IO.Compression.CompressionMode]::Decompress)
+try { $gzip.CopyTo($target) } finally { $gzip.Dispose(); $target.Dispose(); $source.Dispose() }
+
 python deploy\windows-standalone\build_offline_bundle.py `
   --profile production `
   --vendor-root deploy\windows-standalone\vendor `
@@ -52,8 +62,8 @@ Ollama 模型和 Paper9 制品，详见下面的目录约定。
 
 | 档位 | 包含 | 可提供的能力 | 生产门禁 |
 |---|---|---|---|
-| `core` | Python 3.11、GIS wheelhouse、应用、DuckDB、文件湖、日志、断点续传采集器、本体 2.3、宁夏字段基线 | FileGDB/SHP/TIFF 入湖、画像、治理、质检、血缘、GeoParquet/COG/STAC、本体结构查询 | 每个数据集按字段、CRS、几何和值域质量决定是否可发布 |
-| `production` | `core` + PostgreSQL 16/PostGIS/pgvector、MinIO、JRE 17 + Fuseki/TDB2、Ollama、LLM/embedding 权重、Paper9 | 在线空间查询、对象存储、本体查询投影、本地语义问数、Paper9 运行 | 宁夏字段基线必须存在；每个数据集和 Paper9 输入仍须通过各自质量门禁 |
+| `core` | Python 3.11、GIS wheelhouse、应用、DuckDB 1.4.3 + 同版 Spatial、文件湖、日志、断点续传采集器、本体 2.3、宁夏字段基线 | FileGDB/SHP/TIFF 入湖、画像、治理、质检、血缘、GeoParquet/COG/STAC、本体结构查询、湖上 SQL | 每个数据集按字段、CRS、几何和值域质量决定是否可发布 |
+| `production` | `core` + PostgreSQL 16/PostGIS/pgvector、MinIO、JRE 17 + Fuseki/TDB2、Ollama、LLM/embedding 权重、Paper9 | PostGIS 默认问数、可切换的数据湖问数、对象存储、本体查询投影、本地语义问数、Paper9 运行 | 宁夏字段基线必须存在；每个数据集和 Paper9 输入仍须通过各自质量门禁 |
 
 `Prometheus` 和 `Grafana` 作为生产包可选组件随包携带。Redis、DolphinScheduler、Spark/Flink、
 OpenMetadata、Compose 的 CV/CAD/reference-data、Martin tiles 和 AlphaEarth 演示服务没有被
@@ -70,6 +80,7 @@ OpenMetadata、Compose 的 CV/CAD/reference-data、Martin tiles 和 AlphaEarth �
 vendor/python/python-3.11.11-amd64.exe
 vendor/wheelhouse/core/*.whl
 vendor/wheelhouse/production/*.whl
+vendor/middleware/duckdb/v1.4.3/windows_amd64/spatial.duckdb_extension
 vendor/middleware/postgresql/postgresql-16.*-windows-x64.exe
 vendor/middleware/postgis/postgis-bundle-pg16-3.*-x64.exe
 vendor/middleware/pgvector/*
@@ -107,6 +118,8 @@ python -m pip download --only-binary=:all: --platform win_amd64 --python-version
 ```
 
 `npm run build` 必须生成 `frontend\dist`，否则构建器会阻断。上面的 pip 命令只准备 Python 包，
+DuckDB Spatial 必须与固定的 DuckDB `1.4.3` 完全同版，并在 staging 机解压为
+`spatial.duckdb_extension`；不能只放 `.gz`，也不能指望物理隔离现场执行 `INSTALL spatial`。
 PostgreSQL/PostGIS、pgvector、MinIO、JRE、Fuseki、Ollama、
 模型和 Paper9 必须从批准的离线制品库放入 `vendor/`。随后构建：
 
@@ -122,9 +135,12 @@ python deploy\windows-standalone\build_offline_bundle.py `
   --output out\GIS-Data-Agent-Windows-production.zip
 ```
 
-构建器缺少任意 required artifact、wheelhouse 直接依赖或最小文件数时返回 `blocked`，不产生
-ZIP。生成的 ZIP 内含 `manifest.json`、`SHA256SUMS` 和安装脚本；它们应与介质一起登记到交付单。
-生产 wheelhouse 还必须包含 `litellm`，否则本地 Ollama 路由虽然能启动，真正问数时会在模型适配层失败。
+构建器缺少任意 required artifact、wheelhouse 直接依赖、满足版本约束的 wheel 或最小文件数时返回
+`blocked`，不产生 ZIP。生成的 ZIP 内含 `manifest.json`、`SHA256SUMS` 和安装脚本；它们应与介质
+一起登记到交付单。
+生产 wheelhouse 还必须包含 `litellm`、`h5py` 和 `PyMuPDF`。前者由 ADK 的模型适配层使用，
+后两者分别覆盖 GWM/MMFE 科学文件读取和标准 PDF 入库；缺少任一项时，对应生产能力不能在
+离线现场启动，构建器应在 staging 阶段阻断，而不是把问题推迟到运行时。
 
 ## 内网安装
 
@@ -132,7 +148,7 @@ ZIP。生成的 ZIP 内含 `manifest.json`、`SHA256SUMS` 和安装脚本；它�
 
 ```powershell
 Expand-Archive .\GIS-Data-Agent-Windows-production.zip -DestinationPath D:\GDA_STAGING
-Set-Location D:\GDA_STAGING\GIS-Data-Agent-23.0.0-windows-standalone.1-production
+Set-Location D:\GDA_STAGING\GIS-Data-Agent-23.0.0-windows-standalone.2-production
 .\install_offline_bundle.ps1 `
   -Profile production `
   -InstallRoot D:\GDA `
@@ -154,6 +170,45 @@ Ollama。生成的数据库、MinIO 和 Chainlit 密钥目录只授予 SYSTEM �
 PostgreSQL 服务名会写入安装目录的运行状态，不依赖执行安装的管理员用户 `PATH`。Ollama 会导入
 `Gemma4:26b` 和 `nomic-embed-text-v2-moe:latest`；导入阶段使用独立端口和数据盘模型目录，
 不会复用安装用户的 Ollama 用户服务。启动验收会调用 `/api/tags` 核对两个标签。
+DuckDB 验收会从 ZIP 的固定路径加载 Spatial 扩展，并实际计算一个单位正方形的 `ST_Area=1`；
+扩展缺失、版本不匹配或只能执行属性 SQL 时，安装状态直接为 `blocked`。
+
+### 对接现场 LM Studio
+
+离线包不把模型服务地址写死。安装完成、第一次启动前，编辑
+`D:\GDA\config\gda.env`，将聊天和向量模型改为现场 LM Studio `/v1/models` 返回的**原样 ID**：
+
+```dotenv
+GDA_LLM_PROVIDER=lm_studio
+GDA_LLM_BASE_URL=http://10.64.4.202:1234/v1
+GDA_LLM_MODEL=qwen3.6-27b
+GDA_LLM_API_KEY=lm-studio
+MODEL_CONFIG_FORCE_ENV=true
+MODEL_BACKEND=lm_studio
+MODEL_FAST=qwen3.6-27b
+MODEL_STANDARD=qwen3.6-27b
+MODEL_PREMIUM=qwen3.6-27b
+ROUTER_MODEL=qwen3.6-27b
+NL2SQL_AGENT_MODEL=qwen3.6-27b
+NL2SQL_AGENT_FAMILY=qwen
+
+EMBEDDING_MODEL=text-embedding-nomic-embed-text-v2-moe
+GDA_EMBEDDING_PROVIDER=lm_studio
+GDA_EMBEDDING_BASE_URL=http://10.64.4.202:1234/v1
+GDA_EMBEDDING_API_KEY=lm-studio
+EMBEDDING_DIMENSION=768
+```
+
+如果聊天和向量服务在同一台 LM Studio 主机，两个 base URL 可以相同；如果分开部署，只改
+`GDA_EMBEDDING_BASE_URL`。`start_gda.ps1` 检测到 `GDA_LLM_PROVIDER=lm_studio` 或
+`openai_compatible` 时不会启动内置 Ollama，避免占用端口和显存。模型服务可达性可在现场机先检查：
+
+```powershell
+curl.exe http://10.64.4.202:1234/v1/models
+```
+
+不需要重新打包 ZIP、修改 Python 或连接互联网。若现场模型 ID 不同，只替换上述模型名即可；
+向量维度必须与该模型实际返回的 embedding 长度一致。
 
 宁夏两份 Excel 及 EA 对齐产物会被复制为
 `natural_resource_standard_baseline.json`，作为系统启动和字段匹配基线。预检只检查基线文件

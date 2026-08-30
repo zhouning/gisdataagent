@@ -498,13 +498,22 @@ class TestKnowledgeBaseToolset(unittest.TestCase):
         self.assertNotIn("create_knowledge_base", names)
 
 
-class TestRouteCount(unittest.TestCase):
-    """Test that route count reflects KB endpoints."""
+class TestKnowledgeBaseRoutes(unittest.TestCase):
+    """Test the knowledge-base API contract without coupling to unrelated routes."""
 
-    def test_route_count(self):
+    def test_kb_route_contract_is_unique(self):
         from data_agent.frontend_api import get_frontend_api_routes
-        routes = get_frontend_api_routes()
-        self.assertEqual(len(routes), 327)
+        routes = [
+            route
+            for route in get_frontend_api_routes()
+            if route.path.startswith("/api/kb")
+        ]
+        identities = [
+            (route.path, tuple(sorted(route.methods or ())), route.name)
+            for route in routes
+        ]
+        self.assertEqual(len(identities), len(set(identities)))
+        self.assertGreaterEqual(len(identities), 11)
 
     def test_kb_routes_present(self):
         from data_agent.frontend_api import get_frontend_api_routes

@@ -3,7 +3,7 @@ import L from 'leaflet';
 import 'leaflet.heat';
 import 'leaflet-draw';
 import 'leaflet-draw/dist/leaflet.draw.css';
-import { Map as MapIcon } from 'lucide-react';
+import { Map as MapIcon, Pause, Play } from 'lucide-react';
 import Map3DView from './Map3DView';
 
 interface MapLayer {
@@ -44,6 +44,16 @@ interface MapLayer {
   // FlatGeobuf properties
   fgb?: string;
   geom_type?: string;
+  // Native SWMM scenario time-series controller.  The map requests one
+  // reporting period at a time so the browser never receives the full OUT.
+  scenarioTimeline?: {
+    runId: string;
+    endpoint: string;
+    timeValues: string[];
+    elapsedMinutes: number[];
+    periodCount: number;
+    totalNodeCount?: number;
+  };
 }
 
 interface Annotation {
@@ -118,6 +128,11 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   const [activeBasemap, setActiveBasemap] = useState('ESRI Satellite');
   const [loadedLayers, setLoadedLayers] = useState<MapLayer[]>([]);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
+  const [scenarioTimeIndex, setScenarioTimeIndex] = useState(0);
+  const [scenarioTimelinePlaying, setScenarioTimelinePlaying] = useState(false);
+  const [scenarioTimelineLoading, setScenarioTimelineLoading] = useState(false);
+  const [scenarioSliceData, setScenarioSliceData] = useState<Record<string, any>>({});
+  const scenarioTimelineRequestRef = useRef(0);
   const [showLayerControl, setShowLayerControl] = useState(false);
   const [showBasemapMenu, setShowBasemapMenu] = useState(false);
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
@@ -582,8 +597,9 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           }
 
           // FlatGeobuf layers are only supported by the 3D deck.gl view.
-          // Any FGB layer forces a hand-off to 3D so we never blow up Leaflet.
-          if (layerConfig.type === 'fgb') {
+          // Any FGB-backed layer forces a hand-off to 3D so large private
+          // result files never get parsed into Leaflet's SVG renderer.
+          if (layerConfig.type === 'fgb' || layerConfig.fgb) {
             setViewMode('3d');
             return;
           }
@@ -604,7 +620,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
           // Switch to 3D only for very large layers; SCCA demo outputs should stay in 2D
           // so the choropleth legend and popups remain easy to read.
-          if (geojsonData.features && geojsonData.features.length > 10000) {
+          if (geojsonData.features && geojsonData.features.length > 10000 && !layerConfig.scenarioTimeline) {
             layerConfig.geojsonData = geojsonData; // Cache it so Map3DView doesn't have to re-fetch
             setViewMode('3d');
             return; // Abort 2D rendering
@@ -683,16 +699,133 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
     };
 
     loadLayers();
-  }, [layers]);
+  }, [layers, viewMode]);
+
+  const scenarioTimelineLayer = layers.find((layer) => Boolean(layer.scenarioTimeline))
+    || loadedLayers.find((layer) => Boolean(layer.scenarioTimeline));
+  const scenarioTimeline = scenarioTimelineLayer?.scenarioTimeline;
+  const scenarioTimelineSignature = scenarioTimeline
+    ? `${scenarioTimeline.runId}:${scenarioTimeline.endpoint}:${scenarioTimeline.periodCount}`
+    : '';
+
+  // Reset a newly completed SWMM run to its first native reporting period.
+  useEffect(() => {
+    if (!scenarioTimelineSignature) {
+      setScenarioTimeIndex(0);
+      setScenarioTimelinePlaying(false);
+      return;
+    }
+    setScenarioTimeIndex(0);
+    setScenarioTimelinePlaying(false);
+  }, [scenarioTimelineSignature]);
+
+  // Fetch and replace only the current SWMM period. Both node result layers
+  // share the same GeoJSON payload but use different value columns/styles.
+  useEffect(() => {
+    if (!scenarioTimeline || !scenarioTimelineSignature) return;
+    const index = Math.max(0, Math.min(scenarioTimeIndex, scenarioTimeline.periodCount - 1));
+    const requestId = scenarioTimelineRequestRef.current + 1;
+    scenarioTimelineRequestRef.current = requestId;
+    let cancelled = false;
+    setScenarioTimelineLoading(true);
+    const loadSlice = async () => {
+      try {
+        const separator = scenarioTimeline.endpoint.includes('?') ? '&' : '?';
+        const response = await fetch(
+          `${scenarioTimeline.endpoint}${separator}time_index=${encodeURIComponent(String(index))}`,
+          { credentials: 'include' },
+        );
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload?.error || 'SWMM 时间切片读取失败');
+        if (cancelled || requestId !== scenarioTimelineRequestRef.current) return;
+        const timelineConfigs = layers.filter((layer) => layer.scenarioTimeline);
+        const timelineNames = new Set(timelineConfigs.map((layer) => layer.name));
+        const nextScenarioSliceData: Record<string, any> = {};
+        for (const layerName of timelineNames) {
+          const config = timelineConfigs.find((layer) => layer.name === layerName);
+          if (!config) continue;
+          const sliceData = config.value_column === 'scenario_overflow_or_flooding_m3s'
+            ? {
+              ...payload,
+              features: (Array.isArray(payload?.features) ? payload.features : [])
+                .filter((feature: any) => Number(feature?.properties?.scenario_overflow_or_flooding_m3s || 0) > 0),
+            }
+            : payload;
+          nextScenarioSliceData[layerName] = sliceData;
+          if (mapRef.current) {
+            const current = layerGroupsRef.current.get(layerName);
+            if (current && mapRef.current.hasLayer(current)) mapRef.current.removeLayer(current);
+            const replacement = createLeafletLayer({ ...config, geojsonData: sliceData }, sliceData);
+            if (!replacement) continue;
+            if (layerVisibility[layerName] !== false) replacement.addTo(mapRef.current);
+            layerGroupsRef.current.set(layerName, replacement);
+          }
+        }
+        setScenarioSliceData(nextScenarioSliceData);
+        setLoadedLayers((previous) => previous.map((layer) => (
+          layer.scenarioTimeline
+            ? {
+              ...layer,
+              geojsonData: layer.value_column === 'scenario_overflow_or_flooding_m3s'
+                ? { ...payload, features: (Array.isArray(payload?.features) ? payload.features : []).filter((feature: any) => Number(feature?.properties?.scenario_overflow_or_flooding_m3s || 0) > 0) }
+                : payload,
+            }
+            : layer
+        )));
+        window.dispatchEvent(new CustomEvent('swmm-scenario-frame-loaded', {
+          detail: {
+            runId: scenarioTimeline.runId,
+            timeIndex: index,
+            nodeFeatureCount: Number(payload?.metadata?.node_feature_count || payload?.features?.length || 0),
+            totalNodeCount: Number(payload?.metadata?.total_node_result_count || scenarioTimeline.totalNodeCount || 0),
+          },
+        }));
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('[MapPanel] failed to load SWMM timeline slice:', error);
+          window.dispatchEvent(new CustomEvent('swmm-scenario-frame-failed', {
+            detail: {
+              runId: scenarioTimeline.runId,
+              timeIndex: index,
+              message: error instanceof Error ? error.message : 'SWMM 时间切片读取失败',
+            },
+          }));
+        }
+      } finally {
+        if (!cancelled && requestId === scenarioTimelineRequestRef.current) {
+          setScenarioTimelineLoading(false);
+        }
+      }
+    };
+    loadSlice();
+    return () => { cancelled = true; };
+  }, [scenarioTimelineSignature, scenarioTimeIndex, layers]);
+
+  useEffect(() => {
+    if (!scenarioTimeline || !scenarioTimelinePlaying || scenarioTimelineLoading) return;
+    const timer = window.setInterval(() => {
+      setScenarioTimeIndex((current) => (
+        current + 1 >= scenarioTimeline.periodCount ? 0 : current + 1
+      ));
+    }, 1200);
+    return () => window.clearInterval(timer);
+  }, [scenarioTimelineSignature, scenarioTimelinePlaying, scenarioTimelineLoading]);
 
   const hasLayers = loadedLayers.length > 0;
 
   // Auto-detect 3D layers and switch to 3D mode
   useEffect(() => {
+    // SWMM result frames can contain thousands of customer nodes. Keep the
+    // high-volume renderer active while the shared native timeline updates.
+    if (layers.some((layer) => Boolean(layer.scenarioTimeline))) {
+      setViewMode('3d');
+      return;
+    }
     const has3D = layers.some(l =>
       l.type === 'extrusion' || l.type === 'column' || l.type === 'arc' ||
       l.type === 'mvt' || l.extruded || l.elevation_column || 
-      (l.geojsonData && l.geojsonData.features && l.geojsonData.features.length > 10000)
+      Boolean(l.fgb) ||
+      (l.geojsonData && l.geojsonData.features && l.geojsonData.features.length > 10000 && !l.scenarioTimeline)
     );
     if (has3D) setViewMode('3d');
   }, [layers]);
@@ -704,7 +837,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   // Find categorized layers for legend
   const categorizedLayers = loadedLayers.filter(
     (l) => (
-      (l.type === 'categorized' || l.type === 'fgb' || l.type === 'image')
+      (l.type === 'categorized' || l.type === 'fgb' || l.type === 'image' || l.type === 'bubble')
       && (l.category_colors || l.style_map)
       && (l.type !== 'image' || layerVisibility[l.name] !== false)
     )
@@ -802,6 +935,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           basemap={activeBasemap}
           basemaps={availableBasemaps}
           basemapMetadata={basemapMetadata}
+          scenarioData={scenarioSliceData}
         />
       ) : (
         <>
@@ -910,8 +1044,61 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
         </div>
       )}
 
+      {/* Native EPA SWMM scenario timeline */}
+      {scenarioTimeline && (
+        <div className="map-timeline map-scenario-timeline" style={{
+          position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(255,255,255,0.97)', borderRadius: 8, padding: '9px 14px',
+          boxShadow: '0 2px 10px rgba(15,23,42,0.2)', zIndex: 1000,
+          minWidth: 460, maxWidth: 'min(760px, calc(100% - 32px))',
+        }} data-testid="swmm-scenario-timeline">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            <button
+              onClick={() => setScenarioTimelinePlaying((playing) => !playing)}
+              title={scenarioTimelinePlaying ? '暂停 SWMM 时间轴' : '播放 SWMM 时间轴'}
+              aria-label={scenarioTimelinePlaying ? '暂停 SWMM 时间轴' : '播放 SWMM 时间轴'}
+              style={{
+                background: scenarioTimelinePlaying ? '#dc2626' : '#2563eb', color: '#fff',
+                border: 'none', borderRadius: 6, width: 30, height: 30,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', flexShrink: 0,
+              }}
+            >
+              {scenarioTimelinePlaying ? <Pause size={14} /> : <Play size={14} />}
+            </button>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#334155', whiteSpace: 'nowrap' }}>
+              SWMM 时间轴 · 全量 {Number(scenarioTimeline.totalNodeCount || 0).toLocaleString()} 节点
+            </span>
+            <input
+              type="range"
+              aria-label="SWMM 节点结果时间轴"
+              min={0}
+              max={Math.max(0, scenarioTimeline.periodCount - 1)}
+              value={Math.min(scenarioTimeIndex, Math.max(0, scenarioTimeline.periodCount - 1))}
+              onChange={(event) => {
+                setScenarioTimelinePlaying(false);
+                setScenarioTimeIndex(Number.parseInt(event.target.value, 10));
+              }}
+              style={{ flex: 1, minWidth: 130, cursor: 'pointer', accentColor: '#2563eb' }}
+            />
+            <span style={{ fontSize: 11, color: '#475569', whiteSpace: 'nowrap' }}>
+              {scenarioTimeIndex + 1}/{scenarioTimeline.periodCount}
+            </span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 5 }}>
+            <span style={{ fontSize: 11, color: '#64748b' }}>
+              原生 OUT · {scenarioTimeline.timeValues[scenarioTimeIndex] || '读取中'}
+            </span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', whiteSpace: 'nowrap' }}>
+              T+{Number(scenarioTimeline.elapsedMinutes[scenarioTimeIndex] || 0).toFixed(0)} 分钟
+              {scenarioTimelineLoading ? ' · 读取中' : ''}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Timeline slider for temporal layers (e.g., World Model LULC predictions) */}
-      {hasTimeline && (
+      {!scenarioTimeline && hasTimeline && (
         <div className="map-timeline" style={{
           position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)',
           background: 'rgba(255,255,255,0.95)', borderRadius: 8, padding: '8px 16px',
@@ -1126,6 +1313,56 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
         )}
       </div>
 
+      {/* The same native SWMM timeline is available over the high-volume 3D renderer. */}
+      {scenarioTimeline && viewMode === '3d' && (
+        <div className="map-timeline map-scenario-timeline" style={{
+          position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(15,23,42,0.94)', color: '#f8fafc', borderRadius: 8,
+          padding: '9px 14px', boxShadow: '0 2px 10px rgba(0,0,0,0.3)', zIndex: 1000,
+          minWidth: 460, maxWidth: 'min(760px, calc(100% - 32px))',
+        }} data-testid="swmm-scenario-timeline-3d">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            <button
+              onClick={() => setScenarioTimelinePlaying((playing) => !playing)}
+              title={scenarioTimelinePlaying ? '暂停 SWMM 时间轴' : '播放 SWMM 时间轴'}
+              aria-label={scenarioTimelinePlaying ? '暂停 SWMM 时间轴' : '播放 SWMM 时间轴'}
+              style={{
+                background: scenarioTimelinePlaying ? '#dc2626' : '#2563eb', color: '#fff',
+                border: 'none', borderRadius: 6, width: 30, height: 30,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+              }}
+            >
+              {scenarioTimelinePlaying ? <Pause size={14} /> : <Play size={14} />}
+            </button>
+            <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>SWMM 时间轴 · 全量 {Number(scenarioTimeline.totalNodeCount || 0).toLocaleString()} 节点</span>
+            <input
+              type="range"
+              aria-label="3D SWMM 节点结果时间轴"
+              min={0}
+              max={Math.max(0, scenarioTimeline.periodCount - 1)}
+              value={Math.min(scenarioTimeIndex, Math.max(0, scenarioTimeline.periodCount - 1))}
+              onChange={(event) => {
+                setScenarioTimelinePlaying(false);
+                setScenarioTimeIndex(Number.parseInt(event.target.value, 10));
+              }}
+              style={{ flex: 1, minWidth: 130, cursor: 'pointer', accentColor: '#38bdf8' }}
+            />
+            <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>
+              {scenarioTimeIndex + 1}/{scenarioTimeline.periodCount}
+            </span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 5 }}>
+            <span style={{ fontSize: 11, color: '#cbd5e1' }}>
+              原生 OUT · {scenarioTimeline.timeValues[scenarioTimeIndex] || '读取中'}
+            </span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#7dd3fc', whiteSpace: 'nowrap' }}>
+              T+{Number(scenarioTimeline.elapsedMinutes[scenarioTimeIndex] || 0).toFixed(0)} 分钟
+              {scenarioTimelineLoading ? ' · 读取中' : ''}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* 2D/3D view mode toggle */}
       <button
         className={`view-mode-toggle ${viewMode === '3d' ? 'active' : ''}`}
@@ -1242,10 +1479,18 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
           );
           const maxVal = Math.max(...allVals, 1);
           const radius = minR + ((val / maxVal) * (maxR - minR));
+          const breakIndex = breaks?.findIndex((breakValue) => val <= breakValue) ?? -1;
+          const colorIndex = breakIndex >= 0 ? breakIndex : (breaks?.length ?? 0) - 1;
+          const categoryRaw = config.category_column ? String(feature?.properties?.[config.category_column] ?? '') : '';
+          const categoryInt = categoryRaw.endsWith('.0') ? categoryRaw.slice(0, -2) : categoryRaw;
+          const categoryColor = config.category_colors?.[categoryRaw] || config.category_colors?.[categoryInt];
+          const color = categoryColor || (colors && breaks && colorIndex >= 0
+            ? pickRampColor(colors, colorIndex, breaks.length)
+            : style.fillColor || '#4f46e5');
 
           return L.circleMarker(latlng, {
             radius,
-            fillColor: style.fillColor || '#4f46e5',
+            fillColor: color,
             color: style.color || '#fff',
             weight: 1,
             fillOpacity: 0.6,
@@ -1301,30 +1546,26 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
       const catCol = config.category_column;
       const catColors = config.category_colors || {};
       const styleMap = config.style_map || {};
+      const categoryStyle = (feature: any) => {
+        const raw = String(feature?.properties?.[catCol || ''] ?? '');
+        const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
+        const catStyle = styleMap[raw] || styleMap[intForm];
+        const fillColor = catStyle?.fillColor || catColors[raw] || catColors[intForm] || style.fillColor || '#999';
+        return {
+          fillColor,
+          color: catStyle?.color || style.color || '#111827',
+          weight: catStyle?.weight ?? style.weight ?? 1,
+          opacity: catStyle?.opacity ?? style.opacity ?? 0.9,
+          fillOpacity: catStyle?.fillOpacity ?? style.fillOpacity ?? 0.85,
+        };
+      };
       return L.geoJSON(geojsonData, {
-        style: (feature) => {
-          const raw = String(feature?.properties?.[catCol || ''] ?? '');
-          const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
-          // Check style_map first (full style per category), then category_colors
-          const catStyle = styleMap[raw] || styleMap[intForm];
-          if (catStyle) {
-            return {
-              fillColor: catStyle.fillColor || style.fillColor || '#999',
-              color: catStyle.color || style.color || '#666',
-              weight: catStyle.weight ?? style.weight ?? 0.5,
-              opacity: catStyle.opacity ?? style.opacity ?? 0.8,
-              fillOpacity: catStyle.fillOpacity ?? style.fillOpacity ?? 0.7,
-            };
-          }
-          const fillColor = catColors[raw] || catColors[intForm] || style.fillColor || '#999';
-          return {
-            fillColor,
-            color: style.color || '#666',
-            weight: style.weight ?? 0.5,
-            opacity: style.opacity ?? 0.8,
-            fillOpacity: style.fillOpacity ?? 0.7,
-          };
-        },
+        style: categoryStyle,
+        pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
+          ...categoryStyle(feature),
+          radius: Number(style.min_radius || 9),
+          weight: Number(style.weight || 2),
+        }),
         onEachFeature: bindPopup,
       });
     }

@@ -3,16 +3,40 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
+from datetime import datetime
+from decimal import Decimal
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid5
 
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from ..governed_query_result_access_security import (
+    GOVERNED_QUERY_RESULT_ACCESS_SECURITY_PURPOSE,
+)
+from ..governed_query_security import (
+    GovernedQuerySecurityError,
+    resolve_governed_query_security_ports,
+)
 from ..metric_authority import MetricAuthorityError, MetricDefinitionAuthority
+from ..metric_observation import (
+    MetricObservation,
+    MetricObservationAuthority,
+    MetricObservationConfigurationError,
+    MetricObservationConflictError,
+    MetricObservationError,
+    MetricObservationForbiddenError,
+    MetricObservationNotFoundError,
+    MetricObservationNotReadyError,
+    MetricObservationPage,
+    MetricObservationProjectionSpec,
+    MetricObservationQuery,
+    MetricObservationValidationError,
+)
 from ..metric_projection_authority import (
     ActiveMetricProjection,
     MetricProjectionActivation,
@@ -61,9 +85,14 @@ from ..metric_query_result_access import (
     MetricQueryResultIntegrityError,
     MetricQueryResultNotReady,
 )
-from ..platform_contracts import SubjectType, TenantId, build_resource_urn
+from ..platform_contracts import ShortName, SubjectType, TenantId, build_resource_urn
 from .helpers import _get_user_from_request
-from .metric_routes import _metric_error, _metric_ref, _metric_route
+from .metric_routes import (
+    _metric_error,
+    _metric_ref,
+    _metric_route,
+    _metric_version_refs,
+)
 from .platform_gateway_routes import (
     GatewayPrincipal,
     _error,
@@ -126,11 +155,20 @@ class MetricQueryRunCompletionRequest(MetricQueryCompletionSpec):
 
 
 class MetricQueryResultAccessRequest(_StrictRequest):
+    purpose_code: ShortName = GOVERNED_QUERY_RESULT_ACCESS_SECURITY_PURPOSE
     expires_in_seconds: int = Field(
         default=DEFAULT_RESULT_ACCESS_TTL_SECONDS,
         ge=MIN_RESULT_ACCESS_TTL_SECONDS,
         le=MAX_RESULT_ACCESS_TTL_SECONDS,
     )
+
+
+class MetricObservationProjectionRequest(_StrictRequest):
+    value: Decimal
+    dimensions: dict[str, Any] = Field(default_factory=dict)
+    window_start: datetime | None = None
+    window_end: datetime | None = None
+    spatial_ref: str | None = None
 
 
 def _projection_authority() -> MetricProjectionAuthority:
@@ -147,6 +185,10 @@ def _query_execution_authority() -> MetricQueryExecutionAuthority:
 
 def _query_result_access_service() -> MetricQueryResultAccessService:
     return MetricQueryResultAccessService()
+
+
+def _metric_observation_authority() -> MetricObservationAuthority:
+    return MetricObservationAuthority()
 
 
 def _projection_ref(
@@ -270,6 +312,24 @@ def _query_result_access_error(
     if isinstance(exc, (MetricQueryResultNotReady, MetricQueryResultIntegrityError)):
         return _error(request, 409, exc.code, str(exc))
     if isinstance(exc, MetricQueryResultAccessUnavailable):
+        return _error(request, 503, exc.code, str(exc))
+    return _error(request, 503, exc.code, str(exc))
+
+
+def _metric_observation_error(
+    request: Request, exc: MetricObservationError
+) -> JSONResponse:
+    if isinstance(exc, MetricObservationNotFoundError):
+        return _error(request, 404, exc.code, str(exc))
+    if isinstance(exc, MetricObservationForbiddenError):
+        return _error(request, 403, exc.code, str(exc))
+    if isinstance(exc, MetricObservationNotReadyError):
+        return _error(request, 409, exc.code, str(exc))
+    if isinstance(exc, MetricObservationConflictError):
+        return _error(request, 409, exc.code, str(exc))
+    if isinstance(exc, MetricObservationValidationError):
+        return _error(request, 422, exc.code, str(exc))
+    if isinstance(exc, MetricObservationConfigurationError):
         return _error(request, 503, exc.code, str(exc))
     return _error(request, 503, exc.code, str(exc))
 
@@ -546,6 +606,7 @@ async def create_metric_query_result_access(request: Request) -> JSONResponse:
     if isinstance(submission, JSONResponse):
         return submission
     try:
+        security_ports = resolve_governed_query_security_ports(principal.tenant_id)
         grant = await asyncio.to_thread(
             _query_result_access_service().issue,
             tenant_id=principal.tenant_id,
@@ -553,6 +614,8 @@ async def create_metric_query_result_access(request: Request) -> JSONResponse:
             actor_subject=principal.actor_ref,
             role=principal.role,
             expires_in_seconds=submission.expires_in_seconds,
+            purpose_code=submission.purpose_code,
+            security_reader=None if security_ports is None else security_ports[0],
         )
         response = _success(request, grant, status_code=201)
         response.headers["Cache-Control"] = "no-store"
@@ -560,6 +623,126 @@ async def create_metric_query_result_access(request: Request) -> JSONResponse:
         return response
     except MetricQueryResultAccessError as exc:
         return _query_result_access_error(request, exc)
+    except GovernedQuerySecurityError as exc:
+        return _error(
+            request,
+            503,
+            "metric_query_result_security_unavailable",
+            str(exc),
+        )
+
+
+async def project_metric_observation(request: Request) -> JSONResponse:
+    principal = _query_principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    run_id = _run_id(request)
+    if isinstance(run_id, JSONResponse):
+        return run_id
+    submission = await _parse(request, MetricObservationProjectionRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    try:
+        spec = MetricObservationProjectionSpec.model_validate(submission.model_dump())
+        observation: MetricObservation = await asyncio.to_thread(
+            _metric_observation_authority().project,
+            principal.tenant_id,
+            run_id,
+            spec,
+            actor_subject=principal.actor_ref,
+            role=principal.role,
+        )
+        return _success(request, observation, status_code=201)
+    except ValidationError as exc:
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "Metric observation does not satisfy the projection contract",
+            _validation_details(exc),
+        )
+    except MetricObservationError as exc:
+        return _metric_observation_error(request, exc)
+
+
+async def get_metric_observation_for_run(request: Request) -> JSONResponse:
+    principal = _query_principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    run_id = _run_id(request)
+    if isinstance(run_id, JSONResponse):
+        return run_id
+    try:
+        record = await asyncio.to_thread(
+            _query_execution_authority().get, principal.tenant_id, run_id
+        )
+        if (
+            record.admission.admitted_by != principal.actor_ref
+            and principal.role not in {"admin", "platform_operator"}
+        ):
+            return _error(
+                request,
+                403,
+                "metric_observation_owner_required",
+                "Metric observation access requires its submitter or a platform operator",
+            )
+        observation = await asyncio.to_thread(
+            _metric_observation_authority().get,
+            principal.tenant_id,
+            uuid5(run_id, "metric-observation:v1"),
+        )
+        return _success(request, observation)
+    except MetricQueryExecutionError as exc:
+        return _query_execution_error(request, exc)
+    except MetricObservationError as exc:
+        return _metric_observation_error(request, exc)
+
+
+async def list_metric_observations(request: Request) -> JSONResponse:
+    principal = _query_principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    version_refs = _metric_version_refs(request, principal)
+    if isinstance(version_refs, JSONResponse):
+        return version_refs
+    _, metric_version_ref = version_refs
+    try:
+        raw_dimensions = request.query_params.get("dimensions")
+        dimensions = {} if raw_dimensions is None else json.loads(raw_dimensions)
+        query = MetricObservationQuery(
+            metric_version_ref=metric_version_ref,
+            projection_version_ref=request.query_params.get("projection_version_ref"),
+            output_resource_version_id=request.query_params.get(
+                "output_resource_version_id"
+            ),
+            dimensions=dimensions,
+            spatial_ref=request.query_params.get("spatial_ref"),
+            observed_after=request.query_params.get("observed_after"),
+            observed_before=request.query_params.get("observed_before"),
+            limit=request.query_params.get("limit", "50"),
+            offset=request.query_params.get("offset", "0"),
+        )
+        page: MetricObservationPage = await asyncio.to_thread(
+            _metric_observation_authority().search,
+            principal.tenant_id,
+            query,
+            actor_subject=principal.actor_ref,
+            role=principal.role,
+        )
+        response = _success(request, page)
+        response.headers["Cache-Control"] = "private, no-store"
+        return response
+    except (json.JSONDecodeError, ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            400,
+            "invalid_metric_observation_query",
+            "Metric observation query is invalid",
+            details,
+        )
+    except MetricObservationError as exc:
+        return _metric_observation_error(request, exc)
 
 
 async def start_metric_query_run(request: Request) -> JSONResponse:
@@ -692,6 +875,12 @@ def get_metric_query_routes() -> list[APIRoute]:
             "platform_create_metric_query_plan",
         ),
         (
+            f"{definitions}/versions/{{version}}/observations",
+            list_metric_observations,
+            "GET",
+            "platform_list_metric_observations",
+        ),
+        (
             f"{base}/metric-query-runs",
             create_metric_query_run,
             "POST",
@@ -708,6 +897,18 @@ def get_metric_query_routes() -> list[APIRoute]:
             create_metric_query_result_access,
             "POST",
             "platform_create_metric_query_result_access",
+        ),
+        (
+            f"{base}/metric-query-runs/{{run_id}}/observation",
+            project_metric_observation,
+            "POST",
+            "platform_project_metric_observation",
+        ),
+        (
+            f"{base}/metric-query-runs/{{run_id}}/observation",
+            get_metric_observation_for_run,
+            "GET",
+            "platform_get_metric_observation_for_run",
         ),
         (
             f"{base}/metric-query-runs/{{run_id}}/start",

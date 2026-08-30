@@ -7,11 +7,9 @@ Covers:
 - observability.py: DB pool metrics collection
 - migration 052: materialized view SQL validity
 """
-import asyncio
 import os
 import unittest
-from unittest.mock import patch, MagicMock, AsyncMock
-
+from unittest.mock import AsyncMock, MagicMock, patch
 
 # =====================================================================
 # db_engine.py — connection pool & read-write split
@@ -38,9 +36,64 @@ class TestDbEnginePoolConfig(unittest.TestCase):
 
     @patch.dict(os.environ, {"DB_POOL_SIZE": "50", "DB_MAX_OVERFLOW": "80"})
     def test_env_var_override(self):
-        from data_agent.db_engine import _pool_size, _max_overflow
+        from data_agent.db_engine import _max_overflow, _pool_size
         self.assertEqual(_pool_size(), 50)
         self.assertEqual(_max_overflow(), 80)
+
+    @patch.dict(os.environ, {"DB_POOL_SIZE": "0"})
+    def test_invalid_pool_size_fails_fast(self):
+        from data_agent.db_engine import _pool_size
+        with self.assertRaisesRegex(ValueError, "DB_POOL_SIZE"):
+            _pool_size()
+
+    @patch.dict(os.environ, {"DB_MAX_OVERFLOW": "-1"})
+    def test_negative_overflow_fails_fast(self):
+        from data_agent.db_engine import _max_overflow
+        with self.assertRaisesRegex(ValueError, "DB_MAX_OVERFLOW"):
+            _max_overflow()
+
+    @patch.dict(os.environ, {
+        "DB_POOL_SIZE": "12",
+        "DB_MAX_OVERFLOW": "8",
+        "DATABASE_READ_URL": "postgresql://reader:secret@replica/db",
+    })
+    def test_pool_configuration_is_sanitized(self):
+        from data_agent.db_engine import get_pool_configuration
+        config = get_pool_configuration()
+        self.assertEqual(config["configured_capacity"], 20)
+        self.assertTrue(config["read_replica_configured"])
+        self.assertNotIn("DATABASE_READ_URL", config)
+        self.assertNotIn("secret", str(config))
+
+    @patch.dict(os.environ, {
+        "POSTGRES_MAX_CONNECTIONS": "200",
+        "POSTGRES_CONNECTION_RESERVE": "20",
+        "DB_POOL_PROCESS_COUNT": "2",
+        "DB_POOL_SIZE": "20",
+        "DB_MAX_OVERFLOW": "10",
+        "ASYNC_POOL_MAX": "5",
+    }, clear=True)
+    def test_connection_budget_accounts_for_processes_and_async_pool(self):
+        from data_agent.db_engine import get_connection_budget
+        budget = get_connection_budget()
+        self.assertEqual(budget["primary_peak_connections"], 70)
+        self.assertEqual(budget["application_capacity"], 180)
+        self.assertEqual(budget["primary_headroom"], 110)
+        self.assertEqual(budget["status"], "within_budget")
+
+    @patch.dict(os.environ, {
+        "POSTGRES_MAX_CONNECTIONS": "50",
+        "POSTGRES_CONNECTION_RESERVE": "10",
+        "DB_POOL_SIZE": "20",
+        "DB_MAX_OVERFLOW": "20",
+        "ASYNC_POOL_MAX": "10",
+    }, clear=True)
+    def test_connection_budget_reports_overcommit_without_credentials(self):
+        from data_agent.db_engine import get_connection_budget
+        budget = get_connection_budget()
+        self.assertEqual(budget["status"], "over_budget")
+        self.assertEqual(budget["primary_headroom"], -10)
+        self.assertNotIn("password", str(budget).lower())
 
 
 class TestDbEngineReadWriteSplit(unittest.TestCase):
@@ -105,9 +158,9 @@ class TestDbEnginePoolStatus(unittest.TestCase):
         self.assertIsNone(get_pool_status())
 
     def test_pool_status_returns_dict_keys(self):
-        from data_agent.db_engine import get_pool_status
         # Mock an engine with pool attributes
         import data_agent.db_engine as mod
+        from data_agent.db_engine import get_pool_status
         mock_pool = MagicMock()
         mock_pool.size.return_value = 20
         mock_pool.checkedin.return_value = 18
@@ -125,6 +178,24 @@ class TestDbEnginePoolStatus(unittest.TestCase):
             self.assertEqual(status["checkedout"], 2)
             self.assertEqual(status["overflow"], 0)
             self.assertEqual(status["max_overflow"], 30)
+        finally:
+            mod._engine = old
+
+    def test_pool_status_clamps_uninitialized_overflow_to_zero(self):
+        import data_agent.db_engine as mod
+        from data_agent.db_engine import get_pool_status
+        mock_pool = MagicMock()
+        mock_pool.size.return_value = 20
+        mock_pool.checkedin.return_value = 1
+        mock_pool.checkedout.return_value = 0
+        mock_pool.overflow.return_value = -19
+        mock_pool._max_overflow = 20
+        mock_engine = MagicMock()
+        mock_engine.pool = mock_pool
+        old = mod._engine
+        mod._engine = mock_engine
+        try:
+            self.assertEqual(get_pool_status()["overflow"], 0)
         finally:
             mod._engine = old
 
@@ -154,6 +225,25 @@ class TestAsyncPoolDSN(unittest.TestCase):
             os.environ.pop(k, None)
         dsn = _build_dsn()
         self.assertIsNone(dsn)
+
+    @patch.dict(os.environ, {
+        "POSTGRES_USER": "agent user", "POSTGRES_PASSWORD": "p@ss:+/word",
+        "POSTGRES_HOST": "h", "POSTGRES_PORT": "5433",
+        "POSTGRES_DATABASE": "gis data/2026",
+    }, clear=True)
+    def test_build_dsn_encodes_components(self):
+        from data_agent.db_engine_async import _build_dsn
+        self.assertEqual(
+            _build_dsn(),
+            "postgresql://agent%20user:p%40ss%3A%2B%2Fword@"
+            "h:5433/gis%20data%2F2026",
+        )
+
+    @patch.dict(os.environ, {"ASYNC_POOL_MIN": "21", "ASYNC_POOL_MAX": "20"})
+    def test_async_pool_rejects_inverted_bounds(self):
+        from data_agent.db_engine_async import _pool_bounds
+        with self.assertRaisesRegex(ValueError, "ASYNC_POOL_MIN"):
+            _pool_bounds()
 
 
 class TestAsyncPoolLifecycle(unittest.IsolatedAsyncioTestCase):
@@ -225,8 +315,7 @@ class TestDbPoolMetrics(unittest.TestCase):
 
     def test_collect_db_pool_metrics_sets_gauges(self):
         from data_agent.observability import (
-            collect_db_pool_metrics, db_pool_size, db_pool_checkedin,
-            db_pool_checkedout, db_pool_overflow,
+            collect_db_pool_metrics,
         )
         mock_status = {
             "pool_size": 20, "checkedin": 15,
@@ -251,12 +340,20 @@ class TestMigration052(unittest.TestCase):
 
     def test_migration_file_exists(self):
         import os
-        path = os.path.join(os.path.dirname(__file__), "migrations", "052_db_performance_optimization.sql")
+        path = os.path.join(
+            os.path.dirname(__file__),
+            "migrations",
+            "052_db_performance_optimization.sql",
+        )
         self.assertTrue(os.path.exists(path))
 
     def test_migration_contains_materialized_view(self):
         import os
-        path = os.path.join(os.path.dirname(__file__), "migrations", "052_db_performance_optimization.sql")
+        path = os.path.join(
+            os.path.dirname(__file__),
+            "migrations",
+            "052_db_performance_optimization.sql",
+        )
         with open(path, encoding="utf-8") as f:
             sql = f.read()
         self.assertIn("mv_pipeline_analytics", sql)

@@ -8,16 +8,15 @@ not at ``data_agent.db_engine.get_engine``.
 """
 
 import json
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
-
-import pytest
-
+from uuid import uuid4
 
 _PATCH_TARGET = "data_agent.db_engine.get_engine"
 
 
 # ---------------------------------------------------------------------------
-# Helpers for mocking engine.connect() context manager
+# Helpers for mocking engine connection context managers
 # ---------------------------------------------------------------------------
 
 def _mock_engine(execute_side_effects):
@@ -31,6 +30,8 @@ def _mock_engine(execute_side_effects):
     conn = MagicMock()
     engine.connect.return_value.__enter__.return_value = conn
     engine.connect.return_value.__exit__.return_value = False
+    engine.begin.return_value.__enter__.return_value = conn
+    engine.begin.return_value.__exit__.return_value = False
 
     results = []
     for kind, payload in execute_side_effects:
@@ -124,6 +125,7 @@ class TestGridAnonymizePG:
         assert "qsdwmc" in result["stripped_sensitive_fields"]
         assert result["estimated_grid_count"] > 0
         assert "sql_preview" in result
+        assert "DROP TABLE" not in result["sql_preview"]
 
     def test_dry_run_forced_strip_even_when_requested(self):
         """Even if user asks to keep qsdwmc, it's stripped."""
@@ -186,6 +188,92 @@ class TestGridAnonymizePG:
             )
         assert result["source_srid"] == 4610
         assert result["target_srid"] == 4523  # metric CGCS2000
+
+    def test_success_writes_attempt_bound_completion_receipt(self):
+        from data_agent.grid_anonymize import grid_anonymize_pg
+
+        attempt_id = uuid4()
+        engine, conn = _mock_engine([
+            ("fetchone", ("shape", 4326)),
+            ("fetchall", [("road_type", "text")]),
+            ("fetchone", (0.0, 0.0, 1000.0, 1000.0)),
+            ("execute_ok", None),
+            ("scalar", 8),
+            ("execute_ok", None),
+        ])
+        ledger = MagicMock()
+        ledger.record_operation_receipt_in_transaction.return_value = SimpleNamespace(
+            receipt_sha256="c" * 64
+        )
+        with (
+            patch("data_agent.db_engine.get_engine", return_value=engine),
+            patch(
+                "data_agent.grid_anonymize.SecurityEventLedger",
+                return_value=ledger,
+            ),
+        ):
+            result = grid_anonymize_pg(
+                source_table="roads",
+                output_table="roads_grid",
+                keep_attrs=["road_type"],
+                register_lineage=False,
+                security_tenant_id="tenant-a",
+                security_attempt_id=str(attempt_id),
+            )
+
+        assert result["status"] == "ok"
+        assert result["security_receipt_sha256"] == "c" * 64
+        receipt_call = ledger.record_operation_receipt_in_transaction.call_args.kwargs
+        assert ledger.record_operation_receipt_in_transaction.call_args.args == (conn,)
+        assert receipt_call["tenant_id"] == "tenant-a"
+        assert receipt_call["attempt_id"] == attempt_id
+        assert receipt_call["evidence"]["output_row_count"] == 8
+        assert receipt_call["evidence"]["spatial_index"] == "roads_grid_geom_gist"
+        conn.commit.assert_not_called()
+        engine.begin.assert_called_once_with()
+
+    def test_point_success_uses_same_transaction_for_completion_receipt(self):
+        from data_agent.grid_anonymize import poi_grid_aggregate_pg
+
+        attempt_id = uuid4()
+        engine, conn = _mock_engine([
+            ("fetchone", ("geom", 4326)),
+            ("scalar", 1),
+            ("fetchone", (0.0, 0.0, 1000.0, 1000.0)),
+            ("execute_ok", None),
+            ("execute_ok", None),
+            ("scalar", 6),
+            ("scalar", 42),
+            ("scalar", 36),
+        ])
+        ledger = MagicMock()
+        ledger.record_operation_receipt_in_transaction.return_value = SimpleNamespace(
+            receipt_sha256="e" * 64
+        )
+        with (
+            patch("data_agent.db_engine.get_engine", return_value=engine),
+            patch(
+                "data_agent.grid_anonymize.SecurityEventLedger",
+                return_value=ledger,
+            ),
+        ):
+            result = poi_grid_aggregate_pg(
+                source_table="pois",
+                output_table="pois_grid",
+                category_column="category",
+                register_lineage=False,
+                security_tenant_id="tenant-a",
+                security_attempt_id=str(attempt_id),
+            )
+
+        assert result["status"] == "ok"
+        assert result["security_receipt_sha256"] == "e" * 64
+        call = ledger.record_operation_receipt_in_transaction.call_args
+        assert call.args == (conn,)
+        assert call.kwargs["evidence"]["data_type"] == "point"
+        assert call.kwargs["evidence"]["output_row_count"] == 6
+        conn.commit.assert_not_called()
+        engine.begin.assert_called_once_with()
 
 
 # ---------------------------------------------------------------------------
@@ -265,6 +353,7 @@ class TestVerifyAnonymization:
 class TestLaplaceNoise:
     def test_reproducible_with_seed(self):
         import numpy as np
+
         from data_agent.grid_anonymize import _apply_laplace_noise
 
         values = np.array([100.0, 200.0, 300.0])
@@ -274,6 +363,7 @@ class TestLaplaceNoise:
 
     def test_smaller_epsilon_more_noise(self):
         import numpy as np
+
         from data_agent.grid_anonymize import _apply_laplace_noise
 
         values = np.array([100.0] * 1000)

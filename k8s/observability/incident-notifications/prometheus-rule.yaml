@@ -1,0 +1,84 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gis-agent-incident-notifications
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: gis-agent-incident-notification-worker
+    app.kubernetes.io/component: incident-notification
+spec:
+  groups:
+    - name: gis-data-agent-incident-notification-sli
+      interval: 30s
+      rules:
+        - record: gda:incident_notification_worker_healthy_replicas
+          expr: sum(up{job="gis-agent-incident-notification-worker"} == 1)
+        - record: gda:incident_notification_worker_target_replicas
+          expr: count(up{job="gis-agent-incident-notification-worker"})
+        - record: gda:incident_notification_cycle_success_age_seconds
+          expr: time() - max(gda_incident_notification_last_success_timestamp_seconds)
+        - record: gda:incident_notification_delivery_success:ratio_30m
+          expr: |
+            1 - (
+              (sum(rate(gda_incident_notification_operations_total{outcome=~"retrying|dead_lettered"}[30m])) or vector(0))
+              /
+              clamp_min((sum(rate(gda_incident_notification_operations_total{outcome=~"delivered|retrying|dead_lettered"}[30m])) or vector(0)), 1e-9)
+            )
+        - record: gda:incident_notification_delivery_success:ratio_6h
+          expr: |
+            1 - (
+              (sum(rate(gda_incident_notification_operations_total{outcome=~"retrying|dead_lettered"}[6h])) or vector(0))
+              /
+              clamp_min((sum(rate(gda_incident_notification_operations_total{outcome=~"delivered|retrying|dead_lettered"}[6h])) or vector(0)), 1e-9)
+            )
+        - record: gda:incident_notification_delivery_attempts:rate5m
+          expr: |
+            sum by (outcome) (
+              rate(gda_incident_notification_operations_total{outcome=~"delivered|retrying|dead_lettered"}[5m])
+            )
+        - record: gda:incident_notification_cycle_duration:p95_5m
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum by (le) (rate(gda_incident_notification_cycle_duration_seconds_bucket[5m]))
+            )
+    - name: gis-data-agent-incident-notifications
+      interval: 30s
+      rules:
+        - alert: GDAIncidentNotificationWorkerUnavailable
+          expr: absent(up{job="gis-agent-incident-notification-worker"} == 1)
+          for: 5m
+          labels: {severity: critical, namespace: gis-agent, service: gis-data-agent, component: incident-notification, team: data-platform}
+          annotations:
+            summary: DataIncident notification workers are unavailable
+            description: No healthy DataIncident notification worker has been scraped for five minutes.
+            runbook: incident-notification-worker
+        - alert: GDAIncidentNotificationWorkerStalled
+          expr: time() - max(gda_incident_notification_last_success_timestamp_seconds) > 120
+          for: 2m
+          labels: {severity: critical, namespace: gis-agent, service: gis-data-agent, component: incident-notification, team: data-platform}
+          annotations:
+            summary: DataIncident notification cycles are stalled
+            description: No worker has completed a successful DataIncident notification cycle within two minutes.
+            runbook: incident-notification-worker
+        - alert: GDAIncidentNotificationCycleErrors
+          expr: sum(increase(gda_incident_notification_operations_total{outcome="cycle_error"}[10m])) > 0
+          labels: {severity: critical, namespace: gis-agent, service: gis-data-agent, component: incident-notification, team: data-platform}
+          annotations:
+            summary: DataIncident notification cycles are failing
+            description: At least one worker cycle failed before it could complete its governed incident outbox work.
+            runbook: incident-notification-worker
+        - alert: GDAIncidentNotificationDeadLettered
+          expr: sum(increase(gda_incident_notification_operations_total{outcome="dead_lettered"}[15m])) > 0
+          labels: {severity: critical, namespace: gis-agent, service: gis-data-agent, component: incident-notification, team: data-platform}
+          annotations:
+            summary: DataIncident notifications reached dead letter
+            description: At least one incident notification exhausted its bounded automatic delivery attempts.
+            runbook: incident-notification-worker
+        - alert: GDAIncidentNotificationRetrySurge
+          expr: sum(increase(gda_incident_notification_operations_total{outcome="retrying"}[10m])) >= 5
+          labels: {severity: warning, namespace: gis-agent, service: gis-data-agent, component: incident-notification, team: data-platform}
+          annotations:
+            summary: DataIncident notification retries are elevated
+            description: Five or more incident notification delivery failures returned to pending during the last ten minutes.
+            runbook: incident-notification-worker

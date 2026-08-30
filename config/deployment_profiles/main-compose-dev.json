@@ -15,7 +15,7 @@
     ],
     "network": "agent-net",
     "baseline_probe_service": "app",
-    "config_sha256": "df87d3aeefc03bde1377bbe1b347e9227947687235c99454cb1e83d31a095f8f",
+    "config_sha256": "45fbf021847abff435760821a4b9cd22adf314512d494e06811a966451794f9b",
     "services": [
       {
         "name": "db",
@@ -33,6 +33,11 @@
         "source_file": "docker-compose.yml",
         "runtime": "required",
         "health_required": true
+      },
+      {
+        "name": "gis-mvt-cache-purge-worker",
+        "source_file": "docker-compose.yml",
+        "runtime": "required"
       },
       {
         "name": "minio",
@@ -87,8 +92,8 @@
     ]
   },
   "migrations": {
-    "count": 196,
-    "fingerprint": "712abbc8fd2e5bbb221166c39e03878e6327d13528d980cd76d4e17eeafc4768"
+    "count": 250,
+    "fingerprint": "411d826a096dd2ca0ad000f81f82c0334ca236d79849f4abef4b208c9fa6ce12"
   },
   "released_standard": {
     "doc_code": "NR_ONE_MAP_TWM_CORE_2026",

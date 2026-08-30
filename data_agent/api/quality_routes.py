@@ -1,13 +1,33 @@
 """Quality Rules + Trends + Resource Overview REST routes (v14.5)."""
 
+import asyncio
 import logging
+
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
+from ..governed_query_result_access_security import (
+    GOVERNED_QUERY_RESULT_ACCESS_SECURITY_PURPOSE,
+)
+from ..governed_query_result_delivery import (
+    GovernedQueryResultDeliveryForbidden,
+    GovernedQueryResultDeliveryService,
+    GovernedQueryResultDeliveryUnavailable,
+)
+from ..governed_query_security import (
+    GovernedQuerySecurityError,
+    resolve_governed_query_security_ports,
+)
+from ..user_context import current_tenant_id
 from .helpers import _get_user_from_request, _set_user_context
 
 logger = logging.getLogger("data_agent.api.quality_routes")
+QC_REPORT_RESULT_ACCESS_ACTION = "quality.report.generate.access"
+
+
+def _result_delivery() -> GovernedQueryResultDeliveryService:
+    return GovernedQueryResultDeliveryService()
 
 
 async def qrule_list(request: Request):
@@ -133,7 +153,7 @@ async def qc_report_generate(request: Request):
     user = _get_user_from_request(request)
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
+    username, role = _set_user_context(user)
     try:
         body = await request.json()
     except Exception:
@@ -146,13 +166,48 @@ async def qc_report_generate(request: Request):
 
     try:
         from ..report_generator import generate_qc_report
-        path = generate_qc_report(
-            section_data=section_data,
-            metadata=metadata,
-            charts=charts,
-            images=images,
+        tenant_id = current_tenant_id.get() or "local-dev"
+        security_ports = resolve_governed_query_security_ports(tenant_id)
+        path = await asyncio.to_thread(
+            _result_delivery().execute,
+            tenant_id=tenant_id,
+            actor_subject=f"human:{username}",
+            roles=(role,),
+            purpose_code=GOVERNED_QUERY_RESULT_ACCESS_SECURITY_PURPOSE,
+            channel="report_result",
+            adapter_id="gda.qc-report.generate.v1",
+            consumption_mode="report",
+            resource_refs=(f"gda://{tenant_id}/report/qc",),
+            request_payload={
+                "section_names": sorted(str(name) for name in section_data),
+                "metadata_fields": sorted(str(name) for name in (metadata or {})),
+                "chart_count": len(charts or ()),
+                "image_count": len(images or ()),
+                "output_format": "docx",
+            },
+            action=QC_REPORT_RESULT_ACCESS_ACTION,
+            operation=lambda: generate_qc_report(
+                section_data=section_data,
+                metadata=metadata,
+                charts=charts,
+                images=images,
+            ),
+            security_reader=None if security_ports is None else security_ports[0],
         )
         return JSONResponse({"path": path, "status": "ok"})
+    except GovernedQueryResultDeliveryForbidden:
+        return JSONResponse(
+            {"error": "Report generation was denied by current policy"},
+            status_code=403,
+        )
+    except (
+        GovernedQueryResultDeliveryUnavailable,
+        GovernedQuerySecurityError,
+    ):
+        return JSONResponse(
+            {"error": "Report generation security is unavailable"},
+            status_code=503,
+        )
     except Exception as e:
         logger.exception("QC report generation failed")
         return JSONResponse({"error": str(e)}, status_code=500)

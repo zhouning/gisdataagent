@@ -11,6 +11,18 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
+from ..governed_query_result_access_security import (
+    GOVERNED_QUERY_RESULT_ACCESS_SECURITY_PURPOSE,
+)
+from ..governed_query_result_delivery import (
+    GovernedQueryResultDeliveryForbidden,
+    GovernedQueryResultDeliveryService,
+    GovernedQueryResultDeliveryUnavailable,
+)
+from ..governed_query_security import (
+    GovernedQuerySecurityError,
+    resolve_governed_query_security_ports,
+)
 from ..map_publications import (
     MapPublicationForbidden,
     MapPublicationInvalid,
@@ -21,9 +33,45 @@ from ..map_publications import (
 )
 from .helpers import _get_user_from_request, _set_user_context
 
+MAP_FEATURE_RESULT_ACCESS_ACTION = "map.publication.feature.access"
+MAP_TILE_RESULT_ACCESS_ACTION = "map.publication.tile.access"
+
+
+class _MapTileProviderRejected(RuntimeError):
+    def __init__(self, status_code: int):
+        super().__init__("vector tile provider rejected the request")
+        self.status_code = status_code
+
 
 def _service() -> MapPublicationService:
     return MapPublicationService()
+
+
+def _result_delivery() -> GovernedQueryResultDeliveryService:
+    return GovernedQueryResultDeliveryService()
+
+
+def _result_identity(user) -> tuple[str, str, str]:
+    metadata = user.metadata if isinstance(getattr(user, "metadata", None), dict) else {}
+    tenant_id = str(metadata.get("tenant_id") or "local-dev").strip()
+    role = str(metadata.get("role") or "analyst").strip()
+    return tenant_id, f"human:{user.identifier}", role
+
+
+def _result_security_error(exc: Exception) -> JSONResponse:
+    if isinstance(exc, GovernedQueryResultDeliveryForbidden):
+        return JSONResponse(
+            {"error": "Map result access was denied by current policy"},
+            status_code=403,
+        )
+    return JSONResponse(
+        {"error": "Map result security is unavailable"},
+        status_code=503,
+    )
+
+
+def _publication_ref(tenant_id: str, publication_id: UUID | str) -> str:
+    return f"gda://{tenant_id}/map_publication/{publication_id}"
 
 
 def _error_response(exc: Exception) -> JSONResponse:
@@ -122,17 +170,44 @@ async def map_publication_metadata(request: Request) -> JSONResponse:
 
 
 async def map_publication_feature(request: Request) -> JSONResponse:
-    _, error = _authenticated(request)
+    user, error = _authenticated(request)
     if error:
         return error
+    publication_id = request.path_params["publication_id"]
+    feature_id = str(request.path_params["feature_id"])
     try:
+        service = _service()
+        publication = await asyncio.to_thread(service.get, publication_id)
+        tenant_id, actor_subject, role = _result_identity(user)
+        if publication.get("tenant_id") not in {None, tenant_id}:
+            raise MapPublicationNotFound("Map publication was not found")
+        security_ports = resolve_governed_query_security_ports(tenant_id)
         result = await asyncio.to_thread(
-            _service().feature,
-            request.path_params["publication_id"],
-            str(request.path_params["feature_id"]),
+            _result_delivery().execute,
+            tenant_id=tenant_id,
+            actor_subject=actor_subject,
+            roles=(role,),
+            purpose_code=GOVERNED_QUERY_RESULT_ACCESS_SECURITY_PURPOSE,
+            channel="map_result",
+            adapter_id="gda.map-publication.feature.v1",
+            consumption_mode="map",
+            resource_refs=(_publication_ref(tenant_id, publication_id),),
+            request_payload={
+                "publication_id": str(publication_id),
+                "feature_id": feature_id,
+            },
+            action=MAP_FEATURE_RESULT_ACCESS_ACTION,
+            operation=lambda: service.feature(publication_id, feature_id),
+            security_reader=None if security_ports is None else security_ports[0],
         )
     except (MapPublicationNotFound, MapPublicationUnavailable) as exc:
         return _error_response(exc)
+    except (
+        GovernedQueryResultDeliveryForbidden,
+        GovernedQueryResultDeliveryUnavailable,
+        GovernedQuerySecurityError,
+    ) as exc:
+        return _result_security_error(exc)
     return JSONResponse(result)
 
 
@@ -147,8 +222,20 @@ async def _fetch_martin_tile(publication_id: UUID, z: int, x: int, y: int) -> ht
         )
 
 
+def _fetch_martin_tile_result(
+    publication_id: UUID,
+    z: int,
+    x: int,
+    y: int,
+) -> httpx.Response:
+    upstream = asyncio.run(_fetch_martin_tile(publication_id, z, x, y))
+    if upstream.status_code != 200:
+        raise _MapTileProviderRejected(upstream.status_code)
+    return upstream
+
+
 async def map_publication_tile(request: Request) -> Response:
-    _, error = _authenticated(request)
+    user, error = _authenticated(request)
     if error:
         return error
     publication_id = request.path_params["publication_id"]
@@ -172,13 +259,44 @@ async def map_publication_tile(request: Request) -> Response:
         )
 
     try:
-        upstream = await _fetch_martin_tile(publication_id, z, x, y)
+        tenant_id, actor_subject, role = _result_identity(user)
+        if publication.get("tenant_id") not in {None, tenant_id}:
+            raise MapPublicationNotFound("Map publication was not found")
+        security_ports = resolve_governed_query_security_ports(tenant_id)
+        upstream = await asyncio.to_thread(
+            _result_delivery().execute,
+            tenant_id=tenant_id,
+            actor_subject=actor_subject,
+            roles=(role,),
+            purpose_code=GOVERNED_QUERY_RESULT_ACCESS_SECURITY_PURPOSE,
+            channel="map_result",
+            adapter_id="gda.map-publication.tile.v1",
+            consumption_mode="map",
+            resource_refs=(_publication_ref(tenant_id, publication_id),),
+            request_payload={
+                "publication_id": str(publication_id),
+                "z": z,
+                "x": x,
+                "y": y,
+            },
+            action=MAP_TILE_RESULT_ACCESS_ACTION,
+            operation=lambda: _fetch_martin_tile_result(publication_id, z, x, y),
+            security_reader=None if security_ports is None else security_ports[0],
+        )
+    except MapPublicationNotFound as exc:
+        return _error_response(exc)
+    except (
+        GovernedQueryResultDeliveryForbidden,
+        GovernedQueryResultDeliveryUnavailable,
+        GovernedQuerySecurityError,
+    ) as exc:
+        return _result_security_error(exc)
     except (httpx.HTTPError, OSError):
         return JSONResponse({"error": "Vector tile service is unavailable"}, status_code=503)
-    if upstream.status_code != 200:
+    except _MapTileProviderRejected as exc:
         return JSONResponse(
             {"error": "Vector tile service rejected the tile"},
-            status_code=503 if upstream.status_code >= 500 else upstream.status_code,
+            status_code=503 if exc.status_code >= 500 else exc.status_code,
         )
 
     headers = {

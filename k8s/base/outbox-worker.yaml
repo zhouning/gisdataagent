@@ -55,6 +55,19 @@ spec:
                 name: gis-agent-config
             - secretRef:
                 name: gis-agent-secret
+          env:
+            - name: POSTGRES_ADMIN_USER
+              value: ""
+            - name: POSTGRES_ADMIN_PASSWORD
+              value: ""
+            - name: DB_POOL_SIZE
+              value: "5"
+            - name: DB_MAX_OVERFLOW
+              value: "0"
+            - name: ASYNC_POOL_MIN
+              value: "0"
+            - name: ASYNC_POOL_MAX
+              value: "1"
           resources:
             requests:
               cpu: 250m

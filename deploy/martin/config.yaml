@@ -1,0 +1,24 @@
+listen_addresses: "0.0.0.0:3000"
+cache_size_mb: 512
+preferred_encoding: gzip
+web_ui: disable
+cors: false
+
+postgres:
+  connection_string: ${DATABASE_URL}
+  pool_size: 10
+  auto_bounds: skip
+  auto_publish: false
+  functions:
+    gda_mvt_serving_projection:
+      schema: map_serving
+      function: gda_mvt_serving_projection_mvt
+      minzoom: 0
+      maxzoom: 30
+      bounds: [-180.0, -90.0, 180.0, 90.0]
+    map_publication:
+      schema: map_serving
+      function: publication_mvt
+      minzoom: 0
+      maxzoom: 30
+      bounds: [-180.0, -90.0, 180.0, 90.0]

@@ -1,0 +1,107 @@
+{
+  "schema": "gis-data-agent.ar0-freeze-manifest.v1",
+  "manifest_id": "ar0-first-vertical-slice-2026-08-22",
+  "effective_date": "2026-08-22",
+  "status": "awaiting_business_approval",
+  "scope": {
+    "tenant": "local-dev",
+    "source_domain": "chongqing_bizhu_jqdltb",
+    "target_domain": "parcel_current",
+    "profile": "lightweight_postgis_candidate",
+    "serving": ["postgis", "ogc_api_features", "mvt"],
+    "layers": ["raw", "ods", "dim", "dwd", "dws_deferred", "ads"],
+    "llm_mode": "disabled"
+  },
+  "identities": {
+    "archive_sha256": "2043b60c2f4f7f32a31388a634fae4ac28534990e205aa86b8df0e4b64dcbbca",
+    "bundle_sha256": "cae2047f6b72127e5eae0651909761c0f06d8c3e0491921dbd806c653ba715c3",
+    "feature_count": 1555,
+    "crs": "EPSG:4523",
+    "standard_doc_code": "NR_ONE_MAP_TWM_CORE_2026",
+    "standard_version_label": "2026-06-16-draft",
+    "standard_elements_sha256": "a9b58ea766e1f7fd0f203b07bb23e3848e1db7dad560ebf04843b83a5b713630"
+  },
+  "evidence": {
+    "mapping_protocol": "benchmarks/standard_mapping_chongqing_v0_1/protocol.json",
+    "mapping_report": "benchmarks/standard_mapping_chongqing_v0_1/acceptance_report.json",
+    "source_report": "benchmarks/standard_mapping_chongqing_v0_1/source_onboarding_report.json",
+    "dolphinscheduler_runtime_certification": "docs/reports/jqdltb_dolphinscheduler_runtime_2026-08-26.json",
+    "quality_repair_diagnostic": "benchmarks/standard_mapping_chongqing_v0_1/source_quality_repair_diagnostic.json",
+    "quality_repair_diagnostic_sha256": "da192c3f443f41cb189c3253473918000acbc8f9c087868e9eb702a4a4520b11",
+    "semantic_candidate_audit": "docs/reports/jqdltb_semantic_candidate_audit_2026-08-26.json",
+    "semantic_candidate_audit_sha256": "90bead274d1dc7238cfb1b7f0400e8dc539f0f8aa9af932a6209a80a9acff4f8",
+    "semantic_candidate_audit_content_sha256": "b3f6e5a33035c3dcd6644485cecfe3548b381f9e4df4e63bea325c2be1112204",
+    "transformation_impact_preview": "docs/reports/jqdltb_transformation_impact_preview_2026-08-26.json",
+    "transformation_impact_preview_sha256": "30ebf144218725372ef85a863c16facb24414c4cb676e6cdd6658f9e24c72ef5",
+    "transformation_impact_preview_content_sha256": "a00a10b79d05c7b4eed7693bd0ac506f07620b43644e472f697e3dd81b8a9161",
+    "transformation_contract": "config/freezes/ar0-jqdltb-transformation-contract-2026-08-22.json",
+    "transformation_contract_sha256": "690f8066e4bc4bc37747feed7441a019ae82be5d261d64a0160b363befeae137",
+    "mapping_technical_pass": true,
+    "source_quality_verdict": "failed",
+    "promotion_ready": false,
+    "data_product_version_created": false,
+    "required_source_blockers": [
+      "source_quality_not_passed",
+      "source_primary_key_not_unique",
+      "source_numeric_constraints_failed",
+      "source_area_consistency_failed",
+      "standardization_derived_fields_missing"
+    ],
+    "expected_quality_repair_findings": {
+      "candidate_key_fields": ["TBBH"],
+      "nonpositive_area_counts": {
+        "TBMJ": 6,
+        "TBDLMJ": 6
+      },
+      "outside_area_tolerance_count": 7,
+      "pending_derivation_targets": ["SJNF", "MSSM"]
+    },
+    "expected_semantic_candidate_findings": {
+      "standard_document_sha256": "cae1f82b58acb3f0fc4aed990d1d3480649ba6430136784e1fccd1604d1de21b",
+      "metadata_xml_sha256": "8ae4685e10f45c42ff8a24822579100f865a6cadcf083e78a7e238495aafb35d",
+      "sjnf_definition": "数据年份为数据生产的年份",
+      "mssm_value_domain_present": false,
+      "candidate_non_blank_counts": {
+        "PZWH": 10,
+        "SM": 0,
+        "DLBZ": 0,
+        "JQDLMC": 1555
+      },
+      "decisions": {
+        "SJNF": "blocked_no_authoritative_derivation",
+        "MSSM": "blocked_no_authoritative_derivation"
+      }
+    },
+    "expected_transformation_impact": {
+      "policy_count": 6,
+      "quarantine_preserve_source": {
+        "records_quarantined": 6,
+        "records_after_area_policy": 1549
+      },
+      "quarantine_quarantine": {
+        "records_quarantined": 13,
+        "records_after_area_policy": 1542
+      },
+      "business_correction_projection_exact": false,
+      "selected_strategy_sha256": null
+    }
+  },
+  "approvals": {
+    "business_steward": null,
+    "license_status": null,
+    "slo_on_call": null,
+    "environment_owner": {
+      "development": "observed",
+      "staging": null,
+      "production": null
+    }
+  },
+  "next_evidence": [
+    "business_steward approval",
+    "license_status decision",
+    "slo and on-call approval",
+    "approved JQDLTB transformation contract",
+    "JQDLTB source-quality repair and protocol rerun",
+    "same-ProductVersion Raw-to-ADS reconstruction and serving evidence"
+  ]
+}

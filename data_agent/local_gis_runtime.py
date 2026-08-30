@@ -153,11 +153,17 @@ def write_vector(
         frame.to_file(destination, layer=layer or destination.stem, driver="GPKG")
     else:
         raise ValueError(f"unsupported Python vector format: {format_name}")
+    bounds = frame.total_bounds.tolist() if not frame.empty else None
+    geometry_types = sorted(
+        str(value) for value in frame.geometry.geom_type.dropna().unique().tolist()
+    )
     return {
         "adapter": "geopandas_pyogrio",
         "feature_count": int(len(frame)),
         "columns": [str(column) for column in frame.columns if column != frame.geometry.name],
         "crs": frame.crs.to_string() if frame.crs else None,
+        "bbox": [float(value) for value in bounds] if bounds else None,
+        "geometry_types": geometry_types,
     }
 
 
@@ -196,10 +202,21 @@ def write_cog(source: str | Path, target: str | Path) -> dict[str, Any]:
             copy_src_overviews=True,
         )
     is_cog = _is_cog(destination)
+    with rasterio.open(destination) as dataset:
+        bounds = dataset.bounds
+        crs = dataset.crs.to_string() if dataset.crs else None
+        width = int(dataset.width)
+        height = int(dataset.height)
+        band_count = int(dataset.count)
     return {
         "adapter": "rasterio_gdal",
         "driver": "COG" if is_cog else "GTiff",
         "cloud_optimized": is_cog,
+        "crs": crs,
+        "bbox": [float(bounds.left), float(bounds.bottom), float(bounds.right), float(bounds.top)],
+        "width": width,
+        "height": height,
+        "band_count": band_count,
     }
 
 

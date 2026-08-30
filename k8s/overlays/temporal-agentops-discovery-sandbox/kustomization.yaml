@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../optional/temporal-agentops-sandbox
+
+# This locally verified image contains temporalio==1.32.0, migrations
+# 240/241/242/246, and the discovery image-contract startup guard. Do not fall
+# back to the mutable :latest tag.
+images:
+  - name: gis-data-agent
+    newName: gis-data-agent
+    digest: sha256:0d09d950ee02bbe5e55058bbd8c116cf8dc00b1fad4fcb6172ee89d57221c3cb
+
+patches:
+  - path: discovery-enable-patch.yaml
+  - path: postgres-enable-patch.yaml
+  - path: temporal-enable-patch.yaml
+
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/part-of: gis-data-agent
+      app.kubernetes.io/managed-by: kustomize
+      app.kubernetes.io/environment-profile: temporal-agentops-discovery-sandbox

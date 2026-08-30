@@ -15,6 +15,7 @@ import logging
 import os
 import re
 import shutil
+import stat
 import subprocess
 import tempfile
 import uuid
@@ -22,7 +23,7 @@ import zipfile
 from collections.abc import AsyncIterable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 logger = logging.getLogger("data_agent.offline_ingest")
@@ -31,8 +32,22 @@ CHUNK_SIZE_DEFAULT = 128 * 1024 * 1024
 CHUNK_SIZE_MIN = 1 * 1024 * 1024
 CHUNK_SIZE_MAX = 512 * 1024 * 1024
 HASH_BLOCK_SIZE = 8 * 1024 * 1024
+ARCHIVE_MAX_FILES_DEFAULT = 200_000
+ARCHIVE_MAX_ENTRIES_DEFAULT = 250_000
+ARCHIVE_MAX_UNCOMPRESSED_BYTES_DEFAULT = 2 * 1024**4
+ARCHIVE_MAX_FILE_BYTES_DEFAULT = 512 * 1024**3
+ARCHIVE_MAX_COMPRESSION_RATIO_DEFAULT = 1_000.0
+ARCHIVE_DISK_RESERVE_BYTES_DEFAULT = 512 * 1024**2
 _SAFE_NAME = re.compile(r'[\x00-\x1f<>:"/\\|?*]+')
 _SHP_SIDECARS = (".dbf", ".shx", ".prj", ".cpg", ".sbn", ".sbx", ".qpj", ".qmd")
+_WINDOWS_RESERVED_NAMES = {
+    "con",
+    "prn",
+    "aux",
+    "nul",
+    *(f"com{index}" for index in range(1, 10)),
+    *(f"lpt{index}" for index in range(1, 10)),
+}
 
 # These are fallback aliases for datasets that have not yet been associated
 # with the Ningxia workbook/EA baseline. Once a baseline is configured, its
@@ -226,6 +241,9 @@ class UploadSession:
     chunks: dict[str, ChunkRecord] = field(default_factory=dict)
     committed_path: str | None = None
     run_id: str | None = None
+    ingest_run_id: str | None = None
+    deep_quality_run_id: str | None = None
+    expanded_path: str | None = None
 
     @property
     def total_chunks(self) -> int:
@@ -316,12 +334,14 @@ class OfflineIngestStore:
         self.raw_dir = self.root / "raw"
         self.manifests_dir = self.root / "manifests"
         self.runs_dir = self.root / "runs"
+        self.expanded_dir = self.raw_dir / "expanded"
         for directory in (
             self.sessions_dir,
             self.staging_dir,
             self.raw_dir,
             self.manifests_dir,
             self.runs_dir,
+            self.expanded_dir,
         ):
             directory.mkdir(parents=True, exist_ok=True)
 
@@ -494,39 +514,63 @@ class OfflineIngestStore:
         if not source.exists():
             raise FileNotFoundError(str(source))
         run = self._new_scan_run(actor)
-        run.event("source_discovered", path=str(source), kind=_asset_kind(source))
-        candidates: list[Path] = []
+        return self._scan_trusted_path(source, run)
+
+    @staticmethod
+    def _discover_candidates(source: Path) -> list[Path]:
+        """Discover datasets while treating every ``.gdb`` as one bundle."""
         if source.is_dir() and source.name.lower().endswith(".gdb"):
-            candidates = [source]
-        elif source.is_file():
-            candidates = [source]
-        else:
-            for item in sorted(source.rglob("*")):
-                if item.is_dir() and item.name.lower().endswith(".gdb"):
-                    candidates.append(item)
-                elif item.is_file() and item.suffix.lower() in {
-                    ".tif",
-                    ".tiff",
-                    ".cog",
-                    ".osgb",
-                    ".obj",
-                    ".ply",
-                    ".las",
-                    ".laz",
-                    ".gpkg",
-                    ".shp",
-                    ".geojson",
-                    ".parquet",
-                    ".zip",
-                }:
-                    candidates.append(item)
+            return [source]
+        if source.is_file():
+            return [source]
+        candidates: list[Path] = []
+        gdb_roots: list[Path] = []
+        for item in sorted(source.rglob("*")):
+            if any(root == item or root in item.parents for root in gdb_roots):
+                continue
+            if item.is_dir() and item.name.lower().endswith(".gdb"):
+                gdb_roots.append(item)
+                candidates.append(item)
+            elif item.is_file() and item.suffix.lower() in {
+                ".tif",
+                ".tiff",
+                ".cog",
+                ".osgb",
+                ".obj",
+                ".ply",
+                ".las",
+                ".laz",
+                ".gpkg",
+                ".shp",
+                ".geojson",
+                ".parquet",
+                ".zip",
+            }:
+                candidates.append(item)
+        return candidates
+
+    def _scan_trusted_path(
+        self,
+        source: Path,
+        run: RunLogger,
+        *,
+        lineage_source: str | None = None,
+    ) -> dict[str, Any]:
+        """Scan a validated server path without reopening arbitrary-path access."""
+        run.event("source_discovered", path=str(source), kind=_asset_kind(source))
+        candidates = self._discover_candidates(source)
         assets = []
         for item in candidates:
             asset = self._scan_asset(item, run)
             asset = self._commit_local_asset(item, asset, run)
             assets.append(asset)
             run.manifest["assets"].append(asset)
-            run.add_lineage(str(source), asset["asset_id"], "discovered")
+            run.add_lineage(
+                lineage_source or str(source),
+                asset["asset_id"],
+                "discovered_and_profiled",
+                source_path=str(item),
+            )
         quality = [self._quality_for_asset(asset) for asset in assets]
         run.manifest["quality"] = quality
         status = "succeeded"
@@ -537,6 +581,324 @@ class OfflineIngestStore:
         _atomic_json(run.path / "manifest.json", {"assets": assets, "quality": quality})
         _atomic_json(run.path / "quality_report.json", {"run_id": run.run_id, "items": quality})
         return run.finish(status, asset_count=len(assets), source=str(source))
+
+    @staticmethod
+    def _archive_limits() -> dict[str, float | int]:
+        def integer(name: str, default: int) -> int:
+            value = int(os.environ.get(name, str(default)))
+            if value <= 0:
+                raise ValueError(f"{name} must be positive")
+            return value
+
+        ratio = float(
+            os.environ.get(
+                "GDA_ARCHIVE_MAX_COMPRESSION_RATIO",
+                str(ARCHIVE_MAX_COMPRESSION_RATIO_DEFAULT),
+            )
+        )
+        if ratio <= 0:
+            raise ValueError("GDA_ARCHIVE_MAX_COMPRESSION_RATIO must be positive")
+        return {
+            "max_files": integer("GDA_ARCHIVE_MAX_FILES", ARCHIVE_MAX_FILES_DEFAULT),
+            "max_entries": integer("GDA_ARCHIVE_MAX_ENTRIES", ARCHIVE_MAX_ENTRIES_DEFAULT),
+            "max_uncompressed_bytes": integer(
+                "GDA_ARCHIVE_MAX_UNCOMPRESSED_BYTES",
+                ARCHIVE_MAX_UNCOMPRESSED_BYTES_DEFAULT,
+            ),
+            "max_file_bytes": integer("GDA_ARCHIVE_MAX_FILE_BYTES", ARCHIVE_MAX_FILE_BYTES_DEFAULT),
+            "max_compression_ratio": ratio,
+            "disk_reserve_bytes": integer(
+                "GDA_ARCHIVE_DISK_RESERVE_BYTES",
+                ARCHIVE_DISK_RESERVE_BYTES_DEFAULT,
+            ),
+        }
+
+    @staticmethod
+    def _validated_zip_entries(
+        archive: zipfile.ZipFile,
+        *,
+        limits: dict[str, float | int],
+    ) -> tuple[list[tuple[zipfile.ZipInfo, PurePosixPath]], dict[str, Any]]:
+        entries: list[tuple[zipfile.ZipInfo, PurePosixPath]] = []
+        seen: set[str] = set()
+        total_bytes = 0
+        ignored = 0
+        file_count = 0
+        contains_filegdb = False
+        for info in archive.infolist():
+            if len(entries) + 1 > int(limits["max_entries"]):
+                raise ValueError("ZIP exceeds the configured entry-count limit")
+            raw_name = info.filename
+            normalized_name = raw_name.replace("\\", "/")
+            if not normalized_name or "\x00" in normalized_name:
+                raise ValueError("ZIP contains an invalid empty or NUL path")
+            if (
+                normalized_name.startswith(("/", "//"))
+                or re.match(r"^[A-Za-z]:", normalized_name)
+            ):
+                raise ValueError(f"ZIP contains an absolute path: {raw_name}")
+            path = PurePosixPath(normalized_name.rstrip("/"))
+            if not path.parts or any(part in {"", ".", ".."} for part in path.parts):
+                raise ValueError(f"ZIP contains an unsafe path: {raw_name}")
+            if any(
+                ":" in part
+                or part.endswith((" ", "."))
+                or part.split(".", 1)[0].casefold() in _WINDOWS_RESERVED_NAMES
+                for part in path.parts
+            ):
+                raise ValueError(f"ZIP contains a Windows-unsafe path: {raw_name}")
+            mode = (info.external_attr >> 16) & 0xFFFF
+            if stat.S_ISLNK(mode):
+                raise ValueError(f"ZIP symbolic links are not allowed: {raw_name}")
+            if info.flag_bits & 0x1:
+                raise ValueError(f"encrypted ZIP entries are not supported: {raw_name}")
+            lower_parts = [part.lower() for part in path.parts]
+            if "__macosx" in lower_parts or path.name.lower() == ".ds_store":
+                ignored += 1
+                continue
+            collision_key = path.as_posix().casefold()
+            if collision_key in seen:
+                raise ValueError(f"ZIP contains colliding paths: {raw_name}")
+            seen.add(collision_key)
+            is_dir = info.is_dir() or normalized_name.endswith("/")
+            if not is_dir:
+                file_count += 1
+                total_bytes += info.file_size
+                if file_count > int(limits["max_files"]):
+                    raise ValueError("ZIP exceeds the configured file-count limit")
+                if info.file_size > int(limits["max_file_bytes"]):
+                    raise ValueError(f"ZIP entry exceeds the per-file size limit: {raw_name}")
+                if total_bytes > int(limits["max_uncompressed_bytes"]):
+                    raise ValueError("ZIP exceeds the configured uncompressed-size limit")
+                ratio = info.file_size / max(info.compress_size, 1)
+                if ratio > float(limits["max_compression_ratio"]):
+                    raise ValueError(f"ZIP entry has a suspicious compression ratio: {raw_name}")
+            if any(part.lower().endswith(".gdb") for part in path.parts):
+                contains_filegdb = True
+            entries.append((info, path))
+        if not entries:
+            raise ValueError("ZIP contains no usable entries")
+        return entries, {
+            "entry_count": len(entries),
+            "file_count": file_count,
+            "ignored_entry_count": ignored,
+            "uncompressed_bytes": total_bytes,
+            "contains_filegdb": contains_filegdb,
+        }
+
+    def _extract_zip_to_raw(
+        self,
+        session: UploadSession,
+        run: RunLogger,
+        *,
+        require_filegdb: bool,
+    ) -> tuple[Path, dict[str, Any]]:
+        archive_path = Path(str(session.committed_path or ""))
+        if archive_path.suffix.lower() != ".zip":
+            raise ValueError("only ZIP archives can be expanded by the built-in runtime")
+        if not archive_path.is_file():
+            raise FileNotFoundError(str(archive_path))
+        manifest_path = self.manifests_dir / f"expanded_{session.session_id}.json"
+        destination = self.expanded_dir / session.session_id
+        if manifest_path.is_file() and destination.is_dir():
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if manifest.get("source_sha256") != sha256_file(archive_path):
+                raise ValueError("existing expansion manifest does not match the Raw ZIP")
+            run.event("archive_expansion_reused", path=str(destination))
+            return destination, manifest
+
+        limits = self._archive_limits()
+        temp_root = self.staging_dir / session.session_id / f"expand-{uuid.uuid4().hex}"
+        if destination.exists():
+            raise ValueError(
+                "archive expansion exists without a valid manifest; manual review required"
+            )
+        temp_root.mkdir(parents=True, exist_ok=False)
+        try:
+            with zipfile.ZipFile(archive_path) as archive:
+                entries, summary = self._validated_zip_entries(archive, limits=limits)
+                if require_filegdb and not summary["contains_filegdb"]:
+                    raise ValueError("ZIP does not contain a .gdb directory")
+                free_bytes = shutil.disk_usage(temp_root).free
+                required_bytes = int(summary["uncompressed_bytes"]) + int(
+                    limits["disk_reserve_bytes"]
+                )
+                if free_bytes < required_bytes:
+                    raise ValueError(
+                        "insufficient disk space for extraction: "
+                        f"need {required_bytes}, have {free_bytes}"
+                    )
+                run.event("archive_validated", **summary, limits=limits)
+                extracted_files: list[dict[str, Any]] = []
+                actual_total = 0
+                for info, relative in entries:
+                    target = temp_root.joinpath(*relative.parts)
+                    if info.is_dir() or info.filename.endswith(("/", "\\")):
+                        target.mkdir(parents=True, exist_ok=True)
+                        continue
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    digest = hashlib.sha256()
+                    written = 0
+                    with archive.open(info, "r") as source, target.open("xb") as output:
+                        while block := source.read(HASH_BLOCK_SIZE):
+                            written += len(block)
+                            actual_total += len(block)
+                            if written > int(limits["max_file_bytes"]):
+                                raise ValueError(
+                                    "ZIP entry exceeded the per-file limit while extracting: "
+                                    f"{info.filename}"
+                                )
+                            if actual_total > int(limits["max_uncompressed_bytes"]):
+                                raise ValueError(
+                                    "ZIP exceeded the total size limit while extracting"
+                                )
+                            digest.update(block)
+                            output.write(block)
+                    if written != info.file_size:
+                        raise ValueError(
+                            f"ZIP entry size changed while extracting: {info.filename}"
+                        )
+                    extracted_files.append(
+                        {
+                            "path": relative.as_posix(),
+                            "size": written,
+                            "crc32": f"{info.CRC:08x}",
+                            "sha256": digest.hexdigest(),
+                        }
+                    )
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            os.replace(temp_root, destination)
+            gdb_paths = sorted(
+                item.relative_to(destination).as_posix()
+                for item in destination.rglob("*")
+                if item.is_dir() and item.name.lower().endswith(".gdb")
+            )
+            if require_filegdb and not gdb_paths:
+                raise ValueError("ZIP declared FileGDB content but no .gdb directory was extracted")
+            manifest = {
+                "schema": "gda.archive-expansion.v1",
+                "session_id": session.session_id,
+                "source_asset_id": f"raw:{session.session_id}",
+                "source_path": str(archive_path),
+                "source_sha256": sha256_file(archive_path),
+                "expanded_path": str(destination),
+                "expanded_tree_sha256": sha256_tree(destination),
+                "expanded_at": _utc_now(),
+                "summary": summary,
+                "gdb_paths": gdb_paths,
+                "files": extracted_files,
+            }
+            _atomic_json(manifest_path, manifest)
+            run.event(
+                "archive_expanded",
+                expanded_path=str(destination),
+                expanded_tree_sha256=manifest["expanded_tree_sha256"],
+                gdb_count=len(gdb_paths),
+            )
+            return destination, manifest
+        except Exception:
+            if temp_root.exists():
+                shutil.rmtree(temp_root)
+            # A failure after the atomic move must not leave an untracked tree.
+            if destination.exists() and not manifest_path.exists():
+                shutil.rmtree(destination)
+            raise
+
+    def ingest_uploaded_session(
+        self,
+        session_id: str,
+        *,
+        actor: str = "system",
+        run_quality: bool = True,
+    ) -> dict[str, Any]:
+        """Expand/profile a committed browser upload and continue its governance flow."""
+        session = self._load_session(session_id)
+        if session.status != "committed" or not session.committed_path:
+            raise ValueError("upload session must be finalized before ingest")
+        if session.ingest_run_id:
+            ingest = self.get_run(session.ingest_run_id)
+            quality = None
+            if session.deep_quality_run_id:
+                quality = self.get_run(session.deep_quality_run_id)
+            elif run_quality:
+                quality = self.run_deep_quality(session.ingest_run_id, actor=actor)
+                session.deep_quality_run_id = quality["run_id"]
+                self._save_session(session)
+            return {
+                "status": ingest.get("status"),
+                "session_id": session_id,
+                "ingest_run_id": session.ingest_run_id,
+                "deep_quality_run_id": session.deep_quality_run_id,
+                "run": ingest,
+                "deep_quality": quality,
+                "resumed": True,
+            }
+
+        committed = Path(session.committed_path)
+        run = RunLogger(self.root, str(uuid.uuid4()), "browser_upload_ingest", actor)
+        raw_asset_id = f"raw:{session.session_id}"
+        run.add_lineage(
+            f"upload:{session.session_id}",
+            raw_asset_id,
+            "uploaded_and_hash_verified",
+            path=str(committed),
+        )
+        try:
+            expansion = None
+            source = committed
+            if committed.suffix.lower() == ".zip":
+                source, expansion = self._extract_zip_to_raw(
+                    session,
+                    run,
+                    require_filegdb=session.asset_kind == "filegdb_bundle",
+                )
+                run.add_lineage(
+                    raw_asset_id,
+                    f"expanded:{session.session_id}",
+                    "safely_expanded",
+                    source_sha256=expansion["source_sha256"],
+                    expanded_tree_sha256=expansion["expanded_tree_sha256"],
+                )
+            scan = self._scan_trusted_path(
+                source,
+                run,
+                lineage_source=(
+                    f"expanded:{session.session_id}"
+                    if expansion
+                    else raw_asset_id
+                ),
+            )
+            if not scan.get("assets"):
+                raise ValueError("uploaded dataset contains no supported geospatial assets")
+        except Exception as exc:
+            run.finish("blocked", error=str(exc), session_id=session_id)
+            raise
+
+        session.ingest_run_id = run.run_id
+        session.expanded_path = str(source) if expansion else None
+        self._save_session(session)
+        quality = None
+        if run_quality:
+            quality = self.run_deep_quality(run.run_id, actor=actor)
+            session.deep_quality_run_id = quality["run_id"]
+            self._save_session(session)
+        return {
+            "status": scan.get("status"),
+            "session_id": session_id,
+            "ingest_run_id": run.run_id,
+            "deep_quality_run_id": session.deep_quality_run_id,
+            "run": self.get_run(run.run_id),
+            "deep_quality": quality,
+            "archive_expansion": {
+                "expanded_path": expansion["expanded_path"],
+                "expanded_tree_sha256": expansion["expanded_tree_sha256"],
+                "gdb_paths": expansion["gdb_paths"],
+                "summary": expansion["summary"],
+            }
+            if expansion
+            else None,
+            "resumed": False,
+        }
 
     def _commit_local_asset(
         self, source: Path, asset: dict[str, Any], run: RunLogger
@@ -609,8 +971,8 @@ class OfflineIngestStore:
             asset.update(self._scan_3d(path))
         elif kind == "archive":
             asset.update(self._scan_archive(path))
-        elif kind == "vector_or_table" and path.suffix.lower() == ".shp":
-            asset.update(self._scan_shapefile(path, run))
+        elif kind == "vector_or_table":
+            asset.update(self._scan_vector(path, run))
         return asset
 
     def _scan_filegdb(self, path: Path, run: RunLogger) -> dict[str, Any]:
@@ -777,14 +1139,14 @@ class OfflineIngestStore:
         metadata["derived_assets"] = ["cog"]
         return {"raster": metadata}
 
-    def _scan_shapefile(self, path: Path, run: RunLogger) -> dict[str, Any]:
-        """Profile a SHP bundle with the same OGR contract as FileGDB layers."""
+    def _scan_vector(self, path: Path, run: RunLogger) -> dict[str, Any]:
+        """Profile a supported vector file with the FileGDB layer contract."""
         try:
             from .local_gis_runtime import inspect_vector
 
             layers = [self._map_layer(layer) for layer in inspect_vector(path)]
             run.event(
-                "shapefile_scanned",
+                "vector_scanned",
                 adapter="python_gis_runtime",
                 layer_count=len(layers),
             )
@@ -797,11 +1159,11 @@ class OfflineIngestStore:
                 )
             return {"adapter": "python_gis_runtime", "layers": layers}
         except Exception as exc:
-            logger.debug("Bundled Python shapefile scan unavailable: %s", exc)
-            run.event("shapefile_python_adapter_unavailable", error=str(exc))
+            logger.debug("Bundled Python vector scan unavailable: %s", exc)
+            run.event("vector_python_adapter_unavailable", error=str(exc))
         executable = os.environ.get("GDA_OGRINFO_PATH", "").strip() or shutil.which("ogrinfo")
         if not executable:
-            run.event("shapefile_scan_unavailable", adapter="ogrinfo", error="ogrinfo not found")
+            run.event("vector_scan_unavailable", adapter="ogrinfo", error="ogrinfo not found")
             return {"adapter": "unavailable", "layers": []}
         command = [executable, "-json", "-ro", "-al", "-so", str(path)]
         env = os.environ.copy()
@@ -821,7 +1183,7 @@ class OfflineIngestStore:
             )
             if completed.returncode != 0:
                 run.event(
-                    "shapefile_scan_unavailable",
+                    "vector_scan_unavailable",
                     adapter="ogrinfo",
                     returncode=completed.returncode,
                     stderr=completed.stderr[-4000:],
@@ -830,7 +1192,7 @@ class OfflineIngestStore:
             payload = json.loads(completed.stdout)
             layers = [self._map_layer(layer) for layer in self._layers_from_ogrinfo(payload)]
             run.event(
-                "shapefile_scanned",
+                "vector_scanned",
                 adapter="ogrinfo",
                 layer_count=len(layers),
                 executable=executable,
@@ -844,7 +1206,7 @@ class OfflineIngestStore:
                 )
             return {"adapter": "ogrinfo", "layers": layers}
         except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
-            run.event("shapefile_scan_unavailable", adapter="ogrinfo", error=str(exc))
+            run.event("vector_scan_unavailable", adapter="ogrinfo", error=str(exc))
             return {"adapter": "unavailable", "layers": []}
 
     @staticmethod

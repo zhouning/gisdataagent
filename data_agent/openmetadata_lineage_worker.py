@@ -22,6 +22,10 @@ from .metadata_fabric import (
     MetadataLineageProjectionEnvelope,
 )
 from .platform_gateway import PlatformGateway
+from .provider_credentials import (
+    resolve_bearer_token_file,
+    validate_bearer_token_file,
+)
 
 LOGGER = logging.getLogger(__name__)
 DEFAULT_DESTINATION_REF = "openmetadata:default"
@@ -80,21 +84,11 @@ def normalize_openmetadata_api_url(value: str) -> str:
 
 
 def _resolve_token_file(path: Path) -> Path:
-    if not path.is_absolute():
-        raise OpenMetadataLineageConfigurationError(
-            "OpenMetadata bearer token file must be an absolute path"
-        )
-    try:
-        resolved = path.resolve(strict=True)
-    except OSError as exc:
-        raise OpenMetadataLineageConfigurationError(
-            "OpenMetadata bearer token file does not exist"
-        ) from exc
-    if not resolved.is_file():
-        raise OpenMetadataLineageConfigurationError(
-            "OpenMetadata bearer token path must be a file"
-        )
-    return resolved
+    return validate_bearer_token_file(
+        path,
+        error_factory=OpenMetadataLineageConfigurationError,
+        label="OpenMetadata bearer token file",
+    )
 
 
 def render_openmetadata_lineage(
@@ -289,9 +283,6 @@ class OpenMetadataLineageWorkerConfig:
     def from_env(cls) -> OpenMetadataLineageWorkerConfig:
         tenant_id = os.environ.get("GDA_METADATA_FABRIC_TENANT_ID", "").strip()
         openmetadata_url = os.environ.get("GDA_OPENMETADATA_URL", "").strip()
-        token_value = os.environ.get(
-            "GDA_OPENMETADATA_BEARER_TOKEN_FILE", ""
-        ).strip()
         if not tenant_id:
             raise OpenMetadataLineageConfigurationError(
                 "GDA_METADATA_FABRIC_TENANT_ID is required"
@@ -300,10 +291,12 @@ class OpenMetadataLineageWorkerConfig:
             raise OpenMetadataLineageConfigurationError(
                 "GDA_OPENMETADATA_URL is required"
             )
-        if not token_value:
-            raise OpenMetadataLineageConfigurationError(
-                "GDA_OPENMETADATA_BEARER_TOKEN_FILE is required"
-            )
+        token_path = resolve_bearer_token_file(
+            file_env_name="GDA_OPENMETADATA_BEARER_TOKEN_FILE",
+            source_env_name="GDA_OPENMETADATA_BEARER_TOKEN_SOURCE",
+            error_factory=OpenMetadataLineageConfigurationError,
+            required=True,
+        )
         worker_id = os.environ.get(
             "GDA_METADATA_FABRIC_WORKER_ID",
             f"worker:metadata-fabric:openmetadata:{socket.gethostname()}:{os.getpid()}",
@@ -313,7 +306,7 @@ class OpenMetadataLineageWorkerConfig:
                 tenant_id=tenant_id,
                 worker_id=worker_id,
                 openmetadata_url=openmetadata_url,
-                bearer_token_file=Path(token_value),
+                bearer_token_file=token_path,
                 batch_size=int(os.environ.get("GDA_METADATA_FABRIC_BATCH_SIZE", "10")),
                 lease_seconds=int(
                     os.environ.get("GDA_METADATA_FABRIC_LEASE_SECONDS", "360")

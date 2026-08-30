@@ -312,8 +312,32 @@ class TestStacTools:
         _, _, query_config = mock_query.call_args.args[:3]
         assert query_config["collection_id"] == "sentinel-2-l2a"
         assert mock_query.call_args.kwargs["bbox"] == [116.0, 39.0, 117.0, 40.0]
-        assert mock_query.call_args.kwargs["filter_expr"] == "2024-01-01/2024-02-01"
+        assert mock_query.call_args.kwargs["filter_expr"] == (
+            "2024-01-01T00:00:00Z/2024-02-01T23:59:59Z"
+        )
         assert mock_query.call_args.kwargs["limit"] == 5
+        assert mock_query.call_args.kwargs["extra_params"] == {
+            "query": {"eo:cloud_cover": {"lte": 20.0}}
+        }
+
+    @patch("data_agent.connectors.stac.StacConnector.query")
+    def test_stac_search_preserves_rfc3339_and_open_datetime_intervals(self, mock_query):
+        from data_agent.toolsets.remote_sensing_tools import stac_search
+
+        async def fake_query(*args, **kwargs):
+            return []
+
+        mock_query.side_effect = fake_query
+        rfc3339 = "2024-01-01T06:00:00Z/2024-02-01T18:00:00Z"
+        result = json.loads(stac_search(datetime=rfc3339))
+        assert result["status"] == "success"
+        assert mock_query.call_args.kwargs["filter_expr"] == rfc3339
+
+        result = json.loads(stac_search(datetime="2024-01-01/.."))
+        assert result["status"] == "success"
+        assert mock_query.call_args.kwargs["filter_expr"] == (
+            "2024-01-01T00:00:00Z/.."
+        )
 
     @patch("data_agent.connectors.stac.StacConnector.get_capabilities")
     def test_stac_list_collections_uses_endpoint(self, mock_caps):

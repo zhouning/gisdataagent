@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: ontology-projection-2-0-1
+  name: ontology-projection-2-3-0
   namespace: gis-agent
   labels:
     app.kubernetes.io/name: ontology-projection
@@ -35,7 +35,7 @@ spec:
                 --data-urlencode 'query=SELECT (COUNT(*) AS ?triples) WHERE { ?s ?p ?o }' \
                 -H 'Accept: application/sparql-results+json' \
                 http://ontology-fuseki:3030/ontology/query)"
-              echo "$result" | grep -q '528252'
+              echo "$result" | grep -q '537245'
           resources:
             requests:
               cpu: 100m

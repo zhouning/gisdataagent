@@ -18,7 +18,7 @@ verified: { by: process:gda-ontology-release-gate, at: 2026-08-05T00:00:00Z }
 sources:
   - id: ontology-package
     resource: /sources/ontology-package.md
-    title: Natural-resource ontology immutable package V2.0.1
+    title: Natural-resource ontology immutable package V2.1.0
   - id: demo-bundle
     resource: /sources/customer-demo-bundle.md
     title: Customer demo data bundle

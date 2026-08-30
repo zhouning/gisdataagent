@@ -17,6 +17,8 @@ import {
 import type { IFileRef, IAction } from '@chainlit/react-client';
 import ReactMarkdown from 'react-markdown';
 import FeedbackBar from './FeedbackBar';
+import Nl2SqlAnswer from './Nl2SqlAnswer';
+import Nl2SqlClarification, { Nl2SqlClarificationPayload } from './Nl2SqlClarification';
 
 function cleanCotLeakage(text: string): string {
   if (!text || text.length < 20) return text;
@@ -76,6 +78,17 @@ interface S2MapSelection {
   sourceLandUseName?: string;
 }
 
+type Nl2SqlExecutionEngine = 'postgis' | 'lake';
+
+const NL2SQL_ENGINE_STORAGE_KEY = 'gda.nl2sql.execution-engine';
+
+function initialNl2SqlExecutionEngine(): Nl2SqlExecutionEngine {
+  if (typeof window === 'undefined') return 'postgis';
+  return window.localStorage.getItem(NL2SQL_ENGINE_STORAGE_KEY) === 'lake'
+    ? 'lake'
+    : 'postgis';
+}
+
 function dispatchWorkspaceUpdate(update: any) {
   if (!update || !['ontology', 'ontology_demo'].includes(update.tab)) return;
   (window as any).__pendingGdaWorkspaceUpdate = update;
@@ -115,6 +128,8 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const prevLoadingRef = useRef(false);
   const s2SelectionTemplateRef = useRef('');
   const [s2MapSelection, setS2MapSelection] = useState<S2MapSelection | null>(null);
+  const [nl2sqlExecutionEngine, setNl2SqlExecutionEngine] =
+    useState<Nl2SqlExecutionEngine>(initialNl2SqlExecutionEngine);
 
   // Session management state
   const [showSessions, setShowSessions] = useState(false);
@@ -279,14 +294,29 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
       .filter((f) => f.id && !f.error)
       .map((f) => ({ id: f.id! }));
     sendMessage(
-      { name: 'user', type: 'user_message', output: text || '(文件上传)' },
+      {
+        name: 'user',
+        type: 'user_message',
+        output: text || '(文件上传)',
+        metadata: { nl2sql_execution_engine: nl2sqlExecutionEngine },
+      },
       fileRefs.length > 0 ? fileRefs : undefined
     );
     setInput('');
     setS2MapSelection(null);
     setPendingFiles([]);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
-  }, [input, pendingFiles, sendMessage]);
+  }, [input, pendingFiles, sendMessage, nl2sqlExecutionEngine]);
+
+  const handleNl2SqlClarificationSelect = useCallback((text: string) => {
+    setInput(text);
+    window.setTimeout(() => textareaRef.current?.focus(), 0);
+  }, []);
+
+  const selectNl2SqlExecutionEngine = useCallback((engine: Nl2SqlExecutionEngine) => {
+    setNl2SqlExecutionEngine(engine);
+    window.localStorage.setItem(NL2SQL_ENGINE_STORAGE_KEY, engine);
+  }, []);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (showMention) {
@@ -575,12 +605,14 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
           const isUser = msg.type?.includes('user');
           const meta = msg.metadata as any;
           const routingInfo = meta?.routing_info;
+          const nl2sqlPresentation = meta?.nl2sql_presentation;
+          const nl2sqlClarification = meta?.nl2sql_clarification as Nl2SqlClarificationPayload | undefined;
           const displayOutput = isUser ? (msg.output || '') : cleanCotLeakage(msg.output || '');
           return (
-            <div key={msg.id} className={`chat-message ${isUser ? 'user' : 'assistant'}`}>
+            <div key={msg.id} className={`chat-message ${isUser ? 'user' : 'assistant'} ${nl2sqlPresentation ? 'nl2sql-message' : ''}`}>
               {!isUser && <div className="assistant-avatar">AI</div>}
               <div className="message-content">
-                {routingInfo && (
+                {routingInfo && !nl2sqlPresentation && (
                   <div className="routing-card">
                     <div className="routing-card-row">
                       <span className="routing-label">意图</span>
@@ -600,9 +632,17 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
                 )}
                 {isUser ? (
                   <span>{displayOutput}</span>
+                ) : nl2sqlPresentation ? (
+                  <Nl2SqlAnswer presentation={nl2sqlPresentation} />
                 ) : displayOutput ? (
                   <ReactMarkdown>{displayOutput}</ReactMarkdown>
                 ) : null}
+                {!isUser && !nl2sqlPresentation && nl2sqlClarification && (
+                  <Nl2SqlClarification
+                    clarification={nl2sqlClarification}
+                    onSelect={handleNl2SqlClarificationSelect}
+                  />
+                )}
                 {msg.elements?.map((el: any) => (
                   <span key={el.id} className="file-chip" title={el.name}>
                     {getFileIcon(el.name)} {el.name}
@@ -722,6 +762,25 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
             ))}
           </div>
         )}
+        <div className="nl2sql-engine-row">
+          <span>问数执行</span>
+          <div className="nl2sql-engine-segment" role="group" aria-label="智能问数执行引擎">
+            <button
+              type="button"
+              className={nl2sqlExecutionEngine === 'postgis' ? 'active' : ''}
+              onClick={() => selectNl2SqlExecutionEngine('postgis')}
+              title="通过 PostgreSQL/PostGIS 执行，生产默认路线"
+              aria-pressed={nl2sqlExecutionEngine === 'postgis'}
+            >PostGIS</button>
+            <button
+              type="button"
+              className={nl2sqlExecutionEngine === 'lake' ? 'active' : ''}
+              onClick={() => selectNl2SqlExecutionEngine('lake')}
+              title="通过 DuckDB 直接查询治理后的 GeoParquet"
+              aria-pressed={nl2sqlExecutionEngine === 'lake'}
+            >数据湖</button>
+          </div>
+        </div>
         <div className="chat-input-container">
           {showMention && (
             <div className="mention-dropdown" ref={mentionRef}>

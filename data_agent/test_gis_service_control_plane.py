@@ -5,18 +5,27 @@ import pytest
 from pydantic import ValidationError
 
 from data_agent.gis_service_control_plane import (
+    CacheKeyDimension,
+    CachePolicyVersion,
     EndpointRevision,
     GISServiceControlProjection,
     GISServiceDefinitionVersion,
     LayerDefinitionVersion,
+    MVTServingProjectionVersion,
+    ServiceDeploymentEvent,
     ServiceDeploymentRevision,
+    ServiceDeploymentState,
+    ServicePolicyBinding,
     ServiceReleaseBinding,
     StyleDefinitionVersion,
     TileMatrixSetDefinitionVersion,
+    cache_policy_version_fingerprint,
     endpoint_revision_fingerprint,
     gis_service_definition_fingerprint,
     layer_definition_fingerprint,
+    mvt_serving_projection_fingerprint,
     service_deployment_fingerprint,
+    service_policy_binding_fingerprint,
     service_release_binding_fingerprint,
     style_definition_fingerprint,
     tile_matrix_set_definition_fingerprint,
@@ -142,6 +151,105 @@ def _release_bundle(
     return layer, style, tile_matrix, release
 
 
+def _cache_policy(definition: GISServiceDefinitionVersion) -> CachePolicyVersion:
+    values = {
+        "tenant_id": TENANT,
+        "cache_policy_version_id": uuid4(),
+        "service_definition_version_id": definition.service_definition_version_id,
+        "cache_policy_key": "mvt-private",
+        "version_key": "v1.0.0",
+        "cache_namespace": "district-features",
+        "cache_max_age_seconds": 60,
+        "cache_key_dimensions": (
+            "tenant",
+            "service_release",
+            "principal",
+            "tile",
+        ),
+        "created_by": "workload:service-controller",
+        "created_at": NOW,
+    }
+    return CachePolicyVersion(
+        **values,
+        policy_sha256=cache_policy_version_fingerprint(values),
+    )
+
+
+def _mvt_serving_projection(
+    definition: GISServiceDefinitionVersion,
+    layer: LayerDefinitionVersion,
+) -> MVTServingProjectionVersion:
+    values = {
+        "tenant_id": TENANT,
+        "mvt_serving_projection_version_id": uuid4(),
+        "service_definition_version_id": definition.service_definition_version_id,
+        "layer_definition_version_id": layer.layer_definition_version_id,
+        "projection_key": "districts-serving",
+        "version_key": "v1.0.0",
+        "source_output_resource_version_id": layer.source_output_resource_version_id,
+        "source_schema": "serving",
+        "source_table": "districts_v1",
+        "geometry_column": layer.geometry_column,
+        "geometry_srid": 4326,
+        "feature_id_column": "district_id",
+        "property_allowlist": (),
+        "allowed_spatial_extent": (120.8, 30.6, 122.2, 31.9),
+        "max_features_per_tile": 10_000,
+        "source_content_sha256": "a" * 64,
+        "created_by": "workload:service-controller",
+        "created_at": NOW,
+    }
+    return MVTServingProjectionVersion(
+        **values,
+        projection_sha256=mvt_serving_projection_fingerprint(values),
+    )
+
+
+def _service_policy(
+    definition: GISServiceDefinitionVersion,
+    release: ServiceReleaseBinding,
+) -> ServicePolicyBinding:
+    values = {
+        "tenant_id": TENANT,
+        "service_policy_binding_id": uuid4(),
+        "service_definition_version_id": definition.service_definition_version_id,
+        "service_release_binding_id": release.service_release_binding_id,
+        "policy_key": "mvt-gateway-read",
+        "version_key": "v1.0.0",
+        "allowed_roles": ("platform_operator", "viewer"),
+        "consumer_binding_required_roles": ("viewer",),
+        "created_by": "workload:service-controller",
+        "created_at": NOW,
+    }
+    return ServicePolicyBinding(
+        **values,
+        policy_sha256=service_policy_binding_fingerprint(values),
+    )
+
+
+def test_service_policy_supports_explicit_ogc_features_read_profile():
+    definition = _definition()
+    layer, _style, _tms, release = _release_bundle(definition)
+    values = {
+        "tenant_id": TENANT,
+        "service_policy_binding_id": uuid4(),
+        "service_definition_version_id": definition.service_definition_version_id,
+        "service_release_binding_id": release.service_release_binding_id,
+        "policy_key": "ogc-features-gateway-read",
+        "version_key": "v1.0.0",
+        "action": "ogc_features.read",
+        "allowed_roles": ("platform_operator",),
+        "consumer_binding_required_roles": (),
+        "created_by": "workload:service-controller",
+        "created_at": NOW,
+    }
+    policy = ServicePolicyBinding(
+        **values,
+        policy_sha256=service_policy_binding_fingerprint(values),
+    )
+    assert policy.action == "ogc_features.read"
+
+
 def _deployment(
     definition: GISServiceDefinitionVersion,
     release: ServiceReleaseBinding | None = None,
@@ -215,6 +323,130 @@ def test_gis_service_contracts_bind_deterministic_immutable_fingerprints():
         )
 
 
+def test_cache_policy_is_fingerprinted_and_partitions_private_mvt_responses():
+    policy = _cache_policy(_definition())
+
+    assert policy.policy_sha256 == cache_policy_version_fingerprint(policy)
+    assert set(policy.cache_key_dimensions) == set(CacheKeyDimension)
+    with pytest.raises(ValidationError, match="cache_key_dimensions"):
+        CachePolicyVersion.model_validate(
+            {
+                **policy.model_dump(mode="python"),
+                "cache_key_dimensions": ("tenant", "service_release", "tile"),
+            }
+        )
+    with pytest.raises(ValidationError, match="policy_sha256"):
+        CachePolicyVersion.model_validate(
+            {
+                **policy.model_dump(mode="python"),
+                "policy_sha256": "0" * 64,
+            }
+        )
+
+
+def test_service_policy_is_fingerprinted_and_requires_bound_roles():
+    definition = _definition()
+    release = _release_bundle(definition)[3]
+    policy = _service_policy(definition, release)
+
+    assert policy.policy_sha256 == service_policy_binding_fingerprint(policy)
+    with pytest.raises(ValidationError, match="included in allowed_roles"):
+        ServicePolicyBinding.model_validate(
+            {
+                **policy.model_dump(mode="python"),
+                "consumer_binding_required_roles": ("analyst",),
+            }
+        )
+    with pytest.raises(ValidationError, match="policy_sha256"):
+        ServicePolicyBinding.model_validate(
+            {**policy.model_dump(mode="python"), "policy_sha256": "0" * 64}
+        )
+
+
+def test_mvt_serving_projection_is_fingerprinted_and_has_a_closed_field_contract():
+    definition = _definition()
+    layer = _release_bundle(definition)[0]
+    projection = _mvt_serving_projection(definition, layer)
+
+    assert projection.projection_sha256 == mvt_serving_projection_fingerprint(
+        projection
+    )
+    with pytest.raises(ValidationError, match="must not repeat"):
+        MVTServingProjectionVersion.model_validate(
+            {
+                **projection.model_dump(mode="python"),
+                "property_allowlist": ("name", "name"),
+            }
+        )
+    with pytest.raises(ValidationError, match="repeat the feature ID"):
+        MVTServingProjectionVersion.model_validate(
+            {
+                **projection.model_dump(mode="python"),
+                "property_allowlist": ("district_id",),
+            }
+        )
+    with pytest.raises(ValidationError, match="projection_sha256"):
+        MVTServingProjectionVersion.model_validate(
+            {**projection.model_dump(mode="python"), "projection_sha256": "0" * 64}
+        )
+
+
+def test_release_fingerprint_keeps_historic_rows_readable_until_a_policy_is_bound():
+    definition = _definition()
+    _, _, _, release = _release_bundle(definition)
+    historic_payload = release.model_dump(
+        mode="python", exclude={"binding_sha256", "cache_policy_version_id"}
+    )
+    policy = _cache_policy(definition)
+    current_payload = {
+        **historic_payload,
+        "cache_policy_version_id": policy.cache_policy_version_id,
+    }
+
+    assert release.binding_sha256 == service_release_binding_fingerprint(
+        historic_payload
+    )
+    assert service_release_binding_fingerprint(current_payload) != release.binding_sha256
+
+
+def test_release_fingerprint_changes_when_its_serving_projection_changes():
+    definition = _definition()
+    layer, _, _, release = _release_bundle(definition)
+    first_projection = _mvt_serving_projection(definition, layer)
+    second_projection_values = first_projection.model_dump(
+        mode="python", exclude={"projection_sha256"}
+    )
+    second_projection_values.update(
+        {
+            "mvt_serving_projection_version_id": uuid4(),
+            "version_key": "v1.1.0",
+            "predecessor_version_id": (
+                first_projection.mvt_serving_projection_version_id
+            ),
+        }
+    )
+    second_projection = MVTServingProjectionVersion(
+        **second_projection_values,
+        projection_sha256=mvt_serving_projection_fingerprint(second_projection_values),
+    )
+    first_values = {
+        **release.model_dump(mode="python", exclude={"binding_sha256"}),
+        "mvt_serving_projection_version_id": (
+            first_projection.mvt_serving_projection_version_id
+        ),
+    }
+    second_values = {
+        **first_values,
+        "mvt_serving_projection_version_id": (
+            second_projection.mvt_serving_projection_version_id
+        ),
+    }
+
+    assert service_release_binding_fingerprint(first_values) != (
+        service_release_binding_fingerprint(second_values)
+    )
+
+
 def test_service_deployment_terminal_state_requires_provider_observation():
     deployment = _deployment(_definition())
     with pytest.raises(ValidationError, match="terminal deployment state"):
@@ -224,6 +456,34 @@ def test_service_deployment_terminal_state_requires_provider_observation():
                 "state": "ready",
                 "state_version": 2,
                 "terminal_at": NOW + timedelta(minutes=1),
+            }
+        )
+
+
+def test_service_deployment_event_requires_the_persisted_state_machine():
+    deployment = _deployment(_definition())
+    initial = ServiceDeploymentEvent(
+        tenant_id=TENANT,
+        event_id=uuid4(),
+        deployment_revision_id=deployment.deployment_revision_id,
+        sequence_no=0,
+        to_state=ServiceDeploymentState.PLANNED,
+        actor_subject=deployment.created_by,
+        reason="deployment revision recorded",
+        idempotency_key=f"planned:{deployment.deployment_revision_id}",
+        event_sha256="a" * 64,
+        occurred_at=NOW,
+    )
+
+    assert initial.from_state is None
+    with pytest.raises(ValidationError, match="invalid state transition"):
+        ServiceDeploymentEvent.model_validate(
+            {
+                **initial.model_dump(mode="python"),
+                "sequence_no": 1,
+                "from_state": "planned",
+                "to_state": "ready",
+                "provider_observation_id": uuid4(),
             }
         )
 

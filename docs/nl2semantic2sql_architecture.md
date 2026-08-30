@@ -1,6 +1,23 @@
 # NL2Semantic2SQL 技术架构文档
 
-> **版本**: v24.1 | **验证状态**: Benchmark 16/16 全量通过 | **最后更新**: 2026-04-30
+> **版本**: v3.1（2026-08 架构刷新版） | **验证状态**: 双路线已并行实现，当前不作取代结论 | **最后更新**: 2026-08-25
+
+> 本文保留历史 v24.1 的设计与实验记录，但历史的“16/16”仅代表当时的重庆小 benchmark，不能代表当前阿布扎比两库产品能力。当前真实状态、路线边界和评测口径以本文第 13 节及 `docs/customer/abu_dhabi_liveability_site_validation/abu_dhabi_v4_accuracy_diagnosis_and_optimization.md` 为准。
+
+## 当前状态快照（2026-08-24）
+
+| 事项 | 当前事实 | 结论边界 |
+|---|---|---|
+| 默认产品路线 | `baseline_sql`：GPT-5.1 生成受治理 SQL，经语义、只读、源准入和运行时 guard | 仍是默认生产入口 |
+| 并行路线 | `semantic_ir_experimental`：模型只生成逻辑 IR，服务端校验并编译为参数化 Postgres/PostGIS SQL | 已有可执行受限子集，尚未整体晋级默认 |
+| Liveability 语义配置 | 159 张技术表；8 张 `execution_eligible=true`，其余为技术目录/待审核绑定 | 全表配置不等于全表业务语义审核 |
+| Makani 语义配置 | 772 张技术表；604 张 `execution_eligible=true`，其余为技术目录/待审核绑定 | 同上 |
+| 双路线证据 | 同一 Gemini 3.7 Flash、36-case stability scope 已完成两路线各 5 轮；baseline 180/180，candidate 180/180 | 当前 scope 内持平；candidate 仍未获生产晋级 |
+| 真实源验证 | 依赖局域网和登记虚拟源的实时 discovery/source admission | 离线 artifact 测试不能代替实时数据库查询 |
+
+本快照是工程状态，不是“全库业务语义已完善”或“新路线已胜出”的声明。所有运行时
+执行都必须经过 `execution_eligible` 门禁；benchmark Gold、源行数据和问题特例不能进入
+运行时 prompt、候选索引或产品缓存。
 
 ## 1. 系统概述
 
@@ -8,7 +25,7 @@ NL2Semantic2SQL 是 GIS Data Agent 平台中的自然语言到 SQL 翻译子系�
 
 与传统 NL2SQL 方案（直接让 LLM 生成 SQL）不同，本系统在 LLM 介入前先完成一轮完整的语义解析和 schema grounding，将"用户说了什么"翻译成"数据库里有什么能回答这个问题"，再把这份结构化上下文交给 LLM 做最后的 SQL 组装。
 
-**核心指标**：
+**历史核心指标（2026-04 重庆小 benchmark，不代表当前阿布扎比产品）**：
 - Benchmark 16 题全量通过（4 Easy + 4 Medium + 4 Hard + 4 Robustness）
 - 简单查询端到端延迟 10-20 秒，复杂空间查询 40-70 秒
 - 支持 Gemini 和 DeepSeek 双模型，输出质量一致
@@ -738,3 +755,165 @@ PYTHONPATH="D:\adk" chainlit run data_agent/app.py -w
 | full | semantic layer + grounding + few-shot + ContextEngine | 测完整 NL2Semantic2SQL 链路增益 |
 
 通过 `delta = full_EX - baseline_EX` 量化 semantic layer 各组件的贡献。
+
+---
+
+## 13. 2026-08 当前生产架构（阿布扎比两库）
+
+本节是当前实现的权威架构说明，覆盖 `liveability_data_20260730/public` 和
+`makani_sync_full/public`。两库都通过同一个受治理虚拟数据源接口接入；源库只读，
+业务行不写入 GIS Data Agent 控制库。元数据发现快照、字典对齐、本体、语义层、候选
+目录、关系目录和 benchmark Gold 是不同信任级别的 artifact，不能互相越权。
+
+### 13.1 端到端架构图
+
+```mermaid
+flowchart TB
+  Q[用户问题 / 左侧对话框] --> P[策略预检\n只读·跨源·敏感数据·语言]
+  P --> T[TaskFrame 与问题语言识别]
+  T --> R[Context Asset Resolver\n业务标签/别名/字段角色/关系/数值后缀]
+  R --> C{已审核指标合同?}
+  C -->|是| MC[Metric Contract Resolver\n服务端 canonical SQL template]
+  C -->|否| G[语义层 Grounding\n只把候选上下文交给模型]
+  G --> B{执行路线}
+  B -->|baseline_sql| S[GPT-5.1 生成受治理 SQL 提案]
+  B -->|semantic_ir_experimental| I[GPT-5.1 生成 SemanticQueryIR 提案]
+  S --> V[SQL 语义/只读/表列/关系/空间校验]
+  I --> IC[IR Schema 校验与确定性编译器]
+  IC --> V
+  MC --> V
+  V --> A[Source Admission 与查询预算]
+  A --> E[(PostgreSQL/PostGIS\nregistered virtual source)]
+  E --> O[结果合同·等价指纹·耗时·审计证据]
+  O --> UI[表格/图表/来源/语义版本/SQL 证据]
+  V -->|失败| F[结构化失败分类\n重试/澄清/拒答]
+```
+
+### 13.2 两条路线的真实边界
+
+| 项目 | baseline_sql（当前默认生产路线） | semantic_ir_experimental（并行实验路线） |
+|---|---|---|
+| 模型输出 | `GovernedVirtualSQLProposal`：只允许受治理 SELECT | `GovernedSemanticIRProposal`：只允许逻辑实体、字段、关系和操作 |
+| 物理表来源 | 模型可提出候选物理表，但必须经过 binding、SQL AST、语义表列和 runtime guard | 模型不得提交物理表；`semantic_query_ir.py` 编译器从 active binding 解析物理表 |
+| 本体/语义作用 | 业务资产召回、prompt grounding、合同匹配、空间关系和字段白名单 | 业务资产召回、逻辑实体/字段授权、关系校验、空间意图校验、确定性 SQL 编译 |
+| SQL 产生者 | GPT-5.1 + postprocessor/validator | SemanticQueryIR compiler；模型只产 IR，不产 SQL |
+| 失败形态 | 表/列幻觉、聚合和空间语义错、SQL 修复失败 | IR schema 错、实体/字段未激活、关系不完整、编译器能力不足 |
+| 当前地位 | 默认入口；仍需通过新 v4 语义层的 execution gate | 可执行受限 canary/paired 实验，不得据此宣布替代 baseline |
+
+两条路线共享策略预检、候选召回、源准入、结果合同、审计和 benchmark comparator。这样
+对比的是“SQL 提案”和“逻辑 IR 提案”的生成/编译差异，而不是两套数据源或两套 Gold。
+
+### 13.3 元数据、本体、语义层和 SQL 的关系
+
+```text
+真实 PG/PostGIS 源
+  └─ discovery snapshot（表/列/类型/SRID/约束/索引，不含源行）
+       └─ technical semantic catalog（全表技术目录）
+            ├─ dictionary alignment（数据字典证据）
+            ├─ ontology（业务概念、粒度、关系、空间角色）
+            └─ semantic layer（运行时 binding、字段角色、别名、合同、策略）
+                 ├─ candidate catalog：可召回，不授权执行
+                 ├─ reviewed asset：可召回；只有 execution_eligible=true 才可执行
+                 └─ metric contract：审核运行模板，可直接执行或作为校验口径
+```
+
+- **元数据**回答“有什么”：物理对象、字段、类型、空间参考、版本和来源指纹。
+- **本体**回答“它是什么以及如何关联”：业务概念、粒度、实体角色、同义关系、
+  `contains/within/intersects/dwithin` 的方向与约束。
+- **语义层**回答“本次查询能否用”：把本体和元数据投影成版本化运行配置，明确
+  `retrieval_eligible`、`execution_eligible`、字段业务角色、值域语义和合同。
+- **SemanticQueryIR**回答“用户要计算什么”：逻辑实体、字段、聚合、过滤、分组、
+  排序和空间意图。编译器再把逻辑引用绑定到物理表列。
+- **SQL**只是执行器方言产物，不能反向成为本体或语义真值。
+
+### 13.4 关键实现模块
+
+| 层 | 当前实现 | 主要职责 |
+|---|---|---|
+| 产品入口 | `data_agent/liveability_nl2sql.py`、`data_agent/makani_nl2sql.py` | 解析 `@Liveability`/`@Makani`，加载 v4 全表语义层，调用统一 runner |
+| 统一运行器 | `data_agent/governed_virtual_nl2sql.py` | 策略预检、合同路由、grounding、模型提案、校验、执行、证据 |
+| 候选召回 | `data_agent/abu_dhabi_semantic_candidates.py` + runner 的 asset scoring | 多语言业务标签/别名、字段证据、数字后缀、关系邻居、歧义控制 |
+| IR 模型/编译器 | `data_agent/semantic_query_ir.py` | Pydantic IR、逻辑实体绑定、字段/关系/空间校验、PostGIS SQL 编译 |
+| SQL 保护 | `runtime_guards.py`、`sql_postprocessor.py`、`validate_semantic_sql()` | 只读、schema、表列、关系、geometry 投影和查询预算 |
+| 控制面 API | `data_agent/api/abu_dhabi_nl2sql_product_routes.py` | 数据源、语义配置、ontology、benchmark 摘要和审计信息的只读展示 |
+| 评测 | `benchmarks/abu_dhabi_nl2sql_product_v1/`、v4 scenario benchmark | Gold 隔离、分桶、双路线 paired comparison、失败分类和稳定性 |
+
+### 13.5 v4 全表语义层与执行门禁
+
+当前产品入口已切换到：
+
+- `liveability_data_20260730_semantic_layer_v4_full_coverage.json`：159 张表，8 张业务审核可执行，151 张为技术元数据/待审核绑定。
+- `makani_sync_full_semantic_layer_v4_full_coverage.json`：772 张表，604 张业务审核可执行，168 张为技术元数据/待审核绑定。
+
+全表覆盖不等于全表可执行。未完成业务审核的表可以进入技术目录和候选召回，不能进入 SQL/IR 执行授权。新语义层使用显式 `execution_eligible=false`，避免“有字典字段”被误认为“业务口径已审核”。旧 v3 语义层仅作为兼容测试 fixture，不应继续作为生产入口配置。
+
+### 13.6 当前准确率问题的架构归因
+
+当前低准确率不能用一个总分解释，必须分成：
+
+1. **评估口径问题**：Liveability v4 validation/holdout 中有大量技术目录控制题，未审核表被拒绝是预期治理结果；它们不能和业务语言问数混算。
+2. **语义覆盖问题**：Liveability 仍有大量表只有技术绑定；Makani 仍有待审核表和同名/后缀资产。缺少业务别名、粒度、值域和关系审核时，模型无法可靠区分。
+3. **召回/消歧问题**：`UDM Building`/`UD Building`、`UPC road center`/`UPC road edge`、`aircompressor`/`aircompressor_1` 等需要保留资产族和数字后缀，不能只按词干匹配。
+4. **空间任务框架问题**：中文、阿拉伯文“空间范围内按设施类型分组”曾把行政区误当分组维度，合同必须同时匹配对象、空间关系和用户明确的分组维度。
+5. **协议问题**：IR 的结构化输出错误、实体未激活和编译器能力缺口会降低实验路线通过率；应按字段路径记录，而不是笼统记为模型失败。
+6. **策略误拒问题**：裸“电话”不能直接等同个人敏感数据；公共电话亭/电话线属于业务设施，个人/居民联系方式才进入拒答策略。
+7. **共享实体名的字段消歧**：当多个已发布资产共享同一业务名称时，若问题在分组/筛选子句中明确给出某资产独有的已发布字段，解析器可依据字段身份消歧；如果字段证据仍相同或缺失，继续返回澄清而不猜测。该规则只读取当前语义层，不包含 benchmark 或客户表名特例。
+
+诊断依据与可复现样本见：
+`docs/customer/abu_dhabi_liveability_site_validation/abu_dhabi_v4_accuracy_diagnosis_and_optimization.md`、
+`liveability_v4_failure_taxonomy.json`、`makani_v4_failure_taxonomy.json`。
+
+### 13.7 Benchmark 架构与正确性判定
+
+Benchmark 不是一批“表名改写的问题”，而是产品能力矩阵：
+
+| 维度 | 必须覆盖 |
+|---|---|
+| 查询形态 | 单表明细、单表总数、分组聚合、平均/总和、排名、过滤、多表等值 join、多表空间 join、混合问数 |
+| 语言 | 中文、英文、阿拉伯文；同一逻辑 case 的多语言变体共享 Gold 语义 |
+| 资产状态 | reviewed business asset、technical catalog control、unsupported/safety |
+| 数据切分 | development、validation、holdout；来源和 Gold 与运行时隔离 |
+| 正确性 | 状态合同、Gold result contract、结果等价指纹、表/列/空间关系证据；不能只比 SQL 字符串 |
+| 路线对比 | 相同 case IDs、模型、推理强度、并发、语义版本和源库；逐 case paired comparison |
+
+技术目录控制题的失败应计入治理拒绝/覆盖缺口，不应直接宣称“业务问数准确率为 0”。
+真实源库不可达时只做离线配置和单元测试，不能生成真实查询结果或伪造 benchmark 通过率。
+
+单次 benchmark 运行还必须满足输入 artifact 不可变约束：启动时从同一次字节读取解析
+benchmark 和语义层，同时记录规范化 JSON SHA 与原始文件字节 SHA；实际问数只读取启动时
+生成的语义快照。每个 case 发起前重新校验原始 benchmark/语义文件字节 SHA。只要任一文件
+在运行中变化，评测器必须取消排队任务、把 checkpoint 标记为 `aborted` 并抛出配置错误，
+不能把剩余题填成模型失败，也不能为该批次生成准确率结论。基于新语义重跑历史失败题时，
+恢复报告只能声明 selected subset 的修复证据；只有同一稳定快照下完整重跑全部题目，才允许
+更新全量准确率。
+
+### 13.8 已发布评测证据（不是最终路线结论）
+
+当前仓库中存在多套用途不同的冻结 benchmark，不能把它们相加后当成一个准确率：
+
+| 资产 | 规模/范围 | 能证明什么 | 不能证明什么 |
+|---|---:|---|---|
+| `benchmarks/abu_dhabi_nl2semantic2sql_v2/` | 36 cases；Liveability 15、Makani 15、federated 6 | 资产召回/准入和一轮真实源 paired 评测 | 不能证明全库业务语义覆盖 |
+| `benchmarks/abu_dhabi_nl2semantic2sql_v3/` | 26 challenge cases；Liveability 10、Makani 12、federated 4 | 挑战场景的候选集/安全门选择质量 | `selection_report` 明确未评 SQL/结果正确性 |
+| `benchmarks/abu_dhabi_nl2sql_product_v1/` | 每库 15 cases，另有 federated v4 9 cases | 小范围产品入口、Gold result contract 和 UI 证据链 | 不能外推到数百张表的完整能力 |
+
+已发布的 v2 真实源报告由
+`benchmarks/abu_dhabi_nl2semantic2sql_v2/published_report_manifest.json` 固定：
+
+- 单次 v6 paired：baseline 与 IR 均为 36/36 状态通过，21/21 可执行结果等价；真正发生模型路线差异的自由问数配对为 6 cases，结果为 6/6 对 6/6。
+- 3-run stability：两条路线各 17/18 route observations 通过，候选没有稳定准确率优势；发布策略仍要求重复稳定性证据。
+- 报告不包含 Gold payload 和源行数据，校验时检查报告 checksum；这不是运行时缓存。
+
+因此当前正确表述是：**IR 路线已实现并可独立测量，在当前 Gemini stability scope 上与基线持平；稳定性证据已具备，但尚无完整语义覆盖或优势证据支持替代默认 baseline。**
+
+### 13.9 当前阶段与下一步门槛
+
+截至 2026-08-25，局域网下的 Gemini 双路线稳定性已完成；后续仍按以下门槛推进更大范围认证：
+
+1. 完成共享候选解析器的唯一性/歧义回归：多语言空间表达、公共电话亭、相似表、数字后缀。
+2. 扩充 validation/holdout 的单表、多表等值、多表空间和 mixed case，确保不以 36-case scope 代表全库能力。
+3. 对 Makani 同等漂移和稳定性 scope 完成 Gemini baseline/candidate 的匹配证据。
+4. 对 Liveability 未审核绑定和 Makani 相似资产建立逐表审核队列，发布新的语义版本后再重跑评测。
+5. 只有在更广语义覆盖、能力集完整性和无关键安全回归均达标后，才讨论默认路线是否调整。
+
+本节描述的是当前可验证的工程状态，不把未来规划、历史 benchmark 或未审核业务语义包装成已完成能力。

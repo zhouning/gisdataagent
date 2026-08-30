@@ -1,14 +1,14 @@
 ---
 type: Ontology Package Source
-title: Natural-resource ontology package V2.0.1
+title: Natural-resource ontology package V2.1.0
 description: Immutable OWL/RDF, SHACL, JSON-LD, concepts, relations, mappings, and validation artifacts.
 resource: /api/ontology/export/manifest
 tags: [ontology, source, provenance]
 status: stable
-generated: { by: gda-ontology-publisher/2.0.1, at: 2026-08-04T10:24:56Z }
-verified: { by: process:gda-ontology-release-gate, at: 2026-08-04T10:24:56Z }
-package_id: natural-resource-one-map:2.0.1:953dac97c1be4d96
-content_sha256: 953dac97c1be4d9683247da42dea022128471b15b9c677215d913fa209bd1200
+generated: { by: gda-ontology-publisher/2.1.0, at: 2026-08-05T08:16:25Z }
+verified: { by: process:gda-ontology-release-gate, at: 2026-08-05T08:16:25Z }
+package_id: natural-resource-one-map:2.1.0:d711f73bc9c4b73a
+content_sha256: d711f73bc9c4b73aa11f0b97b64752d8293c8d9855bcba341753bdcbfcb34f80
 ---
 
 # Authority

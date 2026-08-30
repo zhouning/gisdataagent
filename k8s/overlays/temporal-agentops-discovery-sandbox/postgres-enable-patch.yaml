@@ -1,0 +1,6 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: gis-agent-temporal-postgres
+spec:
+  replicas: 1

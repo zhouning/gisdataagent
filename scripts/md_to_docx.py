@@ -86,7 +86,18 @@ def parse_md(md_text: str) -> list[dict]:
             # Check if it's a list
             if para_lines[0].strip().startswith(("- ", "* ", "1. ")):
                 for pl in para_lines:
-                    blocks.append({"type": "list_item", "text": re.sub(r"^[\-\*\d+\.]\s+", "", pl.strip())})
+                    stripped = pl.strip()
+                    ordered_match = re.match(r"^(\d+)\.\s+(.*)", stripped)
+                    if ordered_match:
+                        blocks.append(
+                            {
+                                "type": "ordered_list_item",
+                                "number": ordered_match.group(1),
+                                "text": ordered_match.group(2),
+                            }
+                        )
+                    else:
+                        blocks.append({"type": "list_item", "text": re.sub(r"^[\-\*]\s+", "", stripped)})
             else:
                 blocks.append({"type": "paragraph", "text": text})
 
@@ -139,6 +150,8 @@ def build_docx(blocks: list[dict], output_path: str):
 
     # Page margins
     for section in doc.sections:
+        section.page_width = Cm(21.0)
+        section.page_height = Cm(29.7)
         section.top_margin = Cm(2.5)
         section.bottom_margin = Cm(2.5)
         section.left_margin = Cm(2.5)
@@ -188,6 +201,13 @@ def build_docx(blocks: list[dict], output_path: str):
 
         elif btype == "list_item":
             para = doc.add_paragraph(style="List Bullet")
+            add_formatted_text(para, block["text"])
+
+        elif btype == "ordered_list_item":
+            para = doc.add_paragraph()
+            para.paragraph_format.left_indent = Cm(0.63)
+            para.paragraph_format.first_line_indent = Cm(-0.63)
+            para.add_run(f"{block['number']}. ")
             add_formatted_text(para, block["text"])
 
         elif btype == "table":

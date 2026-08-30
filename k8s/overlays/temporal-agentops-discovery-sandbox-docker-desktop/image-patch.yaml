@@ -1,0 +1,11 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gis-agent-agentops-discovery
+spec:
+  template:
+    spec:
+      containers:
+        - name: discovery
+          image: gis-data-agent:agentops-discovery-20260827-v3
+          imagePullPolicy: Never

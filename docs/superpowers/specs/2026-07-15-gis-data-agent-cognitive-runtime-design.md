@@ -770,6 +770,8 @@ Artifacts include schema, hash, version, lineage, and originating run.
 ### Phase 2: Standards Knowledge Brain
 
 - StandardKnowledgePack compiler;
+- governed ontology authority store, knowledge compiler, immutable OntologyPackage, and identity-aware OntologyResolver;
+- operational object/action/function/interface contracts and dynamic object/property/link/action policy semantics;
 - lexical + vector + structured retrieval;
 - EvidenceBundle;
 - validity, region, time, and ACL filters;
@@ -778,6 +780,7 @@ Artifacts include schema, hash, version, lineage, and originating run.
 ### Phase 3: End-to-End Governance
 
 - capability registry and narrow specialists;
+- ActionType-to-Capability-to-Tool bindings, ObjectInstanceRef, ChangeSet, ActionResult, and typed consumption contracts;
 - full governance task graph;
 - deterministic rules and domain evaluation;
 - artifact, lineage, HITL, and partial-failure recovery.
@@ -933,8 +936,8 @@ Initial engineering targets are:
 This document is an umbrella architecture specification, not a single implementation-plan scope. Delivery is decomposed into independently testable subprojects:
 
 1. **Runtime Kernel:** RuntimeIdentity, mandatory RunnerFactory, typed workspace/events, Attention Router v1, TaskFrame, TaskGraph, QualityVerdict, checkpoint, and true routed quality loops.
-2. **Standards Knowledge Brain:** StandardKnowledgePack, EvidenceBundle, hybrid retrieval, validity and ACL filters, citation and conflict evaluation.
-3. **Governance Pilot:** capability registry, narrow specialists, end-to-end standard-driven governance, artifacts, lineage, HITL, and partial-failure recovery.
+2. **Standards Knowledge Brain:** StandardKnowledgePack, governed domain and operational ontology, Object/Action/Function/Interface contracts, OntologyPackage/Resolver, EvidenceBundle, hybrid retrieval, dynamic policy semantics, validity and ACL filters, citation and conflict evaluation.
+3. **Governance Pilot:** ActionType-to-Capability-to-Tool bindings, narrow specialists, typed SDK/REST/MCP/A2A contracts, ChangeSet/ActionResult, end-to-end standard-driven governance, artifacts, lineage, HITL, writeback, rollback, and partial-failure recovery.
 4. **Memory and Experience:** memory write gate, episodic and procedural memory, retrieval evaluation, retention, correction, and deletion.
 5. **Controlled Evolution:** EvolutionEvent, candidate registry, replay and holdout evaluation, shadow, canary, Governor, promotion, and rollback.
 
@@ -942,8 +945,48 @@ Each subproject must produce deployable and testable value without requiring the
 
 The first implementation plan created from this specification must cover only the Runtime Kernel subproject. Later subprojects receive separate specifications or implementation plans after the preceding acceptance gates pass.
 
-## 33. Final Definition
+## 33. Domain Ontology Production Addendum
+
+The domain ontology is the governed semantic skeleton of the Cognitive Runtime, not the brain itself. It defines domain concepts, relationships, applicability, constraints, and capability semantics. Runtime policy, authorization, routing, tool execution, evaluation, memory, and promotion remain owned by their respective runtime modules.
+
+The Palantir benchmark exposes a necessary distinction between a knowledge ontology and an operational ontology. The operational layer must add ObjectType, PropertyType, LinkType, ActionType, FunctionType, InterfaceType, ObjectInstanceRef, ChangeSet, and ActionResult. ActionType binds a target object and state transition to a versioned Capability, Tool Manifest, policy decision, approval rule, idempotency rule, compensation path, and independent Evaluator.
+
+The repository already contains ontology foundations: the GIS YAML `OntologyReasoner`, the `mmfe.semantic_ontology.v1` package, and Standards Platform terms, data elements, value domains, references, derivations, impact graphs, and version workflows. These are inputs to a unified compiler; none is treated as a complete production ontology service.
+
+Production uses one authoritative write model and multiple rebuildable read projections:
+
+1. **Stage 1:** PostgreSQL authority store, typed JSON packages, bounded SQL/graph traversal, FTS/pgvector candidate generation, safe rule DSL, version/ACL/provenance/review, and an identity-aware resolver.
+2. **Stage 2:** SKOS, SHACL, PROV-O, required GeoSPARQL terms, JSON-LD/RDF export, and build-time RDFLib/pySHACL validation. OWL reasoning is restricted to an evaluated offline OWL 2 RL subset.
+3. **Stage 3:** Apache Jena Fuseki/TDB2 may be added as a read-only RDF/SPARQL projection only when representative benchmarks or interoperability requirements prove PostgreSQL/package serving insufficient.
+4. **Stage 4:** signed packages, federated namespaces, cross-organization mapping governance, and candidate/evaluation/shadow/canary/rollback for controlled ontology evolution.
+
+PostgreSQL remains the authority even after Stage 3. RDF stores, property graphs, vector indexes, and search engines cannot become independent writable truth sources. LLMs may propose ontology candidates but cannot publish authoritative concepts, exact equivalence, constraints, or executable rules. Runtime formulas use an allowlisted declarative DSL; arbitrary Python, SQL, shell, `eval`, or retrieved instructions are prohibited.
+
+Dynamic authorization covers object visibility, property visibility/editability, link traversal, Action discovery/planning/execution, ActionResult visibility, and AI context inclusion. An OSDK-like typed consumption layer keeps Python, TypeScript, REST/OpenAPI, MCP/A2A, UI forms, approvals, and Evaluator contracts aligned. Ontology and Action changes follow dev namespace, diff, impact analysis, compatibility/security regression, review, shadow, activation, monitoring, and rollback.
+
+Detailed contracts, technology comparison, acceptance gates, security controls, and logical entities are maintained in `docs/designs/gis_data_agent_cognitive_runtime_2026-07-15/GIS_Data_Agent_Cognitive_Runtime_详细设计说明书.md`.
+
+## 34. Heavy Ontology Conditional Target Addendum
+
+The enterprise heavy-ontology route is a conditional target, not a prerequisite for the Cognitive Runtime. It adds an Ontology Studio and governance control plane, Canonical Model Registry, RDF/OWL/SHACL serving, an operational object graph, Semantic Query Gateway, dynamic policy engine, Object & Action Service, Kafka/Redpanda projection propagation, projection reconciliation, ontology CI/CD, SDK generation, HA, backup, disaster recovery, and platform observability.
+
+PostgreSQL/PostGIS remains the business and transaction truth; Standards Platform remains the standard review and release authority. The Model Registry governs ontology packages and release metadata. RDF, graph, search, and vector stores remain rebuildable projections and cannot become independent writable business truth sources. Nationwide parcel, raster, point-cloud, and trajectory facts are not copied wholesale into RDF; PostGIS, ArcPy, object storage, and TWM continue to execute large-scale spatial workloads.
+
+The conditional delivery route is:
+
+1. **H0 — Entry gate and competency questions:** prove stable gaps in the lightweight Stage 1/2 route using business questions, interoperability requirements, capacity/SLO evidence, security cases, team readiness, and TCO.
+2. **H1 — Governance and Canonical Model Registry.**
+3. **H2 — RDF/SHACL build and validation with SKOS, PROV-O, required GeoSPARQL/OWL-Time terms, and bounded OWL 2 RL evaluation.**
+4. **H3 — Policy-aware Semantic Query Gateway and conditional dedicated RDF serving.**
+5. **H4 — Operational Object & Action Service and typed SDKs.**
+6. **H5 — Event propagation, multi-projection reconciliation, rebuild, and failure handling.**
+7. **H6 — HA, DR, observability, SDK compatibility, and release governance.**
+8. **H7 — Cross-organization signed namespaces and federated mappings.**
+
+H3 and later are not mandatory when the lightweight route satisfies approved SLO and interoperability needs. The RDF platform, policy engine, event technology, deployment topology, capacity, RPO/RTO, staffing, and vendor decisions remain `needs-owner-input` and require separate ADRs and representative PoCs.
+
+## 35. Final Definition
 
 The GIS Data Agent brain is:
 
-> A model-agnostic, evidence-grounded, standards-aware, capability-driven Cognitive Runtime that maintains typed state, executes specialist tools under deterministic policy, evaluates real artifacts and outcomes, learns curated experience, and performs controlled self-evolution through versioned and reversible promotion.
+> A model-agnostic, evidence-grounded, standards-and-ontology-aware, capability-driven Cognitive Runtime that maintains typed state, executes specialist tools under deterministic policy, evaluates real artifacts and outcomes, learns curated experience, and performs controlled self-evolution through versioned and reversible promotion.

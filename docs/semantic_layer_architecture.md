@@ -1,7 +1,14 @@
 # 空间语义层 — 技术架构与对比分析
 
-> GIS Data Agent (ADK Edition) PRD P2 F1
-> 版本: 1.0 | 日期: 2026-02-27 | Commit: `abbc820`
+> GIS Data Agent (ADK Edition) PRD P2 F1（历史通用设计）
+> 版本: 1.1 | 日期: 2026-08-24 | Commit: `current working tree`
+
+> 本文是原始通用 GIS 语义层设计。阿布扎比两库的当前产品实现、元数据/本体/语义层信任边界、v4 全表绑定、执行门禁、SemanticQueryIR 和 benchmark 口径以 [`nl2semantic2sql_architecture.md` 第 13 节](nl2semantic2sql_architecture.md#13-2026-08-当前生产架构阿布扎比两库) 为准。
+
+> **阅读边界**：本文第 1-5 节描述早期 YAML + 注册表语义层的通用机制，不应被理解为
+> 当前阿布扎比 v4 运行时的完整配置格式。当前配置还包含 source binding、ontology overlay、
+> candidate catalog、relationship catalog、`execution_eligible`、metric contracts 和
+> evidence 版本；产品入口加载的是两库各自的 v4 全表语义资产。
 
 ---
 

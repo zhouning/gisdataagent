@@ -42,6 +42,27 @@ class TestDetectAssetType(unittest.TestCase):
         self.assertEqual(_detect_asset_type("noext"), "other")
 
 
+class TestAssetEmbedding(unittest.TestCase):
+    """Asset metadata search must use the configured embedding gateway."""
+
+    @patch("data_agent.embedding_gateway.get_embeddings")
+    def test_asset_embedding_uses_configured_gateway(self, mock_embeddings):
+        mock_embeddings.return_value = [[0.1, 0.2, 0.3]]
+        from data_agent.data_catalog import _generate_asset_embedding
+
+        vector = _generate_asset_embedding(
+            "地类图斑",
+            description="治理后的自然资源图斑",
+            tags="自然资源,矢量",
+            asset_type="vector",
+        )
+
+        self.assertEqual(vector, [0.1, 0.2, 0.3])
+        mock_embeddings.assert_called_once_with(
+            ["地类图斑 | 治理后的自然资源图斑 | 自然资源,矢量 | vector"]
+        )
+
+
 class TestExtractSpatialMetadata(unittest.TestCase):
     """Test spatial metadata extraction."""
 

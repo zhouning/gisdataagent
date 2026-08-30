@@ -1,5 +1,7 @@
 # GIS Data Agent 主线 Roadmap 接续 Checkpoint
 
+> **Superseded on 2026-07-19** by [roadmap-mainline-checkpoint-2026-07-19.md](roadmap-mainline-checkpoint-2026-07-19.md). 本文仅保留为历史上下文，不再定义当前交付顺序。
+
 **日期**：2026-07-18
 
 **分支**：`feat/v12-extensible-platform`

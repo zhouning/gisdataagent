@@ -25,6 +25,13 @@ SAMPLE_SPATIAL_ROOT = PACKAGE_ROOT / "scca_samples" / "spatial"
 COUNTY_BOUNDARY_PATH = SAMPLE_SPATIAL_ROOT / "county_data" / "CountyData.shp"
 CHONGQING_POINTS_PATH = SAMPLE_SPATIAL_ROOT / "chongqing_uhi_points" / "chongqing_uhi_points.geojson"
 CHONGQING_BUILDINGS_PATH = SAMPLE_SPATIAL_ROOT / "chongqing_buildings" / "中心城区建筑数据带层高.shp"
+ABU_DHABI_FLOOD_FIXTURE_PATH = SAMPLE_DATA_ROOT / "abu_dhabi_flood_public_proxy_fixture.csv"
+ABU_DHABI_LIVABILITY_FIXTURE_PATH = SAMPLE_DATA_ROOT / "abu_dhabi_livability_causal_readiness_fixture.csv"
+# This file is generated locally by the Abu Dhabi SWMM prototype and is
+# intentionally ignored by git.  It is preferred when available so the demo
+# can show the real public-proxy node results without placing customer-derived
+# geometry in the repository.
+ABU_DHABI_FLOOD_PUBLIC_PROXY_PATH = PACKAGE_ROOT / "uploads" / "admin" / "abu_dhabi_swmm_public_proxy_pilot_nodes.geojson"
 
 
 @dataclass(frozen=True)
@@ -42,6 +49,8 @@ class SCCACaseDefinition:
     default_row_limit: int | None = None
     map_kind: str | None = None
     spatial_source_path: Path | None = None
+    workflow_kind: str = "scca"
+    evidence_mode: str = "observational"
 
 
 SCCA_CASES: dict[str, SCCACaseDefinition] = {
@@ -146,6 +155,66 @@ SCCA_CASES: dict[str, SCCACaseDefinition] = {
         map_kind="county",
         spatial_source_path=COUNTY_BOUNDARY_PATH,
     ),
+    "abu_dhabi_flood": SCCACaseDefinition(
+        case_id="abu_dhabi_flood",
+        label="阿布扎比城市内涝（物理反事实）",
+        description=(
+            "以 SWMM 节点级结果展示排水治理问题：当前可运行公共代理诊断和因果问题模板，"
+            "尚未对真实治理措施估计统计因果效应。"
+        ),
+        input_path=ABU_DHABI_FLOOD_FIXTURE_PATH,
+        variables={
+            "unit_id": "node_id",
+            "exposure": "排水设施治理（能力/堵塞/泵站动作）",
+            "outcome": "max_water_depth_m",
+            "confounders": [
+                "rainfall_depth_mm",
+                "max_total_inflow_m3s",
+                "degree",
+                "component_node_count",
+            ],
+        },
+        context_columns=("longitude", "latitude", "partition_id"),
+        coordinates={"lon": "longitude", "lat": "latitude"},
+        preprocessing={},
+        robustness={},
+        targets=(),
+        default_row_limit=None,
+        map_kind="abu_dhabi_flood",
+        spatial_source_path=ABU_DHABI_FLOOD_PUBLIC_PROXY_PATH,
+        workflow_kind="physical_counterfactual",
+        evidence_mode="diagnostic_only",
+    ),
+    "abu_dhabi_livability": SCCACaseDefinition(
+        case_id="abu_dhabi_livability",
+        label="阿布扎比宜居设施改造（因果设计预检）",
+        description=(
+            "以地区 QoL 和设施改造候选字段设计“设施改造是否改善宜居性”的因果问题；"
+            "当前为脱敏聚合示例，未估计真实 ATT/ATE/DiD。"
+        ),
+        input_path=ABU_DHABI_LIVABILITY_FIXTURE_PATH,
+        variables={
+            "unit_id": "district_id",
+            "exposure": "refurbishment_completed",
+            "outcome": "qol_2025_score",
+            "confounders": [
+                "qol_2023_score",
+                "facility_count_before",
+                "population_proxy",
+                "qol_change_2023_2025",
+            ],
+        },
+        context_columns=("longitude", "latitude", "district_id"),
+        coordinates={"lon": "longitude", "lat": "latitude"},
+        preprocessing={},
+        robustness={},
+        targets=(),
+        default_row_limit=None,
+        map_kind="abu_dhabi_livability",
+        spatial_source_path=None,
+        workflow_kind="causal_readiness",
+        evidence_mode="design_only",
+    ),
 }
 
 
@@ -167,6 +236,8 @@ def list_scca_cases() -> dict[str, Any]:
                 "context_columns": list(case.context_columns),
                 "map_kind": case.map_kind,
                 "spatial_source_path": str(case.spatial_source_path) if case.spatial_source_path else None,
+                "workflow_kind": case.workflow_kind,
+                "evidence_mode": case.evidence_mode,
             }
         )
     return {
@@ -190,6 +261,10 @@ def run_scca_case(
         case = SCCA_CASES[case_id]
     except KeyError as exc:
         raise ValueError(f"Unsupported SCCA case: {case_id}") from exc
+    if case.workflow_kind == "physical_counterfactual":
+        return _run_abu_dhabi_flood_case(case, output_root=output_root, user_id=user_id)
+    if case.workflow_kind == "causal_readiness":
+        return _run_abu_dhabi_livability_case(case, output_root=output_root, user_id=user_id)
     if not case.input_path.exists():
         raise FileNotFoundError(f"SCCA sample data is missing: {case.input_path}")
 
@@ -218,6 +293,337 @@ def run_scca_case(
         user_id=user_id,
     )
     return _summarize_run(case, config_path, analysis_input, output_dir, manifest, limit, spatial_output)
+
+
+def _run_abu_dhabi_flood_case(
+    case: SCCACaseDefinition,
+    *,
+    output_root: str | Path | None,
+    user_id: str | None,
+) -> dict[str, Any]:
+    """Build the Abu Dhabi flood case without pretending proxy output is causal.
+
+    The causal tab is also a workflow catalogue.  Abu Dhabi currently has
+    hydraulic diagnostic results, but not the intervention/event panel needed
+    for an observational SCCA estimate.  We therefore expose the real public
+    proxy SWMM node layer (or a tiny public fixture) and return an explicit
+    evidence boundary instead of fabricating coefficients or p-values.
+    """
+    output_base = Path(output_root).resolve() if output_root is not None else DEFAULT_OUTPUT_ROOT
+    output_dir = output_base / case.case_id
+    output_dir.mkdir(parents=True, exist_ok=True)
+    rows, _source_meta = _load_abu_dhabi_flood_rows(case)
+    if rows.empty:
+        raise FileNotFoundError("阿布扎比内涝公共代理节点结果不可用")
+
+    # Keep the analysis input auditable while retaining only public proxy
+    # fields.  Customer GDB and private SWMM runs are never copied here.
+    input_path = output_dir / "abu_dhabi_flood_public_proxy_nodes.csv"
+    rows.to_csv(input_path, index=False, encoding="utf-8-sig")
+    map_update: dict[str, Any] = {}
+    spatial_manifest: dict[str, Any] = {}
+    try:
+        gpd = _require_geopandas()
+        frame = gpd.GeoDataFrame(
+            rows.copy(),
+            geometry=gpd.points_from_xy(rows["longitude"], rows["latitude"]),
+            crs="EPSG:4326",
+        )
+        spatial = _write_frontend_map(
+            case=case,
+            frame=_prepare_geojson_properties(frame),
+            map_field="max_water_depth_m",
+            output_dir=output_dir,
+            user_id=user_id,
+            layer_type="bubble",
+            layer_name="阿布扎比内涝 · SWMM 节点最大水深（公共代理诊断）",
+            zoom=11,
+            manifest={"evidence_grade": "D（物理模型诊断）"},
+        )
+        map_update = spatial.get("map_update") or {}
+        spatial_manifest = spatial.get("spatial_outputs") or {}
+    except Exception as exc:
+        spatial_manifest = {"error": str(exc)}
+
+    feature_count = int(len(rows))
+    max_depth = _finite_or_none(pd.to_numeric(rows["max_water_depth_m"], errors="coerce").max())
+    max_overflow = _finite_or_none(pd.to_numeric(rows["max_overflow_or_flooding_m3s"], errors="coerce").max())
+    return {
+        "algorithm": "SWMM physical counterfactual case",
+        "case_id": case.case_id,
+        "case_label": case.label,
+        "description": case.description,
+        "workflow_kind": case.workflow_kind,
+        "evidence_mode": case.evidence_mode,
+        "generated_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "row_limit": None,
+        "raw_input_count": feature_count,
+        "row_count": feature_count,
+        "column_count": int(len(rows.columns)),
+        "input_path": str(input_path),
+        "config_path": None,
+        "output_dir": str(output_dir),
+        "exposure": case.variables["exposure"],
+        "outcome": case.variables["outcome"],
+        "confounders": case.variables["confounders"],
+        "context_columns": list(case.context_columns),
+        "credibility_decision": "仅用于物理模型反事实设计；未估计真实治理因果效应",
+        "robustness_interpretation": "等待客户权威事件、措施和观测面板",
+        "evidence_grade": "D（物理模型诊断）",
+        "evidence_grade_reasons": [
+            "节点结果来自 EPA SWMM 公共代理降雨诊断，不是客户实测事件观测。",
+            "当前没有治理措施时间、治理前后事件和对照区，不能运行 DiD/SCCA 真实效应估计。",
+            "地图显示的是节点最大水深，不是工程治理的统计因果效应。",
+        ],
+        "result_summary": {
+            "source": "Open-Meteo public proxy SWMM diagnostic",
+            "node_count": feature_count,
+            "max_water_depth_m": max_depth,
+            "max_overflow_or_flooding_m3s": max_overflow,
+        },
+        "effect_estimates": [],
+        "balance_summary": [],
+        "robustness": {"status": "not_applicable_until_observed_panel_arrives"},
+        "spatial_diagnostics": {"status": "public_proxy_node_layer_only"},
+        "data_profile": {"source_authority": "public_proxy", "customer_data_included": False},
+        "files": {"public_proxy_nodes_csv": str(input_path)},
+        "spatial_outputs": spatial_manifest,
+        "map_update": map_update,
+        "user_summary": {
+            "headline": "阿布扎比城市内涝因果案例已加载（物理反事实准备态）",
+            "plain_effect": "当前可用 SWMM 节点结果定义治理问题和反事实比较，尚未给出真实工程治理的因果效应估计。",
+            "map_plain": "地图按节点最大水深着色；它用于定位内涝响应和设计干预，不表示某项工程已经产生了多少实际改善。",
+            "map_field": "max_water_depth_m",
+            "map_field_label": "节点最大水深（m）· 公共代理诊断",
+            "coverage": {
+                "raw_input_units": feature_count,
+                "analysis_units": feature_count,
+                "mapped_features": int(map_update.get("summary", {}).get("feature_count", feature_count)),
+                "ratio": 1.0,
+                "unit_label": "SWMM 节点",
+                "is_full": True,
+            },
+            "effect": {"coef": None, "p_value": None, "estimator": "physical_counterfactual_design", "direction": "尚未估计"},
+            "credibility": {
+                "grade": "D（物理模型诊断）",
+                "decision": "不支持真实治理因果声明",
+                "robustness": "等待客户观测面板",
+                "reasons": ["当前结果是公共代理降雨下的 SWMM 诊断节点层。"],
+            },
+            "caveats": [
+                "降雨为 Open-Meteo 公共代理，未替代客户权威历史时序。",
+                "当前没有治理措施、前后事件和对照组，因此没有统计因果系数或 P 值。",
+                "下一步可将本案例与基准/干预 SWMM 成对运行，输出节点水深和溢流差值。",
+            ],
+            "next_action": "客户提供治理时间、历史暴雨和积水观测后，再启用 DiD/空间 SCCA 的真实效应估计。",
+        },
+    }
+
+
+def _load_abu_dhabi_flood_rows(case: SCCACaseDefinition) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Load public proxy nodes, with a small deterministic fallback fixture."""
+    source = case.spatial_source_path
+    features: list[dict[str, Any]] = []
+    if source and source.is_file():
+        try:
+            payload = json.loads(source.read_text(encoding="utf-8"))
+            features = payload.get("features", []) if isinstance(payload, dict) else []
+        except (OSError, json.JSONDecodeError):
+            features = []
+    if not features:
+        if case.input_path.is_file() and case.input_path.suffix.lower() == ".csv":
+            try:
+                fixture_frame = pd.read_csv(case.input_path, encoding="utf-8-sig")
+                return fixture_frame, {"source": str(case.input_path)}
+            except (OSError, pd.errors.EmptyDataError, pd.errors.ParserError):
+                pass
+    if not features:
+        # Abu Dhabi public-proxy fixture: representative public diagnostic
+        # values only, not customer geometry or customer observations.
+        fixture = [
+            (54.3773, 24.4539, 0.048, 0.0000, 0.0060, 1, 67),
+            (54.3921, 24.4612, 0.081, 0.0012, 0.0095, 2, 84),
+            (54.4070, 24.4724, 0.116, 0.0040, 0.0130, 3, 112),
+            (54.4236, 24.4455, 0.064, 0.0000, 0.0072, 2, 73),
+            (54.3444, 24.4338, 0.097, 0.0021, 0.0106, 1, 51),
+            (54.3298, 24.4692, 0.137, 0.0074, 0.0152, 3, 96),
+            (54.3650, 24.4925, 0.073, 0.0000, 0.0084, 2, 62),
+            (54.4512, 24.4810, 0.154, 0.0101, 0.0187, 4, 141),
+        ]
+        features = [
+            {
+                "geometry": {"type": "Point", "coordinates": [lon, lat]},
+                "properties": {
+                    "node_id": f"public_fixture_{idx:02d}",
+                    "partition_id": idx % 4,
+                    "max_water_depth_m": depth,
+                    "max_overflow_or_flooding_m3s": overflow,
+                    "max_total_inflow_m3s": inflow,
+                    "degree": degree,
+                    "component_node_count": component_count,
+                    "forcing_source": "Open-Meteo public proxy rainfall fixture",
+                    "calibration_status": "not_calibrated",
+                },
+            }
+            for idx, (lon, lat, depth, overflow, inflow, degree, component_count) in enumerate(fixture, start=1)
+        ]
+    rows: list[dict[str, Any]] = []
+    for feature in features:
+        props = dict(feature.get("properties") or {})
+        coords = (feature.get("geometry") or {}).get("coordinates") or []
+        if len(coords) < 2 or not props.get("node_id"):
+            continue
+        props["longitude"] = float(coords[0])
+        props["latitude"] = float(coords[1])
+        props.setdefault("rainfall_depth_mm", 120.0)
+        props.setdefault("degree", 0)
+        props.setdefault("component_node_count", 0)
+        props.setdefault("max_water_depth_m", 0.0)
+        props.setdefault("max_overflow_or_flooding_m3s", 0.0)
+        props.setdefault("max_total_inflow_m3s", 0.0)
+        rows.append(props)
+    frame = pd.DataFrame(rows)
+    if frame.empty:
+        return frame, {}
+    numeric = ["longitude", "latitude", "rainfall_depth_mm", "max_water_depth_m", "max_overflow_or_flooding_m3s", "max_total_inflow_m3s", "degree", "component_node_count"]
+    for column in numeric:
+        frame[column] = pd.to_numeric(frame.get(column), errors="coerce")
+    return frame.dropna(subset=["longitude", "latitude", "node_id"]), {"source": str(source) if source else "fixture"}
+
+
+def _run_abu_dhabi_livability_case(
+    case: SCCACaseDefinition,
+    *,
+    output_root: str | Path | None,
+    user_id: str | None,
+) -> dict[str, Any]:
+    """Expose the liveability causal design without fabricating an effect.
+
+    The live PostgreSQL audit proved that the action and QoL tables exist, but
+    did not prove completed/commissioned dates, comparable score versions or
+    an entity-level action-to-outcome join.  This case therefore reports the
+    design gates and maps a clearly labelled de-identified aggregate fixture.
+    """
+    output_base = Path(output_root).resolve() if output_root is not None else DEFAULT_OUTPUT_ROOT
+    output_dir = output_base / case.case_id
+    output_dir.mkdir(parents=True, exist_ok=True)
+    rows = pd.read_csv(case.input_path, encoding="utf-8-sig")
+    if rows.empty:
+        raise FileNotFoundError("阿布扎比宜居因果设计示例数据不可用")
+    input_path = output_dir / "abu_dhabi_livability_causal_readiness_fixture.csv"
+    rows.to_csv(input_path, index=False, encoding="utf-8-sig")
+
+    map_update: dict[str, Any] = {}
+    spatial_manifest: dict[str, Any] = {}
+    try:
+        gpd = _require_geopandas()
+        frame = gpd.GeoDataFrame(
+            rows.copy(),
+            geometry=gpd.points_from_xy(rows["longitude"], rows["latitude"]),
+            crs="EPSG:4326",
+        )
+        spatial = _write_frontend_map(
+            case=case,
+            frame=_prepare_geojson_properties(frame),
+            map_field="qol_change_2023_2025",
+            output_dir=output_dir,
+            user_id=user_id,
+            layer_type="bubble",
+            layer_name="阿布扎比宜居 · QoL 变化示例（因果设计预检）",
+            zoom=11,
+            manifest={"evidence_grade": "设计预检（未估计）"},
+        )
+        map_update = spatial.get("map_update") or {}
+        spatial_manifest = spatial.get("spatial_outputs") or {}
+    except Exception as exc:
+        spatial_manifest = {"error": str(exc)}
+
+    treatment_count = int(pd.to_numeric(rows["refurbishment_completed"], errors="coerce").fillna(0).sum())
+    candidate_count = int(pd.to_numeric(rows["refurbishment_candidate"], errors="coerce").fillna(0).sum())
+    return {
+        "algorithm": "Liveability causal design preflight",
+        "case_id": case.case_id,
+        "case_label": case.label,
+        "description": case.description,
+        "workflow_kind": case.workflow_kind,
+        "evidence_mode": case.evidence_mode,
+        "generated_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "row_limit": None,
+        "raw_input_count": int(len(rows)),
+        "row_count": int(len(rows)),
+        "column_count": int(len(rows.columns)),
+        "input_path": str(input_path),
+        "config_path": None,
+        "output_dir": str(output_dir),
+        "exposure": "设施改造完成（当前示例字段）",
+        "outcome": "QoL 2025 总分",
+        "confounders": ["QoL 2023 总分", "改造前设施数量", "人口代理", "2023→2025 QoL 变化"],
+        "context_columns": list(case.context_columns),
+        "credibility_decision": "仅完成因果设计预检；未估计真实治理因果效应",
+        "robustness_interpretation": "等待真实投运日期、可比版本和多期 QoL 面板",
+        "evidence_grade": "设计预检（未估计）",
+        "evidence_grade_reasons": [
+            "示例数据是脱敏聚合结构，用于演示页面闭环，不是客户设施明细。",
+            "整治审批/候选记录尚未证明实际完成或投入运营。",
+            "当前只有 2023 与 2025 结果轴，无法检验平行趋势。",
+            "同一年存在多个 calc_version_id，跨年可比版本仍需锁定。",
+        ],
+        "result_summary": {
+            "source": "liveability_data_20260730 schema audit + de-identified aggregate fixture",
+            "candidate_district_count": candidate_count,
+            "completed_treatment_count_in_fixture": treatment_count,
+            "qol_years": [2023, 2025],
+            "observational_effect_estimated": False,
+        },
+        "effect_estimates": [],
+        "balance_summary": [],
+        "robustness": {"status": "blocked_missing_pre_periods_and_commissioning_dates"},
+        "spatial_diagnostics": {"status": "aggregate_design_preview_only"},
+        "data_profile": {
+            "source_authority": "deidentified_aggregate_fixture",
+            "customer_data_included": False,
+            "audit_reference": "abu-dhabi-liveability-research/causal_readiness/pg_live_schema_audit_20260820",
+        },
+        "files": {"causal_readiness_fixture_csv": str(input_path)},
+        "spatial_outputs": spatial_manifest,
+        "map_update": map_update,
+        "readiness_gates": [
+            {"name": "设施实际完成/投运日期", "status": "blocked", "detail": "当前审计未确认可用的 completion/commissioning date。"},
+            {"name": "QoL 前后结果周期", "status": "partial", "detail": "已发现 2023、2025 结果轴，但前期周期不足以检验平行趋势。"},
+            {"name": "评分版本一致性", "status": "blocked", "detail": "同一年存在多个 calc_version_id，需要客户锁定可比版本。"},
+            {"name": "动作—设施—地区—结果关联", "status": "blocked", "detail": "候选表、设施历史和评分表的实体链尚未完成业务确认。"},
+            {"name": "真实因果估计", "status": "waiting", "detail": "完成上述数据闸门后运行 DiD / 事件研究 / 空间 SCCA。"},
+        ],
+        "user_summary": {
+            "headline": "阿布扎比宜居设施改造因果案例已加载（设计预检）",
+            "plain_effect": "当前定义的是“设施改造完成是否改善 QoL”的因果问题；页面暂不输出真实 ATT、ATE 或 DiD 系数。",
+            "map_plain": "地图显示脱敏聚合示例中的 2023→2025 QoL 变化，用于查看空间设计和候选处理组，不表示改造已经造成该变化。",
+            "map_field": "qol_change_2023_2025",
+            "map_field_label": "QoL 2023→2025 变化（脱敏示例）",
+            "coverage": {
+                "raw_input_units": int(len(rows)),
+                "analysis_units": int(len(rows)),
+                "mapped_features": int(map_update.get("summary", {}).get("feature_count", len(rows))),
+                "ratio": 1.0,
+                "unit_label": "地区示例",
+                "is_full": True,
+            },
+            "effect": {"coef": None, "p_value": None, "estimator": "causal_design_preflight", "direction": "尚未估计"},
+            "credibility": {
+                "grade": "设计预检（未估计）",
+                "decision": "不支持真实宜居治理因果声明",
+                "robustness": "等待客户数据闸门",
+                "reasons": ["当前案例只完成动作—结果设计和数据就绪度展示。"],
+            },
+            "caveats": [
+                "地图使用仓库内脱敏聚合示例，不是客户设施或居民明细。",
+                "审批/候选不等于设施实际完成或投入运营。",
+                "2023 与 2025 两个结果年份不足以检验平行趋势。",
+                "下一步需锁定 calc_version_id，并补齐投运日期、多个前期周期和对照区。",
+            ],
+            "next_action": "客户确认设施投运事件和版本后，运行地区级 DiD/事件研究，并进一步估计设施类型异质性。",
+        },
+    }
 
 
 def _prepare_case_input(case: SCCACaseDefinition, output_dir: Path, row_limit: int | None) -> Path:
@@ -734,6 +1140,18 @@ def _map_field_label(case: SCCACaseDefinition, field: str) -> str:
             "AveAgeDeath": "平均死亡年龄",
             "gc_spatial_total_effect": "空间总效应",
         },
+        "abu_dhabi_flood": {
+            "max_water_depth_m": "节点最大水深（m）· 公共代理诊断",
+            "max_overflow_or_flooding_m3s": "节点最大溢流/积水（m³/s）· 公共代理诊断",
+            "physical_counterfactual_depth_delta_m": "物理反事实水深差值（m）",
+        },
+        "abu_dhabi_livability": {
+            "qol_change_2023_2025": "QoL 2023→2025 变化（脱敏示例）",
+            "qol_2023_score": "QoL 2023 总分（示例）",
+            "qol_2025_score": "QoL 2025 总分（示例）",
+            "refurbishment_candidate": "整治候选（示例）",
+            "refurbishment_completed": "改造完成（待客户确认）",
+        },
     }
     return labels.get(case.case_id, {}).get(field, field or "地图指标")
 
@@ -1076,6 +1494,27 @@ def _tooltip_fields(case: SCCACaseDefinition, map_field: str) -> list[str]:
             "AveAgeDeath",
             "STATE_NAME",
         ]
+    if case.case_id == "abu_dhabi_flood":
+        return [
+            "node_id",
+            map_field,
+            "max_overflow_or_flooding_m3s",
+            "max_total_inflow_m3s",
+            "partition_id",
+            "forcing_source",
+            "calibration_status",
+        ]
+    if case.case_id == "abu_dhabi_livability":
+        return [
+            "district_id",
+            map_field,
+            "qol_2023_score",
+            "qol_2025_score",
+            "refurbishment_candidate",
+            "refurbishment_completed",
+            "calc_version_2023",
+            "calc_version_2025",
+        ]
     return [map_field]
 
 
@@ -1101,6 +1540,31 @@ def _tooltip_labels(case: SCCACaseDefinition, map_field: str) -> dict[str, str]:
                 "STATE_NAME": "州",
                 "SocialAssoc": "社会资本",
                 "AveAgeDeath": "平均死亡年龄",
+            }
+        )
+    elif case.case_id == "abu_dhabi_flood":
+        common.update(
+            {
+                "node_id": "节点 ID",
+                "max_water_depth_m": "节点最大水深（m）",
+                "max_overflow_or_flooding_m3s": "节点最大溢流/积水（m³/s）",
+                "max_total_inflow_m3s": "最大总入流（m³/s）",
+                "partition_id": "SWMM 分区",
+                "forcing_source": "降雨来源",
+                "calibration_status": "校准状态",
+            }
+        )
+    elif case.case_id == "abu_dhabi_livability":
+        common.update(
+            {
+                "district_id": "地区 ID（示例）",
+                "qol_change_2023_2025": "QoL 2023→2025 变化（脱敏示例）",
+                "qol_2023_score": "QoL 2023 总分（示例）",
+                "qol_2025_score": "QoL 2025 总分（示例）",
+                "refurbishment_candidate": "整治候选（示例）",
+                "refurbishment_completed": "改造完成（待客户确认）",
+                "calc_version_2023": "2023 评分版本（示例）",
+                "calc_version_2025": "2025 评分版本（示例）",
             }
         )
     return common

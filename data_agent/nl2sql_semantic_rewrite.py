@@ -13,6 +13,27 @@ from typing import Any
 
 _SQL_STRING_RE = r"('(?:[^']|'')*')"
 _GEOGRAPHIC_SRIDS = {4326, 4490, 4610}
+_SQL_ALIAS_KEYWORDS = frozenset({
+    "AS",
+    "ON",
+    "WHERE",
+    "JOIN",
+    "LEFT",
+    "RIGHT",
+    "FULL",
+    "INNER",
+    "OUTER",
+    "CROSS",
+    "LATERAL",
+    "GROUP",
+    "HAVING",
+    "ORDER",
+    "LIMIT",
+    "OFFSET",
+    "UNION",
+    "EXCEPT",
+    "INTERSECT",
+})
 
 
 @dataclass
@@ -29,6 +50,7 @@ class ColumnInfo:
     unit: str = ""
     semantic_domain: str = ""
     value_semantics: dict[str, Any] = field(default_factory=dict)
+    sample_values: tuple[Any, ...] = ()
 
     @property
     def ref_tokens(self) -> list[str]:
@@ -48,6 +70,7 @@ class TableInfo:
     columns: list[ColumnInfo]
     table_aliases: set[str] = field(default_factory=set)
     schema_complete: bool = False
+    nl2sql_priority: int = 0
 
     @property
     def bare_name(self) -> str:
@@ -63,14 +86,33 @@ class TableInfo:
     def identifier_column(self) -> ColumnInfo | None:
         for col in self.columns:
             vs = col.value_semantics or {}
-            if vs.get("identifier") is True:
+            if vs.get("identifier") is True and not vs.get("non_unique_identifier"):
                 return col
         for col in self.columns:
-            if (col.semantic_domain or "").upper() in {"ID", "IDENTIFIER", "PRIMARY_KEY"}:
+            if (
+                (col.semantic_domain or "").upper()
+                in {"ID", "IDENTIFIER", "PRIMARY_KEY"}
+                and not (col.value_semantics or {}).get("non_unique_identifier")
+            ):
                 return col
         for col in self.columns:
-            if col.column_name.lower() in {"id", "fid", "gid", "objectid"}:
+            if (
+                col.column_name.lower() in {"id", "fid", "gid", "objectid"}
+                and not (col.value_semantics or {}).get("non_unique_identifier")
+            ):
                 return col
+        return None
+
+    def entity_key_column(self) -> ColumnInfo | None:
+        # An explicit governed entity key is stronger than an inferred
+        # identifier domain.  Some source systems expose a constant ``Id``
+        # field while the geometry is the verified unique feature key.
+        for col in self.columns:
+            if (col.value_semantics or {}).get("entity_key") is True:
+                return col
+        identifier = self.identifier_column()
+        if identifier is not None:
+            return identifier
         return None
 
     def geometry_columns(self) -> list[ColumnInfo]:
@@ -118,6 +160,14 @@ def apply_semantic_sql_rewrites(
     if changed:
         corrections.append("semantic_question_alias_table")
 
+    # A CTE that first filters the counted entity and then joins a spatial
+    # detail relation is a common NL2SQL shape.  Normalize it before the
+    # generic join-count policies see the intermediate aliases; otherwise a
+    # road-side identifier can be mistaken for the entity being counted.
+    rewritten, changed = _rewrite_cte_spatial_exists_count(question, rewritten, tables)
+    if changed:
+        corrections.append("semantic_cte_spatial_exists_count")
+
     rewritten, changed = _prefer_exact_physical_column_table(question, rewritten, tables)
     if changed:
         corrections.append("semantic_exact_column_table")
@@ -148,6 +198,15 @@ def apply_semantic_sql_rewrites(
         corrections.append("semantic_column_alias")
         alias_map = _table_alias_map(rewritten, tables)
 
+    rewritten, changed = _rewrite_hierarchy_separator(
+        question,
+        rewritten,
+        tables,
+        alias_map,
+    )
+    if changed:
+        corrections.append("semantic_hierarchy_separator")
+
     rewritten, changed = _rewrite_subquery_geometry_projection_aliases(rewritten, tables)
     if changed:
         corrections.append("semantic_subquery_geometry_projection")
@@ -169,6 +228,11 @@ def apply_semantic_sql_rewrites(
     rewritten, changed = _rewrite_unqualified_select_projection_columns(question, rewritten, tables, alias_map)
     if changed:
         corrections.append("semantic_projection_column")
+
+    rewritten, changed = _qualify_unqualified_known_columns(rewritten, tables)
+    if changed:
+        corrections.append("semantic_unqualified_column_qualified")
+        alias_map = _table_alias_map(rewritten, tables)
 
     refused, changed = _refuse_unknown_columns(rewritten, alias_map)
     if changed:
@@ -202,6 +266,36 @@ def apply_semantic_sql_rewrites(
     if changed:
         corrections.append("semantic_explicit_filter")
 
+    rewritten, changed = _rewrite_requested_name_not_null(
+        question,
+        rewritten,
+        tables,
+        alias_map,
+    )
+    if changed:
+        corrections.append("semantic_requested_name_not_null")
+
+    rewritten, changed = _rewrite_default_contains_string_filters(
+        question,
+        rewritten,
+        alias_map,
+    )
+    if changed:
+        corrections.append("semantic_default_contains_filter")
+
+    rewritten, changed = _rewrite_exact_quoted_literal_disjunction(
+        question,
+        rewritten,
+        tables,
+        alias_map,
+    )
+    if changed:
+        corrections.append("semantic_exact_literal_disjunction")
+
+    rewritten, changed = _rewrite_numeric_boundary_operators(question, rewritten)
+    if changed:
+        corrections.append("semantic_numeric_boundary")
+
     rewritten, changed = _rewrite_composite_like_filter_from_question(question, rewritten, tables, alias_map)
     if changed:
         corrections.append("semantic_composite_like_filter")
@@ -222,6 +316,15 @@ def apply_semantic_sql_rewrites(
     if changed:
         corrections.append("semantic_aggregate_projection_order")
 
+    rewritten, changed = _rewrite_missing_entity_label_projection(
+        question,
+        rewritten,
+        tables,
+        alias_map,
+    )
+    if changed:
+        corrections.append("semantic_entity_label_projection")
+
     rewritten, changed = _rewrite_origin_destination_projection(question, rewritten, tables, alias_map)
     if changed:
         corrections.append("semantic_origin_destination_projection")
@@ -230,13 +333,22 @@ def apply_semantic_sql_rewrites(
     if changed:
         corrections.append("semantic_unit_threshold")
 
-    rewritten, changed = _rewrite_population_total_row_exclusion(question, rewritten, tables, alias_map)
+    rewritten, changed = _rewrite_configured_total_row_exclusion(
+        question,
+        rewritten,
+        tables,
+        alias_map,
+    )
     if changed:
-        corrections.append("semantic_population_total_exclusion")
+        corrections.append("semantic_total_row_exclusion")
 
     rewritten, changed = _rewrite_precomputed_area(question, rewritten, tables, alias_map)
     if changed:
         corrections.append("semantic_area_metric")
+
+    rewritten, changed = _rewrite_configured_geodesic_area(rewritten, alias_map)
+    if changed:
+        corrections.append("semantic_configured_geodesic_area")
 
     rewritten, changed = _qualify_unqualified_area_geometry(rewritten, tables, alias_map)
     if changed:
@@ -257,6 +369,16 @@ def apply_semantic_sql_rewrites(
     rewritten, changed = _rewrite_scalar_spatial_subquery_join(rewritten, tables)
     if changed:
         corrections.append("semantic_scalar_spatial_subquery")
+        alias_map = _table_alias_map(rewritten, tables)
+
+    rewritten, changed = _rewrite_scalar_distance_subquery_cross_join(
+        question,
+        rewritten,
+        tables,
+        alias_map,
+    )
+    if changed:
+        corrections.append("semantic_scalar_distance_subquery")
         alias_map = _table_alias_map(rewritten, tables)
 
     rewritten, changed = _rewrite_spatial_srid_transforms(rewritten, alias_map)
@@ -291,13 +413,73 @@ def apply_semantic_sql_rewrites(
     if changed:
         corrections.append("semantic_knn_join")
 
+    rewritten, changed = _rewrite_named_center_radius_join_to_cross_join(question, rewritten)
+    if changed:
+        corrections.append("semantic_single_center")
+
     rewritten, changed = _rewrite_knn_string_filters(question, rewritten)
     if changed:
         corrections.append("semantic_knn_filter")
 
+    rewritten, changed = _rewrite_existing_single_row_target_order(
+        question,
+        rewritten,
+        tables,
+    )
+    if changed:
+        corrections.append("semantic_single_target_order")
+
+    rewritten, changed = _rewrite_knn_left_target_subquery(
+        question,
+        rewritten,
+        tables,
+        alias_map,
+    )
+    if changed:
+        corrections.append("semantic_knn_target")
+
     rewritten, changed = _rewrite_knn_single_target_cross_join(question, rewritten, tables, alias_map)
     if changed:
         corrections.append("semantic_knn_target")
+
+    rewritten, changed = _rewrite_knn_correlated_lateral_to_single_target(
+        question,
+        rewritten,
+    )
+    if changed:
+        corrections.append("semantic_knn_target")
+        alias_map = _table_alias_map(rewritten, tables)
+        rewritten, metric_changed = _rewrite_st_distance_srid_transforms(
+            rewritten,
+            alias_map,
+        )
+        if metric_changed:
+            corrections.append("semantic_distance_srid_transform")
+        rewritten, metric_order_changed = _rewrite_knn_metric_order(
+            question,
+            rewritten,
+            alias_map,
+        )
+        if metric_order_changed:
+            corrections.append("semantic_knn_metric_order")
+
+    rewritten, changed = _rewrite_knn_join_to_per_entity_lateral(
+        question,
+        rewritten,
+    )
+    if changed:
+        corrections.append("semantic_per_entity_knn_lateral")
+
+    rewritten, changed = _rewrite_knn_cross_join_to_per_entity_lateral(
+        question,
+        rewritten,
+    )
+    if changed:
+        corrections.append("semantic_per_entity_knn_lateral")
+
+    rewritten, changed = _rewrite_dummy_single_target_order(question, rewritten)
+    if changed:
+        corrections.append("semantic_dummy_target_order_pruned")
 
     rewritten, changed = _rewrite_existential_spatial_join_aggregate(question, rewritten)
     if changed:
@@ -311,6 +493,14 @@ def apply_semantic_sql_rewrites(
     if changed:
         corrections.append("semantic_requested_containment")
 
+    rewritten, changed = _rewrite_ranked_partition_group_label(
+        question,
+        rewritten,
+        alias_map,
+    )
+    if changed:
+        corrections.append("semantic_rank_partition_group_label")
+
     rewritten, changed = _rewrite_ranked_metric_not_null(question, rewritten, tables, alias_map)
     if changed:
         corrections.append("semantic_rank_metric_not_null")
@@ -318,6 +508,10 @@ def apply_semantic_sql_rewrites(
     rewritten, changed = _rewrite_requested_spatial_predicate(question, rewritten)
     if changed:
         corrections.append("semantic_requested_spatial_predicate")
+
+    rewritten, changed = _rewrite_universal_grouped_count_join(question, rewritten)
+    if changed:
+        corrections.append("semantic_universal_group_left_join")
 
     rewritten, changed = _rewrite_distinct_name_not_null(question, rewritten, tables, alias_map)
     if changed:
@@ -344,13 +538,33 @@ def apply_semantic_sql_rewrites(
     if changed:
         corrections.append("semantic_grouped_spatial_count")
 
+    rewritten, changed = _rewrite_missing_group_label_projection(
+        question,
+        rewritten,
+        alias_map,
+    )
+    if changed:
+        corrections.append("semantic_group_label_projection")
+
     rewritten, changed = _rewrite_distinct_entity_count(question, rewritten, tables, alias_map)
     if changed:
         corrections.append("semantic_distinct_join_count")
 
+    rewritten, changed = _rewrite_tuple_top_per_group(question, rewritten)
+    if changed:
+        corrections.append("semantic_top_per_group_stable_key")
+
     rewritten, changed = _rewrite_centroid_label_projection_order(question, rewritten)
     if changed:
         corrections.append("semantic_centroid_projection_order")
+
+    rewritten, changed = _rewrite_centroid_coordinate_projection(question, rewritten)
+    if changed:
+        corrections.append("semantic_centroid_coordinates")
+
+    rewritten, changed = _rewrite_explicit_group_name_order(question, rewritten, alias_map)
+    if changed:
+        corrections.append("semantic_explicit_name_order")
 
     rewritten, changed = _rewrite_conditional_sum_pivot_to_grouped_rows(question, rewritten)
     if changed:
@@ -403,12 +617,14 @@ def _build_tables(context: dict) -> list[TableInfo]:
                 unit=str(col.get("unit") or ""),
                 semantic_domain=str(col.get("semantic_domain") or ""),
                 value_semantics=vs if isinstance(vs, dict) else {},
+                sample_values=tuple(col.get("sample_values") or ()),
             ))
         tables.append(TableInfo(
             table_name=table_name,
             columns=columns,
             table_aliases=table_aliases,
             schema_complete=bool(table.get("schema_complete")),
+            nl2sql_priority=int(table.get("nl2sql_priority") or 0),
         ))
     return tables
 
@@ -526,15 +742,43 @@ def _prefer_question_aliased_candidate_table(
         current = _table_for_ref(table_ref, tables)
         if not current:
             return match.group(0)
+        # An explicit physical table name in the question is an intentional
+        # source selection, even when a governed sibling has a higher alias
+        # score or priority.  This matters in mixed CTE/spatial queries where
+        # the question names both the filtered source and the relation used
+        # for the spatial predicate.
+        if _question_mentions_table_name(question, current):
+            return match.group(0)
         current_hits = hit_scores.get(current.table_name, 0)
         candidates: list[tuple[int, TableInfo]] = []
         for table in tables:
             if table is current:
                 continue
             hits = hit_scores.get(table.table_name, 0)
-            if hits <= current_hits:
+            # A governed authoritative source may intentionally outrank a
+            # generic sibling even when its business alias is less literal. The
+            # referenced-column compatibility check below still prevents
+            # this policy from moving a building/road role into the land-use
+            # relation.
+            priority_upgrade = table.nl2sql_priority > current.nl2sql_priority
+            if hits <= current_hits and not priority_upgrade:
                 continue
-            if not _table_can_replace_referenced_table(sql, current, table):
+            # A query can explicitly name two different business roles, for
+            # example parcels and roads.  A parcel source may have more alias
+            # hits than the road source, but that is not permission to replace
+            # the road side of a spatial join.  Priority upgrades remain valid
+            # for sibling sources that share at least one governed role alias.
+            if (
+                current_hits > 0
+                and not _tables_share_business_role(current, table)
+            ):
+                continue
+            if not _table_can_replace_referenced_table(
+                sql,
+                current,
+                table,
+                allow_geometry_alias=current_hits == 0 or priority_upgrade,
+            ):
                 continue
             candidates.append((hits, table))
         if not candidates:
@@ -552,6 +796,28 @@ def _prefer_question_aliased_candidate_table(
     )
     rewritten, n = pattern.subn(repl, sql or "")
     return rewritten, bool(n and rewritten != (sql or ""))
+
+
+def _tables_share_business_role(first: TableInfo, second: TableInfo) -> bool:
+    ignored = {
+        "data",
+        "dataset",
+        "table",
+        "数据",
+        "信息",
+        "图层",
+        "空间",
+    }
+
+    def role_aliases(table: TableInfo) -> set[str]:
+        aliases: set[str] = set()
+        for raw in table.table_aliases:
+            value = _strip_identifier_quotes(str(raw or "")).strip().casefold()
+            if value and value not in ignored:
+                aliases.add(value)
+        return aliases
+
+    return bool(role_aliases(first) & role_aliases(second))
 
 
 def _question_table_alias_hits(question: str, table: TableInfo) -> int:
@@ -579,13 +845,40 @@ def _question_contains_table_alias_token(question: str, token: str) -> bool:
     return bool(re.search(rf"(?<![A-Za-z0-9_]){re.escape(token)}(?![A-Za-z0-9_])", q, flags=re.IGNORECASE))
 
 
-def _table_can_replace_referenced_table(sql: str, current: TableInfo, candidate: TableInfo) -> bool:
+def _table_can_replace_referenced_table(
+    sql: str,
+    current: TableInfo,
+    candidate: TableInfo,
+    *,
+    allow_geometry_alias: bool = False,
+) -> bool:
     qualifiers = _qualifiers_for_referenced_table(sql, current)
     referenced_cols: set[str] = set()
     for qualifier in qualifiers:
         referenced_cols.update(_column_tokens_for_qualifier(sql, qualifier))
     if referenced_cols:
-        return all(_table_accepts_column_token(candidate, col) for col in referenced_cols)
+        # Geometry aliases are intentionally broad (``shape`` and
+        # ``geometry`` are common semantic labels), but they are not
+        # interchangeable when deciding whether one relation can replace
+        # another.  A rewrite such as roads.geometry -> districts.shape can
+        # otherwise produce a syntactically plausible query with the wrong
+        # role.  Require the candidate to expose the same physical geometry
+        # token before allowing a relation replacement.
+        for col in referenced_cols:
+            normalized = _strip_identifier_quotes(col).lower()
+            if normalized in {"geometry", "geom", "shape", "the_geom"}:
+                if allow_geometry_alias and _table_accepts_column_token(candidate, col):
+                    continue
+                if not any(
+                    item.is_geometry
+                    and item.column_name.lower() == normalized
+                    for item in candidate.columns
+                ):
+                    return False
+                continue
+            if not _table_accepts_column_token(candidate, col):
+                return False
+        return True
     current_cols = {
         col.column_name.lower()
         for col in current.columns
@@ -600,7 +893,7 @@ def _table_can_replace_referenced_table(sql: str, current: TableInfo, candidate:
     # Unqualified columns cannot be assigned to a table safely with a regex.
     # Only replace when the candidate covers the current relation's complete
     # non-spatial schema; a loose overlap can corrupt a valid CTE before the
-    # unknown-column guard runs (for example roads -> POI on "高德POI").
+    # unknown-column guard runs.
     return bool(current_cols and current_cols.issubset(candidate_tokens))
 
 
@@ -672,7 +965,12 @@ def _prefer_exact_physical_column_table(
             if hits > best_hits:
                 best = table
                 best_hits = hits
-        if best is current or best_hits < min_hits or best_hits <= current_hits:
+        if (
+            best is current
+            or best_hits < min_hits
+            or best_hits <= current_hits
+            or not _table_can_replace_referenced_table(sql, current, best)
+        ):
             return match.group(0)
         replacement = best.table_name
         return f"{prefix}{quote}{replacement}{quote}{suffix}"
@@ -1104,6 +1402,31 @@ def _table_alias_map(sql: str, tables: list[TableInfo]) -> dict[str, tuple[Table
         if referenced:
             alias_map[table.bare_name] = (table, None)
             alias_map[table.table_name] = (table, None)
+    # A governed derived table is still a projection of its physical table.
+    # Parse its balanced parentheses instead of using ``.*?\)``: the latter
+    # stops at an inner function such as ``ST_Distance(...)`` and can promote
+    # ``LIMIT`` or ``ORDER`` to a table alias.
+    for match in re.finditer(r"\(\s*SELECT\b", sql or "", flags=re.IGNORECASE):
+        close = _find_matching_paren(sql or "", match.start())
+        if close < 0:
+            continue
+        alias_match = re.match(
+            r"\s+(?:AS\s+)?(?P<alias>[A-Za-z_][A-Za-z0-9_]*)\b",
+            (sql or "")[close + 1:],
+            flags=re.IGNORECASE,
+        )
+        if not alias_match:
+            continue
+        alias = _strip_identifier_quotes(alias_match.group("alias"))
+        if not alias or alias.upper() in _SQL_ALIAS_KEYWORDS:
+            continue
+        inner_sql = (sql or "")[match.end():close]
+        table_refs = _table_refs_in_fragment(inner_sql)
+        if not table_refs:
+            continue
+        table = _table_for_ref(_strip_identifier_quotes(table_refs[0]), tables)
+        if table is not None:
+            alias_map[alias] = (table, None)
     return alias_map
 
 
@@ -1360,11 +1683,90 @@ def _question_literal_filter_for_table(question: str, table: TableInfo) -> tuple
     literals = _question_quoted_literals(question)
     if len(literals) != 1:
         return None
-    for preferred in ("dlmc", "DLMC", "land_name", "type", "kind", "name"):
-        col = table.column_by_name(preferred)
-        if col and not col.is_geometry:
-            return col, literals[0]
+    col = _governed_literal_column(table, literals[0])
+    if col is not None:
+        return col, literals[0]
     return None
+
+
+def _governed_literal_column(table: TableInfo, literal: str) -> ColumnInfo | None:
+    """Resolve an implicit literal only from governed column metadata.
+
+    A physical field name is never preferred here. Exact value-domain evidence
+    wins, followed by an explicit default-filter role. With no governance
+    evidence, the only safe fallback is a schema containing exactly one textual
+    non-geometry column.
+    """
+    literal_norm = _normalize_match_text(literal)
+    ranked: list[tuple[int, ColumnInfo]] = []
+    textual: list[ColumnInfo] = []
+    for col in table.columns:
+        if col.is_geometry:
+            continue
+        if _is_textual_column(col):
+            textual.append(col)
+        semantics = col.value_semantics or {}
+        score = 0
+        if semantics.get("literal_filter_default") is True:
+            score += 8
+        domain = (col.semantic_domain or "").strip().casefold()
+        if domain in {"category", "classification", "enum", "label", "name", "type"}:
+            score += 2
+        values = list(col.sample_values)
+        values.extend(_governed_column_values(semantics))
+        normalized_values = {
+            _normalize_match_text(value)
+            for value in values
+            if _normalize_match_text(value)
+        }
+        if literal_norm and literal_norm in normalized_values:
+            score += 16
+        if score:
+            ranked.append((score, col))
+    if ranked:
+        best_score = max(score for score, _ in ranked)
+        best = [col for score, col in ranked if score == best_score]
+        if len(best) == 1:
+            return best[0]
+    if len(textual) == 1:
+        return textual[0]
+    return None
+
+
+def _normalize_match_text(value: Any) -> str:
+    return re.sub(r"\s+", "", str(value or "")).casefold()
+
+
+def _governed_column_values(semantics: dict[str, Any]) -> list[Any]:
+    values: list[Any] = []
+    for item in semantics.get("enum") or []:
+        if isinstance(item, dict):
+            values.extend(item.get(key) for key in ("value", "meaning", "label", "name"))
+            values.extend(item.get("aliases") or [])
+        else:
+            values.append(item)
+    for group in semantics.get("semantic_groups") or []:
+        if not isinstance(group, dict):
+            continue
+        values.extend(group.get("values") or [])
+        values.extend(group.get("aliases") or [])
+    return [value for value in values if value not in (None, "")]
+
+
+def _is_textual_column(col: ColumnInfo) -> bool:
+    pg_type = (col.pg_type or "").casefold()
+    if any(token in pg_type for token in ("char", "text", "string", "varchar")):
+        return True
+    domain = (col.semantic_domain or "").casefold()
+    return domain in {
+        "category",
+        "classification",
+        "enum",
+        "label",
+        "name",
+        "type",
+        "text",
+    }
 
 
 def _rewrite_subquery_geometry_srid_transforms(
@@ -1562,6 +1964,114 @@ def _rewrite_unqualified_select_projection_columns(
     return sql[:select_start] + " " + rewritten_select.lstrip() + sql[from_pos:], True
 
 
+def _qualify_unqualified_known_columns(
+    sql: str,
+    tables: list[TableInfo],
+) -> tuple[str, bool]:
+    """Qualify physical columns inside each SELECT scope.
+
+    LLM SQL commonly leaves a mixed-case identifier such as ``Id``
+    unqualified inside a scalar subquery while qualifying the outer query.
+    PostgreSQL then folds it to ``id`` and raises ``column does not exist``.
+    Use sqlglot's scope tree to qualify only unqualified columns that belong
+    to exactly one governed relation in that SELECT.  Ambiguous columns,
+    output aliases, and incomplete schemas are left untouched for the normal
+    safety/retry path.
+    """
+    if not sql or not tables:
+        return sql, False
+    try:
+        import sqlglot
+        from sqlglot import exp
+
+        parsed = sqlglot.parse_one(sql, read="postgres")
+    except Exception:
+        return sql, False
+    if parsed is None:
+        return sql, False
+
+    by_name = {
+        table.table_name.lower(): table
+        for table in tables
+        if table.schema_complete
+    }
+    by_name.update(
+        {
+            table.bare_name.lower(): table
+            for table in tables
+            if table.schema_complete
+        }
+    )
+    changed = False
+
+    def nearest_select(node: exp.Expression) -> exp.Select | None:
+        parent = node.parent
+        while parent is not None and not isinstance(parent, exp.Select):
+            parent = parent.parent
+        return parent if isinstance(parent, exp.Select) else None
+
+    for select in parsed.find_all(exp.Select):
+        # The top-level query already passes through the established column
+        # alias/quoting rewrites.  This helper is specifically for nested
+        # scalar/EXISTS scopes, where an unqualified mixed-case identifier can
+        # otherwise be folded by PostgreSQL before the schema-aware pass sees
+        # it.
+        parent = select.parent
+        nested = False
+        while parent is not None:
+            if isinstance(parent, exp.Select):
+                nested = True
+                break
+            parent = parent.parent
+        if not nested:
+            continue
+        sources: list[tuple[TableInfo, str]] = []
+        from_clause = select.args.get("from_")
+        source_nodes: list[exp.Expression] = []
+        if from_clause is not None and from_clause.this is not None:
+            source_nodes.append(from_clause.this)
+        for join in select.args.get("joins") or []:
+            if join.this is not None:
+                source_nodes.append(join.this)
+        for source in source_nodes:
+            if not isinstance(source, exp.Table):
+                continue
+            table = by_name.get(source.name.lower())
+            if table is None:
+                continue
+            sources.append((table, source.alias_or_name or table.bare_name))
+        if not sources:
+            continue
+
+        for column in select.find_all(exp.Column):
+            if nearest_select(column) is not select or column.table:
+                continue
+            token = column.name
+            if not token or token == "*":
+                continue
+            matches = [
+                (table, qualifier, table.column_by_name(token))
+                for table, qualifier in sources
+                if table.column_by_name(token) is not None
+            ]
+            if len(matches) != 1:
+                continue
+            table, qualifier, info = matches[0]
+            # Lower-case identifiers are already valid unquoted SQL.  The
+            # repair is needed for mixed-case/quoted physical fields; leave
+            # ordinary geometry/objectid
+            # projections in their existing compact form.
+            if info is None or not info.needs_quoting:
+                continue
+            column.set("table", exp.to_identifier(str(qualifier)))
+            column.set("this", exp.to_identifier(info.column_name, quoted=True))
+            changed = True
+
+    if not changed:
+        return sql, False
+    return parsed.sql(dialect="postgres"), True
+
+
 def _rewrite_projection_column_token(
     projection: str,
     question: str,
@@ -1713,6 +2223,62 @@ def _replace_eq_with_in(sql: str, qualifier: str | None, col: ColumnInfo, values
         lambda m: f"{m.group('ref')} IN ({value_list})",
         sql,
     )
+
+
+def _rewrite_hierarchy_separator(
+    question: str,
+    sql: str,
+    tables: list[TableInfo],
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    """Use the governed physical separator for hierarchical text fields."""
+    q_low = (question or "").casefold()
+    if not any(
+        marker in q_low
+        for marker in (
+            "第一个",
+            "第一级",
+            "首级",
+            "逗号前",
+            "分号前",
+            "first segment",
+            "first level",
+            "before the first",
+        )
+    ):
+        return sql, False
+    rewritten = sql or ""
+    changed = False
+    referenced_tables = {table.table_name for table, _ in alias_map.values()}
+    for table in tables:
+        if table.table_name not in referenced_tables:
+            continue
+        qualifiers = _qualifiers_for_table(alias_map, table)
+        for column in table.columns:
+            separator = str((column.value_semantics or {}).get("hierarchy_separator") or "")
+            if not separator:
+                continue
+            tokens = {
+                column.column_name.casefold(),
+                _strip_identifier_quotes(column.quoted_ref).casefold(),
+                *(str(alias).casefold() for alias in column.aliases),
+            }
+            if not any(token and token in q_low for token in tokens):
+                continue
+            refs = [column.quoted_ref, column.column_name]
+            refs.extend(f"{qualifier}.{column.quoted_ref}" for qualifier in qualifiers)
+            if not any(re.search(re.escape(ref), rewritten, flags=re.IGNORECASE) for ref in refs):
+                continue
+            escaped = separator.replace("'", "''")
+            updated = re.sub(
+                r"(?P<quote>['\"])(?:,|，|;|；)(?P=quote)",
+                f"'{escaped}'",
+                rewritten,
+            )
+            if updated != rewritten:
+                rewritten = updated
+                changed = True
+    return rewritten, changed
 
 
 def _rewrite_literal_column_overrides(
@@ -1988,17 +2554,28 @@ def _rewrite_enum_filters(
             for item in enum_values:
                 if not isinstance(item, dict) or "value" not in item:
                     continue
-                probes = [
-                    str(item.get("meaning") or "").lower(),
-                    str(item.get("label") or "").lower(),
-                    str(item.get("name") or "").lower(),
+                raw_value = item.get("value")
+                raw_probe = str(raw_value if raw_value is not None else "")
+                descriptive_probes = [
+                    str(item.get("meaning") or ""),
+                    str(item.get("label") or ""),
+                    str(item.get("name") or ""),
                 ]
-                if any(probe and probe in q_low for probe in probes):
-                    matched_values.append(item.get("value"))
+                descriptive_match = any(
+                    _question_contains_enum_probe(q_low, probe)
+                    for probe in descriptive_probes
+                )
+                raw_match = _question_contains_enum_probe(q_low, raw_probe)
+                raw_is_ambiguous = (
+                    isinstance(raw_value, (int, float))
+                    or len(raw_probe.strip()) <= 1
+                )
+                if raw_is_ambiguous and not _question_mentions_column(question, col):
+                    raw_match = False
+                if descriptive_match or raw_match:
+                    matched_values.append(raw_value)
             matched_values = list(dict.fromkeys(matched_values))
             if not matched_values:
-                continue
-            if not _sql_groups_by_column(rewritten, col, qualifiers):
                 continue
             if _where_clause_references_column(rewritten, col, qualifiers):
                 continue
@@ -2012,6 +2589,27 @@ def _rewrite_enum_filters(
                 rewritten = rewritten2
                 changed = True
     return rewritten, changed
+
+
+def _question_contains_enum_probe(question: str, probe: str) -> bool:
+    """Match enum labels as terms, not arbitrary substrings.
+
+    Single-character codes such as ``T`` and ``F`` previously matched almost
+    every English question and injected unrelated bridge/tunnel/oneway
+    predicates.  Chinese labels intentionally retain substring matching;
+    ASCII labels and codes require identifier boundaries.
+    """
+    value = str(probe or "").strip().casefold()
+    if not value:
+        return False
+    if any("\u4e00" <= ch <= "\u9fff" for ch in value):
+        return value in (question or "").casefold()
+    return bool(
+        re.search(
+            rf"(?<![A-Za-z0-9_]){re.escape(value)}(?![A-Za-z0-9_])",
+            (question or "").casefold(),
+        )
+    )
 
 
 def _rewrite_enum_case_display_to_raw_code(
@@ -2216,11 +2814,94 @@ def _rewrite_explicit_question_filters(
             predicate = _explicit_question_string_filter(question, col, qualifiers)
             if not predicate:
                 continue
+            if _question_value_owned_by_other_enum_table(
+                question,
+                predicate,
+                col,
+                tables,
+                referenced_tables,
+            ):
+                continue
             rewritten2 = _inject_predicate(rewritten, predicate)
             if rewritten2 != rewritten:
                 rewritten = rewritten2
                 changed = True
     return rewritten, changed
+
+
+def _question_value_owned_by_other_enum_table(
+    question: str,
+    predicate: str,
+    current_col: ColumnInfo,
+    tables: list[TableInfo],
+    referenced_tables: set[str],
+) -> bool:
+    """Avoid applying a literal to a same-named column in the wrong role.
+
+    For example, ``类型为 'primary' 的主干道`` names a road enum value.  A POI
+    table may also expose a generic ``类型`` column, but injecting
+    ``poi.类型 = 'primary'`` changes the meaning of the request.  Governed enum
+    values provide a stronger signal than a generic alias.
+    """
+    values = re.findall(r"'((?:[^']|'')*)'", predicate or "")
+    if not values:
+        return False
+    current_table_name = current_col.table_name
+    for value in values:
+        for table in tables:
+            if table.table_name not in referenced_tables or table.table_name == current_table_name:
+                continue
+            for col in table.columns:
+                if not _column_enum_contains(col, value):
+                    continue
+                if _column_enum_contains(current_col, value):
+                    continue
+                return True
+    return False
+
+
+def _column_enum_contains(column: ColumnInfo, value: str) -> bool:
+    target = str(value or "").casefold()
+    for item in (column.value_semantics or {}).get("enum") or []:
+        if isinstance(item, dict):
+            probes = (item.get("value"), item.get("code"), item.get("label"), item.get("name"))
+        else:
+            probes = (item,)
+        if any(str(probe or "").casefold() == target for probe in probes):
+            return True
+    for group in (column.value_semantics or {}).get("semantic_groups") or []:
+        if not isinstance(group, dict):
+            continue
+        if any(str(item or "").casefold() == target for item in (group.get("values") or [])):
+            return True
+    return False
+
+
+def _rewrite_configured_geodesic_area(
+    sql: str,
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    """Apply a geography-area conversion only when the schema governs it."""
+    pattern = re.compile(
+        r"ST_Area\s*\(\s*ST_Transform\s*\(\s*(?P<geom>(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))"
+        r"\s*,\s*(?:'[^']*'|\d+)\s*(?:,\s*(?:'[^']*'|\d+)\s*(?:,\s*TRUE)?\s*)?\)\s*\)",
+        flags=re.IGNORECASE,
+    )
+
+    def repl(match: re.Match) -> str:
+        geom_ref = match.group("geom")
+        column = _lookup_any_column_ref(geom_ref, alias_map)
+        policy = str(
+            (column.value_semantics or {}).get("area_measurement")
+            if column is not None
+            else ""
+        ).strip().casefold()
+        if policy not in {"geodesic", "geography", "ellipsoidal"}:
+            return match.group(0)
+        return f"ST_Area({geom_ref}::geography)"
+
+    rewritten, n = pattern.subn(repl, sql or "")
+    return rewritten, bool(n and rewritten != (sql or ""))
 
 
 def _explicit_question_string_filter(question: str, col: ColumnInfo, qualifiers: list[str]) -> str:
@@ -2233,6 +2914,144 @@ def _explicit_question_string_filter(question: str, col: ColumnInfo, qualifiers:
             return f"{ref} = {_format_sql_literal(values[0])}"
         return f"{ref} IN ({', '.join(_format_sql_literal(v) for v in values)})"
     return ""
+
+
+def _rewrite_default_contains_string_filters(
+    question: str,
+    sql: str,
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    """Apply a governed contains-match policy to generated string equality.
+
+    Place names commonly have suffixes such as campus or station qualifiers.
+    The policy lives in ``value_semantics`` so deployments can opt individual
+    columns in without introducing dataset names in the rewrite engine.
+    """
+    q = question or ""
+    if re.search(r"(?:精确|完全)(?:匹配|等于)|\bexact(?:ly)?\b", q, flags=re.IGNORECASE):
+        return sql, False
+    # Technical prompts may state the comparison operator explicitly. Do not
+    # broaden that contract to a
+    # contains search merely because the catalog's default name policy is
+    # fuzzy; the caller has already supplied the exact predicate semantics.
+    if re.search(r"=|\b(?:equal|equals|equal to)\b|等于|严格为", q, flags=re.IGNORECASE):
+        return sql, False
+    pattern = re.compile(
+        r"(?P<ref>(?:(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*)?"
+        r"(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))\s*=\s*"
+        r"'(?P<literal>(?:[^']|'')*)'",
+        flags=re.IGNORECASE,
+    )
+
+    def repl(match: re.Match) -> str:
+        literal = match.group("literal").replace("''", "'")
+        if not literal or "%" in literal or not _question_mentions_sql_literal(q, literal):
+            return match.group(0)
+        column = _lookup_any_column_ref(match.group("ref"), alias_map)
+        if column is None:
+            return match.group(0)
+        policy = str(
+            (column.value_semantics or {}).get("default_string_match")
+            or (column.value_semantics or {}).get("default_match")
+            or ""
+        ).strip().casefold()
+        if policy not in {"contains", "like_contains", "fuzzy_contains"}:
+            return match.group(0)
+        escaped = literal.replace("'", "''")
+        return f"{match.group('ref')} LIKE '%{escaped}%'"
+
+    rewritten = pattern.sub(repl, sql or "")
+    return rewritten, rewritten != (sql or "")
+
+
+def _rewrite_exact_quoted_literal_disjunction(
+    question: str,
+    sql: str,
+    tables: list[TableInfo],
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    """Keep one quoted search phrase intact across name/category alternatives."""
+    q = question or ""
+    q_low = q.casefold()
+    literals = _question_quoted_literals(q)
+    if len(literals) != 1 or "包含" not in q_low:
+        return sql, False
+    mentions_name = any(token in q_low for token in ("name", "名称", "名字"))
+    mentions_category = any(token in q_low for token in ("type", "category", "类型", "分类"))
+    if not mentions_name or not mentions_category or not re.search(r"(?:或|\bor\b)", q_low):
+        return sql, False
+    if not _top_level_clause_bounds(sql or "", "WHERE", ("GROUP BY", "HAVING", "ORDER BY", "LIMIT")):
+        return sql, False
+
+    referenced = {table.table_name for table, _ in alias_map.values()}
+    for table in tables:
+        if table.table_name not in referenced:
+            continue
+        name_cols = [col for col in table.columns if _column_is_name_like(col)]
+        category_cols = [col for col in table.columns if _column_looks_like_category(col)]
+        if len(name_cols) != 1 or len(category_cols) != 1:
+            continue
+        qualifiers = _qualifiers_for_table(alias_map, table)
+        if not _where_clause_references_column(sql, name_cols[0], qualifiers):
+            continue
+        if not _where_clause_references_column(sql, category_cols[0], qualifiers):
+            continue
+        name_ref = _preferred_column_ref_for_filter(name_cols[0], qualifiers)
+        category_ref = _preferred_column_ref_for_filter(category_cols[0], qualifiers)
+        escaped = literals[0].replace("'", "''")
+        predicate = (
+            f"({name_ref} LIKE '%{escaped}%' OR "
+            f"{category_ref} LIKE '%{escaped}%')"
+        )
+        rewritten = _replace_top_level_where_body(sql or "", [predicate])
+        return rewritten, rewritten != (sql or "")
+    return sql, False
+
+
+def _rewrite_numeric_boundary_operators(question: str, sql: str) -> tuple[str, bool]:
+    """Align SQL comparison operators with explicit natural-language bounds."""
+    q = question or ""
+    pattern = re.compile(
+        r"(?P<ref>(?:(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*)?"
+        r"(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))\s*"
+        r"(?P<op>>=|<=|>|<)\s*(?P<num>\d+(?:\.\d+)?)\b",
+        flags=re.IGNORECASE,
+    )
+
+    def expected_operator(number: str) -> str:
+        number_re = re.escape(number)
+        inclusive_high = (
+            rf"(?:不少于|至少|不低于)\s*{number_re}\b",
+            rf"(?<![\d.]){number_re}\s*[^\d]{{0,6}}(?:及以上|以上|起)"
+        )
+        exclusive_high = (
+            rf"(?:超过|大于|高于|多于)\s*{number_re}\b",
+        )
+        inclusive_low = (
+            rf"(?:不超过|至多|最多|不高于)\s*{number_re}\b",
+            rf"(?<![\d.]){number_re}\s*[^\d]{{0,6}}(?:及以下|以下)"
+        )
+        exclusive_low = (
+            rf"(?:小于|低于|少于)\s*{number_re}\b",
+        )
+        for operator, expressions in (
+            (">=", inclusive_high),
+            (">", exclusive_high),
+            ("<=", inclusive_low),
+            ("<", exclusive_low),
+        ):
+            if any(re.search(expr, q, flags=re.IGNORECASE) for expr in expressions):
+                return operator
+        return ""
+
+    def repl(match: re.Match) -> str:
+        operator = expected_operator(match.group("num"))
+        if not operator or operator == match.group("op"):
+            return match.group(0)
+        return f"{match.group('ref')} {operator} {match.group('num')}"
+
+    rewritten = pattern.sub(repl, sql or "")
+    return rewritten, rewritten != (sql or "")
 
 
 def _explicit_filter_column_tokens(col: ColumnInfo) -> list[str]:
@@ -2572,7 +3391,7 @@ def _question_requests_positive_filter(question: str) -> bool:
         "non-zero",
         "has speed limit",
     )
-    return any(marker in q_low for marker in markers)
+    return any(marker in q_low for marker in markers) or _question_requests_containment(question)
 
 
 def _remove_where_predicates(sql: str, should_remove) -> tuple[str, bool]:
@@ -2658,6 +3477,88 @@ def _requested_scalar_aggregate_functions(question: str) -> set[str]:
     if any(token in q_low for token in ("sum", "total", "\u603b\u548c", "\u5408\u8ba1", "\u6c42\u548c")):
         requested.add("SUM")
     return requested
+
+
+def _rewrite_missing_entity_label_projection(
+    question: str,
+    sql: str,
+    tables: list[TableInfo],
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    """Keep the entity label beside a requested per-entity metric."""
+    q_low = (question or "").casefold()
+    if not re.search(r"(?:\b(?:each|every|per)\b|各|每个|每条)", q_low):
+        return sql, False
+    if re.search(r"\b(?:GROUP\s+BY|DISTINCT|COUNT|SUM|AVG|MIN|MAX)\b", sql or "", re.IGNORECASE):
+        return sql, False
+    select_positions = _top_level_keyword_positions(sql or "", "SELECT")
+    from_positions = _top_level_keyword_positions(sql or "", "FROM")
+    if not select_positions or not from_positions:
+        return sql, False
+    select_pos = select_positions[-1]
+    from_pos = next((pos for pos in from_positions if pos > select_pos), None)
+    if from_pos is None:
+        return sql, False
+    select_body = (sql or "")[select_pos + len("SELECT"):from_pos]
+    selected = [item.strip() for item in _split_top_level_args(select_body) if item.strip()]
+    if not selected or any("(" in item for item in selected):
+        return sql, False
+
+    first_relation = _first_top_level_from(sql or "")
+    if not first_relation:
+        return sql, False
+    table_ref, relation_alias = first_relation
+    table = _table_for_ref(table_ref, tables)
+    if table is None:
+        entry = alias_map.get(relation_alias or "")
+        table = entry[0] if entry else None
+    if table is None:
+        return sql, False
+    selected_columns = {
+        column.column_name.casefold()
+        for item in selected
+        if (column := _lookup_any_column_ref(
+            re.split(r"\s+AS\s+", item, maxsplit=1, flags=re.IGNORECASE)[0].strip(),
+            alias_map,
+        ))
+    }
+    if not selected_columns:
+        return sql, False
+    metric_domains = {
+        "area",
+        "measure",
+        "metric",
+        "number",
+        "population",
+        "quantity",
+        "ratio",
+        "score",
+    }
+    if not any(
+        (column.semantic_domain or "").casefold() in metric_domains
+        for column in table.columns
+        if column.column_name.casefold() in selected_columns
+    ):
+        return sql, False
+    name_columns = [
+        column
+        for column in table.columns
+        if (column.semantic_domain or "").casefold() in {"label", "name"}
+        and not column.is_geometry
+    ]
+    if len(name_columns) != 1:
+        return sql, False
+    label = name_columns[0]
+    if label.column_name.casefold() in selected_columns:
+        return sql, False
+    qualifier = relation_alias or _strip_identifier_quotes(table_ref.split(".")[-1])
+    label_ref = f"{qualifier}.{label.quoted_ref}" if qualifier else label.quoted_ref
+    rewritten = (
+        (sql or "")[:select_pos]
+        + f"SELECT {label_ref}, {select_body.strip()} "
+        + (sql or "")[from_pos:].lstrip()
+    )
+    return rewritten, rewritten != (sql or "")
 
 
 def _rewrite_aggregate_projection_order(question: str, sql: str) -> tuple[str, bool]:
@@ -2808,13 +3709,16 @@ def _replace_select_and_group_column(
     return rewritten, total
 
 
-def _rewrite_population_total_row_exclusion(
+def _rewrite_configured_total_row_exclusion(
     question: str,
     sql: str,
     tables: list[TableInfo],
     alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
 ) -> tuple[str, bool]:
-    if not _question_requests_district_level_rows(question):
+    # Total/sentinel rows are source-specific. They are eligible only when a
+    # semantic registry explicitly provides ``aggregate_row_values`` on the
+    # corresponding code/key column.
+    if re.search(r"\b(?:total|overall|all)\b|总计|汇总|总体", question or "", flags=re.IGNORECASE):
         return sql, False
     referenced = {table.table_name for table, _ in alias_map.values()}
     rewritten = sql
@@ -2823,51 +3727,27 @@ def _rewrite_population_total_row_exclusion(
         if table.table_name not in referenced:
             continue
         qualifiers = _qualifiers_for_table(alias_map, table)
-        population_cols = [col for col in table.columns if _column_looks_like_population(col)]
-        code_col = _admin_division_code_column(table)
-        if not population_cols or not code_col:
-            continue
-        if _where_clause_references_column(rewritten, code_col, qualifiers):
-            continue
-        if not any(_where_clause_references_column(rewritten, col, qualifiers) for col in population_cols):
-            continue
-        ref = _preferred_column_ref_for_filter(code_col, qualifiers)
-        rewritten2 = _inject_top_level_predicate(rewritten, f"{ref} != 500000")
-        if rewritten2 != rewritten:
-            rewritten = rewritten2
-            changed = True
+        for code_col in table.columns:
+            values = (code_col.value_semantics or {}).get("aggregate_row_values")
+            if values is None:
+                values = (code_col.value_semantics or {}).get("total_row_values")
+            if not isinstance(values, (list, tuple, set)) or not values:
+                continue
+            if _where_clause_references_column(rewritten, code_col, qualifiers):
+                continue
+            ref = _preferred_column_ref_for_filter(code_col, qualifiers)
+            values_list = list(values)
+            if len(values_list) == 1:
+                predicate = f"{ref} <> {_format_sql_literal(values_list[0])}"
+            else:
+                literals = ", ".join(_format_sql_literal(value) for value in values_list)
+                predicate = f"{ref} NOT IN ({literals})"
+            rewritten2 = _inject_top_level_predicate(rewritten, predicate)
+            if rewritten2 != rewritten:
+                rewritten = rewritten2
+                changed = True
+                break
     return rewritten, changed
-
-
-def _question_requests_district_level_rows(question: str) -> bool:
-    q_low = (question or "").lower()
-    if any(token in q_low for token in ("\u5168\u5e02\u603b\u8ba1", "\u57ce\u5e02\u603b\u8ba1", "city total", "overall total")):
-        return False
-    return any(token in q_low for token in (
-        "district",
-        "districts",
-        "county",
-        "counties",
-        "\u533a\u53bf",
-        "\u5404\u533a",
-        "\u5404\u533a\u53bf",
-        "\u6bcf\u4e2a\u533a",
-    ))
-
-
-def _admin_division_code_column(table: TableInfo) -> ColumnInfo | None:
-    matches = [col for col in table.columns if _column_looks_like_admin_division_code(col)]
-    return matches[0] if len(matches) == 1 else None
-
-
-def _column_looks_like_admin_division_code(col: ColumnInfo) -> bool:
-    metadata = " ".join(
-        str(part or "")
-        for part in [col.column_name, col.quoted_ref, col.description, col.semantic_domain, *sorted(col.aliases)]
-    ).lower()
-    has_code = any(token in metadata for token in ("code", "\u4ee3\u7801", "\u7f16\u7801"))
-    has_admin = any(token in metadata for token in ("admin", "division", "district", "county", "\u884c\u653f", "\u533a\u5212", "\u533a\u53bf"))
-    return has_code and has_admin
 
 
 def _refuse_unknown_columns(
@@ -2954,85 +3834,7 @@ def _rewrite_unit_thresholds(
                     changed = changed or bool(n)
                 rewritten, n = _scale_column_threshold(rewritten, qualifier, col, multiplier_f)
                 changed = changed or bool(n)
-    rewritten2, fallback_changed = _rewrite_population_wan_thresholds(question, rewritten, tables, alias_map)
-    if fallback_changed:
-        rewritten = rewritten2
-        changed = True
     return rewritten, changed
-
-
-def _rewrite_population_wan_thresholds(
-    question: str,
-    sql: str,
-    tables: list[TableInfo],
-    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
-) -> tuple[str, bool]:
-    expected_values = _question_wan_person_values(question)
-    if len(expected_values) != 1:
-        return sql, False
-    expected = expected_values[0]
-    rewritten = sql
-    changed = False
-    referenced_tables = {table.table_name for table, _ in alias_map.values()}
-    for table in tables:
-        if table.table_name not in referenced_tables:
-            continue
-        qualifiers = _qualifiers_for_table(alias_map, table)
-        for col in table.columns:
-            if not _column_looks_like_population(col):
-                continue
-            for qualifier in qualifiers + [None]:
-                rewritten, n = _replace_over_scaled_wan_threshold(rewritten, qualifier, col, expected)
-                changed = changed or bool(n)
-    return rewritten, changed
-
-
-def _question_wan_person_values(question: str) -> list[float]:
-    values: list[float] = []
-    for match in re.finditer(r"(?P<num>\d[\d,]*(?:\.\d+)?)\s*\u4e07(?:\u4eba)?", question or ""):
-        try:
-            value = float(match.group("num").replace(",", ""))
-        except (TypeError, ValueError):
-            continue
-        if value not in values:
-            values.append(value)
-    return values
-
-
-def _column_looks_like_population(col: ColumnInfo) -> bool:
-    metadata = " ".join(
-        str(part or "")
-        for part in [col.column_name, col.quoted_ref, col.description, col.semantic_domain, *sorted(col.aliases)]
-    ).lower()
-    return "\u4eba\u53e3" in metadata or "population" in metadata
-
-
-def _replace_over_scaled_wan_threshold(
-    sql: str,
-    qualifier: str | None,
-    col: ColumnInfo,
-    expected: float,
-) -> tuple[str, int]:
-    refs = _column_reference_alternatives(qualifier, col)
-    total = 0
-    parts = re.split(_SQL_STRING_RE, sql)
-    for i in range(0, len(parts), 2):
-        segment = parts[i]
-        pattern = re.compile(
-            rf"(?P<prefix>(?P<ref>{refs})\s*(?:>=|>|<=|<)\s*)(?P<num>\d+(?:\.\d+)?)\b",
-            flags=re.IGNORECASE,
-        )
-
-        def repl(match: re.Match) -> str:
-            value = float(match.group("num"))
-            if value <= expected * 10:
-                return match.group(0)
-            return f"{match.group('prefix')}{_format_number(expected)}"
-
-        segment, n = pattern.subn(repl, segment)
-        total += n
-        parts[i] = segment
-    return "".join(parts), total
 
 
 def _question_unit_threshold_candidates(question: str, col: ColumnInfo, multiplier: float) -> list[float]:
@@ -3422,6 +4224,105 @@ def _area_expression_already_scaled_by(sql: str, area_close_pos: int, divisor_pa
     )
 
 
+def _rewrite_scalar_distance_subquery_cross_join(
+    question: str,
+    sql: str,
+    tables: list[TableInfo],
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    """Materialize a scalar target geometry as a one-row KNN relation."""
+    if not _question_requests_nearest_neighbor(question):
+        return sql, False
+    text = sql or ""
+    pattern = re.compile(r"\bST_DISTANCE\s*\(", flags=re.IGNORECASE)
+    for match in pattern.finditer(text):
+        close = _find_matching_paren(text, match.end() - 1)
+        if close < 0:
+            continue
+        args = _split_top_level_args(text[match.end():close])
+        if len(args) != 2:
+            continue
+        scalar_index = -1
+        parsed = None
+        for index, arg in enumerate(args):
+            parsed = _parse_scalar_distance_geometry_subquery(arg, tables)
+            if parsed:
+                scalar_index = index
+                break
+        if scalar_index < 0 or parsed is None:
+            continue
+
+        target_table, target_col, inner_sql = parsed
+        other_index = 1 - scalar_index
+        other_expr = _strip_geography_cast_expr(args[other_index])
+        other_col = _geometry_column_for_expr(other_expr, alias_map)
+        if not other_col or not other_col.is_geometry:
+            continue
+
+        existing_aliases = {
+            alias
+            for alias in alias_map
+            if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", alias or "")
+        }
+        target_alias = _spatial_subquery_join_alias(target_table, "")
+        if target_alias in existing_aliases:
+            target_alias = "target"
+        target_ref = f"{target_alias}.{target_col.quoted_ref}"
+        aligned_other = other_expr
+        if (
+            target_col.srid
+            and other_col.srid
+            and target_col.srid != other_col.srid
+        ):
+            aligned_other = f"ST_Transform({other_expr}, {target_col.srid})"
+
+        rewritten_args = list(args)
+        rewritten_args[scalar_index] = _as_geography(target_ref)
+        rewritten_args[other_index] = _as_geography(aligned_other)
+        distance = f"ST_Distance({rewritten_args[0]}, {rewritten_args[1]})"
+        rewritten = text[:match.start()] + distance + text[close + 1:]
+
+        insert_at = len(rewritten)
+        for keyword in ("WHERE", "GROUP BY", "HAVING", "ORDER BY", "LIMIT"):
+            positions = _top_level_keyword_positions(rewritten, keyword)
+            if positions:
+                insert_at = min(insert_at, positions[0])
+        head = rewritten[:insert_at].rstrip()
+        tail = rewritten[insert_at:].lstrip()
+        rewritten = f"{head} CROSS JOIN ({inner_sql}) AS {target_alias}"
+        if tail:
+            rewritten += f" {tail}"
+        return rewritten, True
+    return sql, False
+
+
+def _parse_scalar_distance_geometry_subquery(
+    expr: str,
+    tables: list[TableInfo],
+) -> tuple[TableInfo, ColumnInfo, str] | None:
+    value = _strip_geography_cast_expr(expr)
+    if not (value.startswith("(") and value.endswith(")")):
+        return None
+    inner = value[1:-1].strip()
+    match = re.match(
+        r"^SELECT\s+(?P<col>\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)\s+FROM\s+"
+        r"(?P<table>(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)(?:\s*\.\s*(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))?)\b",
+        inner,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not match:
+        return None
+    table = _table_for_ref(match.group("table"), tables)
+    if table is None:
+        return None
+    column = table.column_by_name(match.group("col"))
+    if column is None or not column.is_geometry:
+        column = _first_geometry(table)
+    if column is None:
+        return None
+    return table, column, inner
+
+
 def _rewrite_scalar_spatial_subquery_join(sql: str, tables: list[TableInfo]) -> tuple[str, bool]:
     if not sql or "select" not in sql.lower() or "where" not in sql.lower():
         return sql, False
@@ -3631,7 +4532,15 @@ def _spatial_srid_replacement(
     b_col = _lookup_column_ref(b_ref, alias_map)
     if not a_col or not b_col or not a_col.is_geometry or not b_col.is_geometry:
         return ""
-    if not a_col.srid or not b_col.srid or a_col.srid == b_col.srid:
+    if not a_col.srid or not b_col.srid:
+        return ""
+    if a_col.srid == b_col.srid:
+        # If the model transformed both operands to an arbitrary common CRS,
+        # remove the pair of transforms.  They are topologically equivalent,
+        # while the original geometry GiST indexes can then be used.
+        if "st_transform" in a.casefold() or "st_transform" in b.casefold():
+            func = _canonical_spatial_function_name(func_name)
+            return f"{func}({a_ref}, {b_ref})"
         return ""
     func = _canonical_spatial_function_name(func_name)
     a_base = a_ref
@@ -4025,6 +4934,72 @@ def _rewrite_knn_order_by_distance_alias(question: str, sql: str) -> tuple[str, 
     return rewritten, changed
 
 
+def _rewrite_knn_metric_order(
+    question: str,
+    sql: str,
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    """Make a PostGIS KNN order use the same metre metric as ST_Distance."""
+    if not _question_requests_nearest_neighbor(question):
+        return sql, False
+    bounds = _top_level_clause_bounds(sql or "", "ORDER BY", ("LIMIT",))
+    if not bounds:
+        return sql, False
+    start, end = bounds
+    body = (sql or "")[start:end].strip()
+    match = re.match(
+        r"^(?P<left>.+?)\s+<->\s+(?P<right>.+?)(?:\s+(?:ASC|DESC))?$",
+        body,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not match:
+        return sql, False
+    left = match.group("left").strip()
+    right = match.group("right").strip()
+    left_ref = _geometry_column_ref_from_expr(left)
+    right_ref = _geometry_column_ref_from_expr(right)
+    left_col = _lookup_column_ref(left_ref, alias_map) if left_ref else None
+    right_col = _lookup_column_ref(right_ref, alias_map) if right_ref else None
+    if not left_col or not right_col or not left_col.is_geometry or not right_col.is_geometry:
+        return sql, False
+    if "::geography" in left.casefold() and "::geography" in right.casefold():
+        return sql, False
+
+    def metric_geography(expr: str, col: ColumnInfo) -> str:
+        value = _strip_geography_cast_expr(expr)
+        target = _geometry_expr_srid(value, col)
+        if target and target != 4326:
+            value = f"ST_Transform({value}, 4326)"
+        return f"{value}::geography"
+
+    replacement = (
+        f"{metric_geography(left, left_col)} <-> "
+        f"{metric_geography(right, right_col)}"
+    )
+    before = (sql or "")[:start]
+    after = (sql or "")[end:]
+    # ``start`` is immediately after the ORDER BY keyword and ``end`` often
+    # points at LIMIT. Preserve both boundaries so a rewrite can never emit
+    # ``ORDER BYST_...`` or ``...geographyLIMIT``.
+    if before and not before[-1].isspace():
+        before += " "
+    if after and not replacement.endswith((" ", "\t", "\n", "\r")) and not after[0].isspace():
+        replacement += " "
+    rewritten = before + replacement + after
+    return rewritten, rewritten != (sql or "")
+
+
+def _geometry_expr_srid(expr: str, col: ColumnInfo) -> int:
+    transform = re.fullmatch(
+        r"ST_TRANSFORM\s*\(\s*.+?\s*,\s*(?:'EPSG:)?(?P<srid>\d+)'?\s*\)",
+        expr or "",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if transform:
+        return int(transform.group("srid"))
+    return int(col.srid or 0)
+
+
 def _question_requests_nearest_neighbor(question: str) -> bool:
     q = question or ""
     q_low = q.lower()
@@ -4036,8 +5011,6 @@ def _question_requests_nearest_neighbor(question: str) -> bool:
         "knn",
         "最近",
         "最近的",
-        "距离",
-        "\u76f4\u7ebf\u8ddd\u79bb",
         "\u8ddd\u79bb\u6700\u77ed",
     )
     return any(marker in q_low for marker in markers)
@@ -4066,6 +5039,7 @@ def _find_distance_projection(sql: str) -> tuple[str, str, str] | None:
 
 def _geometry_ref_for_knn(expr: str) -> str:
     value = (expr or "").strip()
+    geography = bool(re.search(r"::\s*geography\b", value, flags=re.IGNORECASE))
     value = re.sub(r"::\s*geography\b", "", value, flags=re.IGNORECASE).strip()
     cast_match = re.fullmatch(
         r"CAST\s*\(\s*(?P<inner>.+?)\s+AS\s+(?:GEOGRAPHY|GEOMETRY\s*(?:\([^)]*\))?)\s*\)",
@@ -4073,6 +5047,7 @@ def _geometry_ref_for_knn(expr: str) -> str:
         flags=re.IGNORECASE | re.DOTALL,
     )
     if cast_match:
+        geography = geography or bool(re.search(r"\bAS\s+GEOGRAPHY\b", value, flags=re.IGNORECASE))
         value = cast_match.group("inner").strip()
     transform = re.fullmatch(
         r"ST_TRANSFORM\s*\(\s*(?P<inner>.+?)\s*,\s*(?P<srid>\d+)\s*\)",
@@ -4081,9 +5056,15 @@ def _geometry_ref_for_knn(expr: str) -> str:
     )
     if transform:
         inner = _geometry_ref_for_knn(transform.group("inner"))
-        return f"ST_Transform({inner}, {transform.group('srid')})" if inner else ""
+        if not inner:
+            return ""
+        # Preserve the metric geography contract when the distance expression
+        # explicitly used geography.  The lake SQL normalizer removes this
+        # cast and projects both operands into the configured metric CRS.
+        transformed = f"ST_Transform({inner}, {transform.group('srid')})"
+        return f"{transformed}::geography" if geography else transformed
     if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*\.(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)", value):
-        return value
+        return f"{value}::geography" if geography else value
     return ""
 
 
@@ -4192,6 +5173,56 @@ def _rewrite_knn_radius_join_to_cross_join(question: str, sql: str) -> tuple[str
     return re.sub(r"\s+", " ", "".join(pieces)).strip(), True
 
 
+def _rewrite_named_center_radius_join_to_cross_join(
+    question: str,
+    sql: str,
+) -> tuple[str, bool]:
+    """Materialize a singular named radius center before spatial filtering.
+
+    A direct join to all fuzzy name matches multiplies the counted entity set.
+    Moving the radius predicate to WHERE lets the existing one-row target
+    wrapper select one deterministic center while retaining ST_DWithin.
+    """
+    q_low = (question or "").casefold()
+    if not any(token in q_low for token in ("为中心", "作为中心", "as center", "centered at")):
+        return sql, False
+    pattern = re.compile(
+        r"\bJOIN\s+(?P<table>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)"
+        r"(?:\s+(?:AS\s+)?(?P<alias>[A-Za-z_][A-Za-z0-9_]*))?\s+ON\s+ST_DWITHIN\s*\(",
+        flags=re.IGNORECASE,
+    )
+    text = sql or ""
+    match = pattern.search(text)
+    if not match or _inside_single_quoted_literal(text, match.start()):
+        return sql, False
+    open_paren = text.rfind("(", match.start(), match.end())
+    close = _find_matching_paren(text, open_paren)
+    if close < 0:
+        return sql, False
+    tail = text[close + 1:]
+    if not re.match(
+        r"\s*(?=\bWHERE\b|\bGROUP\s+BY\b|\bORDER\s+BY\b|\bLIMIT\b|$)",
+        tail,
+        flags=re.IGNORECASE,
+    ):
+        return sql, False
+    function_match = re.search(
+        r"ST_DWITHIN\s*\($",
+        text[match.start():open_paren + 1],
+        flags=re.IGNORECASE,
+    )
+    if not function_match:
+        return sql, False
+    function_start = match.start() + function_match.start()
+    radius_predicate = text[function_start:close + 1]
+    replacement = f"CROSS JOIN {match.group('table')}"
+    if match.group("alias"):
+        replacement += f" AS {match.group('alias')}"
+    rewritten = text[:match.start()] + replacement + text[close + 1:]
+    rewritten = _inject_predicate(rewritten, radius_predicate)
+    return rewritten, rewritten != text
+
+
 def _rewrite_knn_string_filters(question: str, sql: str) -> tuple[str, bool]:
     if not _question_requests_nearest_neighbor(question):
         return sql, False
@@ -4285,13 +5316,119 @@ def _question_mentions_sql_literal(question: str, literal: str) -> bool:
     return lit_low in q_low or compact_lit in compact_q
 
 
+def _rewrite_knn_left_target_subquery(
+    question: str,
+    sql: str,
+    tables: list[TableInfo],
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    """Turn a filtered left-side KNN target into a true one-row relation.
+
+    Filtering the outer table by an identifier returned from ``LIMIT 1`` is
+    not equivalent when that field is non-unique.  Materializing the target
+    row itself preserves the requested single-object semantics and avoids
+    multiplying K nearest results.
+    """
+    if not _question_requests_nearest_neighbor(question):
+        return sql, False
+    if _question_requests_per_entity_nearest(question):
+        return sql, False
+    relation = re.search(
+        r"\bFROM\s+(?P<table>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)\s+"
+        r"(?:AS\s+)?(?P<alias>[A-Za-z_][A-Za-z0-9_]*)"
+        r"(?=\s+(?:CROSS\s+JOIN|JOIN)\b)",
+        sql or "",
+        flags=re.IGNORECASE,
+    )
+    if not relation:
+        return sql, False
+    table_ref = relation.group("table")
+    alias = relation.group("alias")
+    table = _table_for_ref(_strip_identifier_quotes(table_ref), tables)
+    if table is None:
+        mapped = alias_map.get(alias)
+        table = mapped[0] if mapped else None
+    if table is None:
+        return sql, False
+
+    where_bounds = _top_level_clause_bounds(
+        sql or "",
+        "WHERE",
+        ("GROUP BY", "HAVING", "ORDER BY", "LIMIT"),
+    )
+    if not where_bounds:
+        return sql, False
+    start, end = where_bounds
+    predicates = [
+        part.strip()
+        for part in _split_top_level_and_predicates((sql or "")[start:end].strip())
+        if part.strip()
+    ]
+    known_aliases = {
+        name
+        for name in alias_map
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name or "")
+    }
+    target_predicates = [
+        predicate
+        for predicate in predicates
+        if _predicate_references_only_alias(predicate, alias, known_aliases)
+        or (
+            re.search(r"\bSELECT\b", predicate, flags=re.IGNORECASE)
+            and _expr_references_alias(predicate, alias)
+        )
+    ]
+    if not target_predicates or not _question_or_predicates_indicate_single_target(
+        question,
+        target_predicates,
+    ):
+        return sql, False
+
+    # A scalar-id equality is only a workaround for selecting one row.  Keep
+    # the business filters in the target subquery and apply LIMIT 1 directly.
+    inner_predicates = [
+        _strip_alias_from_predicate(predicate, alias)
+        for predicate in target_predicates
+        if not re.search(r"\bSELECT\b", predicate, flags=re.IGNORECASE)
+    ]
+    order_col = _single_target_match_order_expression(inner_predicates, table)
+    order_col = order_col or _question_order_column_for_table(question, table)
+    if not order_col:
+        identifier = table.identifier_column()
+        order_col = identifier.quoted_ref if identifier is not None else ""
+    order_col = order_col or _stable_target_order_expression(table)
+    if not inner_predicates and not order_col:
+        return sql, False
+
+    inner_where = f" WHERE {' AND '.join(inner_predicates)}" if inner_predicates else ""
+    inner_order = f" ORDER BY {order_col}" if order_col else ""
+    replacement = (
+        f"FROM (SELECT * FROM {table_ref}{inner_where}{inner_order} LIMIT 1) AS {alias}"
+    )
+    rewritten = (
+        (sql or "")[:relation.start()]
+        + replacement
+        + (sql or "")[relation.end():]
+    )
+    remaining = [predicate for predicate in predicates if predicate not in target_predicates]
+    rewritten = _replace_top_level_where_body(rewritten, remaining)
+    requested_limit = _extract_question_limit(question)
+    if requested_limit:
+        rewritten = _replace_top_level_limit(rewritten, requested_limit)
+    return rewritten, rewritten != (sql or "")
+
+
 def _rewrite_knn_single_target_cross_join(
     question: str,
     sql: str,
     tables: list[TableInfo],
     alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
 ) -> tuple[str, bool]:
-    if not _question_requests_nearest_neighbor(question):
+    q_low = (question or "").casefold()
+    if not (
+        _question_requests_nearest_neighbor(question)
+        or any(token in q_low for token in ("为中心", "作为中心", "as center", "centered at"))
+    ):
         return sql, False
     if _question_requests_per_entity_nearest(question):
         return sql, False
@@ -4332,7 +5469,12 @@ def _rewrite_knn_single_target_cross_join(
         if not _question_or_predicates_indicate_single_target(question, target_predicates):
             continue
         inner_predicates = [_strip_alias_from_predicate(pred, alias) for pred in target_predicates]
-        order_col = _question_order_column_for_table(question, table)
+        order_col = _single_target_match_order_expression(inner_predicates, table)
+        order_col = order_col or _question_order_column_for_table(question, table)
+        if not order_col:
+            identifier = table.identifier_column()
+            order_col = identifier.quoted_ref if identifier is not None else ""
+        order_col = order_col or _stable_target_order_expression(table)
         order_clause = f" ORDER BY {order_col}" if order_col else ""
         inner_where = f" WHERE {' AND '.join(inner_predicates)}" if inner_predicates else ""
         replacement = (
@@ -4358,6 +5500,226 @@ def _question_requests_per_entity_nearest(question: str) -> bool:
     ))
 
 
+def _rewrite_knn_correlated_lateral_to_single_target(
+    question: str,
+    sql: str,
+) -> tuple[str, bool]:
+    """Remove accidental per-row correlation for one named KNN anchor."""
+    if not _question_requests_nearest_neighbor(question):
+        return sql, False
+    if _question_requests_per_entity_nearest(question):
+        return sql, False
+    text = sql or ""
+    outer = re.search(
+        r"\bFROM\s+\"?[A-Za-z_][A-Za-z0-9_\.]*\"?\s+"
+        r"(?:AS\s+)?(?P<alias>[A-Za-z_][A-Za-z0-9_]*)",
+        text,
+        flags=re.IGNORECASE,
+    )
+    lateral = re.search(r"\bCROSS\s+JOIN\s+LATERAL\s*\(", text, flags=re.IGNORECASE)
+    if not outer or not lateral or lateral.start() <= outer.end():
+        return sql, False
+    open_pos = lateral.end() - 1
+    close_pos = _find_matching_paren(text, open_pos)
+    if close_pos < 0:
+        return sql, False
+    body = text[open_pos + 1:close_pos].strip()
+    order_positions = _top_level_keyword_positions(body, "ORDER BY")
+    limit_positions = _top_level_keyword_positions(body, "LIMIT")
+    if not order_positions or not limit_positions:
+        return sql, False
+    order_bounds = _top_level_clause_bounds(body, "ORDER BY", ("LIMIT",))
+    if not order_bounds:
+        return sql, False
+    order_start, order_end = order_bounds
+    order_body = body[order_start:order_end].strip()
+    outer_alias = outer.group("alias")
+    if not _expr_references_alias(order_body, outer_alias):
+        return sql, False
+    if not re.search(r"\bST_DISTANCE\s*\(|<->", order_body, flags=re.IGNORECASE):
+        return sql, False
+    body_without_order = body[:order_positions[0]].rstrip()
+    if _expr_references_alias(body_without_order, outer_alias):
+        return sql, False
+    pruned = f"{body_without_order} {body[order_end:].lstrip()}".strip()
+    geometry_projection = re.match(
+        r"^SELECT\s+(?P<ref>(?:[A-Za-z_][A-Za-z0-9_]*\.)?"
+        r"(?:\"?(?:geometry|geom|shape)\"?))\s+FROM\b",
+        pruned,
+        flags=re.IGNORECASE,
+    )
+    if geometry_projection and not re.search(
+        rf"\b{re.escape(geometry_projection.group('ref'))}\s+IS\s+NOT\s+NULL\b",
+        pruned,
+        flags=re.IGNORECASE,
+    ):
+        pruned = _inject_top_level_predicate(
+            pruned,
+            f"{geometry_projection.group('ref')} IS NOT NULL",
+        )
+    replacement = f"CROSS JOIN ({pruned})"
+    rewritten = text[:lateral.start()] + replacement + text[close_pos + 1:]
+    return rewritten, rewritten != text
+
+
+def _rewrite_knn_join_to_per_entity_lateral(
+    question: str,
+    sql: str,
+) -> tuple[str, bool]:
+    """Replace a restrictive spatial join with one nearest target per entity."""
+    if not _question_requests_nearest_neighbor(question):
+        return sql, False
+    if not _question_requests_per_entity_nearest(question):
+        return sql, False
+    text = sql or ""
+    relation = re.search(
+        r"\bFROM\s+(?P<left>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)\s+"
+        r"(?:AS\s+)?(?P<la>[A-Za-z_][A-Za-z0-9_]*)",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if not relation:
+        return sql, False
+    join = re.search(
+        r"\bJOIN\s+(?!LATERAL\b)(?P<right>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)\s+"
+        r"(?:AS\s+)?(?P<ra>[A-Za-z_][A-Za-z0-9_]*)\s+ON\s+"
+        r"(?P<on>.*?)(?=\s+(?:WHERE|GROUP\s+BY|HAVING|ORDER\s+BY|LIMIT)\b|$)",
+        text[relation.end():],
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not join or not _sql_has_spatial_join_function(join.group("on")):
+        return sql, False
+    join_start = relation.end() + join.start()
+    join_end = relation.end() + join.end()
+    left_alias = relation.group("la")
+    right_alias = join.group("ra")
+    where_bounds = _top_level_clause_bounds(
+        text,
+        "WHERE",
+        ("GROUP BY", "HAVING", "ORDER BY", "LIMIT"),
+    )
+    predicates: list[str] = []
+    if where_bounds:
+        predicates = [
+            part.strip()
+            for part in _split_top_level_and_predicates(
+                text[where_bounds[0]:where_bounds[1]].strip()
+            )
+            if part.strip()
+        ]
+    known_aliases = {left_alias, right_alias}
+    right_predicates = [
+        predicate
+        for predicate in predicates
+        if _predicate_references_only_alias(predicate, right_alias, known_aliases)
+    ]
+    order_bounds = _top_level_clause_bounds(text, "ORDER BY", ("LIMIT",))
+    if not order_bounds:
+        return sql, False
+    order_body = text[order_bounds[0]:order_bounds[1]].strip()
+    if not re.search(r"\bST_DISTANCE\s*\(|<->", order_body, flags=re.IGNORECASE):
+        return sql, False
+    if not (
+        _expr_references_alias(order_body, left_alias)
+        and _expr_references_alias(order_body, right_alias)
+    ):
+        return sql, False
+    inner_alias = "_gda_knn_target"
+    inner_order = re.sub(
+        rf"\b{re.escape(right_alias)}\s*\.\s*",
+        f"{inner_alias}.",
+        order_body,
+        flags=re.IGNORECASE,
+    )
+    inner_predicates = [
+        re.sub(
+            rf"\b{re.escape(right_alias)}\s*\.\s*",
+            f"{inner_alias}.",
+            predicate,
+            flags=re.IGNORECASE,
+        )
+        for predicate in right_predicates
+    ]
+    inner_where = (
+        f" WHERE {' AND '.join(inner_predicates)}" if inner_predicates else ""
+    )
+    lateral = (
+        f"JOIN LATERAL (SELECT * FROM {join.group('right')} AS {inner_alias}"
+        f"{inner_where} ORDER BY {inner_order} LIMIT 1) AS {right_alias} ON TRUE"
+    )
+    rewritten = text[:join_start] + lateral + text[join_end:]
+    if where_bounds:
+        remaining = [predicate for predicate in predicates if predicate not in right_predicates]
+        rewritten = _replace_top_level_where_body(rewritten, remaining)
+    return rewritten, rewritten != text
+
+
+def _rewrite_knn_cross_join_to_per_entity_lateral(question: str, sql: str) -> tuple[str, bool]:
+    """Turn a cross join into one nearest target per left-side entity."""
+    if not _question_requests_nearest_neighbor(question) or not _question_requests_per_entity_nearest(question):
+        return sql, False
+    text = sql or ""
+    relation = re.search(
+        r"\bFROM\s+(?P<left>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)\s+(?:AS\s+)?(?P<la>[A-Za-z_][A-Za-z0-9_]*)",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if not relation:
+        return sql, False
+    cross_join = re.search(
+        r"\bCROSS\s+JOIN\s+(?P<right>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)\s+(?:AS\s+)?(?P<ra>[A-Za-z_][A-Za-z0-9_]*)",
+        text[relation.end():],
+        flags=re.IGNORECASE,
+    )
+    if not cross_join:
+        return sql, False
+    join_start = relation.end() + cross_join.start()
+    join_end = relation.end() + cross_join.end()
+    right_ref = cross_join.group("right")
+    right_alias = cross_join.group("ra")
+    where_bounds = _top_level_clause_bounds(text, "WHERE", ("GROUP BY", "HAVING", "ORDER BY", "LIMIT"))
+    if not where_bounds:
+        return sql, False
+    where_start, where_end = where_bounds
+    predicates = [part.strip() for part in _split_top_level_and_predicates(text[where_start:where_end]) if part.strip()]
+    right_predicates = [
+        predicate for predicate in predicates
+        if _predicate_references_only_alias(predicate, right_alias, {relation.group("la"), right_alias})
+    ]
+    if not right_predicates:
+        return sql, False
+    order_bounds = _top_level_clause_bounds(text, "ORDER BY", ("LIMIT",))
+    if not order_bounds:
+        return sql, False
+    order_body = text[order_bounds[0]:order_bounds[1]].strip()
+    if not re.search(r"\bST_DISTANCE\s*\(|<->", order_body, flags=re.IGNORECASE):
+        return sql, False
+    inner_alias = "_gda_knn_target"
+    inner_order = re.sub(
+        rf"\b{re.escape(right_alias)}\s*\.\s*",
+        f"{inner_alias}.",
+        order_body,
+        flags=re.IGNORECASE,
+    )
+    inner_predicates = [
+        re.sub(
+            rf"\b{re.escape(right_alias)}\s*\.\s*",
+            f"{inner_alias}.",
+            predicate,
+            flags=re.IGNORECASE,
+        )
+        for predicate in right_predicates
+    ]
+    lateral = (
+        f"JOIN LATERAL (SELECT * FROM {right_ref} AS {inner_alias} WHERE {' AND '.join(inner_predicates)} "
+        f"ORDER BY {inner_order} LIMIT 1) AS {right_alias} ON TRUE"
+    )
+    rewritten = text[:join_start] + lateral + text[join_end:]
+    remaining = [predicate for predicate in predicates if predicate not in right_predicates]
+    rewritten = _replace_top_level_where_body(rewritten, remaining)
+    return rewritten, rewritten != text
+
+
 def _predicate_references_only_alias(predicate: str, alias: str, known_aliases: set[str]) -> bool:
     refs = {
         _strip_identifier_quotes(match.group("alias"))
@@ -4378,9 +5740,68 @@ def _question_or_predicates_indicate_single_target(question: str, predicates: li
         "\u7b2c\u4e00\u680b",
         "\u67d0\u4e2a",
         "\u67d0\u680b",
+        "\u968f\u4fbf\u627e\u4e00",
+        "\u4efb\u610f\u4e00",
+        "\u968f\u673a\u4e00",
+        "\u4e3a\u4e2d\u5fc3",
+        "\u4f5c\u4e3a\u4e2d\u5fc3",
+        "as center",
+        "centered at",
     )):
         return True
     return any(_string_filter_predicate_info(pred) and _string_filter_predicate_info(pred)["op"] == "=" for pred in predicates)
+
+
+def _single_target_match_order_expression(
+    predicates: list[str],
+    table: TableInfo,
+) -> str:
+    """Prefer an exact name before prefix/contains matches for one-row targets."""
+    pattern = re.compile(
+        r"^(?P<ref>(?:[A-Za-z_][A-Za-z0-9_]*\.)?"
+        r"(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))\s+"
+        r"(?:I?LIKE)\s+'%(?P<literal>(?:[^']|'')*)%'$",
+        flags=re.IGNORECASE,
+    )
+    for predicate in predicates:
+        match = pattern.match((predicate or "").strip())
+        if not match:
+            continue
+        ref_name = match.group("ref").rsplit(".", 1)[-1]
+        column = table.column_by_name(ref_name)
+        if column is None:
+            continue
+        policy = str(
+            (column.value_semantics or {}).get("default_string_match")
+            or (column.value_semantics or {}).get("default_match")
+            or ""
+        ).strip().casefold()
+        if policy not in {"contains", "like_contains", "fuzzy_contains"}:
+            continue
+        ref = column.quoted_ref
+        literal = match.group("literal")
+        exact = literal.replace("%", "").replace("'", "''")
+        pieces = [
+            f"CASE WHEN {ref} = '{exact}' THEN 0 "
+            f"WHEN {ref} LIKE '{exact}%' THEN 1 ELSE 2 END",
+            f"LENGTH({ref})",
+        ]
+        identifier = table.identifier_column()
+        if identifier is not None:
+            pieces.append(identifier.quoted_ref)
+        return ", ".join(pieces)
+    return ""
+
+
+def _stable_target_order_expression(table: TableInfo) -> str:
+    for column in table.columns:
+        strategy = str(
+            (column.value_semantics or {}).get("stable_target_order") or ""
+        ).strip().casefold()
+        if strategy == "centroid_xy" and column.is_geometry:
+            ref = column.quoted_ref
+            return f"ST_X(ST_Centroid({ref})), ST_Y(ST_Centroid({ref}))"
+    return ""
 
 
 def _strip_alias_from_predicate(predicate: str, alias: str) -> str:
@@ -4400,7 +5821,7 @@ def _question_order_column_for_table(question: str, table: TableInfo) -> str:
             candidates.append(match.group("col"))
     for candidate in candidates:
         col = table.column_by_name(candidate)
-        if col:
+        if col and not (col.value_semantics or {}).get("non_unique_identifier"):
             return col.quoted_ref
     return ""
 
@@ -4423,15 +5844,30 @@ def _replace_top_level_where_body(sql: str, predicates: list[str]) -> str:
     return rewritten.strip()
 
 
+def _replace_top_level_limit(sql: str, limit: int) -> str:
+    positions = _top_level_keyword_positions(sql or "", "LIMIT")
+    if not positions:
+        return sql
+    pos = positions[0]
+    tail = re.sub(
+        r"\bLIMIT\s+\d+\b",
+        f"LIMIT {int(limit)}",
+        (sql or "")[pos:],
+        count=1,
+        flags=re.IGNORECASE,
+    )
+    return (sql or "")[:pos] + tail
+
+
 def _rewrite_existential_spatial_join_aggregate(question: str, sql: str) -> tuple[str, bool]:
     q_low = (question or "").lower()
-    if not any(token in q_low for token in ("any", "exists", "intersect any", "任何", "任一", "至少一个")):
+    if not _question_requests_existential_spatial_relation(q_low):
         return sql, False
     pattern = re.compile(
         r"^\s*SELECT\s+(?P<select>.+?)\s+FROM\s+"
         r"(?P<left>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)\s+(?:AS\s+)?(?P<la>[A-Za-z_][A-Za-z0-9_]*)\s+"
         r"JOIN\s+(?P<right>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)\s+(?:AS\s+)?(?P<ra>[A-Za-z_][A-Za-z0-9_]*)\s+"
-        r"ON\s+(?P<on>ST_INTERSECTS\s*\([^)]*\))\s+WHERE\s+(?P<where>.*?)(?P<limit>\s+LIMIT\s+\d+)?\s*$",
+        r"ON\s+(?P<on>ST_INTERSECTS\s*\(.+?\))\s+WHERE\s+(?P<where>.*?)(?P<limit>\s+LIMIT\s+\d+)?\s*$",
         flags=re.IGNORECASE | re.DOTALL,
     )
     m = pattern.match(sql or "")
@@ -4471,6 +5907,385 @@ def _rewrite_existential_spatial_join_aggregate(question: str, sql: str) -> tupl
     return rewritten, True
 
 
+def _rewrite_cte_spatial_exists_count(
+    question: str,
+    sql: str,
+    tables: list[TableInfo],
+) -> tuple[str, bool]:
+    """Preserve the CTE entity when a spatial detail join is existential.
+
+    Models often produce ``CTE -> source-key join -> spatial-detail join``
+    for questions that ask how many filtered entities intersect another layer.
+    Counting a detail-side identifier in that shape changes the entity being
+    counted and can multiply rows.  This conservative rewrite keeps the CTE's
+    governed geometry and expresses the detail relation as ``EXISTS``.
+    """
+    if not _question_requests_intersection(question):
+        return sql, False
+    text = (sql or "").strip().rstrip(";").strip()
+    if not re.match(r"^WITH\b", text, flags=re.IGNORECASE):
+        return sql, False
+    cte_match = re.match(
+        r"^WITH\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s+AS\s*\(",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if not cte_match:
+        return sql, False
+    cte_name = cte_match.group("name")
+    cte_open = cte_match.end() - 1
+    cte_close = _find_matching_paren(text, cte_open)
+    if cte_close < 0:
+        return sql, False
+    cte_body = text[cte_open + 1:cte_close].strip()
+    outer = text[cte_close + 1:].strip()
+
+    # Only rewrite a single scalar count.  Sums or projections that reference
+    # the detail relation have different semantics and remain untouched.
+    outer_select = re.match(
+        r"^SELECT\s+(?P<select>.+?)\s+FROM\s+"
+        r"(?P<from_cte>[A-Za-z_][A-Za-z0-9_]*)\b"
+        r"(?:\s+(?:AS\s+)?(?P<cte_alias>[A-Za-z_][A-Za-z0-9_]*))?\b(?P<tail>.*)$",
+        outer,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not outer_select or outer_select.group("from_cte").lower() != cte_name.lower():
+        return sql, False
+    select_expr = outer_select.group("select").strip()
+    if not re.fullmatch(
+        r"COUNT\s*\(\s*(?:DISTINCT\s+)?(?:\*|[A-Za-z_][A-Za-z0-9_]*\.[^)]*)\s*\)"
+        r"(?:\s+AS\s+(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))?",
+        select_expr,
+        flags=re.IGNORECASE,
+    ):
+        return sql, False
+    cte_alias = outer_select.group("cte_alias") or cte_name
+    outer_tail = outer_select.group("tail") or ""
+
+    source_match = re.search(
+        r"\bFROM\s+(?P<table>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)"
+        r"(?:\s+(?:AS\s+)?(?P<alias>[A-Za-z_][A-Za-z0-9_]*))?",
+        cte_body,
+        flags=re.IGNORECASE,
+    )
+    if not source_match:
+        return sql, False
+    source_ref = source_match.group("table")
+    source_table = _table_for_ref(source_ref, tables)
+    if source_table is None:
+        return sql, False
+    source_geom = _first_geometry(source_table)
+    if source_geom is None:
+        return sql, False
+    source_alias = source_match.group("alias")
+    if source_alias and source_alias.upper() in {
+        "WHERE", "JOIN", "GROUP", "ORDER", "LIMIT", "ON"
+    }:
+        source_alias = None
+    source_geom_ref = f"{source_alias}.{source_geom.quoted_ref}" if source_alias else source_geom.quoted_ref
+
+    # A spatial join may follow one or more key joins.  We only accept a
+    # top-level ST_Intersects join and drop the key-side joins because the CTE
+    # now carries the geometry needed for the predicate.
+    spatial_join = re.search(
+        r"\bJOIN\s+(?P<table>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)"
+        r"(?:\s+(?:AS\s+)?(?P<alias>[A-Za-z_][A-Za-z0-9_]*))?\s+ON\s+ST_INTERSECTS\s*\(",
+        outer_tail,
+        flags=re.IGNORECASE,
+    )
+    if not spatial_join:
+        return sql, False
+    spatial_ref = spatial_join.group("table")
+    spatial_table = _table_for_ref(spatial_ref, tables)
+    if spatial_table is None or _question_mentions_table_name(question, spatial_table) is False:
+        # Do not infer a spatial relation from an unrelated sibling source.
+        # Chinese role aliases are accepted through the same catalog scoring
+        # used elsewhere when no physical name is present in the question.
+        if spatial_table is None or not _tables_share_business_role(spatial_table, source_table):
+            return sql, False
+    spatial_geom = _first_geometry(spatial_table)
+    if spatial_geom is None:
+        return sql, False
+    spatial_alias = spatial_join.group("alias") or spatial_table.bare_name
+    on_open = outer_tail.find("(", spatial_join.start(), spatial_join.end())
+    on_close = _find_matching_paren(outer_tail, on_open)
+    if on_close < 0:
+        return sql, False
+    on_expr = outer_tail[on_open + 1:on_close].strip()
+    if not _expr_references_alias(on_expr, spatial_alias):
+        return sql, False
+
+    # Some generators keep only the source key in the CTE and recover its
+    # geometry through a correlated scalar subquery inside ST_Intersects.  The
+    # normalized CTE now carries that geometry directly, so replace the scalar
+    # lookup before removing the key join.
+    on_expr = _replace_cte_correlated_geometry_subqueries(
+        on_expr,
+        source_table,
+        cte_alias,
+        source_geom,
+    )
+
+    # Replace source-side aliases from the original key join with the CTE
+    # alias while retaining explicit transforms on the spatial side.
+    source_qualifiers = {source_table.table_name, source_table.bare_name}
+    for join in re.finditer(
+        r"\bJOIN\s+(?P<table>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)"
+        r"(?:\s+(?:AS\s+)?(?P<alias>[A-Za-z_][A-Za-z0-9_]*))?",
+        outer_tail[:spatial_join.start()],
+        flags=re.IGNORECASE,
+    ):
+        ref = join.group("table")
+        if _table_for_ref(ref, tables) is source_table:
+            source_qualifiers.add(_strip_identifier_quotes(join.group("alias") or ref))
+    for qualifier in sorted(source_qualifiers, key=len, reverse=True):
+        on_expr = re.sub(
+            rf"(?<![A-Za-z0-9_]){re.escape(qualifier)}\s*\.",
+            f"{cte_alias}.",
+            on_expr,
+            flags=re.IGNORECASE,
+        )
+    if not _expr_references_alias(on_expr, cte_alias):
+        return sql, False
+
+    # Keep only the CTE's source predicates.  A simple WHERE in the outer
+    # query may still be carried over if it references the CTE alias only.
+    cte_where = ""
+    where_bounds = _top_level_clause_bounds(
+        cte_body,
+        "WHERE",
+        ("GROUP BY", "HAVING", "ORDER BY", "LIMIT"),
+    )
+    if where_bounds:
+        cte_where = f" WHERE {cte_body[where_bounds[0]:where_bounds[1]].strip()}"
+    # The existential rewrite needs the source geometry, but the outer
+    # aggregate may also refer to an entity key projected by the original CTE
+    # (for example ``COUNT(DISTINCT l.<key>)``). Preserve every governed source
+    # column referenced by the outer SELECT instead of silently dropping it.
+    projection_refs = [source_geom_ref]
+    outer_ref_pattern = re.compile(
+        rf"\b{re.escape(cte_alias)}\s*\.\s*(?P<column>\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)",
+        flags=re.IGNORECASE,
+    )
+    for ref_match in outer_ref_pattern.finditer(select_expr):
+        column = source_table.column_by_name(ref_match.group("column"))
+        if column is None or column.is_geometry:
+            continue
+        ref = column.quoted_ref
+        if ref not in projection_refs:
+            projection_refs.append(ref)
+    cte_sql = f"SELECT {', '.join(projection_refs)} FROM {source_ref}{cte_where}"
+
+    outer_where = ""
+    outer_where_bounds = _top_level_clause_bounds(
+        outer_tail,
+        "WHERE",
+        ("GROUP BY", "HAVING", "ORDER BY", "LIMIT"),
+    )
+    if outer_where_bounds:
+        outer_where_body = outer_tail[outer_where_bounds[0]:outer_where_bounds[1]].strip()
+        if outer_where_body and not re.search(
+            rf"\b{re.escape(spatial_alias)}\.",
+            outer_where_body,
+            flags=re.IGNORECASE,
+        ):
+            outer_where = f" AND {outer_where_body}"
+
+    rewritten = (
+        f"WITH {cte_name} AS ({cte_sql}) "
+        f"SELECT {select_expr} FROM {cte_name} AS {cte_alias} "
+        f"WHERE EXISTS (SELECT 1 FROM {spatial_ref} AS {spatial_alias} "
+        f"WHERE ST_Intersects({on_expr})){outer_where}"
+    )
+    return rewritten, rewritten != text
+
+
+def _replace_cte_correlated_geometry_subqueries(
+    expression: str,
+    source_table: TableInfo,
+    cte_alias: str,
+    source_geom: ColumnInfo,
+) -> str:
+    text = expression or ""
+    cursor = 0
+    while True:
+        match = re.search(r"\(\s*SELECT\b", text[cursor:], flags=re.IGNORECASE)
+        if not match:
+            break
+        open_pos = cursor + match.start()
+        close_pos = _find_matching_paren(text, open_pos)
+        if close_pos < 0:
+            break
+        body = text[open_pos + 1:close_pos]
+        from_match = re.search(
+            r"\bFROM\s+(?P<table>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)",
+            body,
+            flags=re.IGNORECASE,
+        )
+        projected_geometry = bool(
+            re.match(
+                rf"\s*SELECT\s+(?:[A-Za-z_][A-Za-z0-9_]*\.)?"
+                rf"{re.escape(source_geom.quoted_ref)}\b",
+                body,
+                flags=re.IGNORECASE,
+            )
+        )
+        if (
+            from_match
+            and _table_for_ref(from_match.group("table"), [source_table]) is source_table
+            and projected_geometry
+            and _expr_references_alias(body, cte_alias)
+        ):
+            replacement = f"{cte_alias}.{source_geom.quoted_ref}"
+            text = text[:open_pos] + replacement + text[close_pos + 1:]
+            cursor = open_pos + len(replacement)
+            continue
+        cursor = close_pos + 1
+    return text
+
+
+def _rewrite_dummy_single_target_order(question: str, sql: str) -> tuple[str, bool]:
+    """Remove an unrelated nested-subquery distance used as dummy ordering."""
+    if not _question_requests_nearest_neighbor(question):
+        return sql, False
+    text = sql or ""
+    cursor = 0
+    changed = False
+    while True:
+        match = re.search(r"\b(?:FROM|JOIN|CROSS\s+JOIN)\s*\(", text[cursor:], flags=re.IGNORECASE)
+        if not match:
+            break
+        open_pos = cursor + match.end() - 1
+        close_pos = _find_matching_paren(text, open_pos)
+        if close_pos < 0:
+            break
+        body = text[open_pos + 1:close_pos].strip()
+        order_positions = _top_level_keyword_positions(body, "ORDER BY")
+        limit_positions = _top_level_keyword_positions(body, "LIMIT")
+        if not re.match(r"^SELECT\b", body, flags=re.IGNORECASE) or not order_positions or not limit_positions:
+            cursor = close_pos + 1
+            continue
+        order_bounds = _top_level_clause_bounds(body, "ORDER BY", ("LIMIT",))
+        if not order_bounds:
+            cursor = close_pos + 1
+            continue
+        order_start, order_end = order_bounds
+        order_body = body[order_start:order_end]
+        if not re.search(r"\(\s*SELECT\b", order_body, flags=re.IGNORECASE):
+            cursor = close_pos + 1
+            continue
+        order_pos = order_positions[0]
+        pruned = (body[:order_pos].rstrip() + " " + body[order_end:].lstrip()).strip()
+        geometry_projection = re.match(
+            r"^SELECT\s+(?P<ref>(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:\"?(?:geometry|geom|shape)\"?))\s+FROM\b",
+            pruned,
+            flags=re.IGNORECASE,
+        )
+        if geometry_projection and not re.search(
+            rf"\b{re.escape(geometry_projection.group('ref'))}\s+IS\s+NOT\s+NULL\b",
+            pruned,
+            flags=re.IGNORECASE,
+        ):
+            pruned = _inject_top_level_predicate(
+                pruned,
+                f"{geometry_projection.group('ref')} IS NOT NULL",
+            )
+        text = text[:open_pos + 1] + pruned + text[close_pos:]
+        changed = True
+        cursor = open_pos + 1 + len(pruned)
+    return text, changed
+
+
+def _rewrite_existing_single_row_target_order(
+    question: str,
+    sql: str,
+    tables: list[TableInfo],
+) -> tuple[str, bool]:
+    """Add governed deterministic ordering to an existing ``LIMIT 1`` target."""
+    q_low = (question or "").casefold()
+    if not any(token in q_low for token in (
+        "取第一条", "取第1条", "第一条", "第一个", "take the first", "first"
+    )):
+        return sql, False
+    text = sql or ""
+    changed = False
+    cursor = 0
+    while True:
+        match = re.search(r"\b(?:FROM|JOIN|CROSS\s+JOIN)\s*\(", text[cursor:], flags=re.IGNORECASE)
+        if not match:
+            break
+        open_pos = cursor + match.end() - 1
+        close_pos = _find_matching_paren(text, open_pos)
+        if close_pos < 0:
+            break
+        body = text[open_pos + 1:close_pos].strip()
+        if not re.match(r"^SELECT\b", body, flags=re.IGNORECASE):
+            cursor = close_pos + 1
+            continue
+        limit_positions = _top_level_keyword_positions(body, "LIMIT")
+        if not limit_positions:
+            cursor = close_pos + 1
+            continue
+        limit_pos = limit_positions[-1]
+        if not re.match(r"\s*1\b", body[limit_pos + len("LIMIT"):], flags=re.IGNORECASE):
+            cursor = close_pos + 1
+            continue
+        if _top_level_keyword_positions(body, "ORDER BY"):
+            cursor = close_pos + 1
+            continue
+        source_match = re.search(
+            r"\bFROM\s+(?P<table>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)",
+            body,
+            flags=re.IGNORECASE,
+        )
+        if not source_match:
+            cursor = close_pos + 1
+            continue
+        table = _table_for_ref(source_match.group("table"), tables)
+        if table is None:
+            cursor = close_pos + 1
+            continue
+        where_bounds = _top_level_clause_bounds(
+            body,
+            "WHERE",
+            ("GROUP BY", "HAVING", "ORDER BY", "LIMIT"),
+        )
+        predicates = []
+        if where_bounds:
+            predicates = [
+                part.strip()
+                for part in _split_top_level_and_predicates(body[where_bounds[0]:where_bounds[1]])
+                if part.strip()
+            ]
+        order_col = _single_target_match_order_expression(predicates, table)
+        order_col = order_col or _stable_target_order_expression(table)
+        order_col = order_col or (
+            table.identifier_column().quoted_ref if table.identifier_column() is not None else ""
+        )
+        if not order_col:
+            cursor = close_pos + 1
+            continue
+        insertion = body[:limit_pos].rstrip() + f" ORDER BY {order_col} " + body[limit_pos:].lstrip()
+        text = text[:open_pos + 1] + insertion + text[close_pos:]
+        changed = True
+        cursor = open_pos + 1 + len(insertion)
+    return text, changed
+
+
+def _question_requests_existential_spatial_relation(question: str) -> bool:
+    q_low = (question or "").casefold()
+    if any(token in q_low for token in ("any", "exists", "intersect any", "任何", "任一", "至少一个")):
+        return True
+    return bool(
+        re.search(
+            r"(?:有|被).{0,12}(?:道路|公路|路|河流|建筑|兴趣点|poi).{0,8}(?:穿过|经过|相交|重叠)"
+            r"|(?:道路|公路|路|河流|建筑|兴趣点|poi).{0,8}(?:穿过|经过|相交|重叠).{0,8}(?:的|之中的)",
+            q_low,
+            flags=re.IGNORECASE,
+        )
+    )
+
+
 def _select_is_single_sum_aggregate(select_expr: str) -> bool:
     text = (select_expr or "").strip()
     match = re.match(r"SUM\s*\(", text, flags=re.IGNORECASE)
@@ -4491,8 +6306,7 @@ def _rewrite_distinct_name_not_null(
     tables: list[TableInfo],
     alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
 ) -> tuple[str, bool]:
-    q_low = (question or "").lower()
-    if "distinct" not in (sql or "").lower() or not any(t in q_low for t in ("name", "名称", "名字")):
+    if "distinct" not in (sql or "").lower() or not _question_explicitly_requires_non_null_name(question):
         return sql, False
     pattern = re.compile(
         r"^\s*SELECT\s+DISTINCT\s+(?P<ref>[A-Za-z_][A-Za-z0-9_]*\.(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))\s+"
@@ -4516,6 +6330,86 @@ def _rewrite_distinct_name_not_null(
         f"WHERE {where} AND {ref} IS NOT NULL{m.group('limit') or ''}"
     )
     return rewritten, True
+
+
+def _rewrite_requested_name_not_null(
+    question: str,
+    sql: str,
+    tables: list[TableInfo],
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    """Exclude NULL labels only when the question explicitly requires them."""
+    q_low = (question or "").casefold()
+    if not _question_explicitly_requires_non_null_name(question):
+        return sql, False
+    if any(token in q_low for token in ("null", "空值", "为空", "无名称")):
+        return sql, False
+    if re.search(r"\b(?:COUNT|SUM|AVG|MIN|MAX)\s*\(", sql or "", flags=re.IGNORECASE):
+        return sql, False
+    select_positions = _top_level_keyword_positions(sql or "", "SELECT")
+    from_positions = _top_level_keyword_positions(sql or "", "FROM")
+    if not select_positions or not from_positions:
+        return sql, False
+    select_pos = select_positions[-1]
+    from_pos = next((pos for pos in from_positions if pos > select_pos), None)
+    if from_pos is None:
+        return sql, False
+    select_body = (sql or "")[select_pos + len("SELECT"):from_pos]
+    # Do not infer a physical name column through an outer CTE alias.  The
+    # candidate map intentionally contains the source table used inside the
+    # CTE, but ``SELECT name FROM x`` is a projection over the CTE contract,
+    # not proof that ``x.name`` is nullable in the source relation.  Adding a
+    # predicate here can also leak a source-table qualifier into the CTE scope.
+    from_relation = re.match(
+        r"\s*(?P<table>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)"
+        r"(?:\s+(?:AS\s+)?(?P<alias>[A-Za-z_][A-Za-z0-9_]*))?\b",
+        (sql or "")[from_pos + len("FROM"):],
+        flags=re.IGNORECASE,
+    )
+    if not from_relation:
+        return sql, False
+    relation_keys = {
+        _strip_identifier_quotes(from_relation.group("table")),
+        _strip_identifier_quotes(from_relation.group("alias") or ""),
+    }
+    if not any(key and key in alias_map for key in relation_keys):
+        return sql, False
+    selected_name_ref = ""
+    for item in _split_top_level_args(select_body):
+        expression = re.split(r"\s+AS\s+", item.strip(), maxsplit=1, flags=re.IGNORECASE)[0].strip()
+        column = _lookup_any_column_ref(expression, alias_map)
+        if column is not None and _column_is_name_like(column):
+            selected_name_ref = expression
+            break
+    if not selected_name_ref:
+        return sql, False
+    if re.search(rf"{re.escape(selected_name_ref)}\s+IS\s+NOT\s+NULL", sql or "", flags=re.IGNORECASE):
+        return sql, False
+    rewritten = _inject_top_level_predicate(sql, f"{selected_name_ref} IS NOT NULL")
+    return rewritten, rewritten != (sql or "")
+
+
+def _question_explicitly_requires_non_null_name(question: str) -> bool:
+    """Recognize an explicit non-null/name-presence requirement.
+
+    Mentioning a name as an output column is not a nullability predicate.  The
+    distinction is semantic and independent of any benchmark vocabulary.
+    """
+    q_low = (question or "").casefold()
+    if re.search(
+        r"\b(?:name|名称|名字)\s*(?:is\s+)?(?:not\s+null|非空|不为空|有值)\b"
+        r"|\b(?:with|having)\s+(?:a\s+)?(?:non[- ]?null\s+)?name\b",
+        q_low,
+        flags=re.IGNORECASE,
+    ):
+        return True
+    return bool(
+        re.search(
+            r"(?:有|具备|包含|存在).{0,4}(?:名称|名字|名)"
+            r"|(?:名称|名字|名).{0,4}(?:不为空|非空|有值|不为?空)",
+            q_low,
+        )
+    )
 
 
 def _rewrite_unqualified_distinct_name_not_null(
@@ -4597,6 +6491,53 @@ def _rewrite_left_join_for_grouped_count(question: str, sql: str) -> tuple[str, 
         f"WHERE {where_clause}{m.group('tail')}"
     )
     return rewritten, True
+
+
+def _rewrite_universal_grouped_count_join(question: str, sql: str) -> tuple[str, bool]:
+    """Preserve zero-count groups for questions phrased as 'each ... has'.
+
+    This is intentionally narrower than the general grouped-count rewrite:
+    only a universal spatial containment wording is eligible, so ordinary
+    inner-join counts such as "按道路等级统计" retain their semantics.
+    """
+    q = question or ""
+    if not re.search(
+        r"每个.{0,24}(?:里|内|中).{0,16}(?:有|包含|包括).{0,16}(?:多少|数量)",
+        q,
+    ):
+        return sql, False
+    if re.search(r"\bLEFT\s+JOIN\b", sql or "", flags=re.IGNORECASE):
+        return sql, False
+    pattern = re.compile(
+        r"^\s*SELECT\s+(?P<select>.+?)\s+FROM\s+"
+        r"(?P<left>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)\s+(?:AS\s+)?(?P<la>[A-Za-z_][A-Za-z0-9_]*)\s+"
+        r"JOIN\s+(?P<right>\"?[A-Za-z_][A-Za-z0-9_\.]*\"?)\s+(?:AS\s+)?(?P<ra>[A-Za-z_][A-Za-z0-9_]*)\s+"
+        r"ON\s+(?P<on>.+?)\s+GROUP\s+BY\s+(?P<group>.+?)(?P<tail>\s+ORDER\s+BY\s+.+|\s+LIMIT\s+\d+)?\s*$",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    match = pattern.match(sql or "")
+    if not match:
+        return sql, False
+    left_alias = match.group("la")
+    right_alias = match.group("ra")
+    select_expr = match.group("select")
+    if not re.search(
+        rf"\bCOUNT\s*\(\s*(?:DISTINCT\s+)?{re.escape(right_alias)}\.",
+        select_expr,
+        flags=re.IGNORECASE,
+    ) and not re.search(r"\bCOUNT\s*\(\s*\*\s*\)", select_expr, flags=re.IGNORECASE):
+        return sql, False
+    if not re.search(rf"\b{re.escape(left_alias)}\.", match.group("group"), flags=re.IGNORECASE):
+        return sql, False
+    on_clause = match.group("on").strip()
+    # The containing relation is the grouped left side.  Preserve any
+    # containment predicate normalization performed earlier in the pipeline.
+    rewritten = (
+        f"SELECT {select_expr} FROM {match.group('left')} AS {left_alias} "
+        f"LEFT JOIN {match.group('right')} AS {right_alias} ON {on_clause} "
+        f"GROUP BY {match.group('group').strip()}{match.group('tail') or ''}"
+    )
+    return rewritten, rewritten != (sql or "")
 
 
 def _rewrite_grouped_count_join_order(question: str, sql: str) -> tuple[str, bool]:
@@ -4859,6 +6800,7 @@ def _rewrite_requested_containment_spatial_predicate(
 ) -> tuple[str, bool]:
     if not _question_requests_containment(question) or _question_requests_intersection(question):
         return sql, False
+    group_alias = _single_group_by_alias(sql or "")
     pattern = re.compile(r"\bST_(?:INTERSECTS|CONTAINS|WITHIN)\s*\(", flags=re.IGNORECASE)
     pieces: list[str] = []
     last = 0
@@ -4879,7 +6821,22 @@ def _rewrite_requested_containment_spatial_predicate(
         if len(args) != 2:
             search_pos = match.end()
             continue
-        replacement = _contains_replacement_for_args(args[0].strip(), args[1].strip(), alias_map)
+        first, second = args[0].strip(), args[1].strip()
+        grouped_expr = ""
+        if group_alias and _expr_references_alias(first, group_alias):
+            grouped_expr = first
+        elif group_alias and _expr_references_alias(second, group_alias):
+            grouped_expr = second
+        grouped_col = _geometry_column_for_expr(grouped_expr, alias_map) if grouped_expr else None
+        if grouped_col and _geometry_container_rank(grouped_col) < 3:
+            source_function = match.group(0).split("(", 1)[0].casefold()
+            replacement = (
+                ""
+                if source_function == "st_intersects"
+                else f"ST_Intersects({first}, {second})"
+            )
+        else:
+            replacement = _contains_replacement_for_args(first, second, alias_map)
         if not replacement:
             search_pos = close + 1
             continue
@@ -4906,6 +6863,9 @@ def _question_requests_containment(question: str) -> bool:
         "\u4f4d\u4e8e",
         "\u5305\u542b",
         "\u5185\u5305\u542b",
+        r"(?:街区|学校|医院|园区|地块|图斑|用地|区域)"
+        r"(?:（[^）]{0,32}）|\([^)]{0,32}\))?(?:范围)?"
+        r"(?:内|里|中).{0,20}(?:建筑|楼|兴趣点|POI|道路|AOI|评分)",
     ))
 
 
@@ -4921,6 +6881,11 @@ def _contains_replacement_for_args(
     first_rank = _geometry_container_rank(first_col)
     second_rank = _geometry_container_rank(second_col)
     if first_rank <= 0 or second_rank <= 0:
+        return ""
+    # Point/line data does not define a polygonal container.  Rewriting a
+    # valid point-to-point/line ST_Intersects predicate to ST_Contains silently
+    # produces an empty result for POI and building layers.
+    if max(first_rank, second_rank) < 3:
         return ""
     if second_rank > first_rank:
         return f"ST_Contains({second}, {first})"
@@ -5029,9 +6994,78 @@ def _rewrite_ranked_metric_not_null(
         return sql, False
     if re.search(rf"{re.escape(metric)}\s+IS\s+NOT\s+NULL", sql or "", re.IGNORECASE):
         return sql, False
+    metric_qualifier = metric.split(".", 1)[0] if "." in metric else ""
+    if metric_qualifier:
+        outer_from = _top_level_clause_body(
+            sql or "", "FROM", ("WHERE", "GROUP BY", "HAVING", "ORDER BY", "LIMIT")
+        )
+        if not re.search(rf"\b{re.escape(metric_qualifier)}\b", outer_from, flags=re.IGNORECASE):
+            # A ranking metric may live inside a CTE while the outer query
+            # reads the CTE alias.  Do not inject a dangling inner-table
+            # qualifier into that outer WHERE clause.
+            return sql, False
     predicate = f"{metric} IS NOT NULL"
     rewritten = _inject_top_level_predicate(sql, predicate)
     return rewritten, rewritten != (sql or "")
+
+
+def _rewrite_ranked_partition_group_label(
+    question: str,
+    sql: str,
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    """Partition window rankings by the requested label rather than a row id."""
+    q_low = (question or "").casefold()
+    group_marker = r"(?:每个|每种|each|every|per)"
+    rank_marker = r"(?:最高|最大|highest|maximum|max(?:imum)?)"
+    if not (
+        re.search(rf"{group_marker}.{{0,32}}{rank_marker}", q_low)
+        or re.search(rf"{rank_marker}.{{0,32}}{group_marker}", q_low)
+    ):
+        return sql, False
+    window_match = re.search(
+        r"ROW_NUMBER\s*\(\s*\)\s+OVER\s*\(\s*PARTITION\s+BY\s+"
+        r"(?P<partition>(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))",
+        sql or "",
+        flags=re.IGNORECASE,
+    )
+    if not window_match:
+        return sql, False
+    current = window_match.group("partition")
+    qualifier = current.split(".", 1)[0] if "." in current else ""
+    select_candidates = list(
+        re.finditer(
+            r"\bSELECT\s+(?P<body>.+?)\s+FROM\b",
+            sql or "",
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+    )
+    select_body = ""
+    for candidate in select_candidates:
+        if candidate.start() < window_match.start():
+            select_body = candidate.group("body")
+    if not select_body:
+        return sql, False
+    for item in _split_top_level_args(select_body):
+        expression = re.split(r"\s+AS\s+", item.strip(), maxsplit=1, flags=re.IGNORECASE)[0].strip()
+        if not expression or expression == current:
+            continue
+        column = _lookup_any_column_ref(expression, alias_map)
+        if column is None or column.is_geometry:
+            continue
+        if (column.semantic_domain or "").casefold() not in {"name", "label"}:
+            continue
+        if qualifier and "." not in expression:
+            replacement = f"{qualifier}.{expression}"
+        else:
+            replacement = expression
+        rewritten = (
+            (sql or "")[:window_match.start("partition")]
+            + replacement
+            + (sql or "")[window_match.end("partition"):]
+        )
+        return rewritten, rewritten != (sql or "")
+    return sql, False
 
 
 def _rank_order_metric_ref(sql: str) -> str:
@@ -5058,11 +7092,67 @@ def _inject_top_level_predicate(sql: str, predicate: str) -> str:
     tail = (sql or "")[insert_at:].lstrip()
     return f"{head} WHERE {predicate}{(' ' + tail) if tail else ''}"
 def _rewrite_requested_spatial_predicate(question: str, sql: str) -> tuple[str, bool]:
-    if not _question_requests_intersection(question):
+    explicit_intersection = _question_requests_intersection(question)
+    implicit_along = _question_requests_implicit_along_intersection(question)
+    if not explicit_intersection and not implicit_along:
         return sql, False
-    rewritten, predicate_changed = _rewrite_spatial_binary_functions_to_intersects(sql)
+    rewritten = sql
+    along_changed = False
+    if implicit_along:
+        rewritten, along_changed = _rewrite_dwithin_to_intersects(rewritten)
+    rewritten, predicate_changed = _rewrite_spatial_binary_functions_to_intersects(rewritten)
     rewritten2, join_changed = _rewrite_requested_intersects_left_joins(question, rewritten)
-    return rewritten2, bool(predicate_changed or join_changed)
+    return rewritten2, bool(along_changed or predicate_changed or join_changed)
+
+
+def _question_requests_implicit_along_intersection(question: str) -> bool:
+    q = question or ""
+    if "沿线" not in q:
+        return False
+    # An explicit distance makes this a buffer/proximity request.  Without a
+    # distance the governed relation is the non-invented geometry relation,
+    # rather than an arbitrary model-selected radius such as 50 metres.
+    return not bool(
+        re.search(
+            r"\d+(?:\.\d+)?\s*(?:千米|公里|km|米|m)(?![A-Za-z])",
+            q,
+            flags=re.IGNORECASE,
+        )
+    )
+
+
+def _rewrite_dwithin_to_intersects(sql: str) -> tuple[str, bool]:
+    pattern = re.compile(r"\bST_DWITHIN\s*\(", flags=re.IGNORECASE)
+    pieces: list[str] = []
+    last = 0
+    search_pos = 0
+    changed = False
+    while True:
+        match = pattern.search(sql or "", search_pos)
+        if not match:
+            break
+        if _inside_single_quoted_literal(sql, match.start()):
+            search_pos = match.end()
+            continue
+        close = _find_matching_paren(sql, match.end() - 1)
+        if close < 0:
+            search_pos = match.end()
+            continue
+        args = _split_top_level_args(sql[match.end():close])
+        if len(args) != 3:
+            search_pos = close + 1
+            continue
+        first = _strip_geography_cast_expr(args[0])
+        second = _strip_geography_cast_expr(args[1])
+        pieces.append(sql[last:match.start()])
+        pieces.append(f"ST_Intersects({first}, {second})")
+        last = close + 1
+        search_pos = close + 1
+        changed = True
+    if not changed:
+        return sql, False
+    pieces.append(sql[last:])
+    return "".join(pieces), True
 
 
 def _rewrite_unrequested_unreferenced_spatial_joins(question: str, sql: str) -> tuple[str, bool]:
@@ -5119,6 +7209,22 @@ def _question_requests_any_spatial_relation(question: str) -> bool:
         "最近",
         "周边",
         "缓冲",
+        "重叠",
+        "穿过",
+        "经过",
+        "沿线",
+        "里面",
+        "内有",
+        "街区里",
+        "街区中",
+        "学校里",
+        "学校中",
+        "区域中",
+        "地块中",
+        "图斑中",
+        "园区中",
+        "范围里",
+        "范围中",
     )
     return any(marker in q_low for marker in markers)
 
@@ -5129,6 +7235,7 @@ def _question_requests_intersection(question: str) -> bool:
     explicit_spatial_intersection = "\u76f8\u4ea4" in q or "st_intersects" in q_low
     has_intersection = (
         explicit_spatial_intersection
+        or any(token in q for token in ("穿过", "经过"))
         or bool(re.search(r"\bintersect(?:s|ed|ing|ion|ions)?\b", q_low))
     )
     if not has_intersection:
@@ -5151,6 +7258,7 @@ def _question_requests_intersection(question: str) -> bool:
         "\u5305\u542b",
         "\u8303\u56f4\u5185",
         "\u4f4d\u4e8e",
+        r"(?:each|every|per|\u6bcf\u4e2a|\u5404).{0,24}(?:inside|within|\u4e2d|\u5185).{0,24}(?:highest|maximum|\u6700\u9ad8|\u8bc4\u5206)",
     )
     return not any(re.search(pattern, q_low) for pattern in containment_patterns)
 
@@ -5264,7 +7372,7 @@ def _rewrite_grouped_spatial_entity_count(
     if not right_entry:
         return sql, False
     right_table, _ = right_entry
-    right_ident = right_table.identifier_column()
+    right_ident = right_table.entity_key_column()
     if not right_ident:
         return sql, False
 
@@ -5274,11 +7382,21 @@ def _rewrite_grouped_spatial_entity_count(
         right_alias,
         right_ident,
     )
-    on_clause, on_changed = _rewrite_grouped_count_spatial_on(m.group("on"), left_alias, right_alias)
+    on_clause, on_changed = _rewrite_grouped_count_spatial_on(
+        m.group("on"),
+        left_alias,
+        right_alias,
+        alias_map,
+    )
+    tail, having_changed = _rewrite_grouped_count_having(
+        m.group("tail"),
+        right_alias,
+        right_ident,
+    )
     join_keyword = "LEFT JOIN"
     join_changed = m.group("join").upper() != join_keyword
 
-    if not (count_changed or on_changed or join_changed):
+    if not (count_changed or on_changed or having_changed or join_changed):
         return sql, False
 
     rewritten = (
@@ -5317,7 +7435,48 @@ def _rewrite_grouped_count_expression(
     return select_expr[:match.start()] + replacement + select_expr[match.end():], True
 
 
-def _rewrite_grouped_count_spatial_on(on_clause: str, left_alias: str, right_alias: str) -> tuple[str, bool]:
+def _rewrite_grouped_count_having(
+    tail: str,
+    right_alias: str,
+    right_ident: ColumnInfo,
+) -> tuple[str, bool]:
+    """Make a grouped threshold count matched right-side entities.
+
+    A containment count is normalized to a LEFT JOIN so empty groups can be
+    represented.  In that shape ``COUNT(*)`` includes the synthetic null row;
+    HAVING must use the same governed entity identifier as the SELECT count.
+    """
+    replacement = f"HAVING COUNT(DISTINCT {right_alias}.{right_ident.quoted_ref})"
+    rewritten, count = re.subn(
+        r"\bHAVING\s+COUNT\s*\(\s*\*\s*\)",
+        replacement,
+        tail or "",
+        count=1,
+        flags=re.IGNORECASE,
+    )
+    return rewritten, bool(count and rewritten != (tail or ""))
+
+
+def _rewrite_grouped_count_spatial_on(
+    on_clause: str,
+    left_alias: str,
+    right_alias: str,
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    left_entry = alias_map.get(left_alias)
+    left_geometry = _first_geometry(left_entry[0]) if left_entry else None
+    left_is_container = bool(
+        left_geometry and _geometry_container_rank(left_geometry) >= 3
+    )
+    if not left_is_container:
+        rewritten, changed = _rewrite_spatial_binary_function(
+            on_clause,
+            "ST_CONTAINS",
+            "ST_Intersects",
+        )
+        if changed:
+            return rewritten, True
+        return on_clause, False
     rewritten, changed = _rewrite_spatial_binary_function_to_contains(
         on_clause,
         "ST_INTERSECTS",
@@ -5332,6 +7491,26 @@ def _rewrite_grouped_count_spatial_on(on_clause: str, left_alias: str, right_ali
         left_alias,
         right_alias,
     )
+
+
+def _rewrite_spatial_binary_function(
+    text: str,
+    source_function: str,
+    target_function: str,
+) -> tuple[str, bool]:
+    pattern = re.compile(rf"\b{re.escape(source_function)}\s*\(", flags=re.IGNORECASE)
+    match = pattern.search(text or "")
+    if not match:
+        return text, False
+    close = _find_matching_paren(text, match.end() - 1)
+    if close < 0:
+        return text, False
+    args = _split_top_level_args(text[match.end():close])
+    if len(args) != 2:
+        return text, False
+    replacement = f"{target_function}({args[0].strip()}, {args[1].strip()})"
+    rewritten = text[:match.start()] + replacement + text[close + 1:]
+    return rewritten, rewritten != text
 
 
 def _rewrite_spatial_binary_function_to_contains(
@@ -5374,6 +7553,191 @@ def _group_by_references_alias(sql_tail: str, alias: str) -> bool:
     return bool(group and re.search(rf"\b{re.escape(alias)}\.", group.group("body"), flags=re.IGNORECASE))
 
 
+def _rewrite_missing_group_label_projection(
+    question: str,
+    sql: str,
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    """Add a requested grouping label that the model omitted from SELECT.
+
+    Grouped natural-language requests commonly say ``各区县/每个街区`` or
+    ``按类型统计`` while a model projects only the aggregate.  The group key
+    is part of the result contract in that wording.  This rule works from the
+    actual top-level GROUP BY expression and never names a dataset-specific
+    table or field.
+    """
+    q = question or ""
+    q_low = q.casefold()
+    if not re.search(
+        r"(?:\b(?:each|per|by|group(?:ed)?\s+by)\b|各|每个|每种|每类|每条|按|分组)",
+        q_low,
+    ):
+        return sql, False
+    if not re.search(r"\bGROUP\s+BY\b", sql or "", flags=re.IGNORECASE):
+        return sql, False
+
+    select_positions = _top_level_keyword_positions(sql or "", "SELECT")
+    from_positions = _top_level_keyword_positions(sql or "", "FROM")
+    if not select_positions or not from_positions:
+        return sql, False
+    select_pos = select_positions[-1]
+    from_pos = next((pos for pos in from_positions if pos > select_pos), None)
+    if from_pos is None:
+        return sql, False
+    select_body = (sql or "")[select_pos + len("SELECT"):from_pos]
+    if re.search(r"\bDISTINCT\s+ON\b", select_body, flags=re.IGNORECASE):
+        return sql, False
+    group_body = _top_level_clause_body(
+        sql or "", "GROUP BY", ("HAVING", "ORDER BY", "LIMIT")
+    )
+    if not group_body.strip():
+        return sql, False
+    selected_items = [item.strip() for item in _split_top_level_args(select_body) if item.strip()]
+    grouped_items = [item.strip() for item in _split_top_level_args(group_body) if item.strip()]
+    if not selected_items or not grouped_items:
+        return sql, False
+
+    # Prefer a plain governed column as the label.  Expressions such as
+    # ``SPLIT_PART(type, ';', 1)`` are already normally projected by the LLM;
+    # adding them again would make the result wider without improving it.
+    label_expr = ""
+    for candidate in grouped_items:
+        if re.fullmatch(
+            r"(?:[A-Za-z_][A-Za-z0-9_]*\s*\.)?(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)",
+            candidate,
+        ):
+            column = _lookup_any_column_ref(candidate, alias_map)
+            if column is None or column.is_geometry:
+                continue
+            label_expr = candidate
+            break
+    if not label_expr:
+        return sql, False
+
+    label_column = _lookup_any_column_ref(label_expr, alias_map)
+
+    def _same_projection(item: str) -> bool:
+        expression = re.split(r"\s+AS\s+", item, maxsplit=1, flags=re.IGNORECASE)[0].strip()
+        if re.sub(r"\s+", "", expression).casefold() == re.sub(r"\s+", "", label_expr).casefold():
+            return True
+        # A display-label expression (for example a governed CASE mapping of
+        # an enum code to its label) already satisfies the group-key contract.
+        # Do not add the raw key a second time and widen the result set.
+        if label_column is None or re.search(
+            r"\b(?:COUNT|SUM|AVG|MIN|MAX|STDDEV|PERCENTILE)\s*\(",
+            expression,
+            flags=re.IGNORECASE,
+        ):
+            return False
+        qualifiers = [
+            qualifier
+            for qualifier, (table, _) in alias_map.items()
+            if table.table_name == label_column.table_name
+            and qualifier.upper() not in _SQL_ALIAS_KEYWORDS
+        ]
+        return any(
+            re.search(
+                _column_reference_alternatives(qualifier, label_column),
+                expression,
+                flags=re.IGNORECASE,
+            )
+            for qualifier in [None, *qualifiers]
+        )
+
+    if any(_same_projection(item) for item in selected_items):
+        return sql, False
+
+    # Only add a label when there is an aggregate.  A missing group key in an
+    # ordinary grouped projection is usually a model formatting issue, while
+    # an aggregate-only result is unambiguously unusable for per-group output.
+    if not re.search(r"\b(?:COUNT|SUM|AVG|MIN|MAX|STDDEV|PERCENTILE)\s*\(", select_body, re.IGNORECASE):
+        return sql, False
+    rewritten = (
+        (sql or "")[:select_pos]
+        + f"SELECT {label_expr}, {select_body.strip()} "
+        + (sql or "")[from_pos:].lstrip()
+    )
+    return rewritten, rewritten != (sql or "")
+
+
+def _rewrite_tuple_top_per_group(question: str, sql: str) -> tuple[str, bool]:
+    """Replace an invalid MAX/MIN tuple predicate with stable per-group ranking.
+
+    ``(group, MAX(score), MIN(objectid))`` does not guarantee that the minimum
+    object id belongs to the row with the maximum score.  For a request that
+    explicitly asks for the top row in every group, PostgreSQL and DuckDB both
+    support ``DISTINCT ON`` with a deterministic ``ORDER BY``.  The rewrite is
+    structural and applies to any qualified columns, not to benchmark IDs.
+    """
+    q_low = (question or "").casefold()
+    group_marker = r"(?:每个|每种|each|per)"
+    rank_marker = r"(?:最高|最大|highest|max(?:imum)?)"
+    if not (
+        re.search(rf"{group_marker}.{{0,32}}{rank_marker}", q_low)
+        or re.search(rf"{rank_marker}.{{0,32}}{group_marker}", q_low)
+    ):
+        return sql, False
+    if re.search(r"\bDISTINCT\s+ON\b", sql or "", flags=re.IGNORECASE):
+        return sql, False
+    where_bounds = _top_level_clause_bounds(
+        sql or "", "WHERE", ("GROUP BY", "HAVING", "ORDER BY", "LIMIT")
+    )
+    if not where_bounds:
+        return sql, False
+    start, end = where_bounds
+    where_body = (sql or "")[start:end]
+    tuple_pattern = re.compile(
+        r"\(\s*(?P<group>[A-Za-z_][A-Za-z0-9_]*\s*\.\s*(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))\s*,\s*"
+        r"(?P<metric>[A-Za-z_][A-Za-z0-9_]*\s*\.\s*(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))\s*,\s*"
+        r"(?P<key>[A-Za-z_][A-Za-z0-9_]*\s*\.\s*(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))\s*\)\s+IN\s*\(\s*"
+        r"SELECT\s+(?P<sgroup>[A-Za-z_][A-Za-z0-9_]*\s*\.\s*(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))\s*,\s*"
+        r"MAX\s*\(\s*(?P<smetric>[A-Za-z_][A-Za-z0-9_]*\s*\.\s*(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))\s*\)\s*,\s*"
+        r"MIN\s*\(\s*(?P<skey>[A-Za-z_][A-Za-z0-9_]*\s*\.\s*(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))\s*\)\s+FROM\s+.+?\s+GROUP\s+BY\s+(?P<gby>[A-Za-z_][A-Za-z0-9_]*\s*\.\s*(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))\s*\)",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    match = tuple_pattern.search(where_body)
+    if not match:
+        return sql, False
+    group_ref = re.sub(r"\s+", "", match.group("group"))
+    metric_ref = re.sub(r"\s+", "", match.group("metric"))
+    key_ref = re.sub(r"\s+", "", match.group("key"))
+    remaining = where_body[:match.start()] + where_body[match.end():]
+    remaining = re.sub(r"\s+AND\s+AND\s+", " AND ", remaining, flags=re.IGNORECASE)
+    remaining = re.sub(r"^(?:\s*AND\s+)+|(?:\s+AND\s*)+$", "", remaining, flags=re.IGNORECASE).strip()
+    predicates = [part.strip() for part in _split_top_level_and_predicates(remaining) if part.strip()]
+    not_null = f"{metric_ref} IS NOT NULL"
+    if not any(re.sub(r"\s+", "", p).casefold() == re.sub(r"\s+", "", not_null).casefold() for p in predicates):
+        predicates.append(not_null)
+    new_where = " AND ".join(predicates)
+
+    rewritten = (sql or "")[:start] + " " + new_where + " " + (sql or "")[end:].lstrip()
+    select_positions = _top_level_keyword_positions(rewritten, "SELECT")
+    from_positions = _top_level_keyword_positions(rewritten, "FROM")
+    if not select_positions or not from_positions:
+        return sql, False
+    select_pos = select_positions[-1]
+    from_pos = next((pos for pos in from_positions if pos > select_pos), None)
+    if from_pos is None:
+        return sql, False
+    prefix = rewritten[select_pos:from_pos]
+    prefix = re.sub(r"^SELECT\b", f"SELECT DISTINCT ON ({group_ref})", prefix, count=1, flags=re.IGNORECASE)
+    rewritten = rewritten[:select_pos] + prefix + rewritten[from_pos:]
+
+    order_positions = _top_level_keyword_positions(rewritten, "ORDER BY")
+    order_expr = f"{group_ref}, {metric_ref} DESC, {key_ref} ASC"
+    if order_positions:
+        order_start = order_positions[0]
+        order_bounds = _top_level_clause_bounds(rewritten, "ORDER BY", ("LIMIT",))
+        if order_bounds:
+            _, order_end = order_bounds
+            rewritten = rewritten[:order_start].rstrip() + " ORDER BY " + order_expr + rewritten[order_end:]
+    else:
+        limit_positions = _top_level_keyword_positions(rewritten, "LIMIT")
+        insertion = limit_positions[0] if limit_positions else len(rewritten)
+        rewritten = rewritten[:insertion].rstrip() + " ORDER BY " + order_expr + " " + rewritten[insertion:].lstrip()
+    return rewritten.strip(), rewritten.strip() != (sql or "").strip()
+
+
 def _expr_references_alias(expr: str, alias: str) -> bool:
     return bool(re.search(rf"\b{re.escape(alias)}\.", expr or "", flags=re.IGNORECASE))
 
@@ -5392,6 +7756,9 @@ def _rewrite_distinct_entity_count(
     rewritten, changed = _rewrite_grouped_spatial_identifier_counts_to_distinct(question, sql, alias_map)
     if changed:
         return rewritten, True
+    rewritten, changed = _rewrite_invalid_distinct_count_key(sql, alias_map)
+    if changed:
+        return rewritten, True
     rewritten, changed = _rewrite_distinct_geometry_count_to_identifier(sql, alias_map)
     if changed:
         return rewritten, True
@@ -5408,16 +7775,148 @@ def _rewrite_distinct_entity_count(
         or not _sql_has_spatial_join_function(sql)
     ):
         return sql, False
+    grouped_target = _grouped_spatial_count_target_ref(question, sql, alias_map)
+    if grouped_target:
+        rewritten, n = re.subn(
+            r"COUNT\s*\(\s*\*\s*\)",
+            f"COUNT(DISTINCT {grouped_target})",
+            sql,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+        if n:
+            return rewritten, True
     first = _first_from_table(sql, tables)
     if not first:
         return sql, False
     table, qualifier = first
-    ident = table.identifier_column()
+    ident = table.entity_key_column()
     if not ident:
         return sql, False
     expr = f'COUNT(DISTINCT {qualifier}.{ident.quoted_ref})'
     rewritten, n = re.subn(r"COUNT\s*\(\s*\*\s*\)", expr, sql, count=1, flags=re.IGNORECASE)
     return rewritten, bool(n)
+
+
+def _rewrite_invalid_distinct_count_key(
+    sql: str,
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    pattern = re.compile(
+        r"\bCOUNT\s*\(\s*DISTINCT\s+"
+        r"(?P<ref>(?P<alias>[A-Za-z_][A-Za-z0-9_]*)\."
+        r"(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))\s*\)",
+        flags=re.IGNORECASE,
+    )
+
+    def repl(match: re.Match) -> str:
+        entry = alias_map.get(match.group("alias"))
+        counted = _lookup_column_ref(match.group("ref"), alias_map)
+        if not entry or not counted:
+            return match.group(0)
+        if not (counted.value_semantics or {}).get("distinct_count_forbidden"):
+            return match.group(0)
+        table, _ = entry
+        entity_key = table.entity_key_column()
+        if entity_key is None or entity_key.column_name.lower() == counted.column_name.lower():
+            return match.group(0)
+        return f"COUNT(DISTINCT {match.group('alias')}.{entity_key.quoted_ref})"
+
+    rewritten = pattern.sub(repl, sql or "")
+    return rewritten, rewritten != (sql or "")
+
+
+def _grouped_spatial_count_target_ref(
+    question: str,
+    sql: str,
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> str | None:
+    """Choose the counted entity from governed schema language.
+
+    Dataset entity names do not belong in the rewriter. Candidate tables are
+    ranked by aliases/descriptions supplied by the semantic layer and by their
+    proximity to count expressions in the actual question. Ambiguous evidence
+    is left unchanged for the normal execution/repair path.
+    """
+    group_match = re.search(
+        r"\bGROUP\s+BY\b(?P<body>.*?)(?:\bHAVING\b|\bORDER\s+BY\b|\bLIMIT\b|$)",
+        sql or "",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    group_body = group_match.group("body") if group_match else ""
+    candidates: list[tuple[float, str, ColumnInfo]] = []
+    for alias, (table, _) in alias_map.items():
+        if not alias or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", alias):
+            continue
+        if not re.search(rf"\b{re.escape(alias)}\.", sql or "", flags=re.IGNORECASE):
+            continue
+        ident = table.entity_key_column()
+        if not ident:
+            continue
+        # In "count targets per group" SQL, an alias projected by GROUP BY is
+        # the grouping entity, not the counted entity. This structural fact is
+        # schema-independent and is stronger than a lexical table-name guess.
+        if group_body and re.search(
+            rf"\b{re.escape(alias)}\s*\.", group_body, flags=re.IGNORECASE
+        ):
+            continue
+        score = _table_question_relevance(question, table)
+        score += _count_target_proximity(question, table)
+        if group_body:
+            score += 1.0
+        if score > 0:
+            candidates.append((score, alias, ident))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    if len(candidates) > 1 and abs(candidates[0][0] - candidates[1][0]) < 0.25:
+        return None
+    _, alias, ident = candidates[0]
+    return f"{alias}.{ident.quoted_ref}"
+
+
+def _count_target_proximity(question: str, table: TableInfo) -> float:
+    """Score governed table terms near a count expression in the question."""
+    q = question or ""
+    if not q:
+        return 0.0
+    marker_pattern = re.compile(
+        r"count|number\s+of|how\s+many|quantity|数量|个数|条数|多少|几(?:个|条|类|栋)?",
+        flags=re.IGNORECASE,
+    )
+    marker_centres = [
+        (match.start() + match.end()) / 2.0 for match in marker_pattern.finditer(q)
+    ]
+    if not marker_centres:
+        return 0.0
+
+    best = 0.0
+    probes = _table_relevance_tokens(table)
+    probes.extend(table.table_aliases)
+    seen: set[str] = set()
+    for raw in probes:
+        token = _strip_identifier_quotes(str(raw or "")).strip()
+        key = token.casefold()
+        if not token or key in seen or key in {"data", "dataset", "table", "数据", "图层"}:
+            continue
+        seen.add(key)
+        if any("\u4e00" <= ch <= "\u9fff" for ch in token):
+            occurrences = [m for m in re.finditer(re.escape(token), q, flags=re.IGNORECASE)]
+        elif len(token) >= 3:
+            occurrences = list(
+                re.finditer(
+                    rf"(?<![A-Za-z0-9_]){re.escape(token)}(?![A-Za-z0-9_])",
+                    q,
+                    flags=re.IGNORECASE,
+                )
+            )
+        else:
+            occurrences = []
+        for occurrence in occurrences:
+            centre = (occurrence.start() + occurrence.end()) / 2.0
+            distance = min(abs(centre - marker) for marker in marker_centres)
+            best = max(best, 4.0 / (1.0 + distance / 8.0))
+    return best
 
 
 def _is_singleton_cross_join_spatial_filter(sql: str) -> bool:
@@ -5450,7 +7949,7 @@ def _rewrite_distinct_geometry_count_to_identifier(
             return match.group(0)
         table, _ = entry
         counted = _lookup_column_ref(match.group("ref"), alias_map)
-        ident = table.identifier_column()
+        ident = table.entity_key_column()
         if not counted or not counted.is_geometry or not ident:
             return match.group(0)
         if counted.column_name.lower() == ident.column_name.lower():
@@ -5471,11 +7970,37 @@ def _rewrite_exists_spatial_count_to_distinct(
         return sql, False
     if not _sql_has_spatial_join_function(sql):
         return sql, False
+    # The CTE relation already represents one row per filtered entity.  A
+    # physical source table mentioned inside the CTE is not in the outer
+    # COUNT's scope, so deriving ``COUNT(DISTINCT source.id)`` here would both
+    # change semantics and create an invalid reference.
+    cte_match = re.match(
+        r"^\s*WITH\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s+AS\s*\(",
+        sql or "",
+        flags=re.IGNORECASE,
+    )
+    if cte_match:
+        close = _find_matching_paren(sql or "", cte_match.end() - 1)
+        outer = (sql or "")[close + 1:] if close >= 0 else ""
+        if re.search(
+            rf"^\s*SELECT\s+COUNT\s*\(\s*\*\s*\).*?\bFROM\s+"
+            rf"{re.escape(cte_match.group('name'))}\b",
+            outer,
+            flags=re.IGNORECASE | re.DOTALL,
+        ):
+            return sql, False
+    # A derived-table wrapper may contain the real spatial alias inside its
+    # subquery, while the outer COUNT(*) has only ``sub`` in scope.  Rewriting
+    # that outer aggregate to ``COUNT(DISTINCT d.id)`` creates an invalid
+    # reference in DuckDB/PostGIS.  The inner query already enforces entity
+    # uniqueness through EXISTS, so leave the outer count untouched.
+    if re.search(r"^\s*SELECT\b.+?\bFROM\s*\(", sql or "", flags=re.IGNORECASE | re.DOTALL):
+        return sql, False
     first = _first_from_table(sql, tables)
     if not first:
         return sql, False
     table, qualifier = first
-    ident = table.identifier_column()
+    ident = table.entity_key_column()
     if not ident:
         return sql, False
     qualifier_ref = _qualifier_ref_pattern(qualifier)
@@ -5526,7 +8051,7 @@ def _rewrite_grouped_spatial_identifier_counts_to_distinct(
         if not entry:
             return match.group(0)
         table, _ = entry
-        ident = table.identifier_column()
+        ident = table.entity_key_column()
         counted = _lookup_column_ref(ref, alias_map)
         if not ident or not counted:
             return match.group(0)
@@ -5606,7 +8131,7 @@ def _target_grouped_spatial_count_ref(
             continue
         if re.search(rf"\b{re.escape(alias)}\.", group_body or "", flags=re.IGNORECASE):
             continue
-        ident = table.identifier_column()
+        ident = table.entity_key_column()
         if not ident:
             continue
         score = _table_question_relevance(question, table)
@@ -5683,6 +8208,59 @@ def _rewrite_centroid_label_projection_order(question: str, sql: str) -> tuple[s
     if not _is_simple_column_projection(items[1]):
         return sql, False
     rewritten = f"{match.group('prefix')}{items[1]}, {items[0]}{match.group('suffix')}"
+    return rewritten, rewritten != (sql or "")
+
+
+def _rewrite_centroid_coordinate_projection(question: str, sql: str) -> tuple[str, bool]:
+    """Expand a centroid geometry into X/Y when coordinates were requested."""
+    q_low = (question or "").lower()
+    if not any(token in q_low for token in (
+        "coordinates",
+        "coordinate",
+        "longitude",
+        "latitude",
+        "坐标",
+        "经纬度",
+        "经度",
+        "纬度",
+    )):
+        return sql, False
+    if re.search(r"\bST_[XY]\s*\(", sql or "", flags=re.IGNORECASE):
+        return sql, False
+    match = re.match(
+        r"^(?P<prefix>\s*SELECT\s+)(?P<select>.+?)(?P<suffix>\s+FROM\s+.+)$",
+        sql or "",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not match:
+        return sql, False
+    items = [part.strip() for part in _split_top_level_args(match.group("select"))]
+    expanded: list[str] = []
+    changed = False
+    for item in items:
+        value = re.sub(
+            r"\s+AS\s+(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*)\s*$",
+            "",
+            item,
+            flags=re.IGNORECASE,
+        ).strip()
+        centroid = re.fullmatch(
+            r"ST_CENTROID\s*\(\s*(?P<geom>.+)\s*\)",
+            value,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if not centroid:
+            expanded.append(item)
+            continue
+        geom = centroid.group("geom").strip()
+        expanded.extend([
+            f"ST_X(ST_Centroid({geom})) AS lon",
+            f"ST_Y(ST_Centroid({geom})) AS lat",
+        ])
+        changed = True
+    if not changed:
+        return sql, False
+    rewritten = f"{match.group('prefix')}{', '.join(expanded)}{match.group('suffix')}"
     return rewritten, rewritten != (sql or "")
 
 
@@ -5828,6 +8406,57 @@ def _rewrite_default_preview_sort(
     head = sql[:match.start()].rstrip()
     tail = sql[match.start():].lstrip()
     return f"{head} ORDER BY {order_ref} {direction} {tail}".rstrip(), True
+
+
+def _rewrite_explicit_group_name_order(
+    question: str,
+    sql: str,
+    alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
+) -> tuple[str, bool]:
+    """Honor an explicit request to order grouped results by entity name."""
+    q = question or ""
+    if not re.search(
+        r"(?:按|依照|根据).{0,16}(?:名称|名字|name).{0,8}(?:排序|排列|order)",
+        q,
+        flags=re.IGNORECASE,
+    ):
+        return sql, False
+    group_body = _top_level_clause_body(sql or "", "GROUP BY", ("HAVING", "ORDER BY", "LIMIT"))
+    if not group_body:
+        return sql, False
+    order_expr = ""
+    for expression in _split_top_level_args(group_body):
+        candidate = expression.strip()
+        column = _lookup_any_column_ref(candidate, alias_map)
+        if column is None:
+            continue
+        tokens = {
+            column.column_name.casefold(),
+            _strip_identifier_quotes(column.quoted_ref).casefold(),
+            *(str(alias).casefold() for alias in column.aliases),
+        }
+        if (
+            (column.semantic_domain or "").casefold() == "name"
+            or tokens.intersection({"name", "名称", "名字"})
+        ):
+            order_expr = candidate
+            break
+    if not order_expr:
+        return sql, False
+    order_positions = _top_level_keyword_positions(sql or "", "ORDER BY")
+    if not order_positions:
+        return sql, False
+    order_start = order_positions[0]
+    order_bounds = _top_level_clause_bounds(sql or "", "ORDER BY", ("LIMIT",))
+    if not order_bounds:
+        return sql, False
+    _, order_end = order_bounds
+    direction = "DESC" if re.search(r"(?:降序|倒序|descending)", q, flags=re.IGNORECASE) else "ASC"
+    tail = (sql or "")[order_end:].lstrip()
+    rewritten = f"{(sql or '')[:order_start].rstrip()} ORDER BY {order_expr} {direction}"
+    if tail:
+        rewritten += f" {tail}"
+    return rewritten, rewritten != (sql or "")
 
 
 def _question_requests_preview(question: str) -> bool:
@@ -6237,16 +8866,138 @@ def _sql_groups_by_column(sql: str, col: ColumnInfo, qualifiers: list[str]) -> b
 
 
 def _where_clause_references_column(sql: str, col: ColumnInfo, qualifiers: list[str]) -> bool:
-    m = re.search(
-        r"\bWHERE\b(?P<body>.*?)(?=\bGROUP\s+BY\b|\bORDER\s+BY\b|\bLIMIT\b|$)",
-        sql,
-        re.IGNORECASE | re.DOTALL,
-    )
-    if not m:
+    bodies = _where_clause_bodies(sql or "")
+    if not bodies:
         return False
-    body = m.group("body")
-    refs = [_column_reference_alternatives(qualifier, col) for qualifier in qualifiers + [None]]
-    return any(re.search(ref, body, re.IGNORECASE) for ref in refs if ref)
+    # A filter may live in a scalar/derived/LATERAL subquery. Include the
+    # governed physical relation names in addition to the outer alias so a
+    # predicate already applied inside that relation is not injected again at
+    # the outer query level.
+    all_qualifiers = list(qualifiers)
+    for qualifier in (col.table_name, col.table_name.split(".")[-1]):
+        if qualifier and qualifier not in all_qualifiers:
+            all_qualifiers.append(qualifier)
+    refs = [
+        _column_reference_alternatives(qualifier, col)
+        for qualifier in all_qualifiers + [None]
+    ]
+    return any(
+        re.search(ref, body, re.IGNORECASE)
+        for body in bodies
+        for ref in refs
+        if ref
+    )
+
+
+def _where_clause_bodies(sql: str) -> list[str]:
+    """Return WHERE bodies at every parenthesis scope.
+
+    Regexes that stop at the first top-level ``ORDER BY`` miss filters inside
+    derived tables and LATERAL subqueries. This small scanner tracks SQL
+    strings and parentheses and stops each WHERE at the next clause keyword at
+    the same scope (or at the enclosing closing parenthesis).
+    """
+    text = sql or ""
+    where_positions: list[tuple[int, int]] = []
+    depth = 0
+    in_single = False
+    in_double = False
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == "'" and not in_double:
+            if in_single and i + 1 < len(text) and text[i + 1] == "'":
+                i += 2
+                continue
+            in_single = not in_single
+            i += 1
+            continue
+        if ch == '"' and not in_single:
+            in_double = not in_double
+            i += 1
+            continue
+        if not in_single and not in_double:
+            if ch == "(":
+                depth += 1
+                i += 1
+                continue
+            if ch == ")":
+                depth = max(0, depth - 1)
+                i += 1
+                continue
+            if _word_at(text, i, "WHERE"):
+                where_positions.append((i + len("WHERE"), depth))
+                i += len("WHERE")
+                continue
+        i += 1
+
+    if not where_positions:
+        return []
+
+    end_keywords = (
+        "GROUP BY",
+        "HAVING",
+        "ORDER BY",
+        "LIMIT",
+        "OFFSET",
+        "UNION",
+        "EXCEPT",
+        "INTERSECT",
+        "WHERE",
+    )
+    bodies: list[str] = []
+    for start, where_depth in where_positions:
+        end = len(text)
+        depth_now = where_depth
+        in_single = False
+        in_double = False
+        i = start
+        while i < len(text):
+            ch = text[i]
+            if ch == "'" and not in_double:
+                if in_single and i + 1 < len(text) and text[i + 1] == "'":
+                    i += 2
+                    continue
+                in_single = not in_single
+                i += 1
+                continue
+            if ch == '"' and not in_single:
+                in_double = not in_double
+                i += 1
+                continue
+            if not in_single and not in_double:
+                if ch == "(":
+                    depth_now += 1
+                    i += 1
+                    continue
+                if ch == ")":
+                    if depth_now <= where_depth:
+                        end = i
+                        break
+                    depth_now -= 1
+                    i += 1
+                    continue
+                if depth_now == where_depth and any(
+                    _word_at(text, i, keyword.replace(" ", ""))
+                    if " " not in keyword
+                    else _clause_at(text, i, keyword)
+                    for keyword in end_keywords
+                ):
+                    end = i
+                    break
+            i += 1
+        bodies.append(text[start:end])
+    return bodies
+
+
+def _clause_at(text: str, pos: int, clause: str) -> bool:
+    match = re.match(re.escape(clause), text[pos:], flags=re.IGNORECASE)
+    if not match:
+        return False
+    before = text[pos - 1] if pos > 0 else " "
+    after_pos = pos + len(clause)
+    after = text[after_pos] if after_pos < len(text) else " "
+    return not (before.isalnum() or before == "_") and not (after.isalnum() or after == "_")
 
 
 def _inject_predicate(sql: str, predicate: str) -> str:
@@ -6260,6 +9011,7 @@ def _qualifiers_for_table(
     qualifiers = [
         qualifier for qualifier, (mapped_table, _) in alias_map.items()
         if mapped_table.table_name == table.table_name
+        and qualifier.upper() not in _SQL_ALIAS_KEYWORDS
     ]
     preferred = [q for q in qualifiers if q not in {table.table_name, table.bare_name}]
     return preferred or qualifiers[:1]

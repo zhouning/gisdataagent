@@ -6,6 +6,8 @@ encryption round-trip, connectors (mocked httpx), auth header builder,
 schema mapping, health check, unified dispatcher.
 """
 import json
+import os
+import tempfile
 import unittest
 from unittest.mock import MagicMock, patch, AsyncMock
 
@@ -58,6 +60,41 @@ class TestEncryption(unittest.TestCase):
         self.assertEqual(_decrypt_dict(None), {})
         self.assertEqual(_decrypt_dict(42), {})
         self.assertEqual(_decrypt_dict(""), {})
+
+    def test_explicit_secret_file_wins_over_rotated_chainlit_secret(self):
+        import data_agent.virtual_sources as vs
+
+        vs._FERNET_KEY = None
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8") as handle:
+            handle.write("CHAINLIT_AUTH_SECRET=file-secret\n")
+            handle.flush()
+            with patch.dict(
+                os.environ,
+                {
+                    "CHAINLIT_AUTH_SECRET": "rotated-or-placeholder",
+                    "GDA_VSOURCE_SECRET_FILE": handle.name,
+                },
+                clear=False,
+            ):
+                encrypted = vs._encrypt_dict({"type": "basic", "password": "p"})
+                vs._FERNET_KEY = None
+                loaded, ok = vs._decrypt_dict_with_status(encrypted)
+        self.assertTrue(ok)
+        self.assertEqual(loaded["password"], "p")
+        vs._FERNET_KEY = None
+
+    def test_wrong_secret_is_reported_as_unavailable(self):
+        import data_agent.virtual_sources as vs
+
+        with patch.dict(os.environ, {"CHAINLIT_AUTH_SECRET": "correct"}, clear=True):
+            vs._FERNET_KEY = None
+            encrypted = vs._encrypt_dict({"type": "basic", "password": "p"})
+        with patch.dict(os.environ, {"CHAINLIT_AUTH_SECRET": "wrong"}, clear=True):
+            vs._FERNET_KEY = None
+            loaded, ok = vs._decrypt_dict_with_status(encrypted)
+        self.assertFalse(ok)
+        self.assertEqual(loaded, {})
+        vs._FERNET_KEY = None
 
 
 # ---------------------------------------------------------------------------
@@ -113,6 +150,39 @@ class TestValidation(unittest.TestCase):
             "source_type": "wfs",
             "endpoint_url": "https://example.com",
         }))
+
+    def test_database_requires_secret_free_endpoint_and_schema_whitelist(self):
+        from data_agent.virtual_sources import (
+            _normalize_database_query_config,
+            _validate_source,
+        )
+
+        valid = {
+            "source_name": "abu-dhabi-liveability",
+            "source_type": "database",
+            "endpoint_url": "postgresql://192.0.2.10:5444/liveability_data",
+            "auth_config": {"type": "basic", "username": "reader", "password": "secret"},
+            "query_config": {
+                "allowed_schemas": ["makani"],
+                "discovery_mode": "metadata_only",
+            },
+        }
+        self.assertIsNone(_validate_source(valid))
+        self.assertIn(
+            "allowed_schemas",
+            _validate_source({**valid, "query_config": {}}),
+        )
+        self.assertIn(
+            "must not embed credentials",
+            _validate_source(
+                {
+                    **valid,
+                    "endpoint_url": "postgresql://reader:secret@192.0.2.10/liveability_data",
+                }
+            ),
+        )
+        normalized = _normalize_database_query_config({"table": "makani.addresses"})
+        self.assertEqual(normalized["allowed_schemas"], ["makani"])
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +287,7 @@ class TestCRUD(unittest.TestCase):
         conn.execute.return_value = MagicMock(fetchall=MagicMock(return_value=[
             (1, "wfs1", "wfs", "https://x.com/wfs", {}, "EPSG:4326",
              None, "on_demand", True, "admin", False, "healthy",
-             "2026-01-01", "2026-01-01"),
+             "2026-01-01", "2026-01-01", "not_run", None, None),
         ]))
         from data_agent.virtual_sources import list_virtual_sources
         r = list_virtual_sources("admin")
@@ -237,6 +307,7 @@ class TestCRUD(unittest.TestCase):
             1, "wfs1", "wfs", "https://x.com/wfs", {}, {}, {},
             "EPSG:4326", None, "on_demand", True, "admin", False,
             "healthy", None, "2026-01-01", "2026-01-01",
+            {}, {}, None, None, None, None, None, "not_run", None,
         )))
         from data_agent.virtual_sources import get_virtual_source
         r = get_virtual_source(1, "admin")
@@ -250,6 +321,33 @@ class TestCRUD(unittest.TestCase):
         conn.execute.return_value = MagicMock(fetchone=MagicMock(return_value=None))
         from data_agent.virtual_sources import get_virtual_source
         self.assertIsNone(get_virtual_source(999, "admin"))
+
+    @patch("data_agent.virtual_sources._decrypt_dict")
+    @patch("data_agent.virtual_sources.get_engine")
+    def test_get_discovery_never_loads_credentials(self, mock_get, mock_decrypt):
+        engine, conn = self._mock_engine()
+        mock_get.return_value = engine
+        conn.execute.return_value = MagicMock(fetchone=MagicMock(return_value=(
+            13,
+            "abu-dhabi-makani-dev",
+            "database",
+            "abu-dhabi-site-operator",
+            {"resource_count": 138, "contains_source_rows": False},
+            "discovery-sha",
+            {"metadata_only": True},
+            "profile-sha",
+            "2026-08-17",
+            "succeeded",
+            None,
+        )))
+        from data_agent.virtual_sources import get_virtual_source_discovery
+
+        result = get_virtual_source_discovery(13, "abu-dhabi-site-operator")
+
+        self.assertEqual(result["source_id"], 13)
+        self.assertEqual(result["discovery_fingerprint"], "discovery-sha")
+        self.assertNotIn("auth_config", result)
+        mock_decrypt.assert_not_called()
 
     @patch("data_agent.virtual_sources.get_engine")
     def test_update_success(self, mock_get):
@@ -318,6 +416,27 @@ class TestTableInit(unittest.TestCase):
         from data_agent.virtual_sources import ensure_virtual_sources_table
         ensure_virtual_sources_table()
         self.assertTrue(conn.execute.called)
+        rendered = "\n".join(str(call.args[0]) for call in conn.execute.call_args_list)
+        self.assertNotIn("discovery_fingerprint", rendered)
+
+
+class TestJsonValue(unittest.TestCase):
+    def test_preserves_structured_values(self):
+        from data_agent.virtual_sources import _json_value
+
+        value = {"schema": "gda.virtual-source-definition.v1"}
+        self.assertIs(_json_value(value, {}), value)
+
+    def test_decodes_json_text(self):
+        from data_agent.virtual_sources import _json_value
+
+        self.assertEqual(_json_value('{"status":"failed"}', {}), {"status": "failed"})
+
+    def test_invalid_json_uses_default(self):
+        from data_agent.virtual_sources import _json_value
+
+        default = {"fallback": True}
+        self.assertIs(_json_value("not-json", default), default)
 
 
 # ---------------------------------------------------------------------------
@@ -646,6 +765,31 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
         })
         self.assertEqual(r, {"result": "ok"})
 
+    @patch("data_agent.virtual_sources._auto_register_virtual_result")
+    @patch("data_agent.connectors.ConnectorRegistry.get")
+    async def test_database_dispatch_never_implicitly_materializes(
+        self,
+        mock_get,
+        mock_register,
+    ):
+        mock_connector = AsyncMock()
+        mock_connector.query = AsyncMock(return_value="database-result")
+        mock_get.return_value = mock_connector
+        from data_agent.virtual_sources import query_virtual_source
+
+        result = await query_virtual_source(
+            {
+                "source_type": "database",
+                "endpoint_url": "postgresql://example/liveability_data",
+                "auth_config": {},
+                "query_config": {"allowed_schemas": ["makani"]},
+                "default_crs": "EPSG:4326",
+            },
+            register_result=True,
+        )
+        self.assertEqual(result, "database-result")
+        mock_register.assert_not_called()
+
     async def test_dispatch_unknown_type(self):
         from data_agent.virtual_sources import query_virtual_source
         r = await query_virtual_source({
@@ -654,6 +798,65 @@ class TestDispatcher(unittest.IsolatedAsyncioTestCase):
             "default_crs": "EPSG:4326",
         })
         self.assertEqual(r["status"], "error")
+
+
+class TestRegisteredDiscovery(unittest.IsolatedAsyncioTestCase):
+    @patch("data_agent.virtual_sources._persist_discovery_state", return_value=True)
+    @patch("data_agent.virtual_sources.get_virtual_source")
+    @patch("data_agent.connectors.ConnectorRegistry.get")
+    async def test_registered_database_discovery_persists_only_metadata(
+        self,
+        mock_registry,
+        mock_get_source,
+        mock_persist,
+    ):
+        mock_get_source.return_value = {
+            "id": 7,
+            "source_name": "abu-dhabi-liveability",
+            "source_type": "database",
+            "endpoint_url": "postgresql://example/liveability_data",
+            "owner_username": "admin",
+            "auth_config": {
+                "type": "basic",
+                "username": "reader",
+                "password": "must-not-persist",
+            },
+            "query_config": {
+                "allowed_schemas": ["makani"],
+                "discovery_mode": "metadata_only",
+            },
+        }
+        connector = AsyncMock()
+        connector.discover = AsyncMock(
+            return_value={
+                "provider": "PostgreSQL",
+                "provider_version": "16.14",
+                "authorized_schemas": ["makani"],
+                "truncated": False,
+                "layers": [
+                    {
+                        "name": "makani.addresses",
+                        "type": "table",
+                        "columns": [
+                            {"name": "id", "type": "BIGINT", "nullable": False}
+                        ],
+                        "primary_key": ["id"],
+                        "estimated_record_count": 12,
+                    }
+                ],
+            }
+        )
+        mock_registry.return_value = connector
+
+        from data_agent.virtual_sources import discover_virtual_source
+
+        result = await discover_virtual_source(7, "admin")
+        self.assertEqual(result["status"], "ok")
+        payload = json.dumps(result)
+        self.assertNotIn("must-not-persist", payload)
+        self.assertTrue(result["snapshot"]["contains_source_rows"] is False)
+        self.assertEqual(result["snapshot"]["authorized_schemas"], ["makani"])
+        self.assertEqual(mock_persist.call_args_list[-1].kwargs["status"], "succeeded")
 
 
 # ---------------------------------------------------------------------------

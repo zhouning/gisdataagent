@@ -102,15 +102,10 @@ async def vsource_detail(request: Request):
     source = get_virtual_source(source_id, username)
     if not source:
         return JSONResponse({"error": "Source not found"}, status_code=404)
-    # Redact auth_config secrets in response
-    if source.get("auth_config"):
-        auth = source["auth_config"]
-        if auth.get("token"):
-            auth["token"] = "***"
-        if auth.get("password"):
-            auth["password"] = "***"
-        if auth.get("key"):
-            auth["key"] = "***"
+    auth = source.pop("auth_config", {}) or {}
+    source["credential_configured"] = bool(
+        auth and auth.get("type", "none") != "none"
+    )
     return JSONResponse(source)
 
 
@@ -179,6 +174,16 @@ async def vsource_discover(request: Request):
 
     if not source_type or not endpoint_url:
         return JSONResponse({"error": "source_type and endpoint_url required"}, status_code=400)
+    if source_type == "database":
+        return JSONResponse(
+            {
+                "error": (
+                    "Database discovery is only available after product registration at "
+                    "/api/virtual-sources/{id}/discover"
+                )
+            },
+            status_code=400,
+        )
 
     from ..connectors import ConnectorRegistry
     connector = ConnectorRegistry.get(source_type)
@@ -193,6 +198,23 @@ async def vsource_discover(request: Request):
         return JSONResponse({"error": str(e)[:300]}, status_code=502)
 
 
+async def vsource_registered_discover(request: Request):
+    """POST /api/virtual-sources/{id}/discover — discover a registered source."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    source_id = int(request.path_params.get("id", 0))
+    from ..virtual_sources import discover_virtual_source
+
+    result = await discover_virtual_source(source_id, username)
+    if result.get("status") == "error":
+        message = result.get("message", "Discovery failed")
+        status_code = 404 if "not found" in message.casefold() else 502
+        return JSONResponse({"error": message}, status_code=status_code)
+    return JSONResponse(result)
+
+
 async def vsource_preview_columns(request: Request):
     """POST /api/virtual-sources/{id}/preview-columns — fetch remote column info."""
     user = _get_user_from_request(request)
@@ -205,6 +227,63 @@ async def vsource_preview_columns(request: Request):
         source = get_virtual_source(source_id, username)
         if not source:
             return JSONResponse({"error": "数据源不存在"}, status_code=404)
+        if source.get("source_type") == "database":
+            snapshot = source.get("discovery_snapshot") or {}
+            resources = snapshot.get("resources") or []
+            if not resources:
+                return JSONResponse(
+                    {"error": "请先对已注册数据库执行元数据发现"},
+                    status_code=409,
+                )
+            try:
+                body = await request.json()
+            except Exception:
+                body = {}
+            resource_name = str(
+                body.get("resource_name")
+                or (source.get("query_config") or {}).get("table")
+                or ""
+            ).strip()
+            if not resource_name and len(resources) != 1:
+                return JSONResponse(
+                    {
+                        "metadata_only": True,
+                        "columns": [],
+                        "resources": [
+                            {
+                                "name": item.get("name"),
+                                "column_count": len(item.get("columns") or []),
+                            }
+                            for item in resources
+                        ],
+                    }
+                )
+            selected = next(
+                (
+                    item
+                    for item in resources
+                    if item.get("name") == resource_name
+                ),
+                resources[0] if len(resources) == 1 else None,
+            )
+            if selected is None:
+                return JSONResponse({"error": "资源不在已发现的 schema 范围内"}, status_code=404)
+            return JSONResponse(
+                {
+                    "metadata_only": True,
+                    "resource_name": selected.get("name"),
+                    "columns": [
+                        {
+                            "name": column.get("name"),
+                            "dtype": column.get("type"),
+                            "nullable": column.get("nullable", True),
+                            "samples": [],
+                        }
+                        for column in selected.get("columns") or []
+                    ],
+                    "sample_count": 0,
+                }
+            )
         # Query a small sample to get column info
         gdf = await query_virtual_source(source, limit=5, register_result=False)
         if gdf is None or (hasattr(gdf, '__len__') and len(gdf) == 0):
@@ -328,6 +407,60 @@ async def vsource_infer_mapping(request: Request):
         source = get_virtual_source(source_id, username)
         if not source:
             return JSONResponse({"error": "数据源不存在"}, status_code=404)
+        if source.get("source_type") == "database":
+            resources = (source.get("discovery_snapshot") or {}).get("resources") or []
+            requested_resource = target_table or str(
+                (source.get("query_config") or {}).get("table") or ""
+            ).strip()
+            if requested_resource:
+                resources = [
+                    item for item in resources if item.get("name") == requested_resource
+                ]
+            if len(resources) != 1:
+                return JSONResponse(
+                    {
+                        "error": (
+                            "数据库语义映射需要指定已发现的 target_table，且该表必须位于授权 schema"
+                        )
+                    },
+                    status_code=400,
+                )
+            source_columns = resources[0].get("columns") or []
+            if standard_version_id:
+                from ..standards_platform.application.contracts import SourceFieldProfile
+                from ..standards_platform.application.service import (
+                    propose_for_released_standard,
+                )
+
+                proposal = propose_for_released_standard(
+                    standard_version_id=standard_version_id,
+                    source_fields=[
+                        SourceFieldProfile(
+                            name=str(column.get("name")),
+                            dtype=str(column.get("type") or "unknown"),
+                            samples=(),
+                        )
+                        for column in source_columns
+                    ],
+                    target_table=resources[0].get("name"),
+                )
+                return JSONResponse(proposal)
+            mapping = infer_schema_mapping(
+                [str(column.get("name")) for column in source_columns]
+            )
+            return JSONResponse(
+                {
+                    "schema": "gis-data-agent.canonical-mapping-proposal.v1",
+                    "mapping": mapping,
+                    "source_profile": "metadata_only",
+                    "target_table": resources[0].get("name"),
+                    "execution_policy": {
+                        "mode": "legacy_canonical_fallback",
+                        "automatic_authoritative_write": False,
+                        "requires_human_confirmation": True,
+                    },
+                }
+            )
         # A small sample supports dtype evidence and a reproducible source
         # profile hash without performing ingestion or modifying source data.
         gdf = await query_virtual_source(source, limit=5, register_result=False)
@@ -755,6 +888,11 @@ def get_virtual_source_routes() -> list:
         Route("/api/virtual-sources/{id:int}", vsource_update, methods=["PUT"]),
         Route("/api/virtual-sources/{id:int}", vsource_delete, methods=["DELETE"]),
         Route("/api/virtual-sources/{id:int}/test", vsource_test, methods=["POST"]),
+        Route(
+            "/api/virtual-sources/{id:int}/discover",
+            vsource_registered_discover,
+            methods=["POST"],
+        ),
         Route(
             "/api/virtual-sources/{id:int}/ingestions",
             vsource_ingestion_list,

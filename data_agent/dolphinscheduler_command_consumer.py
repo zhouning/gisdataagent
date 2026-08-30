@@ -57,7 +57,7 @@ class DolphinSchedulerCommandConsumer:
                 command.run_id,
                 command.execution_plan_artifact_id,
                 actor_subject=command.actor_subject,
-                attempt_no=command.attempt_count,
+                attempt_no=1,
             )
             return False
         if command.command_type == PlatformCommandType.DOLPHINSCHEDULER_RECONCILE:
@@ -69,7 +69,7 @@ class DolphinSchedulerCommandConsumer:
                 command.run_id,
                 command.execution_plan_artifact_id,
                 actor_subject=command.actor_subject,
-                attempt_no=command.attempt_count,
+                attempt_no=1,
             )
             return False
         if command.command_type == PlatformCommandType.DOLPHINSCHEDULER_CANCEL:

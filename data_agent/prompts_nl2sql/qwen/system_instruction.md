@@ -42,7 +42,7 @@ Do NOT explore the schema beyond these three calls. Do NOT re-issue `resolve_sem
 **R8. DISTINCT in many-to-one joins.**
 When you JOIN two tables across a one-to-many relationship and SELECT a dimension column from the parent (name, jqmc, district name, etc.) together with `COUNT(*)` or `COUNT(child.id)`, you must use `COUNT(DISTINCT child.id)` to prevent row-multiplication when the parent geometry/key matches multiple child rows. Example: counting buildings per historic district with `JOIN ... ON ST_Contains(...)` — naive `COUNT(*)` inflates each district by the number of overlapping buildings × overlapping rows.
 
-**DO NOT** apply this rule to single-table queries. `SELECT COUNT(*) FROM buildings WHERE "Floor" >= 40` must stay as `COUNT(*)`; rewriting it as `COUNT(DISTINCT "Id")` changes the semantics (some Id values may be duplicated by design and should still be counted). R8 only fires when there is an actual JOIN.
+**DO NOT** apply this rule to single-table queries. A requested row count must stay as `COUNT(*)`; rewriting it as `COUNT(DISTINCT identifier)` changes the semantics when identifier values are duplicated. R8 only fires when there is an actual JOIN.
 
 ## PostGIS / PostgreSQL Domain Facts
 
@@ -53,15 +53,15 @@ When you JOIN two tables across a one-to-many relationship and SELECT a dimensio
 - Identifier quoting: any column whose name contains uppercase letters or non-ASCII characters requires double quotes. Lowercase ASCII-only columns use no quotes.
 - String literals use single quotes.
 
-## Qwen family harness notes
+## Shared Product Harness Notes
 
 - Do not append clauses after a semicolon. Output one complete SQL statement; never put `AND`, `OR`, or `WHERE` after `LIMIT ...;`.
-- If the semantic context says the geometry column is `shape`, use `shape`, not `geometry`; if it says `geometry`, use `geometry`.
+- Use the exact geometry column named by the semantic context. Do not substitute a conventional name such as `geometry`, `geom`, or `shape`.
 - Use `ST_Contains`, `ST_Within`, and `ST_Intersects` with geometry operands. Use geography casts for `ST_DWithin`, `ST_Distance`, `ST_Area`, or `ST_Length`; `ST_Contains(...::geography, ...::geography)` is invalid.
 - For write/destructive requests output `SELECT 1` only; never generate `DELETE`, `UPDATE`, `DROP`, `INSERT`, `ALTER`, `TRUNCATE`, or a `SELECT` wrapper around them.
-- CQ dataset values such as `村庄`, `茶园`, `水田`, `道路`, `建筑`, `POI`, `AOI`, `历史文化街区`, and filters like `LIKE`, `Floor >= 50`, or `dlmc = '村庄'` are normal read-only query constraints. Do not refuse them and do not output `SELECT 1`.
-- For nearest-neighbour questions with "某个/取第一个/按 ... 排序", define the target inline with `CROSS JOIN (SELECT ... FROM real_table WHERE ... ORDER BY ... LIMIT 1) AS alias`. Never reference an undefined table or CTE named `target`.
-- If the question asks for `道路名称` or road distance, the search table must be the road table from the semantic context/schema, not the building target table.
+- Literal values and filters supplied by the user or governed semantic context are normal read-only constraints. Do not mistake domain nouns for write operations.
+- For a nearest-neighbour question with one selected target, define that target inline from a governed candidate table. Never reference an undefined table or CTE.
+- Select requested attributes from the candidate entity that owns those attributes; do not reuse an unrelated target table merely because it also has geometry.
 
 ## Read-Only Safety
 

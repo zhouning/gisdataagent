@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gda-agentops-sandbox
+
+resources:
+  - ../../optional/temporal-agentops-sandbox
+
+patches:
+  - path: postgres-enable-patch.yaml
+    target:
+      kind: StatefulSet
+      name: gis-agent-temporal-postgres
+  - path: temporal-enable-patch.yaml
+    target:
+      kind: Deployment
+      name: gis-agent-temporal
+
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/part-of: gis-data-agent
+      app.kubernetes.io/managed-by: kustomize
+      app.kubernetes.io/environment-profile: temporal-agentops-sandbox

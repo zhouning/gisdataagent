@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from difflib import SequenceMatcher
 
@@ -18,20 +19,37 @@ _COMPLEX_FEWSHOT_HINTS = (
 
 
 def _should_fetch_few_shots(user_text: str, candidate_tables: list, semantic: dict) -> bool:
-    """Only fetch expensive embedding-based few-shots for genuinely complex queries.
+    """Decide when the paper's embedding-based few-shot stage should run.
 
-    GIS few-shots are not useful for non-spatial queries; they pollute
-    warehouse-style prompts with irrelevant ST_* examples.
+    English warehouse prompts keep the historical complex-query gate. Chinese
+    GIS/business prompts are retrieved whenever governed candidates exist,
+    because their spatial intent is often not emitted as ST_* hints until the
+    LLM grounding stage.
     """
     spatial_query = bool(semantic.get("spatial_ops") or semantic.get("region_filter"))
-    if not spatial_query and not any(h in user_text for h in _COMPLEX_FEWSHOT_HINTS):
+    complex_text = any(h in user_text for h in _COMPLEX_FEWSHOT_HINTS)
+    if (
+        not spatial_query
+        and not complex_text
+        and not _contains_cjk_text(user_text)
+        and os.environ.get("GDA_NL2SQL_FEWSHOT_ALL", "0") != "1"
+    ):
         return False
     high_conf_tables = [t for t in candidate_tables if t.get("confidence", 0) >= 0.6]
     if len(high_conf_tables) > 1:
         return True
-    if any(h in user_text for h in _COMPLEX_FEWSHOT_HINTS):
+    if complex_text:
         return True
     if semantic.get("spatial_ops") and (semantic.get("metric_hints") or semantic.get("sql_filters")):
+        return True
+    # Chinese GIS/business questions often express the operation in natural
+    # language (e.g. “和桥梁有空间重叠”) before the lightweight semantic
+    # resolver has emitted an ST_* hint. Keep the paper's retrieval stage live
+    # for those requests whenever governed candidates exist; the embedding
+    # score threshold still prevents unrelated examples from being injected.
+    if _contains_cjk_text(user_text) and candidate_tables:
+        return True
+    if os.environ.get("GDA_NL2SQL_FEWSHOT_ALL", "0") == "1" and candidate_tables:
         return True
     return False
 from .semantic_layer import (
@@ -177,6 +195,13 @@ def _contains_cjk_text(text: str) -> bool:
     return any("\u4e00" <= ch <= "\u9fff" for ch in text or "")
 
 
+def _intent_requires_spatial_sources(intent: str) -> bool:
+    return intent in {
+        IntentLabel.SPATIAL_JOIN.value,
+        IntentLabel.KNN.value,
+    }
+
+
 def _prune_cross_domain_noise(user_text: str, sources: list[dict]) -> list[dict]:
     """Drop low-confidence ASCII-only sources when CJK sources matched strongly."""
     if not _contains_cjk_text(user_text):
@@ -231,6 +256,7 @@ def _rank_sources(user_text: str, sources: list[dict], semantic: dict) -> list[d
     for source in sources:
         table_name = source.get("table_name", "")
         score = float(source.get("confidence", 0.0))
+        score += max(-1.0, min(1.0, float(source.get("nl2sql_priority") or 0) / 100.0))
         has_geom = bool(source.get("geometry_type"))
         col_hits = len(matched_columns.get(table_name, []))
 
@@ -284,6 +310,40 @@ def _source_alias_hits(user_text: str, source: dict) -> int:
             continue
         seen.add(key)
         if _identifier_token_in_text(user_text, probe):
+            hits += 1
+    return hits
+
+
+def _explicit_source_role_alias_hits(user_text: str, source: dict) -> int:
+    """Count governed business-role aliases explicitly present in a question.
+
+    This deliberately excludes table-name fragments and free-form
+    descriptions.  It is used as a recall guarantee: an explicitly named
+    role such as ``道路`` must reach the schema candidate stage even when an
+    embedding hit for a nearby concept (for example POI) scores higher.
+    """
+    probes = [str(source.get("display_name") or "")]
+    probes.extend(str(value) for value in (source.get("synonyms") or []))
+    ignored = {
+        "data",
+        "dataset",
+        "table",
+        "数据",
+        "信息",
+        "图层",
+        "空间",
+        "名称",
+        "数量",
+    }
+    hits = 0
+    seen: set[str] = set()
+    for raw in probes:
+        value = raw.strip()
+        key = value.casefold()
+        if not value or key in seen or key in ignored:
+            continue
+        seen.add(key)
+        if _identifier_token_in_text(user_text, value):
             hits += 1
     return hits
 
@@ -342,6 +402,7 @@ def _rank_candidate_tables(user_text: str, candidate_tables: list[dict], semanti
     for table in candidate_tables:
         table_name = table.get("table_name", "")
         score = float(table.get("confidence", 0.0))
+        score += max(-1.0, min(1.0, float(table.get("nl2sql_priority") or 0) / 100.0))
         has_geom = any(col.get("is_geometry") for col in table.get("columns", []))
         col_hits = len(matched_columns.get(table_name, []))
         if col_hits:
@@ -455,6 +516,35 @@ def _build_candidate_table(source: dict, schema: dict) -> dict:
             "value_semantics": col.get("value_semantics") or {},
             "sample_values": [],
         })
+    source_meta = schema.get("source_metadata") or {}
+    source_kind = source.get("source_kind") or source_meta.get("source_kind") or "postgis"
+    projection_path = source.get("projection_path") or source_meta.get("projection_path")
+    projection_id = source.get("projection_id") or source_meta.get("projection_id")
+    explicit_bindings = source.get("execution_bindings") or source_meta.get(
+        "execution_bindings"
+    ) or {}
+    execution_bindings = {
+        str(engine): dict(binding)
+        for engine, binding in explicit_bindings.items()
+        if isinstance(binding, dict)
+    }
+    if projection_path and "lake" not in execution_bindings:
+        execution_bindings["lake"] = {
+            "projection_path": projection_path,
+            "projection_id": projection_id,
+        }
+    postgis_table_name = source.get("postgis_table_name") or source_meta.get(
+        "postgis_table_name"
+    )
+    if (
+        "postgis" not in execution_bindings
+        and (source_kind != "offline_projection" or postgis_table_name)
+    ):
+        execution_bindings["postgis"] = {
+            "table_name": postgis_table_name
+            or source.get("table_name")
+            or schema.get("table_name"),
+        }
     return {
         "table_name": source.get("table_name") or schema.get("table_name"),
         "display_name": source.get("display_name") or schema.get("display_name") or source.get("table_name"),
@@ -464,7 +554,60 @@ def _build_candidate_table(source: dict, schema: dict) -> dict:
         "columns": out_columns,
         "row_count_hint": _estimate_table_size(source.get("table_name") or schema.get("table_name")),
         "schema_complete": True,
+        "source_kind": source_kind,
+        "projection_path": projection_path,
+        "projection_id": projection_id,
+        "srid": source.get("srid") or source_meta.get("srid"),
+        "geometry_type": source.get("geometry_type") or source_meta.get("geometry_type"),
+        "metric_crs": source.get("metric_crs") or source_meta.get("metric_crs"),
+        "production_eligible": source.get(
+            "production_eligible", source_meta.get("production_eligible", False)
+        ),
+        "nl2sql_enabled": source.get(
+            "nl2sql_enabled", source_meta.get("nl2sql_enabled", True)
+        ),
+        "nl2sql_priority": int(
+            source.get("nl2sql_priority", source_meta.get("nl2sql_priority", 0)) or 0
+        ),
+        "execution_bindings": execution_bindings,
     }
+
+
+def _extract_sql_table_names(sql: str) -> list[str]:
+    """Extract physical table identifiers referenced by a reviewed example.
+
+    This is intentionally a conservative identifier scan, not an SQL parser:
+    it only accepts names following FROM/JOIN. The
+    extracted names are matched against the governed semantic-source catalog
+    before they can affect grounding.
+    """
+    if not sql:
+        return []
+    names: list[str] = []
+    seen: set[str] = set()
+    for match in re.finditer(
+        r"\b(?:FROM|JOIN)\s+([A-Za-z_][A-Za-z0-9_.]*)",
+        str(sql),
+        flags=re.IGNORECASE,
+    ):
+        identifier = match.group(1).strip().strip('"')
+        bare = identifier.split(".")[-1].strip('"')
+        if not bare:
+            continue
+        key = identifier.casefold()
+        if key not in seen:
+            seen.add(key)
+            names.append(identifier)
+    return names
+
+
+def refresh_nl2sql_grounding_prompt(payload: dict, family: str | None = None) -> dict:
+    """Re-render grounding after an execution adapter filters candidates."""
+
+    payload["grounding_prompt"] = _format_grounding_prompt(payload, family=family)
+    stats = payload.setdefault("_hint_injection_stats", {})
+    stats["candidate_tables"] = len(payload.get("candidate_tables") or [])
+    return payload
 
 
 def _as_str_list(value) -> list[str]:
@@ -948,6 +1091,12 @@ def _format_grounding_prompt_compact(payload: dict) -> str:
             lines.append(f"### {table['table_name']}"
                          f" (confidence {table.get('confidence', 0.0):.2f},"
                          f" ~{table.get('row_count_hint', 0)} rows)")
+            priority = int(table.get("nl2sql_priority") or 0)
+            if priority:
+                lines.append(
+                    f"- governed NL2SQL priority: {priority}; prefer this source over "
+                    "lower-priority candidates for the same business object"
+                )
             table_aliases = table.get("table_aliases") or []
             if table_aliases:
                 lines.append(f"- table aliases: {', '.join(str(a) for a in table_aliases[:12])}")
@@ -955,6 +1104,14 @@ def _format_grounding_prompt_compact(payload: dict) -> str:
                 unit_str = f" [{col['unit']}]" if col.get("unit") else ""
                 aliases = col.get("aliases") or []
                 alias_str = f" aka {', '.join(aliases)}" if aliases else ""
+                semantic_domain = str(col.get("semantic_domain") or "").strip()
+                description = str(col.get("description") or "").strip()
+                meaning_parts = []
+                if semantic_domain:
+                    meaning_parts.append(f"domain={semantic_domain}")
+                if description:
+                    meaning_parts.append(f"meaning={description}")
+                meaning_str = f" {'; '.join(meaning_parts)}" if meaning_parts else ""
                 sv = col.get("sample_values")
                 sample_str = (
                     f" sample: {', '.join(str(v) for v in sv[:5])}"
@@ -967,7 +1124,7 @@ def _format_grounding_prompt_compact(payload: dict) -> str:
                 )
                 lines.append(
                     f"- {col['quoted_ref']} :: {col.get('pg_type','')}"
-                    f"{unit_str}{alias_str}{sample_str}{value_semantics_str}"
+                    f"{unit_str}{alias_str}{meaning_str}{sample_str}{value_semantics_str}"
                 )
                 if col.get("is_geometry"):
                     pg_type = col.get("pg_type", "")
@@ -988,6 +1145,63 @@ def _format_grounding_prompt_compact(payload: dict) -> str:
                 lines.append(f"- {ref}: SRID={srid}")
             lines.append("- ST_Transform geometries to a common SRID before "
                          "spatial operations.")
+
+        # Make the semantic resolver's role assignment explicit. This is
+        # intentionally derived from governed aliases, rather than a table-
+        # name or question-id branch, so a model cannot silently reuse one
+        # candidate table for two distinct entities in a spatial join.
+        question = str(payload.get("user_question") or "")
+        role_matches: dict[str, list[tuple[str, float, int]]] = {}
+        for table in cand:
+            table_name = str(table.get("table_name") or "")
+            if not table_name:
+                continue
+            aliases = list(table.get("table_aliases") or [])
+            aliases.extend([table.get("display_name") or ""])
+            for alias in dict.fromkeys(str(item).strip() for item in aliases if item):
+                if len(alias) < 2 or not _identifier_token_in_text(question, alias):
+                    continue
+                role_matches.setdefault(alias, []).append(
+                    (table_name, float(table.get("confidence") or 0.0), int(table.get("nl2sql_priority") or 0))
+                )
+        bindings: list[tuple[str, str]] = []
+        for alias, matches in role_matches.items():
+            unique_tables = {item[0] for item in matches}
+            ordered = sorted(matches, key=lambda item: (item[2], item[1]), reverse=True)
+            # A lower-priority alias match must not override a governed source
+            # for the same business object. Alias overlap scopes the comparison
+            # so an unrelated high-priority table cannot suppress this role.
+            alias_key = alias.casefold()
+            competing_priority = max(
+                (
+                    int(table.get("nl2sql_priority") or 0)
+                    for table in cand
+                    if any(
+                        alias_key in probe.casefold() or probe.casefold() in alias_key
+                        for probe in [
+                            str(table.get("display_name") or ""),
+                            *(str(value) for value in (table.get("table_aliases") or [])),
+                        ]
+                        if len(probe.strip()) >= 2
+                    )
+                ),
+                default=ordered[0][2],
+            )
+            if competing_priority > ordered[0][2]:
+                continue
+            if len(unique_tables) == 1:
+                bindings.append((alias, matches[0][0]))
+                continue
+            # If two physical versions share an alias, emit it only when the
+            # governed priority makes the choice unambiguous.
+            if len(ordered) > 1 and (ordered[0][2] > ordered[1][2] or ordered[0][1] - ordered[1][1] >= 0.2):
+                bindings.append((alias, ordered[0][0]))
+        if bindings:
+            lines.append("")
+            lines.append("## Question-to-table role bindings (governed)")
+            for alias, table_name in bindings[:8]:
+                lines.append(f'- question term "{alias}" -> {table_name}')
+            lines.append("- Use each bound physical table for that role; do not reuse a different candidate table unless the question explicitly requests a self-join.")
 
     # Semantic hints
     hints = payload.get("semantic_hints", {}) or {}
@@ -1072,6 +1286,11 @@ def _format_grounding_prompt_legacy(payload: dict) -> str:
         lines.append("")
         lines.append(f"### {table['table_name']} ({table.get('display_name') or table['table_name']})")
         lines.append(f"置信度: {table.get('confidence', 0.0):.2f}; 估计行数: {table.get('row_count_hint', 0)}")
+        priority = int(table.get("nl2sql_priority") or 0)
+        if priority:
+            lines.append(
+                f"- 治理后的问数优先级: {priority}；若其他候选表示同一业务对象，优先使用本表。"
+            )
         table_aliases = table.get("table_aliases") or []
         if table_aliases:
             lines.append(f"- table aliases: {', '.join(str(a) for a in table_aliases[:12])}")
@@ -1092,8 +1311,16 @@ def _format_grounding_prompt_legacy(payload: dict) -> str:
                     except (ValueError, IndexError):
                         pass
                 geom_srids[f"{table['table_name']}.{col['column_name']}"] = srid
-        if any(c.get("needs_quoting") for c in table.get("columns", [])):
-            lines.append('⚠ PostgreSQL 规则: 大小写混合列名必须使用双引号，例如 "Floor"、"Id"。')
+        quoted_examples = [
+            str(c.get("quoted_ref") or "")
+            for c in table.get("columns", [])
+            if c.get("needs_quoting") and c.get("quoted_ref")
+        ][:2]
+        if quoted_examples:
+            lines.append(
+                "⚠ PostgreSQL 规则: 大小写混合列名必须使用双引号；"
+                f"当前 schema 中的示例: {', '.join(quoted_examples)}。"
+            )
 
     if geom_srids:
         geographic_cols = {k: v for k, v in geom_srids.items() if v in (4326, 4490, 4610)}
@@ -1240,20 +1467,20 @@ def _format_grounding_prompt_legacy(payload: dict) -> str:
 
         lines.append("")
         lines.append("## DISTINCT 使用规则")
-        lines.append("- 当 JOIN 产生一对多关系（如 patient JOIN laboratory 一个患者有多条检验记录），SELECT 列表中的维度列（ID/name/birthday 等）必须加 DISTINCT 或用 DISTINCT ON。")
+        lines.append("- 当 JOIN 产生一对多关系时，若问题要求返回左侧实体列表，应按该实体的治理主键去重；不要把关联明细行数当成实体数。")
         lines.append("- 只有在 SELECT 中包含聚合函数（COUNT/SUM/AVG/MAX/MIN）时才不需要 DISTINCT（聚合本身已去重）。")
-        lines.append("- 当 gold 要求 'List patients / List IDs' 且涉及多表 JOIN 时，默认使用 SELECT DISTINCT。")
-        lines.append("- **单表 COUNT(*) 严禁改成 COUNT(DISTINCT col)**——单表查询里 COUNT(*) 已经是行计数；只有题目明确说 \"多少种不同 / 几类 / distinct\" 时才用 COUNT(DISTINCT)。例如 \"有多少栋 40 层及以上的楼\" → `COUNT(*)`，不是 `COUNT(DISTINCT \"Id\")`。")
+        lines.append("- 多表列表查询只有在关联会复制目标实体时才使用 SELECT DISTINCT；去重键必须来自当前 schema 的治理实体键。")
+        lines.append("- **单表 COUNT(*) 不得擅自改成 COUNT(DISTINCT col)**：只有问题明确要求“不同/几类/去重”或语义层声明实体去重口径时，才使用 COUNT(DISTINCT <治理实体键>)。")
 
         lines.append("")
         lines.append("## 避免过度 JOIN")
         lines.append("- 如果所需的所有列和过滤条件都在同一张表中，不要引入额外的 JOIN。")
         lines.append("- 只有当 WHERE 条件或 SELECT 列确实需要另一张表的字段时才 JOIN。")
-        lines.append("- 当两张表都有同名字段（如 Diagnosis），优先使用问题语境中最直接的那张表。")
+        lines.append("- 当多张表存在同名字段时，必须依据候选表别名、字段别名、描述和关系路径确定归属；证据不足时不要猜测。")
 
         lines.append("")
         lines.append("## 输出列格式")
-        lines.append("- 当问题要求 'full name / 姓名' 且表中有 first_name + last_name 两列时，默认 SELECT 两列分开返回，不要用 || 拼接。")
+        lines.append("- 除非问题或语义层明确要求拼接展示值，否则保留 schema 中的原始字段，不要凭示例发明派生列。")
         lines.append("- LIMIT 1 场景：如果问题要求 'the highest / the oldest / the youngest'，使用 ORDER BY ... LIMIT 1 而非子查询 WHERE col = (SELECT MAX/MIN...)。")
 
         # Date / temporal handling — BIRD heavily uses TEXT-stored dates
@@ -1391,8 +1618,12 @@ def _build_warehouse_join_hints(candidate_tables: list[dict]) -> dict | None:
     return result
 
 
-def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
-                         family: str | None = None) -> dict:
+def build_nl2sql_context(
+    user_text: str,
+    schema_filter: str | None = None,
+    family: str | None = None,
+    execution_engine: str | None = None,
+) -> dict:
     """Build semantic + schema grounding payload for NL2SQL generation.
 
     Args:
@@ -1438,6 +1669,41 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
             _merge_source_metadata(s, source_by_table.get(str(s.get("table_name") or "")))
             for s in sources
         ]
+        # Preserve every business role explicitly named by the question.  The
+        # fuzzy supplement below intentionally keeps only two extra sources;
+        # without this recall pass a KNN question mentioning buildings and
+        # roads can lose the road relation to embedding-near POI/AOI sources.
+        existing_by_table = {
+            str(source.get("table_name") or ""): source
+            for source in sources
+            if source.get("table_name")
+        }
+        for catalog_source in source_list.get("sources", []):
+            table_name = str(catalog_source.get("table_name") or "")
+            if not table_name:
+                continue
+            if schema_filter and not table_name.startswith(f"{schema_filter}."):
+                continue
+            role_hits = _explicit_source_role_alias_hits(user_text, catalog_source)
+            if role_hits <= 0:
+                continue
+            existing = existing_by_table.get(table_name)
+            if existing is not None:
+                existing["confidence"] = max(
+                    float(existing.get("confidence") or 0.0),
+                    0.8,
+                )
+                existing["_explicit_role_hits"] = role_hits
+                continue
+            recalled = dict(catalog_source)
+            recalled["confidence"] = max(
+                float(recalled.get("confidence") or 0.0),
+                0.8,
+            )
+            recalled["_explicit_role_hits"] = role_hits
+            sources.append(recalled)
+            existing_by_table[table_name] = recalled
+        source_table_names = set(existing_by_table)
         scored = []
         for source in source_list.get("sources", []):
             if source.get("table_name") in source_table_names:
@@ -1464,10 +1730,10 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
 
     # LLM Schema Mapper backfill (Monkuu-style, opt-in via env var):
     # When substring/fuzzy matching produces too few high-confidence sources
-    # (or zero, as observed on CQ_GEO_HARD_15), invoke an LLM call with the
+    # (or zero), invoke an LLM call with the
     # full schema dump to select top-K relevant tables. This catches cases
-    # where Chinese references like "百度 AOI" cannot be matched to
-    # `cq_baidu_aoi_2024` by substring/SequenceMatcher.
+    # where a business source alias cannot be matched to a physical table name
+    # by substring/SequenceMatcher.
     # Modes:
     #   backfill (default): only invoke when len(high_conf_sources) < min_required
     #   merge:              invoke always; merge LLM result with substring result
@@ -1555,12 +1821,22 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
 
     candidate_tables = []
     ascii_heavy = _is_ascii_heavy(user_text)
-    spatial_query = bool(semantic.get("spatial_ops") or semantic.get("region_filter"))
+    spatial_query = bool(
+        semantic.get("spatial_ops")
+        or semantic.get("region_filter")
+        or _intent_requires_spatial_sources(str(intent_value or ""))
+    )
     if not schema_filter and not major_project_context:
         sources = _prune_unqualified_major_project_sources(user_text, sources)
     if not schema_filter:
         sources = _prune_cross_domain_noise(user_text, sources)
-    source_limit = 5 if not spatial_query else 3
+    # Spatial joins often need a subject layer, a relation layer, and one or
+    # two semantic bridge layers (for example parcel + POI + road + admin).
+    # Keep ordinary spatial prompts tight, but allow one additional governed
+    # candidate for SPATIAL_JOIN so a valid relation is not discarded before
+    # the LLM sees the schema.
+    spatial_source_limit = 4 if intent_value == IntentLabel.SPATIAL_JOIN.value else 3
+    source_limit = 5 if not spatial_query else spatial_source_limit
     if schema_filter:
         source_limit = 8  # warehouse benchmarks may have many tables per schema
     selected_sources = _select_with_kg_priority(sources, source_limit, kg_hints, schema_filter)
@@ -1588,7 +1864,7 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
                         col["sample_values"] = vals
 
     # Limit candidate tables: more for warehouse (need full schema for join hints)
-    max_candidates = 5 if schema_filter else 3
+    max_candidates = 5 if schema_filter else spatial_source_limit if spatial_query else 3
     candidate_tables = _select_with_kg_priority(
         _rank_candidate_tables(user_text, candidate_tables, semantic),
         max_candidates,
@@ -1624,14 +1900,121 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
         warehouse_join_hints = _build_warehouse_join_hints(candidate_tables)
 
     few_shot_text = ""
+    few_shot_hits: list[dict] = []
     import os as _abl_os
-    if _abl_os.environ.get("NL2SQL_DISABLE_FEWSHOT") != "1" and _should_fetch_few_shots(user_text, candidate_tables, semantic):
-        few_shot_text = fetch_nl2sql_few_shots(user_text, top_k=3)
-    few_shots = []
-    if few_shot_text:
+
+    local_provider = _abl_os.environ.get("GDA_LLM_PROVIDER", "").strip().casefold()
+    few_shot_setting = _abl_os.environ.get("GDA_NL2SQL_LOCAL_FEWSHOT", "1").strip().casefold()
+    # The paper's embedding-retrieval + few-shot step is part of the default
+    # NL2Semantic2SQL contract, including local Qwen/Ollama deployments. Sites
+    # with no embedding service can opt out explicitly; retrieval itself is
+    # non-fatal and returns an empty section when the service is unavailable.
+    local_few_shot_enabled = few_shot_setting not in {"0", "false", "off", "disabled"}
+    if local_provider not in {"ollama", "lm_studio", "openai_compatible"}:
+        local_few_shot_enabled = True
+    if (
+        _abl_os.environ.get("NL2SQL_DISABLE_FEWSHOT") != "1"
+        and local_few_shot_enabled
+        and _should_fetch_few_shots(user_text, candidate_tables, semantic)
+    ):
+        preferred_domain = (
+            str(candidate_tables[0].get("table_name") or "")
+            if candidate_tables
+            else None
+        )
+        few_shot_bundle = fetch_nl2sql_few_shots(
+            user_text,
+            top_k=3,
+            domain_id=preferred_domain,
+            execution_engine=execution_engine or "postgis",
+            include_metadata=True,
+        )
+        if isinstance(few_shot_bundle, dict):
+            few_shot_text = str(few_shot_bundle.get("prompt") or "")
+            few_shot_hits = list(few_shot_bundle.get("hits") or [])
+        else:
+            # Compatibility for custom providers and tests that still return
+            # the historical formatted string.
+            few_shot_text = str(few_shot_bundle or "")
+
+        # A reviewed example is evidence for the logical relation, but it is
+        # not permission to use an arbitrary physical table. Add only tables
+        # that are present in the governed semantic-source catalog and are
+        # enabled for this NL2SQL route. This closes the common gap where the
+        # resolver finds the POI side of a spatial query while the reviewed
+        # JOIN example correctly identifies the parcel side.
+        referenced_by_fewshot: list[dict] = []
+        if few_shot_hits and source_list.get("status") == "success":
+            source_by_name = {
+                str(item.get("table_name") or "").casefold(): item
+                for item in source_list.get("sources", [])
+                if item.get("table_name")
+            }
+            candidate_names = {
+                str(item.get("table_name") or "").casefold()
+                for item in candidate_tables
+            }
+            # Only the highest-scoring reviewed example may expand Schema
+            # grounding. Lower-ranked examples remain useful demonstrations,
+            # but forcing all their tables can re-introduce unrelated domains.
+            for hit in few_shot_hits[:1]:
+                hit_engine = {
+                    str(tag).casefold().split(":", 1)[1]
+                    for tag in (hit.get("tags") or [])
+                    if str(tag).casefold().startswith("engine:") and ":" in str(tag)
+                }
+                if execution_engine and hit_engine and execution_engine.casefold() not in hit_engine:
+                    continue
+                for name in _extract_sql_table_names(str(hit.get("sql") or "")):
+                    source = source_by_name.get(name.casefold())
+                    if not source or source.get("nl2sql_enabled", True) is False:
+                        continue
+                    key = str(source.get("table_name") or "").casefold()
+                    if key in candidate_names:
+                        continue
+                    schema = describe_table_semantic(str(source.get("table_name")))
+                    if schema.get("status") != "success":
+                        continue
+                    enriched_source = dict(source)
+                    enriched_source["confidence"] = max(
+                        float(enriched_source.get("confidence") or 0), 0.72
+                    )
+                    enriched_source["_via_few_shot"] = True
+                    candidate = _build_candidate_table(enriched_source, schema)
+                    candidate["_via_few_shot"] = True
+                    referenced_by_fewshot.append(candidate)
+                    candidate_names.add(key)
+
+            if referenced_by_fewshot:
+                ranked = _rank_candidate_tables(
+                    user_text,
+                    candidate_tables + referenced_by_fewshot,
+                    semantic,
+                )
+                forced = [item for item in ranked if item.get("_via_few_shot")]
+                remaining = [item for item in ranked if not item.get("_via_few_shot")]
+                candidate_tables = (forced + remaining)[:max_candidates]
+                logger.info(
+                    "[NL2SQL] Added %d governed few-shot table references to grounding",
+                    len(forced),
+                )
+    few_shots = [
+        {
+            "question": hit.get("question") or "参考查询示例",
+            "sql": hit.get("sql") or "",
+            "score": hit.get("score"),
+            "domain_id": hit.get("domain_id"),
+            "source": hit.get("source"),
+            "tags": hit.get("tags") or [],
+        }
+        for hit in few_shot_hits
+        if hit.get("sql")
+    ]
+    if few_shot_text and not few_shots:
         few_shots.append({"question": "参考查询示例", "sql": few_shot_text})
 
     payload = {
+        "user_question": user_text,
         "candidate_tables": candidate_tables,
         "semantic_hints": {
             "spatial_ops": semantic.get("spatial_ops") or [],
@@ -1652,6 +2035,31 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
         "intent_secondary": [lbl.value for lbl in intent_result.secondary],
         "intent_confidence": intent_result.confidence,
         "intent_source": intent_result.source,
+        "few_shot_policy": {
+            "enabled": local_few_shot_enabled
+            and _abl_os.environ.get("NL2SQL_DISABLE_FEWSHOT") != "1",
+            "setting": few_shot_setting,
+            "provider": local_provider or "default",
+            "execution_engine": execution_engine or "postgis",
+            "triggered": _should_fetch_few_shots(user_text, candidate_tables, semantic),
+            "retrieved": bool(few_shot_text),
+            "domain_id": (
+                str(candidate_tables[0].get("table_name") or "")
+                if candidate_tables
+                else None
+            ),
+            "hit_count": len(few_shot_hits) if few_shot_hits else len(few_shots),
+            "hits": [
+                {
+                    "id": hit.get("id"),
+                    "score": hit.get("score"),
+                    "domain_id": hit.get("domain_id"),
+                    "source": hit.get("source"),
+                    "tags": hit.get("tags") or [],
+                }
+                for hit in few_shot_hits
+            ],
+        },
     }
     if warehouse_join_hints:
         payload["warehouse_join_hints"] = warehouse_join_hints
@@ -1659,7 +2067,7 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
     # v7 P1 observability: surface how many data-driven hints were injected so
     # cross-family sanity probes can verify the semantic-layer path is live
     # BEFORE committing to the 12h matrix. Zero hints for a question that
-    # names cq_* tables is a strong signal of a fallback / trigger_keywords
+    # names physical tables is a strong signal of a fallback / trigger-keyword
     # miss rather than model incompetence.
     _hint_stats = {
         "table_hints": len(payload.get("table_hints") or []),
@@ -1667,6 +2075,9 @@ def build_nl2sql_context(user_text: str, schema_filter: str | None = None,
         "large_tables": len(payload.get("large_tables") or []),
         "candidate_tables": len(candidate_tables),
         "few_shots": len(few_shots),
+        "few_shot_enabled": bool(payload.get("few_shot_policy", {}).get("enabled")),
+        "few_shot_triggered": bool(payload.get("few_shot_policy", {}).get("triggered")),
+        "few_shot_retrieved": bool(payload.get("few_shot_policy", {}).get("retrieved")),
         "family": family or "default",
     }
     payload["_hint_injection_stats"] = _hint_stats

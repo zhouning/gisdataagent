@@ -45,13 +45,17 @@ def format_nl2sql_result_for_chat(
         return None
 
     status = payload.get("status") or "unknown"
-    execution = payload.get("execution") or {}
+    execution = payload.get("execution") or payload
     sql = (payload.get("sql") or "").strip()
     semantic = payload.get("semantic") or {}
     corrections = payload.get("corrections") or []
+    engine = payload.get("execution_engine") or execution.get("engine") or "postgis"
+    dialect = payload.get("dialect") or execution.get("dialect") or "postgres"
 
     lines: list[str] = ["### NL2SQL 查询结果", ""]
     lines.append("工具调用：`run_nl2semantic2sql`")
+    engine_label = "治理数据湖（DuckDB → GeoParquet）" if engine == "lake" else "PostgreSQL/PostGIS"
+    lines.append(f"执行引擎：**{engine_label}**；SQL 方言：`{dialect}`")
     if question:
         lines.append(f"参数 `user_question`：{question}")
     lines.append("")
@@ -86,6 +90,16 @@ def format_nl2sql_result_for_chat(
     candidates = semantic.get("candidate_tables") or []
     if candidates:
         lines.extend(["", f"候选表：`{'`, `'.join(candidates)}`"])
+
+    source_bindings = execution.get("source_bindings") or []
+    if engine == "lake" and source_bindings:
+        projections = [
+            str(binding.get("projection_id") or binding.get("projection_path") or "")
+            for binding in source_bindings
+            if binding.get("projection_id") or binding.get("projection_path")
+        ]
+        if projections:
+            lines.append(f"湖上治理投影：`{'`, `'.join(projections)}`")
 
     few_shot_count = semantic.get("few_shot_count")
     hint_stats = semantic.get("hint_stats") or {}
@@ -361,7 +375,19 @@ def build_nl2sql_map_update(
     question: str = "",
     upload_dir: str | None = None,
 ) -> dict[str, Any] | None:
-    """Dispatch supported NL2SQL scalar results to companion map layers."""
+    """Dispatch optional demo map layers for NL2SQL scalar results.
+
+    The current map builders are a legacy Chongqing demonstration plugin, not
+    a generic result-to-map renderer. Keep them disabled for arbitrary product
+    data unless an operator explicitly enables ``GDA_NL2SQL_DEMO_MAPS=1``.
+    """
+    if os.environ.get("GDA_NL2SQL_DEMO_MAPS", "0").strip().casefold() not in {
+        "1",
+        "true",
+        "on",
+        "enabled",
+    }:
+        return None
     map_update = build_longest_bridge_poi_map_update(
         raw,
         question=question,

@@ -253,11 +253,13 @@ from .pgvector_adapter import (
 
 # --- Analytical Lakehouse Publisher Contracts ---
 from .lakehouse_publisher import (
+    ICEBERG_EQUALITY_DELETE_ADMISSION_SCHEMA,
     ICEBERG_PUBLISH_SCHEMA,
     PRODUCTION_GATE_SCHEMA,
     SEDONA_ICEBERG_RUNNER_SCHEMA,
     STAC_PUBLISH_SCHEMA,
     apply_iceberg_manifest_patch,
+    build_iceberg_equality_delete_admission,
     build_iceberg_publish_spec,
     build_iceberg_publisher,
     build_production_publish_gate,

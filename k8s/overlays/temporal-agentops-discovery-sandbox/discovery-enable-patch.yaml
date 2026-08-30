@@ -1,0 +1,6 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gis-agent-agentops-discovery
+spec:
+  replicas: 2

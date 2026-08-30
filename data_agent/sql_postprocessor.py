@@ -268,6 +268,7 @@ def postprocess_sql(
     large_tables: Optional[set] = None,
     intent: Optional["IntentLabel"] = None,
     explain_limit_threshold: Optional[int] = None,
+    dialect: str = "postgres",
 ) -> PostprocessResult:
     """Postprocess raw LLM-generated SQL: safety check, identifier fix, LIMIT injection.
 
@@ -295,7 +296,7 @@ def postprocess_sql(
         result.corrections.append("Invalid trailing clause after semicolon pruned")
 
     try:
-        parsed = sqlglot.parse_one(raw_sql, dialect="postgres")
+        parsed = sqlglot.parse_one(raw_sql, dialect=dialect)
     except Exception as e:
         # Try regex fallback only if the SQL at least looks like a SELECT
         if raw_sql.strip().upper().startswith(("SELECT", "WITH")):
@@ -368,7 +369,8 @@ def postprocess_sql(
     # LIMIT DEFAULT_LIMIT. Pure aggregation queries and already-LIMITed queries
     # are skipped. Off by default (threshold=None) -- behaviour unchanged.
     if (
-        explain_limit_threshold is not None
+        dialect == "postgres"
+        and explain_limit_threshold is not None
         and not result.rejected
         and not _has_limit(parsed)
         and not _is_aggregation_only(parsed)
@@ -386,5 +388,5 @@ def postprocess_sql(
                     f"{est} > threshold {explain_limit_threshold})"
                 )
 
-    result.sql = parsed.sql(dialect="postgres")
+    result.sql = parsed.sql(dialect=dialect)
     return result

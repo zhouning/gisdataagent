@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  PYTHON_VERSION: "3.13"
+  PYTHON_VERSION: "3.11"
 
 jobs:
   test:
@@ -50,6 +50,27 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
+          pip install -e ".[dev]"
+
+      - name: Verify optional runtime imports
+        run: |
+          python -c "import fitz, h5py; print('PyMuPDF', fitz.version[0], 'h5py', h5py.__version__)"
+
+      - name: Lint finals-critical modules
+        run: |
+          python -m ruff check \
+            data_agent/finals_preflight.py \
+            data_agent/paper9_agent_governance.py \
+            data_agent/paper9_agent_evaluation.py \
+            data_agent/paper9_agent_prompt.py \
+            data_agent/world_model_v21_presentation.py \
+            scripts/check_gemma4_finals_preflight.py \
+            scripts/run_paper9_adk_reliability_eval.py \
+            scripts/run_paper9_finals_contract_eval.py
+
+      - name: Run Paper9 finals behavior contracts
+        run: |
+          python scripts/run_paper9_finals_contract_eval.py
 
       - name: Run tests
         env:
@@ -66,7 +87,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: test-results/
+          path: |
+            test-results/
+            data_agent/demo_evidence/paper9/finals_20260730/behavior_contract_report.json
 
   frontend:
     name: Frontend Build

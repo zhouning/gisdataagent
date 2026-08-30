@@ -171,6 +171,7 @@ class TestFusionOkfExporter(unittest.TestCase):
             out_dir = Path(result["out_dir"])
 
             self.assertEqual(result["schema"], OKF_EXPORT_SCHEMA)
+            self.assertEqual(result["okf_version"], "0.2")
             self.assertTrue(result["valid"], result["errors"])
             self.assertGreaterEqual(result["concept_count"], 5)
             self.assertTrue((out_dir / "index.md").exists())
@@ -185,6 +186,12 @@ class TestFusionOkfExporter(unittest.TestCase):
             self.assertTrue((out_dir / "graphs" / "semantic_ontology.md").exists())
 
             dataset_text = (out_dir / "datasets" / "semantic_product.md").read_text(encoding="utf-8")
+            root_index_text = (out_dir / "index.md").read_text(encoding="utf-8")
+            self.assertIn('okf_version: "0.2"', root_index_text)
+            self.assertNotIn("type:", root_index_text.split("---", 2)[1])
+            self.assertIn('generated: {"by": "gda-mmfe-okf-exporter/2.0"', dataset_text)
+            self.assertIn('sources: [{"id": "parcel_current"', dataset_text)
+            self.assertNotIn("timestamp:", dataset_text)
             self.assertIn("Field semantic mappings | 1", dataset_text)
             self.assertIn("Semantic relations | 1", dataset_text)
             self.assertIn("[现状地类图斑](/layers/parcel_current.md)", dataset_text)
@@ -199,7 +206,8 @@ class TestFusionOkfExporter(unittest.TestCase):
     def test_okf_exporter_is_available_through_fusion_engine_proxy(self):
         from data_agent import fusion_engine
 
-        self.assertEqual(fusion_engine.OKF_EXPORT_SCHEMA, "mmfe.okf_export.v1")
+        self.assertEqual(fusion_engine.OKF_EXPORT_SCHEMA, "mmfe.okf_export.v2")
+        self.assertEqual(fusion_engine.OKF_VERSION, "0.2")
         bundle = fusion_engine.build_okf_bundle_from_semantic_product(_semantic_manifest())
         self.assertIn("datasets/semantic_product.md", bundle)
 

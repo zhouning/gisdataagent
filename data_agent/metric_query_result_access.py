@@ -20,6 +20,15 @@ from pydantic import (
     model_validator,
 )
 
+from .governed_query_result_access_security import (
+    GOVERNED_QUERY_RESULT_ACCESS_SECURITY_PURPOSE,
+    GovernedQueryResultAccessSecurityDecision,
+    GovernedQueryResultAccessSecurityDeniedError,
+    GovernedQueryResultAccessSecurityError,
+    build_governed_query_result_access_security_request,
+    evaluate_governed_query_result_access_security,
+)
+from .governed_query_security import GovernedQuerySecurityCurrentReader
 from .metric_query_execution import (
     MetricQueryExecutionAuthority,
     MetricQueryExecutionConfigurationError,
@@ -494,6 +503,94 @@ class MetricQueryResultAccessService:
             # denial into result access or disclose storage details.
             return
 
+    def _authorize_result_access(
+        self,
+        *,
+        tenant_id: str,
+        access_id: UUID,
+        run_id: UUID,
+        artifact_id: UUID,
+        actor_subject: str,
+        role: str,
+        purpose_code: str,
+        expires_in_seconds: int,
+        security_reader: GovernedQuerySecurityCurrentReader,
+    ) -> GovernedQueryResultAccessSecurityDecision:
+        evaluated_at = self.now()
+        try:
+            request = build_governed_query_result_access_security_request(
+                tenant_id=tenant_id,
+                request_id=f"metric-result-access:{access_id}",
+                actor_subject=actor_subject,
+                roles=(role,),
+                purpose_code=purpose_code,
+                channel="metric_result",
+                adapter_id="gda.metric-query.result-access.v1",
+                consumption_mode="download",
+                resource_refs=(
+                    self._resource_ref(tenant_id, run_id),
+                    f"gda://{tenant_id}/artifact/{artifact_id}",
+                ),
+                request_payload={
+                    "tenant_id": tenant_id,
+                    "run_id": str(run_id),
+                    "artifact_id": str(artifact_id),
+                    "actor_subject": actor_subject,
+                    "role": role,
+                    "purpose_code": purpose_code,
+                    "delivery": "presigned_get",
+                    "expires_in_seconds": expires_in_seconds,
+                },
+                evaluated_at=evaluated_at,
+            )
+            decision = evaluate_governed_query_result_access_security(
+                request,
+                security_reader,
+                evaluated_at=evaluated_at,
+            )
+        except GovernedQueryResultAccessSecurityDeniedError as exc:
+            self._audit_denied(
+                tenant_id=tenant_id,
+                access_id=access_id,
+                run_id=run_id,
+                actor_subject=actor_subject,
+                role=role,
+                reason="spr_policy_denied",
+            )
+            raise MetricQueryResultAccessForbidden(
+                "metric query result access was denied by current policy"
+            ) from exc
+        except (GovernedQueryResultAccessSecurityError, ValueError) as exc:
+            raise MetricQueryResultAccessUnavailable(
+                "metric query result security is unavailable"
+            ) from exc
+        try:
+            self.ledger.append(
+                tenant_id=tenant_id,
+                attempt_id=access_id,
+                phase="admitted",
+                action=METRIC_QUERY_RESULT_ACCESS_ACTION,
+                outcome="admitted",
+                actor_subject=actor_subject,
+                resource_ref=self._resource_ref(tenant_id, run_id),
+                reason="exact-scope SPR allow recorded before result storage access",
+                details={
+                    "run_id": str(run_id),
+                    "artifact_id": str(artifact_id),
+                    "purpose_code": purpose_code,
+                    "request_sha256": request.request_sha256,
+                    "decision_sha256": decision.decision_sha256,
+                    "policy_ref": decision.policy_ref,
+                    "policy_version": decision.policy_version,
+                    "role": role,
+                },
+            )
+        except SecurityEventLedgerError as exc:
+            raise MetricQueryResultAccessUnavailable(
+                "metric query result security admission audit is unavailable"
+            ) from exc
+        return decision
+
     @staticmethod
     def _validate_result_artifact(record: Any, artifact: Artifact) -> None:
         observation = record.observation
@@ -528,6 +625,8 @@ class MetricQueryResultAccessService:
         actor_subject: str,
         role: str,
         expires_in_seconds: int = DEFAULT_RESULT_ACCESS_TTL_SECONDS,
+        purpose_code: str = GOVERNED_QUERY_RESULT_ACCESS_SECURITY_PURPOSE,
+        security_reader: GovernedQuerySecurityCurrentReader | None = None,
     ) -> MetricQueryResultAccessGrant:
         access_id = self.access_id_factory()
         if not MIN_RESULT_ACCESS_TTL_SECONDS <= expires_in_seconds <= (
@@ -590,6 +689,19 @@ class MetricQueryResultAccessService:
             )
             raise MetricQueryResultNotReady(
                 "metric query Run has no successful result available"
+            )
+        security_decision = None
+        if security_reader is not None:
+            security_decision = self._authorize_result_access(
+                tenant_id=tenant_id,
+                access_id=access_id,
+                run_id=run_id,
+                artifact_id=observation.result_artifact_id,
+                actor_subject=actor_subject,
+                role=role,
+                purpose_code=purpose_code,
+                expires_in_seconds=expires_in_seconds,
+                security_reader=security_reader,
             )
         try:
             artifact = self.gateway.get_artifact(
@@ -663,6 +775,21 @@ class MetricQueryResultAccessService:
                     "media_type": artifact.media_type,
                     "size_bytes": artifact.size_bytes,
                     "content_sha256": artifact.content_sha256,
+                    **(
+                        {}
+                        if security_decision is None
+                        else {
+                            "purpose_code": purpose_code,
+                            "security_request_sha256": (
+                                security_decision.request.request_sha256
+                            ),
+                            "security_decision_sha256": (
+                                security_decision.decision_sha256
+                            ),
+                            "policy_ref": security_decision.policy_ref,
+                            "policy_version": security_decision.policy_version,
+                        }
+                    ),
                 },
             )
         except SecurityEventLedgerError as exc:

@@ -43,6 +43,8 @@ interface SCCACase {
   outcome: string;
   confounder_count: number;
   context_columns: string[];
+  workflow_kind?: string;
+  evidence_mode?: string;
 }
 interface SCCACasesResult {
   cases: SCCACase[];
@@ -103,6 +105,9 @@ interface SCCAResult {
     caveats?: string[];
     next_action?: string;
   };
+  workflow_kind?: string;
+  evidence_mode?: string;
+  readiness_gates?: Array<{ name: string; status: string; detail: string }>;
 }
 
 /* ---------- Domains & Methods ---------- */
@@ -342,9 +347,35 @@ export default function CausalReasoningTab() {
               {(sccaCases.length ? sccaCases : [
                 { case_id: 'chongqing_uhi', label: '重庆 UHI 建筑高度热环境', description: '', exposure: 'floor', outcome: 'LST', confounder_count: 7, context_columns: [] },
                 { case_id: 'county_social_capital', label: '美国 CountyData 社会资本长寿', description: '', exposure: 'SocialAssoc', outcome: 'AveAgeDeath', confounder_count: 11, context_columns: [] },
+                { case_id: 'abu_dhabi_flood', label: '阿布扎比城市内涝（物理反事实）', description: '', exposure: '排水设施治理', outcome: 'max_water_depth_m', confounder_count: 4, context_columns: [], workflow_kind: 'physical_counterfactual', evidence_mode: 'diagnostic_only' },
+                { case_id: 'abu_dhabi_livability', label: '阿布扎比宜居设施改造（因果设计预检）', description: '', exposure: '设施改造完成', outcome: 'qol_2025_score', confounder_count: 4, context_columns: [], workflow_kind: 'causal_readiness', evidence_mode: 'design_only' },
               ]).map(c => <option key={c.case_id} value={c.case_id}>{c.label}</option>)}
             </select>
           </div>
+          {sccaCaseId === 'abu_dhabi_flood' && (
+            <div style={{ ...S.insightBox, borderLeftColor: '#f59e0b', marginBottom: 10 }}>
+              <div style={S.insightTitle}>阿布扎比城市内涝 · 物理反事实案例</div>
+              <div>
+                用 EPA SWMM 节点结果定义“排水治理 → 节点水深/溢流”的因果问题。当前地图使用公共代理降雨诊断，
+                可用于基准与干预情景设计，不产生真实工程治理的因果系数。
+              </div>
+              <div style={{ ...S.mutedText, marginTop: 5 }}>
+                客户提供治理时间、历史暴雨、积水观测和对照区后，才能启用 DiD / 空间 SCCA 的观测效应估计。
+              </div>
+            </div>
+          )}
+          {sccaCaseId === 'abu_dhabi_livability' && (
+            <div style={{ ...S.insightBox, borderLeftColor: '#0ea5e9', marginBottom: 10 }}>
+              <div style={S.insightTitle}>阿布扎比宜居设施改造 · 因果设计预检</div>
+              <div>
+                这里定义“设施改造完成是否改善地区 QoL”的因果问题，并展示动作、结果、版本和数据闸门。
+                当前地图使用脱敏聚合示例，不代表客户设施明细或真实改造效果。
+              </div>
+              <div style={{ ...S.mutedText, marginTop: 5 }}>
+                完成日期、可比的 calc_version_id、多期 QoL 和地区/设施实体关联确认后，才能运行 DiD、事件研究和空间 SCCA。
+              </div>
+            </div>
+          )}
           <div style={S.grid2}>
             <div style={S.row}>
               <label style={S.label}>抽样行数</label>
@@ -369,7 +400,7 @@ export default function CausalReasoningTab() {
             </div>
           </div>
           <div style={{ ...S.mutedText, marginBottom: 8 }}>
-            勾选完整样例数据时，重庆会显示所有样本建筑面，美国会显示所有样本县域；关闭后只取前 N 行用于快速测试。
+            重庆和美国案例支持按行数快速测试；阿布扎比内涝和宜居案例使用各自明确标注的公共/脱敏聚合示例，完整展示其设计图层。
           </div>
           <button style={{ ...S.btn, ...(loading ? S.btnDisabled : {}) }} disabled={loading}
             onClick={() => run(async () => {
@@ -381,7 +412,7 @@ export default function CausalReasoningTab() {
                 (window as any).__handleMapUpdate(result.map_update);
               }
             })}>
-            {loading ? '运行中...' : '运行 SCCA 测试流程'}
+            {loading ? '运行中...' : sccaCaseId === 'abu_dhabi_flood' ? '加载内涝因果案例' : sccaCaseId === 'abu_dhabi_livability' ? '加载宜居因果案例' : '运行 SCCA 测试流程'}
           </button>
 
           {sccaResult && (
@@ -391,6 +422,25 @@ export default function CausalReasoningTab() {
                 <div>{sccaResult.user_summary?.plain_effect || `${sccaResult.exposure} → ${sccaResult.outcome}`}</div>
                 <div style={{ ...S.mutedText, marginTop: 6 }}>{sccaResult.user_summary?.map_plain}</div>
               </div>
+
+              {sccaResult.workflow_kind === 'physical_counterfactual' && (
+                <div style={{ ...S.detailBlock, borderColor: '#fbbf24', background: '#fffbeb' }}>
+                  <div style={S.detailTitle}>证据边界</div>
+                  <div style={S.mutedText}>
+                    这是 SWMM 物理模型诊断案例：地图显示公共代理降雨下的节点响应，用于设计“基准情景 vs 排水治理情景”的受控反事实。
+                    当前没有统计因果系数、P 值或真实工程效果声明。
+                  </div>
+                </div>
+              )}
+              {sccaResult.workflow_kind === 'causal_readiness' && (
+                <div style={{ ...S.detailBlock, borderColor: '#7dd3fc', background: '#f0f9ff' }}>
+                  <div style={S.detailTitle}>证据边界</div>
+                  <div style={S.mutedText}>
+                    这是宜居因果设计预检：地图展示脱敏聚合示例的 QoL 年际变化，结果中不包含真实 ATT、ATE、DiD 系数或居民层面结论。
+                    “整治候选”也不能直接当作“已完成改造”。
+                  </div>
+                </div>
+              )}
 
               <div style={{ ...S.grid2, marginTop: 10 }}>
                 <div style={S.kv}>
@@ -478,6 +528,35 @@ export default function CausalReasoningTab() {
                           {row.warnings && row.warnings !== '[]' && <div style={{ ...S.mutedText, color: '#b45309' }}>提示: {fmt(row.warnings)}</div>}
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {sccaResult.workflow_kind === 'physical_counterfactual' && (
+                    <div style={S.detailBlock}>
+                      <div style={S.detailTitle}>下一步：接入成对 SWMM 反事实</div>
+                      <div style={S.mutedText}>
+                        保持同一场暴雨、潮位和初始状态，分别运行基准管网与治理方案，逐节点计算最大水深、溢流量和退水时间差值；
+                        客户历史观测到达后，再将这些结果与 DiD / 空间 SCCA 估计对照。
+                      </div>
+                    </div>
+                  )}
+
+                  {sccaResult.workflow_kind === 'causal_readiness' && (
+                    <div style={S.detailBlock}>
+                      <div style={S.detailTitle}>2. 因果数据闸门</div>
+                      <div style={S.mutedText}>每一项都通过后，才会把宜居案例从“设计预检”升级到观测因果估计。</div>
+                      <div style={{ marginTop: 6 }}>
+                        {(sccaResult.readiness_gates || []).map((gate, i) => {
+                          const statusLabel: Record<string, string> = { blocked: '阻断', partial: '部分具备', waiting: '等待' };
+                          const statusColor: Record<string, string> = { blocked: '#b91c1c', partial: '#b45309', waiting: '#0369a1' };
+                          return (
+                            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '7px 0', borderTop: i === 0 ? 'none' : '1px solid #e0f2fe' }}>
+                              <span style={{ ...S.badge, color: statusColor[gate.status] || '#57534e', background: '#e0f2fe', whiteSpace: 'nowrap' }}>{statusLabel[gate.status] || gate.status}</span>
+                              <div><strong>{gate.name}</strong><div style={S.mutedText}>{gate.detail}</div></div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 

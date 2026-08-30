@@ -3,20 +3,26 @@ Authentication module for GIS Data Agent.
 Supports password login and Google OAuth2.
 Includes brute-force protection: per-username lockout after consecutive failures.
 """
+import hashlib
 import os
 import re
-import hashlib
 import secrets
 import threading
 import time
-from typing import Optional
+
 from sqlalchemy import text
+
 try:
     import chainlit as cl
 except ModuleNotFoundError:  # pragma: no cover - local unit-test fallback
     class _ChainlitStub:
         class User:
-            def __init__(self, identifier: str, display_name: str = "", metadata: dict | None = None):
+            def __init__(
+                self,
+                identifier: str,
+                display_name: str = "",
+                metadata: dict | None = None,
+            ):
                 self.identifier = identifier
                 self.display_name = display_name
                 self.metadata = metadata or {}
@@ -31,8 +37,8 @@ except ModuleNotFoundError:  # pragma: no cover - local unit-test fallback
 
     cl = _ChainlitStub()
 
-from .db_engine import get_engine
 from .database_tools import T_APP_USERS
+from .db_engine import get_engine
 from .i18n import t
 
 # ---------------------------------------------------------------------------
@@ -43,6 +49,7 @@ _MAX_FAILED_ATTEMPTS = 5       # Lock after N consecutive failures
 _LOCKOUT_DURATION = 900        # 15 minutes lockout
 _login_failures: dict[str, dict] = {}  # username → {"count": int, "locked_until": float}
 _login_failures_lock = threading.Lock()
+_lite_auth_init_lock = threading.Lock()
 
 # ---------------------------------------------------------------------------
 # Recognized RBAC roles. Storage is VARCHAR (no enum migration needed).
@@ -51,7 +58,7 @@ _VALID_ROLES = {"viewer", "analyst", "admin",
                 "platform_operator", "standard_editor", "standard_reviewer"}
 
 
-def _check_lockout(username: str) -> Optional[str]:
+def _check_lockout(username: str) -> str | None:
     """Check if username is locked out. Returns error message or None."""
     with _login_failures_lock:
         entry = _login_failures.get(username)
@@ -74,7 +81,10 @@ def _record_login_failure(username: str):
         entry["count"] = entry.get("count", 0) + 1
         if entry["count"] >= _MAX_FAILED_ATTEMPTS:
             entry["locked_until"] = time.time() + _LOCKOUT_DURATION
-            print(f"[Auth] Account '{username}' locked for {_LOCKOUT_DURATION}s after {_MAX_FAILED_ATTEMPTS} failed attempts")
+            print(
+                f"[Auth] Account '{username}' locked for {_LOCKOUT_DURATION}s "
+                f"after {_MAX_FAILED_ATTEMPTS} failed attempts"
+            )
 
 
 def _clear_login_failures(username: str):
@@ -107,10 +117,57 @@ def _make_password_hash(password: str) -> str:
     return f"{salt}${hash_hex}"
 
 
+def _open_lite_auth_adapter():
+    if os.environ.get("DB_BACKEND", "postgres").lower() != "duckdb":
+        return None
+    from .duckdb_adapter import DuckDBAdapter
+    from .lite_mode import init_lite_database
+
+    db_path = os.environ.get("GDA_DUCKDB_PATH") or os.path.join(
+        os.path.dirname(__file__), "local.duckdb"
+    )
+    with _lite_auth_init_lock:
+        init_result = init_lite_database(db_path)
+    if init_result.get("status") != "ok":
+        raise RuntimeError(init_result.get("message") or "Lite database initialization failed")
+    return DuckDBAdapter(db_path)
+
+
+def _authenticate_lite_user(username: str, password: str) -> dict | None:
+    adapter = _open_lite_auth_adapter()
+    if adapter is None:
+        return None
+    try:
+        rows = adapter.execute(
+            """
+            SELECT username, password_hash, display_name, role, tenant_id
+            FROM agent_app_users WHERE username = ?
+            """,
+            [username],
+        )
+        row = rows[0] if rows else None
+        if row and _verify_password(password, row[1]):
+            return {
+                "username": row[0],
+                "display_name": row[2] or row[0],
+                "role": row[3] or "analyst",
+                "tenant_id": row[4],
+            }
+        return None
+    finally:
+        adapter.close()
+
+
 def ensure_users_table():
     """Create the app_users table if it doesn't exist, and seed admin user."""
     engine = get_engine()
     if not engine:
+        if os.environ.get("DB_BACKEND", "postgres").lower() == "duckdb":
+            adapter = _open_lite_auth_adapter()
+            if adapter:
+                adapter.close()
+            print("[Auth] Lite users table ready.")
+            return
         print("[Auth] WARNING: Database not configured. Auth will use fallback mode.")
         return
 
@@ -141,14 +198,17 @@ def ensure_users_table():
                     "VALUES (:u, :p, :d, :r)"
                 ), {"u": "admin", "p": admin_hash, "d": "Administrator", "r": "admin"})
                 conn.commit()
-                print("[Auth] Seeded default admin user (admin / admin123). Please change password.")
+                print(
+                    "[Auth] Seeded default admin user (admin / admin123). "
+                    "Please change password."
+                )
 
         print("[Auth] Users table ready.")
     except Exception as e:
         print(f"[Auth] Error initializing users table: {e}")
 
 
-def authenticate_user(username: str, password: str) -> Optional[dict]:
+def authenticate_user(username: str, password: str) -> dict | None:
     """Verify credentials against database. Returns user dict or None.
 
     Enforces brute-force protection: locks account after repeated failures.
@@ -159,7 +219,14 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
 
     engine = get_engine()
     if not engine:
-        print("[Auth] WARNING: Database not available. Authentication denied.")
+        try:
+            user = _authenticate_lite_user(username, password)
+            if user:
+                _clear_login_failures(username)
+                return user
+        except Exception as e:
+            print(f"[Auth] Lite authentication error: {e}")
+        _record_login_failure(username)
         return None
 
     try:
@@ -194,7 +261,28 @@ def change_password(username: str, old_password: str, new_password: str) -> dict
 
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "数据库不可用"}
+        try:
+            adapter = _open_lite_auth_adapter()
+            if adapter is None:
+                return {"status": "error", "message": "数据库不可用"}
+            try:
+                rows = adapter.execute(
+                    "SELECT password_hash FROM agent_app_users WHERE username = ?",
+                    [username],
+                )
+                if not rows:
+                    return {"status": "error", "message": "用户不存在"}
+                if not _verify_password(old_password, rows[0][0]):
+                    return {"status": "error", "message": "当前密码错误"}
+                adapter.execute(
+                    "UPDATE agent_app_users SET password_hash = ? WHERE username = ?",
+                    [_make_password_hash(new_password), username],
+                )
+                return {"status": "success", "message": "密码修改成功"}
+            finally:
+                adapter.close()
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
     try:
         with engine.connect() as conn:
             row = conn.execute(text(
@@ -243,7 +331,39 @@ def register_user(username: str, password: str, display_name: str = "",
 
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": t("auth.db_unavailable")}
+        try:
+            adapter = _open_lite_auth_adapter()
+            if adapter is None:
+                return {"status": "error", "message": t("auth.db_unavailable")}
+            try:
+                exists = adapter.execute(
+                    "SELECT 1 FROM agent_app_users WHERE username = ?", [username]
+                )
+                if exists:
+                    return {"status": "error", "message": t("auth.username_exists")}
+                next_id = adapter.execute(
+                    "SELECT COALESCE(MAX(id), 0) + 1 FROM agent_app_users"
+                )[0][0]
+                adapter.execute(
+                    """
+                    INSERT INTO agent_app_users (
+                        id, username, password_hash, display_name, email, role, auth_provider
+                    ) VALUES (?, ?, ?, ?, ?, ?, 'password')
+                    """,
+                    [
+                        int(next_id),
+                        username,
+                        _make_password_hash(password),
+                        display_name or username,
+                        email or "",
+                        role,
+                    ],
+                )
+                return {"status": "success", "message": t("auth.register_success")}
+            finally:
+                adapter.close()
+        except Exception as e:
+            return {"status": "error", "message": t("auth.register_failed", error=str(e))}
 
     try:
         with engine.connect() as conn:
@@ -374,7 +494,11 @@ def ensure_wecom_user(wecom_userid: str) -> dict:
             ), {"u": username, "p": pw_hash, "d": f"WeCom:{wecom_userid}"})
             conn.commit()
             print(f"[Auth] Created WeCom user: {username}")
-            return {"username": username, "display_name": f"WeCom:{wecom_userid}", "role": "analyst"}
+            return {
+                "username": username,
+                "display_name": f"WeCom:{wecom_userid}",
+                "role": "analyst",
+            }
     except Exception as e:
         print(f"[Auth] Error ensuring WeCom user: {e}")
         return {"username": username, "display_name": username, "role": "analyst"}
@@ -387,6 +511,36 @@ def upsert_oauth_user(email: str, display_name: str, provider: str) -> dict:
 
     if not engine:
         return user
+
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(
+                text(
+                    f"SELECT username, display_name, role FROM {T_APP_USERS} "
+                    "WHERE username = :u"
+                ),
+                {"u": email},
+            )
+            row = result.fetchone()
+
+            if row:
+                user["display_name"] = row[1] or display_name
+                user["role"] = row[2] or "analyst"
+            else:
+                conn.execute(
+                    text(
+                        f"INSERT INTO {T_APP_USERS} "
+                        "(username, display_name, role, auth_provider) "
+                        "VALUES (:u, :d, :r, :p)"
+                    ),
+                    {"u": email, "d": display_name, "r": "analyst", "p": provider},
+                )
+                conn.commit()
+                print(f"[Auth] Created new OAuth user: {email} ({provider})")
+    except Exception as e:
+        print(f"[Auth] Error upserting OAuth user: {e}")
+
+    return user
 
 
 def ensure_bot_user(bot_user_id: str, platform: str) -> dict:
@@ -437,40 +591,15 @@ def ensure_bot_user(bot_user_id: str, platform: str) -> dict:
         print(f"[Auth] Error ensuring {platform} user: {e}")
         return {"username": username, "display_name": username, "role": "analyst"}
 
-    try:
-        with engine.connect() as conn:
-            # Check if user exists
-            result = conn.execute(text(
-                f"SELECT username, display_name, role FROM {T_APP_USERS} WHERE username = :u"
-            ), {"u": email})
-            row = result.fetchone()
-
-            if row:
-                user["display_name"] = row[1] or display_name
-                user["role"] = row[2] or "analyst"
-            else:
-                # Auto-create on first OAuth login
-                conn.execute(text(
-                    f"INSERT INTO {T_APP_USERS} (username, display_name, role, auth_provider) "
-                    "VALUES (:u, :d, :r, :p)"
-                ), {"u": email, "d": display_name, "r": "analyst", "p": provider})
-                conn.commit()
-                print(f"[Auth] Created new OAuth user: {email} ({provider})")
-    except Exception as e:
-        print(f"[Auth] Error upserting OAuth user: {e}")
-
-    return user
-
-
 # --- Chainlit Auth Callbacks ---
 
 @cl.password_auth_callback
-async def password_auth_callback(username: str, password: str) -> Optional[cl.User]:
+async def password_auth_callback(username: str, password: str) -> cl.User | None:
     """Chainlit password login handler."""
     user = authenticate_user(username, password)
     if user:
         try:
-            from .audit_logger import record_audit, ACTION_LOGIN_SUCCESS
+            from .audit_logger import ACTION_LOGIN_SUCCESS, record_audit
             record_audit(user["username"], ACTION_LOGIN_SUCCESS,
                          details={"provider": "password"})
         except Exception:
@@ -490,7 +619,7 @@ async def password_auth_callback(username: str, password: str) -> Optional[cl.Us
             }
         )
     try:
-        from .audit_logger import record_audit, ACTION_LOGIN_FAILURE
+        from .audit_logger import ACTION_LOGIN_FAILURE, record_audit
         record_audit(username, ACTION_LOGIN_FAILURE, status="failure",
                      details={"provider": "password"})
     except Exception:
@@ -513,8 +642,13 @@ _oauth_configured = any(
 
 if _oauth_configured:
     @cl.oauth_callback
-    async def oauth_callback(provider_id: str, token: str, raw_user_data: dict,
-                             default_app_user: cl.User, id_token: Optional[str] = None) -> Optional[cl.User]:
+    async def oauth_callback(
+        provider_id: str,
+        token: str,
+        raw_user_data: dict,
+        default_app_user: cl.User,
+        id_token: str | None = None,
+    ) -> cl.User | None:
         """Chainlit OAuth login handler (Google, GitHub, etc.)."""
         email = raw_user_data.get("email", "")
         name = raw_user_data.get("name", raw_user_data.get("login", ""))

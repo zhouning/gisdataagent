@@ -1,5 +1,5 @@
 /**
- * Service Worker — Offline mode for GIS Data Agent (v23.0).
+ * Service Worker — Offline mode for GIS Data Agent (v24.0).
  *
  * Caching strategy:
  * - Static assets (JS/CSS/HTML): Cache-first, update in background
@@ -8,9 +8,9 @@
  * - User data files: Cache on first load
  */
 
-const CACHE_NAME = 'gis-agent-v23';
-const TILE_CACHE = 'gis-agent-tiles-v23';
-const DATA_CACHE = 'gis-agent-data-v23';
+const CACHE_NAME = 'gis-agent-v24-citywide-swmm';
+const TILE_CACHE = 'gis-agent-tiles-v24';
+const DATA_CACHE = 'gis-agent-data-v24';
 
 // Static assets to precache on install
 const PRECACHE_URLS = [
@@ -75,11 +75,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets: cache-first
+  // Static application assets: network-first so a deployed build is visible
+  // immediately; fall back to the cache only when offline.
   if (event.request.destination === 'script' ||
       event.request.destination === 'style' ||
       event.request.destination === 'document') {
-    event.respondWith(cacheFirst(event.request));
+    event.respondWith(networkFirst(event.request));
     return;
   }
 

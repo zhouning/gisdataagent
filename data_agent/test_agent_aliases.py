@@ -175,6 +175,30 @@ def test_mention_targets_api_include_hidden_flag():
     assert len(data["targets"]) == 1
 
 
+@pytest.mark.parametrize("role, expected_allowed", [("admin", True), ("analyst", True), ("viewer", False)])
+def test_real_mention_api_exposes_pinned_abu_dhabi_query_targets(role, expected_allowed):
+    from data_agent.api.agent_management_routes import _api_mention_targets
+
+    req = _make_request("/api/agents/mention-targets")
+    user = _FakeUser(role=role)
+    with patch(
+        "data_agent.api.agent_management_routes._get_user_from_request",
+        return_value=user,
+    ), patch("data_agent.mention_registry._load_user_aliases", return_value=[]), patch(
+        "data_agent.mention_registry.list_custom_skills", return_value=[]
+    ):
+        resp = asyncio.run(_api_mention_targets(req))
+
+    import json
+
+    data = json.loads(resp.body.decode())
+    by_handle = {target["handle"]: target for target in data["targets"]}
+    for handle in ("Liveability", "Makani", "AbuDhabi"):
+        assert by_handle[handle]["pinned"] is True
+        assert by_handle[handle]["allowed"] is expected_allowed
+        assert by_handle[handle]["type"] == "pipeline"
+
+
 def test_set_alias_api_calls_upsert():
     from data_agent.api.agent_management_routes import _api_set_alias
     req = _make_request("/api/agents/DataExploration/alias", method="PUT",

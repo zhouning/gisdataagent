@@ -86,3 +86,26 @@ groups:
           severity: critical
         annotations:
           summary: "暴力破解检测: 5分钟内登录失败 > 10次"
+
+      - alert: GovernedExecutionAuditFailure
+        expr: |
+          increase(agent_security_execution_audit_events_total{
+            phase="outcome", outcome=~"failure|unknown"
+          }[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "受控执行审计出现失败或未知结果"
+          description: "操作 {{ $labels.operation }} 在最近 5 分钟存在未确认的审计 outcome"
+
+      - alert: GovernedExecutionAuditAdmissionWithoutOutcome
+        expr: |
+          increase(agent_security_execution_audit_events_total{phase="admitted"}[15m])
+          > increase(agent_security_execution_audit_events_total{phase="outcome"}[15m])
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "受控执行存在未闭合的审计 admission"
+          description: "最近 15 分钟 admission 数高于 outcome 数，需要 reconciliation"

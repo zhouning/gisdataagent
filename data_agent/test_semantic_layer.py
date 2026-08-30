@@ -364,12 +364,15 @@ class TestCatalogDomainCompleteness(unittest.TestCase):
         actual = set(catalog["region_groups"].keys())
         self.assertEqual(expected, actual)
 
-    def test_all_8_operations(self):
+    def test_core_and_topological_operations(self):
         catalog = _load_catalog()
-        expected = {"buffer", "clip", "overlay", "distance",
-                    "clustering", "heatmap", "choropleth", "tessellation"}
+        expected = {
+            "buffer", "clip", "overlay", "distance", "clustering",
+            "heatmap", "choropleth", "tessellation", "within",
+            "intersects", "contains",
+        }
         actual = set(catalog["spatial_operations"].keys())
-        self.assertEqual(expected, actual)
+        self.assertTrue(expected.issubset(actual))
 
     def test_all_4_metrics(self):
         catalog = _load_catalog()
@@ -994,7 +997,7 @@ class TestSubChildFilter(unittest.TestCase):
     """Verify generate_semantic_filters handles sub_child level."""
 
     def test_sub_child_filter(self):
-        """Sub-child match should generate 4-digit LIKE filter."""
+        """A named leaf category should prefer its exact label."""
         from data_agent.semantic_layer import generate_semantic_filters
         ctx = {
             "hierarchy_matches": [{
@@ -1008,7 +1011,8 @@ class TestSubChildFilter(unittest.TestCase):
         }
         result = generate_semantic_filters(ctx)
         self.assertEqual(len(result["sql_filters"]), 1)
-        self.assertIn("0103%", result["sql_filters"][0]["sql"])
+        self.assertEqual(result["sql_filters"][0]["sql"], "dlmc = '水田'")
+        self.assertIn("0103%", result["sql_filters"][0]["fallback_sql"])
         self.assertIn("水田", result["sql_filters"][0]["description"])
 
 

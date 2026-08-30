@@ -1,0 +1,41 @@
+{
+  "approval_case": null,
+  "archive_sha256": "2043b60c2f4f7f32a31388a634fae4ac28534990e205aa86b8df0e4b64dcbbca",
+  "area_deviation_policy": null,
+  "bundle_sha256": "cae2047f6b72127e5eae0651909761c0f06d8c3e0491921dbd806c653ba715c3",
+  "business_correction_resource_version_id": null,
+  "business_correction_sha256": null,
+  "canonical_key": "TBBH",
+  "contract_sha256": "690f8066e4bc4bc37747feed7441a019ae82be5d261d64a0160b363befeae137",
+  "created_at": "2026-08-22T00:00:00Z",
+  "created_by": "workload:ar0-contract-builder",
+  "derivation_contracts": [
+    {
+      "method": null,
+      "semantic_contract_ref": null,
+      "semantic_contract_sha256": null,
+      "source_fields": [],
+      "status": "pending_approval",
+      "target_field": "SJNF"
+    },
+    {
+      "method": null,
+      "semantic_contract_ref": null,
+      "semantic_contract_sha256": null,
+      "source_fields": [],
+      "status": "pending_approval",
+      "target_field": "MSSM"
+    }
+  ],
+  "diagnostic_sha256": "da192c3f443f41cb189c3253473918000acbc8f9c087868e9eb702a4a4520b11",
+  "geometry_area_rule_ref": null,
+  "geometry_area_rule_sha256": null,
+  "mode": "approval_required",
+  "nonpositive_area_policy": null,
+  "plan_sha256": "3d4fe40417e1b134c47abb868198f8d3dd18db89726ca2871d82f70baba53b84",
+  "source_resource_urn": "gda://local-dev/dataset/chongqing-bizhu-jqdltb-source",
+  "source_resource_version_id": "34441c77-2cf0-5ca2-83bf-81dd6a488d5b",
+  "standard_fingerprint": "a9b58ea766e1f7fd0f203b07bb23e3848e1db7dad560ebf04843b83a5b713630",
+  "standard_version_ref": "NR_ONE_MAP_TWM_CORE_2026:2026-06-16-draft",
+  "tenant_id": "local-dev"
+}

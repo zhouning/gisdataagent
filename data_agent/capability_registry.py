@@ -17,6 +17,10 @@ from jsonschema.exceptions import SchemaError
 from jsonschema.exceptions import ValidationError as JsonSchemaError
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from .approval_case_batch import (
+    ApprovalCaseBatchEscalationRequest,
+    ApprovalCaseBatchEscalationResponse,
+)
 from .chongqing_data_package_reconciliation_job import (
     ChongqingDataPackageReconciliationJob,
     ChongqingDataPackageReconciliationJobCancelRequest,
@@ -1351,6 +1355,66 @@ ENTITY_AUTHORITY_BATCH_INGEST = CapabilitySpec(
 )
 
 
+APPROVAL_CASE_BATCH_ESCALATION = CapabilitySpec(
+    capability_id="agentops.approval-case.batch-escalate",
+    version="1.0.0",
+    title="Schedule bounded ApprovalCase SLA escalations",
+    description=(
+        "Schedule up to 100 ApprovalCase SLA escalations through the existing "
+        "per-case authority. Results remain case-scoped and preserve partial "
+        "success, conflict, not-found, forbidden, and rejected outcomes."
+    ),
+    owner="data-platform.agentops",
+    tier="P1",
+    lifecycle=CapabilityLifecycle.ACTIVE,
+    operation=OperationKind.COMMAND,
+    risk=RiskClass.MEDIUM,
+    side_effect=SideEffect.CONTROL_WRITE,
+    input=SemanticJsonSchema(
+        semantic_type="gda.approval-case-batch-escalation-request.v1",
+        json_schema=build_capability_json_schema(
+            ApprovalCaseBatchEscalationRequest,
+            "gda.approval-case-batch-escalation-request.v1",
+        ),
+    ),
+    output=SemanticJsonSchema(
+        semantic_type="gda.approval-case-batch-escalation-response.v1",
+        json_schema=build_capability_json_schema(
+            ApprovalCaseBatchEscalationResponse,
+            "gda.approval-case-batch-escalation-response.v1",
+        ),
+    ),
+    policy=PolicyContract(
+        action="agentops.approval-case.batch-escalate",
+        allowed_roles=("admin", "platform_operator"),
+        tenant_scoped=True,
+        resource_kinds=("approval_case", "approval_case_escalation", "approval_case_notification"),
+    ),
+    execution=ExecutionContract(
+        idempotency=IdempotencyMode.OPTIONAL,
+        preview=PreviewMode.UNSUPPORTED,
+        result=ResultMode.SYNCHRONOUS,
+        reconcilable=True,
+    ),
+    surfaces=_governed_http_client_surfaces(
+        "agentops.approval-case.batch-escalate",
+        "http:POST:/api/platform/v1/approval-cases/escalation-batches",
+        agent_entrypoint="mcp:schedule_approval_case_batch_escalation",
+    ),
+    http=HttpProjection(
+        method="POST",
+        path="/api/platform/v1/approval-cases/escalation-batches",
+        operation_id="scheduleApprovalCaseBatchEscalation",
+        input_location="body",
+        response_envelope="platform_v1",
+    ),
+    mcp=McpProjection(
+        tool_name="schedule_approval_case_batch_escalation",
+        title="Schedule bounded ApprovalCase SLA escalations",
+    ),
+)
+
+
 CHONGQING_DATA_PACKAGE_RECONCILE = CapabilitySpec(
     capability_id="entity.data-package.reconcile",
     version="1.0.0",
@@ -2528,6 +2592,7 @@ _REGISTRY = CapabilityRegistry(
         GOVERNED_SEMANTIC_QUERY,
         GIS_ANALYSIS_EXECUTE,
         ENTITY_AUTHORITY_BATCH_INGEST,
+        APPROVAL_CASE_BATCH_ESCALATION,
         CHONGQING_DATA_PACKAGE_RECONCILE,
         CHONGQING_DATA_PACKAGE_RECONCILIATION_JOB_SUBMIT,
         CHONGQING_DATA_PACKAGE_RECONCILIATION_JOB_GET,

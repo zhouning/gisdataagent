@@ -1,0 +1,127 @@
+# Independently verifies the OCI subject from a successful manual main publish.
+# This workflow does not deploy staging and cannot authorize production.
+name: Verify - Staging Image Provenance
+
+on:
+  workflow_run:
+    workflows: ["Publish - Staging Candidate Image"]
+    types: [completed]
+
+permissions:
+  actions: read
+  attestations: write
+  contents: read
+  id-token: write
+  packages: read
+
+jobs:
+  verify-provenance:
+    name: Verify publisher identity and OCI subject
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'workflow_dispatch' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: staging-provenance
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out the protected verifier revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Require explicit protected-environment configuration
+        env:
+          GDA_STAGING_PROVENANCE_PROTECTED: ${{ vars.GDA_STAGING_PROVENANCE_PROTECTED }}
+        run: |
+          set -euo pipefail
+          if [[ "$GDA_STAGING_PROVENANCE_PROTECTED" != "true" ]]; then
+            echo "staging-provenance environment is not explicitly enabled" >&2
+            exit 1
+          fi
+          gh attestation verify --help >/dev/null
+
+      - name: Download registry binding evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: staging-registry-evidence-${{ github.event.workflow_run.head_sha }}
+          path: staging-provenance-input
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Download candidate evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: staging-candidate-evidence-${{ github.event.workflow_run.head_sha }}
+          path: staging-candidate-input
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Log in to GitHub Container Registry for subject resolution
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Independently verify OCI provenance
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python -m data_agent.staging_provenance_evidence verify \
+            --registry-evidence staging-provenance-input/registry.json \
+            --source-repository "$GITHUB_REPOSITORY" \
+            --source-revision "${{ github.event.workflow_run.head_sha }}" \
+            --verifier-revision "$GITHUB_SHA" \
+            --output staging-provenance-evidence/provenance.json
+
+      - name: Build protected staging release bundle
+        run: |
+          python -m data_agent.staging_release_evidence build \
+            --candidate-evidence staging-candidate-input/candidate.json \
+            --registry-evidence staging-provenance-input/registry.json \
+            --provenance-evidence staging-provenance-evidence/provenance.json \
+            --source-repository "$GITHUB_REPOSITORY" \
+            --source-revision "${{ github.event.workflow_run.head_sha }}" \
+            --verifier-revision "$GITHUB_SHA" \
+            --output staging-release-evidence/release.json
+
+      - name: Attest protected provenance evidence
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: staging-provenance-evidence/provenance.json
+
+      - name: Attest protected staging release admission
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: staging-release-evidence/release.json
+
+      - name: Upload protected provenance evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-provenance-evidence-${{ github.event.workflow_run.head_sha }}
+          path: staging-provenance-evidence/provenance.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload protected staging release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-release-evidence
+          path: |
+            staging-candidate-input/candidate.json
+            staging-provenance-input/registry.json
+            staging-provenance-evidence/provenance.json
+            staging-release-evidence/release.json
+          if-no-files-found: error
+          retention-days: 30

@@ -1,5 +1,7 @@
 # 监测数据底座技术调研与设计草稿
 
+> **状态说明（2026-07-19）**：本文保留为早期调研输入，不再定义当前总体架构或交付顺序。现行权威路线见 [docs/roadmap.md](docs/roadmap.md)，湖仓与 PostGIS 边界见 [ADR-001](docs/architecture-decisions/adr-001-geospatial-lakehouse-and-postgis-boundary.md)。本文中的 ODS/DWD/DWS/ADS 表名、NebulaGraph、Elasticsearch 等均为待验证设计，不代表已经部署。
+
 > 文档状态：调研草稿
 > 日期：2026-06-02
 > 说明：本文档汇总了项目前期技术调研结论和初步设计方案，供团队评审参考。

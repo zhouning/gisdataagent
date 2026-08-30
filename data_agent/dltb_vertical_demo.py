@@ -6,9 +6,11 @@ deterministic semantic projection on top of it.  The projection is a control
 plane manifest; feature records stay in the lake and are never copied into the
 ontology store.
 
-This is the offline/demo path used on a plain Windows host.  It does not need
-ArcPy, PostGIS, a container or a network service.  Production promotion is
-closed unless the upstream quality and standard-contract gates are accepted.
+This is the offline/demo path used on a plain Windows host. It does not need
+ArcPy or a container. The governed GeoParquet can be queried in-place and can
+also be published to the bundled PostGIS service for the production-default
+NL2Semantic2SQL route. Production promotion is closed unless the upstream
+quality and standard-contract gates are accepted.
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ from __future__ import annotations
 import csv
 import json
 import math
+import os
 import re
 import uuid
 from pathlib import Path
@@ -237,6 +240,10 @@ class DLTBVerticalDemo:
         actor: str = "system",
         mode: str = "rehearsal",
         preview_limit: int = 500,
+        publish_postgis: bool = False,
+        postgis_table_name: str = SEMANTIC_SOURCE,
+        postgis_schema: str | None = None,
+        postgis_engine=None,
     ) -> dict[str, Any]:
         """Create semantic projection and deterministic DLTB metrics."""
 
@@ -276,6 +283,50 @@ class DLTBVerticalDemo:
             }
             for canonical, spec in FIELD_SPECS.items()
         }
+        for canonical, source_field in field_map.items():
+            semantic_field = FIELD_SPECS[canonical]["semantic_field"]
+            if source_field and source_field in frame.columns:
+                canonical_fields[semantic_field]["data_type"] = str(frame[source_field].dtype)
+        canonical_fields["land_use_code"]["value_semantics"] = {
+            "groups": {"耕地": {"prefixes": ["01"]}},
+        }
+        canonical_fields.update(
+            {
+                "geometry_area_sqm": {
+                    "source_field": "_gda_geometry_area_sqm",
+                    "property": "geometryArea",
+                    "domain": "LandParcel",
+                    "label": "几何面积（预计算）",
+                    "unit": "m²",
+                    "aliases": ["几何面积", "空间面积", "geometry area"],
+                    "required": False,
+                    "data_type": "float64",
+                    "description": "已在治理阶段预计算，查询时不需要调用 ST_Area。",
+                },
+                "area_delta_sqm": {
+                    "source_field": "_gda_area_delta_sqm",
+                    "property": "areaDifference",
+                    "domain": "LandParcel",
+                    "label": "属性面积与几何面积差值",
+                    "unit": "m²",
+                    "aliases": ["面积差值", "面积差异", "属性面积与几何面积差异"],
+                    "required": False,
+                    "data_type": "float64",
+                    "description": "TBMJ 减去预计算几何面积；可直接排序或过滤。",
+                },
+                "area_delta_ratio": {
+                    "source_field": "_gda_area_delta_ratio",
+                    "property": "areaDifferenceRatio",
+                    "domain": "LandParcel",
+                    "label": "属性面积与几何面积差异率",
+                    "unit": "ratio",
+                    "aliases": ["面积差异率", "面积偏差率", "面积误差率"],
+                    "required": False,
+                    "data_type": "float64",
+                    "description": "面积差值绝对值除以几何面积；可直接排序或过滤。",
+                },
+            }
+        )
 
         numeric_area = None
         area_column = field_map.get("TBMJ")
@@ -285,7 +336,16 @@ class DLTBVerticalDemo:
         frame["_gda_geometry_area_sqm"] = geometry_area
         if numeric_area is not None:
             frame["_gda_area_delta_sqm"] = numeric_area - geometry_area
-            frame["_gda_area_delta_pct"] = (numeric_area - geometry_area).abs() / geometry_area.replace(0, pd.NA)
+            frame["_gda_area_delta_ratio"] = (
+                (numeric_area - geometry_area).abs() / geometry_area.replace(0, pd.NA)
+            )
+        else:
+            frame["_gda_area_delta_sqm"] = pd.Series(
+                [None] * len(frame), index=frame.index, dtype="float64"
+            )
+            frame["_gda_area_delta_ratio"] = pd.Series(
+                [None] * len(frame), index=frame.index, dtype="float64"
+            )
 
         quality_checks = {
             "feature_count": int(len(frame)),
@@ -308,7 +368,7 @@ class DLTBVerticalDemo:
             "threshold_pct": 0.05,
         }
         if numeric_area is not None:
-            valid = frame["_gda_area_delta_pct"].dropna()
+            valid = frame["_gda_area_delta_ratio"].dropna()
             if len(valid):
                 consistency.update({
                     "mean_abs_delta_sqm": float(frame.loc[valid.index, "_gda_area_delta_sqm"].abs().mean()),
@@ -362,6 +422,8 @@ class DLTBVerticalDemo:
         projection_id = str(uuid.uuid4())
         product_root = self.store.root / "semantic_products" / projection_id
         product_root.mkdir(parents=True, exist_ok=True)
+        query_target = product_root / "land_parcel_current.parquet"
+        frame.to_parquet(query_target, index=False)
         preview_columns = [column for column in columns if column != geometry_name][:12]
         preview = frame.loc[:, preview_columns + [geometry_name]].head(max(1, min(int(preview_limit), 2000))).copy()
         try:
@@ -379,16 +441,49 @@ class DLTBVerticalDemo:
             writer.writerow(["total_area_sqm", metrics["total_area_sqm"]])
             writer.writerow(["large_area_delta_count", consistency["large_delta_count"]])
         _atomic_json(product_root / "dltb_metrics.json", _json_value(metrics))
+        lake_binding = {
+            "engine": "lake",
+            "table_name": SEMANTIC_SOURCE,
+            "projection_id": projection_id,
+            "projection_path": str(query_target),
+            "projection_sha256": sha256_tree(query_target),
+            "governed_source_path": str(target),
+            "governed_source_sha256": sha256_tree(target),
+            "row_count": int(len(frame)),
+        }
+        execution_bindings: dict[str, dict[str, Any]] = {"lake": lake_binding}
+        if publish_postgis:
+            from .postgis_projection_publisher import publish_geoparquet_to_postgis
+
+            execution_bindings["postgis"] = publish_geoparquet_to_postgis(
+                query_target,
+                projection_id=projection_id,
+                table_name=postgis_table_name,
+                schema=postgis_schema
+                or os.environ.get("GDA_DLTB_POSTGIS_SCHEMA", "public"),
+                engine=postgis_engine,
+                chunksize=int(os.environ.get("GDA_POSTGIS_PUBLISH_CHUNKSIZE", "5000")),
+            )
         projection = {
             "schema": "gda.dltb-semantic-projection.v1",
             "projection_id": projection_id,
             "semantic_source": SEMANTIC_SOURCE,
             "display_name": "现状地类图斑（治理产品）",
-            "description": "DLTB 标准化 GeoParquet 的离线语义投影；图斑记录仍保留在数据湖。",
+            "description": "DLTB 标准化 GeoParquet 的语义投影；PostGIS 与数据湖执行器绑定同一治理版本。",
             "geometry_type": "Polygon",
             "srid": int(frame.crs.to_epsg()) if frame.crs and frame.crs.to_epsg() else None,
             "target_path": str(target),
-            "target_sha256": sha256_tree(target),
+            "target_sha256": lake_binding["governed_source_sha256"],
+            "semantic_query_projection_path": str(query_target),
+            "semantic_query_projection_sha256": lake_binding["projection_sha256"],
+            "postgis_table_name": (
+                execution_bindings.get("postgis", {}).get("table_name")
+            ),
+            "execution_bindings": execution_bindings,
+            "default_execution_engine": "postgis",
+            "publication_status": (
+                "dual_published" if "postgis" in execution_bindings else "lake_only"
+            ),
             "source_asset_id": output.get("source_asset_id"),
             "source_layer": output.get("source_layer"),
             "canonical_dataset": "DLTB",
@@ -421,6 +516,17 @@ class DLTBVerticalDemo:
             "edges": [
                 {"from": output.get("source_asset_id"), "to": str(target), "type": "raw_to_standardized", "sha256": projection["target_sha256"]},
                 {"from": str(target), "to": f"semantic:{SEMANTIC_SOURCE}", "type": "standardized_to_semantic_projection", "projection_id": projection_id},
+                *(
+                    [{
+                        "from": str(target),
+                        "to": execution_bindings["postgis"]["table_name"],
+                        "type": "governed_projection_to_postgis",
+                        "projection_id": projection_id,
+                        "row_count": execution_bindings["postgis"]["row_count"],
+                    }]
+                    if "postgis" in execution_bindings
+                    else []
+                ),
                 {"from": f"semantic:{SEMANTIC_SOURCE}", "to": "ontology:gda:nr:class:LandParcel", "type": "semantic_to_ontology_reference", "ontology_version": ONTOLOGY_VERSION},
             ]
         })
@@ -434,6 +540,171 @@ class DLTBVerticalDemo:
         if not candidate.exists():
             raise FileNotFoundError(str(candidate))
         return json.loads(candidate.read_text(encoding="utf-8"))
+
+    @staticmethod
+    def execute_semantic_ast(
+        projection_path: str | Path,
+        ast: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Execute a previously validated DLTB semantic AST."""
+
+        projection = DLTBVerticalDemo.load_projection(projection_path)
+        target = Path(projection["target_path"])
+        if not target.exists():
+            raise FileNotFoundError(str(target))
+        import geopandas as gpd
+        import pandas as pd
+
+        frame = gpd.read_parquet(target)
+        fields = projection.get("fields") or {}
+
+        def col(semantic_field: str, fallback: str) -> str | None:
+            spec = fields.get(semantic_field) or {}
+            physical = spec.get("source_field")
+            if physical in frame.columns:
+                return physical
+            return fallback if fallback in frame.columns else None
+
+        semantic_columns = {
+            "feature_identifier": col("feature_identifier", "BSM"),
+            "land_use_code": col("land_use_code", "DLBM"),
+            "land_use_name": col("land_use_name", "DLMC"),
+            "located_admin_name": col("located_admin_name", "ZLDWMC"),
+            "owner_admin_name": col("owner_admin_name", "QSDWMC"),
+            "parcel_area_sqm": col("parcel_area_sqm", "TBMJ"),
+        }
+        filtered = frame
+        for item in ast.get("filters") or []:
+            physical = semantic_columns.get(item["field"])
+            if not physical:
+                raise ValueError(
+                    f"semantic field is unavailable in this projection: {item['field']}"
+                )
+            values = filtered[physical].astype(str)
+            expected = str(item["value"])
+            if item["operator"] == "eq":
+                normalized_values = values.str.replace(r"\.0$", "", regex=True)
+                normalized_expected = re.sub(r"\.0$", "", expected)
+                mask = normalized_values.str.casefold() == normalized_expected.casefold()
+            elif item["operator"] == "prefix":
+                mask = values.str.startswith(expected, na=False)
+            elif item["operator"] == "contains":
+                mask = values.str.contains(expected, case=False, regex=False, na=False)
+            else:  # validated by dltb_llm_query; kept fail-closed for direct callers
+                raise ValueError(f"unsupported semantic filter operator: {item['operator']}")
+            filtered = filtered[mask]
+
+        intent = ast.get("intent")
+        limit = max(1, min(int(ast.get("limit") or 100), 1000))
+        code_col = semantic_columns["land_use_code"]
+        name_col = semantic_columns["land_use_name"]
+        area_col = semantic_columns["parcel_area_sqm"]
+        id_col = semantic_columns["feature_identifier"]
+        if intent == "area_consistency":
+            work = filtered.copy()
+            work["_gda_geometry_area_sqm"] = _geometry_area_sqm(work)
+            area = (
+                pd.to_numeric(work[area_col], errors="coerce")
+                if area_col
+                else work["_gda_geometry_area_sqm"]
+            )
+            work["_gda_area_delta_sqm"] = area - work["_gda_geometry_area_sqm"]
+            work["_gda_area_delta_ratio"] = (
+                work["_gda_area_delta_sqm"].abs()
+                / work["_gda_geometry_area_sqm"].replace(0, pd.NA)
+            )
+            work["_gda_area_delta_pct"] = work["_gda_area_delta_ratio"] * 100.0
+            result = work.sort_values(
+                "_gda_area_delta_ratio", ascending=False, na_position="last"
+            ).head(limit)
+            columns = [
+                column
+                for column in (
+                    id_col,
+                    code_col,
+                    name_col,
+                    area_col,
+                    "_gda_geometry_area_sqm",
+                    "_gda_area_delta_sqm",
+                    "_gda_area_delta_pct",
+                )
+                if column
+            ]
+            rows = [_feature_properties(row, columns) for _, row in result.iterrows()]
+            answer = f"已找到面积差异最大的 {len(rows)} 个图斑。"
+        elif intent == "parcel_lookup":
+            columns = [
+                column
+                for column in (
+                    id_col,
+                    code_col,
+                    name_col,
+                    semantic_columns["located_admin_name"],
+                    semantic_columns["owner_admin_name"],
+                    area_col,
+                )
+                if column
+            ]
+            result = filtered.head(limit)
+            rows = [_feature_properties(row, columns) for _, row in result.iterrows()]
+            answer = f"定位到 {len(rows)} 个图斑。"
+        elif intent == "group_summary":
+            group_semantic = ast.get("group_by")
+            group_col = semantic_columns.get(group_semantic) if group_semantic else None
+            area = (
+                pd.to_numeric(filtered[area_col], errors="coerce")
+                if area_col
+                else _geometry_area_sqm(filtered)
+            )
+            work = filtered.assign(_semantic_area_sqm=area)
+            if group_col:
+                grouped = work.groupby(group_col, dropna=False, as_index=False).agg(
+                    feature_count=(group_col, "size"),
+                    area_sqm=("_semantic_area_sqm", "sum"),
+                )
+                if name_col and group_semantic == "land_use_code":
+                    names = (
+                        filtered.groupby(group_col, dropna=False)[name_col]
+                        .first()
+                        .rename("land_use_name")
+                    )
+                    grouped = grouped.join(names, on=group_col)
+            else:
+                grouped = pd.DataFrame(
+                    [{"feature_count": len(work), "area_sqm": float(area.sum())}]
+                )
+            total = float(grouped["area_sqm"].sum()) if len(grouped) else 0.0
+            grouped["area_pct"] = grouped["area_sqm"].apply(
+                lambda value: float(value / total * 100) if total else 0.0
+            )
+            grouped = grouped.sort_values("area_sqm", ascending=False).head(limit)
+            rows = [_json_value(row) for row in grouped.to_dict(orient="records")]
+            label = {
+                "land_use_code": "地类",
+                "located_admin_name": "坐落行政区",
+                "owner_admin_name": "权属行政区",
+                None: "全部图斑",
+            }.get(group_semantic, str(group_semantic))
+            answer = f"按{label}汇总了 {len(rows)} 个结果，面积单位为平方米。"
+        elif intent == "dataset_summary":
+            area = (
+                pd.to_numeric(filtered[area_col], errors="coerce")
+                if area_col
+                else _geometry_area_sqm(filtered)
+            )
+            rows = [{"feature_count": len(filtered), "area_sqm": _json_value(area.sum())}]
+            answer = "已汇总当前现状地类图斑治理产品。"
+        else:
+            raise ValueError(f"unsupported semantic intent: {intent}")
+
+        return {
+            "status": "succeeded",
+            "query_type": intent,
+            "semantic_source": SEMANTIC_SOURCE,
+            "answer": answer,
+            "rows": rows,
+            "production_eligible": bool(projection.get("production_eligible")),
+        }
 
     @staticmethod
     def query(projection_path: str | Path, question: str, *, limit: int = 100) -> dict[str, Any]:
@@ -467,13 +738,19 @@ class DLTBVerticalDemo:
         limit = max(1, min(int(limit), 1000))
 
         if any(token in text for token in ("差异", "不一致", "几何面积", "面积核对")):
-            if "_gda_area_delta_pct" not in frame.columns:
+            if "_gda_area_delta_ratio" not in frame.columns:
                 frame["_gda_geometry_area_sqm"] = _geometry_area_sqm(frame)
                 if area_col:
                     area = pd.to_numeric(frame[area_col], errors="coerce")
                     frame["_gda_area_delta_sqm"] = area - frame["_gda_geometry_area_sqm"]
-                    frame["_gda_area_delta_pct"] = (area - frame["_gda_geometry_area_sqm"]).abs() / frame["_gda_geometry_area_sqm"].replace(0, pd.NA)
-            result = frame.sort_values("_gda_area_delta_pct", ascending=False, na_position="last").head(limit)
+                    frame["_gda_area_delta_ratio"] = (
+                        (area - frame["_gda_geometry_area_sqm"]).abs()
+                        / frame["_gda_geometry_area_sqm"].replace(0, pd.NA)
+                    )
+            frame["_gda_area_delta_pct"] = frame["_gda_area_delta_ratio"] * 100.0
+            result = frame.sort_values(
+                "_gda_area_delta_ratio", ascending=False, na_position="last"
+            ).head(limit)
             cols = [column for column in (id_col, code_col, name_col, area_col, "_gda_geometry_area_sqm", "_gda_area_delta_sqm", "_gda_area_delta_pct") if column]
             return {"status": "succeeded", "query_type": "area_consistency", "semantic_source": SEMANTIC_SOURCE, "answer": f"已找到面积差异最大的 {len(result)} 个图斑。", "rows": [_feature_properties(row, cols) for _, row in result.iterrows()], "production_eligible": bool(projection.get("production_eligible"))}
 
@@ -481,10 +758,22 @@ class DLTBVerticalDemo:
         # requires an explicit identifier token rather than fuzzy matching a
         # random number in the question.
         if id_col and any(token in text for token in ("图斑", "地块", "bsm", "标识")):
-            match = re.search(r"(?:bsm|标识(?:码)?|图斑(?:编号)?)\s*[:：]?\s*([a-z0-9_-]{3,})", text, re.I)
+            match = re.search(r"bsm\s*[:：]\s*([a-z0-9_-]{3,})", text, re.I)
+            if not match:
+                match = re.search(
+                    r"(?:标识(?:码)?|图斑(?:编号)?)\s*[:：]?\s*([a-z0-9_-]{3,})",
+                    text,
+                    re.I,
+                )
             if match:
                 value = match.group(1)
-                result = frame[frame[id_col].astype(str).str.casefold() == value.casefold()].head(limit)
+                normalized_ids = (
+                    frame[id_col]
+                    .astype(str)
+                    .str.replace(r"\.0$", "", regex=True)
+                    .str.casefold()
+                )
+                result = frame[normalized_ids == value.casefold()].head(limit)
                 cols = [column for column in (id_col, code_col, name_col, admin_col, area_col) if column]
                 return {"status": "succeeded", "query_type": "parcel_lookup", "semantic_source": SEMANTIC_SOURCE, "answer": f"定位到 {len(result)} 个图斑。", "rows": [_feature_properties(row, cols) for _, row in result.iterrows()], "production_eligible": bool(projection.get("production_eligible"))}
 
@@ -492,7 +781,7 @@ class DLTBVerticalDemo:
         if "耕地" in text:
             mask = pd.Series(False, index=frame.index)
             if code_col:
-                mask = mask | frame[code_col].astype(str).str.startswith(("01", "02"), na=False)
+                mask = mask | frame[code_col].astype(str).str.startswith("01", na=False)
             if name_col:
                 mask = mask | frame[name_col].astype(str).str.contains("耕地", na=False)
             filtered = frame[mask]
@@ -519,6 +808,14 @@ class DLTBVerticalDemo:
 def projection_catalog_entry(projection: dict[str, Any]) -> dict[str, Any]:
     """Return the source shape consumed by the semantic resolver."""
 
+    fields = {
+        name: dict(spec)
+        for name, spec in (projection.get("fields") or {}).items()
+    }
+    if "land_use_code" in fields:
+        fields["land_use_code"]["value_semantics"] = {
+            "groups": {"耕地": {"prefixes": ["01"]}},
+        }
     return {
         "table_name": SEMANTIC_SOURCE,
         "display_name": projection.get("display_name", "现状地类图斑（治理产品）"),
@@ -529,7 +826,14 @@ def projection_catalog_entry(projection: dict[str, Any]) -> dict[str, Any]:
         "suggested_analyses": ["按地类统计面积", "按行政区统计面积", "图斑面积一致性检查", "空间展示"],
         "projection_path": projection.get("target_path"),
         "projection_id": projection.get("projection_id"),
+        "postgis_table_name": projection.get("postgis_table_name"),
+        "execution_bindings": projection.get("execution_bindings") or {},
+        "default_execution_engine": projection.get(
+            "default_execution_engine", "postgis"
+        ),
+        "publication_status": projection.get("publication_status", "lake_only"),
         "quality_status": projection.get("quality_status"),
         "production_eligible": projection.get("production_eligible", False),
-        "fields": projection.get("fields", {}),
+        "canonical_dataset": projection.get("canonical_dataset"),
+        "fields": fields,
     }

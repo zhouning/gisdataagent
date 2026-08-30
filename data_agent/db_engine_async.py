@@ -19,6 +19,7 @@ from typing import Any
 
 import asyncpg
 
+from .platform_truth import resolve_database_url
 from .user_context import current_user_id, current_user_role
 
 _async_pool: asyncpg.Pool | None = None
@@ -26,15 +27,24 @@ _pool_lock = asyncio.Lock()
 
 
 def _build_dsn() -> str | None:
-    """Build a PostgreSQL DSN from environment variables."""
-    user = os.environ.get("POSTGRES_USER")
-    password = os.environ.get("POSTGRES_PASSWORD")
-    host = os.environ.get("POSTGRES_HOST", "localhost")
-    port = os.environ.get("POSTGRES_PORT", "5432")
-    db = os.environ.get("POSTGRES_DATABASE")
-    if not all([user, password, db]):
-        return None
-    return f"postgresql://{user}:{password}@{host}:{port}/{db}"
+    """Resolve the same authoritative, URI-safe DSN as the sync engine."""
+    return resolve_database_url(os.environ)
+
+
+def _pool_bounds() -> tuple[int, int]:
+    """Return validated async pool bounds."""
+    try:
+        minimum = int(os.environ.get("ASYNC_POOL_MIN", "5"))
+        maximum = int(os.environ.get("ASYNC_POOL_MAX", "20"))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("ASYNC_POOL_MIN and ASYNC_POOL_MAX must be integers") from exc
+    if not 0 <= minimum <= 500:
+        raise ValueError("ASYNC_POOL_MIN must be between 0 and 500")
+    if not 1 <= maximum <= 1000:
+        raise ValueError("ASYNC_POOL_MAX must be between 1 and 1000")
+    if minimum > maximum:
+        raise ValueError("ASYNC_POOL_MIN must be <= ASYNC_POOL_MAX")
+    return minimum, maximum
 
 
 async def get_async_pool() -> asyncpg.Pool | None:
@@ -55,11 +65,12 @@ async def get_async_pool() -> asyncpg.Pool | None:
         dsn = _build_dsn()
         if not dsn:
             return None
+        min_size, max_size = _pool_bounds()
 
         _async_pool = await asyncpg.create_pool(
             dsn,
-            min_size=int(os.environ.get("ASYNC_POOL_MIN", "5")),
-            max_size=int(os.environ.get("ASYNC_POOL_MAX", "20")),
+            min_size=min_size,
+            max_size=max_size,
             command_timeout=60,
             max_inactive_connection_lifetime=300,
         )

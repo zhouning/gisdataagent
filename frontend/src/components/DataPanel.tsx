@@ -6,6 +6,7 @@ import {
   History, Gauge, PieChart, Shield, ClipboardCheck, Bell, Activity, Radio, ListTodo,
   GitBranch, FileText, Target, ThumbsUp, Tags, Sparkles,
   LayoutGrid, Home, Inbox, Upload, Droplets,
+  Waves,
 } from 'lucide-react';
 
 import CatalogTab, { type MapPublicationLayer } from './datapanel/CatalogTab';
@@ -77,6 +78,8 @@ import DataModelWorkbenchTab from './datapanel/DataModelWorkbenchTab';
 import OntologyTab from './datapanel/OntologyTab';
 import NaturalResourceOntologyDemoTab from './datapanel/NaturalResourceOntologyDemoTab';
 import ApprovalInboxTab from './datapanel/ApprovalInboxTab';
+import GisWorkflowTab from './datapanel/GisWorkflowTab';
+import AbuDhabiFloodWorldModelTab from './datapanel/AbuDhabiFloodWorldModelTab';
 
 interface DataPanelProps {
   dataFile: string | null;
@@ -86,7 +89,7 @@ interface DataPanelProps {
   onAddMapLayer?: (layer: MapPublicationLayer) => void;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'models' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'approvals' | 'memory' | 'observability' | 'traditional_livability' | 'cultural_heritage' | 'cross_domain_impact' | 'implementation_roadmap' | 'resilience_kernel' | 'digital_readiness' | 'operations_quality' | 'business_licence' | 'development_control' | 'financial_readiness' | 'public_feedback_readiness' | 'spatial_scope_registry' | 'planning_version_registry' | 'parcel_state_readiness' | 'infrastructure_network_readiness' | 'asset_lifecycle_readiness' | 'population_demographic_readiness' | 'population_housing_optimization' | 'uwm_livability' | 'uwm_multistage' | 'ai_demand_readiness' | 'abu_land_use_compare' | 'abu_flus' | 'abu_kernel' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'irrigation_demo' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'ontology' | 'ontology_demo' | 'agents' | 'intake' | 'offline_ingest' | 'classification';
+type TabKey = 'files' | 'table' | 'catalog' | 'models' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'gis_workflow' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'approvals' | 'memory' | 'observability' | 'traditional_livability' | 'cultural_heritage' | 'cross_domain_impact' | 'implementation_roadmap' | 'resilience_kernel' | 'digital_readiness' | 'operations_quality' | 'business_licence' | 'development_control' | 'financial_readiness' | 'public_feedback_readiness' | 'spatial_scope_registry' | 'planning_version_registry' | 'parcel_state_readiness' | 'infrastructure_network_readiness' | 'asset_lifecycle_readiness' | 'population_demographic_readiness' | 'population_housing_optimization' | 'uwm_livability' | 'uwm_multistage' | 'ai_demand_readiness' | 'abu_land_use_compare' | 'abu_flus' | 'abu_kernel' | 'abu_dhabi_flood_world_model' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'irrigation_demo' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'ontology' | 'ontology_demo' | 'agents' | 'intake' | 'offline_ingest' | 'classification';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 type NavigationGroupKey = 'data' | 'semantic' | 'analysis' | 'ops' | 'extensions';
@@ -121,6 +124,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
     tabs: [
       { key: 'capabilities', label: '能力', icon: <Zap size={ICON_SIZE} /> },
       { key: 'tools', label: '工具', icon: <Wrench size={ICON_SIZE} /> },
+      { key: 'gis_workflow', label: '空间工作流', icon: <GitBranch size={ICON_SIZE} /> },
       { key: 'kb', label: '知识库', icon: <BookOpen size={ICON_SIZE} /> },
       { key: 'suggestions', label: '建议', icon: <Lightbulb size={ICON_SIZE} /> },
       { key: 'memory', label: '记忆', icon: <Brain size={ICON_SIZE} /> },
@@ -146,6 +150,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'uwm_livability', label: '城市宜居性分析（UWM）', icon: <Brain size={ICON_SIZE} /> },
       { key: 'uwm_multistage', label: 'UWM多阶段城市干预规划', icon: <GitBranch size={ICON_SIZE} /> },
       { key: 'ai_demand_readiness', label: 'AI应用需求矩阵', icon: <ClipboardCheck size={ICON_SIZE} /> },
+      { key: 'abu_dhabi_flood_world_model', label: '阿布扎比 · 暴雨内涝世界模型', icon: <Waves size={ICON_SIZE} /> },
       { key: 'abu_land_use_compare', label: '阿布扎比 · 三模型对比', icon: <BarChart3 size={ICON_SIZE} /> },
       { key: 'abu_flus', label: '阿布扎比 · GeoSOS-FLUS', icon: <LayoutGrid size={ICON_SIZE} /> },
       { key: 'abu_kernel', label: '阿布扎比 · Geospatial Kernel', icon: <Network size={ICON_SIZE} /> },
@@ -160,9 +165,9 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'standards', label: '领域标准', icon: <Database size={ICON_SIZE} /> },
       { key: 'std_platform', label: '数据标准', icon: <FileText size={ICON_SIZE} /> },
       { key: 'agents', label: '智能体', icon: <Network size={ICON_SIZE} /> },
-      { key: 'semantic', label: '语义层', icon: <Tags size={ICON_SIZE} /> },
-      { key: 'ontology', label: '本体模型', icon: <Network size={ICON_SIZE} /> },
-      { key: 'ontology_demo', label: '本体应用', icon: <Sparkles size={ICON_SIZE} /> },
+        { key: 'semantic', label: '语义层', icon: <Tags size={ICON_SIZE} /> },
+        { key: 'ontology', label: '本体模型', icon: <Network size={ICON_SIZE} /> },
+        { key: 'ontology_demo', label: '本体应用', icon: <Sparkles size={ICON_SIZE} /> },
     ],
   },
   {
@@ -281,7 +286,7 @@ const EXTENSION_TABS = new Set<TabKey>([
   'kb', 'suggestions', 'memory', 'market', 'agents',
 ]);
 const WORLD_MODEL_TABS = new Set<TabKey>([
-  'worldmodel', 'worldmodel_v11', 'worldmodel_v2', 'worldmodel_v21', 'irrigation_demo', 'twm', 'uwm_livability', 'uwm_multistage',
+  'worldmodel', 'worldmodel_v11', 'worldmodel_v2', 'worldmodel_v21', 'irrigation_demo', 'twm', 'uwm_livability', 'uwm_multistage', 'abu_dhabi_flood_world_model',
 ]);
 const REGIONAL_TABS = new Set<TabKey>(['abu_land_use_compare', 'abu_flus', 'abu_kernel']);
 const DOMAIN_TABS = new Set<TabKey>([
@@ -396,6 +401,8 @@ export default function DataPanel({
   const [tableData, setTableData] = useState<any[]>([]);
   const [tableColumns, setTableColumns] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [requestedModelVersionId, setRequestedModelVersionId] = useState<string | null>(null);
+  const [requestedSemanticTarget, setRequestedSemanticTarget] = useState<{ sourceKey?: string; tableName?: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -447,13 +454,24 @@ export default function DataPanel({
     const handleWorkspaceUpdate = (rawEvent: Event) => {
       const detail = (rawEvent as CustomEvent).detail || {};
       const tab = detail.tab as TabKey;
-      if (tab !== 'ontology' && tab !== 'ontology_demo') return;
+      if (tab !== 'ontology' && tab !== 'ontology_demo' && tab !== 'models' && tab !== 'semantic') return;
       const item = findNavigationItem(tab);
       if (!item) return;
+      if (tab === 'models') {
+        setRequestedModelVersionId(
+          typeof detail.versionId === 'string' && detail.versionId ? detail.versionId : null,
+        );
+      }
+      if (tab === 'semantic') {
+        setRequestedSemanticTarget({
+          sourceKey: typeof detail.sourceKey === 'string' ? detail.sourceKey : undefined,
+          tableName: typeof detail.tableName === 'string' ? detail.tableName : undefined,
+        });
+      }
       setActiveTab(tab);
       setActiveGroup(item.group_key);
       setActiveSection(item.section_key);
-      onRequestWidth?.(tab === 'ontology' ? 980 : 760);
+      onRequestWidth?.(tab === 'models' || tab === 'ontology' || tab === 'semantic' ? 980 : 760);
     };
     window.addEventListener('gda-workspace-update', handleWorkspaceUpdate);
     return () => window.removeEventListener('gda-workspace-update', handleWorkspaceUpdate);
@@ -480,10 +498,16 @@ export default function DataPanel({
     setActiveTab(tab);
     setActiveGroup(item.group_key);
     setActiveSection(item.section_key);
-    if (tab === 'models') onRequestWidth?.(680);
+    if (tab === 'models') {
+      setRequestedModelVersionId(null);
+      onRequestWidth?.(980);
+    }
+    else if (tab === 'standards' || tab === 'std_platform') onRequestWidth?.(760);
     else if (tab === 'capabilities') onRequestWidth?.(720);
+    else if (tab === 'gis_workflow') onRequestWidth?.(760);
     else if (tab === 'ontology') onRequestWidth?.(980);
     else if (tab === 'ontology_demo') onRequestWidth?.(760);
+    else if (tab === 'abu_dhabi_flood_world_model') onRequestWidth?.(1080);
     else if (tab === 'approvals') onRequestWidth?.(740);
     else if (tab === 'population_housing_optimization') onRequestWidth?.(720);
     else if (tab === 'uwm_livability' || tab === 'uwm_multistage') onRequestWidth?.(680);
@@ -573,12 +597,18 @@ export default function DataPanel({
             onAddMapLayer={onAddMapLayer}
           />
         )}
-        {activeTab === 'models' && <DataModelWorkbenchTab userRole={userRole} />}
+        {activeTab === 'models' && (
+          <DataModelWorkbenchTab
+            userRole={userRole}
+            requestedVersionId={requestedModelVersionId}
+          />
+        )}
         {activeTab === 'metadata' && <MetadataPanel />}
         {activeTab === 'history' && <HistoryTab />}
         {activeTab === 'agent_logs' && <AgentRunLogsTab />}
         {activeTab === 'usage' && <UsageTab />}
         {activeTab === 'tools' && <ToolsTab userRole={userRole} />}
+        {activeTab === 'gis_workflow' && <GisWorkflowTab />}
         {activeTab === 'workflows' && <WorkflowsTab />}
         {activeTab === 'suggestions' && <SuggestionsTab />}
         {activeTab === 'tasks' && <TasksTab />}
@@ -619,6 +649,7 @@ export default function DataPanel({
         {activeTab === 'abu_land_use_compare' && <AbuDhabiLandUseComparisonTab />}
         {activeTab === 'abu_flus' && <AbuDhabiLandUseModelTab modelId="geosos_flus" />}
         {activeTab === 'abu_kernel' && <AbuDhabiLandUseModelTab modelId="geospatial_kernel" />}
+        {activeTab === 'abu_dhabi_flood_world_model' && <AbuDhabiFloodWorldModelTab />}
         {activeTab === 'worldmodel' && <WorldModelTab />}
         {activeTab === 'worldmodel_v11' && <WorldModelV11Tab />}
         {activeTab === 'worldmodel_v2' && <WorldModelV2Tab />}
@@ -638,7 +669,7 @@ export default function DataPanel({
         {activeTab === 'offline_ingest' && <OfflineIngestTab />}
         {activeTab === 'standards' && <DomainStandardsTab />}
         {activeTab === 'std_platform' && <StandardsTab userRole={userRole} username={username} />}
-        {activeTab === 'semantic' && <SemanticLayerTab userRole={userRole} />}
+        {activeTab === 'semantic' && <SemanticLayerTab userRole={userRole} requestedTarget={requestedSemanticTarget} />}
         {activeTab === 'ontology' && <OntologyTab userRole={userRole} />}
         {activeTab === 'ontology_demo' && <NaturalResourceOntologyDemoTab />}
         </>}

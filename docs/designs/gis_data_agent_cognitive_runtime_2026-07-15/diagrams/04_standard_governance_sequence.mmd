@@ -1,0 +1,20 @@
+sequenceDiagram
+  actor U as User
+  participant RT as Cognitive Runtime
+  participant KB as Standards Knowledge
+  participant P as Planner
+  participant W as GIS Specialist
+  participant E as Evaluator/HITL
+  U->>RT: Governance goal + assets
+  RT->>KB: Retrieve active standard and rules
+  KB-->>RT: EvidenceBundle + KnowledgePack
+  RT->>P: Build typed TaskGraph
+  P-->>RT: Plan + verification rules
+  RT->>E: Approve high-risk write
+  E-->>RT: Approved / denied
+  RT->>W: Execute profiling, mapping and remediation
+  W-->>RT: Versioned artifacts + observations
+  RT->>E: Validate rules, evidence and outcome
+  E-->>RT: pass / retrieve / replan / revise
+  RT-->>U: Governed data + reports + trace
+

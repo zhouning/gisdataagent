@@ -1,6 +1,6 @@
 {
   "schema_version": "gda.windows-standalone-bundle.v1",
-  "bundle_version": "23.0.0-windows-standalone.1",
+  "bundle_version": "23.0.0-windows-standalone.2",
   "generated_at": null,
   "target": {
     "os": "Windows 10/11 x64",
@@ -19,7 +19,8 @@
         "ontology_active",
         "nx_standard_baseline",
         "core_requirements",
-        "core_wheelhouse"
+        "core_wheelhouse",
+        "duckdb_spatial_extension"
       ]
     },
     "production": {
@@ -48,7 +49,8 @@
         "fuseki_distribution",
         "ollama_installer",
         "ollama_llm_model",
-        "embedding_model"
+        "embedding_model",
+        "duckdb_spatial_extension"
       ],
       "optional_artifacts": ["prometheus_distribution", "grafana_distribution"]
     }
@@ -178,6 +180,23 @@
       "requirements": "payload/requirements-windows-core.txt",
       "min_files": 50,
       "min_size_bytes": 200000000,
+      "sha256": null,
+      "size_bytes": null
+    },
+    {
+      "id": "duckdb_spatial_extension",
+      "role": "runtime",
+      "source_url": "https://extensions.duckdb.org/v1.4.3/windows_amd64/spatial.duckdb_extension.gz",
+      "license": "DuckDB extension license; retain the upstream license notice",
+      "source": "vendor/middleware/duckdb/v1.4.3/windows_amd64/spatial.duckdb_extension",
+      "source_type": "vendor_file",
+      "target": "payload/middleware/duckdb/extensions/spatial.duckdb_extension",
+      "kind": "file",
+      "min_size_bytes": 1000000,
+      "install": "duckdb_spatial_extension",
+      "healthcheck": "duckdb:ST_Area",
+      "version": "1.4.3",
+      "sha256_required": true,
       "sha256": null,
       "size_bytes": null
     },

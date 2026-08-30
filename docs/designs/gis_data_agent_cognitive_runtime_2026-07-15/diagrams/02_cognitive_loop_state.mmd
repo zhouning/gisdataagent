@@ -1,0 +1,19 @@
+stateDiagram-v2
+  [*] --> Perceive
+  Perceive --> Clarify: missing input
+  Clarify --> Perceive
+  Perceive --> Retrieve
+  Retrieve --> Plan
+  Plan --> Execute
+  Execute --> Evaluate
+  Evaluate --> Respond: pass
+  Evaluate --> Retrieve: evidence gap
+  Evaluate --> Plan: plan error
+  Evaluate --> Execute: retry/fallback
+  Evaluate --> HITL: high risk/conflict
+  HITL --> Execute: approved
+  HITL --> Terminate: denied
+  Evaluate --> Terminate: stagnation/budget
+  Respond --> [*]
+  Terminate --> [*]
+

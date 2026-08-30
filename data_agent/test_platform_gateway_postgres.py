@@ -68,7 +68,11 @@ MIGRATIONS = tuple(
         "097_platform_cancel_command.sql",
         "098_platform_data_incident.sql",
         "099_platform_incident_notification_outbox.sql",
+        "226_incident_notification_provider_receipt.sql",
         "112_metadata_fabric_binding_outbox.sql",
+        "123_resource_bound_data_incident.sql",
+        "129_platform_run_event_delivery_outbox.sql",
+        "186_metadata_fabric_search_bridge.sql",
     )
 )
 DATA_PRODUCT_MIGRATION = (
@@ -86,8 +90,10 @@ def _assert_rejected(connection, statement: str) -> None:
 
 
 @pytest.mark.skipif(not DATABASE_URL, reason="DATABASE_URL is not configured")
-def test_postgres_gateway_role_is_tenant_scoped_and_append_only():
-    engine = create_engine(DATABASE_URL)
+def test_postgres_gateway_role_is_tenant_scoped_and_append_only(
+    isolated_postgres_url: str,
+):
+    engine = create_engine(isolated_postgres_url)
     try:
         with engine.connect() as connection:
             is_superuser = connection.exec_driver_sql(
@@ -253,6 +259,40 @@ def test_postgres_gateway_role_is_tenant_scoped_and_append_only():
                 ).one()
                 assert notification_privileges == (True, False, False, False, True)
 
+                run_event_delivery_privileges = connection.exec_driver_sql(
+                    """
+                    SELECT
+                        has_table_privilege(
+                            'gda_control_gateway',
+                            'gda_control.platform_run_event_delivery_outbox', 'SELECT'
+                        ),
+                        has_table_privilege(
+                            'gda_control_gateway',
+                            'gda_control.platform_run_event_delivery_outbox', 'INSERT'
+                        ),
+                        has_table_privilege(
+                            'gda_control_gateway',
+                            'gda_control.platform_run_event_delivery_outbox', 'UPDATE'
+                        ),
+                        has_table_privilege(
+                            'gda_control_gateway',
+                            'gda_control.platform_run_event_delivery_outbox', 'DELETE'
+                        ),
+                        has_function_privilege(
+                            'gda_control_gateway',
+                            'gda_control.claim_platform_run_event_deliveries(text,text,integer,integer)',
+                            'EXECUTE'
+                        )
+                    """
+                ).one()
+                assert run_event_delivery_privileges == (
+                    True,
+                    False,
+                    False,
+                    False,
+                    True,
+                )
+
                 connection.exec_driver_sql(f"SET LOCAL app.current_tenant = '{TENANT}'")
                 connection.exec_driver_sql('SET LOCAL ROLE "gda_control_gateway"')
                 connection.exec_driver_sql(
@@ -316,12 +356,29 @@ def test_postgres_gateway_role_is_tenant_scoped_and_append_only():
 
                 initial_event = connection.exec_driver_sql(
                     f"""
-                    SELECT sequence_no, from_status, to_status
+                    SELECT event_id, sequence_no, from_status, to_status
                     FROM gda_control.platform_run_event
                     WHERE tenant_id = '{TENANT}' AND run_id = '{RUN_ID}'
                     """
                 ).one()
-                assert initial_event == (0, None, "accepted")
+                assert initial_event[1:] == (0, None, "accepted")
+                initial_delivery = connection.exec_driver_sql(
+                    f"""
+                    SELECT run_event_id, run_id, run_sequence_no, channel,
+                           destination_ref, status, attempt_count
+                    FROM gda_control.platform_run_event_delivery_outbox
+                    WHERE tenant_id = '{TENANT}' AND run_id = '{RUN_ID}'
+                    """
+                ).one()
+                assert initial_delivery == (
+                    initial_event.event_id,
+                    UUID(RUN_ID),
+                    0,
+                    "gda.platform-runs.status",
+                    "cloudevents:platform-run-default",
+                    "pending",
+                    0,
+                )
 
                 _assert_rejected(
                     connection,
@@ -389,8 +446,10 @@ def test_postgres_gateway_role_is_tenant_scoped_and_append_only():
 
 
 @pytest.mark.skipif(not DATABASE_URL, reason="DATABASE_URL is not configured")
-def test_platform_gateway_service_writes_idempotent_control_chain():
-    engine = create_engine(DATABASE_URL)
+def test_platform_gateway_service_writes_idempotent_control_chain(
+    isolated_postgres_url: str,
+):
+    engine = create_engine(isolated_postgres_url)
     tenant = f"gateway-service-{uuid4().hex[:12]}"
     definition_id = uuid4()
     source_version_id = uuid4()
@@ -615,6 +674,15 @@ def test_platform_gateway_service_writes_idempotent_control_chain():
             target_urn,
             system="openmetadata",
         ) == (target_openmetadata,)
+        search_page = gateway.search_metadata_fabric_bindings(
+            tenant,
+            query="published",
+            system="gravitino",
+            limit=1,
+            offset=0,
+        )
+        assert search_page.items == (target_gravitino,)
+        assert search_page.has_more is False
 
         conflicting_openmetadata = metadata_binding(
             source_urn,
@@ -692,6 +760,53 @@ def test_platform_gateway_service_writes_idempotent_control_chain():
         assert replay.created is False
         assert replay.value == run
         assert gateway.get_run(tenant, run_id).policy_refs == run.policy_refs
+        initial_run_events = gateway.claim_platform_run_event_deliveries(
+            tenant,
+            "worker:run-events",
+            limit=10,
+            lease_seconds=5,
+        )
+        assert len(initial_run_events) == 1
+        initial_run_event = initial_run_events[0]
+        assert initial_run_event.event.run_id == run_id
+        assert initial_run_event.event.sequence_no == 0
+        assert initial_run_event.event.to_status.value == "accepted"
+        assert initial_run_event.delivery.run_event_id == initial_run_event.event.event_id
+        retrying_run_event = gateway.fail_platform_run_event_delivery(
+            tenant,
+            initial_run_event.delivery.delivery_id,
+            worker_id="worker:run-events",
+            error="CloudEvents receiver returned HTTP 503",
+            retry_delay_seconds=0,
+        )
+        assert retrying_run_event.status.value == "pending"
+        retried_run_events = gateway.claim_platform_run_event_deliveries(
+            tenant,
+            "worker:run-events-replacement",
+            limit=10,
+            lease_seconds=5,
+        )
+        assert [item.delivery.delivery_id for item in retried_run_events] == [
+            initial_run_event.delivery.delivery_id
+        ]
+        with pytest.raises(GatewayConflictError):
+            gateway.complete_platform_run_event_delivery(
+                tenant,
+                initial_run_event.delivery.delivery_id,
+                worker_id="worker:run-events",
+            )
+        completed_run_event = gateway.complete_platform_run_event_delivery(
+            tenant,
+            initial_run_event.delivery.delivery_id,
+            worker_id="worker:run-events-replacement",
+        )
+        assert completed_run_event.status.value == "done"
+        assert gateway.claim_platform_run_event_deliveries(
+            f"other-{tenant}",
+            "worker:other-run-events",
+            limit=10,
+            lease_seconds=5,
+        ) == ()
 
         schedule_actor = "workload:schedule-gateway-test"
         schedule_values = {
@@ -1045,6 +1160,30 @@ def test_platform_gateway_service_writes_idempotent_control_chain():
             cancel_reconcile.command_id,
             worker_id="worker:cancel-reconcile",
         )
+        with engine.connect() as connection:
+            cancel_requested_at, cancel_completed_at = connection.execute(
+                text(
+                    """
+                    SELECT event.occurred_at, command.completed_at
+                    FROM gda_control.platform_run_event AS event
+                    JOIN gda_control.platform_command_outbox AS command
+                      ON command.tenant_id = event.tenant_id
+                     AND command.run_id = event.run_id
+                    WHERE event.tenant_id = :tenant_id
+                      AND event.run_id = :run_id
+                      AND event.to_status = 'cancelling'
+                      AND event.details ->> 'schema' =
+                          'gda.dataops_cancel_admission.v1'
+                      AND command.command_type = 'dolphinscheduler.cancel'
+                    """
+                ),
+                {"tenant_id": tenant, "run_id": manual_run_id},
+            ).one()
+        provider_second_precision_terminal_at = cancel_requested_at.replace(
+            microsecond=0
+        )
+        assert provider_second_precision_terminal_at <= cancel_requested_at
+        assert provider_second_precision_terminal_at < cancel_completed_at
 
         stale_cancellation_evidence = {
             "schema": "gda.dolphinscheduler_observation.v1",
@@ -1090,7 +1229,7 @@ def test_platform_gateway_service_writes_idempotent_control_chain():
                 cancellation_failure_evidence
             ),
             evidence=cancellation_failure_evidence,
-            observed_at=now + timedelta(minutes=2),
+            observed_at=provider_second_precision_terminal_at,
         )
         with ThreadPoolExecutor(max_workers=2) as pool:
             incident_results = tuple(
@@ -1175,6 +1314,14 @@ def test_platform_gateway_service_writes_idempotent_control_chain():
             tenant,
             retried_notifications[0].notification.notification_id,
             worker_id="worker:incident-alerts",
+            provider_receipt={
+                "schema": "gda.alertmanager_provider_receipt.v1",
+                "provider": "alertmanager",
+                "accepted": True,
+                "http_status": 202,
+                "destination_ref": "alertmanager:default",
+                "accepted_at": "2026-08-01T12:00:00Z",
+            },
         )
         assert completed_open.status.value == "done"
         assert completed_open.attempt_count == 2
@@ -1192,6 +1339,14 @@ def test_platform_gateway_service_writes_idempotent_control_chain():
             tenant,
             acknowledged_notifications[0].notification.notification_id,
             worker_id="worker:incident-alerts",
+            provider_receipt={
+                "schema": "gda.alertmanager_provider_receipt.v1",
+                "provider": "alertmanager",
+                "accepted": True,
+                "http_status": 202,
+                "destination_ref": "alertmanager:default",
+                "accepted_at": "2026-08-01T12:01:00Z",
+            },
         )
 
         resolved_notifications = gateway.claim_incident_notifications(
@@ -1207,6 +1362,14 @@ def test_platform_gateway_service_writes_idempotent_control_chain():
             tenant,
             resolved_notifications[0].notification.notification_id,
             worker_id="worker:incident-alerts",
+            provider_receipt={
+                "schema": "gda.alertmanager_provider_receipt.v1",
+                "provider": "alertmanager",
+                "accepted": True,
+                "http_status": 202,
+                "destination_ref": "alertmanager:default",
+                "accepted_at": "2026-08-01T12:02:00Z",
+            },
         )
         assert gateway.claim_incident_notifications(
             tenant,

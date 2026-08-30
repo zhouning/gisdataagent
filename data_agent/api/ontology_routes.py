@@ -13,6 +13,11 @@ from ..ontology import get_ontology_service
 from ..ontology.okf_bundle import resolve_okf_resource, validate_ontology_okf_bundle
 from ..ontology.query_contracts import OntologyQueryPlan
 from ..ontology.registry import list_ontology_profiles
+from ..ontology.overlay_registry import (
+    overlay_concept,
+    overlay_concepts,
+    overlay_summary,
+)
 from .helpers import _get_user_from_request, _set_user_context
 
 logger = logging.getLogger("data_agent.api.ontology_routes")
@@ -291,6 +296,65 @@ async def ontology_export(request: Request):
         return JSONResponse({"error": str(exc)}, status_code=503)
 
 
+async def ontology_overlays(request: Request):
+    _, error = _authenticate(request)
+    if error:
+        return error
+    try:
+        ontology_key = str(request.path_params.get("ontology_key") or "").strip()
+        return JSONResponse({"items": overlay_summary(ontology_key)})
+    except Exception as exc:
+        logger.exception("ontology overlays failed")
+        return JSONResponse({"error": str(exc)}, status_code=503)
+
+
+async def ontology_overlay_concepts(request: Request):
+    _, error = _authenticate(request)
+    if error:
+        return error
+    try:
+        ontology_key = str(request.path_params.get("ontology_key") or "").strip()
+        overlay_id = str(request.path_params.get("overlay_id") or "").strip()
+        return JSONResponse(
+            overlay_concepts(
+                ontology_key,
+                overlay_id,
+                query=request.query_params.get("q", ""),
+                status=request.query_params.get("status", ""),
+                offset=_int_param(request, "offset", 0),
+                limit=_int_param(request, "limit", 50),
+            )
+        )
+    except KeyError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    except Exception as exc:
+        logger.exception("ontology overlay concepts failed")
+        return JSONResponse({"error": str(exc)}, status_code=503)
+
+
+async def ontology_overlay_concept(request: Request):
+    _, error = _authenticate(request)
+    if error:
+        return error
+    try:
+        ontology_key = str(request.path_params.get("ontology_key") or "").strip()
+        overlay_id = str(request.path_params.get("overlay_id") or "").strip()
+        concept_id = request.query_params.get("concept_id", "").strip()
+        if not concept_id:
+            return JSONResponse({"error": "concept_id is required"}, status_code=400)
+        payload = overlay_concept(ontology_key, overlay_id, concept_id)
+        if payload is None:
+            return JSONResponse({"error": "overlay concept not found"}, status_code=404)
+        return JSONResponse(payload)
+    except KeyError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        logger.exception("ontology overlay concept failed")
+        return JSONResponse({"error": str(exc)}, status_code=503)
+
+
 def get_ontology_routes() -> list[Route]:
     legacy = [
         Route("/api/ontology/status", ontology_status, methods=["GET"]),
@@ -310,6 +374,9 @@ def get_ontology_routes() -> list[Route]:
     ]
     scoped_prefix = "/api/ontologies/{ontology_key}"
     scoped = [
+        Route(f"{scoped_prefix}/overlays", ontology_overlays, methods=["GET"]),
+        Route(f"{scoped_prefix}/overlays/{{overlay_id}}/concepts", ontology_overlay_concepts, methods=["GET"]),
+        Route(f"{scoped_prefix}/overlays/{{overlay_id}}/concept", ontology_overlay_concept, methods=["GET"]),
         Route(f"{scoped_prefix}/status", ontology_status, methods=["GET"]),
         Route(f"{scoped_prefix}/versions", ontology_versions, methods=["GET"]),
         Route(f"{scoped_prefix}/domains", ontology_domains, methods=["GET"]),

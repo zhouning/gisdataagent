@@ -1,0 +1,13 @@
+flowchart TB
+  D[Domain Ontology<br/>Standards · Concepts · Rules · Evidence] --> O[Operational Object Model<br/>ObjectType · PropertyType · LinkType · Object State]
+  O --> A[Action Model<br/>ActionType · FunctionType · InterfaceType]
+  A --> C[Capability Registry<br/>Specialist · Tool Manifest]
+  P[Dynamic Policy Decision<br/>object · property · link · action · result] --> R[Cognitive Runtime<br/>TaskGraph · Workspace · EvidenceBundle · HITL]
+  O --> R
+  A --> R
+  R --> X[Specialist Execution<br/>SQL · PostGIS · ArcPy · Standards · TWM]
+  X --> AR[ActionResult]
+  CS[ChangeSet] --> AR
+  AR --> E[Independent Evaluator / HITL]
+  E --> W[Versioned Writeback<br/>object state · event · audit · rollback]
+  SDK[Typed Consumption Layer<br/>Python · TypeScript · MCP/A2A] --> R

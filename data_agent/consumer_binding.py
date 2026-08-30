@@ -10,6 +10,9 @@ from uuid import UUID, uuid5
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from .gis_service_consumer_binding_migration import (
+    GISServiceConsumerBindingMigrationImpact,
+)
 from .platform_contracts import TenantId, canonical_json_fingerprint
 
 _PRODUCT_URN_RE = re.compile(
@@ -410,6 +413,7 @@ class ConsumerBindingMigrationNotificationEnvelope(BaseModel):
     notification: ConsumerBindingMigrationNotification
     binding: ConsumerBinding
     migration_state: ConsumerBindingMigrationState
+    gis_service_impacts: tuple[GISServiceConsumerBindingMigrationImpact, ...] = ()
 
     @model_validator(mode="after")
     def _consistent_envelope(self) -> ConsumerBindingMigrationNotificationEnvelope:
@@ -437,6 +441,24 @@ class ConsumerBindingMigrationNotificationEnvelope(BaseModel):
             raise ValueError("notification version transition must match its source state")
         if notification.source_state_sha256 != self.migration_state.state_sha256:
             raise ValueError("notification source fingerprint must match its source state")
+        impact_ids: set[UUID] = set()
+        for impact in self.gis_service_impacts:
+            if impact.impact_id in impact_ids:
+                raise ValueError("notification envelope must not repeat a GIS impact")
+            impact_ids.add(impact.impact_id)
+            if (
+                impact.tenant_id != notification.tenant_id
+                or impact.consumer_ref != self.binding.consumer_ref
+            ):
+                raise ValueError("GIS service impact does not bind its notification consumer")
+            if (
+                impact.migration_state_id != notification.migration_state_id
+                or impact.notification_id != notification.notification_id
+                or impact.source_product_urn != self.migration_state.product_urn
+                or impact.from_product_version_id != self.migration_state.from_product_version_id
+                or impact.to_product_version_id != self.migration_state.to_product_version_id
+            ):
+                raise ValueError("GIS service impact does not bind its migration notice")
         return self
 
 

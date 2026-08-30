@@ -1,0 +1,11 @@
+flowchart LR
+  S[Standards and Policies] --> R[Hybrid Retrieval Router]
+  M[Semantic Layer, Domain Ontology and Metadata] --> R
+  O[SQL / PostGIS / ArcPy / APIs] --> R
+  G[Knowledge Graph and Lineage] --> R
+  P[Procedures and Skills] --> R
+  E[Episodic and Procedural Memory] --> R
+  R[Hybrid Retrieval and Ontology Resolver] --> B[EvidenceBundle]
+  B --> PL[Planner]
+  B --> EV[Evaluator]
+  B --> RP[Report and HITL]

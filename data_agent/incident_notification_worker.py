@@ -5,9 +5,11 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import re
 import signal
 import socket
 import threading
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -15,7 +17,13 @@ from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
+from prometheus_client import start_http_server
 
+from .observability import (
+    incident_notification_cycle_duration,
+    incident_notification_last_success_timestamp,
+    incident_notification_operations,
+)
 from .platform_contracts import (
     IncidentNotificationEnvelope,
     IncidentNotificationStatus,
@@ -25,6 +33,28 @@ from .platform_gateway import PlatformGateway
 
 LOGGER = logging.getLogger(__name__)
 DEFAULT_DESTINATION_REF = "alertmanager:default"
+_ROUTE_NAMESPACE_PATTERN = re.compile(r"^[a-z0-9](?:[-a-z0-9]*[a-z0-9])?$")
+
+
+def _record_operation(outcome: str, count: int = 1) -> None:
+    try:
+        incident_notification_operations.labels(outcome=outcome).inc(count)
+    except Exception:
+        LOGGER.exception("Could not record DataIncident notification metric")
+
+
+def _observe_cycle(duration_seconds: float) -> None:
+    try:
+        incident_notification_cycle_duration.observe(duration_seconds)
+    except Exception:
+        LOGGER.exception("Could not record DataIncident notification cycle duration")
+
+
+def _record_success_timestamp() -> None:
+    try:
+        incident_notification_last_success_timestamp.set_to_current_time()
+    except Exception:
+        LOGGER.exception("Could not record DataIncident notification success timestamp")
 
 
 class IncidentNotificationConfigurationError(RuntimeError):
@@ -62,6 +92,8 @@ def normalize_alertmanager_api_url(value: str) -> str:
 
 def render_alertmanager_alert(
     envelope: IncidentNotificationEnvelope,
+    *,
+    route_namespace: str | None = None,
 ) -> dict[str, Any]:
     """Render one stable-label Alertmanager v2 alert."""
     notification = envelope.notification
@@ -89,6 +121,8 @@ def render_alertmanager_alert(
     }
     if event.to_status == IncidentStatus.RESOLVED:
         alert["endsAt"] = _rfc3339(event.occurred_at)
+    if route_namespace is not None:
+        alert["labels"]["namespace"] = route_namespace
     return alert
 
 
@@ -153,7 +187,7 @@ class AlertmanagerV2Client:
         destination_ref: str,
         expected_destination_ref: str = DEFAULT_DESTINATION_REF,
         user_agent: str = "gis-data-agent-incident-worker/1",
-    ) -> None:
+    ) -> dict[str, Any]:
         if destination_ref != expected_destination_ref:
             raise IncidentNotificationDeliveryError(
                 "no Alertmanager adapter is configured for the destination"
@@ -172,10 +206,23 @@ class AlertmanagerV2Client:
             raise IncidentNotificationDeliveryError(
                 f"Alertmanager rejected notification with HTTP {response.status_code}"
             )
+        return {
+            "schema": "gda.alertmanager_provider_receipt.v1",
+            "provider": "alertmanager",
+            "accepted": True,
+            "http_status": response.status_code,
+            "destination_ref": destination_ref,
+            "accepted_at": _rfc3339(datetime.now(UTC)),
+        }
 
-    def deliver(self, envelope: IncidentNotificationEnvelope) -> None:
-        self.deliver_alert(
-            render_alertmanager_alert(envelope),
+    def deliver(
+        self,
+        envelope: IncidentNotificationEnvelope,
+        *,
+        route_namespace: str | None = None,
+    ) -> dict[str, Any]:
+        return self.deliver_alert(
+            render_alertmanager_alert(envelope, route_namespace=route_namespace),
             destination_ref=envelope.notification.destination_ref,
         )
 
@@ -191,6 +238,8 @@ class IncidentNotificationWorkerConfig:
     retry_delay_seconds: int = 30
     poll_interval_seconds: float = 5.0
     timeout_seconds: float = 10.0
+    metrics_port: int = 0
+    route_namespace: str | None = None
 
     @classmethod
     def from_env(cls) -> IncidentNotificationWorkerConfig:
@@ -209,6 +258,9 @@ class IncidentNotificationWorkerConfig:
             f"worker:incident-alertmanager:{socket.gethostname()}:{os.getpid()}",
         ).strip()
         token_value = os.environ.get("GDA_ALERTMANAGER_BEARER_TOKEN_FILE", "").strip()
+        route_namespace = os.environ.get(
+            "GDA_INCIDENT_NOTIFICATION_ROUTE_NAMESPACE", ""
+        ).strip()
         return cls(
             tenant_id=tenant_id,
             worker_id=worker_id,
@@ -225,6 +277,10 @@ class IncidentNotificationWorkerConfig:
                 os.environ.get("GDA_INCIDENT_NOTIFICATION_POLL_SECONDS", "5")
             ),
             timeout_seconds=float(os.environ.get("GDA_ALERTMANAGER_TIMEOUT_SECONDS", "10")),
+            metrics_port=int(
+                os.environ.get("GDA_INCIDENT_NOTIFICATION_METRICS_PORT", "0")
+            ),
+            route_namespace=route_namespace or None,
         )
 
     def validate(self) -> None:
@@ -245,6 +301,17 @@ class IncidentNotificationWorkerConfig:
         if self.poll_interval_seconds <= 0 or self.poll_interval_seconds > 300:
             raise IncidentNotificationConfigurationError(
                 "notification poll interval must be between 0 and 300 seconds"
+            )
+        if not 0 <= self.metrics_port <= 65535:
+            raise IncidentNotificationConfigurationError(
+                "notification metrics port must be between 0 and 65535"
+            )
+        if self.route_namespace is not None and (
+            len(self.route_namespace) > 63
+            or _ROUTE_NAMESPACE_PATTERN.fullmatch(self.route_namespace) is None
+        ):
+            raise IncidentNotificationConfigurationError(
+                "notification route namespace must be a Kubernetes DNS label"
             )
         normalize_alertmanager_api_url(self.alertmanager_url)
 
@@ -277,52 +344,72 @@ class IncidentNotificationWorker:
         )
 
     def run_once(self) -> IncidentNotificationCycle:
-        envelopes = self.gateway.claim_incident_notifications(
-            self.config.tenant_id,
-            self.config.worker_id,
-            limit=self.config.batch_size,
-            lease_seconds=self.config.lease_seconds,
-        )
-        delivered = 0
-        retrying = 0
-        dead_lettered = 0
-        for envelope in envelopes:
-            notification = envelope.notification
-            try:
-                self.client.deliver(envelope)
-            except (
-                IncidentNotificationConfigurationError,
-                IncidentNotificationDeliveryError,
-            ) as exc:
-                failed = self.gateway.fail_incident_notification(
+        started_at = time.monotonic()
+        try:
+            envelopes = self.gateway.claim_incident_notifications(
+                self.config.tenant_id,
+                self.config.worker_id,
+                limit=self.config.batch_size,
+                lease_seconds=self.config.lease_seconds,
+            )
+            _record_operation("claimed", len(envelopes))
+            delivered = 0
+            retrying = 0
+            dead_lettered = 0
+            for envelope in envelopes:
+                notification = envelope.notification
+                try:
+                    provider_receipt = self.client.deliver(
+                        envelope, route_namespace=self.config.route_namespace
+                    )
+                    if not isinstance(provider_receipt, dict):
+                        raise IncidentNotificationDeliveryError(
+                            "Alertmanager adapter returned no provider receipt"
+                        )
+                except (
+                    IncidentNotificationConfigurationError,
+                    IncidentNotificationDeliveryError,
+                ) as exc:
+                    failed = self.gateway.fail_incident_notification(
+                        notification.tenant_id,
+                        notification.notification_id,
+                        worker_id=self.config.worker_id,
+                        error=f"{type(exc).__name__}: {exc}",
+                        retry_delay_seconds=self.config.retry_delay_seconds,
+                    )
+                    if failed.status == IncidentNotificationStatus.FAILED:
+                        dead_lettered += 1
+                        _record_operation("dead_lettered")
+                    else:
+                        retrying += 1
+                        _record_operation("retrying")
+                    LOGGER.warning(
+                        "Incident notification %s delivery failed (%s)",
+                        notification.notification_id,
+                        failed.status.value,
+                    )
+                    continue
+                self.gateway.complete_incident_notification(
                     notification.tenant_id,
                     notification.notification_id,
                     worker_id=self.config.worker_id,
-                    error=f"{type(exc).__name__}: {exc}",
-                    retry_delay_seconds=self.config.retry_delay_seconds,
+                    provider_receipt=provider_receipt,
                 )
-                if failed.status == IncidentNotificationStatus.FAILED:
-                    dead_lettered += 1
-                else:
-                    retrying += 1
-                LOGGER.warning(
-                    "Incident notification %s delivery failed (%s)",
-                    notification.notification_id,
-                    failed.status.value,
-                )
-                continue
-            self.gateway.complete_incident_notification(
-                notification.tenant_id,
-                notification.notification_id,
-                worker_id=self.config.worker_id,
+                delivered += 1
+                _record_operation("delivered")
+            cycle = IncidentNotificationCycle(
+                claimed=len(envelopes),
+                delivered=delivered,
+                retrying=retrying,
+                dead_lettered=dead_lettered,
             )
-            delivered += 1
-        return IncidentNotificationCycle(
-            claimed=len(envelopes),
-            delivered=delivered,
-            retrying=retrying,
-            dead_lettered=dead_lettered,
-        )
+            _record_success_timestamp()
+            return cycle
+        except Exception:
+            _record_operation("cycle_error")
+            raise
+        finally:
+            _observe_cycle(time.monotonic() - started_at)
 
     def run(self, stop_event: threading.Event) -> None:
         while not stop_event.is_set():
@@ -339,6 +426,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
     config = IncidentNotificationWorkerConfig.from_env()
+    if config.metrics_port:
+        start_http_server(config.metrics_port)
+        LOGGER.info(
+            "Incident notification metrics listening on port %s", config.metrics_port
+        )
     stop_event = threading.Event()
     for signum in (signal.SIGTERM, signal.SIGINT):
         signal.signal(signum, lambda *_args: stop_event.set())

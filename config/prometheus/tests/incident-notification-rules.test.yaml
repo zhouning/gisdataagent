@@ -1,0 +1,135 @@
+rule_files:
+  - ../incident-notification-rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - name: recording-rules-produce-operational-sli
+    interval: 1m
+    input_series:
+      - series: up{job="gis-agent-incident-notification-worker",instance="worker-1"}
+        values: 1+0x35
+      - series: up{job="gis-agent-incident-notification-worker",instance="worker-2"}
+        values: 1+0x35
+      - series: gda_incident_notification_last_success_timestamp_seconds{instance="worker-1"}
+        values: 100+0x35
+      - series: gda_incident_notification_operations_total{outcome="delivered"}
+        values: 0+54x35
+      - series: gda_incident_notification_operations_total{outcome="retrying"}
+        values: 0+6x35
+      - series: gda_incident_notification_operations_total{outcome="dead_lettered"}
+        values: 0+0x35
+    promql_expr_test:
+      - expr: gda:incident_notification_worker_healthy_replicas
+        eval_time: 30m
+        exp_samples:
+          - labels: gda:incident_notification_worker_healthy_replicas
+            value: 2
+      - expr: gda:incident_notification_worker_target_replicas
+        eval_time: 30m
+        exp_samples:
+          - labels: gda:incident_notification_worker_target_replicas
+            value: 2
+      - expr: gda:incident_notification_cycle_success_age_seconds
+        eval_time: 30m
+        exp_samples:
+          - labels: gda:incident_notification_cycle_success_age_seconds
+            value: 1700
+      - expr: gda:incident_notification_delivery_success:ratio_30m
+        eval_time: 30m
+        exp_samples:
+          - labels: gda:incident_notification_delivery_success:ratio_30m
+            value: 0.9
+      - expr: gda:incident_notification_delivery_attempts:rate5m
+        eval_time: 30m
+        exp_samples:
+          - labels: '{__name__="gda:incident_notification_delivery_attempts:rate5m",outcome="dead_lettered"}'
+            value: 0
+          - labels: '{__name__="gda:incident_notification_delivery_attempts:rate5m",outcome="delivered"}'
+            value: 0.9
+          - labels: '{__name__="gda:incident_notification_delivery_attempts:rate5m",outcome="retrying"}'
+            value: 0.1
+
+  - name: idle-delivery-window-is-not-counted-as-failure
+    interval: 1m
+    input_series:
+      - series: gda_incident_notification_operations_total{outcome="claimed"}
+        values: 0+0x35
+    promql_expr_test:
+      - expr: gda:incident_notification_delivery_success:ratio_30m
+        eval_time: 30m
+        exp_samples:
+          - labels: gda:incident_notification_delivery_success:ratio_30m
+            value: 1
+
+  - name: worker-unavailable-pages-after-five-minutes
+    interval: 1m
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: GDAIncidentNotificationWorkerUnavailable
+        exp_alerts:
+          - exp_labels: {severity: critical, namespace: gis-agent, service: gis-data-agent, component: incident-notification, team: data-platform}
+            exp_annotations:
+              summary: DataIncident notification workers are unavailable
+              description: No healthy DataIncident notification worker has been scraped for five minutes.
+              runbook: incident-notification-worker
+
+  - name: stale-cycle-heartbeat-pages
+    interval: 1m
+    input_series:
+      - series: gda_incident_notification_last_success_timestamp_seconds
+        values: 0+0x10
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: GDAIncidentNotificationWorkerStalled
+        exp_alerts:
+          - exp_labels: {severity: critical, namespace: gis-agent, service: gis-data-agent, component: incident-notification, team: data-platform}
+            exp_annotations:
+              summary: DataIncident notification cycles are stalled
+              description: No worker has completed a successful DataIncident notification cycle within two minutes.
+              runbook: incident-notification-worker
+
+  - name: cycle-errors-page-immediately
+    interval: 1m
+    input_series:
+      - series: gda_incident_notification_operations_total{outcome="cycle_error"}
+        values: 0 0 1 1 1
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: GDAIncidentNotificationCycleErrors
+        exp_alerts:
+          - exp_labels: {severity: critical, namespace: gis-agent, service: gis-data-agent, component: incident-notification, team: data-platform}
+            exp_annotations:
+              summary: DataIncident notification cycles are failing
+              description: At least one worker cycle failed before it could complete its governed incident outbox work.
+              runbook: incident-notification-worker
+
+  - name: dead-letter-pages-immediately
+    interval: 1m
+    input_series:
+      - series: gda_incident_notification_operations_total{outcome="dead_lettered"}
+        values: 0 0 1 1 1
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: GDAIncidentNotificationDeadLettered
+        exp_alerts:
+          - exp_labels: {severity: critical, namespace: gis-agent, service: gis-data-agent, component: incident-notification, team: data-platform}
+            exp_annotations:
+              summary: DataIncident notifications reached dead letter
+              description: At least one incident notification exhausted its bounded automatic delivery attempts.
+              runbook: incident-notification-worker
+
+  - name: retry-surge-warns
+    interval: 1m
+    input_series:
+      - series: gda_incident_notification_operations_total{outcome="retrying"}
+        values: 0 0 3 6 6
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: GDAIncidentNotificationRetrySurge
+        exp_alerts:
+          - exp_labels: {severity: warning, namespace: gis-agent, service: gis-data-agent, component: incident-notification, team: data-platform}
+            exp_annotations:
+              summary: DataIncident notification retries are elevated
+              description: Five or more incident notification delivery failures returned to pending during the last ten minutes.
+              runbook: incident-notification-worker

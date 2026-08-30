@@ -232,7 +232,7 @@ def _find_field_matches(
       1. Exact match (case-insensitive) — confidence 1.0
       2. Equivalence group match (hardcoded + catalog-driven) — confidence 0.8
       2.5a. LLM schema alignment (opt-in, replaces tiers 2.5b-4) — confidence from LLM
-      2.5b. Embedding match (Gemini text-embedding-004, opt-in) — confidence 0.78
+      2.5b. Embedding match (configured local/online gateway, opt-in) — confidence 0.78
       3. Unit-aware matching — confidence 0.75
       4. Tokenized fuzzy match with type compatibility — confidence 0.5-0.7
 
@@ -306,7 +306,7 @@ def _find_field_matches(
                     matched_right.add(rk)
                     break
 
-    # Tier 2.5: Embedding-based semantic matching (opt-in, Gemini API)
+    # Tier 2.5: Embedding-based semantic matching (opt-in, configured gateway)
     if use_embedding:
         unmatched_left_emb = {lk: lv for lk, lv in left_cols.items()
                               if not any(m["left"].lower() == lk for m in matches)}

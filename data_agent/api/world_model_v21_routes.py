@@ -6,12 +6,12 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from .helpers import _get_user_from_request, _set_user_context
 from ..world_model_v21 import (
     WorldModelV21Error,
     WorldModelV21UnavailableError,
     get_world_model_v21_service,
 )
+from .helpers import _get_user_from_request, _set_user_context
 
 
 async def wm_v21_status(request: Request):
@@ -23,6 +23,19 @@ async def wm_v21_status(request: Request):
 
     try:
         return JSONResponse(get_world_model_v21_service().status())
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+async def wm_v21_governed_inputs(request: Request):
+    """GET /api/world-model-v21/governed-inputs"""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+
+    try:
+        return JSONResponse(get_world_model_v21_service().list_governed_inputs())
     except Exception as exc:
         return JSONResponse({"error": str(exc)}, status_code=500)
 
@@ -52,9 +65,7 @@ async def wm_v21_plan(request: Request):
     except WorldModelV21UnavailableError as exc:
         return JSONResponse({"error": str(exc)}, status_code=503)
     except WorldModelV21Error as exc:
-        return JSONResponse(
-            {"error": str(exc)}, status_code=getattr(exc, "status_code", 400)
-        )
+        return JSONResponse({"error": str(exc)}, status_code=getattr(exc, "status_code", 400))
     except Exception as exc:
         return JSONResponse({"error": str(exc)}, status_code=500)
 
@@ -91,9 +102,7 @@ async def _run_v21_service_method(request: Request, method_name: str):
     except WorldModelV21UnavailableError as exc:
         return JSONResponse({"error": str(exc)}, status_code=503)
     except WorldModelV21Error as exc:
-        return JSONResponse(
-            {"error": str(exc)}, status_code=getattr(exc, "status_code", 400)
-        )
+        return JSONResponse({"error": str(exc)}, status_code=getattr(exc, "status_code", 400))
     except Exception as exc:
         return JSONResponse({"error": str(exc)}, status_code=500)
 
@@ -129,6 +138,11 @@ def get_world_model_v21_routes() -> list:
     """Return Route objects for World Model v2.1 endpoints."""
     return [
         Route("/api/world-model-v21/status", wm_v21_status, methods=["GET"]),
+        Route(
+            "/api/world-model-v21/governed-inputs",
+            wm_v21_governed_inputs,
+            methods=["GET"],
+        ),
         Route("/api/world-model-v21/prepare", wm_v21_prepare, methods=["POST"]),
         Route("/api/world-model-v21/sample", wm_v21_sample, methods=["POST"]),
         Route("/api/world-model-v21/train", wm_v21_train, methods=["POST"]),

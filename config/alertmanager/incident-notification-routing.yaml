@@ -1,0 +1,25 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: discard
+  group_by:
+    - alertname
+    - namespace
+    - gda_tenant
+    - gda_incident_type
+  group_wait: 5s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - receiver: incident-oncall
+      matchers:
+        - alertname=~"GDADataIncident|GDAIncidentNotification.*"
+      continue: false
+
+receivers:
+  - name: discard
+  - name: incident-oncall
+    webhook_configs:
+      - url_file: /etc/alertmanager/secrets/incident-oncall-webhook-url
+        send_resolved: true

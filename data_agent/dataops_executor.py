@@ -42,6 +42,11 @@ from .data_products.osm_roads_lakehouse_dataops import (
     OsmRoadsLakehouseExecutor,
     OsmRoadsLakehouseExecutorConfig,
 )
+from .jqdltb_transformation_executor import (
+    JqdltbTransformationCommand,
+    JqdltbTransformationExecutor,
+    JqdltbTransformationExecutorConfig,
+)
 from .platform_contracts import (
     Artifact,
     ArtifactRole,
@@ -334,6 +339,7 @@ def create_app(
     lakehouse_service: OsmRoadsLakehouseExecutor | None = None,
     building_ods_service: CentralBuildingsOdsExecutor | None = None,
     dem_ods_service: ChongqingDemOdsExecutor | None = None,
+    jqdltb_transformation_service: JqdltbTransformationExecutor | None = None,
 ) -> Starlette:
     async def health(_request: Request) -> JSONResponse:
         return JSONResponse(
@@ -345,6 +351,7 @@ def create_app(
                 "default_lakehouse_configured": lakehouse_service is not None,
                 "building_ods_configured": building_ods_service is not None,
                 "dem_ods_configured": dem_ods_service is not None,
+                "jqdltb_transformation_configured": jqdltb_transformation_service is not None,
                 "database_authority": "gda-control-postgresql",
             }
         )
@@ -448,6 +455,27 @@ def create_app(
             )
         return JSONResponse(result.model_dump(mode="json", by_alias=True))
 
+    async def execute_chongqing_jqdltb_transformation(request: Request) -> JSONResponse:
+        if jqdltb_transformation_service is None:
+            return JSONResponse(
+                {"error": "chongqing_jqdltb_transformation_executor_not_configured"},
+                status_code=503,
+            )
+        expected = service.config.token_file.read_text(encoding="utf-8").strip()
+        actual = _bearer_token(request)
+        if actual is None or not hmac.compare_digest(actual, expected):
+            return JSONResponse({"error": "unauthorized"}, status_code=401)
+        try:
+            payload = await request.json()
+            command = JqdltbTransformationCommand.model_validate(payload)
+            result = await asyncio.to_thread(jqdltb_transformation_service.execute, command)
+        except Exception as exc:
+            return JSONResponse(
+                {"error": "execution_failed", "error_type": type(exc).__name__},
+                status_code=422,
+            )
+        return JSONResponse(result.model_dump(mode="json", by_alias=True))
+
     return Starlette(
         routes=[
             Route("/health", health, methods=["GET"]),
@@ -470,6 +498,11 @@ def create_app(
             Route(
                 "/v1/execute/chongqing-dem-ods",
                 execute_chongqing_dem_ods,
+                methods=["POST"],
+            ),
+            Route(
+                "/v1/execute/chongqing-jqdltb-transformation",
+                execute_chongqing_jqdltb_transformation,
                 methods=["POST"],
             ),
         ]
@@ -517,6 +550,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dem-ods-source", type=Path)
     parser.add_argument("--dem-ods-output-root", type=Path)
     parser.add_argument("--dem-ods-report-root", type=Path)
+    parser.add_argument("--jqdltb-transformation-source", type=Path)
+    parser.add_argument("--jqdltb-transformation-output-root", type=Path)
+    parser.add_argument("--jqdltb-transformation-diagnostic", type=Path)
+    parser.add_argument("--jqdltb-transformation-semantic-audit", type=Path)
+    parser.add_argument("--jqdltb-transformation-correction", type=Path)
+    parser.add_argument("--jqdltb-transformation-archive-sha256")
+    parser.add_argument("--jqdltb-transformation-bundle-sha256")
+    parser.add_argument("--jqdltb-transformation-standard-version-ref")
+    parser.add_argument("--jqdltb-transformation-standard-fingerprint")
+    parser.add_argument("--jqdltb-transformation-sjnf-rule", type=Path)
+    parser.add_argument("--jqdltb-transformation-mssm-rule", type=Path)
+    parser.add_argument("--jqdltb-transformation-geometry-area-rule", type=Path)
     parser.add_argument(
         "--dem-ods-endpoint-url",
         default=os.environ.get("AWS_ENDPOINT_URL", "http://localhost:9000"),
@@ -610,12 +655,61 @@ def main() -> int:
                 secret_access_key=args.dem_ods_secret_access_key,
             )
         )
+    transformation_paths = (
+        args.jqdltb_transformation_source,
+        args.jqdltb_transformation_output_root,
+        args.jqdltb_transformation_diagnostic,
+    )
+    if any(path is not None for path in transformation_paths) and not all(
+        path is not None for path in transformation_paths
+    ):
+        raise ValueError(
+            "--jqdltb-transformation-source, --jqdltb-transformation-output-root and "
+            "--jqdltb-transformation-diagnostic must be supplied together"
+        )
+    jqdltb_transformation_service = None
+    if args.jqdltb_transformation_source is not None:
+        jqdltb_transformation_service = JqdltbTransformationExecutor(
+            JqdltbTransformationExecutorConfig(
+                source_path=args.jqdltb_transformation_source.resolve(),
+                output_root=args.jqdltb_transformation_output_root.resolve(),
+                diagnostic_path=args.jqdltb_transformation_diagnostic.resolve(),
+                semantic_candidate_audit_path=(
+                    args.jqdltb_transformation_semantic_audit.resolve()
+                    if args.jqdltb_transformation_semantic_audit is not None
+                    else None
+                ),
+                correction_path=(
+                    args.jqdltb_transformation_correction.resolve()
+                    if args.jqdltb_transformation_correction is not None
+                    else None
+                ),
+                archive_sha256=args.jqdltb_transformation_archive_sha256,
+                bundle_sha256=args.jqdltb_transformation_bundle_sha256,
+                standard_version_ref=args.jqdltb_transformation_standard_version_ref,
+                standard_fingerprint=args.jqdltb_transformation_standard_fingerprint,
+                derivation_contract_paths={
+                    target: path.resolve()
+                    for target, path in {
+                        "SJNF": args.jqdltb_transformation_sjnf_rule,
+                        "MSSM": args.jqdltb_transformation_mssm_rule,
+                    }.items()
+                    if path is not None
+                },
+                geometry_area_rule_path=(
+                    args.jqdltb_transformation_geometry_area_rule.resolve()
+                    if args.jqdltb_transformation_geometry_area_rule is not None
+                    else None
+                ),
+            )
+        )
     app = create_app(
         JqdltbDataOpsExecutor(config),
         osm_service,
         lakehouse_service,
         building_ods_service,
         dem_ods_service,
+        jqdltb_transformation_service,
     )
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
     return 0

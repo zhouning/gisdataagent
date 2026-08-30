@@ -1,0 +1,15 @@
+flowchart TB
+  E[UI / API / Queue / MCP / A2A / Bot] --> C[Runtime Control Plane]
+  C --> W[Cognitive Workspace]
+  W --> A[Deterministic Attention Router]
+  A --> P[Perception]
+  A --> R[Evidence and Memory Retrieval]
+  A --> L[Planning and Replanning]
+  A --> X[Specialist Execution]
+  A --> V[Evaluation]
+  A --> H[HITL / Escalation]
+  X --> T[SQL / PostGIS / ArcPy / Governance / TWM / Reporting]
+  R --> K[Standards / Semantic Layer / KB / Graph / APIs / Memory]
+  W --> EV[Learning and Evolution Plane]
+  EV --> G[Candidate / Eval / Shadow / Canary / Promotion]
+

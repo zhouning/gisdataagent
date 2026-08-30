@@ -22,6 +22,8 @@ from .platform_contracts import (
     ApprovalCaseAssignment,
     ApprovalCaseAssignmentEvent,
     ApprovalCaseAssignmentOperation,
+    ApprovalCaseEscalation,
+    ApprovalCaseEscalationPlan,
     ApprovalCaseEvent,
     ApprovalCaseNotification,
     ApprovalCaseNotificationEnvelope,
@@ -34,6 +36,7 @@ from .platform_contracts import (
     Resource,
     ShortName,
     TenantId,
+    approval_case_escalation_idempotency_key,
 )
 
 GATEWAY_DATABASE_ROLE = "gda_control_gateway"
@@ -203,6 +206,10 @@ class ApprovalCaseAuthority:
     @staticmethod
     def _notification_recovery_from_row(row) -> ApprovalCaseNotificationRecoveryEvent:
         return ApprovalCaseNotificationRecoveryEvent.model_validate(dict(row))
+
+    @staticmethod
+    def _escalation_from_row(row) -> ApprovalCaseEscalation:
+        return ApprovalCaseEscalation.model_validate(dict(row))
 
     @staticmethod
     def _request_binding(case: ApprovalCase) -> tuple[Any, ...]:
@@ -509,6 +516,54 @@ class ApprovalCaseAuthority:
             stored = self._load(connection, tenant, approval_case_ref)
             if stored is None:
                 raise ApprovalCaseNotFoundError("ApprovalCase was not found")
+            return stored
+
+    def expire(
+        self,
+        *,
+        tenant_id: str,
+        approval_case_ref: str,
+        expected_state_version: int,
+        actor_subject: str = "workload:agentops-temporal-expiry",
+        reason: str = "ApprovalCase expired without an authoritative human decision",
+        details: dict[str, Any] | None = None,
+    ) -> ApprovalCase:
+        """Atomically cancel one expired pending case in PostgreSQL.
+
+        The database function locks the case row and evaluates expiry with its own
+        clock.  This method deliberately does not perform a client-side expiry check:
+        a human decision and timeout must be resolved by the same row lock.
+        """
+
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        if expected_state_version < 0:
+            raise ValueError("expected_state_version must be non-negative")
+        if not actor_subject.startswith(("workload:", "agent:")):
+            raise ValueError("ApprovalCase expiry requires a workload or agent actor")
+        if not reason.strip():
+            raise ValueError("ApprovalCase expiry reason is required")
+        with self._transaction(tenant) as connection:
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.expire_approval_case(
+                        :tenant_id, :approval_case_ref, :expected_state_version,
+                        :actor_subject, :reason, CAST(:details AS jsonb)
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant,
+                    "approval_case_ref": approval_case_ref,
+                    "expected_state_version": expected_state_version,
+                    "actor_subject": actor_subject,
+                    "reason": reason,
+                    "details": _json(details or {}),
+                },
+            ).scalar_one()
+            stored = self._load(connection, tenant, approval_case_ref)
+            if stored is None:
+                raise ApprovalCaseNotFoundError("ApprovalCase was not visible after expiry")
             return stored
 
     def events(self, tenant_id: str, approval_case_ref: str) -> tuple[ApprovalCaseEvent, ...]:
@@ -898,6 +953,69 @@ class ApprovalCaseAuthority:
             )
             return ApprovalAssignmentActorAccess.model_validate(dict(row))
 
+    def schedule_sla_escalation(
+        self,
+        *,
+        tenant_id: str,
+        approval_case_ref: str,
+        expected_state_version: int,
+        escalation_stage: int,
+        due_at: datetime,
+        target_team_subject: str,
+        on_call_ref: str,
+        actor_subject: str,
+        reason: str,
+    ) -> ApprovalCaseEscalation:
+        """Schedule one immutable, pre-expiry escalation for a live case."""
+
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            case = self._load(connection, tenant, approval_case_ref)
+            if case is None:
+                raise ApprovalCaseNotFoundError("ApprovalCase was not found")
+            idempotency_key = approval_case_escalation_idempotency_key(
+                tenant_id=tenant,
+                approval_case_ref=approval_case_ref,
+                expected_state_version=expected_state_version,
+                action=case.action,
+                target_fingerprint=case.target_fingerprint,
+                escalation_stage=escalation_stage,
+                due_at=due_at,
+                target_team_subject=target_team_subject,
+                on_call_ref=on_call_ref,
+            )
+            plan = ApprovalCaseEscalationPlan(
+                tenant_id=tenant,
+                approval_case_ref=approval_case_ref,
+                expected_state_version=expected_state_version,
+                action=case.action,
+                target_fingerprint=case.target_fingerprint,
+                escalation_stage=escalation_stage,
+                due_at=due_at,
+                target_team_subject=target_team_subject,
+                on_call_ref=on_call_ref,
+                actor_subject=actor_subject,
+                reason=reason,
+                idempotency_key=idempotency_key,
+            )
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT * FROM gda_control.schedule_approval_case_sla_escalation(
+                            :tenant_id, :approval_case_ref, :expected_state_version,
+                            :escalation_stage, :due_at, :target_team_subject,
+                            :on_call_ref, :actor_subject, :reason, :idempotency_key
+                        )
+                        """
+                    ),
+                    plan.model_dump(mode="python"),
+                )
+                .mappings()
+                .one()
+            )
+            return self._escalation_from_row(row)
+
     def notifications(
         self,
         tenant_id: str,
@@ -918,7 +1036,10 @@ class ApprovalCaseAuthority:
                                claimed_by, claimed_until, last_error,
                                created_at, completed_at, recovery_count,
                                last_recovered_by, last_recovery_reason,
-                               last_recovered_at
+                               last_recovered_at, escalation_stage,
+                               escalation_target_subject, escalation_on_call_ref,
+                               escalation_actor_subject, escalation_reason,
+                               idempotency_key
                         FROM gda_control.approval_case_notification_outbox
                         WHERE tenant_id = :tenant_id
                           AND approval_case_ref = :approval_case_ref
@@ -931,6 +1052,40 @@ class ApprovalCaseAuthority:
                 .all()
             )
             return tuple(self._notification_from_row(row) for row in rows)
+
+    def materialize_sla_escalations(
+        self,
+        tenant_id: str,
+        *,
+        limit: int = 20,
+    ) -> tuple[ApprovalCaseNotificationEnvelope, ...]:
+        """Move due scheduled escalations into the durable notification outbox."""
+
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        if not 1 <= limit <= 100:
+            raise ValueError("escalation materialization limit must be between 1 and 100")
+        with self._transaction(tenant) as connection:
+            rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT * FROM gda_control.materialize_due_approval_case_sla_escalations(
+                            :tenant_id, :limit
+                        )
+                        """
+                    ),
+                    {"tenant_id": tenant, "limit": limit},
+                )
+                .mappings()
+                .all()
+            )
+            return tuple(
+                self._notification_envelope(
+                    connection,
+                    self._notification_from_row(row),
+                )
+                for row in rows
+            )
 
     def notification_recoveries(
         self,

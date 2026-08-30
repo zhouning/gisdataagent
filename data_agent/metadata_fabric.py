@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Literal
-from uuid import UUID
+from uuid import UUID, uuid5
 
 from pydantic import (
     BaseModel,
@@ -17,6 +18,11 @@ from pydantic import (
     model_validator,
 )
 
+from .data_architecture_ledger import (
+    ArchitectureProviderObservation,
+    ProviderObjectState,
+    architecture_provider_observation_fingerprint,
+)
 from .master_data_authority import MasterEntityVersion
 from .platform_contracts import (
     LineageEvent,
@@ -40,6 +46,9 @@ ExternalReference = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=512),
 ]
+
+_GRAVITINO_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
+GRAVITINO_REFERENCE_SCHEMA = "gda.gravitino_technical_object_reference.v1"
 
 
 class MetadataFabricSystem(StrEnum):
@@ -150,6 +159,252 @@ class MetadataFabricBinding(_FrozenModel):
         if self.binding_sha256 != expected_sha256:
             raise ValueError("binding_sha256 does not match Metadata Fabric binding")
         return self
+
+
+def gravitino_reference_fingerprint(
+    *,
+    tenant_id: str,
+    resource_urn: str,
+    resource_version_id: UUID,
+    metalake: str,
+    catalog: str,
+    namespace: str,
+    object_name: str,
+    object_type: str,
+    object_version_ref: str,
+) -> str:
+    """Fingerprint one immutable GDA-to-Gravitino technical object mapping."""
+    return canonical_json_fingerprint(
+        {
+            "schema": GRAVITINO_REFERENCE_SCHEMA,
+            "tenant_id": tenant_id,
+            "resource_urn": resource_urn,
+            "resource_version_id": str(resource_version_id),
+            "metalake": metalake,
+            "catalog": catalog,
+            "namespace": namespace,
+            "object_name": object_name,
+            "object_type": object_type,
+            "object_version_ref": object_version_ref,
+        }
+    )
+
+
+class GravitinoTechnicalObjectReference(_FrozenModel):
+    """Canonical technical-object identity used by the Gravitino bridge.
+
+    This is deliberately a reference contract, not a second catalog. The
+    technical provider remains authoritative for object state and version;
+    GDA stores only this immutable crosswalk and its evidence fingerprint.
+    """
+
+    schema_version: Literal[GRAVITINO_REFERENCE_SCHEMA] = GRAVITINO_REFERENCE_SCHEMA
+    tenant_id: TenantId
+    resource_urn: ResourceURNText
+    resource_version_id: UUID
+    metalake: str = Field(min_length=1, max_length=128)
+    catalog: str = Field(min_length=1, max_length=128)
+    namespace: str = Field(min_length=1, max_length=128)
+    object_name: str = Field(min_length=1, max_length=128)
+    object_type: Literal["table", "view", "fileset", "topic"]
+    object_version_ref: ExternalReference
+    reference_sha256: Sha256
+
+    @field_validator("metalake", "catalog", "namespace", "object_name")
+    @classmethod
+    def _safe_gravitino_name(cls, value: str) -> str:
+        if _GRAVITINO_NAME.fullmatch(value) is None:
+            raise ValueError("Gravitino identifiers must be canonical names")
+        return value
+
+    @model_validator(mode="after")
+    def _consistent_reference(self) -> GravitinoTechnicalObjectReference:
+        if parse_resource_urn(self.resource_urn)["tenant_id"] != self.tenant_id:
+            raise ValueError("resource_urn tenant must match tenant_id")
+        expected = gravitino_reference_fingerprint(
+            tenant_id=self.tenant_id,
+            resource_urn=self.resource_urn,
+            resource_version_id=self.resource_version_id,
+            metalake=self.metalake,
+            catalog=self.catalog,
+            namespace=self.namespace,
+            object_name=self.object_name,
+            object_type=self.object_type,
+            object_version_ref=self.object_version_ref,
+        )
+        if self.reference_sha256 != expected:
+            raise ValueError("reference_sha256 does not match the technical mapping")
+        return self
+
+    @property
+    def external_namespace(self) -> str:
+        return f"{self.metalake}/{self.catalog}/{self.namespace}"
+
+    @property
+    def external_object_id(self) -> str:
+        return self.object_name
+
+    def to_metadata_binding(
+        self,
+        *,
+        binding_id: UUID,
+        created_by: str,
+        created_at: datetime,
+    ) -> MetadataFabricBinding:
+        """Materialize the compatibility binding consumed by the control ledger."""
+        return MetadataFabricBinding(
+            tenant_id=self.tenant_id,
+            binding_id=binding_id,
+            resource_urn=self.resource_urn,
+            system=MetadataFabricSystem.GRAVITINO,
+            binding_kind=MetadataBindingKind.TECHNICAL_OBJECT,
+            external_namespace=self.external_namespace,
+            external_object_id=self.external_object_id,
+            external_object_type=self.object_type,
+            external_version_ref=self.object_version_ref,
+            binding_sha256=metadata_fabric_binding_fingerprint(
+                tenant_id=self.tenant_id,
+                resource_urn=self.resource_urn,
+                system=MetadataFabricSystem.GRAVITINO,
+                binding_kind=MetadataBindingKind.TECHNICAL_OBJECT,
+                external_namespace=self.external_namespace,
+                external_object_id=self.external_object_id,
+                external_object_type=self.object_type,
+                external_version_ref=self.object_version_ref,
+            ),
+            created_by=created_by,
+            created_at=created_at,
+        )
+
+
+def build_gravitino_reference(
+    resource_version: ResourceVersion,
+    *,
+    metalake: str,
+    catalog: str,
+    namespace: str,
+    object_name: str,
+    object_type: Literal["table", "view", "fileset", "topic"],
+    object_version_ref: str,
+) -> GravitinoTechnicalObjectReference:
+    """Build the canonical reference from an already admitted ResourceVersion."""
+    fingerprint = gravitino_reference_fingerprint(
+        tenant_id=resource_version.tenant_id,
+        resource_urn=resource_version.resource_urn,
+        resource_version_id=resource_version.resource_version_id,
+        metalake=metalake,
+        catalog=catalog,
+        namespace=namespace,
+        object_name=object_name,
+        object_type=object_type,
+        object_version_ref=object_version_ref,
+    )
+    return GravitinoTechnicalObjectReference(
+        tenant_id=resource_version.tenant_id,
+        resource_urn=resource_version.resource_urn,
+        resource_version_id=resource_version.resource_version_id,
+        metalake=metalake,
+        catalog=catalog,
+        namespace=namespace,
+        object_name=object_name,
+        object_type=object_type,
+        object_version_ref=object_version_ref,
+        reference_sha256=fingerprint,
+    )
+
+
+def gravitino_reference_from_binding(
+    binding: MetadataFabricBinding,
+    *,
+    resource_version: ResourceVersion,
+) -> GravitinoTechnicalObjectReference:
+    """Reconstruct and validate the canonical reference from a compatibility binding."""
+    if binding.system != MetadataFabricSystem.GRAVITINO:
+        raise ValueError("Gravitino reference requires a Gravitino binding")
+    if (
+        binding.tenant_id != resource_version.tenant_id
+        or binding.resource_urn != resource_version.resource_urn
+    ):
+        raise ValueError("Gravitino binding must match the ResourceVersion identity")
+    parts = binding.external_namespace.split("/")
+    if len(parts) != 3:
+        raise ValueError("Gravitino external namespace must be metalake/catalog/namespace")
+    metalake, catalog, namespace = parts
+    provisional = GravitinoTechnicalObjectReference.model_construct(
+        tenant_id=binding.tenant_id,
+        resource_urn=binding.resource_urn,
+        resource_version_id=resource_version.resource_version_id,
+        metalake=metalake,
+        catalog=catalog,
+        namespace=namespace,
+        object_name=binding.external_object_id,
+        object_type=binding.external_object_type,
+        object_version_ref=binding.external_version_ref,
+        reference_sha256="0" * 64,
+    )
+    return GravitinoTechnicalObjectReference(
+        **provisional.model_dump(exclude={"reference_sha256"}),
+        reference_sha256=gravitino_reference_fingerprint(
+            tenant_id=provisional.tenant_id,
+            resource_urn=provisional.resource_urn,
+            resource_version_id=provisional.resource_version_id,
+            metalake=provisional.metalake,
+            catalog=provisional.catalog,
+            namespace=provisional.namespace,
+            object_name=provisional.object_name,
+            object_type=provisional.object_type,
+            object_version_ref=provisional.object_version_ref,
+        ),
+    )
+
+
+def build_gravitino_architecture_observation(
+    reference: GravitinoTechnicalObjectReference,
+    *,
+    source_revision: str | None,
+    schema_content_sha256: str | None,
+    schema_version_sha256: str | None,
+    physical_location_sha256: str | None,
+    observed_at: datetime,
+    fresh_until: datetime,
+    observed_by: str,
+    recorded_at: datetime,
+    object_state: ProviderObjectState | str = ProviderObjectState.PRESENT,
+) -> ArchitectureProviderObservation:
+    """Project a Gravitino observation into the shared architecture ledger."""
+    state = ProviderObjectState(object_state)
+    observation_sha256 = architecture_provider_observation_fingerprint(
+        tenant_id=reference.tenant_id,
+        resource_version_id=reference.resource_version_id,
+        provider_system=MetadataFabricSystem.GRAVITINO.value,
+        provider_namespace=reference.external_namespace,
+        provider_object_id=reference.external_object_id,
+        object_state=state,
+        source_revision=source_revision,
+        schema_content_sha256=schema_content_sha256,
+        schema_version_sha256=schema_version_sha256,
+        physical_location_sha256=physical_location_sha256,
+        observed_at=observed_at,
+        fresh_until=fresh_until,
+    )
+    return ArchitectureProviderObservation(
+        tenant_id=reference.tenant_id,
+        observation_id=uuid5(reference.resource_version_id, observation_sha256),
+        resource_version_id=reference.resource_version_id,
+        provider_system=MetadataFabricSystem.GRAVITINO.value,
+        provider_namespace=reference.external_namespace,
+        provider_object_id=reference.external_object_id,
+        object_state=state,
+        source_revision=source_revision,
+        schema_content_sha256=schema_content_sha256,
+        schema_version_sha256=schema_version_sha256,
+        physical_location_sha256=physical_location_sha256,
+        observed_at=observed_at,
+        fresh_until=fresh_until,
+        observation_sha256=observation_sha256,
+        observed_by=observed_by,
+        recorded_at=recorded_at,
+    )
 
 
 class MetadataChange(_FrozenModel):

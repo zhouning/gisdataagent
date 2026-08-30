@@ -18,7 +18,13 @@ __pycache__/
 data_agent/.env
 data_agent/.adk/
 data_agent/uploads/
-data_agent/test_data/
+data_agent/test_data/*
+!data_agent/test_data/twm_bishan_demo/
+!data_agent/test_data/twm_bishan_demo/**
+!data_agent/test_data/twm_bishan_multi_admin_eval/
+!data_agent/test_data/twm_bishan_multi_admin_eval/**
+!data_agent/test_data/twm_one_map_village_standard_sample/
+!data_agent/test_data/twm_one_map_village_standard_sample/**
 data_agent/__pycache__/
 data_agent/nl2sql_eval_results/
 data_agent/experiments/output/
@@ -70,7 +76,10 @@ requirements-curated.txt
 *.shp.xml
 
 # Misc
-docs/
+docs/*
+!docs/reports/
+docs/reports/*
+!docs/reports/twm_data_foundation_validation.json
 *.md
 !CLAUDE.md
 *.zip

@@ -36,6 +36,47 @@ def _cleanup(engine, doc_id):
                      {"i": doc_id})
 
 
+def _seed_manual_snapshot(engine, ver_id, *, future=False):
+    snapshot_id = str(uuid.uuid4())
+    cdm = {"layer": "CDM", "entities": [{"name_zh": "候选实体"}]}
+    ldm = {
+        "layer": "LDM",
+        "entities": [{
+            "physical_table": "candidate.entity",
+            "name_zh": "候选实体",
+            "attributes": [],
+        }],
+    }
+    pdm = {
+        "layer": "PDM",
+        "entities": [{
+            "physical_table": "candidate.entity",
+            "name_zh": "候选实体",
+            "attributes": [],
+        }],
+    }
+    generated_at_sql = "now() + INTERVAL '1 day'" if future else "now()"
+    with engine.begin() as conn:
+        conn.execute(text(
+            "INSERT INTO std_data_model_snapshot "
+            "(id, document_version_id, generated_at, generated_by, "
+            " cdm_json, ldm_json, pdm_json, ddl_postgresql, "
+            " entity_count, attribute_count, constraint_count, "
+            " derived_status, source_tag) "
+            f"VALUES (:i, :v, {generated_at_sql}, 'manual_curator', "
+            " CAST(:c AS jsonb), CAST(:l AS jsonb), CAST(:p AS jsonb), "
+            " 'CREATE TABLE candidate.entity ();', 1, 0, 0, "
+            " 'manual', 'candidate|sha256=test')"
+        ), {
+            "i": snapshot_id,
+            "v": ver_id,
+            "c": json.dumps(cdm),
+            "l": json.dumps(ldm),
+            "p": json.dumps(pdm),
+        })
+    return snapshot_id
+
+
 # ---------------------------------------------------------------- auth
 
 
@@ -119,6 +160,43 @@ def test_data_model_get_returns_full_payload(monkeypatch, engine,
         pass  # fresh_clause teardown cleans up
 
 
+def test_data_model_get_falls_back_to_manual_candidate(monkeypatch, engine,
+                                                        fresh_clause):
+    _, _, ver_id = fresh_clause
+    snapshot_id = _seed_manual_snapshot(engine, ver_id)
+    _auth_user(monkeypatch, role="viewer")
+
+    r = _client().get(f"/api/std/data-model/{ver_id}")
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["snapshot_id"] == snapshot_id
+    assert body["derived_status"] == "manual"
+    assert body["source_tag"] == "candidate|sha256=test"
+    assert body["stats"] == {
+        "entity_count": 1,
+        "attribute_count": 0,
+        "constraint_count": 0,
+    }
+
+
+def test_data_model_get_prefers_active_over_newer_manual(monkeypatch, engine,
+                                                         fresh_clause):
+    _, _, ver_id = fresh_clause
+    _seed_one_element(engine, ver_id)
+    DataModelStrategy().run(version_id=ver_id, by_user="automatic_deriver")
+    _seed_manual_snapshot(engine, ver_id, future=True)
+    _auth_user(monkeypatch, role="viewer")
+
+    r = _client().get(f"/api/std/data-model/{ver_id}")
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["derived_status"] == "active"
+    assert body["generated_by"] == "automatic_deriver"
+    assert body["stats"]["attribute_count"] == 1
+
+
 def test_data_model_get_with_layer_param(monkeypatch, engine, fresh_clause):
     _, doc_id, ver_id = fresh_clause
     _seed_one_element(engine, ver_id)
@@ -164,7 +242,7 @@ def test_data_model_xmi_returns_xml_attachment(monkeypatch, engine, fresh_clause
     assert r.status_code == 200
     assert "application/xml" in r.headers.get("content-type", "")
     assert "content-disposition" in {k.lower() for k in r.headers.keys()}
-    assert f"data_model_{ver_id[:8]}.xml" in r.headers["content-disposition"]
+    assert f"data_model_{ver_id[:8]}.xmi" in r.headers["content-disposition"]
     assert "<uml:Model" in r.text
     assert 'xmi:type="uml:Class"' in r.text
 

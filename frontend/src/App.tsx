@@ -9,6 +9,7 @@ import MapPanel from './components/MapPanel';
 import DataPanel from './components/DataPanel';
 import AdminDashboard from './components/AdminDashboard';
 import UserSettings from './components/UserSettings';
+import StandaloneOntologyPage from './components/StandaloneOntologyPage';
 import { usePlatformBranding } from './platformBranding';
 import {
   MessageSquare, Map, LayoutGrid, Settings, Bell, User, LogOut, ChevronDown, Shield,
@@ -36,7 +37,7 @@ class ErrorBoundary extends Component<{ name: string; children: ReactNode }, { e
   }
 }
 
-export default function App() {
+function GisDataAgentApp() {
   const { branding } = usePlatformBranding();
   const { data: authConfig, user, isReady, isAuthenticated, setUserFromAPI, logout } = useAuth();
   const { config } = useConfig();
@@ -350,4 +351,15 @@ export default function App() {
       )}
     </div>
   );
+}
+
+/**
+ * The CIM integration page is deliberately routed before the authenticated
+ * workbench. It has its own read-only backend surface and never invokes the
+ * Chainlit login flow.
+ */
+export default function App() {
+  const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
+  if (pathname.endsWith('/ontology-model')) return <StandaloneOntologyPage />;
+  return <GisDataAgentApp />;
 }

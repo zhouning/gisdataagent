@@ -1,0 +1,103 @@
+.standalone-ontology-page {
+  --cim-ink: #17202a;
+  --cim-muted: #6c7885;
+  --cim-border: #dfe5eb;
+  --cim-panel: #ffffff;
+  --cim-bg: #f2f4f6;
+  --cim-blue: #1677c8;
+  --cim-blue-soft: #e8f2fb;
+  min-height: 100vh;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+  color: var(--cim-ink);
+  background: var(--cim-bg);
+  font-family: "Microsoft YaHei", "PingFang SC", Inter, system-ui, sans-serif;
+}
+
+.cim-page-body {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.cim-main-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.cim-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex: 0 0 39px;
+  gap: 7px;
+  padding: 0 22px;
+  color: #7c8792;
+  background: #fff;
+  border-bottom: 1px solid var(--cim-border);
+  font-size: 12px;
+}
+
+.cim-breadcrumb svg { color: #a7b1ba; }
+.cim-breadcrumb strong { color: #3c4854; font-weight: 600; }
+
+.cim-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.cim-ontology-viewer {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 14px 18px 18px;
+  overflow: hidden;
+  background: var(--cim-panel);
+  border: 1px solid var(--cim-border);
+  border-radius: 3px;
+  box-shadow: 0 2px 5px rgba(28, 44, 59, .06);
+}
+
+.standalone-ontology-workbench {
+  --primary: #1677c8;
+  --primary-light: #e8f2fb;
+  --text: #25313c;
+  --text-secondary: #70808e;
+  --bg: #f7f9fa;
+  --surface: #fff;
+  --surface-elevated: #f0f4f7;
+  --border: #dfe5eb;
+  --border-light: #e7edf1;
+  --success: #16875a;
+  --success-light: #e8f6ef;
+  --warning: #b16a14;
+  --warning-light: #fff5e5;
+  --danger: #ba3d3d;
+  --danger-light: #fff0f0;
+  --info: #247fb4;
+  --info-light: #eaf5fc;
+  height: 100%;
+  min-height: 0;
+}
+
+.standalone-ontology-workbench .ontology-header { background: #fff; }
+.standalone-ontology-workbench .ontology-title strong { color: #25313c; }
+.standalone-ontology-workbench .ontology-graph { background: #f6f8fa; }
+
+@media (max-width: 760px) {
+  .cim-breadcrumb { padding: 0 14px; }
+  .cim-ontology-viewer { margin: 0 10px 10px; }
+  .standalone-ontology-workbench .ontology-custom-minimap { display: none; }
+}

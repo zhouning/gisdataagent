@@ -35,10 +35,12 @@ def test_worker_cli_wires_runtime_and_heartbeat(monkeypatch):
             repository,
             provider_resolver,
             compensation_resolver,
+            controller_binding_resolver,
         ):
             assert isinstance(repository, Repository)
             assert provider_resolver == "provider-resolver"
             assert compensation_resolver == "compensation-resolver"
+            assert controller_binding_resolver is None
 
         def run_once(self, tenant_id, worker_id, **kwargs):
             calls.append((tenant_id, worker_id, kwargs))

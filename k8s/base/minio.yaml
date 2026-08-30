@@ -86,7 +86,7 @@ spec:
   selector:
     app.kubernetes.io/name: minio
 ---
-# One-shot Job to create the uploads bucket on first install. Idempotent —
+# One-shot Job to create the uploads and lakehouse buckets. Idempotent —
 # `mc mb --ignore-existing` won't fail on subsequent runs, and the Job's
 # completions=1 means kustomize re-applies are no-ops once it succeeds.
 apiVersion: batch/v1
@@ -100,7 +100,7 @@ metadata:
   annotations:
     # Re-running the same Job (kubectl delete + apply) is fine; helm-style
     # hook annotation is left out so kustomize doesn't try to manage it.
-    description: "Creates AWS_S3_BUCKET on first MinIO bring-up"
+    description: "Creates upload and lakehouse buckets on first MinIO bring-up"
 spec:
   ttlSecondsAfterFinished: 3600
   backoffLimit: 6
@@ -125,11 +125,16 @@ spec:
                 secretKeyRef:
                   name: minio-root
                   key: MINIO_ROOT_PASSWORD
-            - name: BUCKET
+            - name: UPLOADS_BUCKET
               valueFrom:
                 secretKeyRef:
                   name: gis-agent-secret
                   key: AWS_S3_BUCKET
+            - name: LAKEHOUSE_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: gis-agent-config
+                  key: MMFE_LAKEHOUSE_BUCKET
           command:
             - sh
             - -c
@@ -148,7 +153,9 @@ spec:
               done
               mc alias set local http://minio:9000 \
                   "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
-              mc mb --ignore-existing local/"$BUCKET"
+              mc mb --ignore-existing local/"$UPLOADS_BUCKET"
+              mc mb --ignore-existing local/"$LAKEHOUSE_BUCKET"
               # No public read; the app uses signed URLs / SDK auth.
-              mc anonymous set none local/"$BUCKET" || true
-              echo "[bucket-init] bucket '$BUCKET' ready"
+              mc anonymous set none local/"$UPLOADS_BUCKET" || true
+              mc anonymous set none local/"$LAKEHOUSE_BUCKET" || true
+              echo "[bucket-init] buckets '$UPLOADS_BUCKET' and '$LAKEHOUSE_BUCKET' ready"

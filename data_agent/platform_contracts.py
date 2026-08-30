@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import re
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from enum import Enum, StrEnum
 from pathlib import Path
@@ -28,6 +29,7 @@ from pydantic import (
 )
 
 CONTRACT_SCHEMA_VERSION = "gda.platform_contracts.v1"
+JQDLTB_TRANSFORMATION_ACTION = "jqdltb.transform"
 CONTROL_LEDGER_MIGRATION = (
     Path(__file__).resolve().parent
     / "migrations"
@@ -158,6 +160,7 @@ class ApprovalCaseStatus(StrEnum):
 
 class ApprovalCaseNotificationKind(StrEnum):
     REQUESTED = "requested"
+    ESCALATED = "escalated"
     EXPIRED = "expired"
     DECIDED = "decided"
 
@@ -267,6 +270,59 @@ class SourceSyncPromotionMode(StrEnum):
     APPROVAL_GATED = "approval_gated"
 
 
+class JqdltbTransformationMode(StrEnum):
+    """Lifecycle state for the first JQDLTB transformation contract."""
+
+    DRY_RUN = "dry_run"
+    APPROVAL_REQUIRED = "approval_required"
+    EXECUTE = "execute"
+
+
+class JqdltbAreaPolicy(StrEnum):
+    QUARANTINE = "quarantine"
+    BUSINESS_CORRECTION = "business_correction"
+
+
+class JqdltbAreaDeviationPolicy(StrEnum):
+    PRESERVE_SOURCE = "preserve_source"
+    USE_GEOMETRY = "use_geometry"
+    QUARANTINE = "quarantine"
+
+
+class JqdltbDerivationStatus(StrEnum):
+    PENDING_APPROVAL = "pending_approval"
+    PROPOSED = "proposed"
+
+
+class JqdltbDecisionStatus(StrEnum):
+    """Lifecycle of one business decision in the AR-0 intake packet."""
+
+    PENDING_BUSINESS_EVIDENCE = "pending_business_evidence"
+    SUBMITTED = "submitted"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    DEFERRED = "deferred"
+
+
+class JqdltbDecisionPacketStatus(StrEnum):
+    DRAFT = "draft"
+    SUBMITTED = "submitted"
+
+
+JQDLTB_DECISION_TARGETS = (
+    "canonical_key",
+    "nonpositive_area_policy",
+    "area_deviation_policy",
+    "SJNF",
+    "MSSM",
+    "business_steward",
+    "license_status",
+    "slo_on_call",
+    "environment_owner.staging",
+    "environment_owner.production",
+)
+
+
 class QualityVerdict(str, Enum):
     PASSED = "passed"
     FAILED = "failed"
@@ -280,6 +336,9 @@ class PlatformCommandType(str, Enum):
     GIS_ANALYSIS_EXECUTE = "gis_analysis.execute"
     GIS_ANALYSIS_CANCEL = "gis_analysis.cancel"
     GIS_ANALYSIS_RECONCILE = "gis_analysis.reconcile"
+    BLUEPRINT_PROVIDER_EXECUTE = "blueprint_provider.execute"
+    BLUEPRINT_PROVIDER_RETRY = "blueprint_provider.retry"
+    GIS_SERVICE_ENDPOINT_WARMUP = "gis_service.endpoint_warmup"
 
 
 class PlatformCommandStatus(str, Enum):
@@ -717,6 +776,111 @@ def source_sync_quarantine_evidence_fingerprint(
     )
 
 
+def jqdltb_semantic_field_quarantine_fingerprint(
+    *,
+    tenant_id: str,
+    source_resource_version_id: UUID,
+    source_resource_urn: str,
+    archive_sha256: str,
+    bundle_sha256: str,
+    standard_version_ref: str,
+    standard_fingerprint: str,
+    target_fields: tuple[str, ...],
+    records: tuple[dict[str, Any], ...],
+) -> str:
+    """Fingerprint field-level semantic quarantine without source values.
+
+    The quarantine receipt is deliberately keyed by the frozen source and
+    record identifiers only.  It must not become a side channel for carrying
+    unapproved derived values into a candidate product.
+    """
+
+    return _json_fingerprint(
+        {
+            "tenant_id": tenant_id,
+            "source_resource_version_id": str(source_resource_version_id),
+            "source_resource_urn": source_resource_urn,
+            "archive_sha256": archive_sha256,
+            "bundle_sha256": bundle_sha256,
+            "standard_version_ref": standard_version_ref,
+            "standard_fingerprint": standard_fingerprint,
+            "target_fields": list(target_fields),
+            "records": list(records),
+        }
+    )
+
+
+def jqdltb_transformation_plan_fingerprint(
+    *,
+    tenant_id: str,
+    source_resource_version_id: UUID,
+    source_resource_urn: str,
+    archive_sha256: str,
+    bundle_sha256: str,
+    standard_version_ref: str,
+    standard_fingerprint: str,
+    diagnostic_sha256: str,
+    canonical_key: str,
+    nonpositive_area_policy: JqdltbAreaPolicy | str | None,
+    business_correction_resource_version_id: UUID | None,
+    business_correction_sha256: str | None,
+    area_deviation_policy: JqdltbAreaDeviationPolicy | str | None,
+    geometry_area_rule_ref: str | None,
+    geometry_area_rule_sha256: str | None,
+    derivation_contracts: tuple[dict[str, Any], ...],
+    semantic_candidate_audit_sha256: str | None = None,
+) -> str:
+    """Fingerprint the proposed JQDLTB transformation, excluding approval state."""
+
+    payload = {
+            "tenant_id": tenant_id,
+            "source_resource_version_id": str(source_resource_version_id),
+            "source_resource_urn": source_resource_urn,
+            "archive_sha256": archive_sha256,
+            "bundle_sha256": bundle_sha256,
+            "standard_version_ref": standard_version_ref,
+            "standard_fingerprint": standard_fingerprint,
+            "diagnostic_sha256": diagnostic_sha256,
+            "canonical_key": canonical_key,
+            "nonpositive_area_policy": (
+                JqdltbAreaPolicy(nonpositive_area_policy).value
+                if nonpositive_area_policy is not None
+                else None
+            ),
+            "business_correction_resource_version_id": (
+                str(business_correction_resource_version_id)
+                if business_correction_resource_version_id is not None
+                else None
+            ),
+            "business_correction_sha256": business_correction_sha256,
+            "area_deviation_policy": (
+                JqdltbAreaDeviationPolicy(area_deviation_policy).value
+                if area_deviation_policy is not None
+                else None
+            ),
+            "geometry_area_rule_ref": geometry_area_rule_ref,
+            "geometry_area_rule_sha256": geometry_area_rule_sha256,
+            "derivation_contracts": list(derivation_contracts),
+        }
+    # Preserve the fingerprint of the already-frozen approval_required
+    # baseline, which predates semantic-audit binding.
+    if semantic_candidate_audit_sha256 is not None:
+        payload["semantic_candidate_audit_sha256"] = semantic_candidate_audit_sha256
+    return _json_fingerprint(payload)
+
+
+def jqdltb_transformation_contract_fingerprint(
+    contract: Mapping[str, Any],
+) -> str:
+    """Fingerprint the complete immutable JQDLTB contract, excluding its hash."""
+
+    value = dict(contract)
+    value.pop("contract_sha256", None)
+    if value.get("semantic_candidate_audit_sha256") is None:
+        value.pop("semantic_candidate_audit_sha256", None)
+    return _json_fingerprint(value)
+
+
 def postgresql_cdc_failover_recovery_plan_fingerprint(
     *,
     tenant_id: str,
@@ -959,7 +1123,10 @@ class ApprovalCase(FrozenContract):
         if self.decided_at is not None:
             if self.decided_at < self.requested_at:
                 raise ValueError("approval decision cannot predate its request")
-            if self.decided_at >= self.expires_at:
+            if (
+                self.status is not ApprovalCaseStatus.CANCELLED
+                and self.decided_at >= self.expires_at
+            ):
                 raise ValueError("approval decision must occur before case expiry")
         if self.status in {ApprovalCaseStatus.APPROVED, ApprovalCaseStatus.REJECTED}:
             if self.decided_by is None or not self.decided_by.startswith("human:"):
@@ -1244,6 +1411,12 @@ class ApprovalCaseNotification(FrozenContract):
     last_error: NonEmptyText | None = None
     created_at: datetime
     completed_at: datetime | None = None
+    escalation_stage: Annotated[int, Field(ge=1, le=2)] | None = None
+    escalation_target_subject: NonEmptyText | None = None
+    escalation_on_call_ref: ShortName | None = None
+    escalation_actor_subject: NonEmptyText | None = None
+    escalation_reason: NonEmptyText | None = None
+    idempotency_key: Sha256 | None = None
     recovery_count: Annotated[int, Field(ge=0, le=10)] = 0
     last_recovered_by: NonEmptyText | None = None
     last_recovery_reason: NonEmptyText | None = None
@@ -1271,6 +1444,7 @@ class ApprovalCaseNotification(FrozenContract):
             raise ValueError("approval notification destination must match its channel")
         expected_sequence = {
             ApprovalCaseNotificationKind.REQUESTED: 0,
+            ApprovalCaseNotificationKind.ESCALATED: None,
             ApprovalCaseNotificationKind.EXPIRED: None,
             ApprovalCaseNotificationKind.DECIDED: 1,
         }[self.notification_kind]
@@ -1289,9 +1463,36 @@ class ApprovalCaseNotification(FrozenContract):
             raise ValueError("terminal notification must release its claim")
         if (
             self.status is ApprovalCaseNotificationStatus.SUPPRESSED
-            and self.notification_kind is not ApprovalCaseNotificationKind.EXPIRED
+            and self.notification_kind
+            not in {
+                ApprovalCaseNotificationKind.EXPIRED,
+                ApprovalCaseNotificationKind.ESCALATED,
+            }
         ):
-            raise ValueError("only an expiry notification may be suppressed")
+            raise ValueError("only an expiry or escalation notification may be suppressed")
+        escalation_values = (
+            self.escalation_stage,
+            self.escalation_target_subject,
+            self.escalation_on_call_ref,
+            self.escalation_actor_subject,
+            self.escalation_reason,
+            self.idempotency_key,
+        )
+        if self.notification_kind is ApprovalCaseNotificationKind.ESCALATED:
+            if not all(value is not None for value in escalation_values):
+                raise ValueError("approval escalation requires complete routing evidence")
+            if not self.escalation_target_subject.startswith("team:"):
+                raise ValueError("approval escalation target must be a team subject")
+            if not self.escalation_on_call_ref.startswith("oncall:"):
+                raise ValueError("approval escalation requires an on-call reference")
+            if not self.escalation_actor_subject.startswith(("human:", "workload:", "agent:")):
+                raise ValueError("approval escalation actor has an invalid subject type")
+            if not self.escalation_reason.strip():
+                raise ValueError("approval escalation reason is required")
+            if self.delivery_order != 1:
+                raise ValueError("approval escalation delivery order must be one")
+        elif any(value is not None for value in escalation_values):
+            raise ValueError("non-escalation notification cannot carry escalation routing")
         recovery_values = (
             self.last_recovered_by,
             self.last_recovery_reason,
@@ -1363,6 +1564,14 @@ class ApprovalCaseNotificationEnvelope(FrozenContract):
             if notification.available_at != approval_case.expires_at:
                 raise ValueError("approval expiry notification must use the case expiry")
             return self
+        if notification.notification_kind is ApprovalCaseNotificationKind.ESCALATED:
+            if self.event is not None:
+                raise ValueError("approval escalation must not bind a decision event")
+            if approval_case.status is not ApprovalCaseStatus.PENDING:
+                raise ValueError("approval escalation requires a pending case")
+            if notification.available_at >= approval_case.expires_at:
+                raise ValueError("approval escalation must be due before case expiry")
+            return self
         if self.event is None:
             raise ValueError("approval lifecycle notification requires its immutable event")
         if self.event.tenant_id != approval_case.tenant_id:
@@ -1374,6 +1583,154 @@ class ApprovalCaseNotificationEnvelope(FrozenContract):
         if notification.notification_kind is ApprovalCaseNotificationKind.DECIDED:
             if approval_case.status is not self.event.to_status:
                 raise ValueError("approval decision notification must match current case state")
+        return self
+
+
+def approval_case_escalation_idempotency_key(
+    *,
+    tenant_id: str,
+    approval_case_ref: str,
+    expected_state_version: int,
+    action: str,
+    target_fingerprint: str,
+    escalation_stage: int,
+    due_at: datetime,
+    target_team_subject: str,
+    on_call_ref: str,
+) -> str:
+    """Return the cross-runtime key for one exact ApprovalCase SLA escalation."""
+
+    due_at = _aware_utc(due_at)
+    due_canonical = due_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    payload = "\x1f".join(
+        (
+            tenant_id,
+            approval_case_ref,
+            str(expected_state_version),
+            action,
+            target_fingerprint,
+            str(escalation_stage),
+            due_canonical,
+            target_team_subject,
+            on_call_ref,
+        )
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+class ApprovalCaseEscalationPlan(FrozenContract):
+    """One immutable, pre-expiry routing action for a pending ApprovalCase."""
+
+    schema_id = "approval_case_escalation_plan"
+
+    tenant_id: TenantId
+    approval_case_ref: ResourceURNText
+    expected_state_version: Annotated[int, Field(ge=0)]
+    action: ShortName
+    target_fingerprint: Sha256
+    escalation_stage: Annotated[int, Field(ge=1, le=2)]
+    due_at: datetime
+    target_team_subject: NonEmptyText
+    on_call_ref: ShortName
+    actor_subject: NonEmptyText
+    reason: NonEmptyText
+    idempotency_key: Sha256
+
+    @field_validator("due_at")
+    @classmethod
+    def _utc_due_at(cls, value: datetime) -> datetime:
+        return _aware_utc(value)
+
+    @model_validator(mode="after")
+    def _consistent_escalation(self) -> ApprovalCaseEscalationPlan:
+        identity = parse_resource_urn(self.approval_case_ref)
+        if identity["tenant_id"] != self.tenant_id:
+            raise ValueError("approval escalation tenant must match case tenant")
+        if identity["resource_kind"] != "approval_case":
+            raise ValueError("approval escalation must reference an ApprovalCase")
+        if self.expected_state_version != 0:
+            raise ValueError("approval escalation requires pending state version zero")
+        if not self.target_team_subject.startswith("team:"):
+            raise ValueError("approval escalation target must be a team subject")
+        if not self.on_call_ref.startswith("oncall:"):
+            raise ValueError("approval escalation requires an on-call reference")
+        if not self.actor_subject.startswith(("human:", "workload:", "agent:")):
+            raise ValueError("approval escalation actor has an invalid subject type")
+        expected_key = approval_case_escalation_idempotency_key(
+            tenant_id=self.tenant_id,
+            approval_case_ref=self.approval_case_ref,
+            expected_state_version=self.expected_state_version,
+            action=self.action,
+            target_fingerprint=self.target_fingerprint,
+            escalation_stage=self.escalation_stage,
+            due_at=self.due_at,
+            target_team_subject=self.target_team_subject,
+            on_call_ref=self.on_call_ref,
+        )
+        if self.idempotency_key != expected_key:
+            raise ValueError("approval escalation idempotency key does not match its scope")
+        return self
+
+
+class ApprovalCaseEscalationStatus(StrEnum):
+    SCHEDULED = "scheduled"
+    MATERIALIZED = "materialized"
+    SUPPRESSED = "suppressed"
+
+
+class ApprovalCaseEscalation(FrozenContract):
+    """Durable status for one scheduled ApprovalCase SLA escalation."""
+
+    schema_id = "approval_case_escalation"
+
+    tenant_id: TenantId
+    escalation_id: UUID
+    approval_case_ref: ResourceURNText
+    expected_state_version: Annotated[int, Field(ge=0)]
+    action: ShortName
+    target_fingerprint: Sha256
+    escalation_stage: Annotated[int, Field(ge=1, le=2)]
+    due_at: datetime
+    target_team_subject: NonEmptyText
+    on_call_ref: ShortName
+    actor_subject: NonEmptyText
+    reason: NonEmptyText
+    idempotency_key: Sha256
+    status: ApprovalCaseEscalationStatus = ApprovalCaseEscalationStatus.SCHEDULED
+    created_at: datetime
+    materialized_at: datetime | None = None
+    suppressed_at: datetime | None = None
+
+    @field_validator("due_at", "created_at", "materialized_at", "suppressed_at")
+    @classmethod
+    def _utc_escalation_time(cls, value: datetime | None) -> datetime | None:
+        return _aware_utc(value) if value is not None else None
+
+    @model_validator(mode="after")
+    def _consistent_escalation_state(self) -> ApprovalCaseEscalation:
+        ApprovalCaseEscalationPlan(
+            tenant_id=self.tenant_id,
+            approval_case_ref=self.approval_case_ref,
+            expected_state_version=self.expected_state_version,
+            action=self.action,
+            target_fingerprint=self.target_fingerprint,
+            escalation_stage=self.escalation_stage,
+            due_at=self.due_at,
+            target_team_subject=self.target_team_subject,
+            on_call_ref=self.on_call_ref,
+            actor_subject=self.actor_subject,
+            reason=self.reason,
+            idempotency_key=self.idempotency_key,
+        )
+        if self.status is ApprovalCaseEscalationStatus.SCHEDULED:
+            if self.materialized_at is not None or self.suppressed_at is not None:
+                raise ValueError("scheduled escalation cannot have terminal timestamps")
+        elif self.status is ApprovalCaseEscalationStatus.MATERIALIZED:
+            if self.materialized_at is None or self.suppressed_at is not None:
+                raise ValueError("materialized escalation requires only materialized_at")
+        else:
+            if self.suppressed_at is None:
+                raise ValueError("suppressed escalation requires suppressed_at")
         return self
 
 
@@ -1462,6 +1819,1061 @@ class SourceSyncGovernanceContract(FrozenContract):
         elif has_event_time or has_watermark:
             raise ValueError("only event stream sync may declare event time or watermark")
         return self
+
+
+class JqdltbDerivationContract(FrozenContract):
+    """One explicit semantic rule for a JQDLTB target field."""
+
+    schema_id = "jqdltb_derivation_contract"
+
+    target_field: Literal["SJNF", "MSSM"]
+    status: JqdltbDerivationStatus
+    source_fields: tuple[ShortName, ...] = ()
+    semantic_contract_ref: NonEmptyText | None = None
+    semantic_contract_sha256: Sha256 | None = None
+    method: NonEmptyText | None = None
+
+    @field_validator("source_fields")
+    @classmethod
+    def _unique_source_fields(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("JQDLTB derivation source fields must be unique")
+        return tuple(sorted(value))
+
+    @model_validator(mode="after")
+    def _consistent_derivation(self) -> JqdltbDerivationContract:
+        configured = (
+            self.source_fields,
+            self.semantic_contract_ref,
+            self.semantic_contract_sha256,
+            self.method,
+        )
+        if self.status is JqdltbDerivationStatus.PENDING_APPROVAL:
+            if any(value not in ((), None) for value in configured):
+                raise ValueError(
+                    "pending JQDLTB derivations must not smuggle in an unapproved rule"
+                )
+        elif not all(value not in ((), None) for value in configured):
+            raise ValueError(
+                "approved JQDLTB derivations require source fields, semantic ref, and method"
+            )
+        return self
+
+
+def _validate_jqdltb_selected_strategy(
+    *,
+    nonpositive_area_policy: JqdltbAreaPolicy,
+    business_correction_resource_version_id: UUID | None,
+    business_correction_sha256: str | None,
+    area_deviation_policy: JqdltbAreaDeviationPolicy,
+    geometry_area_rule_ref: str | None,
+    geometry_area_rule_sha256: str | None,
+    derivation_contracts: tuple[JqdltbDerivationContract, ...],
+) -> None:
+    targets = tuple(item.target_field for item in derivation_contracts)
+    if set(targets) != {"SJNF", "MSSM"} or len(targets) != 2:
+        raise ValueError("JQDLTB strategy must declare exactly SJNF and MSSM derivations")
+    if not all(
+        item.status is JqdltbDerivationStatus.PROPOSED
+        for item in derivation_contracts
+    ):
+        raise ValueError("selected JQDLTB strategy requires complete proposed derivations")
+    correction_binding = (
+        business_correction_resource_version_id,
+        business_correction_sha256,
+    )
+    geometry_binding = (geometry_area_rule_ref, geometry_area_rule_sha256)
+    if nonpositive_area_policy is JqdltbAreaPolicy.BUSINESS_CORRECTION:
+        if not all(correction_binding):
+            raise ValueError(
+                "business correction policy requires a versioned correction binding"
+            )
+    elif any(correction_binding):
+        raise ValueError("only business correction policy may bind correction data")
+    if area_deviation_policy is JqdltbAreaDeviationPolicy.USE_GEOMETRY:
+        if not all(geometry_binding):
+            raise ValueError("use-geometry policy requires a fingerprinted area rule")
+    elif any(geometry_binding):
+        raise ValueError("only use-geometry policy may bind an area rule")
+
+
+class JqdltbTransformationStrategy(FrozenContract):
+    """The complete business choices needed to request transformation approval."""
+
+    schema_id = "jqdltb_transformation_strategy"
+
+    canonical_key: Literal["TBBH"]
+    nonpositive_area_policy: JqdltbAreaPolicy
+    business_correction_resource_version_id: UUID | None = None
+    business_correction_sha256: Sha256 | None = None
+    area_deviation_policy: JqdltbAreaDeviationPolicy
+    geometry_area_rule_ref: NonEmptyText | None = None
+    geometry_area_rule_sha256: Sha256 | None = None
+    derivation_contracts: tuple[JqdltbDerivationContract, ...] = Field(min_length=2)
+
+    @model_validator(mode="after")
+    def _complete_strategy(self) -> JqdltbTransformationStrategy:
+        _validate_jqdltb_selected_strategy(
+            nonpositive_area_policy=self.nonpositive_area_policy,
+            business_correction_resource_version_id=(
+                self.business_correction_resource_version_id
+            ),
+            business_correction_sha256=self.business_correction_sha256,
+            area_deviation_policy=self.area_deviation_policy,
+            geometry_area_rule_ref=self.geometry_area_rule_ref,
+            geometry_area_rule_sha256=self.geometry_area_rule_sha256,
+            derivation_contracts=self.derivation_contracts,
+        )
+        return self
+
+
+class JqdltbDecisionIdentity(FrozenContract):
+    """Frozen source and standard identity carried by each decision packet."""
+
+    schema_id = "jqdltb_decision_identity"
+
+    source_resource_version_id: UUID
+    archive_sha256: Sha256
+    bundle_sha256: Sha256
+    standard_version_ref: NonEmptyText
+    standard_fingerprint: Sha256
+    diagnostic_sha256: Sha256
+    semantic_candidate_audit_sha256: Sha256
+
+
+class JqdltbDecisionEvidence(FrozenContract):
+    """One content-addressed artifact and deterministic extraction statement."""
+
+    schema_id = "jqdltb_decision_evidence"
+
+    evidence_ref: NonEmptyText
+    evidence_sha256: Sha256
+    digest_kind: Literal["canonical_json_sha256", "content_sha256"]
+    extraction_method: NonEmptyText
+    identity: JqdltbDecisionIdentity
+
+    @field_validator("evidence_ref")
+    @classmethod
+    def _stable_evidence_ref(cls, value: str) -> str:
+        if any(character.isspace() for character in value):
+            raise ValueError("JQDLTB decision evidence ref must not contain whitespace")
+        if value.startswith("gda://"):
+            parse_resource_urn(value)
+        return value
+
+    @model_validator(mode="after")
+    def _deterministic_digest_method(self) -> JqdltbDecisionEvidence:
+        method = self.extraction_method.lower()
+        valid = (
+            "canonical_json_fingerprint(" in method
+            if self.digest_kind == "canonical_json_sha256"
+            else "sha-256" in method
+        )
+        if not valid:
+            raise ValueError("JQDLTB decision evidence extraction method is unsupported")
+        return self
+
+
+class JqdltbDecision(FrozenContract):
+    """A business decision or an explicitly pending decision in the intake packet."""
+
+    schema_id = "jqdltb_decision"
+
+    target: Literal[
+        "canonical_key",
+        "nonpositive_area_policy",
+        "area_deviation_policy",
+        "SJNF",
+        "MSSM",
+        "business_steward",
+        "license_status",
+        "slo_on_call",
+        "environment_owner.staging",
+        "environment_owner.production",
+    ]
+    status: JqdltbDecisionStatus
+    current_state: NonEmptyText
+    owner_ref: NonEmptyText
+    selected_value: NonEmptyText | None = None
+    selected_resource_version_id: UUID | None = None
+    selected_artifact_sha256: Sha256 | None = None
+    selected_rule_ref: NonEmptyText | None = None
+    selected_rule_sha256: Sha256 | None = None
+    source_fields: tuple[ShortName, ...] = ()
+    semantic_contract_ref: NonEmptyText | None = None
+    semantic_contract_sha256: Sha256 | None = None
+    method: NonEmptyText | None = None
+    evidence: JqdltbDecisionEvidence | None = None
+
+    @field_validator("owner_ref")
+    @classmethod
+    def _typed_owner_ref(cls, value: str) -> str:
+        if not value.startswith(("human:", "team:", "unassigned:")):
+            raise ValueError("JQDLTB decision owner must use a typed identity")
+        return value
+
+    @field_validator("source_fields")
+    @classmethod
+    def _unique_source_fields(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("JQDLTB decision source fields must be unique")
+        return tuple(sorted(value))
+
+    @model_validator(mode="after")
+    def _consistent_decision(self) -> JqdltbDecision:
+        if self.evidence is None:
+            raise ValueError("every JQDLTB decision requires current-state evidence")
+        binding = (
+            self.selected_rule_ref,
+            self.selected_rule_sha256,
+        )
+        if any(value is not None for value in binding) and not all(binding):
+            raise ValueError("JQDLTB decision rule binding requires ref and SHA-256")
+        semantic_binding = (
+            self.semantic_contract_ref,
+            self.semantic_contract_sha256,
+            self.method,
+        )
+        if any(value not in (None, ()) for value in semantic_binding) and not all(
+            semantic_binding
+        ):
+            raise ValueError("JQDLTB decision semantic binding is incomplete")
+        selected = self.status in {
+            JqdltbDecisionStatus.SUBMITTED,
+            JqdltbDecisionStatus.ACCEPTED,
+            JqdltbDecisionStatus.DEFERRED,
+        }
+        if selected and self.selected_value is None:
+            raise ValueError(
+                "submitted JQDLTB decision requires selected value and evidence"
+            )
+        if selected and not self.owner_ref.startswith(("human:", "team:")):
+            raise ValueError("submitted JQDLTB decision requires a human or team owner")
+        if not selected and (
+            any(
+                value is not None
+                for value in (
+                    self.selected_value,
+                    self.selected_resource_version_id,
+                    self.selected_artifact_sha256,
+                    self.selected_rule_ref,
+                    self.selected_rule_sha256,
+                    self.semantic_contract_ref,
+                    self.semantic_contract_sha256,
+                    self.method,
+                )
+            )
+            or self.source_fields
+        ):
+            raise ValueError("pending JQDLTB decision must not carry a selected rule")
+        if self.target == "canonical_key" and self.selected_value not in {None, "TBBH"}:
+            raise ValueError("JQDLTB canonical key decision only permits TBBH")
+        if self.target == "nonpositive_area_policy" and self.selected_value not in {
+            None,
+            "quarantine",
+            "business_correction",
+        }:
+            raise ValueError("invalid JQDLTB non-positive area decision")
+        if self.target == "area_deviation_policy" and self.selected_value not in {
+            None,
+            "preserve_source",
+            "use_geometry",
+            "quarantine",
+        }:
+            raise ValueError("invalid JQDLTB area deviation decision")
+        deferred = self.status is JqdltbDecisionStatus.DEFERRED
+        semantic_deferred = deferred and self.target in {"SJNF", "MSSM"}
+        correction_deferred = (
+            deferred
+            and self.target == "nonpositive_area_policy"
+            and self.selected_value == "business_correction"
+        )
+        if deferred and not (semantic_deferred or correction_deferred):
+            raise ValueError(
+                "JQDLTB deferred decisions are limited to semantic quarantine or pending correction"
+            )
+        if semantic_deferred:
+            if self.selected_value != "quarantine_until_authority_exists":
+                raise ValueError(
+                    "deferred JQDLTB semantic decision requires quarantine policy"
+                )
+            if self.source_fields or any(semantic_binding):
+                raise ValueError(
+                    "deferred JQDLTB semantic decision must not carry a derivation rule"
+                )
+        elif correction_deferred:
+            if self.selected_resource_version_id is not None or self.selected_artifact_sha256 is not None:
+                raise ValueError(
+                    "deferred business correction must not carry an artifact binding"
+                )
+        elif self.target in {"SJNF", "MSSM"} and selected:
+            if (
+                self.selected_value == "quarantine_until_authority_exists"
+                or not self.source_fields
+                or not all(semantic_binding)
+            ):
+                raise ValueError(
+                    f"{self.target} decision requires source fields and semantic rule binding"
+                )
+        if (
+            self.target == "nonpositive_area_policy"
+            and self.selected_value == "business_correction"
+            and not correction_deferred
+        ):
+            if (
+                self.selected_resource_version_id is None
+                or self.selected_artifact_sha256 is None
+            ):
+                raise ValueError(
+                    "business correction decision requires resource version and SHA-256"
+                )
+        if self.target == "area_deviation_policy" and self.selected_value == "use_geometry":
+            if self.selected_rule_ref is None or self.selected_rule_sha256 is None:
+                raise ValueError(
+                    "use-geometry decision requires rule ref and SHA-256"
+                )
+        return self
+
+
+class JqdltbDecisionPacket(FrozenContract):
+    """Machine-readable business intake before transformation approval."""
+
+    schema_id = "jqdltb_decision_packet"
+
+    packet_id: ShortName
+    status: JqdltbDecisionPacketStatus = JqdltbDecisionPacketStatus.DRAFT
+    identity: JqdltbDecisionIdentity
+    decisions: tuple[JqdltbDecision, ...] = Field(min_length=len(JQDLTB_DECISION_TARGETS))
+    created_by: NonEmptyText
+    created_at: datetime
+    submitted_by: NonEmptyText | None = None
+    submitted_at: datetime | None = None
+    packet_sha256: Sha256
+
+    @field_validator("created_at")
+    @classmethod
+    def _utc_packet_time(cls, value: datetime) -> datetime:
+        return _aware_utc(value)
+
+    @field_validator("submitted_at")
+    @classmethod
+    def _utc_submission_time(cls, value: datetime | None) -> datetime | None:
+        return _aware_utc(value) if value is not None else None
+
+    @model_validator(mode="after")
+    def _consistent_packet(self) -> JqdltbDecisionPacket:
+        if not self.created_by.startswith(("human:", "workload:", "agent:")):
+            raise ValueError("JQDLTB decision packet creator must use a typed identity")
+        submitted = (self.submitted_by, self.submitted_at)
+        if self.status is JqdltbDecisionPacketStatus.SUBMITTED:
+            if not all(value is not None for value in submitted):
+                raise ValueError("submitted JQDLTB decision packet requires submitter and time")
+            if not self.submitted_by.startswith("human:"):
+                raise ValueError("submitted JQDLTB decision packet requires human submitter")
+            if self.submitted_at < self.created_at:
+                raise ValueError("decision packet submission cannot predate creation")
+        elif any(value is not None for value in submitted):
+            raise ValueError("draft JQDLTB decision packet cannot carry submission metadata")
+        targets = tuple(item.target for item in self.decisions)
+        if set(targets) != set(JQDLTB_DECISION_TARGETS) or len(targets) != len(
+            JQDLTB_DECISION_TARGETS
+        ):
+            raise ValueError("JQDLTB decision packet must contain exactly the required targets")
+        for decision in self.decisions:
+            if decision.evidence is not None and decision.evidence.identity != self.identity:
+                raise ValueError(
+                    f"JQDLTB decision evidence identity drifted for {decision.target}"
+                )
+        payload = self.model_dump(mode="json", exclude={"packet_sha256"})
+        if self.packet_sha256 != canonical_json_fingerprint(payload):
+            raise ValueError("JQDLTB decision packet fingerprint is invalid")
+        return self
+
+    def to_strategy(self) -> JqdltbTransformationStrategy:
+        """Compile submitted transformation decisions into the existing strategy contract."""
+
+        if self.status is not JqdltbDecisionPacketStatus.SUBMITTED:
+            raise PlatformContractError(
+                "only a submitted JQDLTB decision packet can become a strategy"
+            )
+        by_target = {item.target: item for item in self.decisions}
+        required = (
+            "canonical_key",
+            "nonpositive_area_policy",
+            "area_deviation_policy",
+            "SJNF",
+            "MSSM",
+        )
+        if any(
+            by_target[target].status
+            not in {JqdltbDecisionStatus.SUBMITTED, JqdltbDecisionStatus.ACCEPTED}
+            for target in required
+        ):
+            raise PlatformContractError("JQDLTB transformation decisions are not fully submitted")
+        nonpositive = by_target["nonpositive_area_policy"]
+        deviation = by_target["area_deviation_policy"]
+        if nonpositive.selected_value is None or deviation.selected_value is None:
+            raise PlatformContractError("JQDLTB area decisions are incomplete")
+        derivations = tuple(
+            JqdltbDerivationContract(
+                target_field=target,
+                status=JqdltbDerivationStatus.PROPOSED,
+                source_fields=by_target[target].source_fields,
+                semantic_contract_ref=by_target[target].semantic_contract_ref,
+                semantic_contract_sha256=by_target[target].semantic_contract_sha256,
+                method=by_target[target].method,
+            )
+            for target in ("SJNF", "MSSM")
+        )
+        return JqdltbTransformationStrategy(
+            canonical_key=by_target["canonical_key"].selected_value or "",
+            nonpositive_area_policy=nonpositive.selected_value,
+            business_correction_resource_version_id=nonpositive.selected_resource_version_id,
+            business_correction_sha256=nonpositive.selected_artifact_sha256
+            if nonpositive.selected_value == "business_correction"
+            else None,
+            area_deviation_policy=deviation.selected_value,
+            geometry_area_rule_ref=deviation.selected_rule_ref
+            if deviation.selected_value == "use_geometry"
+            else None,
+            geometry_area_rule_sha256=deviation.selected_rule_sha256
+            if deviation.selected_value == "use_geometry"
+            else None,
+            derivation_contracts=derivations,
+        )
+
+
+def build_jqdltb_decision_packet(
+    *,
+    packet_id: str,
+    identity: JqdltbDecisionIdentity,
+    decisions: tuple[JqdltbDecision, ...],
+    created_by: str,
+    created_at: datetime,
+    status: JqdltbDecisionPacketStatus | str = JqdltbDecisionPacketStatus.DRAFT,
+    submitted_by: str | None = None,
+    submitted_at: datetime | None = None,
+) -> JqdltbDecisionPacket:
+    """Build a hash-complete packet without changing authority state."""
+
+    payload = {
+        "packet_id": packet_id,
+        "status": JqdltbDecisionPacketStatus(status).value,
+        "identity": identity.model_dump(mode="json"),
+        "decisions": [item.model_dump(mode="json") for item in decisions],
+        "created_by": created_by,
+        "created_at": _aware_utc(created_at).isoformat().replace("+00:00", "Z"),
+        "submitted_by": submitted_by,
+        "submitted_at": (
+            _aware_utc(submitted_at).isoformat().replace("+00:00", "Z")
+            if submitted_at is not None
+            else None
+        ),
+    }
+    payload["packet_sha256"] = canonical_json_fingerprint(payload)
+    return JqdltbDecisionPacket.model_validate(payload)
+
+
+class JqdltbSemanticFieldQuarantineEntry(FrozenContract):
+    """One source record/target field withheld from a non-promotable candidate."""
+
+    schema_id = "jqdltb_semantic_field_quarantine_entry"
+
+    record_key: NonEmptyText
+    source_feature_id: NonEmptyText
+    target_field: Literal["SJNF", "MSSM"]
+    reason: Literal["semantic_derivation_unresolved"]
+    policy: Literal["quarantine_until_authority_exists"]
+    candidate_source_fields: tuple[ShortName, ...] = ()
+
+    @field_validator("candidate_source_fields")
+    @classmethod
+    def _unique_candidate_fields(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("JQDLTB semantic quarantine candidate fields must be unique")
+        return tuple(sorted(value))
+
+
+class JqdltbSemanticFieldQuarantineArtifact(FrozenContract):
+    """Typed, content-addressed receipt for unresolved semantic target fields."""
+
+    schema_id = "jqdltb_semantic_field_quarantine"
+
+    schema_name: Literal["gda.jqdltb_semantic_field_quarantine.v1"] = Field(
+        default="gda.jqdltb_semantic_field_quarantine.v1", alias="schema"
+    )
+    tenant_id: TenantId
+    source_resource_version_id: UUID
+    source_resource_urn: ResourceURNText
+    archive_sha256: Sha256
+    bundle_sha256: Sha256
+    standard_version_ref: NonEmptyText
+    standard_fingerprint: Sha256
+    target_fields: tuple[Literal["SJNF", "MSSM"], ...] = Field(min_length=1)
+    records: tuple[JqdltbSemanticFieldQuarantineEntry, ...] = Field(min_length=1)
+    records_quarantined: int = Field(ge=1)
+    promotable: Literal[False] = False
+    authority_state_created: Literal[False] = False
+    data_product_version_created: Literal[False] = False
+    artifact_sha256: Sha256
+
+    @field_validator("target_fields")
+    @classmethod
+    def _canonical_target_fields(
+        cls, value: tuple[Literal["SJNF", "MSSM"], ...]
+    ) -> tuple[Literal["SJNF", "MSSM"], ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("JQDLTB semantic quarantine target fields must be unique")
+        return tuple(sorted(value))
+
+    @model_validator(mode="after")
+    def _consistent_quarantine(self) -> JqdltbSemanticFieldQuarantineArtifact:
+        source_identity = parse_resource_urn(self.source_resource_urn)
+        if source_identity["tenant_id"] != self.tenant_id:
+            raise ValueError("JQDLTB semantic quarantine source tenant must match tenant")
+        if self.records_quarantined != len(self.records):
+            raise ValueError("JQDLTB semantic quarantine record count does not match entries")
+        target_fields = set(self.target_fields)
+        if any(item.target_field not in target_fields for item in self.records):
+            raise ValueError("JQDLTB semantic quarantine entry target is not declared")
+        entry_keys = {(item.record_key, item.target_field) for item in self.records}
+        if len(entry_keys) != len(self.records):
+            raise ValueError(
+                "JQDLTB semantic quarantine entries must be unique per record and field"
+            )
+        expected = jqdltb_semantic_field_quarantine_fingerprint(
+            tenant_id=self.tenant_id,
+            source_resource_version_id=self.source_resource_version_id,
+            source_resource_urn=self.source_resource_urn,
+            archive_sha256=self.archive_sha256,
+            bundle_sha256=self.bundle_sha256,
+            standard_version_ref=self.standard_version_ref,
+            standard_fingerprint=self.standard_fingerprint,
+            target_fields=self.target_fields,
+            records=tuple(item.model_dump(mode="json") for item in self.records),
+        )
+        if self.artifact_sha256 != expected:
+            raise ValueError("JQDLTB semantic quarantine artifact fingerprint is invalid")
+        return self
+
+
+class JqdltbTransformationContract(FrozenContract):
+    """Approval-gated source-to-canonical transformation for the AR-0 slice.
+
+    The approval-required form carries only immutable inputs and unresolved
+    choices. A dry-run form carries one complete proposal. Only an approved
+    proposal can be compiled into the executable form.
+    """
+
+    schema_id = "jqdltb_transformation_contract"
+
+    tenant_id: TenantId
+    mode: JqdltbTransformationMode
+    source_resource_version_id: UUID
+    source_resource_urn: ResourceURNText
+    archive_sha256: Sha256
+    bundle_sha256: Sha256
+    standard_version_ref: NonEmptyText
+    standard_fingerprint: Sha256
+    diagnostic_sha256: Sha256
+    semantic_candidate_audit_sha256: Sha256 | None = None
+    canonical_key: Literal["TBBH"]
+    nonpositive_area_policy: JqdltbAreaPolicy | None = None
+    business_correction_resource_version_id: UUID | None = None
+    business_correction_sha256: Sha256 | None = None
+    area_deviation_policy: JqdltbAreaDeviationPolicy | None = None
+    geometry_area_rule_ref: NonEmptyText | None = None
+    geometry_area_rule_sha256: Sha256 | None = None
+    derivation_contracts: tuple[JqdltbDerivationContract, ...] = Field(min_length=2)
+    plan_sha256: Sha256
+    approval_case: ApprovalCase | None = None
+    contract_sha256: Sha256
+    created_by: NonEmptyText
+    created_at: datetime
+
+    @field_validator("source_resource_urn")
+    @classmethod
+    def _valid_source_urn(cls, value: str) -> str:
+        identity = parse_resource_urn(value)
+        if identity["resource_kind"] != "dataset":
+            raise ValueError("JQDLTB source resource must use resource kind 'dataset'")
+        return value
+
+    @field_validator("created_at")
+    @classmethod
+    def _utc_created_at(cls, value: datetime) -> datetime:
+        return _aware_utc(value)
+
+    @model_validator(mode="after")
+    def _consistent_contract(self) -> JqdltbTransformationContract:
+        source_identity = parse_resource_urn(self.source_resource_urn)
+        if source_identity["tenant_id"] != self.tenant_id:
+            raise ValueError("JQDLTB source tenant must match tenant_id")
+        if not self.created_by.startswith(("human:", "workload:", "agent:")):
+            raise ValueError("JQDLTB contract creator must use a typed subject identity")
+
+        targets = tuple(item.target_field for item in self.derivation_contracts)
+        if set(targets) != {"SJNF", "MSSM"} or len(targets) != 2:
+            raise ValueError("JQDLTB contract must declare exactly SJNF and MSSM derivations")
+
+        pending = all(
+            item.status is JqdltbDerivationStatus.PENDING_APPROVAL
+            for item in self.derivation_contracts
+        )
+        if self.mode in {
+            JqdltbTransformationMode.DRY_RUN,
+            JqdltbTransformationMode.EXECUTE,
+        }:
+            if self.nonpositive_area_policy is None or self.area_deviation_policy is None:
+                raise ValueError("proposed JQDLTB contract requires area policies")
+            _validate_jqdltb_selected_strategy(
+                nonpositive_area_policy=self.nonpositive_area_policy,
+                business_correction_resource_version_id=(
+                    self.business_correction_resource_version_id
+                ),
+                business_correction_sha256=self.business_correction_sha256,
+                area_deviation_policy=self.area_deviation_policy,
+                geometry_area_rule_ref=self.geometry_area_rule_ref,
+                geometry_area_rule_sha256=self.geometry_area_rule_sha256,
+                derivation_contracts=self.derivation_contracts,
+            )
+        if self.mode is JqdltbTransformationMode.EXECUTE:
+            if self.approval_case is None:
+                raise ValueError(
+                    "executable JQDLTB contract requires an approved ApprovalCase"
+                )
+            if self.approval_case.status is not ApprovalCaseStatus.APPROVED:
+                raise ValueError("JQDLTB transformation ApprovalCase must be approved")
+            if self.approval_case.tenant_id != self.tenant_id:
+                raise ValueError("JQDLTB transformation approval tenant must match")
+            if self.approval_case.target_resource_urn != self.source_resource_urn:
+                raise ValueError("JQDLTB ApprovalCase must target the source dataset")
+            if self.approval_case.action != JQDLTB_TRANSFORMATION_ACTION:
+                raise ValueError(
+                    "JQDLTB ApprovalCase action must be jqdltb.transform"
+                )
+            if self.approval_case.target_fingerprint != self.plan_sha256:
+                raise ValueError("approval must bind the exact JQDLTB transformation plan")
+            if self.approval_case.request_context != self.approval_context():
+                raise ValueError("JQDLTB ApprovalCase context must describe the exact plan")
+            if (
+                self.approval_case.decided_at is None
+                or self.approval_case.decided_at > self.created_at
+                or self.created_at >= self.approval_case.expires_at
+            ):
+                raise ValueError(
+                    "JQDLTB executable contract must be compiled during approval validity"
+                )
+        elif self.mode is JqdltbTransformationMode.DRY_RUN:
+            if self.approval_case is not None:
+                raise ValueError("JQDLTB dry-run proposal cannot carry an ApprovalCase")
+        else:
+            if any(
+                value is not None
+                for value in (
+                    self.nonpositive_area_policy,
+                    self.business_correction_resource_version_id,
+                    self.business_correction_sha256,
+                    self.area_deviation_policy,
+                    self.geometry_area_rule_ref,
+                    self.geometry_area_rule_sha256,
+                )
+            ):
+                raise ValueError(
+                    "approval-required JQDLTB contract cannot select strategy values"
+                )
+            if not pending or self.approval_case is not None:
+                raise ValueError(
+                    "approval-required JQDLTB contract must leave strategies pending"
+                )
+
+        expected_plan = jqdltb_transformation_plan_fingerprint(
+            tenant_id=self.tenant_id,
+            source_resource_version_id=self.source_resource_version_id,
+            source_resource_urn=self.source_resource_urn,
+            archive_sha256=self.archive_sha256,
+            bundle_sha256=self.bundle_sha256,
+            standard_version_ref=self.standard_version_ref,
+            standard_fingerprint=self.standard_fingerprint,
+            diagnostic_sha256=self.diagnostic_sha256,
+            canonical_key=self.canonical_key,
+            nonpositive_area_policy=self.nonpositive_area_policy,
+            business_correction_resource_version_id=(
+                self.business_correction_resource_version_id
+            ),
+            business_correction_sha256=self.business_correction_sha256,
+            area_deviation_policy=self.area_deviation_policy,
+            geometry_area_rule_ref=self.geometry_area_rule_ref,
+            geometry_area_rule_sha256=self.geometry_area_rule_sha256,
+            derivation_contracts=tuple(
+                item.model_dump(mode="json") for item in self.derivation_contracts
+            ),
+            semantic_candidate_audit_sha256=self.semantic_candidate_audit_sha256,
+        )
+        if self.plan_sha256 != expected_plan:
+            raise ValueError("JQDLTB plan_sha256 does not match immutable plan content")
+        expected_contract = jqdltb_transformation_contract_fingerprint(
+            self.model_dump(mode="json")
+        )
+        if self.contract_sha256 != expected_contract:
+            raise ValueError("JQDLTB contract_sha256 does not match immutable contract content")
+        return self
+
+    def approval_context(self) -> dict[str, Any]:
+        """Return the human-readable plan summary bound into ApprovalCase."""
+
+        context = {
+            "schema": "gda.jqdltb_transformation_approval_context.v1",
+            "plan_sha256": self.plan_sha256,
+            "source_resource_version_id": str(self.source_resource_version_id),
+            "archive_sha256": self.archive_sha256,
+            "bundle_sha256": self.bundle_sha256,
+            "standard_version_ref": self.standard_version_ref,
+            "standard_fingerprint": self.standard_fingerprint,
+            "diagnostic_sha256": self.diagnostic_sha256,
+            "canonical_key": self.canonical_key,
+            "nonpositive_area_policy": self.nonpositive_area_policy,
+            "business_correction_resource_version_id": (
+                str(self.business_correction_resource_version_id)
+                if self.business_correction_resource_version_id is not None
+                else None
+            ),
+            "business_correction_sha256": self.business_correction_sha256,
+            "area_deviation_policy": self.area_deviation_policy,
+            "geometry_area_rule_ref": self.geometry_area_rule_ref,
+            "geometry_area_rule_sha256": self.geometry_area_rule_sha256,
+            "derivation_contracts": [
+                item.model_dump(mode="json") for item in self.derivation_contracts
+            ],
+        }
+        if self.semantic_candidate_audit_sha256 is not None:
+            context["semantic_candidate_audit_sha256"] = (
+                self.semantic_candidate_audit_sha256
+            )
+        return context
+
+
+def build_jqdltb_transformation_contract(
+    *,
+    tenant_id: str,
+    mode: JqdltbTransformationMode | str,
+    source_resource_version_id: UUID,
+    source_resource_urn: str,
+    archive_sha256: str,
+    bundle_sha256: str,
+    standard_version_ref: str,
+    standard_fingerprint: str,
+    diagnostic_sha256: str,
+    semantic_candidate_audit_sha256: str | None = None,
+    created_by: str,
+    created_at: datetime,
+    canonical_key: str = "TBBH",
+    nonpositive_area_policy: JqdltbAreaPolicy | str | None = None,
+    business_correction_resource_version_id: UUID | None = None,
+    business_correction_sha256: str | None = None,
+    area_deviation_policy: JqdltbAreaDeviationPolicy | str | None = None,
+    geometry_area_rule_ref: str | None = None,
+    geometry_area_rule_sha256: str | None = None,
+    derivation_contracts: tuple[JqdltbDerivationContract, ...] | None = None,
+    approval_case: ApprovalCase | None = None,
+) -> JqdltbTransformationContract:
+    """Build a hash-complete draft or executable JQDLTB contract."""
+
+    if derivation_contracts is None:
+        derivation_contracts = (
+            JqdltbDerivationContract(
+                target_field="SJNF", status=JqdltbDerivationStatus.PENDING_APPROVAL
+            ),
+            JqdltbDerivationContract(
+                target_field="MSSM", status=JqdltbDerivationStatus.PENDING_APPROVAL
+            ),
+        )
+    mode = JqdltbTransformationMode(mode)
+    plan_sha256 = jqdltb_transformation_plan_fingerprint(
+        tenant_id=tenant_id,
+        source_resource_version_id=source_resource_version_id,
+        source_resource_urn=source_resource_urn,
+        archive_sha256=archive_sha256,
+        bundle_sha256=bundle_sha256,
+        standard_version_ref=standard_version_ref,
+        standard_fingerprint=standard_fingerprint,
+        diagnostic_sha256=diagnostic_sha256,
+        canonical_key=canonical_key,
+        nonpositive_area_policy=nonpositive_area_policy,
+        business_correction_resource_version_id=(
+            business_correction_resource_version_id
+        ),
+        business_correction_sha256=business_correction_sha256,
+        area_deviation_policy=area_deviation_policy,
+        geometry_area_rule_ref=geometry_area_rule_ref,
+        geometry_area_rule_sha256=geometry_area_rule_sha256,
+        derivation_contracts=tuple(
+            item.model_dump(mode="json") for item in derivation_contracts
+        ),
+        semantic_candidate_audit_sha256=semantic_candidate_audit_sha256,
+    )
+    payload: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "mode": mode.value,
+        "source_resource_version_id": str(source_resource_version_id),
+        "source_resource_urn": source_resource_urn,
+        "archive_sha256": archive_sha256,
+        "bundle_sha256": bundle_sha256,
+        "standard_version_ref": standard_version_ref,
+        "standard_fingerprint": standard_fingerprint,
+        "diagnostic_sha256": diagnostic_sha256,
+        "semantic_candidate_audit_sha256": semantic_candidate_audit_sha256,
+        "canonical_key": canonical_key,
+        "nonpositive_area_policy": (
+            JqdltbAreaPolicy(nonpositive_area_policy).value
+            if nonpositive_area_policy is not None
+            else None
+        ),
+        "business_correction_resource_version_id": (
+            str(business_correction_resource_version_id)
+            if business_correction_resource_version_id is not None
+            else None
+        ),
+        "business_correction_sha256": business_correction_sha256,
+        "area_deviation_policy": (
+            JqdltbAreaDeviationPolicy(area_deviation_policy).value
+            if area_deviation_policy is not None
+            else None
+        ),
+        "geometry_area_rule_ref": geometry_area_rule_ref,
+        "geometry_area_rule_sha256": geometry_area_rule_sha256,
+        "derivation_contracts": [
+            item.model_dump(mode="json") for item in derivation_contracts
+        ],
+        "plan_sha256": plan_sha256,
+        "approval_case": (
+            approval_case.model_dump(mode="json")
+            if approval_case is not None
+            else None
+        ),
+        "contract_sha256": "0" * 64,
+        "created_by": created_by,
+        "created_at": _aware_utc(created_at).isoformat().replace("+00:00", "Z"),
+    }
+    payload["contract_sha256"] = jqdltb_transformation_contract_fingerprint(payload)
+    return JqdltbTransformationContract.model_validate(payload)
+
+
+def build_jqdltb_transformation_approval_case(
+    proposal: JqdltbTransformationContract,
+    *,
+    case_id: str,
+    requester_subject: str,
+    request_reason: str,
+    requested_at: datetime,
+    expires_at: datetime,
+) -> ApprovalCase:
+    """Build a pending ApprovalCase for one exact dry-run proposal."""
+
+    if proposal.mode is not JqdltbTransformationMode.DRY_RUN:
+        raise PlatformContractError(
+            "JQDLTB approval can only be requested for a complete dry-run proposal"
+        )
+    requested_at = _aware_utc(requested_at)
+    if requested_at < proposal.created_at:
+        raise PlatformContractError("JQDLTB approval request cannot predate its proposal")
+    return ApprovalCase(
+        tenant_id=proposal.tenant_id,
+        approval_case_ref=build_resource_urn(
+            proposal.tenant_id,
+            "approval_case",
+            case_id,
+        ),
+        target_resource_urn=proposal.source_resource_urn,
+        target_fingerprint=proposal.plan_sha256,
+        action=JQDLTB_TRANSFORMATION_ACTION,
+        requester_subject=requester_subject,
+        request_reason=request_reason,
+        request_context=proposal.approval_context(),
+        requested_at=requested_at,
+        expires_at=expires_at,
+    )
+
+
+def compile_jqdltb_executable_contract(
+    proposal: JqdltbTransformationContract,
+    *,
+    approval_case: ApprovalCase,
+    created_by: str,
+    created_at: datetime,
+) -> JqdltbTransformationContract:
+    """Compile the exact approved proposal without accepting strategy overrides."""
+
+    if proposal.mode is not JqdltbTransformationMode.DRY_RUN:
+        raise PlatformContractError(
+            "only a complete JQDLTB dry-run proposal can be compiled"
+        )
+    return build_jqdltb_transformation_contract(
+        tenant_id=proposal.tenant_id,
+        mode=JqdltbTransformationMode.EXECUTE,
+        source_resource_version_id=proposal.source_resource_version_id,
+        source_resource_urn=proposal.source_resource_urn,
+        archive_sha256=proposal.archive_sha256,
+        bundle_sha256=proposal.bundle_sha256,
+        standard_version_ref=proposal.standard_version_ref,
+        standard_fingerprint=proposal.standard_fingerprint,
+        diagnostic_sha256=proposal.diagnostic_sha256,
+        semantic_candidate_audit_sha256=proposal.semantic_candidate_audit_sha256,
+        created_by=created_by,
+        created_at=created_at,
+        canonical_key=proposal.canonical_key,
+        nonpositive_area_policy=proposal.nonpositive_area_policy,
+        business_correction_resource_version_id=(
+            proposal.business_correction_resource_version_id
+        ),
+        business_correction_sha256=proposal.business_correction_sha256,
+        area_deviation_policy=proposal.area_deviation_policy,
+        geometry_area_rule_ref=proposal.geometry_area_rule_ref,
+        geometry_area_rule_sha256=proposal.geometry_area_rule_sha256,
+        derivation_contracts=proposal.derivation_contracts,
+        approval_case=approval_case,
+    )
+
+
+def validate_jqdltb_transformation_execution(
+    contract: JqdltbTransformationContract,
+    *,
+    authoritative_approval_case: ApprovalCase,
+    diagnostic: Mapping[str, Any],
+    archive_sha256: str,
+    bundle_sha256: str,
+    standard_version_ref: str,
+    standard_fingerprint: str,
+    source_resource_version_id: UUID,
+    semantic_candidate_audit: Mapping[str, Any] | None = None,
+    now: datetime | None = None,
+) -> None:
+    """Fail closed before a JQDLTB executor can write any data layer."""
+
+    if contract.mode is not JqdltbTransformationMode.EXECUTE:
+        raise PlatformContractError(
+            f"JQDLTB transformation mode {contract.mode.value} cannot execute"
+        )
+    if (
+        contract.approval_case is None
+        or authoritative_approval_case != contract.approval_case
+        or authoritative_approval_case.status is not ApprovalCaseStatus.APPROVED
+    ):
+        raise PlatformContractError(
+            "JQDLTB execution requires the matching authoritative ApprovalCase"
+        )
+    if now is not None:
+        now = _aware_utc(now)
+        if now >= authoritative_approval_case.expires_at:
+            raise PlatformContractError("JQDLTB transformation ApprovalCase has expired")
+    expected_inputs = {
+        "archive_sha256": archive_sha256,
+        "bundle_sha256": bundle_sha256,
+        "standard_version_ref": standard_version_ref,
+        "standard_fingerprint": standard_fingerprint,
+        "source_resource_version_id": source_resource_version_id,
+    }
+    observed_inputs = {
+        "archive_sha256": contract.archive_sha256,
+        "bundle_sha256": contract.bundle_sha256,
+        "standard_version_ref": contract.standard_version_ref,
+        "standard_fingerprint": contract.standard_fingerprint,
+        "source_resource_version_id": contract.source_resource_version_id,
+    }
+    for field, expected in expected_inputs.items():
+        if observed_inputs[field] != expected:
+            raise PlatformContractError(f"JQDLTB transformation input drift: {field}")
+
+    diagnostic_payload = dict(diagnostic)
+    observed_diagnostic_sha256 = diagnostic_payload.pop("diagnostic_sha256", None)
+    if observed_diagnostic_sha256 != canonical_json_fingerprint(diagnostic_payload):
+        raise PlatformContractError("JQDLTB diagnostic fingerprint is invalid")
+    if observed_diagnostic_sha256 != contract.diagnostic_sha256:
+        raise PlatformContractError("JQDLTB diagnostic fingerprint drifted")
+
+    if contract.semantic_candidate_audit_sha256 is not None:
+        if semantic_candidate_audit is None:
+            raise PlatformContractError(
+                "JQDLTB semantic candidate audit is required by the approved plan"
+            )
+        semantic_payload = dict(semantic_candidate_audit)
+        observed_semantic_sha256 = semantic_payload.pop("report_sha256", None)
+        if observed_semantic_sha256 != canonical_json_fingerprint(semantic_payload):
+            raise PlatformContractError("JQDLTB semantic candidate audit fingerprint is invalid")
+        if observed_semantic_sha256 != contract.semantic_candidate_audit_sha256:
+            raise PlatformContractError("JQDLTB semantic candidate audit fingerprint drifted")
+        identities = semantic_candidate_audit.get("identities")
+        if not isinstance(identities, Mapping):
+            raise PlatformContractError("JQDLTB semantic candidate audit identity is missing")
+        if (
+            identities.get("archive_sha256") != contract.archive_sha256
+            or identities.get("bundle_sha256") != contract.bundle_sha256
+            or (
+                f"{identities.get('standard_doc_code')}:"
+                f"{identities.get('standard_version_label')}"
+            )
+            != contract.standard_version_ref
+        ):
+            raise PlatformContractError("JQDLTB semantic candidate audit identity drifted")
+        candidates = semantic_candidate_audit.get("candidates")
+        if not isinstance(candidates, Mapping):
+            raise PlatformContractError("JQDLTB semantic candidate audit candidates are missing")
+        decisions = semantic_candidate_audit.get("decisions")
+        if not isinstance(decisions, Mapping):
+            raise PlatformContractError("JQDLTB semantic candidate audit decisions are missing")
+        for derivation in contract.derivation_contracts:
+            target_candidates = candidates.get(derivation.target_field)
+            if not isinstance(target_candidates, list):
+                raise PlatformContractError(
+                    f"JQDLTB semantic candidates are missing for {derivation.target_field}"
+                )
+            if decisions.get(derivation.target_field) not in {
+                "accepted_candidate_available",
+                "accepted",
+                "approved",
+            }:
+                raise PlatformContractError(
+                    f"JQDLTB semantic decision is not accepted for {derivation.target_field}"
+                )
+            statuses = {
+                str(item.get("field")): str(item.get("status"))
+                for item in target_candidates
+                if isinstance(item, Mapping) and item.get("field") and item.get("status")
+            }
+            unapproved = sorted(
+                field
+                for field in derivation.source_fields
+                if statuses.get(field) not in {"accepted", "approved"}
+            )
+            if unapproved:
+                raise PlatformContractError(
+                    f"JQDLTB {derivation.target_field} source fields lost semantic admission: "
+                    + ", ".join(unapproved)
+                )
+    source = diagnostic.get("source")
+    if not isinstance(source, Mapping):
+        raise PlatformContractError("JQDLTB diagnostic source identity is missing")
+    if source.get("archive_sha256") != contract.archive_sha256:
+        raise PlatformContractError("JQDLTB diagnostic archive checksum drifted")
+    if source.get("bundle_sha256") != contract.bundle_sha256:
+        raise PlatformContractError("JQDLTB diagnostic bundle checksum drifted")
+    candidate_fields = {
+        item.get("field")
+        for item in (diagnostic.get("primary_key") or {}).get("candidate_fields") or ()
+        if isinstance(item, Mapping)
+    }
+    if contract.canonical_key not in candidate_fields:
+        raise PlatformContractError("approved JQDLTB canonical key is not a diagnostic candidate")
+    numeric = {
+        str(item.get("field")): int(item.get("nonpositive_count", 0))
+        for item in diagnostic.get("numeric_constraints") or ()
+        if isinstance(item, Mapping)
+    }
+    if any(value > 0 for value in numeric.values()) and contract.nonpositive_area_policy is None:
+        raise PlatformContractError("JQDLTB non-positive area policy is missing")
+    area = diagnostic.get("area_consistency") or {}
+    if int(area.get("outside_tolerance_count", 0)) > 0 and contract.area_deviation_policy is None:
+        raise PlatformContractError("JQDLTB area deviation policy is missing")
 
 
 class SourceSyncDefinitionVersion(FrozenContract):
@@ -1997,6 +3409,78 @@ class PlatformCommand(FrozenContract):
         if self.command_type == PlatformCommandType.DOLPHINSCHEDULER_DISPATCH:
             if self.trigger_observation_id is not None:
                 raise ValueError("dispatch command cannot reference a callback observation")
+        if self.command_type == PlatformCommandType.BLUEPRINT_PROVIDER_EXECUTE:
+            payload = self.payload
+            if (
+                self.trigger_observation_id is not None
+                or payload.get("schema")
+                != "gda.data_product_blueprint_duckdb_execute_command.v1"
+                or payload.get("run_id") != str(self.run_id)
+                or payload.get("execution_plan_artifact_id")
+                != str(self.execution_plan_artifact_id)
+                or payload.get("engine") != "duckdb"
+                or payload.get("attempt_no") != 1
+                or re.fullmatch(
+                    r"[0-9a-f]{64}", str(payload.get("execution_plan_sha256"))
+                )
+                is None
+                or re.fullmatch(
+                    r"[0-9a-f]{64}", str(payload.get("definition_sha256"))
+                )
+                is None
+                or not payload.get("definition_version_id")
+            ):
+                raise ValueError(
+                    "Blueprint provider execute command must bind an exact DuckDB plan"
+                )
+        if self.command_type == PlatformCommandType.BLUEPRINT_PROVIDER_RETRY:
+            payload = self.payload
+            if (
+                self.trigger_observation_id is None
+                or payload.get("schema")
+                != "gda.data_product_blueprint_provider_retry_command.v1"
+                or payload.get("run_id") != str(self.run_id)
+                or payload.get("execution_plan_artifact_id")
+                != str(self.execution_plan_artifact_id)
+                or payload.get("observation_id") != str(self.trigger_observation_id)
+                or not isinstance(payload.get("retry_attempt"), int)
+                or not isinstance(payload.get("max_retry_attempts"), int)
+                or payload.get("retry_attempt", 0) < 1
+                or payload.get("retry_attempt") >= payload.get("max_retry_attempts", 0)
+                or not isinstance(payload.get("backoff_seconds"), int)
+                or payload.get("backoff_seconds", 0) < 1
+                or re.fullmatch(
+                    r"[0-9a-f]{64}", str(payload.get("retry_receipt_sha256"))
+                )
+                is None
+            ):
+                raise ValueError(
+                    "Blueprint provider retry command must bind exact retry evidence"
+                )
+        if self.command_type == PlatformCommandType.GIS_SERVICE_ENDPOINT_WARMUP:
+            payload = self.payload
+            if (
+                self.trigger_observation_id is not None
+                or payload.get("schema")
+                != "gda.gis_service_endpoint_warmup_command.v1"
+                or payload.get("run_id") != str(self.run_id)
+                or payload.get("execution_plan_artifact_id")
+                != str(self.execution_plan_artifact_id)
+                or payload.get("provider_system") != "martin"
+                or re.fullmatch(
+                    r"[0-9a-f]{64}", str(payload.get("execution_plan_sha256"))
+                )
+                is None
+                or re.fullmatch(
+                    r"[0-9a-f]{64}", str(payload.get("sample_set_sha256"))
+                )
+                is None
+                or not payload.get("endpoint_revision_id")
+                or not payload.get("service_release_binding_id")
+            ):
+                raise ValueError(
+                    "GIS endpoint warmup command must bind an exact Martin plan"
+                )
         if self.command_type == PlatformCommandType.METRIC_QUERY_EXECUTE:
             payload = self.payload
             engine = payload.get("engine")
@@ -2379,11 +3863,22 @@ class IncidentNotification(FrozenContract):
     claimed_by: NonEmptyText | None = None
     claimed_until: datetime | None = None
     last_error: NonEmptyText | None = None
+    provider_receipt: dict[str, Any] = Field(default_factory=dict)
+    receipt_sha256: Sha256 | None = None
+    terminal_worker_id: NonEmptyText | None = None
+    recovery_count: Annotated[int, Field(ge=0, le=10)] = 0
+    last_recovered_by: NonEmptyText | None = None
+    last_recovery_reason: NonEmptyText | None = None
+    last_recovered_at: datetime | None = None
     created_at: datetime
     completed_at: datetime | None = None
 
     @field_validator(
-        "available_at", "claimed_until", "created_at", "completed_at"
+        "available_at",
+        "claimed_until",
+        "last_recovered_at",
+        "created_at",
+        "completed_at",
     )
     @classmethod
     def _utc_delivery_time(cls, value: datetime | None) -> datetime | None:
@@ -2397,14 +3892,109 @@ class IncidentNotification(FrozenContract):
         claimed = self.claimed_by is not None and self.claimed_until is not None
         if (self.claimed_by is None) != (self.claimed_until is None):
             raise ValueError("notification claim owner and expiry must be set together")
+        recovery_values = (
+            self.last_recovered_by,
+            self.last_recovery_reason,
+            self.last_recovered_at,
+        )
+        if self.recovery_count == 0 and any(value is not None for value in recovery_values):
+            raise ValueError("unrecovered notification cannot have recovery evidence")
+        if self.recovery_count > 0:
+            if not all(value is not None for value in recovery_values):
+                raise ValueError("recovered notification requires complete recovery evidence")
+            if not self.last_recovered_by.startswith("human:"):
+                raise ValueError("notification recovery must use human identity")
         if self.status == IncidentNotificationStatus.PENDING:
-            if claimed or self.completed_at is not None:
+            if (
+                claimed
+                or self.completed_at is not None
+                or self.provider_receipt
+                or self.receipt_sha256 is not None
+                or self.terminal_worker_id is not None
+            ):
                 raise ValueError("pending notification cannot be claimed or completed")
         elif self.status == IncidentNotificationStatus.IN_FLIGHT:
-            if not claimed or self.completed_at is not None:
+            if (
+                not claimed
+                or self.completed_at is not None
+                or self.provider_receipt
+                or self.receipt_sha256 is not None
+                or self.terminal_worker_id is not None
+            ):
                 raise ValueError("in-flight notification requires an active claim")
-        elif claimed or self.completed_at is None:
-            raise ValueError("completed notification must release its claim")
+        elif self.status == IncidentNotificationStatus.DONE:
+            if (
+                claimed
+                or self.completed_at is None
+                or not self.provider_receipt
+                or self.receipt_sha256 is None
+                or self.terminal_worker_id is None
+                or self.last_error is not None
+            ):
+                raise ValueError("done notification requires a terminal provider receipt")
+            schema = self.provider_receipt.get("schema")
+            if schema == "gda.alertmanager_provider_receipt.v1":
+                if (
+                    self.provider_receipt.get("provider") != "alertmanager"
+                    or self.provider_receipt.get("accepted") is not True
+                    or not isinstance(self.provider_receipt.get("http_status"), int)
+                    or not 200 <= self.provider_receipt["http_status"] <= 299
+                    or self.provider_receipt.get("destination_ref")
+                    != self.destination_ref
+                ):
+                    raise ValueError("Alertmanager provider receipt is invalid")
+            elif schema != "gda.data_incident_notification_legacy_receipt.v1":
+                raise ValueError("done notification receipt schema is invalid")
+        elif (
+            claimed
+            or self.completed_at is None
+            or self.provider_receipt
+            or self.receipt_sha256 is None
+            or self.terminal_worker_id is None
+            or self.last_error is None
+        ):
+            raise ValueError("failed notification requires terminal failure evidence")
+        return self
+
+
+class IncidentNotificationRecoveryEvent(FrozenContract):
+    """Immutable audit evidence for one governed DataIncident recovery."""
+
+    schema_id = "incident_notification_recovery_event"
+
+    tenant_id: TenantId
+    recovery_event_id: UUID
+    notification_id: UUID
+    incident_id: UUID
+    incident_event_id: UUID
+    recovery_no: Annotated[int, Field(ge=1, le=10)]
+    actor_subject: NonEmptyText
+    reason: NonEmptyText
+    previous_status: IncidentNotificationStatus
+    previous_attempt_count: Annotated[int, Field(ge=1)]
+    previous_max_attempts: Annotated[int, Field(ge=1, le=100)]
+    previous_last_error: NonEmptyText
+    previous_provider_receipt: dict[str, Any] = Field(default_factory=dict)
+    previous_receipt_sha256: Sha256
+    previous_terminal_worker_id: NonEmptyText
+    previous_completed_at: datetime
+    occurred_at: datetime
+
+    @field_validator("previous_completed_at", "occurred_at")
+    @classmethod
+    def _utc_recovery_time(cls, value: datetime) -> datetime:
+        return _aware_utc(value)
+
+    @model_validator(mode="after")
+    def _consistent_recovery(self) -> IncidentNotificationRecoveryEvent:
+        if self.previous_status is not IncidentNotificationStatus.FAILED:
+            raise ValueError("incident recovery must preserve a failed notification")
+        if self.previous_attempt_count < self.previous_max_attempts:
+            raise ValueError("incident recovery requires bounded terminal attempts")
+        if self.previous_provider_receipt:
+            raise ValueError("failed incident recovery cannot carry provider acceptance")
+        if self.actor_subject.split(":", 1)[0] != "human":
+            raise ValueError("incident notification recovery must use human identity")
         return self
 
 
@@ -2603,6 +4193,12 @@ CONTRACT_MODELS = (
     ApprovalCaseEvent,
     SourceAdapterBinding,
     SourceSyncGovernanceContract,
+    JqdltbDerivationContract,
+    JqdltbTransformationStrategy,
+    JqdltbDecisionPacket,
+    JqdltbSemanticFieldQuarantineEntry,
+    JqdltbSemanticFieldQuarantineArtifact,
+    JqdltbTransformationContract,
     SourceSyncDefinitionVersion,
     PostgresqlCdcFailoverRecoveryPlan,
     PostgresqlCdcFailoverResnapshotAdmission,
@@ -2620,6 +4216,7 @@ CONTRACT_MODELS = (
     DataIncident,
     DataIncidentEvent,
     IncidentNotification,
+    IncidentNotificationRecoveryEvent,
     IncidentNotificationEnvelope,
     FrameworkAttemptObservation,
     QualityResult,

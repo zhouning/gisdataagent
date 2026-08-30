@@ -8,7 +8,7 @@ Mocks all DB/LLM dependencies to keep tests fast and offline.
 import asyncio
 import inspect
 import unittest
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from typer.testing import CliRunner
 

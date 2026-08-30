@@ -39,6 +39,10 @@ from data_agent.nl2sql_intent import classify_rule, IntentLabel
     ("找出离 POI '重庆北站' 最近的 5 条道路", IntentLabel.KNN),
     ("按 fclass 分组统计道路总数", IntentLabel.AGGREGATION),
     ("显示所有 POI 的位置", IntentLabel.PREVIEW_LISTING),
+    ("限速超过了 100 的主干道", IntentLabel.ATTRIBUTE_FILTER),
+    ("三甲医院周边500米范围内的住宅楼平均层数", IntentLabel.SPATIAL_JOIN),
+    ("土地里分布着哪些兴趣点", IntentLabel.SPATIAL_JOIN),
+    ("找出有林地地块的中心点坐标", IntentLabel.CATEGORY_FILTER),
     ("把 DLMC 等于 '其他林地' 的统一改成 '林地'", IntentLabel.REFUSAL_INTENT),
 ])
 def test_classify_rule_returns_expected_intent(question, expected):

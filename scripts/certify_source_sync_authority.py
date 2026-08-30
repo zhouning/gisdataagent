@@ -59,6 +59,7 @@ DEFAULT_REPORT = REPO_ROOT / ".tmp/source-sync-certification/authority-report.js
 MIGRATIONS = (
     REPO_ROOT / "data_agent/migrations/092_platform_control_ledger.sql",
     REPO_ROOT / "data_agent/migrations/094_platform_control_gateway.sql",
+    REPO_ROOT / "data_agent/migrations/095_platform_command_outbox.sql",
     REPO_ROOT / "data_agent/migrations/096_platform_success_verdict.sql",
     REPO_ROOT / "data_agent/migrations/102_source_schema_drift_ledger.sql",
     REPO_ROOT / "data_agent/migrations/103_unified_approval_case_authority.sql",

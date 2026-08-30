@@ -37,6 +37,49 @@ models:
     tasks: [reporting, complex_analysis, causal]
     description: "Gemini 2.5 Pro — highest quality for complex tasks"
 
+  # --- OpenAI GPT-5.6 via ADK LiteLLM connector ---
+  # Keep OPENAI_API_KEY in the ignored .env file. Model IDs are registered in
+  # model_gateway.py as well, so this section is useful for documentation and
+  # custom catalog tooling without overriding the built-in entries.
+  gpt-5.6-luna:
+    backend: openai
+    base_url: https://api.openai.com/v1
+    model_id: openai/gpt-5.6-luna
+    api_key_env: OPENAI_API_KEY
+    tier: fast
+    cost_per_1k_input: 0.001
+    cost_per_1k_output: 0.006
+    context_tokens: 1050000
+    capabilities: [text, code, reasoning, tool_calling]
+    tasks: [routing, exploration, visualization]
+    description: "GPT-5.6 Luna — cost-sensitive high-volume GIS tasks"
+
+  gpt-5.6-terra:
+    backend: openai
+    base_url: https://api.openai.com/v1
+    model_id: openai/gpt-5.6-terra
+    api_key_env: OPENAI_API_KEY
+    tier: standard
+    cost_per_1k_input: 0.0025
+    cost_per_1k_output: 0.015
+    context_tokens: 1050000
+    capabilities: [text, code, reasoning, tool_calling]
+    tasks: [processing, analysis, governance, qc]
+    description: "GPT-5.6 Terra — balanced intelligence and cost"
+
+  gpt-5.6-sol:
+    backend: openai
+    base_url: https://api.openai.com/v1
+    model_id: openai/gpt-5.6-sol
+    api_key_env: OPENAI_API_KEY
+    tier: premium
+    cost_per_1k_input: 0.005
+    cost_per_1k_output: 0.03
+    context_tokens: 1050000
+    capabilities: [text, code, reasoning, tool_calling]
+    tasks: [reporting, complex_analysis, causal]
+    description: "GPT-5.6 Sol — frontier complex reasoning"
+
   # --- Gemma 4 via Gemini API (v23.0) ---
   gemma-4-31b-it:
     backend: google_genai

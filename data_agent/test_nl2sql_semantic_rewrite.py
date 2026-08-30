@@ -40,6 +40,170 @@ def test_semantic_rewrite_uses_column_aliases_for_arbitrary_table():
     assert "semantic_column_alias" in corrections
 
 
+def test_semantic_rewrite_adds_missing_label_for_each_entity_metric():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "district_metrics",
+            "columns": [
+                {
+                    "column_name": "district_name",
+                    "quoted_ref": "district_name",
+                    "semantic_domain": "NAME",
+                },
+                {
+                    "column_name": "population",
+                    "quoted_ref": "population",
+                    "semantic_domain": "QUANTITY",
+                },
+            ],
+        }],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "return population for each district above 100",
+        "SELECT population FROM district_metrics WHERE population > 100 ORDER BY population DESC",
+        context,
+    )
+
+    assert rewritten.startswith(
+        "SELECT district_metrics.district_name, population FROM district_metrics"
+    )
+    assert "semantic_entity_label_projection" in corrections
+
+
+def test_semantic_rewrite_adds_missing_group_label_for_grouped_count():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "district_metrics",
+            "columns": [
+                {
+                    "column_name": "district_name",
+                    "quoted_ref": "district_name",
+                    "semantic_domain": "NAME",
+                },
+                {
+                    "column_name": "object_id",
+                    "quoted_ref": "object_id",
+                    "semantic_domain": "ID",
+                },
+            ],
+        }],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "count records for each district",
+        "SELECT COUNT(object_id) FROM district_metrics GROUP BY district_name",
+        context,
+    )
+
+    assert rewritten.startswith("SELECT district_name, COUNT(object_id)")
+    assert "semantic_group_label_projection" in corrections
+
+
+def test_semantic_rewrite_does_not_duplicate_group_key_when_label_expression_is_projected():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "commute",
+            "columns": [
+                {"column_name": "gender", "quoted_ref": '"gender"'},
+                {"column_name": "population", "quoted_ref": '"population"'},
+            ],
+        }],
+    }
+    sql = (
+        "SELECT CASE WHEN \"gender\" = 1 THEN '男' ELSE '女' END AS gender_label, "
+        "SUM(\"population\") AS total_population FROM commute "
+        "GROUP BY \"gender\""
+    )
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "按性别统计扩样后总人口",
+        sql,
+        context,
+    )
+
+    assert rewritten.count('"gender"') == 2
+    assert not rewritten.startswith('SELECT "gender",')
+    assert "semantic_group_label_projection" not in corrections
+
+
+def test_semantic_rewrite_repairs_independent_max_min_top_per_group_tuple():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "areas",
+                "columns": [
+                    {"column_name": "area_name", "quoted_ref": "area_name"},
+                    {"column_name": "geom", "quoted_ref": "geom", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "places",
+                "columns": [
+                    {"column_name": "place_name", "quoted_ref": "place_name"},
+                    {"column_name": "score", "quoted_ref": "score"},
+                    {"column_name": "object_id", "quoted_ref": "object_id"},
+                    {"column_name": "geom", "quoted_ref": "geom", "is_geometry": True},
+                ],
+            },
+        ],
+    }
+    raw = (
+        "SELECT a.area_name, p.place_name, p.score FROM areas a "
+        "JOIN places p ON ST_Intersects(a.geom, p.geom) "
+        "WHERE (a.area_name, p.score, p.object_id) IN ("
+        "SELECT a2.area_name, MAX(p2.score), MIN(p2.object_id) "
+        "FROM areas a2 JOIN places p2 ON ST_Intersects(a2.geom, p2.geom) "
+        "GROUP BY a2.area_name)"
+    )
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "find the highest score in each area, ties use the smallest object id",
+        raw,
+        context,
+    )
+
+    assert rewritten.startswith("SELECT DISTINCT ON (a.area_name)")
+    assert "p.score IS NOT NULL" in rewritten
+    assert "ORDER BY a.area_name, p.score DESC, p.object_id ASC" in rewritten
+    assert " IN (SELECT" not in rewritten
+    assert "semantic_top_per_group_stable_key" in corrections
+
+
+def test_semantic_rewrite_uses_governed_hierarchy_separator():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "places",
+            "columns": [{
+                "column_name": "category",
+                "quoted_ref": "category",
+                "semantic_domain": "CATEGORY",
+                "value_semantics": {"hierarchy_separator": ";"},
+            }],
+        }],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "group by the first category segment before the first comma",
+        "SELECT SPLIT_PART(category, ',', 1), COUNT(*) FROM places "
+        "GROUP BY SPLIT_PART(category, ',', 1)",
+        context,
+    )
+
+    assert "SPLIT_PART(category, ';', 1)" in rewritten
+    assert "semantic_hierarchy_separator" in corrections
+
+
 def test_semantic_rewrite_does_not_use_unreferenced_table_for_unqualified_column_alias():
     from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
 
@@ -228,6 +392,294 @@ def test_semantic_rewrite_prefers_question_aliased_table_over_sql_referenced_fal
     assert "; AND" not in rewritten
     assert "semantic_question_alias_table" in corrections
     assert "semantic_column_alias" in corrections
+
+
+def test_semantic_rewrite_does_not_swap_spatial_roles_with_alias_geometry():
+    """A road relation must not be replaced by a polygon relation just because
+    both relations expose a semantic geometry alias.
+
+    This protects multi-role spatial joins such as historic districts versus
+    roads, where ``shape`` and ``geometry`` are valid aliases for column
+    rewriting but represent different physical schemas.
+    """
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "historic_districts",
+                "table_aliases": ["历史文化街区", "历史街区", "文化街区"],
+                "columns": [
+                    {"column_name": "jqmc", "quoted_ref": "jqmc"},
+                    {
+                        "column_name": "shape",
+                        "quoted_ref": "shape",
+                        "is_geometry": True,
+                        "pg_type": "geometry(MultiPolygon,4490)",
+                    },
+                ],
+            },
+            {
+                "table_name": "osm_roads_2021",
+                "table_aliases": ["道路", "道路网"],
+                "columns": [
+                    {"column_name": "name", "quoted_ref": "name"},
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(LineString,4326)",
+                    },
+                ],
+            },
+        ],
+    }
+
+    sql = (
+        "SELECT DISTINCT h.jqmc FROM historic_districts h "
+        "JOIN osm_roads_2021 r ON ST_Intersects(ST_Transform(h.shape, 4326), r.geometry)"
+    )
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "找出与道路相交的历史文化街区名称", sql, context
+    )
+
+    assert "FROM historic_districts h" in rewritten
+    assert "JOIN osm_roads_2021 r" in rewritten
+    assert "semantic_question_alias_table" not in corrections
+
+
+def test_semantic_rewrite_keeps_building_role_when_question_names_group_column():
+    """An explicit group column on one relation must not move the other role."""
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "land_use_dltb",
+                "table_aliases": ["地类", "地类图斑"],
+                "columns": [
+                    {"column_name": "DLMC", "quoted_ref": '"DLMC"', "needs_quoting": True},
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(MultiPolygon,4326)",
+                    },
+                ],
+            },
+            {
+                "table_name": "buildings_2021",
+                "table_aliases": ["建筑物", "楼栋"],
+                "columns": [
+                    {"column_name": "Id", "quoted_ref": '"Id"', "needs_quoting": True},
+                    {"column_name": "Floor", "quoted_ref": '"Floor"', "needs_quoting": True},
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(MultiPolygon,4326)",
+                    },
+                ],
+            },
+        ],
+    }
+
+    sql = (
+        'SELECT d."DLMC", COUNT(DISTINCT b."Id"), AVG(b."Floor") '
+        "FROM land_use_dltb d JOIN buildings_2021 b "
+        "ON ST_Intersects(d.geometry, b.geometry) GROUP BY d.\"DLMC\""
+    )
+    rewritten, _ = apply_semantic_sql_rewrites(
+        "统计每种地类范围内的建筑物数量和平均楼层（DLMC）", sql, context
+    )
+
+    assert "FROM land_use_dltb" in rewritten
+    assert "JOIN buildings_2021" in rewritten
+    assert 'b."Floor"' in rewritten
+
+
+def test_semantic_rewrite_keeps_poi_role_when_id_is_named_for_building_target():
+    """The target building's Id must not turn a POI relation into buildings."""
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "buildings_2021",
+                "table_aliases": ["建筑物", "楼"],
+                "columns": [
+                    {"column_name": "Id", "quoted_ref": '"Id"', "needs_quoting": True},
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(Polygon,4326)",
+                    },
+                ],
+            },
+            {
+                "table_name": "amap_poi_2024",
+                "table_aliases": ["高德兴趣点", "POI"],
+                "columns": [
+                    {"column_name": "名称", "quoted_ref": '"名称"', "needs_quoting": True},
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(Point,4326)",
+                    },
+                ],
+            },
+        ],
+    }
+
+    sql = (
+        'SELECT p."名称" FROM buildings_2021 b '
+        'JOIN amap_poi_2024 p ON ST_DWithin(b.geometry, p.geometry, 1000) '
+        'WHERE b."Id" = 1'
+    )
+    rewritten, _ = apply_semantic_sql_rewrites(
+        "按建筑物 Id=1 查询附近高德兴趣点名称", sql, context
+    )
+
+    assert "FROM buildings_2021 b" in rewritten
+    assert "JOIN amap_poi_2024 p" in rewritten
+    assert 'p."名称"' in rewritten
+
+
+def test_semantic_rewrite_qualifies_mixed_case_columns_in_scalar_subquery():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "buildings_2021",
+                "schema_complete": True,
+                "columns": [
+                    {"column_name": "Id", "quoted_ref": '"Id"', "needs_quoting": True},
+                    {"column_name": "Floor", "quoted_ref": '"Floor"', "needs_quoting": True},
+                ],
+            },
+            {
+                "table_name": "roads_2021",
+                "schema_complete": True,
+                "columns": [{"column_name": "name", "quoted_ref": "name"}],
+            },
+        ],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "找到指定建筑物并返回附近道路",
+        'SELECT r.name FROM roads_2021 r CROSS JOIN buildings_2021 b '
+        'WHERE b."Id" = (SELECT Id FROM buildings_2021 WHERE "Floor" >= 50 ORDER BY Id LIMIT 1)',
+        context,
+    )
+
+    assert 'SELECT r.name FROM roads_2021 AS r CROSS JOIN buildings_2021 AS b' in rewritten
+    assert 'SELECT buildings_2021."Id" FROM buildings_2021' in rewritten
+    assert 'ORDER BY buildings_2021."Id"' in rewritten
+    assert "semantic_unqualified_column_qualified" in corrections
+
+
+def test_semantic_rewrite_materializes_scalar_geometry_for_mixed_srid_knn():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "poi",
+                "schema_complete": True,
+                "srid": 4326,
+                "columns": [
+                    {"column_name": "name", "quoted_ref": "name"},
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(Point,4326)",
+                    },
+                ],
+            },
+            {
+                "table_name": "cq_dltb",
+                "schema_complete": True,
+                "srid": 4610,
+                "columns": [
+                    {"column_name": "objectid", "quoted_ref": "objectid"},
+                    {"column_name": "dlmc", "quoted_ref": "dlmc"},
+                    {
+                        "column_name": "shape",
+                        "quoted_ref": "shape",
+                        "is_geometry": True,
+                        "pg_type": "geometry(Polygon,4610)",
+                    },
+                ],
+            },
+        ],
+    }
+    sql = (
+        "SELECT p.name, ST_Distance((SELECT shape FROM cq_dltb WHERE dlmc = '茶园' "
+        "ORDER BY objectid LIMIT 1)::geography, p.geometry::geography) AS distance_m "
+        "FROM poi p ORDER BY distance_m LIMIT 5"
+    )
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "取第一个茶园图斑，返回最近 5 个兴趣点，并把兴趣点转换到 4610",
+        sql,
+        context,
+    )
+
+    assert "CROSS JOIN (SELECT shape FROM cq_dltb" in rewritten
+    assert "d.shape::geography" in rewritten
+    assert "ST_Transform(p.geometry, 4610)::geography" in rewritten
+    assert "semantic_scalar_distance_subquery" in corrections
+
+
+def test_semantic_rewrite_materializes_non_unique_left_knn_target():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "buildings",
+                "schema_complete": True,
+                "columns": [
+                    {
+                        "column_name": "Id",
+                        "quoted_ref": '"Id"',
+                        "needs_quoting": True,
+                        "value_semantics": {"identifier": True},
+                    },
+                    {"column_name": "Floor", "quoted_ref": '"Floor"', "needs_quoting": True},
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "roads",
+                "schema_complete": True,
+                "columns": [
+                    {"column_name": "name", "quoted_ref": "name"},
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True},
+                ],
+            },
+        ],
+    }
+    sql = (
+        "SELECT r.name FROM buildings b JOIN roads r ON TRUE "
+        'WHERE b."Floor" >= 50 AND b."Id" = '
+        '(SELECT "Id" FROM buildings WHERE "Floor" >= 50 ORDER BY "Id" LIMIT 1) '
+        "ORDER BY b.geometry <-> r.geometry LIMIT 10"
+    )
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "取按 Id 升序的第一栋 50 层以上建筑，返回最近 10 条道路",
+        sql,
+        context,
+    )
+
+    assert 'FROM (SELECT * FROM buildings WHERE "Floor" >= 50 ORDER BY "Id" LIMIT 1) AS b' in rewritten
+    assert 'b."Id" =' not in rewritten
+    assert "semantic_knn_target" in corrections
 
 
 def test_semantic_rewrite_respects_explicit_physical_table_mention():
@@ -1035,7 +1487,7 @@ def test_semantic_rewrite_infers_stored_unit_alias_from_column_description():
     assert "semantic_unit_threshold" in corrections
 
 
-def test_semantic_rewrite_scales_population_wan_threshold_without_unit_metadata():
+def test_semantic_rewrite_does_not_infer_units_without_governance():
     from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
 
     context = {
@@ -1054,9 +1506,8 @@ def test_semantic_rewrite_scales_population_wan_threshold_without_unit_metadata(
         context,
     )
 
-    assert "resident_population > 100" in rewritten
-    assert "resident_population > 10000" not in rewritten
-    assert "semantic_unit_threshold" in corrections
+    assert "resident_population > 10000" in rewritten
+    assert "semantic_unit_threshold" not in corrections
 
 
 def test_semantic_rewrite_excludes_population_total_row_for_district_level_query():
@@ -1073,6 +1524,7 @@ def test_semantic_rewrite_excludes_population_total_row_for_district_level_query
                     "quoted_ref": "admin_division_code",
                     "semantic_domain": "CODE",
                     "aliases": ["administrative division code"],
+                    "value_semantics": {"aggregate_row_values": [500000]},
                 },
             ],
         }],
@@ -1086,9 +1538,9 @@ def test_semantic_rewrite_excludes_population_total_row_for_district_level_query
     )
 
     assert "/*" not in rewritten
-    assert "admin_division_code != 500000" in rewritten
+    assert "admin_division_code <> 500000" in rewritten
     assert "semantic_sql_comment_pruned" in corrections
-    assert "semantic_population_total_exclusion" in corrections
+    assert "semantic_total_row_exclusion" in corrections
 
 
 def test_semantic_rewrite_normalizes_unique_versioned_table_reference():
@@ -1469,7 +1921,7 @@ def test_semantic_rewrite_existential_spatial_join_aggregate_uses_exists():
     assert "semantic_existential_spatial_join" in corrections
 
 
-def test_semantic_rewrite_adds_not_null_for_distinct_name_listing():
+def test_semantic_rewrite_preserves_nulls_for_distinct_name_listing():
     from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
 
     context = {
@@ -1488,12 +1940,12 @@ def test_semantic_rewrite_adds_not_null_for_distinct_name_listing():
         context,
     )
 
-    assert "r.name IS NOT NULL" in rewritten
+    assert "r.name IS NOT NULL" not in rewritten
     assert "r.fclass = 'residential'" in rewritten
-    assert "semantic_distinct_not_null" in corrections
+    assert "semantic_distinct_not_null" not in corrections
 
 
-def test_semantic_rewrite_adds_not_null_for_unqualified_distinct_name_listing():
+def test_semantic_rewrite_preserves_nulls_for_unqualified_distinct_name_listing():
     from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
 
     context = {
@@ -1523,8 +1975,30 @@ def test_semantic_rewrite_adds_not_null_for_unqualified_distinct_name_listing():
         context,
     )
 
-    assert "name IS NOT NULL" in rewritten
-    assert "semantic_distinct_not_null" in corrections
+    assert "name IS NOT NULL" not in rewritten
+    assert "semantic_distinct_not_null" not in corrections
+
+
+def test_semantic_rewrite_adds_not_null_only_for_explicit_name_presence_request():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "roads",
+            "columns": [
+                {"column_name": "name", "quoted_ref": "name", "aliases": ["名称"]},
+                {"column_name": "fclass", "quoted_ref": "fclass"},
+            ],
+        }],
+    }
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "列出名称非空的道路",
+        "SELECT DISTINCT r.name FROM roads AS r WHERE r.fclass = 'primary'",
+        context,
+    )
+
+    assert "r.name IS NOT NULL" in rewritten
+    assert "semantic_requested_name_not_null" in corrections or "semantic_distinct_not_null" in corrections
 
 
 def test_semantic_rewrite_count_by_left_group_uses_left_join():
@@ -1773,11 +2247,12 @@ def test_semantic_rewrite_grouped_spatial_count_distincts_right_identifier():
         "SELECT d.name, COUNT(b.\"Id\") AS building_count "
         "FROM districts AS d JOIN buildings AS b "
         "ON ST_Intersects(d.shape, b.geometry) "
-        "GROUP BY d.name ORDER BY building_count DESC",
+        "GROUP BY d.name HAVING COUNT(*) > 10 ORDER BY building_count DESC",
         context,
     )
 
     assert "COUNT(DISTINCT b.\"Id\") AS building_count" in rewritten
+    assert "HAVING COUNT(DISTINCT b.\"Id\") > 10" in rewritten
     assert "semantic_grouped_spatial_count" in corrections
 
 
@@ -2199,6 +2674,69 @@ def test_semantic_rewrite_centroid_text_projection_places_label_first():
     assert "semantic_centroid_projection_order" in corrections
 
 
+def test_semantic_rewrite_expands_centroid_to_requested_coordinates():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "parcels",
+            "columns": [
+                {"column_name": "bsm", "quoted_ref": "bsm"},
+                {"column_name": "shape", "quoted_ref": "shape", "is_geometry": True, "pg_type": "geometry(Polygon,4610)"},
+            ],
+        }],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "返回每个地块的编号和中心点坐标",
+        "SELECT bsm, ST_Centroid(shape) FROM parcels",
+        context,
+    )
+
+    assert "SELECT bsm, ST_X(ST_Centroid(shape)) AS lon, ST_Y(ST_Centroid(shape)) AS lat" in rewritten
+    assert "semantic_centroid_coordinates" in corrections
+
+
+def test_semantic_rewrite_materializes_arbitrary_single_knn_target_and_keeps_result_limit():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "buildings",
+                "columns": [
+                    {"column_name": "Id", "quoted_ref": '"Id"', "needs_quoting": True, "value_semantics": {"identifier": True}},
+                    {"column_name": "Floor", "quoted_ref": '"Floor"', "needs_quoting": True},
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True, "pg_type": "geometry(Point,4326)"},
+                ],
+            },
+            {
+                "table_name": "roads",
+                "columns": [
+                    {"column_name": "name", "quoted_ref": "name"},
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True, "pg_type": "geometry(LineString,4326)"},
+                ],
+            },
+        ],
+    }
+    sql = (
+        "SELECT r.name, ST_Distance(b.geometry::geography, r.geometry::geography) AS dist_m "
+        "FROM buildings AS b CROSS JOIN LATERAL ("
+        "SELECT name, geometry FROM roads ORDER BY b.geometry <-> geometry LIMIT 10"
+        ") AS r WHERE b.\"Floor\" > 50 LIMIT 1"
+    )
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "随便找一栋50层以上的楼，列出离它最近的10条路",
+        sql,
+        context,
+    )
+
+    assert 'FROM (SELECT * FROM buildings WHERE "Floor" >= 50 ORDER BY "Id" LIMIT 1) AS b' in rewritten
+    assert rewritten.endswith("LIMIT 10")
+    assert "semantic_knn_target" in corrections
+
+
 def test_semantic_rewrite_conditional_sum_pivot_to_grouped_rows():
     from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
 
@@ -2397,6 +2935,329 @@ def test_semantic_rewrite_cq_hard_10_primary_road_poi_count_uses_distinct():
     assert "semantic_distinct_join_count" in corrections
 
 
+def test_semantic_rewrite_does_not_apply_road_enum_to_poi_type_column():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "roads",
+                "table_aliases": ["道路"],
+                "columns": [
+                    {
+                        "column_name": "fclass",
+                        "aliases": ["道路等级"],
+                        "value_semantics": {"enum": [{"value": "primary"}]},
+                    },
+                    {"column_name": "name", "aliases": ["道路名称"]},
+                    {"column_name": "geometry", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "poi",
+                "table_aliases": ["兴趣点"],
+                "columns": [
+                    {"column_name": "类型", "aliases": ["类型"]},
+                    {"column_name": "ID", "value_semantics": {"identifier": True}},
+                    {"column_name": "geometry", "is_geometry": True},
+                ],
+            },
+        ],
+    }
+    rewritten, _ = apply_semantic_sql_rewrites(
+        "类型为 'primary' 的主干道沿线兴趣点数量",
+        "SELECT r.name, COUNT(p.ID) FROM roads r JOIN poi p "
+        "ON ST_DWithin(r.geometry::geography, p.geometry::geography, 50) "
+        "GROUP BY r.name",
+        context,
+    )
+    assert "r.fclass IN ('primary')" in rewritten
+    assert "p.类型 = 'primary'" not in rewritten
+
+
+def test_semantic_rewrite_does_not_replace_explicit_road_role_with_parcel_table():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "land_parcels",
+                "table_aliases": ["地块", "水田", "地类图斑"],
+                "nl2sql_priority": 100,
+                "columns": [
+                    {"column_name": "land_name", "aliases": ["地类名称"]},
+                    {"column_name": "area", "aliases": ["面积"]},
+                    {"column_name": "geometry", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "roads",
+                "table_aliases": ["道路", "路"],
+                "columns": [
+                    {"column_name": "geometry", "is_geometry": True},
+                ],
+            },
+        ],
+    }
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "水田地块中有道路穿过的总面积",
+        "SELECT SUM(p.area) FROM land_parcels p JOIN roads r "
+        "ON ST_Intersects(p.geometry, r.geometry) WHERE p.land_name = '水田'",
+        context,
+    )
+
+    assert "FROM roads AS r" in rewritten
+    assert "FROM land_parcels AS r" not in rewritten
+    assert "semantic_question_alias_table" not in corrections
+
+
+def test_semantic_rewrite_short_enum_codes_require_term_boundaries():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "roads",
+            "columns": [
+                {
+                    "column_name": "fclass",
+                    "value_semantics": {"enum": [{"value": "residential"}]},
+                },
+                {
+                    "column_name": "bridge",
+                    "value_semantics": {
+                        "enum": [
+                            {"value": "T", "meaning": "是桥梁"},
+                            {"value": "F", "meaning": "非桥梁"},
+                        ],
+                    },
+                },
+                {
+                    "column_name": "tunnel",
+                    "value_semantics": {
+                        "enum": [
+                            {"value": "T", "meaning": "是隧道"},
+                            {"value": "F", "meaning": "非隧道"},
+                        ],
+                    },
+                },
+            ],
+        }],
+    }
+    rewritten, _ = apply_semantic_sql_rewrites(
+        "返回 30 个不重复的 residential 道路名称",
+        "SELECT DISTINCT name FROM roads WHERE fclass = 'residential' LIMIT 30",
+        context,
+    )
+
+    assert "bridge IN ('T')" not in rewritten
+    assert "tunnel IN ('T')" not in rewritten
+
+
+def test_semantic_rewrite_implicit_along_route_does_not_invent_radius():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "roads",
+                "columns": [{"column_name": "geometry", "is_geometry": True}],
+            },
+            {
+                "table_name": "pois",
+                "columns": [{"column_name": "geometry", "is_geometry": True}],
+            },
+        ],
+    }
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "统计主干道沿线的兴趣点数量",
+        "SELECT COUNT(*) FROM roads r JOIN pois p "
+        "ON ST_DWithin(r.geometry::geography, p.geometry::geography, 50)",
+        context,
+    )
+
+    assert "ST_Intersects(r.geometry, p.geometry)" in rewritten
+    assert "ST_DWithin" not in rewritten
+    assert "semantic_requested_spatial_predicate" in corrections
+
+
+def test_semantic_rewrite_existential_area_handles_nested_transforms():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "parcels",
+                "table_aliases": ["地块", "水田"],
+                "columns": [
+                    {"column_name": "land_name"},
+                    {"column_name": "area"},
+                    {"column_name": "geometry", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "roads",
+                "table_aliases": ["道路", "路"],
+                "columns": [{"column_name": "geometry", "is_geometry": True}],
+            },
+        ],
+    }
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "有道路穿过的水田地块总面积是多少",
+        "SELECT SUM(p.area) FROM parcels p JOIN roads r "
+        "ON ST_Intersects(ST_Transform(p.geometry, 4326), "
+        "ST_Transform(r.geometry, 4326)) WHERE p.land_name = '水田'",
+        context,
+    )
+
+    assert "JOIN roads" not in rewritten
+    assert "EXISTS (SELECT 1 FROM roads AS r WHERE ST_Intersects(" in rewritten
+    assert "semantic_existential_spatial_join" in corrections
+
+
+def test_semantic_rewrite_removes_redundant_same_srid_transforms_for_spatial_index():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "parcels",
+                "columns": [{
+                    "column_name": "geometry",
+                    "is_geometry": True,
+                    "pg_type": "geometry(MultiPolygon,4326)",
+                }],
+            },
+            {
+                "table_name": "roads",
+                "columns": [{
+                    "column_name": "geometry",
+                    "is_geometry": True,
+                    "pg_type": "geometry(LineString,4326)",
+                }],
+            },
+        ],
+    }
+    rewritten, _ = apply_semantic_sql_rewrites(
+        "水田地块有道路穿过",
+        "SELECT COUNT(*) FROM parcels p JOIN roads r ON "
+        "ST_Intersects(ST_Transform(p.geometry, 4610), ST_Transform(r.geometry, 4610))",
+        context,
+    )
+
+    assert "ST_Transform" not in rewritten
+    assert "ST_Intersects(p.geometry, r.geometry)" in rewritten
+
+
+def test_semantic_rewrite_keeps_outer_count_alias_for_derived_spatial_exists():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "parcels",
+            "columns": [
+                {"column_name": "bsm", "value_semantics": {"identifier": True}},
+                {"column_name": "geometry", "is_geometry": True},
+            ],
+        }],
+    }
+    rewritten, _ = apply_semantic_sql_rewrites(
+        "有路穿过的大地块数量",
+        "SELECT COUNT(*) FROM (SELECT d.bsm FROM parcels d WHERE EXISTS "
+        "(SELECT 1 FROM roads r WHERE ST_Intersects(d.geometry, r.geometry))) sub",
+        context,
+    )
+
+    assert "COUNT(DISTINCT d.bsm)" not in rewritten
+    assert "SELECT COUNT(*) FROM (" in rewritten
+
+
+def test_semantic_rewrite_each_district_count_preserves_zero_groups():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "districts",
+                "columns": [{"column_name": "name"}, {"column_name": "shape", "is_geometry": True}],
+            },
+            {
+                "table_name": "buildings",
+                "columns": [{"column_name": "id", "value_semantics": {"identifier": True}}, {"column_name": "geometry", "is_geometry": True}],
+            },
+        ],
+    }
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "统计每个历史文化街区里有多少栋建筑，然后排序",
+        "SELECT d.name, COUNT(*) AS building_count FROM districts d "
+        "JOIN buildings b ON ST_Intersects(d.shape, b.geometry) GROUP BY d.name "
+        "ORDER BY building_count DESC",
+        context,
+    )
+
+    assert "LEFT JOIN buildings AS b" in rewritten
+    assert "ST_Contains(d.shape, b.geometry)" in rewritten
+    assert "semantic_universal_group_left_join" in corrections
+
+
+def test_semantic_rewrite_grouped_spatial_count_targets_requested_buildings():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "roads",
+                "columns": [
+                    {"column_name": "osm_id", "value_semantics": {"identifier": True}},
+                    {"column_name": "fclass"},
+                    {"column_name": "geometry", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "buildings",
+                "columns": [
+                    {"column_name": "Id", "value_semantics": {"identifier": True}},
+                    {"column_name": "Floor"},
+                    {"column_name": "geometry", "is_geometry": True},
+                ],
+            },
+        ],
+    }
+    rewritten, _ = apply_semantic_sql_rewrites(
+        "按道路等级统计每类路都穿过了多少栋20层以上的高楼",
+        "SELECT r.fclass, COUNT(*) FROM roads r JOIN buildings b "
+        "ON ST_Intersects(r.geometry, b.geometry) WHERE b.Floor > 20 "
+        "GROUP BY r.fclass",
+        context,
+    )
+    assert "COUNT(DISTINCT b.Id)" in rewritten
+
+
+def test_semantic_rewrite_generic_building_area_uses_geography():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "buildings",
+            "columns": [
+                {
+                    "column_name": "geometry",
+                    "is_geometry": True,
+                    "pg_type": "geometry(Polygon,4326)",
+                    "value_semantics": {"area_measurement": "geodesic"},
+                },
+                {"column_name": "Floor"},
+            ],
+        }],
+    }
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "计算建筑平均占地面积，单位平方米",
+        "SELECT ROUND(AVG(ST_Area(ST_Transform(geometry, 3857))), 2) FROM buildings",
+        context,
+    )
+    assert "ST_Area(buildings.geometry::geography)" in rewritten
+    assert "semantic_configured_geodesic_area" in corrections
+
+
 def test_semantic_rewrite_cq_hard_14_dwithin_uses_geography_and_floor_quote():
     from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
 
@@ -2414,6 +3275,67 @@ def test_semantic_rewrite_cq_hard_14_dwithin_uses_geography_and_floor_quote():
     assert 'COUNT(DISTINCT b."Id")' not in rewritten
     assert "semantic_st_dwithin_geography" in corrections
     assert "semantic_column_alias" in corrections
+
+
+def test_semantic_rewrite_keeps_longest_bridge_cte_on_roads_table():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "cq_amap_poi_2024",
+                "table_aliases": ["高德POI", "POI", "兴趣点"],
+                "schema_complete": True,
+                "columns": [
+                    {"column_name": "ID", "quoted_ref": '"ID"', "needs_quoting": True},
+                    {"column_name": "名称", "quoted_ref": '"名称"', "needs_quoting": True},
+                    {"column_name": "geometry", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "cq_osm_roads_2021",
+                "table_aliases": ["路网", "道路网 2021"],
+                "schema_complete": True,
+                "columns": [
+                    {"column_name": "name"},
+                    {"column_name": "fclass"},
+                    {"column_name": "bridge"},
+                    {"column_name": "geometry", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "cq_osm_roads",
+                "table_aliases": ["路网", "道路数据"],
+                "schema_complete": True,
+                "columns": [
+                    {"column_name": "name"},
+                    {"column_name": "fclass"},
+                    {"column_name": "bridge"},
+                    {"column_name": "geometry", "is_geometry": True},
+                ],
+            },
+        ]
+    }
+    sql = (
+        "WITH longest_bridge AS ("
+        "SELECT geometry FROM cq_osm_roads_2021 WHERE bridge = 'T' "
+        "ORDER BY ST_Length(geometry::geography) DESC LIMIT 1"
+        ") "
+        'SELECT COUNT(DISTINCT p."ID") FROM cq_amap_poi_2024 AS p, '
+        "longest_bridge AS lb WHERE "
+        "ST_DWithin(p.geometry::geography, lb.geometry::geography, 100)"
+    )
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "统计距离道路网络中最长桥梁100米范围内的高德POI数量。",
+        sql,
+        context,
+    )
+
+    assert "FROM cq_osm_roads_2021" in rewritten
+    assert "FROM cq_amap_poi_2024 WHERE bridge" not in rewritten
+    assert rewritten != "SELECT 1"
+    assert "semantic_unknown_column_refusal" not in corrections
 
 
 def test_semantic_rewrite_cq_hard_25_grouped_road_length_uses_geography_km():
@@ -2642,7 +3564,7 @@ def test_semantic_rewrite_knn_order_by_distance_alias_uses_geometry_operator():
         context,
     )
 
-    assert "ORDER BY e.geom <-> s.geom LIMIT 5" in rewritten
+    assert "ORDER BY e.geom::geography <-> s.geom::geography LIMIT 5" in rewritten
     assert "ORDER BY distance_meters" not in rewritten
     assert "semantic_knn_order" in corrections
 
@@ -2970,6 +3892,333 @@ def test_semantic_rewrite_flips_contains_direction_by_geometry_type():
     assert "semantic_requested_containment" in corrections
 
 
+def test_semantic_rewrite_does_not_use_contains_for_two_point_layers():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "schools",
+                "columns": [
+                    {"column_name": "name", "quoted_ref": "name"},
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True, "pg_type": "geometry(Point,4326)"},
+                ],
+            },
+            {
+                "table_name": "buildings",
+                "columns": [
+                    {"column_name": "id", "quoted_ref": "id"},
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True, "pg_type": "geometry(Point,4326)"},
+                ],
+            },
+        ],
+    }
+    sql = (
+        "SELECT s.name, COUNT(b.id) FROM schools AS s JOIN buildings AS b "
+        "ON ST_Intersects(s.geometry, b.geometry) GROUP BY s.name"
+    )
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "每个学校范围内有多少栋建筑？",
+        sql,
+        context,
+    )
+
+    assert "ST_Intersects(s.geometry, b.geometry)" in rewritten
+    assert "semantic_requested_containment" not in corrections
+
+
+def test_semantic_rewrite_uses_intersects_when_group_container_is_a_point():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "schools",
+                "columns": [
+                    {"column_name": "name", "semantic_domain": "NAME"},
+                    {
+                        "column_name": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(Point,4326)",
+                    },
+                ],
+            },
+            {
+                "table_name": "buildings",
+                "columns": [
+                    {"column_name": "id", "value_semantics": {"identifier": True}},
+                    {"column_name": "floor"},
+                    {
+                        "column_name": "geometry",
+                        "is_geometry": True,
+                        "pg_type": "geometry(MultiPolygon,4326)",
+                    },
+                ],
+            },
+        ],
+    }
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "每个学校范围内有多少栋超过20层的楼？按学校名称排序，列出前10个。",
+        "SELECT s.name, COUNT(DISTINCT b.id) AS building_count "
+        "FROM schools s JOIN buildings b "
+        "ON ST_Contains(s.geometry, b.geometry) AND b.floor > 20 "
+        "GROUP BY s.name ORDER BY building_count DESC LIMIT 10",
+        context,
+    )
+
+    assert "ST_Intersects(s.geometry, b.geometry)" in rewritten
+    assert "ST_Contains(s.geometry" not in rewritten
+    assert "ORDER BY s.name ASC LIMIT 10" in rewritten
+    assert "semantic_explicit_name_order" in corrections
+
+
+def test_semantic_rewrite_materializes_fuzzy_named_radius_center():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "buildings",
+                "columns": [
+                    {"column_name": "id", "value_semantics": {"identifier": True}},
+                    {"column_name": "floor"},
+                    {"column_name": "geometry", "is_geometry": True, "pg_type": "geometry(Point,4326)"},
+                ],
+            },
+            {
+                "table_name": "pois",
+                "columns": [
+                    {"column_name": "id", "value_semantics": {"identifier": True}},
+                    {"column_name": "name", "value_semantics": {"default_string_match": "contains"}},
+                    {"column_name": "geometry", "is_geometry": True, "pg_type": "geometry(Point,4326)"},
+                ],
+            },
+        ],
+    }
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "以'Central University'为中心，统计1公里范围内超过10层的楼有多少栋",
+        "SELECT COUNT(DISTINCT b.id) FROM buildings b JOIN pois p "
+        "ON ST_DWithin(b.geometry::geography, p.geometry::geography, 1000) "
+        "WHERE p.name = 'Central University' AND b.floor > 10",
+        context,
+    )
+
+    assert "CROSS JOIN (SELECT * FROM pois WHERE name LIKE '%Central University%'" in rewritten
+    assert "CASE WHEN name = 'Central University' THEN 0" in rewritten
+    assert "LENGTH(name), id LIMIT 1) AS p" in rewritten
+    assert "ST_DWithin(b.geometry::geography, p.geometry::geography, 1000)" in rewritten
+    assert "semantic_default_contains_filter" in corrections
+    assert "semantic_single_center" in corrections
+
+
+def test_semantic_rewrite_preserves_explicit_name_equality_over_contains_policy():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "pois",
+            "columns": [
+                {
+                    "column_name": "name",
+                    "quoted_ref": "name",
+                    "value_semantics": {"default_string_match": "contains"},
+                },
+            ],
+        }],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "查询 POI 名称 = '重庆北站' 的记录",
+        "SELECT name FROM pois WHERE name = '重庆北站'",
+        context,
+    )
+
+    assert "WHERE name = '重庆北站'" in rewritten
+    assert "LIKE '%重庆北站%'" not in rewritten
+    assert "semantic_default_contains_filter" not in corrections
+
+
+def test_semantic_rewrite_aligns_inclusive_numeric_boundary_wording():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "buildings",
+            "columns": [
+                {"column_name": "id", "value_semantics": {"identifier": True}},
+                {"column_name": "floor"},
+            ],
+        }],
+    }
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "随便找一栋50层以上的楼",
+        "SELECT id FROM buildings WHERE floor > 50 LIMIT 1",
+        context,
+    )
+
+    assert "floor >= 50" in rewritten
+    assert "semantic_numeric_boundary" in corrections
+
+
+def test_semantic_rewrite_replaces_non_unique_distinct_count_with_entity_key():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "buildings",
+                "columns": [
+                    {
+                        "column_name": "Id",
+                        "value_semantics": {
+                            "non_unique_identifier": True,
+                            "distinct_count_forbidden": True,
+                        },
+                    },
+                    {
+                        "column_name": "geometry",
+                        "is_geometry": True,
+                        "value_semantics": {"entity_key": True},
+                    },
+                ],
+            },
+            {
+                "table_name": "zones",
+                "columns": [{"column_name": "shape", "is_geometry": True}],
+            },
+        ],
+    }
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "统计区域内不重复的建筑数量",
+        'SELECT COUNT(DISTINCT b."Id") FROM buildings b JOIN zones z '
+        "ON ST_Intersects(b.geometry, z.shape)",
+        context,
+    )
+
+    assert "COUNT(DISTINCT b.geometry)" in rewritten
+    assert "semantic_distinct_join_count" in corrections
+
+
+def test_semantic_rewrite_scopes_ambiguous_enum_code_to_named_column():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "roads",
+            "columns": [
+                {
+                    "column_name": "tunnel",
+                    "value_semantics": {"enum": [
+                        {"value": "T", "meaning": "是隧道"},
+                        {"value": "F", "meaning": "非隧道"},
+                    ]},
+                },
+                {
+                    "column_name": "bridge",
+                    "value_semantics": {"enum": [
+                        {"value": "T", "meaning": "是桥梁"},
+                        {"value": "F", "meaning": "非桥梁"},
+                    ]},
+                },
+            ],
+        }],
+    }
+
+    rewritten, _ = apply_semantic_sql_rewrites(
+        "列出所有 tunnel = 'T' 的道路",
+        "SELECT * FROM roads WHERE tunnel = 'T'",
+        context,
+    )
+
+    assert "bridge IN" not in rewritten
+
+
+def test_semantic_rewrite_does_not_apply_numeric_enum_to_unmentioned_columns():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "buildings",
+            "columns": [
+                {"column_name": "Floor"},
+                {
+                    "column_name": "gender",
+                    "value_semantics": {"enum": [
+                        {"value": 1, "meaning": "男"},
+                        {"value": 2, "meaning": "女"},
+                    ]},
+                },
+            ],
+        }],
+    }
+
+    rewritten, _ = apply_semantic_sql_rewrites(
+        "统计 Floor = 1 的建筑数量",
+        "SELECT COUNT(*) FROM buildings WHERE Floor = 1",
+        context,
+    )
+
+    assert "gender IN" not in rewritten
+
+
+def test_semantic_rewrite_ignores_non_unique_identifier_domain_for_cross_join_count():
+    """A legacy IDENTIFIER domain must not override a governed entity key."""
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "cq_buildings_2021",
+                "columns": [
+                    {
+                        "column_name": "Id",
+                        "semantic_domain": "IDENTIFIER",
+                        "value_semantics": {
+                            "identifier": False,
+                            "non_unique_identifier": True,
+                            "distinct_count_forbidden": True,
+                        },
+                    },
+                    {
+                        "column_name": "Floor",
+                        "semantic_domain": "MEASURE",
+                    },
+                    {
+                        "column_name": "geometry",
+                        "is_geometry": True,
+                        "value_semantics": {
+                            "entity_key": True,
+                            "entity_key_basis": "verified_unique_geometry",
+                        },
+                    },
+                ],
+            },
+            {
+                "table_name": "cq_amap_poi_2024",
+                "columns": [
+                    {"column_name": "ID", "value_semantics": {"identifier": True}},
+                    {"column_name": "名称", "default_string_match": "contains"},
+                    {"column_name": "geometry", "is_geometry": True},
+                ],
+            },
+        ],
+    }
+    question = "以高德地图上的'重庆大学'为中心，找出它1公里范围内，所有超过10层的楼，一共有多少栋？"
+    sql = '''SELECT COUNT(DISTINCT b."Id")
+             FROM cq_buildings_2021 AS b
+             CROSS JOIN (SELECT * FROM cq_amap_poi_2024
+                         WHERE "名称" LIKE '%重庆大学%' LIMIT 1) AS p
+             WHERE b."Floor" > 10
+               AND ST_DWithin(b.geometry::geography, p.geometry::geography, 1000)'''
+
+    rewritten, corrections = apply_semantic_sql_rewrites(question, sql, context)
+
+    assert 'COUNT(DISTINCT b.geometry)' in rewritten
+    assert 'COUNT(DISTINCT b."Id")' not in rewritten
+    assert 'semantic_distinct_join_count' in corrections
+
+
 def test_semantic_rewrite_adds_not_null_for_ranked_metric():
     from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
 
@@ -3122,7 +4371,7 @@ def test_semantic_rewrite_chinese_knn_order_by_distance_expression():
         context,
     )
 
-    assert "ORDER BY r.geometry <-> p.geometry LIMIT 5" in rewritten
+    assert "ORDER BY r.geometry::geography <-> p.geometry::geography LIMIT 5" in rewritten
     assert "semantic_knn_order" in corrections
 
 
@@ -3190,9 +4439,212 @@ def test_semantic_rewrite_knn_radius_join_to_cross_join_and_adds_order():
 
     assert "JOIN buildings AS b ON ST_DWithin" not in rewritten
     assert "CROSS JOIN buildings AS b" in rewritten
-    assert "ORDER BY r.geometry <-> b.geometry LIMIT 10" in rewritten
+    assert "ORDER BY r.geometry::geography <-> b.geometry::geography LIMIT 10" in rewritten
     assert "semantic_knn_join" in corrections
     assert "semantic_knn_order" in corrections
+
+
+def test_semantic_rewrite_distance_radius_count_does_not_materialize_building_target():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "cq_buildings_2021",
+                "table_aliases": ["建筑物", "建筑"],
+                "columns": [
+                    {
+                        "column_name": "Id",
+                        "quoted_ref": '"Id"',
+                        "needs_quoting": True,
+                        "value_semantics": {"non_unique_identifier": True},
+                    },
+                    {"column_name": "Floor", "quoted_ref": '"Floor"', "needs_quoting": True},
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "value_semantics": {"entity_key": True},
+                    },
+                ],
+            },
+            {
+                "table_name": "cq_amap_poi_2024",
+                "table_aliases": ["高德POI", "POI", "兴趣点"],
+                "columns": [
+                    {
+                        "column_name": "ID",
+                        "quoted_ref": '"ID"',
+                        "needs_quoting": True,
+                        "value_semantics": {"identifier": True},
+                    },
+                    {
+                        "column_name": "名称",
+                        "quoted_ref": '"名称"',
+                        "needs_quoting": True,
+                        "value_semantics": {"default_string_match": "contains"},
+                    },
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True},
+                ],
+            },
+        ],
+    }
+    sql = (
+        'SELECT COUNT(*) AS building_count FROM cq_buildings_2021 b '
+        'JOIN (SELECT geometry FROM cq_amap_poi_2024 '
+        'WHERE cq_amap_poi_2024."名称" LIKE \'%重庆大学%\' LIMIT 1) p '
+        'ON ST_DWithin(b.geometry::geography, p.geometry::geography, 1000) '
+        'WHERE b."Floor" > 10'
+    )
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "找出距离'重庆大学'（高德 POI 名称包含'重庆大学'，取第一条）1 千米内且楼层大于 10 层的建筑数量",
+        sql,
+        context,
+    )
+
+    assert "FROM (SELECT * FROM cq_buildings_2021" not in rewritten
+    assert "JOIN (SELECT geometry FROM cq_amap_poi_2024" in rewritten
+    assert "ORDER BY CASE WHEN \"名称\" = '重庆大学'" in rewritten
+    assert "COUNT(DISTINCT b.geometry)" in rewritten
+    assert "semantic_single_target_order" in corrections
+    assert "semantic_knn_target" not in corrections
+
+
+def test_semantic_rewrite_cte_spatial_count_uses_filtered_entity_exists():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "cq_land_use_dltb",
+                "table_aliases": ["土地利用图斑", "地类图斑", "图斑"],
+                "columns": [
+                    {"column_name": "BSM", "quoted_ref": '"BSM"', "needs_quoting": True},
+                    {"column_name": "DLMC", "quoted_ref": '"DLMC"', "needs_quoting": True},
+                    {"column_name": "TBMJ", "quoted_ref": '"TBMJ"', "needs_quoting": True},
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "cq_osm_roads_2021",
+                "table_aliases": ["道路", "路网"],
+                "columns": [
+                    {"column_name": "osm_id", "quoted_ref": "osm_id", "value_semantics": {"identifier": True}},
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True},
+                ],
+            },
+        ],
+    }
+    sql = (
+        'WITH large_forest_parcels AS (SELECT "BSM" FROM cq_land_use_dltb '
+        'WHERE "DLMC" = \'有林地\' AND "TBMJ" > '
+        '(SELECT AVG("TBMJ") FROM cq_land_use_dltb WHERE "DLMC" = \'有林地\')) '
+        'SELECT COUNT(*) AS intersecting_count FROM large_forest_parcels lfp '
+        'JOIN cq_land_use_dltb dltb ON lfp."BSM" = dltb."BSM" '
+        'JOIN cq_osm_roads_2021 roads ON ST_Intersects(dltb.geometry, ST_Transform(roads.geometry, 4326))'
+    )
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "使用 CTE，先找出所有面积（TBMJ）超过均值的'有林地'图斑，再统计这些大图斑与 cq_osm_roads_2021 相交的图斑数量。",
+        sql,
+        context,
+    )
+
+    assert "WITH large_forest_parcels AS (SELECT geometry FROM cq_land_use_dltb" in rewritten
+    assert "FROM large_forest_parcels AS lfp WHERE EXISTS" in rewritten
+    assert "FROM cq_osm_roads_2021 AS roads" in rewritten
+    assert "ST_Intersects(lfp.geometry, ST_Transform(roads.geometry, 4326))" in rewritten
+    assert "cq_dltb" not in rewritten
+    assert "COUNT(DISTINCT roads" not in rewritten
+    assert "semantic_cte_spatial_exists_count" in corrections
+
+
+def test_semantic_rewrite_cte_spatial_count_folds_correlated_geometry_lookup():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "land_parcels",
+                "table_aliases": ["图斑", "地类图斑"],
+                "columns": [
+                    {"column_name": "parcel_id", "quoted_ref": "parcel_id", "value_semantics": {"identifier": True}},
+                    {"column_name": "land_type", "quoted_ref": "land_type"},
+                    {"column_name": "area", "quoted_ref": "area"},
+                    {"column_name": "geom", "quoted_ref": "geom", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "transport_edges",
+                "table_aliases": ["道路", "路网"],
+                "columns": [
+                    {"column_name": "edge_id", "quoted_ref": "edge_id", "value_semantics": {"identifier": True}},
+                    {"column_name": "geom", "quoted_ref": "geom", "is_geometry": True},
+                ],
+            },
+        ],
+    }
+    sql = (
+        "WITH large_parcels AS (SELECT parcel_id FROM land_parcels "
+        "WHERE land_type = 'forest' AND area > (SELECT AVG(area) FROM land_parcels)) "
+        "SELECT COUNT(*) AS parcel_count FROM large_parcels lp "
+        "JOIN transport_edges e ON ST_Intersects("
+        "ST_Transform((SELECT geom FROM land_parcels "
+        "WHERE parcel_id = lp.parcel_id LIMIT 1), 4326), e.geom)"
+    )
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "使用 CTE 统计与 transport_edges 相交的大面积森林图斑数量",
+        sql,
+        context,
+    )
+
+    assert "WITH large_parcels AS (SELECT geom FROM land_parcels" in rewritten
+    assert "ST_Transform(lp.geom, 4326)" in rewritten
+    assert "lp.parcel_id" not in rewritten
+    assert "SELECT COUNT(*) AS parcel_count FROM large_parcels AS lp" in rewritten
+    assert "COUNT(DISTINCT land_parcels" not in rewritten
+    assert "semantic_cte_spatial_exists_count" in corrections
+
+
+def test_semantic_rewrite_cte_spatial_count_preserves_outer_entity_key_projection():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "land_parcels",
+                "columns": [
+                    {"column_name": "parcel_id", "quoted_ref": '"parcel_id"'},
+                    {"column_name": "land_type", "quoted_ref": '"land_type"'},
+                    {"column_name": "area", "quoted_ref": '"area"'},
+                    {"column_name": "geom", "quoted_ref": "geom", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "transport_edges",
+                "columns": [{"column_name": "geom", "quoted_ref": "geom", "is_geometry": True}],
+            },
+        ]
+    }
+    sql = (
+        'WITH large_parcels AS (SELECT "parcel_id" FROM land_parcels '
+        'WHERE "land_type" = \'forest\' AND "area" > '
+        '(SELECT AVG("area") FROM land_parcels)) '
+        'SELECT COUNT(DISTINCT lp."parcel_id") FROM large_parcels lp '
+        'JOIN transport_edges e ON ST_Intersects(lp.geom, e.geom)'
+    )
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "使用 CTE 统计与 transport_edges 相交的大面积森林图斑数量",
+        sql,
+        context,
+    )
+
+    assert 'SELECT geom, "parcel_id" FROM land_parcels' in rewritten
+    assert 'COUNT(DISTINCT lp."parcel_id")' in rewritten
+    assert "semantic_cte_spatial_exists_count" in corrections
 
 
 def test_semantic_rewrite_knn_removes_unrequested_and_duplicate_string_filters():
@@ -3325,6 +4777,131 @@ def test_semantic_rewrite_knn_wraps_single_target_cross_join_filter():
     assert "semantic_knn_target" in corrections
 
 
+def test_semantic_rewrite_knn_removes_per_entity_lateral_for_named_anchor():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "districts",
+                "columns": [
+                    {"column_name": "name", "semantic_domain": "NAME"},
+                    {"column_name": "shape", "is_geometry": True, "pg_type": "geometry(Polygon,4490)"},
+                ],
+            },
+            {
+                "table_name": "pois",
+                "columns": [
+                    {"column_name": "name", "semantic_domain": "NAME"},
+                    {"column_name": "geometry", "is_geometry": True, "pg_type": "geometry(Point,4326)"},
+                ],
+            },
+        ],
+    }
+    sql = (
+        "SELECT d.name, ST_Distance(ST_Transform(p.geometry, 4490), d.shape) AS dist_m "
+        "FROM districts AS d CROSS JOIN LATERAL ("
+        "SELECT geometry FROM pois WHERE name LIKE '%Central%' "
+        "ORDER BY ST_Distance(ST_Transform(geometry, 4490), d.shape) LIMIT 1"
+        ") AS p ORDER BY dist_m LIMIT 3"
+    )
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "find the nearest 3 districts to the POI whose name contains 'Central'",
+        sql,
+        context,
+    )
+
+    assert "CROSS JOIN LATERAL" not in rewritten
+    assert (
+        "CROSS JOIN (SELECT geometry FROM pois WHERE name LIKE '%Central%' "
+        "AND geometry IS NOT NULL LIMIT 1) AS p"
+    ) in rewritten
+    assert "semantic_knn_target" in corrections
+
+
+def test_semantic_rewrite_knn_converts_spatial_join_to_per_entity_lateral():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "roads",
+                "columns": [
+                    {"column_name": "name", "semantic_domain": "NAME"},
+                    {"column_name": "kind"},
+                    {"column_name": "geometry", "is_geometry": True, "pg_type": "geometry(LineString,4326)"},
+                ],
+            },
+            {
+                "table_name": "areas",
+                "columns": [
+                    {"column_name": "name", "semantic_domain": "NAME"},
+                    {"column_name": "category"},
+                    {"column_name": "shape", "is_geometry": True, "pg_type": "geometry(Polygon,4490)"},
+                ],
+            },
+        ],
+    }
+    sql = (
+        "SELECT r.name, a.name, ST_Distance(r.geometry::geography, "
+        "ST_Transform(a.shape, 4326)::geography) AS dist_m "
+        "FROM roads AS r JOIN areas AS a ON "
+        "ST_Intersects(r.geometry, ST_Transform(a.shape, 4326)) "
+        "WHERE r.kind = 'primary' AND r.name IS NOT NULL AND a.category = 'medical' "
+        "ORDER BY dist_m LIMIT 5"
+    )
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "for each named primary road find its nearest medical area and return the 5 closest pairs",
+        sql,
+        context,
+    )
+
+    assert (
+        "JOIN LATERAL (SELECT * FROM areas AS _gda_knn_target "
+        "WHERE _gda_knn_target.category = 'medical'"
+    ) in rewritten
+    assert "LIMIT 1) AS a ON TRUE" in rewritten
+    assert "ST_Intersects" not in rewritten
+    assert "WHERE r.kind = 'primary' AND r.name IS NOT NULL" in rewritten
+    assert "semantic_per_entity_knn_lateral" in corrections
+
+
+def test_semantic_rewrite_uses_contains_for_top_aoi_in_each_district():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "districts",
+                "columns": [
+                    {"column_name": "name", "semantic_domain": "NAME"},
+                    {"column_name": "shape", "is_geometry": True, "pg_type": "geometry(Polygon,4490)"},
+                ],
+            },
+            {
+                "table_name": "areas",
+                "columns": [
+                    {"column_name": "name", "semantic_domain": "NAME"},
+                    {"column_name": "rating"},
+                    {"column_name": "shape", "is_geometry": True, "pg_type": "geometry(Polygon,4490)"},
+                ],
+            },
+        ],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "找出每个街区中评分最高的 AOI",
+        "SELECT d.name, a.name, a.rating FROM districts AS d JOIN areas AS a "
+        "ON ST_Intersects(d.shape, a.shape)",
+        context,
+    )
+
+    assert "ST_Contains(d.shape, a.shape)" in rewritten
+    assert "semantic_requested_containment" in corrections
+
+
 def test_semantic_rewrite_knn_wraps_first_target_with_question_order_column():
     from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
 
@@ -3361,3 +4938,269 @@ def test_semantic_rewrite_knn_wraps_first_target_with_question_order_column():
         "ORDER BY objectid LIMIT 1) AS d"
     ) in rewritten
     assert "semantic_knn_target" in corrections
+
+
+def test_semantic_rewrite_preserves_exact_phrase_across_name_or_category():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [{
+            "table_name": "poi",
+            "columns": [
+                {"column_name": "名称", "quoted_ref": '"名称"', "aliases": ["name", "POI名称"]},
+                {"column_name": "类型", "quoted_ref": '"类型"', "aliases": ["type", "POI类型"]},
+                {"column_name": "电话", "quoted_ref": '"电话"'},
+            ],
+        }],
+    }
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "找出包含'三甲医院'（类型 或 名称 中包含）的所有 POI 的名称和电话。",
+        'SELECT "名称", "电话" FROM poi '
+        'WHERE ("名称" LIKE \'%三甲%\' OR "类型" LIKE \'%三甲%\') '
+        'AND "类型" LIKE \'%医院%\'',
+        context,
+    )
+
+    assert rewritten.endswith(
+        'WHERE (poi."名称" LIKE \'%三甲医院%\' OR poi."类型" LIKE \'%三甲医院%\')'
+    )
+    assert "LIKE '%三甲%'" not in rewritten
+    assert "semantic_exact_literal_disjunction" in corrections
+
+
+def test_semantic_rewrite_uses_stable_order_for_non_unique_requested_anchor():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "buildings",
+                "columns": [
+                    {
+                        "column_name": "Id",
+                        "quoted_ref": '"Id"',
+                        "value_semantics": {
+                            "identifier": False,
+                            "non_unique_identifier": True,
+                        },
+                    },
+                    {"column_name": "Floor", "quoted_ref": '"Floor"'},
+                    {
+                        "column_name": "geometry",
+                        "quoted_ref": "geometry",
+                        "is_geometry": True,
+                        "value_semantics": {
+                            "entity_key": True,
+                            "stable_target_order": "centroid_xy",
+                        },
+                    },
+                ],
+            },
+            {
+                "table_name": "roads",
+                "columns": [
+                    {"column_name": "name", "quoted_ref": "name"},
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True},
+                ],
+            },
+        ],
+    }
+    sql = (
+        "SELECT r.name FROM buildings b JOIN roads r ON TRUE "
+        'WHERE b."Floor" >= 50 AND b."Id" = '
+        '(SELECT "Id" FROM buildings WHERE "Floor" >= 50 ORDER BY "Id" LIMIT 1) '
+        "ORDER BY b.geometry <-> r.geometry LIMIT 10"
+    )
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "取按 Id 升序的第一栋 50 层以上建筑，返回最近 10 条道路",
+        sql,
+        context,
+    )
+
+    assert (
+        'FROM (SELECT * FROM buildings WHERE "Floor" >= 50 '
+        'ORDER BY ST_X(ST_Centroid(geometry)), ST_Y(ST_Centroid(geometry)) LIMIT 1) AS b'
+    ) in rewritten
+    assert "semantic_knn_target" in corrections
+
+
+def test_semantic_rewrite_does_not_inject_filter_into_derived_geometry_alias():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "roads",
+                "columns": [
+                    {"column_name": "name", "quoted_ref": "name", "semantic_domain": "NAME"},
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "stations",
+                "columns": [
+                    {"column_name": "名称", "quoted_ref": '"名称"', "needs_quoting": True},
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True},
+                ],
+            },
+        ]
+    }
+    question = "找到距离'中央站'（POI名称 = '中央站'）最近的道路"
+    sql = (
+        "SELECT r.name FROM roads r CROSS JOIN "
+        "(SELECT geometry FROM stations WHERE stations.\"名称\" = '中央站' LIMIT 1) p "
+        "WHERE r.name IS NOT NULL ORDER BY r.geometry <-> p.geometry LIMIT 5"
+    )
+
+    rewritten, _ = apply_semantic_sql_rewrites(question, sql, context)
+
+    assert 'stations."名称" = \'中央站\'' in rewritten
+    assert 'p."名称"' not in rewritten
+
+
+def test_semantic_rewrite_does_not_treat_limit_as_lateral_alias():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "roads",
+                "columns": [
+                    {"column_name": "name", "quoted_ref": "name"},
+                    {
+                        "column_name": "fclass",
+                        "quoted_ref": "fclass",
+                        "value_semantics": {"enum": [{"value": "primary", "meaning": "主干道"}]},
+                    },
+                    {"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "aoi",
+                "columns": [
+                    {"column_name": "名称", "quoted_ref": '"名称"', "needs_quoting": True},
+                    {
+                        "column_name": "第一分类",
+                        "quoted_ref": '"第一分类"',
+                        "needs_quoting": True,
+                        "value_semantics": {"enum": [{"value": "医疗", "meaning": "医疗"}]},
+                    },
+                    {"column_name": "shape", "quoted_ref": "shape", "is_geometry": True},
+                ],
+            },
+        ]
+    }
+    question = (
+        "对每条 fclass 为 'primary' 的有名字道路，找出其最近的一个 AOI "
+        "（第一分类为'医疗'），返回距离最短的前 5 对"
+    )
+    sql = (
+        "SELECT r.name, a.\"名称\", ST_Distance(r.geometry, a.shape) AS distance_m "
+        "FROM roads r JOIN LATERAL (SELECT \"名称\", shape FROM aoi "
+        "WHERE \"第一分类\" = '医疗' ORDER BY ST_Distance(r.geometry, shape) LIMIT 1) a ON TRUE "
+        "WHERE r.fclass = 'primary' AND r.name IS NOT NULL ORDER BY distance_m LIMIT 5"
+    )
+
+    rewritten, _ = apply_semantic_sql_rewrites(question, sql, context)
+
+    assert 'LIMIT."第一分类"' not in rewritten
+    assert "AND AND" not in rewritten
+    assert 'a."第一分类"' not in rewritten
+    assert rewritten.count("r.fclass = 'primary'") == 1
+
+
+def test_semantic_rewrite_knn_metric_preserves_order_by_limit_spacing():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "roads",
+                "columns": [{"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True, "srid": 4326}],
+            },
+            {
+                "table_name": "places",
+                "columns": [{"column_name": "geometry", "quoted_ref": "geometry", "is_geometry": True, "srid": 4326}],
+            },
+        ]
+    }
+    rewritten, _ = apply_semantic_sql_rewrites(
+        "找出最近的 3 条道路",
+        "SELECT r.geometry FROM roads r CROSS JOIN places p "
+        "ORDER BY r.geometry <-> p.geometry LIMIT 3",
+        context,
+    )
+
+    assert "ORDER BY " in rewritten
+    assert "ORDER BYST_" not in rewritten
+    assert "geographyLIMIT" not in rewritten
+    assert rewritten.endswith("LIMIT 3")
+
+
+def test_implicit_literal_column_uses_governed_values_not_physical_field_names():
+    from data_agent.nl2sql_semantic_rewrite import (
+        _build_tables,
+        _governed_literal_column,
+    )
+
+    table = _build_tables(
+        {
+            "candidate_tables": [
+                {
+                    "table_name": "inventory_items",
+                    "columns": [
+                        {
+                            "column_name": "classification_code",
+                            "quoted_ref": "classification_code",
+                            "pg_type": "text",
+                            "sample_values": ["orchard", "forest"],
+                        },
+                        {
+                            "column_name": "operator_note",
+                            "quoted_ref": "operator_note",
+                            "pg_type": "text",
+                            "sample_values": ["reviewed"],
+                        },
+                    ],
+                }
+            ]
+        }
+    )[0]
+
+    resolved = _governed_literal_column(table, "orchard")
+
+    assert resolved is not None
+    assert resolved.column_name == "classification_code"
+
+
+def test_implicit_literal_column_refuses_ambiguous_text_fields_without_governance():
+    from data_agent.nl2sql_semantic_rewrite import (
+        _build_tables,
+        _governed_literal_column,
+    )
+
+    table = _build_tables(
+        {
+            "candidate_tables": [
+                {
+                    "table_name": "inventory_items",
+                    "columns": [
+                        {
+                            "column_name": "source_label",
+                            "quoted_ref": "source_label",
+                            "pg_type": "text",
+                        },
+                        {
+                            "column_name": "target_label",
+                            "quoted_ref": "target_label",
+                            "pg_type": "text",
+                        },
+                    ],
+                }
+            ]
+        }
+    )[0]
+
+    assert _governed_literal_column(table, "unknown") is None

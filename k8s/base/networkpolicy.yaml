@@ -29,6 +29,12 @@ spec:
               app.kubernetes.io/name: gis-agent-outbox-worker
         - podSelector:
             matchLabels:
+              app.kubernetes.io/name: gis-agent-gis-mvt-cache-purge-worker
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gis-agent-ingestion-worker
+        - podSelector:
+            matchLabels:
               app.kubernetes.io/name: gis-agent-migrate
         - podSelector:
             matchLabels:
@@ -60,13 +66,17 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: gis-agent-outbox-worker
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gis-agent-gis-mvt-cache-purge-worker
       ports:
         - protocol: TCP
           port: 6379
 ---
-# ----- MinIO: app + outbox-worker + bucket-init Job -----
-# Console (9001) is reachable by anything in-namespace to make debugging
-# easy; lock down via overlay if you don't want that.
+# ----- MinIO: named platform consumers + bucket-init Job -----
+# Optional workers add their own explicit ingress policy. Do not use an empty
+# pod selector here: NetworkPolicy rules are additive, so it would defeat a
+# worker profile's scoped network boundary.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -86,7 +96,12 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: gis-agent-outbox-worker
-        - podSelector: {}  # any pod, for bucket-init Job
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gis-agent-ingestion-worker
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: minio
       ports:
         - protocol: TCP
           port: 9000
@@ -123,6 +138,10 @@ spec:
   policyTypes:
     - Ingress
   ingress:
-    - ports:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gis-agent-app
+      ports:
         - protocol: TCP
           port: 3000

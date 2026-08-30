@@ -65,7 +65,10 @@ _RULES: list[tuple[IntentLabel, list[re.Pattern]]] = [
     ]),
     (IntentLabel.SPATIAL_JOIN, [
         re.compile(
-            r"(相交|重叠|与.{0,20}相邻|落在.{0,20}之内|包含|与.{0,20}交集"
+            r"(相交|重叠|穿过|经过|沿线|与.{0,20}相邻|落在.{0,20}之内|包含|与.{0,20}交集"
+            r"|周边\s*\d+(?:\.\d+)?\s*(?:米|千米|公里)(?:范围)?内"
+            r"|(?:范围|区域|地块|土地)(?:内|里).{0,20}(?:兴趣点|POI)"
+            r"|(?:街区|学校|医院|园区|地块|图斑|用地)(?:范围)?(?:内|里).{0,20}(?:建筑|楼|兴趣点|POI|道路)"
             r"|\bintersect\b|\bcontains\b|\bwithin\s+(?:the\s+)?(?:boundary|polygon|region)\b)",
             re.IGNORECASE,
         ),
@@ -91,7 +94,8 @@ _RULES: list[tuple[IntentLabel, list[re.Pattern]]] = [
             r"|\b(?:calculate|compute)\s+the\b|\bcalculate\s+the\s+(?:total|average|amount|number|count|difference|sum|deviation)\b"
             r"|\bare\s+there\s+more\b|\bdeviation\s+in\s+percentage\b)"
             # Chinese
-            r"|分组|按.{0,20}统计|每.{0,10}平均|总和|总数|占比|比例",
+            r"|分组|按.{0,20}统计|每.{0,10}平均|平均(?:值|有多少|多少)?|均值|总和|总数|占比|比例"
+            r"|有多少|数量|最多|最少|排名|排行",
             re.IGNORECASE,
         ),
     ]),
@@ -108,6 +112,7 @@ _RULES: list[tuple[IntentLabel, list[re.Pattern]]] = [
     (IntentLabel.ATTRIBUTE_FILTER, [
         re.compile(
             r"=\s*['\"]?[A-Za-z0-9一-鿿]+|>\s*-?\d+|<\s*-?\d+|like\s+['\"]"
+            r"|(?:超过|大于|高于|不少于|不低于|至少)\s*(?:了)?\s*-?\d+(?:\.\d+)?"
             # English specific-entity lookup phrasings — directive verb + "the" + noun
             r"|\b(?:state|tell|mention|indicate|identify|give|write)\s+(?:me\s+|us\s+)?(?:the|out\s+the|whether)\b"
             # "What is X's Y" / "What's X's Y" — possessive lookup (allow multi-word names)
@@ -125,7 +130,7 @@ _RULES: list[tuple[IntentLabel, list[re.Pattern]]] = [
     ]),
     (IntentLabel.SPATIAL_MEASUREMENT, [
         re.compile(
-            r"(面积|长度|周长|area\s*\(|st_length|st_area|平方米|公顷|千米)",
+            r"(面积|长度|周长|中心点|质心|坐标|area\s*\(|st_length|st_area|st_centroid|平方米|公顷|千米)",
             re.IGNORECASE,
         ),
     ]),

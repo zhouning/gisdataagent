@@ -1,0 +1,11 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gis-agent-projection-recovery-worker
+  namespace: gis-agent
+spec:
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        gda.gisdataagent.io/enable-reason: environment-approved-projection-recovery-sandbox

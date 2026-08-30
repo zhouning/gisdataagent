@@ -14,6 +14,28 @@ class TestMentionRegistry(unittest.TestCase):
         self.assertIn("General", handles)
         self.assertIn("Governance", handles)
         self.assertIn("Optimization", handles)
+        self.assertIn("Liveability", handles)
+        self.assertIn("Makani", handles)
+        self.assertIn("AbuDhabi", handles)
+
+    def test_abu_dhabi_query_targets_are_pinned_and_alias_resolvable(self):
+        from data_agent.mention_registry import build_registry, lookup
+
+        registry = build_registry(user_id="testuser", role="admin")
+        expected = {
+            "Liveability": "LIVEABILITY_NL2SQL",
+            "Makani": "MAKANI_NL2SQL",
+            "AbuDhabi": "ABU_DHABI_FEDERATED_NL2SQL",
+        }
+        for handle, pipeline in expected.items():
+            target = lookup(registry, handle)
+            self.assertIsNotNone(target)
+            self.assertEqual(target["pipeline"], pipeline)
+            self.assertEqual(target["allowed_roles"], ["admin", "analyst"])
+            self.assertTrue(target["pinned"])
+        self.assertEqual(lookup(registry, "宜居问数")["handle"], "Liveability")
+        self.assertEqual(lookup(registry, "建筑设施问数")["handle"], "Makani")
+        self.assertEqual(lookup(registry, "跨库问数")["handle"], "AbuDhabi")
 
     def test_uwm_planning_target_and_aliases(self):
         from data_agent.mention_registry import build_registry, lookup
@@ -241,6 +263,12 @@ class TestMentionTargetsAPI(unittest.TestCase):
         self.assertIn("DataVisualization", handles)
         self.assertIn("WorldModelV21", handles)
         self.assertIn("TerritoryWorldModel", handles)
+        self.assertIn("Liveability", handles)
+        self.assertIn("Makani", handles)
+        self.assertIn("AbuDhabi", handles)
+        for handle in ("Liveability", "Makani", "AbuDhabi"):
+            target = next(t for t in body["targets"] if t["handle"] == handle)
+            self.assertTrue(target["allowed"])
 
     @patch("data_agent.frontend_api._get_user_from_request")
     def test_viewer_sees_allowed_flag(self, mock_user):
@@ -253,6 +281,9 @@ class TestMentionTargetsAPI(unittest.TestCase):
         gov = next((t for t in body["targets"] if t["handle"] == "Governance"), None)
         self.assertIsNotNone(gov)
         self.assertFalse(gov["allowed"])
+        for handle in ("Liveability", "Makani", "AbuDhabi"):
+            target = next(t for t in body["targets"] if t["handle"] == handle)
+            self.assertFalse(target["allowed"])
 
 
 class TestSubAgentDirectProgress(unittest.TestCase):

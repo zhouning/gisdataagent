@@ -21,7 +21,9 @@ resources:
   # ----- App tier -----
   - app-deployment.yaml
   - app-service.yaml
+  - ingestion-worker.yaml
   - outbox-worker.yaml
+  - gis-mvt-cache-purge-worker.yaml
 
   # ----- Local LLM backend (host Ollama) -----
   - ollama-service.yaml
@@ -30,6 +32,7 @@ resources:
   - qc-subsystems.yaml
 
   # ----- Tile server -----
+  - martin-configmap.yaml
   - martin-deployment.yaml
   - martin-service.yaml
 

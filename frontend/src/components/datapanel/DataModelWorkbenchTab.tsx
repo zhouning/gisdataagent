@@ -9,6 +9,7 @@ import {
   FileCheck2,
   Fingerprint,
   HardDrive,
+  Network,
   RefreshCw,
   Search,
   Send,
@@ -27,6 +28,8 @@ import {
   type ResourceVersion,
   type ResourceVersionArchitecture,
 } from './platformControlApi';
+import { listDocuments, listVersions } from './standards/standardsApi';
+import DataModelPreviewModal from './standards/derive/DataModelPreviewModal';
 
 const PAGE_SIZE = 30;
 const REVIEWABLE_STATUSES = new Set([
@@ -141,8 +144,15 @@ function ComponentFact({
   );
 }
 
-export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRole?: string }) {
-  const canReadPlatform = userRole === 'admin' || userRole === 'platform_operator';
+export default function DataModelWorkbenchTab({
+  userRole = 'analyst',
+  requestedVersionId = null,
+}: {
+  userRole?: string;
+  requestedVersionId?: string | null;
+}) {
+  const canManageArchitecture = userRole === 'admin' || userRole === 'platform_operator';
+  const [workspaceView, setWorkspaceView] = useState<'canvas' | 'architecture'>('canvas');
   const [versions, setVersions] = useState<ResourceVersion[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [architecture, setArchitecture] = useState<ResourceVersionArchitecture | null>(null);
@@ -160,9 +170,12 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
   const [reviewExpiryHours, setReviewExpiryHours] = useState(72);
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [dmtVersionId, setDmtVersionId] = useState<string | null>(null);
+  const [dmtModelLoading, setDmtModelLoading] = useState(false);
+  const [dmtModelError, setDmtModelError] = useState('');
 
   useEffect(() => {
-    if (!canReadPlatform) return;
+    if (!canManageArchitecture) return;
     const controller = new AbortController();
     setListLoading(true);
     setListError('');
@@ -185,10 +198,10 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
         if (!controller.signal.aborted) setListLoading(false);
       });
     return () => controller.abort();
-  }, [canReadPlatform, refreshToken]);
+  }, [canManageArchitecture, refreshToken]);
 
   useEffect(() => {
-    if (!selectedId || !canReadPlatform) {
+    if (!selectedId || !canManageArchitecture) {
       setArchitecture(null);
       setReconciliation(null);
       return;
@@ -232,7 +245,39 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
         if (!controller.signal.aborted) setDetailLoading(false);
       });
     return () => controller.abort();
-  }, [canReadPlatform, selectedId, refreshToken]);
+  }, [canManageArchitecture, selectedId, refreshToken]);
+
+  // DMT's candidate PDM is governed by the Standards Platform, but users
+  // should not need to navigate through the standards derivation workflow to
+  // see it. Resolve the latest version for the unified model workbench.
+  useEffect(() => {
+    let cancelled = false;
+    setDmtModelLoading(true);
+    setDmtModelError('');
+    listDocuments()
+      .then(async result => {
+        const document = result.documents.find(item => item.doc_code === 'DMT-GIS-DATA-MODEL');
+        if (!document) throw new Error('尚未登记 DMT-GIS-DATA-MODEL 标准文档');
+        const versionsResult = await listVersions(document.id);
+        const version = versionsResult.versions[0];
+        if (!version) throw new Error('DMT-GIS-DATA-MODEL 尚未创建版本');
+        if (!cancelled) setDmtVersionId(version.id);
+      })
+      .catch(error => {
+        if (!cancelled) {
+          setDmtVersionId(null);
+          setDmtModelError(error instanceof Error ? error.message : String(error));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDmtModelLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [refreshToken]);
+
+  useEffect(() => {
+    if (requestedVersionId) setWorkspaceView('canvas');
+  }, [requestedVersionId]);
 
   const filteredVersions = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -286,16 +331,6 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
     }
   };
 
-  if (!canReadPlatform) {
-    return (
-      <div className="model-access-denied" role="alert">
-        <ShieldCheck aria-hidden="true" />
-        <strong>平台角色权限不足</strong>
-        <span>数据模型控制面仅对平台管理员和平台操作员开放。</span>
-      </div>
-    );
-  }
-
   const schema = architecture?.schema_version_record;
   const contract = architecture?.data_contract_version_record;
   const location = architecture?.physical_location;
@@ -305,28 +340,74 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
   const canRequestReview = REVIEWABLE_STATUSES.has(currentStatus);
   const approvalExpired = approvalCase?.status === 'pending'
     && new Date(approvalCase.expires_at).getTime() <= Date.now();
+  const activeModelVersionId = requestedVersionId || dmtVersionId;
 
   return (
-    <div className="model-workbench">
+    <div className="model-workbench model-workbench-unified">
       <div className="model-workbench-toolbar">
         <div className="model-workbench-heading">
           <Boxes aria-hidden="true" />
           <div>
-            <strong>数据模型</strong>
-            <span>{versions.length} 个资源版本</span>
+            <strong>数据模型工作台</strong>
+            <span>{workspaceView === 'canvas' ? 'ER 画布默认视图' : `${versions.length} 个资源版本`}</span>
           </div>
         </div>
-        <button
-          className="model-icon-button"
-          onClick={() => setRefreshToken(value => value + 1)}
-          disabled={listLoading || detailLoading}
-          title="刷新模型状态"
-          aria-label="刷新模型状态"
-        >
-          <RefreshCw className={listLoading || detailLoading ? 'spinning' : ''} />
-        </button>
+        <div className="model-workbench-actions">
+          <div className="model-view-switch" role="tablist" aria-label="数据模型视图">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={workspaceView === 'canvas'}
+              className={workspaceView === 'canvas' ? 'active' : ''}
+              onClick={() => setWorkspaceView('canvas')}
+            >
+              <Network aria-hidden="true" />
+              <span>模型视图</span>
+            </button>
+            {canManageArchitecture && (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={workspaceView === 'architecture'}
+                className={workspaceView === 'architecture' ? 'active' : ''}
+                onClick={() => setWorkspaceView('architecture')}
+              >
+                <ShieldCheck aria-hidden="true" />
+                <span>架构治理</span>
+              </button>
+            )}
+          </div>
+          <button
+            className="model-icon-button"
+            onClick={() => setRefreshToken(value => value + 1)}
+            disabled={dmtModelLoading || listLoading || detailLoading}
+            title="刷新模型状态"
+            aria-label="刷新模型状态"
+          >
+            <RefreshCw className={dmtModelLoading || listLoading || detailLoading ? 'spinning' : ''} />
+          </button>
+        </div>
       </div>
 
+      {workspaceView === 'canvas' ? (
+        <div className="model-canvas-workspace">
+          {dmtModelLoading && (
+            <div className="model-detail-loading" role="status">
+              <RefreshCw className="spinning" aria-hidden="true" />
+              <span>正在载入 DMT ER 画布...</span>
+            </div>
+          )}
+          {!dmtModelLoading && dmtModelError && (
+            <div className="model-inline-error detail" role="alert">
+              <AlertTriangle aria-hidden="true" />
+              <span>{dmtModelError}</span>
+            </div>
+          )}
+          {!dmtModelLoading && activeModelVersionId && (
+            <DataModelPreviewModal versionId={activeModelVersionId} embedded />
+          )}
+        </div>
+      ) : (
       <div className="model-workbench-layout">
         <aside className="model-version-browser" aria-label="资源版本">
           <label className="model-search">
@@ -593,6 +674,7 @@ export default function DataModelWorkbenchTab({ userRole = 'analyst' }: { userRo
           )}
         </main>
       </div>
+      )}
     </div>
   );
 }

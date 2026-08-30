@@ -29,7 +29,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: fuseki
-          image: gisdataagent-ontology-fuseki:5.5.0-nr-2.0.1
+          image: gisdataagent-ontology-fuseki:5.5.0-nr-2.3.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gis-agent-agentops-worker
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gis-agent-agentops-worker
+data:
+  GDA_AGENTOPS_TEMPORAL_NAMESPACE: gda-agentops-sandbox
+  GDA_AGENTOPS_TEMPORAL_TASK_QUEUE: agentops-gis
+  GDA_AGENTOPS_TEMPORAL_FRONTEND: gis-agent-temporal-frontend:7233
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gis-agent-agentops-worker
+  labels:
+    app.kubernetes.io/name: gis-agent-agentops-worker
+    app.kubernetes.io/component: agentops-worker
+spec:
+  # No temporalio SDK worker is shipped yet. Keep this fail-closed until the pinned
+  # worker image and approval-bound action handlers are certified.
+  replicas: 0
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gis-agent-agentops-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gis-agent-agentops-worker
+        app.kubernetes.io/component: agentops-worker
+    spec:
+      serviceAccountName: gis-agent-agentops-worker
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: gis-data-agent:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-ec"]
+          args:
+            - >-
+              echo 'AgentOps worker is disabled: temporalio SDK and action handlers are not
+              certified in this profile.' >&2; exit 78
+          envFrom:
+            - configMapRef:
+                name: gis-agent-agentops-worker
+          env:
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: HOME
+              value: /tmp
+            - name: TMPDIR
+              value: /tmp
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: worker-tmp
+              mountPath: /tmp
+      volumes:
+        - name: worker-tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi

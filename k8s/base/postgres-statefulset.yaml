@@ -30,6 +30,11 @@ spec:
           # contrib modules — but if you change the base image, verify both
           # extensions are available.
           image: postgis/postgis:16-3.4
+          args:
+            - -c
+            - max_connections=$(POSTGRES_MAX_CONNECTIONS)
+            - -c
+            - superuser_reserved_connections=$(POSTGRES_SUPERUSER_RESERVED_CONNECTIONS)
           ports:
             - containerPort: 5432
               name: postgres
@@ -48,6 +53,16 @@ spec:
                 secretKeyRef:
                   name: gis-agent-secret
                   key: POSTGRES_ADMIN_PASSWORD
+            - name: POSTGRES_MAX_CONNECTIONS
+              valueFrom:
+                configMapKeyRef:
+                  name: gis-agent-config
+                  key: POSTGRES_MAX_CONNECTIONS
+            - name: POSTGRES_SUPERUSER_RESERVED_CONNECTIONS
+              valueFrom:
+                configMapKeyRef:
+                  name: gis-agent-config
+                  key: POSTGRES_SUPERUSER_RESERVED_CONNECTIONS
             - name: AGENT_USER_PASSWORD
               valueFrom:
                 secretKeyRef:

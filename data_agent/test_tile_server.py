@@ -400,6 +400,9 @@ class TestTileRouteEndpoints(unittest.TestCase):
             resp = _run(_api_tile(req))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.media_type, "application/vnd.mapbox-vector-tile")
+        self.assertEqual(resp.headers["cache-control"], "private, no-store")
+        self.assertEqual(resp.headers["vary"], "Authorization, Cookie, Accept-Encoding")
+        self.assertNotIn("access-control-allow-origin", resp.headers)
 
     @patch("data_agent.api.tile_routes._set_user_context",
            return_value=("testuser", "analyst"))
@@ -445,6 +448,7 @@ class TestTileMetadataEndpoint(unittest.TestCase):
         self.assertEqual(body["tilejson"], "3.0.0")
         self.assertEqual(body["feature_count"], 1000)
         self.assertIn("tiles", body)
+        self.assertEqual(resp.headers["cache-control"], "private, no-store")
 
 
 class TestTileDeleteEndpoint(unittest.TestCase):
@@ -468,14 +472,13 @@ class TestTileDeleteEndpoint(unittest.TestCase):
         mock_cleanup.assert_called_once_with("del_test")
 
 
-class TestMartinProxy(unittest.TestCase):
-    """Test Martin proxy endpoint."""
+class TestRetiredMartinProxy(unittest.TestCase):
+    """The generic provider proxy must not bypass the governed service route."""
 
-    @patch("data_agent.api.tile_routes.MARTIN_URL", "")
-    @patch("data_agent.api.tile_routes._set_user_context",
-           return_value=("testuser", "analyst"))
     @patch("data_agent.api.tile_routes._get_user_from_request")
-    def test_martin_not_configured(self, mock_user, mock_ctx):
+    def test_martin_table_proxy_is_retired_without_provider_configuration(
+        self, mock_user
+    ):
         from data_agent.api.tile_routes import _api_martin_tile
 
         mock_user.return_value = MagicMock()
@@ -483,22 +486,29 @@ class TestMartinProxy(unittest.TestCase):
             "table": "parcels", "z": 0, "x": 0, "y": 0
         })
         resp = _run(_api_martin_tile(req))
-        self.assertEqual(resp.status_code, 503)
+        self.assertEqual(resp.status_code, 410)
+        self.assertEqual(json.loads(resp.body)["code"], "legacy_martin_proxy_retired")
+        self.assertEqual(resp.headers["cache-control"], "no-store")
 
-    @patch("data_agent.api.tile_routes._set_user_context",
-           return_value=("testuser", "analyst"))
     @patch("data_agent.api.tile_routes._get_user_from_request")
-    def test_martin_invalid_table_name(self, mock_user, mock_ctx):
-        from data_agent.api.tile_routes import _api_martin_tile
+    def test_martin_catalog_is_retired(self, mock_user):
+        from data_agent.api.tile_routes import _api_martin_catalog
 
         mock_user.return_value = MagicMock()
-        req = _make_request(path_params={
-            "table": "DROP TABLE;--", "z": 0, "x": 0, "y": 0
-        })
+        resp = _run(_api_martin_catalog(_make_request()))
+        self.assertEqual(resp.status_code, 410)
+        self.assertEqual(json.loads(resp.body)["code"], "legacy_martin_proxy_retired")
 
-        with patch("data_agent.api.tile_routes.MARTIN_URL", "http://martin:3000"):
-            resp = _run(_api_martin_tile(req))
-        self.assertEqual(resp.status_code, 400)
+    @patch("data_agent.api.tile_routes._get_user_from_request", return_value=None)
+    def test_martin_retirement_response_still_requires_authentication(self, mock_user):
+        from data_agent.api.tile_routes import _api_martin_tile
+
+        resp = _run(
+            _api_martin_tile(
+                _make_request(path_params={"table": "parcels", "z": 0, "x": 0, "y": 0})
+            )
+        )
+        self.assertEqual(resp.status_code, 401)
 
 
 class TestGetTileRoutes(unittest.TestCase):
@@ -507,7 +517,7 @@ class TestGetTileRoutes(unittest.TestCase):
     def test_route_list(self):
         from data_agent.api.tile_routes import get_tile_routes
         routes = get_tile_routes()
-        self.assertGreaterEqual(len(routes), 5)  # 3 self-hosted + 2 martin
+        self.assertGreaterEqual(len(routes), 5)  # 3 user-layer + 2 retirement shims
         paths = [r.path for r in routes]
         self.assertIn("/api/tiles/{layer_id}/{z:int}/{x:int}/{y:int}.pbf", paths)
         self.assertIn("/api/tiles/{layer_id}/metadata.json", paths)

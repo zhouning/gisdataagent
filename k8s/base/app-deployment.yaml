@@ -89,6 +89,13 @@ spec:
                 name: gis-agent-config
             - secretRef:
                 name: gis-agent-secret
+          env:
+            # Runtime pods verify the ledger with the application role and do
+            # not inherit migration-authority credentials from shared config.
+            - name: POSTGRES_ADMIN_USER
+              value: ""
+            - name: POSTGRES_ADMIN_PASSWORD
+              value: ""
           volumeMounts:
             # Local scratch / temp files. Production uploads now go to
             # MinIO via StorageManager (s3:// URI). This PVC is kept for

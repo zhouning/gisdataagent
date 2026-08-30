@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import stat
 import zipfile
 from pathlib import Path
 
+import geopandas as gpd
 import pytest
 from openpyxl import Workbook
+from shapely.geometry import box
 
 from data_agent.offline_ingest import OfflineIngestStore
 from data_agent.standard_contracts import load_shp_contract_catalog
@@ -15,6 +19,34 @@ from data_agent.standard_contracts import load_shp_contract_catalog
 async def _stream(data: bytes, block_size: int = 7):
     for offset in range(0, len(data), block_size):
         yield data[offset : offset + block_size]
+
+
+def _zip_payload(entries: dict[str, bytes]) -> bytes:
+    payload = io.BytesIO()
+    with zipfile.ZipFile(payload, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name, content in entries.items():
+            archive.writestr(name, content)
+    return payload.getvalue()
+
+
+async def _commit_upload(
+    store: OfflineIngestStore,
+    filename: str,
+    payload: bytes,
+    *,
+    asset_kind: str | None = None,
+) -> str:
+    session = store.create_session(
+        filename,
+        len(payload),
+        chunk_size=1024 * 1024,
+        expected_sha256=hashlib.sha256(payload).hexdigest(),
+        asset_kind=asset_kind,
+        source_system="test-browser",
+    )
+    await store.write_chunk(session["session_id"], 0, _stream(payload))
+    store.finalize_session(session["session_id"], actor="test")
+    return session["session_id"]
 
 
 @pytest.mark.asyncio
@@ -62,6 +94,142 @@ async def test_chunk_checksum_and_size_are_enforced(tmp_path):
         await store.write_chunk(session["session_id"], 0, _stream(b"too-long"))
 
 
+@pytest.mark.asyncio
+async def test_uploaded_filegdb_zip_is_safely_expanded_profiled_and_idempotent(tmp_path):
+    payload = _zip_payload(
+        {
+            "delivery/DLTB.gdb/a00000001.gdbtable": b"table fixture",
+            "delivery/DLTB.gdb/a00000001.gdbtablx": b"index fixture",
+            "__MACOSX/._DLTB.gdb": b"ignored",
+        }
+    )
+    store = OfflineIngestStore(tmp_path / "lake")
+    session_id = await _commit_upload(
+        store,
+        "DLTB.gdb.zip",
+        payload,
+        asset_kind="filegdb_bundle",
+    )
+
+    result = store.ingest_uploaded_session(session_id, actor="test", run_quality=False)
+
+    assert result["archive_expansion"]["gdb_paths"] == ["delivery/DLTB.gdb"]
+    assert result["archive_expansion"]["summary"]["ignored_entry_count"] == 1
+    assert result["run"]["assets"][0]["kind"] == "filegdb_bundle"
+    assert Path(result["run"]["assets"][0]["raw_path"]).is_dir()
+    assert any(
+        edge["relation"] == "safely_expanded" for edge in result["run"]["lineage"]
+    )
+    expansion_manifest = json.loads(
+        (store.manifests_dir / f"expanded_{session_id}.json").read_text(encoding="utf-8")
+    )
+    assert expansion_manifest["source_sha256"] == hashlib.sha256(payload).hexdigest()
+    assert Path(expansion_manifest["source_path"]).read_bytes() == payload
+    assert len(expansion_manifest["files"]) == 2
+
+    repeated = store.ingest_uploaded_session(session_id, actor="test", run_quality=False)
+    assert repeated["resumed"] is True
+    assert repeated["ingest_run_id"] == result["ingest_run_id"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "unsafe_name",
+    [
+        "../../outside.gdb/a.gdbtable",
+        "/absolute.gdb/a.gdbtable",
+        "C:/evil.gdb/a",
+        "DLTB.gdb/NUL",
+        "DLTB.gdb/stream:ads",
+    ],
+)
+async def test_uploaded_zip_rejects_unsafe_paths(tmp_path, unsafe_name):
+    store = OfflineIngestStore(tmp_path / "lake")
+    session_id = await _commit_upload(
+        store,
+        "unsafe.zip",
+        _zip_payload({unsafe_name: b"bad"}),
+        asset_kind="filegdb_bundle",
+    )
+
+    with pytest.raises(ValueError, match="absolute path|unsafe path"):
+        store.ingest_uploaded_session(session_id, run_quality=False)
+    assert not (tmp_path / "outside.gdb").exists()
+
+
+@pytest.mark.asyncio
+async def test_uploaded_zip_rejects_symbolic_links(tmp_path):
+    payload = io.BytesIO()
+    with zipfile.ZipFile(payload, "w") as archive:
+        link = zipfile.ZipInfo("DLTB.gdb/link")
+        link.create_system = 3
+        link.external_attr = (stat.S_IFLNK | 0o777) << 16
+        archive.writestr(link, "../../outside")
+    store = OfflineIngestStore(tmp_path / "lake")
+    session_id = await _commit_upload(
+        store,
+        "symlink.zip",
+        payload.getvalue(),
+        asset_kind="filegdb_bundle",
+    )
+
+    with pytest.raises(ValueError, match="symbolic links"):
+        store.ingest_uploaded_session(session_id, run_quality=False)
+
+
+@pytest.mark.asyncio
+async def test_uploaded_filegdb_zip_requires_gdb_and_enforces_size_limit(tmp_path, monkeypatch):
+    store = OfflineIngestStore(tmp_path / "lake")
+    no_gdb = await _commit_upload(
+        store,
+        "not-gdb.zip",
+        _zip_payload({"readme.txt": b"no dataset"}),
+        asset_kind="filegdb_bundle",
+    )
+    with pytest.raises(ValueError, match="does not contain a .gdb"):
+        store.ingest_uploaded_session(no_gdb, run_quality=False)
+
+    monkeypatch.setenv("GDA_ARCHIVE_MAX_UNCOMPRESSED_BYTES", "4")
+    too_large = await _commit_upload(
+        store,
+        "large-gdb.zip",
+        _zip_payload({"DLTB.gdb/a.gdbtable": b"12345"}),
+        asset_kind="filegdb_bundle",
+    )
+    with pytest.raises(ValueError, match="uncompressed-size limit"):
+        store.ingest_uploaded_session(too_large, run_quality=False)
+
+
+@pytest.mark.asyncio
+async def test_uploaded_filegdb_zip_rejects_malformed_archive_and_file_count_limit(
+    tmp_path, monkeypatch
+):
+    store = OfflineIngestStore(tmp_path / "lake")
+    malformed = await _commit_upload(
+        store,
+        "malformed.zip",
+        b"not a ZIP file",
+        asset_kind="filegdb_bundle",
+    )
+    with pytest.raises(zipfile.BadZipFile):
+        store.ingest_uploaded_session(malformed, run_quality=False)
+
+    monkeypatch.setenv("GDA_ARCHIVE_MAX_FILES", "1")
+    too_many = await _commit_upload(
+        store,
+        "too-many.zip",
+        _zip_payload(
+            {
+                "DLTB.gdb/a.gdbtable": b"one",
+                "DLTB.gdb/b.gdbtable": b"two",
+            }
+        ),
+        asset_kind="filegdb_bundle",
+    )
+    with pytest.raises(ValueError, match="file-count limit"):
+        store.ingest_uploaded_session(too_many, run_quality=False)
+
+
 def test_local_scan_creates_quality_and_lineage_artifacts(tmp_path, monkeypatch):
     inbox = tmp_path / "inbox"
     inbox.mkdir()
@@ -84,6 +252,36 @@ def test_local_scan_creates_quality_and_lineage_artifacts(tmp_path, monkeypatch)
     assert len(quality["items"]) == 2
     archive = store.export_diagnostics(result["run_id"])
     assert archive.exists()
+
+
+def test_local_scan_profiles_geopackage_layers(tmp_path, monkeypatch):
+    inbox = tmp_path / "inbox"
+    inbox.mkdir()
+    source = inbox / "DLTB.gpkg"
+    gpd.GeoDataFrame(
+        {
+            "BSM": ["1"],
+            "YSDM": ["2001010100"],
+            "DLBM": ["0101"],
+            "DLMC": ["水田"],
+            "QSDWDM": ["500120001"],
+            "QSDWMC": ["测试镇"],
+            "ZLDWDM": ["500120001"],
+            "ZLDWMC": ["测试镇"],
+            "TBMJ": [100.0],
+        },
+        geometry=[box(0, 0, 10, 10)],
+        crs="EPSG:3857",
+    ).to_file(source, layer="DLTB", driver="GPKG")
+    monkeypatch.setenv("GDA_LOCAL_INGEST_DIRS", str(inbox))
+
+    result = OfflineIngestStore(tmp_path / "lake").scan_local_path(inbox, actor="tester")
+
+    asset = result["assets"][0]
+    assert asset["adapter"] == "python_gis_runtime"
+    assert asset["layers"][0]["name"] == "DLTB"
+    assert asset["layers"][0]["feature_count"] == 1
+    assert asset["layers"][0]["mapping"]["ea_model_candidate"] == "DLTB"
 
 
 def test_deep_quality_is_used_by_standardization_gate(tmp_path, monkeypatch):

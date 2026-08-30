@@ -1,9 +1,11 @@
-# NL2Semantic2SQL — 技术架构与复现指南 (v2.0)
+# NL2Semantic2SQL — 技术架构与复现指南 (v3.1 current)
 
 > GIS Data Agent (ADK Edition) — 跨域自然语言到 SQL 框架
-> 版本: 2.0 | 日期: 2026-05-04 | Branch: `feat/v12-extensible-platform`
+> 版本: 3.1 | 日期: 2026-08-24 | Branch: current working tree
 > 作者: 周宁 (Beijing SuperMap Software Co., Ltd.)
-> 前置版本: `semantic_layer_architecture.md` v1.0 (2026-02-27, 仅 GIS 场景)
+> 前置版本: `semantic_layer_architecture.md` v1.1 (2026-08-24，历史通用 GIS 语义层说明)
+
+> 本文前半部分保留历史 P2/通用 NL2SQL 的复现记录。阿布扎比两库的当前实现、双路线边界、v4 语义层和最新评测口径以 [`docs/nl2semantic2sql_architecture.md`](nl2semantic2sql_architecture.md) 第 13 节为准。历史 benchmark 数字不能直接作为当前产品准确率。
 
 ---
 
@@ -828,7 +830,94 @@ Semantic grounding is the dominant contributor (65% of total gain).
 - BIRD 中文 100 题完整跑（已生成数据，未跑 baseline + full）
 - BIRD warehouse 上达成统计显著超越（当前 NS）
 
-### 12.4 BIRD 上不显著的原因分析
+## 12.4 阿布扎比当前实现补充（2026-08）
+
+### 12.4.1 运行入口
+
+```text
+@Liveability <question>
+  -> data_agent/liveability_nl2sql.py
+  -> governed_virtual_nl2sql.run_governed_virtual_nl2sql()
+  -> liveability_data_20260730_semantic_layer_v4_full_coverage.json
+
+@Makani <question>
+  -> data_agent/makani_nl2sql.py
+  -> governed_virtual_nl2sql.run_governed_virtual_nl2sql()
+  -> makani_sync_full_semantic_layer_v4_full_coverage.json
+```
+
+`execution_profile=baseline_sql` 是当前默认生产路径；`execution_profile=semantic_ir_experimental`
+是并行实验路径。两者共享同一 source admission、策略预检、候选资产召回和结果审计，
+因此可以做同 case paired comparison。
+
+### 12.4.2 语义层加载和执行授权
+
+v4 配置覆盖全部技术表，但每个 binding 都必须经过 `execution_eligible` 检查：
+
+- `true`：允许进入 SQL validator 或 SemanticQueryIR compiler；
+- `false`：允许展示和召回，但只能作为技术目录/待审核资产，不能执行；
+- 缺失（仅旧 v3 fixture 兼容）：只有 `review_status` 以 `reviewed` 开头才兼容放行。
+
+产品代码不能通过 benchmark case id、问题原文或具体表名增加特例。任何新别名、关系、
+指标合同和敏感字段策略都必须作为版本化语义资产发布，并由测试验证其唯一性和边界。
+
+共享实体名的消歧遵循同一原则：先比较问题中分组/筛选子句引用的物理字段名、语义字段名
+和非通用多词字段标签；只有某个已发布 binding 获得严格更强的字段证据时才解除同名门禁。
+单词级通用标签（例如对象名本身）不能构成授权；证据相同或不存在时必须返回结构化澄清，
+不允许由模型随机选择兄弟资产。
+
+### 12.4.3 SemanticQueryIR 生产路径
+
+1. 模型返回 `GovernedSemanticIRProposal`，不能携带 SQL 或物理表名。
+2. `AdHocSemanticQueryIR` 做 schema、聚合、过滤、join 和空间意图校验。
+3. 编译器按 `semantic_entity`/`semantic_field` 在 active binding 中解析物理对象。
+4. 编译器生成带参数的 Postgres/PostGIS SQL；用户值进入 `sql_params`，不能拼接。
+5. SQL 再经过语义表列校验、只读 guard、数据库查询预算和源准入。
+6. 失败时返回结构化错误类别；不能降级成“模型直接写 SQL”来掩盖 IR 缺口。
+
+### 12.4.4 离线评估要求
+
+最新 scenario benchmark 必须按 `business_language`、`technical_catalog_control`、`safety` 分桶，
+并按 single-table、multi-table equality、multi-table spatial、mixed、language、split 分层。
+Gold 只供 evaluator 读取，不能进入运行时 prompt。真实源库离线时，只能运行 artifact/schema
+校验、候选召回和 compiler unit tests；不能把历史报告或控制库 healthy 状态当成实时源库验证。
+
+长批次必须固定输入 artifact：runner 启动时记录 benchmark/语义层的规范化 JSON SHA 和原始
+字节 SHA，并把启动时语义字节复制为本次运行专用快照。每个 case 发起前复核原文件字节 SHA；
+若发生变化，立即取消未开始的 case，checkpoint 写为 `aborted`，并以
+`BenchmarkConfigurationError` 终止整批。禁止继续读取同一路径的新内容，也禁止把 artifact
+漂移包装为普通 `contract_check_failure`。失败子集恢复报告只能用于验证修复，不能与旧批次的
+通过题拼接成新的全量分数。
+
+### 12.4.5 生产前检查清单
+
+- [ ] 两个入口都加载 v4 全表语义层，且 source binding 指纹与发现快照一致。
+- [ ] 所有未审核表的 `execution_eligible` 明确为 `false`。
+- [ ] 相似资产和数字后缀具备唯一性/歧义回归测试。
+- [ ] 公共电话亭等公共设施不被个人敏感数据策略误拒，个人/居民联系方式仍拒绝。
+- [ ] baseline 与 IR 路线在相同 benchmark、模型和执行配置下 paired run。
+- [ ] 报告和 checkpoint 同时绑定 benchmark/语义层原始字节 SHA，运行期无 artifact 漂移。
+- [ ] 结果报告同时提供状态通过率、Gold 等价率、失败分类、P95 耗时和安全 precision/recall。
+- [ ] 没有以“总 benchmark 分数”掩盖业务语义覆盖缺口。
+
+### 12.4.6 当前已发布配对证据
+
+`benchmarks/abu_dhabi_nl2semantic2sql_v2/published_report_manifest.json` 是当前已发布的
+路线比较入口，绑定 baseline、IR、paired 和 3-run stability 报告的 checksum。它记录的是
+同一冻结集上的真实源执行证据，不是把问题或 Gold SQL 缓存到运行时：
+
+| 范围 | baseline_sql | semantic_ir_experimental | 解释 |
+|---|---:|---:|---|
+| 全部 36 cases 状态合同 | 36/36 | 36/36 | 包含准入/澄清/拒答控制题 |
+| 可执行结果等价 | 21/21 | 21/21 | 按 Gold result contract 判断 |
+| 自由问数路线配对 | 6/6 | 6/6 | 当前结果持平，样本仍小 |
+| 3-run route observations | 17/18 | 17/18 | 稳定性无候选优势 |
+
+因此，当前可以复现和审计的是“新路线已可执行、可独立比较”；不能据此写成“新路线
+已经替代基线”或“全表业务语义已经完善”。完整 benchmark 资产的用途和 claim boundary
+见 [`docs/nl2semantic2sql_architecture.md`](nl2semantic2sql_architecture.md) 第 13.8 节。
+
+### 12.5 BIRD 上不显著的原因分析
 
 可能因素：
 1. 仓库查询的失败模式（join path confusion, aggregation semantics, date parsing）需要更细的 schema 推理，semantic layer 提供的是粗粒度提示
@@ -841,10 +930,10 @@ Semantic grounding is the dominant contributor (65% of total gain).
 ## 附录 A: 配置参数
 
 ```python
-# 模型
-MODEL_GENERATION = "gemini-2.5-flash"   # 主生成模型
-MODEL_INTENT_JUDGE = "gemini-2.0-flash"  # 意图 LLM judge
-MODEL_RETRY = "gemini-2.0-flash"         # 自纠错 retry
+# 模型（历史通用配置；阿布扎比产品入口以 12.4 的 GPT-5.1 profile 为准）
+MODEL_GENERATION = "gemini-2.5-flash"   # 历史通用主生成模型
+MODEL_INTENT_JUDGE = "gemini-2.0-flash"  # 历史意图 LLM judge
+MODEL_RETRY = "gemini-2.0-flash"         # 历史自纠错 retry
 TEMPERATURE = 0.0
 TIMEOUT_GENERATION = 60_000  # ms
 TIMEOUT_RETRY = 20_000

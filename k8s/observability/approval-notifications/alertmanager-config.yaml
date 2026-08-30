@@ -1,0 +1,30 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: gis-agent-approval-notifications
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: gis-agent-approval-notification-worker
+    app.kubernetes.io/component: approval-notification
+spec:
+  route:
+    receiver: approval-oncall
+    groupBy:
+      - alertname
+      - namespace
+      - gda_tenant
+      - gda_approval_action
+    groupWait: 5s
+    groupInterval: 5m
+    repeatInterval: 4h
+    matchers:
+      - name: alertname
+        value: GDAApprovalCase|GDAApprovalNotification.*
+        matchType: =~
+  receivers:
+    - name: approval-oncall
+      webhookConfigs:
+        - urlSecret:
+            name: gis-agent-approval-oncall
+            key: webhook-url
+          sendResolved: true

@@ -11,9 +11,8 @@ import platform
 import sys
 import time
 
-from .db_engine import get_engine
 from .cloud_storage import get_cloud_adapter
-from .stream_engine import get_stream_engine
+from .db_engine import get_connection_budget, get_engine, get_pool_status
 
 _start_time = time.time()
 
@@ -22,8 +21,8 @@ _start_time = time.time()
 # Individual subsystem checks
 # ---------------------------------------------------------------------------
 
-def check_database() -> dict:
-    """Check PostgreSQL connectivity via get_engine() + SELECT 1."""
+def check_database(*, include_capacity: bool = False) -> dict:
+    """Check PostgreSQL connectivity and report bounded connection capacity."""
     engine = get_engine()
     if engine is None:
         return {"status": "unconfigured", "latency_ms": 0, "detail": "No database credentials"}
@@ -33,10 +32,86 @@ def check_database() -> dict:
         t0 = time.time()
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
+            server_capacity = (
+                _read_database_connection_capacity(conn, text)
+                if include_capacity
+                else None
+            )
         latency = round((time.time() - t0) * 1000, 1)
-        return {"status": "ok", "latency_ms": latency, "detail": "Connected"}
+        result = {
+            "status": "ok",
+            "latency_ms": latency,
+            "detail": "Connected",
+        }
+        if include_capacity:
+            connection_budget = get_connection_budget()
+            pool_status = get_pool_status()
+            result["connection_pool"] = pool_status
+            result["connection_budget"] = connection_budget
+        else:
+            pool_status = None
+        if include_capacity and server_capacity is not None:
+            if pool_status is not None:
+                pool_capacity = int(pool_status["configured_capacity"])
+                server_capacity["process_pool_capacity"] = pool_capacity
+                server_capacity["process_pool_fits"] = (
+                    pool_capacity <= server_capacity["application_capacity"]
+                )
+            declared_limit = connection_budget[
+                "declared_server_max_connections"
+            ]
+            if declared_limit is not None:
+                server_capacity["matches_declared_limit"] = (
+                    declared_limit == server_capacity["max_connections"]
+                )
+            result["connection_capacity"] = server_capacity
+        return result
     except Exception as e:
         return {"status": "error", "latency_ms": 0, "detail": str(e)}
+
+
+def _read_database_connection_capacity(conn, text_factory) -> dict | None:
+    """Read sanitized server capacity; connectivity remains valid if unavailable."""
+    try:
+        row = conn.execute(
+            text_factory(
+                """
+                SELECT
+                    current_setting('max_connections')::integer AS max_connections,
+                    current_setting('superuser_reserved_connections')::integer
+                        AS superuser_reserved_connections,
+                    COALESCE(
+                        current_setting('reserved_connections', true), '0'
+                    )::integer AS reserved_connections,
+                    (SELECT count(*) FROM pg_stat_activity)::integer
+                        AS current_connections
+                """
+            )
+        ).mappings().one()
+        max_connections = int(row["max_connections"])
+        superuser_reserved = int(row["superuser_reserved_connections"])
+        reserved_connections = int(row["reserved_connections"])
+        current_connections = int(row["current_connections"])
+        total_reserved = superuser_reserved + reserved_connections
+        application_capacity = max(max_connections - total_reserved, 0)
+        result = {
+            "max_connections": max_connections,
+            "superuser_reserved_connections": superuser_reserved,
+            "reserved_connections": reserved_connections,
+            "total_reserved_connections": total_reserved,
+            "application_capacity": application_capacity,
+            "current_connections": current_connections,
+            "remaining_connections": max(max_connections - current_connections, 0),
+            "application_remaining": max(
+                application_capacity - current_connections, 0
+            ),
+            "utilization_percent": round(
+                current_connections * 100 / max_connections, 2
+            ) if max_connections else 100.0,
+        }
+        return result
+    except Exception:
+        return None
 
 
 def check_cloud_storage() -> dict:
@@ -155,6 +230,30 @@ def check_mcp_hub() -> dict:
         return {"status": "unconfigured", "connected": 0, "enabled": 0, "total": 0}
 
 
+def check_metadata_providers() -> dict:
+    """Check configured Metadata Fabric providers without reading catalog data."""
+    try:
+        from .metadata_provider_health import check_configured_metadata_providers
+
+        providers = check_configured_metadata_providers()
+    except Exception:
+        return {
+            "status": "error",
+            "providers": {},
+            "detail": "metadata provider health probe failed to initialize",
+        }
+    blocking = {
+        name: result
+        for name, result in providers.items()
+        if result.get("status") not in {"ok", "unconfigured"}
+    }
+    return {
+        "status": "ok" if not blocking else "not_ready",
+        "providers": providers,
+        "blocking": sorted(blocking),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Aggregated endpoints
 # ---------------------------------------------------------------------------
@@ -172,12 +271,55 @@ def readiness_check() -> dict:
     receive traffic. Cloud storage and Redis are optional.
     """
     db = check_database()
-    if db["status"] == "ok":
-        return {"status": "ok", "checks": {"database": db}}
-    if db["status"] == "unconfigured":
-        # DB not configured → degraded but still ready (local-only mode)
-        return {"status": "ok", "checks": {"database": db}}
-    return {"status": "not_ready", "checks": {"database": db}}
+    providers = check_metadata_providers()
+    query_security = check_governed_query_security()
+    db_ready = db["status"] in {"ok", "unconfigured"}
+    provider_ready = providers["status"] == "ok"
+    query_security_ready = query_security["status"] in {"ok", "disabled"}
+    return {
+        "status": (
+            "ok"
+            if db_ready and provider_ready and query_security_ready
+            else "not_ready"
+        ),
+        "checks": {
+            "database": db,
+            "metadata_providers": providers,
+            "governed_query_security": query_security,
+        },
+    }
+
+
+def check_governed_query_security() -> dict:
+    """Check the deployment-owned query security gate without resolving a tenant."""
+
+    try:
+        from .governed_query_security import (
+            governed_query_security_required,
+            governed_query_security_resolver_configured,
+        )
+
+        required = governed_query_security_required()
+        configured = governed_query_security_resolver_configured()
+        if required and not configured:
+            return {
+                "status": "not_ready",
+                "required": True,
+                "resolver_configured": False,
+                "detail": "required query security resolver is not configured",
+            }
+        return {
+            "status": "ok" if required else "disabled",
+            "required": required,
+            "resolver_configured": configured,
+        }
+    except Exception as exc:
+        return {
+            "status": "not_ready",
+            "required": True,
+            "resolver_configured": False,
+            "detail": str(exc),
+        }
 
 
 def get_system_status(session_svc=None) -> dict:
@@ -189,11 +331,13 @@ def get_system_status(session_svc=None) -> dict:
         "platform": platform.platform(),
         "features": _get_feature_flags(),
         "subsystems": {
-            "database": check_database(),
+            "database": check_database(include_capacity=True),
             "cloud_storage": check_cloud_storage(),
             "redis": check_redis(),
             "session_service": check_session_service(session_svc),
             "mcp_hub": check_mcp_hub(),
+            "metadata_providers": check_metadata_providers(),
+            "governed_query_security": check_governed_query_security(),
         },
     }
 
@@ -221,7 +365,9 @@ def format_startup_summary(session_svc=None) -> str:
     flags = _get_feature_flags()
 
     def _icon(status):
-        return "OK" if status in ("ok",) else ("--" if status in ("unconfigured", "degraded", "all_disabled") else "!!")
+        return "OK" if status in ("ok",) else (
+            "--" if status in ("unconfigured", "degraded", "all_disabled") else "!!"
+        )
 
     lines = [
         "=" * 50,
@@ -246,12 +392,16 @@ def format_startup_summary(session_svc=None) -> str:
 
     # Redis
     redis_detail = "Connected" if redis["status"] == "ok" else (
-        "Not configured" if redis["status"] == "unconfigured" else f"ERROR: {redis.get('detail', '')}"
+        "Not configured"
+        if redis["status"] == "unconfigured"
+        else f"ERROR: {redis.get('detail', '')}"
     )
     lines.append(f"  [{_icon(redis['status'])}] Redis:          {redis_detail}")
 
     # Session service
-    session_detail = f"{session['backend']}" + (" (fallback)" if session["status"] == "degraded" else "")
+    session_detail = f"{session['backend']}" + (
+        " (fallback)" if session["status"] == "degraded" else ""
+    )
     lines.append(f"  [{_icon(session['status'])}] Session:        {session_detail}")
 
     # MCP Hub

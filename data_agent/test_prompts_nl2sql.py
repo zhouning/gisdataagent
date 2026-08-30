@@ -79,17 +79,18 @@ def test_qwen_directory_exists_for_phase_3():
     assert qwen_dir.exists() and qwen_dir.is_dir()
 
 
-def test_qwen_system_instruction_has_family_specific_harness_notes():
+def test_qwen_system_instruction_has_shared_product_harness_notes_without_dataset_fingerprints():
     text = prompts_nl2sql.load_system_instruction("qwen")
 
-    assert "Qwen family harness notes" in text
+    assert "Shared Product Harness Notes" in text
     assert "Do not append clauses after a semicolon" in text
-    assert "geometry column is `shape`" in text
+    assert "exact geometry column" in text
     assert "ST_Contains(...::geography" in text
     assert "write/destructive" in text
-    assert "normal read-only query constraints" in text
-    assert "undefined table or CTE named `target`" in text
-    assert "`道路名称`" in text
+    assert "normal read-only constraints" in text
+    assert "Never reference an undefined table or CTE" in text
+    for fingerprint in ("CQ dataset", "村庄", "茶园", "水田", "dlmc", "`道路名称`"):
+        assert fingerprint not in text
 
 
 def test_common_domain_facts_exists():

@@ -1,0 +1,14 @@
+flowchart LR
+  P[Production Traces / Feedback / Outcomes] --> F[Failure Attribution]
+  F --> E[EvolutionEvent]
+  E --> C[CandidateArtifact]
+  C --> R[Regression + Failure Replay + Holdout]
+  R --> D{Promotion Governor}
+  D -->|reject/revise| C
+  D -->|pass| S[Shadow]
+  S --> N[Canary]
+  N --> M[Promote]
+  N --> B[Rollback]
+  M --> O[Monitoring]
+  O --> P
+

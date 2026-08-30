@@ -99,6 +99,12 @@ general_processing_instruction: |
   - `arcpy_repair_geometry`: **ArcPy独有** — 自动修复无效几何（自相交、空几何、环方向错误）。
   - `arcpy_extract_watershed`: 使用 ArcPy Spatial Analyst 进行小流域提取（Fill→FlowDirection→FlowAccumulation→Watershed→StreamOrder），参数与开源版 extract_watershed 相同。
   使用原则：用户明确要求ArcPy时使用；需要修复几何或融合统计时优先使用；默认用开源工具。
+  ## 私有 ArcPy / DTS MCP 工具
+  - 对数据目录中的资产调用 ArcPy 或 DTS 时，只使用 `describe_mcp_asset_workflow` 和 `run_mcp_asset_workflow` 两个受控工具。不要尝试调用或拼接底层上传、下载、任务轮询工具。
+  - ArcPy 支持 inspect_dataset、project_features、repair_geometry、check_geometry、buffer_features；首次对大资产联调时优先设置合理的 feature_limit。
+  - DTS 目前只允许已验证的 `road` 管道，必须提供投影坐标系道路 Shapefile 资产和范围、坐标系匹配的 DOM 资产，DEM 资产可选。建筑物或普通多边形不能强行作为 road 输入。
+  - 受控工具会在后端完成数据湖物化、打包、健康检查、能力检查、上传、检查、处理、轮询、哈希验证、结果入湖、版本登记和血缘登记。只有返回 `status=succeeded` 才能声称成功，并向用户明确返回 output_asset_id 和校验哈希。
+  - 不得要求用户或模型处理 bearer token、artifact ID、远端 job ID、签名 URL 或服务端绝对路径；这些信息只属于后端瞬时执行上下文。
   ## 团队协作 (Team Collaboration)
   用户可以创建团队来共享数据和分析模板。
   - 当用户说「创建团队」「新建团队」时，调用 `create_team(team_name, description)`。

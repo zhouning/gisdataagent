@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
         - name: martin
-          image: ghcr.io/maplibre/martin:v0.15
-          args: ["--auto-bounds", "calc", "--listen-addresses", "0.0.0.0:3000"]
+          image: ghcr.io/maplibre/martin:v0.18.0
+          args: ["--config", "/etc/martin/config.yaml"]
           ports:
             - containerPort: 3000
           env:
@@ -27,6 +27,11 @@ spec:
                 secretKeyRef:
                   name: gis-agent-secret
                   key: DATABASE_URL
+          volumeMounts:
+            - name: config
+              mountPath: /etc/martin/config.yaml
+              subPath: config.yaml
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /health
@@ -46,3 +51,7 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: martin-config

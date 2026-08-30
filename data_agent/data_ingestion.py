@@ -940,17 +940,19 @@ class PostGISSnapshotWriter:
             geometry_column = connection.execute(
                 text(
                     """
-                    SELECT f_geometry_column FROM geometry_columns
+                    SELECT f_geometry_column, srid FROM geometry_columns
                     WHERE f_table_schema = 'public' AND f_table_name = :table
                     LIMIT 1
                     """
                 ),
                 {"table": self.target_table},
-            ).scalar()
+            ).first()
             if geometry_column:
-                index_name = safe_table_name(f"idx_{self.target_table}_{geometry_column}")
+                geometry_name = str(geometry_column[0])
+                geometry_srid = int(geometry_column[1] or 0)
+                index_name = safe_table_name(f"idx_{self.target_table}_{geometry_name}")
                 staging_index_name = safe_table_name(
-                    f"idx_{self.staging_table}_{geometry_column}"
+                    f"idx_{self.staging_table}_{geometry_name}"
                 )
                 staging_index_exists = connection.execute(
                     text("SELECT to_regclass(:name) IS NOT NULL"),
@@ -968,7 +970,18 @@ class PostGISSnapshotWriter:
                         text(
                             f'CREATE INDEX IF NOT EXISTS "{index_name}" '
                             f'ON public."{self.target_table}" '
-                            f'USING GIST ("{geometry_column}")'
+                            f'USING GIST ("{geometry_name}")'
+                        )
+                    )
+                if geometry_srid in {4326, 4490, 4610}:
+                    geography_index_name = safe_table_name(
+                        f"idx_{self.target_table}_{geometry_name}_geog"
+                    )
+                    connection.execute(
+                        text(
+                            f'CREATE INDEX IF NOT EXISTS "{geography_index_name}" '
+                            f'ON public."{self.target_table}" '
+                            f'USING GIST (("{geometry_name}"::geography))'
                         )
                     )
         return self.target_table

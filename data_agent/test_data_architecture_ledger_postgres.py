@@ -155,8 +155,10 @@ def _assert_db_rejected(connection, statement: str) -> None:
 
 
 @pytest.mark.skipif(not DATABASE_URL, reason="DATABASE_URL is not configured")
-def test_postgres_architecture_authority_is_tenant_scoped_immutable_and_complete():
-    engine = create_engine(DATABASE_URL)
+def test_postgres_architecture_authority_is_tenant_scoped_immutable_and_complete(
+    isolated_postgres_url: str,
+):
+    engine = create_engine(isolated_postgres_url)
     tenant_a = f"arch-a-{uuid4().hex[:8]}"
     tenant_b = f"arch-b-{uuid4().hex[:8]}"
     now = datetime.now(UTC).replace(microsecond=0)

@@ -1422,6 +1422,10 @@ async def derive_version_impact_graph_handler(request: Request):
 def _data_model_version_or_404(vid: str):
     """Verify the version exists. Returns (None) on success, JSONResponse on 404."""
     eng = get_engine()
+    if eng is None:
+        # Keep read endpoints deterministic in offline/test profiles where
+        # the optional Standards Platform database is not configured.
+        return JSONResponse({"error": "version not found"}, status_code=404)
     with eng.connect() as c:
         row = c.execute(text(
             "SELECT id FROM std_document_version WHERE id=:i"
@@ -1431,9 +1435,21 @@ def _data_model_version_or_404(vid: str):
     return None
 
 
-def _active_snapshot_or_404(vid: str):
-    """Return the latest active snapshot row for a version, or a 404 JSONResponse."""
+def _preferred_snapshot_or_404(vid: str):
+    """Return the version's preferred readable snapshot.
+
+    Automatically derived ``active`` snapshots remain authoritative.  A
+    curated ``manual`` snapshot is readable only when no active snapshot is
+    available, which lets structure-only candidate models use the same API
+    without presenting them as an approved derivation result.
+    """
     eng = get_engine()
+    if eng is None:
+        return JSONResponse(
+            {"error": "no active data-model snapshot or manual candidate "
+                      "for this version; database is not configured"},
+            status_code=404,
+        )
     with eng.connect() as c:
         row = c.execute(text(
             "SELECT id, document_version_id, generated_at, generated_by, "
@@ -1441,13 +1457,17 @@ def _active_snapshot_or_404(vid: str):
             "       entity_count, attribute_count, constraint_count, "
             "       derived_status, source_tag "
             "FROM std_data_model_snapshot "
-            "WHERE document_version_id=:v AND derived_status='active' "
-            "ORDER BY generated_at DESC LIMIT 1"
+            "WHERE document_version_id=:v "
+            "  AND derived_status IN ('active', 'manual') "
+            "ORDER BY CASE derived_status WHEN 'active' THEN 0 ELSE 1 END, "
+            "         generated_at DESC "
+            "LIMIT 1"
         ), {"v": vid}).mappings().first()
     if row is None:
         return JSONResponse(
-            {"error": "no active data-model snapshot for this version; "
-                      "trigger one via /api/std/derive/rerun/{vid}"},
+            {"error": "no active data-model snapshot or manual candidate "
+                      "for this version; trigger a derivation or import a "
+                      "curated snapshot"},
             status_code=404,
         )
     return dict(row)
@@ -1456,8 +1476,9 @@ def _active_snapshot_or_404(vid: str):
 async def data_model_get_handler(request: Request):
     """GET /api/std/data-model/{vid}?layer=cdm|ldm|pdm|ddl
 
-    Returns the latest active snapshot's full payload, or just one layer
-    if `layer=` is supplied. 404 if no active snapshot exists yet.
+    Returns the preferred snapshot's full payload, or just one layer if
+    `layer=` is supplied. Active derivations take precedence over manual
+    candidate snapshots.
     """
     _, _, err = _auth_or_401(request)
     if err: return err
@@ -1465,7 +1486,7 @@ async def data_model_get_handler(request: Request):
     not_found = _data_model_version_or_404(vid)
     if not_found: return not_found
 
-    snap = _active_snapshot_or_404(vid)
+    snap = _preferred_snapshot_or_404(vid)
     if isinstance(snap, JSONResponse): return snap
 
     layer = request.query_params.get("layer")
@@ -1513,7 +1534,7 @@ async def data_model_ddl_handler(request: Request):
     not_found = _data_model_version_or_404(vid)
     if not_found: return not_found
 
-    snap = _active_snapshot_or_404(vid)
+    snap = _preferred_snapshot_or_404(vid)
     if isinstance(snap, JSONResponse): return snap
 
     return PlainTextResponse(
@@ -1533,14 +1554,21 @@ async def data_model_xmi_handler(request: Request):
     not_found = _data_model_version_or_404(vid)
     if not_found: return not_found
 
-    snap = _active_snapshot_or_404(vid)
+    snap = _preferred_snapshot_or_404(vid)
     if isinstance(snap, JSONResponse): return snap
 
     try:
+        domain_labels = {
+            str(domain.get("id")): str(domain.get("name_zh") or domain.get("name_en") or domain.get("id"))
+            for domain in (snap.get("cdm_json") or {}).get("domains", [])
+            if isinstance(domain, dict) and domain.get("id")
+        }
         xmi = export_pdm_to_ea_xmi(
             snap["pdm_json"],
             model_name=f"Standards Platform Data Model {vid[:8]}",
             package_name=f"Data Model {vid[:8]}",
+            group_by_domain=True,
+            domain_labels=domain_labels,
         )
     except Exception as e:
         logger.exception("failed to export data-model XMI")
@@ -1552,7 +1580,7 @@ async def data_model_xmi_handler(request: Request):
         media_type="application/xml",
         headers={
             "Content-Disposition":
-                f'attachment; filename="data_model_{vid[:8]}.xml"',
+                f'attachment; filename="data_model_{vid[:8]}.xmi"',
         },
     )
 

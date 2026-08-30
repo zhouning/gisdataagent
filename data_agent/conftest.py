@@ -6,10 +6,16 @@ duplication across 68+ test files.
 """
 
 import asyncio
+import os
 import warnings
-from unittest.mock import MagicMock, AsyncMock, patch
+from collections.abc import Iterator
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.engine import make_url
+
 from data_agent.adk_compat import configure_proj_data_dir
 
 warnings.filterwarnings(
@@ -19,6 +25,36 @@ warnings.filterwarnings(
 )
 
 configure_proj_data_dir()
+
+
+@pytest.fixture
+def isolated_postgres_url() -> Iterator[str]:
+    """Create a disposable database for tests that replay migration SQL."""
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        pytest.skip("DATABASE_URL is not configured")
+    source_url = make_url(database_url)
+    maintenance_engine = create_engine(
+        source_url.set(database="postgres"),
+        isolation_level="AUTOCOMMIT",
+    )
+    database_name = f"gda_migration_test_{uuid4().hex[:12]}"
+    try:
+        with maintenance_engine.connect() as connection:
+            if not connection.exec_driver_sql(
+                "SELECT rolsuper FROM pg_roles WHERE rolname = current_user"
+            ).scalar_one():
+                pytest.skip("migration replay test requires a PostgreSQL superuser")
+            connection.exec_driver_sql(f'CREATE DATABASE "{database_name}"')
+        yield source_url.set(database=database_name).render_as_string(
+            hide_password=False
+        )
+    finally:
+        with maintenance_engine.connect() as connection:
+            connection.exec_driver_sql(
+                f'DROP DATABASE IF EXISTS "{database_name}" WITH (FORCE)'
+            )
+        maintenance_engine.dispose()
 
 
 # ---------------------------------------------------------------------------

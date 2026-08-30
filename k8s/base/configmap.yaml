@@ -12,16 +12,44 @@ data:
   POSTGRES_DATABASE: "gis_agent"
   POSTGRES_USER: "agent_user"
   POSTGRES_ADMIN_USER: "postgres"
+  # Server and workload connection budget. Increase max_connections only after
+  # checking PostgreSQL memory; scale pool/process counts within the reserve.
+  POSTGRES_MAX_CONNECTIONS: "200"
+  POSTGRES_SUPERUSER_RESERVED_CONNECTIONS: "5"
+  POSTGRES_CONNECTION_RESERVE: "20"
+  DB_POOL_PROCESS_COUNT: "1"
+  # HPA maxReplicas=8, so the API's declared per-Pod peak is
+  # (6 + 2 + 2) * 8 = 80 connections. Worker overrides remain smaller.
+  DB_POOL_SIZE: "6"
+  DB_MAX_OVERFLOW: "2"
+  ASYNC_POOL_MIN: "1"
+  ASYNC_POOL_MAX: "2"
 
   # ----- Redis -----
   REDIS_HOST: "redis"
   REDIS_PORT: "6379"
+  # Retired MVT generations are reclaimed by a dedicated lease worker. The
+  # tenant is deployment-specific and should be overridden in production.
+  GDA_GIS_MVT_CACHE_PURGE_TENANT_ID: "planning"
+  GDA_GIS_MVT_CACHE_PURGE_BATCH_SIZE: "10"
+  GDA_GIS_MVT_CACHE_PURGE_LEASE_SECONDS: "60"
+  GDA_GIS_MVT_CACHE_PURGE_RETRY_SECONDS: "30"
+  GDA_GIS_MVT_CACHE_PURGE_POLL_SECONDS: "5"
+  GDA_GIS_MVT_CACHE_PURGE_MAX_KEYS: "10000"
+  GDA_GIS_MVT_CACHE_PURGE_SCAN_COUNT: "100"
+  GDA_GIS_MVT_CACHE_PURGE_PROVIDER: "redis"
+  GDA_GIS_MVT_CACHE_PURGE_HTTP_ENDPOINT_URL: ""
+  GDA_GIS_MVT_CACHE_PURGE_HTTP_TIMEOUT_SECONDS: "5"
+  GDA_GIS_MVT_CACHE_REDIS_URL: "redis://redis:6379/1"
+  GDA_GIS_MVT_CACHE_KEY_PREFIX: "gda:mvt:response:v1"
 
   # ----- QC subsystem endpoints (in-cluster DNS) -----
   CV_SERVICE_URL: "http://cv-service:8001"
   CAD_PARSER_URL: "http://cad-parser:8002"
   REFERENCE_DATA_URL: "http://reference-data:8004"
   MARTIN_URL: "http://martin:3000"
+  PYGEOAPI_URL: ""
+  PYGEOAPI_PROVIDER_VERSION: "0.25.dev0"
 
   # ----- Local LLM backend (Ollama on host via ExternalName service) -----
   # The 'ollama' DNS name resolves to host.docker.internal on kind/Docker
@@ -43,6 +71,36 @@ data:
   DYNAMIC_PLANNER: "true"
   DAILY_ANALYSIS_LIMIT: "20"
   AUDIT_LOG_RETENTION_DAYS: "90"
+  # ArcGIS ingest runs in a dedicated lease-based worker. The raw lake zone is
+  # an immutable partitioned GeoParquet snapshot prefix in MinIO/S3.
+  GDA_INGEST_EMBEDDED_WORKER: "0"
+  GDA_INGEST_SCHEDULE_DRIVER: "external"
+  GDA_INGEST_LAKE_BACKEND: "cloud"
+  GDA_INGEST_LAKE_ROOT: "/app/data_agent/data_lake/raw"
+  GDA_INGEST_LAKE_BUCKET: "gis-agent-lakehouse"
+  GDA_INGEST_LAKE_PREFIX: "lakehouse/raw"
+  GDA_INGEST_PLATFORM_BRIDGE: "1"
+  MMFE_LAKEHOUSE_BUCKET: "gis-agent-lakehouse"
+  # The API creates credential-free Blueprint S3 identities only. The optional
+  # worker profile owns its separately scoped data-plane credential.
+  GDA_BLUEPRINT_DUCKDB_RESULT_BACKEND: "s3"
+  GDA_BLUEPRINT_DUCKDB_OUTPUT_ROOT: "/tmp/gda-blueprint-api-unused"
+  GDA_BLUEPRINT_DUCKDB_OUTPUT_S3_BUCKET: "gis-agent-blueprint-results"
+  GDA_BLUEPRINT_DUCKDB_OUTPUT_S3_PREFIX: "blueprint-duckdb-results/v1"
+  GDA_BLUEPRINT_DUCKDB_INPUT_S3_PREFIXES: "s3://gis-agent-lakehouse/products,s3://gis-agent-uploads/admitted"
+  # Must match the federated workload identity used by the Alertmanager gateway.
+  GDA_SLO_ALERT_DETECTOR_SUBJECT: "workload:slo-alert-ingestor"
+
+  # Optional plan-bound object projection registry. Keep the JSON in the
+  # deployment overlay/SecretManager when a real target is enabled.
+  GDA_OBJECT_PROJECTION_TARGETS_JSON: ""
+  GDA_OBJECT_PROJECTION_TIMEOUT_SECONDS: "120"
+  # Disabled until a cluster Spark execution adapter is explicitly installed.
+  GDA_LAKEHOUSE_PROJECTION_TARGETS_JSON: ""
+  GDA_LAKEHOUSE_PROJECTION_SPARK_IMAGE: "gisdataagent/mmfe-spark-runtime:local"
+  GDA_LAKEHOUSE_PROJECTION_REPOSITORY_ROOT: "/app"
+  GDA_LAKEHOUSE_PROJECTION_JAVA_HOME: "/usr/lib/jvm/java-17-openjdk-arm64"
+  GDA_LAKEHOUSE_PROJECTION_TIMEOUT_SECONDS: "600"
 
   # ----- Standards Platform (Wave 6+ outbox worker) -----
   OUTBOX_WORKER_INTERVAL_SEC: "5"

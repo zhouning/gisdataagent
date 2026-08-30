@@ -214,26 +214,44 @@ def _zip_contains(path: Path, filename: str) -> bool:
 
 
 def _requirement_names(path: Path, seen: set[Path] | None = None) -> set[str]:
+    return set(_requirement_specs(path, seen))
+
+
+def _normalise_distribution_name(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def _requirement_specs(
+    path: Path, seen: set[Path] | None = None
+) -> dict[str, Any]:
+    """Read a profile and retain specifiers for version-aware wheel checks."""
+
+    from packaging.requirements import InvalidRequirement, Requirement
+
     seen = seen or set()
     path = path.resolve()
     if path in seen or not path.exists():
-        return set()
+        return {}
     seen.add(path)
-    names: set[str] = set()
+    requirements: dict[str, Any] = {}
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.split("#", 1)[0].strip()
         if not line:
             continue
         if line.startswith("-r ") or line.startswith("--requirement "):
             nested = line.split(maxsplit=1)[1].strip()
-            names.update(_requirement_names((path.parent / nested).resolve(), seen))
+            requirements.update(
+                _requirement_specs((path.parent / nested).resolve(), seen)
+            )
             continue
         if line.startswith("-"):
             continue
-        match = _REQ.match(line)
-        if match:
-            names.add(match.group(1).lower().replace("_", "-").replace(".", "-"))
-    return names
+        try:
+            requirement = Requirement(line)
+        except InvalidRequirement as exc:
+            raise ValueError(f"{path}: invalid requirement line: {line}") from exc
+        requirements[_normalise_distribution_name(requirement.name)] = requirement
+    return requirements
 
 
 def _wheel_distribution(path: Path) -> str:
@@ -267,16 +285,59 @@ def _validate_windows_wheels(artifact_id: str, wheels: list[Path]) -> None:
 
 def _validate_requirements(spec: dict[str, Any], copied_root: Path, stage: Path) -> None:
     requirement_path = stage / spec["requirements"]
-    required = _requirement_names(requirement_path)
+    required = _requirement_specs(requirement_path)
     wheel_roots = [copied_root]
     wheel_roots.extend(stage / value for value in spec.get("additional_wheelhouses", []))
-    available = {
-        _wheel_distribution(path) for wheel_root in wheel_roots for path in iter_files(wheel_root)
-    }
-    missing = sorted(required - available)
-    if missing:
+    available: dict[str, list[tuple[Path, Any]]] = {}
+    from email.parser import Parser
+
+    from packaging.version import Version
+
+    for wheel_root in wheel_roots:
+        for path in iter_files(wheel_root):
+            if path.suffix.lower() != ".whl":
+                continue
+            try:
+                with zipfile.ZipFile(path) as archive:
+                    metadata_members = [
+                        member
+                        for member in archive.namelist()
+                        if member.endswith(".dist-info/METADATA")
+                    ]
+                    if len(metadata_members) != 1:
+                        raise ValueError("wheel must contain exactly one dist-info/METADATA")
+                    metadata = Parser().parsestr(
+                        archive.read(metadata_members[0]).decode("utf-8")
+                    )
+                name = metadata.get("Name")
+                version = metadata.get("Version")
+                if not name or not version:
+                    raise ValueError("wheel metadata must declare Name and Version")
+                available.setdefault(_normalise_distribution_name(name), []).append(
+                    (path, Version(version))
+                )
+            except (OSError, KeyError, UnicodeDecodeError, ValueError, zipfile.BadZipFile) as exc:
+                raise ValueError(f"{spec['id']}: invalid wheel metadata in {path.name}") from exc
+
+    missing = sorted(name for name in required if name not in available)
+    incompatible = []
+    for name, requirement in required.items():
+        versions = available.get(name, [])
+        if versions and not any(
+            requirement.specifier.contains(version, prereleases=True)
+            for _, version in versions
+        ):
+            available_versions = ", ".join(sorted({str(version) for _, version in versions}))
+            incompatible.append(f"{name} (required {requirement}, available {available_versions})")
+    if missing or incompatible:
+        details = []
+        if missing:
+            details.append("missing: " + ", ".join(missing))
+        if incompatible:
+            details.append("incompatible: " + "; ".join(incompatible))
         raise ValueError(
-            f"{spec['id']}: wheelhouse is missing direct requirements: {', '.join(missing)}"
+            f"{spec['id']}: wheelhouse direct requirements do not match: "
+            + " | ".join(details)
         )
 
 
@@ -364,6 +425,11 @@ def build(profile: str, vendor_root: Path, output: Path, force: bool = False) ->
         shutil.copy2(preflight_source, stage / "scripts" / "preflight_windows_ingest.py")
         worker_source = REPO_ROOT / "scripts" / "windows_ingest_worker.py"
         shutil.copy2(worker_source, stage / "scripts" / "windows_ingest_worker.py")
+        model_verify_source = REPO_ROOT / "scripts" / "verify_openai_compatible_models.py"
+        shutil.copy2(
+            model_verify_source,
+            stage / "scripts" / "verify_openai_compatible_models.py",
+        )
 
         final_manifest = dict(template)
         final_manifest["generated_at"] = utc_now()

@@ -16,20 +16,20 @@ def demo() -> NaturalResourceOntologyDemo:
     return NaturalResourceOntologyDemo()
 
 
-def test_bundle_is_bound_to_active_ontology_2_0_1(demo):
+def test_bundle_is_bound_to_active_ontology_2_3_0(demo):
     overview = demo.overview()
 
-    assert overview["ontology"]["version"] == "2.0.1"
+    assert overview["ontology"]["version"] == "2.3.0"
     assert (
         overview["ontology"]["sha256"]
-        == "953dac97c1be4d9683247da42dea022128471b15b9c677215d913fa209bd1200"
+        == "587915868b1221af2315508ede7bf7babced063cba8b261de2f10afa23841019"
     )
     assert overview["ontology"]["stats"] == {
-        "domain_classes": 96,
+        "domain_classes": 246,
         "schema_artifacts": 3932,
         "skos_concepts": 1066,
-        "mappings": 422,
-        "rdf_triples": 528252,
+        "mappings": 490,
+        "rdf_triples": 537245,
     }
     assert overview["okf"]["okf_version"] == "0.2"
     assert overview["okf"]["validation"]["valid"] is True

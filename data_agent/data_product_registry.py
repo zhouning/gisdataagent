@@ -21,12 +21,20 @@ from .data_architecture_ledger import (
     ResourceVersionArchitectureBinding,
     SchemaVersion,
 )
+from .data_product_blueprint import (
+    DATA_PRODUCT_BLUEPRINT_CHANGE_SET_SCHEMA,
+    DATA_PRODUCT_BLUEPRINT_REVIEW_ACTION,
+    DATA_PRODUCT_BLUEPRINT_SCHEMA,
+    DataProductBlueprintReleaseBinding,
+)
 from .db_engine import get_engine
 from .platform_contracts import (
     ApprovalCase,
     ApprovalCaseStatus,
     Artifact,
     LineageEvent,
+    PlatformDefinitionVersion,
+    QualityResult,
     ResourceVersion,
     TenantId,
     canonical_json_fingerprint,
@@ -62,6 +70,14 @@ class DataProductNotFoundError(DataProductRegistryError):
 
 class DataProductConfigurationError(DataProductRegistryError):
     """The PostgreSQL gateway role is unavailable."""
+
+
+class DataProductRollbackAuthorityError(DataProductConflictError):
+    """Rollback requires an active incident or an approved human case."""
+
+
+DATA_PRODUCT_ROLLBACK_APPROVAL_ACTION = "data_product.rollback"
+DATA_PRODUCT_ROLLBACK_SCHEMA = "gda.data_product.rollback.v1"
 
 
 class DataProductSpec(BaseModel):
@@ -140,6 +156,18 @@ class DataProductVersionSpec(BaseModel):
             raise ValueError("a version cannot be its own predecessor")
         if self.quality_contract.get("verdict") != "passed":
             raise ValueError("only a passed quality contract can create a DataProductVersion")
+        if "blueprint_release" in self.distribution_manifest:
+            release = DataProductBlueprintReleaseBinding.model_validate(
+                self.distribution_manifest["blueprint_release"]
+            )
+            if (
+                release.tenant_id != self.tenant_id
+                or release.product_urn != self.product_urn
+                or release.version_key != self.version_key
+            ):
+                raise ValueError(
+                    "Blueprint release identity must match the DataProductVersion"
+                )
         expected = data_product_manifest_fingerprint(self)
         if self.manifest_sha256 != expected:
             raise ValueError("manifest_sha256 does not match the version contract")
@@ -153,6 +181,25 @@ def data_product_manifest_fingerprint(version: DataProductVersionSpec | dict[str
     else:
         payload = {key: value for key, value in version.items() if key != "manifest_sha256"}
     return canonical_json_fingerprint(_canonical_contract_value(payload))
+
+
+def data_product_rollback_fingerprint(
+    *,
+    tenant_id: str,
+    product_urn: str,
+    from_version_id: UUID,
+    to_version_id: UUID,
+) -> str:
+    """Fingerprint one exact rollback operation for ApprovalCase binding."""
+    return canonical_json_fingerprint(
+        {
+            "schema": DATA_PRODUCT_ROLLBACK_SCHEMA,
+            "tenant_id": tenant_id,
+            "product_urn": product_urn,
+            "from_version_id": str(from_version_id),
+            "to_version_id": str(to_version_id),
+        }
+    )
 
 
 def _canonical_contract_value(value: Any) -> Any:
@@ -182,7 +229,158 @@ def _build_promotion_impact(
     product: dict[str, Any],
     target: dict[str, Any],
     rows: list[Any],
+    *,
+    consumer_authority: str | None = None,
 ) -> dict[str, Any]:
+    authority = consumer_authority or (
+        "consumer_binding"
+        if rows and "binding_id" in dict(rows[0])
+        else "transitional_distribution_grant"
+    )
+    if authority == "consumer_binding":
+        impacted_bindings: list[dict[str, Any]] = []
+        promotion_blockers: list[dict[str, str]] = []
+        for row in rows:
+            value = dict(row)
+            expiry = value.get("expires_at")
+            deadline = value.get("migration_deadline")
+            acknowledgement = _json_value(value.get("consumer_acknowledgement"))
+            compatibility_conclusion = str(
+                value.get("compatibility_conclusion") or "indeterminate"
+            )
+            notification_status = str(
+                value.get("notification_status") or "pending"
+            )
+            binding_id = str(value["binding_id"])
+            consumer_ref = str(value.get("consumer_ref") or "")
+            blocker_reasons: list[str] = []
+            if value.get("migration_state_id") is None:
+                blocker_reasons.append("migration_state_missing")
+            if compatibility_conclusion == "indeterminate":
+                blocker_reasons.append("compatibility_indeterminate")
+            elif compatibility_conclusion == "breaking":
+                if deadline is None:
+                    blocker_reasons.append("migration_deadline_missing")
+                if notification_status != "delivered":
+                    blocker_reasons.append("consumer_notification_not_delivered")
+                if not acknowledgement:
+                    blocker_reasons.append("consumer_acknowledgement_missing")
+            binding = {
+                "binding_id": binding_id,
+                "consumer_ref": consumer_ref,
+                "purpose": str(value.get("purpose") or ""),
+                "scope": _json_value(value.get("scope") or {}),
+                "min_product_version": value.get("min_product_version"),
+                "max_product_version": value.get("max_product_version"),
+                "credential_ref": str(value.get("credential_ref") or ""),
+                "quota": _json_value(value.get("quota") or {}),
+                "expires_at": (
+                    expiry.isoformat() if hasattr(expiry, "isoformat") else expiry
+                ),
+                "compatibility_fingerprint": str(
+                    value.get("compatibility_fingerprint") or ""
+                ).strip(),
+                "binding_compatibility_evidence": _json_value(
+                    value.get("binding_compatibility_evidence")
+                    or value.get("compatibility_evidence")
+                    or {}
+                ),
+                "migration_state_id": (
+                    str(value["migration_state_id"])
+                    if value.get("migration_state_id") is not None
+                    else None
+                ),
+                "migration_state_version": (
+                    int(value["migration_state_version"])
+                    if value.get("migration_state_version") is not None
+                    else None
+                ),
+                "compatibility_conclusion": compatibility_conclusion,
+                "transition_compatibility_evidence": _json_value(
+                    value.get("transition_compatibility_evidence")
+                    or value.get("compatibility_evidence")
+                    or {}
+                ),
+                "notification_status": notification_status,
+                "notification_evidence": _json_value(
+                    value.get("notification_evidence") or {}
+                ),
+                "migration_deadline": (
+                    deadline.isoformat()
+                    if hasattr(deadline, "isoformat")
+                    else deadline
+                ),
+                "consumer_acknowledgement": acknowledgement,
+                "consumer_acknowledged": bool(acknowledgement),
+                "consumer_acknowledged_at": (
+                    acknowledgement.get("acknowledged_at")
+                    if isinstance(acknowledgement, dict)
+                    else None
+                ),
+                "migration_state_sha256": (
+                    str(value.get("migration_state_sha256") or "").strip() or None
+                ),
+                "promotion_blockers": blocker_reasons,
+            }
+            impacted_bindings.append(binding)
+            promotion_blockers.extend(
+                {
+                    "binding_id": binding_id,
+                    "consumer_ref": consumer_ref,
+                    "reason": reason,
+                }
+                for reason in blocker_reasons
+            )
+        impacted_bindings.sort(
+            key=lambda item: (item["consumer_ref"], item["binding_id"])
+        )
+        promotion_blockers.sort(
+            key=lambda item: (
+                item["consumer_ref"],
+                item["binding_id"],
+                item["reason"],
+            )
+        )
+        impacted_consumers = sorted(
+            {
+                item["consumer_ref"]
+                for item in impacted_bindings
+                if item["consumer_ref"]
+            }
+        )
+        evidence = {
+            "schema": "gda.data_product_promotion_impact.v3",
+            "consumer_authority": authority,
+            "tenant_id": str(product["tenant_id"]),
+            "product_urn": str(product["product_urn"]),
+            "from_version": {
+                "data_product_version_id": str(product["current_version_id"]),
+                "version_key": str(product["current_version_key"]),
+            },
+            "to_version": {
+                "data_product_version_id": str(target["data_product_version_id"]),
+                "version_key": str(target["version_key"]),
+            },
+            "active_binding_count": len(impacted_bindings),
+            "impacted_consumer_count": len(impacted_consumers),
+            "impacted_bindings": impacted_bindings,
+            "consumer_migration_ready": not promotion_blockers,
+            "promotion_blockers": promotion_blockers,
+        }
+        acknowledgement_required = bool(impacted_bindings)
+        return {
+            **evidence,
+            "active_grant_count": 0,
+            "remaining_package_quota": 0,
+            "impacted_grants": [],
+            "impacted_consumers": impacted_consumers,
+            "impact_fingerprint": canonical_json_fingerprint(evidence),
+            "acknowledgement_required": acknowledgement_required,
+            "promotion_ready": (
+                not promotion_blockers and not acknowledgement_required
+            ),
+        }
+
     impacted_grants: list[dict[str, Any]] = []
     for row in rows:
         value = dict(row)
@@ -227,6 +425,11 @@ def _build_promotion_impact(
     acknowledgement_required = bool(impacted_grants)
     return {
         **evidence,
+        "consumer_authority": authority,
+        "active_binding_count": 0,
+        "impacted_bindings": [],
+        "consumer_migration_ready": True,
+        "promotion_blockers": [],
         "impacted_consumers": impacted_consumers,
         "impact_fingerprint": canonical_json_fingerprint(evidence),
         "acknowledgement_required": acknowledgement_required,
@@ -403,6 +606,34 @@ class DataProductRegistry:
         return ResourceVersion.model_validate(value)
 
     @staticmethod
+    def _load_definition(
+        connection, tenant_id: str, definition_version_id: UUID
+    ) -> PlatformDefinitionVersion | None:
+        row = connection.execute(
+            text(
+                """
+                SELECT tenant_id, definition_urn, definition_version_id,
+                       orchestration_class, capability_id, portability_class,
+                       definition_document, input_contract, output_contract,
+                       definition_sha256
+                  FROM gda_control.platform_definition_version
+                 WHERE tenant_id = :tenant_id
+                   AND definition_version_id = :definition_version_id
+                """
+            ),
+            {
+                "tenant_id": tenant_id,
+                "definition_version_id": definition_version_id,
+            },
+        ).mappings().one_or_none()
+        if row is None:
+            return None
+        value = dict(row)
+        for field in ("definition_document", "input_contract", "output_contract"):
+            value[field] = _json_value(value[field])
+        return PlatformDefinitionVersion.model_validate(value)
+
+    @staticmethod
     def _load_artifact(
         connection, tenant_id: str, artifact_id: UUID
     ) -> Artifact | None:
@@ -423,6 +654,155 @@ class DataProductRegistry:
         value = dict(row)
         value["manifest"] = _json_value(value["manifest"])
         return Artifact.model_validate(value)
+
+    @staticmethod
+    def _validate_blueprint_test_execution_binding(
+        connection,
+        *,
+        binding: DataProductBlueprintReleaseBinding,
+    ) -> None:
+        """Recheck an optional successful Blueprint test against shared Run evidence."""
+        if binding.test_run_id is None:
+            return
+
+        run = connection.execute(
+            text(
+                """
+                SELECT definition_version_id, status
+                FROM gda_control.platform_run
+                WHERE tenant_id = :tenant_id AND run_id = :run_id
+                """
+            ),
+            {"tenant_id": binding.tenant_id, "run_id": binding.test_run_id},
+        ).mappings().one_or_none()
+        event = connection.execute(
+            text(
+                """
+                SELECT details
+                FROM gda_control.platform_run_event
+                WHERE tenant_id = :tenant_id
+                  AND run_id = :run_id
+                  AND to_status = 'succeeded'
+                ORDER BY sequence_no DESC
+                LIMIT 1
+                """
+            ),
+            {"tenant_id": binding.tenant_id, "run_id": binding.test_run_id},
+        ).mappings().one_or_none()
+        plan = connection.execute(
+            text(
+                """
+                SELECT artifact_id, manifest
+                FROM gda_control.artifact
+                WHERE tenant_id = :tenant_id
+                  AND run_id = :run_id
+                  AND artifact_role = 'execution_plan'
+                  AND manifest ->> 'schema' =
+                      'gda.data_product_blueprint_test_execution_plan.v1'
+                ORDER BY created_at, artifact_id
+                LIMIT 1
+                """
+            ),
+            {"tenant_id": binding.tenant_id, "run_id": binding.test_run_id},
+        ).mappings().one_or_none()
+        if (
+            run is None
+            or run["status"] != "succeeded"
+            or run["definition_version_id"] != binding.definition_version_id
+            or event is None
+            or plan is None
+        ):
+            raise DataProductConflictError(
+                "Blueprint release test execution is not a succeeded admitted Run"
+            )
+
+        plan_manifest = _json_value(plan["manifest"])
+        if (
+            not isinstance(plan_manifest, dict)
+            or plan_manifest.get("product_urn") != binding.product_urn
+            or plan_manifest.get("version_key") != binding.version_key
+            or plan_manifest.get("definition_version_id")
+            != str(binding.definition_version_id)
+            or plan_manifest.get("blueprint_sha256") != binding.blueprint_sha256
+            or plan_manifest.get("definition_sha256") != binding.definition_sha256
+            or plan_manifest.get("test_report_sha256") != binding.test_report_sha256
+            or plan_manifest.get("plan_sha256") is None
+        ):
+            raise DataProductConflictError(
+                "Blueprint release test execution plan does not match the release"
+            )
+
+        details = _json_value(event["details"])
+        if (
+            not isinstance(details, dict)
+            or details.get("schema") != "gda.run_success_evidence.v1"
+            or details.get("run_id") != str(binding.test_run_id)
+            or details.get("evidence_sha256")
+            != binding.test_success_evidence_sha256
+        ):
+            raise DataProductConflictError(
+                "Blueprint release test success evidence does not match the Run terminal event"
+            )
+        try:
+            observation_id = UUID(str(details["attempt_observation_id"]))
+        except (KeyError, TypeError, ValueError) as exc:
+            raise DataProductConflictError(
+                "Blueprint release test success evidence identifiers are invalid"
+            ) from exc
+        receipt = connection.execute(
+            text(
+                """
+                SELECT evidence
+                FROM gda_control.framework_attempt_observation
+                WHERE tenant_id = :tenant_id
+                  AND observation_id = :observation_id
+                  AND run_id = :run_id
+                  AND framework_kind = 'duckdb'
+                  AND lower(observed_state) = 'success'
+                """
+            ),
+            {
+                "tenant_id": binding.tenant_id,
+                "observation_id": observation_id,
+                "run_id": binding.test_run_id,
+            },
+        ).mappings().one_or_none()
+        receipt_evidence = (
+            _json_value(receipt["evidence"]) if receipt is not None else None
+        )
+        deterministic_local = (
+            isinstance(receipt_evidence, dict)
+            and receipt_evidence.get("schema")
+            == "gda.blueprint_test_executor_receipt.v1"
+            and receipt_evidence.get("executor_mode") == "deterministic_local"
+        )
+        duckdb_provider = (
+            isinstance(receipt_evidence, dict)
+            and receipt_evidence.get("schema")
+            == "gda.data_product_blueprint_duckdb_provider_receipt.v1"
+            and receipt_evidence.get("executor_mode") == "duckdb_provider"
+            and receipt_evidence.get("execution_plan_artifact_id")
+            == str(plan["artifact_id"])
+            and receipt_evidence.get("execution_plan_sha256")
+            == plan_manifest.get("plan_sha256")
+            and receipt_evidence.get("definition_version_id")
+            == str(binding.definition_version_id)
+            and receipt_evidence.get("definition_sha256")
+            == binding.definition_sha256
+            and receipt_evidence.get("output_artifact_id")
+            == details.get("output_artifact_id")
+            and receipt_evidence.get("quality_result_id")
+            == details.get("quality_result_id")
+            and re.fullmatch(
+                r"[0-9a-f]{64}",
+                str(receipt_evidence.get("receipt_sha256") or ""),
+            )
+            is not None
+        )
+        if not deterministic_local and not duckdb_provider:
+            raise DataProductConflictError(
+                "Blueprint release test receipt is not an admitted success"
+            )
 
     @staticmethod
     def _load_architecture_registration(
@@ -518,34 +898,186 @@ class DataProductRegistry:
         value["facets"] = _json_value(value["facets"])
         return LineageEvent.model_validate(value)
 
+    def _validate_live_blueprint_release(
+        self,
+        connection,
+        *,
+        version: DataProductVersionSpec,
+        binding: DataProductBlueprintReleaseBinding,
+        evaluated_at: datetime | None = None,
+    ) -> DataProductBlueprintReleaseBinding:
+        """Validate one manifest binding against live definition and approval truth."""
+        manifest_binding = version.distribution_manifest.get("blueprint_release")
+        if (
+            manifest_binding is None
+            or _canonical_contract_value(manifest_binding)
+            != binding.model_dump(mode="json")
+        ):
+            raise DataProductConflictError(
+                "DataProductVersion manifest does not contain the supplied Blueprint release"
+            )
+        if (
+            binding.tenant_id != version.tenant_id
+            or binding.product_urn != version.product_urn
+            or binding.version_key != version.version_key
+        ):
+            raise DataProductConflictError(
+                "Blueprint release identity does not match the DataProductVersion"
+            )
+
+        definition = self._load_definition(
+            connection,
+            str(binding.tenant_id),
+            binding.definition_version_id,
+        )
+        definition_version = self._load_resource_version(
+            connection,
+            str(binding.tenant_id),
+            binding.definition_version_id,
+        )
+        if definition is None or definition_version is None:
+            raise DataProductConflictError(
+                "Blueprint release definition is not registered"
+            )
+        definition_document = definition.definition_document
+        authority_ref = definition_version.authority_version_ref
+        if (
+            definition.definition_urn != binding.definition_urn
+            or definition.definition_sha256 != binding.definition_sha256
+            or definition_document.get("schema") != DATA_PRODUCT_BLUEPRINT_SCHEMA
+            or definition_document.get("product_urn") != binding.product_urn
+            or definition_document.get("version_key") != binding.version_key
+            or definition_document.get("blueprint_sha256")
+            != binding.blueprint_sha256
+            or definition_version.resource_urn != binding.definition_urn
+            or definition_version.version_key != binding.version_key
+            or definition_version.content_sha256 != binding.definition_sha256
+            or authority_ref.get("schema") != DATA_PRODUCT_BLUEPRINT_SCHEMA
+            or authority_ref.get("blueprint_sha256") != binding.blueprint_sha256
+        ):
+            raise DataProductConflictError(
+                "stored definition differs from the Blueprint release binding"
+            )
+
+        approval = self._load_approval_case(
+            connection,
+            str(binding.tenant_id),
+            binding.approval_case_ref,
+        )
+        timestamp = (evaluated_at or datetime.now(UTC)).astimezone(UTC)
+        context = approval.request_context if approval is not None else {}
+        compile_checks = context.get("compile_checks")
+        if (
+            approval is None
+            or approval.status is not ApprovalCaseStatus.APPROVED
+            or approval.action != DATA_PRODUCT_BLUEPRINT_REVIEW_ACTION
+            or approval.target_resource_urn != binding.definition_urn
+            or approval.target_fingerprint != binding.change_set_sha256
+            or approval.decided_at is None
+            or approval.decided_at > version.published_at
+            or timestamp >= approval.expires_at
+            or approval.decided_by is None
+            or not approval.decided_by.startswith("human:")
+            or approval.decided_by == approval.requester_subject
+            or context.get("schema") != DATA_PRODUCT_BLUEPRINT_CHANGE_SET_SCHEMA
+            or context.get("product_urn") != binding.product_urn
+            or context.get("version_key") != binding.version_key
+            or context.get("definition_version_id")
+            != str(binding.definition_version_id)
+            or context.get("blueprint_sha256") != binding.blueprint_sha256
+            or context.get("definition_sha256") != binding.definition_sha256
+            or context.get("change_set_sha256") != binding.change_set_sha256
+            or context.get("test_report_sha256") != binding.test_report_sha256
+            or context.get("test_verdict") != "passed"
+            or not isinstance(context.get("test_checks"), list)
+            or not context.get("test_checks")
+            or context.get("compile_verdict") != "passed"
+            or not isinstance(compile_checks, list)
+            or not compile_checks
+            or any(
+                not isinstance(check, dict)
+                or check.get("status") != "passed"
+                or not re.fullmatch(r"[0-9a-f]{64}", str(check.get("evidence_sha256") or ""))
+                for check in compile_checks
+            )
+        ):
+            raise DataProductConflictError(
+                "Blueprint release ApprovalCase is not an approved exact change-set binding"
+            )
+        self._validate_blueprint_test_execution_binding(
+            connection,
+            binding=binding,
+        )
+        return binding
+
+    def _validate_persisted_blueprint_release(
+        self,
+        connection,
+        target: dict[str, Any],
+        *,
+        evaluated_at: datetime | None = None,
+    ) -> DataProductBlueprintReleaseBinding | None:
+        manifest = target.get("distribution_manifest")
+        if not isinstance(manifest, dict) or "blueprint_release" not in manifest:
+            return None
+        try:
+            version = DataProductVersionSpec.model_validate(
+                {
+                    field: target[field]
+                    for field in DataProductVersionSpec.model_fields
+                }
+            )
+            binding = DataProductBlueprintReleaseBinding.model_validate(
+                manifest["blueprint_release"]
+            )
+        except (KeyError, ValueError) as exc:
+            raise DataProductConflictError(
+                "persisted DataProductVersion Blueprint release is invalid"
+            ) from exc
+        return self._validate_live_blueprint_release(
+            connection,
+            version=version,
+            binding=binding,
+            evaluated_at=evaluated_at,
+        )
+
     @staticmethod
     def _load_architecture_release_binding(
         connection, tenant_id: str, data_product_version_id: UUID
     ) -> dict[str, Any] | None:
-        row = connection.execute(
-            text(
-                """
-                SELECT tenant_id, data_product_version_id, product_urn,
-                       predecessor_data_product_version_id,
-                       predecessor_output_resource_version_id,
-                       successor_output_resource_version_id,
-                       architecture_adoption_case_ref,
-                       architecture_successor_plan_sha256,
-                       release_approval_case_ref, release_plan_sha256,
-                       architecture_binding_sha256,
-                       quality_evidence_artifact_id,
-                       distribution_artifact_ids, rollback_target_version_id,
-                       bound_by, bound_at
-                  FROM gda_control.data_product_architecture_release
-                 WHERE tenant_id = :tenant_id
-                   AND data_product_version_id = :data_product_version_id
-                """
-            ),
-            {
-                "tenant_id": tenant_id,
-                "data_product_version_id": data_product_version_id,
-            },
-        ).mappings().one_or_none()
+        try:
+            with connection.begin_nested():
+                row = connection.execute(
+                    text(
+                        """
+                        SELECT tenant_id, data_product_version_id, product_urn,
+                               predecessor_data_product_version_id,
+                               predecessor_output_resource_version_id,
+                               successor_output_resource_version_id,
+                               architecture_adoption_case_ref,
+                               architecture_successor_plan_sha256,
+                               release_approval_case_ref, release_plan_sha256,
+                               architecture_binding_sha256,
+                               quality_evidence_artifact_id,
+                               distribution_artifact_ids, rollback_target_version_id,
+                               bound_by, bound_at
+                          FROM gda_control.data_product_architecture_release
+                         WHERE tenant_id = :tenant_id
+                           AND data_product_version_id = :data_product_version_id
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant_id,
+                        "data_product_version_id": data_product_version_id,
+                    },
+                ).mappings().one_or_none()
+        except DBAPIError as exc:
+            state = getattr(getattr(exc, "orig", None), "sqlstate", None) or getattr(
+                getattr(exc, "orig", None), "pgcode", None
+            )
+            if state not in {"42P01", "42883"}:
+                raise
+            return None
         if row is None:
             return None
         value = _json_safe(dict(row))
@@ -815,6 +1347,218 @@ class DataProductRegistry:
             )
         return inserted is not None
 
+    def _validate_live_jqdltb_release(
+        self,
+        connection,
+        *,
+        plan: Any,
+        release_approval_case_ref: str,
+    ) -> dict[str, Any]:
+        from .jqdltb_data_product_release import (
+            JQDLTB_PRODUCT_RELEASE_ACTION,
+            JqdltbDataProductReleasePlan,
+            build_jqdltb_data_product_release_approval_case,
+        )
+
+        if not isinstance(plan, JqdltbDataProductReleasePlan):
+            raise DataProductConflictError(
+                "JQDLTB release requires a typed immutable release plan"
+            )
+        tenant_id = str(plan.tenant_id)
+        version = plan.data_product_version
+        run = connection.execute(
+            text(
+                """
+                SELECT definition_version_id, status
+                  FROM gda_control.platform_run
+                 WHERE tenant_id = :tenant_id AND run_id = :run_id
+                """
+            ),
+            {"tenant_id": tenant_id, "run_id": plan.run.run_id},
+        ).mappings().one_or_none()
+        source_binding = connection.execute(
+            text(
+                """
+                SELECT resource_version_id
+                  FROM gda_control.platform_run_input_binding
+                 WHERE tenant_id = :tenant_id AND run_id = :run_id
+                   AND binding_name = 'source'
+                """
+            ),
+            {"tenant_id": tenant_id, "run_id": plan.run.run_id},
+        ).scalar_one_or_none()
+        quality_row = connection.execute(
+            text(
+                """
+                SELECT tenant_id, quality_result_id, run_id, resource_version_id,
+                       rule_version_ref, verdict, metrics, evidence_artifact_id,
+                       result_sha256, evaluated_by, evaluated_at
+                  FROM gda_control.quality_result
+                 WHERE tenant_id = :tenant_id
+                   AND quality_result_id = :quality_result_id
+                """
+            ),
+            {
+                "tenant_id": tenant_id,
+                "quality_result_id": plan.quality_result.quality_result_id,
+            },
+        ).mappings().one_or_none()
+        stored_quality = None
+        if quality_row is not None:
+            quality_values = dict(quality_row)
+            quality_values["metrics"] = _json_value(quality_values["metrics"])
+            stored_quality = QualityResult.model_validate(quality_values)
+        transformation_case = plan.transformation_contract.approval_case
+        stored_transformation_case = (
+            self._load_approval_case(
+                connection,
+                tenant_id,
+                transformation_case.approval_case_ref,
+            )
+            if transformation_case is not None
+            else None
+        )
+        release_case = self._load_approval_case(
+            connection,
+            tenant_id,
+            release_approval_case_ref,
+        )
+        if release_case is None:
+            raise DataProductConflictError(
+                "JQDLTB product release ApprovalCase was not found"
+            )
+        expected_release_case = build_jqdltb_data_product_release_approval_case(
+            plan,
+            requester_subject=release_case.requester_subject,
+            request_reason=release_case.request_reason,
+            requested_at=release_case.requested_at,
+            expires_at=release_case.expires_at,
+        )
+        if (
+            run is None
+            or str(run["definition_version_id"]) != str(plan.run.definition_version_id)
+            or str(run["status"]) != "succeeded"
+            or str(source_binding) != str(version.source_resource_version_id)
+            or self._load_artifact(
+                connection, tenant_id, plan.output_artifact.artifact_id
+            )
+            != plan.output_artifact
+            or self._load_artifact(
+                connection, tenant_id, plan.quality_evidence_artifact.artifact_id
+            )
+            != plan.quality_evidence_artifact
+            or self._load_artifact(
+                connection,
+                tenant_id,
+                plan.backup_restore_evidence_artifact.artifact_id,
+            )
+            != plan.backup_restore_evidence_artifact
+            or stored_quality != plan.quality_result
+            or self._load_lineage_event(
+                connection, tenant_id, plan.lineage_event.lineage_event_id
+            )
+            != plan.lineage_event
+            or stored_transformation_case != transformation_case
+            or stored_transformation_case is None
+            or stored_transformation_case.status is not ApprovalCaseStatus.APPROVED
+        ):
+            raise DataProductConflictError(
+                "JQDLTB live Run, evidence, lineage, or transformation approval drifted"
+            )
+        if (
+            release_case.status is not ApprovalCaseStatus.APPROVED
+            or release_case.action != JQDLTB_PRODUCT_RELEASE_ACTION
+            or _approval_request_binding(release_case)
+            != _approval_request_binding(expected_release_case)
+            or release_case.decided_at is None
+            or release_case.decided_at > version.published_at
+        ):
+            raise DataProductConflictError(
+                "JQDLTB release ApprovalCase is not an approved plan binding"
+            )
+        return plan.registry_binding()
+
+    @staticmethod
+    def _load_jqdltb_release_binding(
+        connection,
+        tenant_id: str,
+        data_product_version_id: UUID,
+    ) -> dict[str, Any] | None:
+        base_query = """
+                SELECT tenant_id, data_product_version_id, product_urn, run_id,
+                       source_resource_version_id, output_resource_version_id,
+                       output_artifact_id, quality_result_id,
+                       quality_evidence_artifact_id, lineage_event_id,
+                       transformation_approval_case_ref,
+                       release_approval_case_ref, release_plan_sha256,
+                       decision_packet_sha256, operating_contract, bound_by, bound_at
+                  FROM gda_control.jqdltb_data_product_release
+                 WHERE tenant_id = :tenant_id
+                   AND data_product_version_id = :data_product_version_id
+            """
+        row = connection.execute(
+            text(
+                base_query
+            ),
+            {
+                "tenant_id": tenant_id,
+                "data_product_version_id": data_product_version_id,
+            },
+        ).mappings().one_or_none()
+        if row is None:
+            return None
+        value = dict(row)
+        value["operating_contract"] = _json_value(value["operating_contract"])
+        return _json_safe(value)
+
+    def _put_jqdltb_release_binding(
+        self,
+        connection,
+        values: dict[str, Any],
+    ) -> bool:
+        inserted = connection.execute(
+            text(
+                """
+                INSERT INTO gda_control.jqdltb_data_product_release (
+                    tenant_id, data_product_version_id, product_urn, run_id,
+                    source_resource_version_id, output_resource_version_id,
+                    output_artifact_id, quality_result_id,
+                    quality_evidence_artifact_id, lineage_event_id,
+                    transformation_approval_case_ref,
+                    release_approval_case_ref, release_plan_sha256,
+                    decision_packet_sha256, operating_contract, bound_by, bound_at
+                ) VALUES (
+                    :tenant_id, CAST(:data_product_version_id AS uuid),
+                    :product_urn, CAST(:run_id AS uuid),
+                    CAST(:source_resource_version_id AS uuid),
+                    CAST(:output_resource_version_id AS uuid),
+                    CAST(:output_artifact_id AS uuid),
+                    CAST(:quality_result_id AS uuid),
+                    CAST(:quality_evidence_artifact_id AS uuid),
+                    CAST(:lineage_event_id AS uuid),
+                    :transformation_approval_case_ref,
+                    :release_approval_case_ref, :release_plan_sha256,
+                    :decision_packet_sha256,
+                    CAST(:operating_contract AS jsonb), :bound_by, :bound_at
+                ) ON CONFLICT DO NOTHING RETURNING data_product_version_id
+                """
+            ),
+            {
+                **values,
+                "operating_contract": _json(values["operating_contract"]),
+            },
+        ).first()
+        stored = self._load_jqdltb_release_binding(
+            connection,
+            values["tenant_id"],
+            UUID(values["data_product_version_id"]),
+        )
+        if stored != values:
+            raise DataProductConflictError(
+                "JQDLTB product release already has a different immutable binding"
+            )
+        return inserted is not None
+
     def _validate_persisted_architecture_release(
         self,
         connection,
@@ -934,7 +1678,62 @@ class DataProductRegistry:
         product: dict[str, Any],
         target: dict[str, Any],
     ) -> dict[str, Any]:
-        rows = connection.execute(
+        parameters = {
+            "tenant_id": product["tenant_id"],
+            "product_urn": product["product_urn"],
+            "current_version_id": product["current_version_id"],
+            "target_version_id": target["data_product_version_id"],
+        }
+        try:
+            with connection.begin_nested():
+                formal_rows = connection.execute(
+                    text(
+                        """
+                        SELECT *
+                          FROM gda_control.active_consumer_binding_impact(
+                              :tenant_id, :product_urn,
+                              CAST(:current_version_id AS uuid),
+                              CAST(:target_version_id AS uuid)
+                          )
+                        """
+                    ),
+                    parameters,
+                ).mappings().all()
+        except DBAPIError as exc:
+            state = getattr(getattr(exc, "orig", None), "sqlstate", None) or getattr(
+                getattr(exc, "orig", None), "pgcode", None
+            )
+            if state not in {"42P01", "42883"}:
+                raise
+            try:
+                with connection.begin_nested():
+                    formal_rows = connection.execute(
+                        text(
+                            """
+                            SELECT *
+                              FROM gda_control.active_consumer_binding_impact(
+                                  :tenant_id, :product_urn,
+                                  CAST(:current_version_id AS uuid)
+                              )
+                            """
+                        ),
+                        parameters,
+                    ).mappings().all()
+            except DBAPIError as fallback_exc:
+                fallback_state = getattr(
+                    getattr(fallback_exc, "orig", None), "sqlstate", None
+                ) or getattr(getattr(fallback_exc, "orig", None), "pgcode", None)
+                if fallback_state not in {"42P01", "42883"}:
+                    raise
+                formal_rows = []
+        if formal_rows:
+            return _build_promotion_impact(
+                product,
+                target,
+                list(formal_rows),
+                consumer_authority="consumer_binding",
+            )
+        grant_rows = connection.execute(
             text(
                 """
                 SELECT *
@@ -944,13 +1743,14 @@ class DataProductRegistry:
                   )
                 """
             ),
-            {
-                "tenant_id": product["tenant_id"],
-                "product_urn": product["product_urn"],
-                "current_version_id": product["current_version_id"],
-            },
+            parameters,
         ).mappings().all()
-        return _build_promotion_impact(product, target, list(rows))
+        return _build_promotion_impact(
+            product,
+            target,
+            list(grant_rows),
+            consumer_authority="transitional_distribution_grant",
+        )
 
     @staticmethod
     def _record_promotion_impact(
@@ -977,6 +1777,8 @@ class DataProductRegistry:
                     from_version_id, to_version_id, impact_fingerprint,
                     active_grant_count, impacted_consumer_count,
                     remaining_package_quota, impacted_grants,
+                    consumer_authority, active_binding_count, impacted_bindings,
+                    consumer_migration_ready, promotion_blockers,
                     acknowledgement_mode, assessed_by, assessed_at,
                     acknowledged_at
                 ) VALUES (
@@ -984,7 +1786,12 @@ class DataProductRegistry:
                     CAST(:from_version_id AS uuid), CAST(:to_version_id AS uuid),
                     :impact_fingerprint, :active_grant_count,
                     :impacted_consumer_count, :remaining_package_quota,
-                    CAST(:impacted_grants AS jsonb), :acknowledgement_mode,
+                    CAST(:impacted_grants AS jsonb),
+                    :consumer_authority, :active_binding_count,
+                    CAST(:impacted_bindings AS jsonb),
+                    :consumer_migration_ready,
+                    CAST(:promotion_blockers AS jsonb),
+                    :acknowledgement_mode,
                     :assessed_by, :assessed_at, :acknowledged_at
                 )
                 """
@@ -1004,6 +1811,15 @@ class DataProductRegistry:
                 "impacted_consumer_count": impact["impacted_consumer_count"],
                 "remaining_package_quota": impact["remaining_package_quota"],
                 "impacted_grants": _json(impact["impacted_grants"]),
+                "consumer_authority": impact.get(
+                    "consumer_authority", "transitional_distribution_grant"
+                ),
+                "active_binding_count": impact.get("active_binding_count", 0),
+                "impacted_bindings": _json(impact.get("impacted_bindings", [])),
+                "consumer_migration_ready": impact.get(
+                    "consumer_migration_ready", True
+                ),
+                "promotion_blockers": _json(impact.get("promotion_blockers", [])),
                 "acknowledgement_mode": acknowledgement_mode,
                 "assessed_by": actor_subject,
                 "assessed_at": assessed_at,
@@ -1042,6 +1858,61 @@ class DataProductRegistry:
             return None
         value = dict(row)
         impacted_grants = _json_value(value["impacted_grants"])
+        consumer_authority = str(
+            value.get("consumer_authority") or "transitional_distribution_grant"
+        )
+        impacted_bindings = _json_value(value.get("impacted_bindings") or [])
+        if consumer_authority == "consumer_binding":
+            impacted_consumers = sorted(
+                {
+                    str(binding.get("consumer_ref") or "")
+                    for binding in impacted_bindings
+                    if str(binding.get("consumer_ref") or "")
+                }
+            )
+            acknowledgement_required = int(value["active_binding_count"]) > 0
+            has_migration_state = any(
+                "compatibility_conclusion" in binding
+                for binding in impacted_bindings
+            )
+            consumer_migration_ready = bool(
+                value.get("consumer_migration_ready", True)
+            )
+            promotion_blockers = _json_value(
+                value.get("promotion_blockers") or []
+            )
+            return {
+                "schema": (
+                    "gda.data_product_promotion_impact.v3"
+                    if has_migration_state
+                    else "gda.data_product_promotion_impact.v2"
+                ),
+                "consumer_authority": consumer_authority,
+                "tenant_id": str(value["tenant_id"]),
+                "product_urn": str(value["product_urn"]),
+                "from_version": {
+                    "data_product_version_id": str(value["from_version_id"]),
+                    "version_key": str(value["from_version_key"]),
+                },
+                "to_version": {
+                    "data_product_version_id": str(value["to_version_id"]),
+                    "version_key": str(value["to_version_key"]),
+                },
+                "active_binding_count": int(value["active_binding_count"]),
+                "impacted_consumer_count": int(value["impacted_consumer_count"]),
+                "impacted_bindings": impacted_bindings,
+                "consumer_migration_ready": consumer_migration_ready,
+                "promotion_blockers": promotion_blockers,
+                "active_grant_count": 0,
+                "remaining_package_quota": 0,
+                "impacted_grants": [],
+                "impacted_consumers": impacted_consumers,
+                "impact_fingerprint": str(value["impact_fingerprint"]),
+                "acknowledgement_required": acknowledgement_required,
+                "promotion_ready": (
+                    consumer_migration_ready and not acknowledgement_required
+                ),
+            }
         impacted_consumers = sorted(
             {
                 str(grant.get("requester") or "")
@@ -1052,6 +1923,7 @@ class DataProductRegistry:
         acknowledgement_required = int(value["active_grant_count"]) > 0
         return {
             "schema": "gda.data_product_promotion_impact.v1",
+            "consumer_authority": consumer_authority,
             "tenant_id": str(value["tenant_id"]),
             "product_urn": str(value["product_urn"]),
             "from_version": {
@@ -1066,6 +1938,10 @@ class DataProductRegistry:
             "impacted_consumer_count": int(value["impacted_consumer_count"]),
             "remaining_package_quota": int(value["remaining_package_quota"]),
             "impacted_grants": impacted_grants,
+            "active_binding_count": 0,
+            "impacted_bindings": [],
+            "consumer_migration_ready": True,
+            "promotion_blockers": [],
             "impacted_consumers": impacted_consumers,
             "impact_fingerprint": str(value["impact_fingerprint"]),
             "acknowledgement_required": acknowledgement_required,
@@ -1081,6 +1957,9 @@ class DataProductRegistry:
         reason: str,
         architecture_release_plan: Any | None = None,
         release_approval_case_ref: str | None = None,
+        blueprint_release_binding: DataProductBlueprintReleaseBinding | None = None,
+        jqdltb_release_plan: Any | None = None,
+        jqdltb_release_approval_case_ref: str | None = None,
     ) -> dict[str, Any]:
         """Publish a passed version, deferring activation when consumers exist."""
         if product.tenant_id != version.tenant_id or product.product_urn != version.product_urn:
@@ -1096,6 +1975,27 @@ class DataProductRegistry:
             or architecture_release_plan.successor_data_product_version != version
         ):
             raise ValueError("published product and version must match the release plan")
+        if (jqdltb_release_plan is None) != (
+            jqdltb_release_approval_case_ref is None
+        ):
+            raise ValueError(
+                "JQDLTB release plan and ApprovalCase reference are both required"
+            )
+        if jqdltb_release_plan is not None and (
+            jqdltb_release_plan.product != product
+            or jqdltb_release_plan.data_product_version != version
+        ):
+            raise ValueError("published product and version must match JQDLTB release plan")
+        has_blueprint_release = "blueprint_release" in version.distribution_manifest
+        if has_blueprint_release != (blueprint_release_binding is not None):
+            raise ValueError(
+                "Blueprint release manifest and typed release binding are both required"
+            )
+        if blueprint_release_binding is not None and not isinstance(
+            blueprint_release_binding,
+            DataProductBlueprintReleaseBinding,
+        ):
+            raise ValueError("Blueprint release requires a typed immutable binding")
         with self._transaction(product.tenant_id) as connection:
             self._lock_promotion_scope(
                 connection,
@@ -1103,6 +2003,8 @@ class DataProductRegistry:
                 product.product_urn,
             )
             architecture_release_values = None
+            jqdltb_release_values = None
+            blueprint_release_validated = False
             if architecture_release_plan is not None:
                 architecture_release_values = self._validate_live_architecture_release(
                     connection,
@@ -1110,6 +2012,21 @@ class DataProductRegistry:
                     release_approval_case_ref=str(release_approval_case_ref),
                     require_publish_pointer=True,
                 )
+            if jqdltb_release_plan is not None:
+                jqdltb_release_values = self._validate_live_jqdltb_release(
+                    connection,
+                    plan=jqdltb_release_plan,
+                    release_approval_case_ref=str(
+                        jqdltb_release_approval_case_ref
+                    ),
+                )
+            if blueprint_release_binding is not None:
+                self._validate_live_blueprint_release(
+                    connection,
+                    version=version,
+                    binding=blueprint_release_binding,
+                )
+                blueprint_release_validated = True
             inserted_product = connection.execute(
                 text(
                     """
@@ -1193,10 +2110,16 @@ class DataProductRegistry:
                     "DataProductVersion identity already has different immutable content"
                 )
             architecture_release_created = False
+            jqdltb_release_created = False
             if architecture_release_values is not None:
                 architecture_release_created = self._put_architecture_release_binding(
                     connection,
                     architecture_release_values,
+                )
+            if jqdltb_release_values is not None:
+                jqdltb_release_created = self._put_jqdltb_release_binding(
+                    connection,
+                    jqdltb_release_values,
                 )
             if inserted_version is None and current_id != str(
                 version.data_product_version_id
@@ -1249,6 +2172,8 @@ class DataProductRegistry:
                     "promotion_deferred": True,
                     "promotion_impact": recorded_impact,
                     "architecture_release_created": architecture_release_created,
+                    "jqdltb_release_created": jqdltb_release_created,
+                    "blueprint_release_validated": blueprint_release_validated,
                 }
 
             target_differs = current_id != str(version.data_product_version_id)
@@ -1376,6 +2301,8 @@ class DataProductRegistry:
                 "promotion_deferred": promotion_deferred,
                 "promotion_impact": promotion_impact,
                 "architecture_release_created": architecture_release_created,
+                "jqdltb_release_created": jqdltb_release_created,
+                "blueprint_release_validated": blueprint_release_validated,
             }
 
     def list_products(self, tenant_id: str, *, public_only: bool = False) -> list[dict[str, Any]]:
@@ -1477,7 +2404,8 @@ class DataProductRegistry:
                     """
                     SELECT event_id, event_type, from_version_id, to_version_id,
                            actor_subject, reason, occurred_at,
-                           promotion_impact_id
+                           promotion_impact_id, rollback_authority_kind,
+                           rollback_authority_ref, rollback_authority_sha256
                       FROM gda_control.data_product_event
                      WHERE tenant_id = :tenant_id AND product_urn = :product_urn
                      ORDER BY occurred_at, event_id
@@ -1577,10 +2505,20 @@ class DataProductRegistry:
         actor_subject: str,
         reason: str,
         idempotency_key: str,
+        incident_id: UUID | None = None,
+        rollback_approval_case_ref: str | None = None,
         occurred_at: datetime | None = None,
     ) -> dict[str, Any]:
         if not actor_subject.strip() or not reason.strip() or not idempotency_key.strip():
             raise ValueError("actor_subject, reason and idempotency_key are required")
+        if (incident_id is None) == (rollback_approval_case_ref is None):
+            raise DataProductRollbackAuthorityError(
+                "rollback requires exactly one incident_id or rollback_approval_case_ref"
+            )
+        if rollback_approval_case_ref is not None and not rollback_approval_case_ref.strip():
+            raise DataProductRollbackAuthorityError(
+                "rollback_approval_case_ref cannot be empty"
+            )
         timestamp = (occurred_at or datetime.now(UTC)).astimezone(UTC)
         with self._transaction(tenant_id) as connection:
             product = self._load_product(connection, tenant_id, product_slug)
@@ -1608,7 +2546,9 @@ class DataProductRegistry:
             existing = connection.execute(
                 text(
                     """
-                    SELECT from_version_id, to_version_id
+                    SELECT from_version_id, to_version_id,
+                           rollback_authority_kind, rollback_authority_ref,
+                           rollback_authority_sha256
                       FROM gda_control.data_product_event
                      WHERE tenant_id = :tenant_id AND event_id = :event_id
                     """
@@ -1620,15 +2560,85 @@ class DataProductRegistry:
                     raise DataProductConflictError(
                         "rollback idempotency key is bound to another target"
                     )
+                expected_kind = "incident" if incident_id is not None else "approval_case"
+                expected_ref = str(incident_id or rollback_approval_case_ref)
+                if (
+                    existing["rollback_authority_kind"] != expected_kind
+                    or existing["rollback_authority_ref"] != expected_ref
+                ):
+                    raise DataProductRollbackAuthorityError(
+                        "rollback idempotency key is bound to another authority"
+                    )
                 return {
                     "product": product,
                     "target_version": target,
                     "pointer_changed": False,
                     "event_created": False,
                     "idempotent_replay": True,
+                    "rollback_authority": {
+                        "kind": existing["rollback_authority_kind"],
+                        "ref": existing["rollback_authority_ref"],
+                        "sha256": str(existing["rollback_authority_sha256"]),
+                    },
                 }
             if current_id == target_id:
                 raise DataProductConflictError("rollback target is already current")
+            rollback_fingerprint = data_product_rollback_fingerprint(
+                tenant_id=tenant_id,
+                product_urn=product["product_urn"],
+                from_version_id=current_id,
+                to_version_id=target_id,
+            )
+            authority_kind: str
+            authority_ref: str
+            authority_sha256: str
+            if incident_id is not None:
+                incident = connection.execute(
+                    text(
+                        """
+                        SELECT incident_id, subject_resource_urn, status,
+                               incident_sha256
+                          FROM gda_control.data_incident
+                         WHERE tenant_id = :tenant_id
+                           AND incident_id = :incident_id
+                        """
+                    ),
+                    {"tenant_id": tenant_id, "incident_id": incident_id},
+                ).mappings().one_or_none()
+                if (
+                    incident is None
+                    or incident["subject_resource_urn"] != product["product_urn"]
+                    or incident["status"] not in {"open", "acknowledged"}
+                ):
+                    raise DataProductRollbackAuthorityError(
+                        "rollback incident must be an active incident bound to the product"
+                    )
+                authority_kind = "incident"
+                authority_ref = str(incident["incident_id"])
+                authority_sha256 = str(incident["incident_sha256"])
+            else:
+                approval = self._load_approval_case(
+                    connection, tenant_id, str(rollback_approval_case_ref)
+                )
+                if (
+                    approval is None
+                    or approval.status is not ApprovalCaseStatus.APPROVED
+                    or approval.action != DATA_PRODUCT_ROLLBACK_APPROVAL_ACTION
+                    or approval.target_resource_urn != product["product_urn"]
+                    or approval.target_fingerprint != rollback_fingerprint
+                    or approval.decided_at is None
+                    or timestamp >= approval.expires_at
+                    or approval.request_context.get("schema") != DATA_PRODUCT_ROLLBACK_SCHEMA
+                    or approval.request_context.get("product_urn") != product["product_urn"]
+                    or approval.request_context.get("from_version_id") != str(current_id)
+                    or approval.request_context.get("to_version_id") != str(target_id)
+                ):
+                    raise DataProductRollbackAuthorityError(
+                        "rollback ApprovalCase is not an approved exact operation binding"
+                    )
+                authority_kind = "approval_case"
+                authority_ref = approval.approval_case_ref
+                authority_sha256 = approval.target_fingerprint
             current = self._load_version_by_id(
                 connection,
                 tenant_id,
@@ -1700,15 +2710,24 @@ class DataProductRegistry:
             )
             connection.execute(
                 text(
+                    "SELECT set_config('gda.data_product_rollback_event_allowed', '1', true)"
+                )
+            )
+            connection.execute(
+                text(
                     """
                     INSERT INTO gda_control.data_product_event (
                         tenant_id, event_id, product_urn, event_type,
                         from_version_id, to_version_id, actor_subject,
-                        reason, idempotency_key, occurred_at
+                        reason, idempotency_key, occurred_at,
+                        rollback_authority_kind, rollback_authority_ref,
+                        rollback_authority_sha256
                     ) VALUES (
                         :tenant_id, :event_id, :product_urn, 'rolled_back',
                         :from_version_id, :to_version_id, :actor_subject,
-                        :reason, :idempotency_key, :occurred_at
+                        :reason, :idempotency_key, :occurred_at,
+                        :rollback_authority_kind, :rollback_authority_ref,
+                        :rollback_authority_sha256
                     )
                     """
                 ),
@@ -1722,6 +2741,9 @@ class DataProductRegistry:
                     "reason": reason,
                     "idempotency_key": idempotency_key,
                     "occurred_at": timestamp,
+                    "rollback_authority_kind": authority_kind,
+                    "rollback_authority_ref": authority_ref,
+                    "rollback_authority_sha256": authority_sha256,
                 },
             )
             return {
@@ -1730,6 +2752,11 @@ class DataProductRegistry:
                 "pointer_changed": True,
                 "event_created": True,
                 "idempotent_replay": False,
+                "rollback_authority": {
+                    "kind": authority_kind,
+                    "ref": authority_ref,
+                    "sha256": authority_sha256,
+                },
             }
 
     def promote(
@@ -1795,6 +2822,7 @@ class DataProductRegistry:
                 }
             if current_id == target_id:
                 raise DataProductConflictError("promotion target is already current")
+            self._validate_persisted_blueprint_release(connection, target)
             self._validate_persisted_architecture_release(connection, target)
             if not self._is_descendant(
                 connection,
@@ -1807,6 +2835,8 @@ class DataProductRegistry:
                     "promotion target must be a descendant of the current version"
                 )
             impact = self._promotion_impact(connection, product, target)
+            if not impact.get("consumer_migration_ready", True):
+                raise DataProductPromotionImpactError(impact)
             if (
                 impact["acknowledgement_required"]
                 and str(impact_acknowledgement or "").strip()

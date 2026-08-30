@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gis-agent
+
+# This overlay composes only the optional recovery profile. The environment's
+# normal app/base overlay must already provide postgres, MinIO and gis-agent-secret.
+resources:
+  - ../../optional/projection-recovery-worker
+
+patches:
+  - path: worker-enable-patch.yaml
+    target:
+      kind: Deployment
+      name: gis-agent-projection-recovery-worker
+
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/part-of: gis-data-agent
+      app.kubernetes.io/managed-by: kustomize
+      app.kubernetes.io/environment-profile: projection-recovery-sandbox

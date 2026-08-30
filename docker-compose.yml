@@ -16,6 +16,12 @@ services:
       POSTGRES_DB: gis_agent
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres}
+    command:
+      - postgres
+      - -c
+      - max_connections=${POSTGRES_MAX_CONNECTIONS:-150}
+      - -c
+      - superuser_reserved_connections=${POSTGRES_SUPERUSER_RESERVED_CONNECTIONS:-5}
     ports:
       - "5433:5432"        # Expose on 5433 to avoid conflicts with host PostgreSQL
     volumes:
@@ -83,22 +89,45 @@ services:
       POSTGRES_DATABASE: gis_agent
       POSTGRES_USER: agent_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-150}
+      POSTGRES_CONNECTION_RESERVE: ${POSTGRES_CONNECTION_RESERVE:-20}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-20}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
+      ASYNC_POOL_MIN: ${ASYNC_POOL_MIN:-2}
+      ASYNC_POOL_MAX: ${ASYNC_POOL_MAX:-10}
       MARTIN_URL: ${MARTIN_URL:-http://martin:3000}
+      # OGC API Features provider origin; empty by default until the pygeoapi
+      # profile is explicitly enabled.
+      PYGEOAPI_URL: ${PYGEOAPI_URL:-}
+      PYGEOAPI_PROVIDER_VERSION: ${PYGEOAPI_PROVIDER_VERSION:-0.25.dev0}
       # Google AI — set in .env or pass at runtime
       GOOGLE_GENAI_USE_VERTEXAI: ${GOOGLE_GENAI_USE_VERTEXAI:-}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
       GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-AIzaSy-LOCAL-PLACEHOLDER-not-used-with-ollama-router}
       GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      GDA_OPENAI_REASONING_EFFORT: ${GDA_OPENAI_REASONING_EFFORT:-low}
       ROUTER_MODEL: ${ROUTER_MODEL:-gemma4-26b-ollama}
       MODEL_FAST: ${MODEL_FAST:-gemma4-26b-ollama}
       MODEL_STANDARD: ${MODEL_STANDARD:-gemma4-26b-ollama}
       MODEL_PREMIUM: ${MODEL_PREMIUM:-gemma4-26b-ollama}
       MODEL_CONFIG_FORCE_ENV: ${MODEL_CONFIG_FORCE_ENV:-true}
       OLLAMA_API_BASE: ${OLLAMA_API_BASE:-http://host.docker.internal:11434}
+      GDA_LLM_PROVIDER: ${GDA_LLM_PROVIDER:-}
+      GDA_LLM_BASE_URL: ${GDA_LLM_BASE_URL:-}
+      GDA_LLM_MODEL: ${GDA_LLM_MODEL:-}
+      GDA_LLM_API_KEY: ${GDA_LLM_API_KEY:-}
+      GDA_LLM_TIMEOUT_SECONDS: ${GDA_LLM_TIMEOUT_SECONDS:-180}
       NL2SQL_AGENT_MODEL: ${NL2SQL_AGENT_MODEL:-gemma4-26b-ollama}
       NL2SQL_LLM_SCHEMA_MAPPER_MODEL: ${NL2SQL_LLM_SCHEMA_MAPPER_MODEL:-gemma4-26b-ollama}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text-v2-moe}
+      GDA_EMBEDDING_MODEL: ${GDA_EMBEDDING_MODEL:-}
+      GDA_EMBEDDING_PROVIDER: ${GDA_EMBEDDING_PROVIDER:-}
+      GDA_EMBEDDING_BASE_URL: ${GDA_EMBEDDING_BASE_URL:-}
+      GDA_EMBEDDING_API_KEY: ${GDA_EMBEDDING_API_KEY:-}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-768}
       # Gaode Maps API
       GAODE_API_KEY: ${GAODE_API_KEY:-}
       # Chainlit
@@ -107,6 +136,11 @@ services:
       GDA_INGEST_EMBEDDED_WORKER: "0"
       # Dynamic Planner
       DYNAMIC_PLANNER: ${DYNAMIC_PLANNER:-true}
+      # Private ArcPy/DTS MCP gateways. Values are inherited from the shell
+      # that starts Compose; bearer tokens are never written to this file.
+      ARCPY_MCP_TOKEN: ${ARCPY_MCP_TOKEN:-}
+      DTS_MCP_TOKEN: ${DTS_MCP_TOKEN:-}
+      MCP_CLOSE_TIMEOUT: ${MCP_CLOSE_TIMEOUT:-5}
       # Optional services
       CLOUD_STORAGE_PROVIDER: ${CLOUD_STORAGE_PROVIDER:-aws}
       AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://minio:9000}
@@ -120,6 +154,13 @@ services:
       MMFE_ICEBERG_CATALOG: ${MMFE_ICEBERG_CATALOG:-local}
       MMFE_ICEBERG_NAMESPACE: ${MMFE_ICEBERG_NAMESPACE:-gis.fusion}
       MMFE_ICEBERG_TABLE: ${MMFE_ICEBERG_TABLE:-semantic_products}
+      # Blueprint admission constructs credential-free S3 identities. The API
+      # never receives the dedicated worker credential configured below.
+      GDA_BLUEPRINT_DUCKDB_RESULT_BACKEND: ${GDA_BLUEPRINT_DUCKDB_RESULT_BACKEND:-s3}
+      GDA_BLUEPRINT_DUCKDB_OUTPUT_ROOT: /app/data_agent/uploads/blueprint-duckdb-results
+      GDA_BLUEPRINT_DUCKDB_OUTPUT_S3_BUCKET: ${GDA_BLUEPRINT_DUCKDB_OUTPUT_S3_BUCKET:-gis-agent-blueprint-results}
+      GDA_BLUEPRINT_DUCKDB_OUTPUT_S3_PREFIX: ${GDA_BLUEPRINT_DUCKDB_OUTPUT_S3_PREFIX:-blueprint-duckdb-results/v1}
+      GDA_BLUEPRINT_DUCKDB_INPUT_S3_PREFIXES: ${GDA_BLUEPRINT_DUCKDB_INPUT_S3_PREFIXES:-s3://${MMFE_LAKEHOUSE_BUCKET:-gis-agent-lakehouse}/products,s3://${AWS_S3_BUCKET:-gis-agent-uploads}/admitted}
       HUAWEI_OBS_AK: ${HUAWEI_OBS_AK:-}
       HUAWEI_OBS_SK: ${HUAWEI_OBS_SK:-}
       HUAWEI_OBS_SERVER: ${HUAWEI_OBS_SERVER:-}
@@ -165,15 +206,108 @@ services:
       GDA_SLO_ALERT_DETECTOR_SUBJECT: ${GDA_SLO_ALERT_DETECTOR_SUBJECT:-workload:slo-alert-ingestor}
       # Redis (for real-time streams)
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      GDA_GIS_MVT_CACHE_REDIS_URL: ${GDA_GIS_MVT_CACHE_REDIS_URL:-redis://redis:6379/1}
+      GDA_GIS_MVT_CACHE_KEY_PREFIX: ${GDA_GIS_MVT_CACHE_KEY_PREFIX:-gda:mvt:response:v1}
+      GDA_GIS_MVT_CACHE_MAX_OBJECT_BYTES: ${GDA_GIS_MVT_CACHE_MAX_OBJECT_BYTES:-1048576}
+      GDA_GIS_MVT_CACHE_TIMEOUT_SECONDS: ${GDA_GIS_MVT_CACHE_TIMEOUT_SECONDS:-0.5}
       UWM_LIVABILITY_S2_RUN_STORE: /app/data_agent/uploads/uwm_livability_s2_runs
       ONTOLOGY_RUNTIME_BACKEND: ${ONTOLOGY_RUNTIME_BACKEND:-auto}
       ONTOLOGY_SPARQL_ENDPOINT: ${ONTOLOGY_SPARQL_ENDPOINT:-http://ontology-rdf:3030/ontology/query}
       ONTOLOGY_SPARQL_TIMEOUT_SECONDS: ${ONTOLOGY_SPARQL_TIMEOUT_SECONDS:-5}
+      # Optional RDF repair provider. Point only at a separately secured
+      # writable Graph Store; ontology-rdf below remains intentionally read-only.
+      GDA_RDF_PROJECTION_TARGETS_JSON: ${GDA_RDF_PROJECTION_TARGETS_JSON:-}
+      GDA_RDF_PROJECTION_USERNAME: ${GDA_RDF_PROJECTION_USERNAME:-}
+      GDA_RDF_PROJECTION_PASSWORD: ${GDA_RDF_PROJECTION_PASSWORD:-}
+      GDA_RDF_PROJECTION_TIMEOUT_SECONDS: ${GDA_RDF_PROJECTION_TIMEOUT_SECONDS:-120}
+      # Optional object-store repair provider. The registry must bind only the
+      # sealed Chongqing customer bundle; credentials are separate from the
+      # general cloud-storage adapter settings above.
+      GDA_OBJECT_PROJECTION_TARGETS_JSON: ${GDA_OBJECT_PROJECTION_TARGETS_JSON:-}
+      GDA_OBJECT_PROJECTION_ACCESS_KEY_ID: ${GDA_OBJECT_PROJECTION_ACCESS_KEY_ID:-}
+      GDA_OBJECT_PROJECTION_SECRET_ACCESS_KEY: ${GDA_OBJECT_PROJECTION_SECRET_ACCESS_KEY:-}
+      GDA_OBJECT_PROJECTION_SESSION_TOKEN: ${GDA_OBJECT_PROJECTION_SESSION_TOKEN:-}
+      GDA_OBJECT_PROJECTION_TIMEOUT_SECONDS: ${GDA_OBJECT_PROJECTION_TIMEOUT_SECONDS:-120}
+      # Optional Spark/Iceberg repair provider. Enabling this local Docker
+      # adapter also requires a deliberately mounted Docker execution boundary.
+      GDA_LAKEHOUSE_PROJECTION_TARGETS_JSON: ${GDA_LAKEHOUSE_PROJECTION_TARGETS_JSON:-}
+      GDA_LAKEHOUSE_PROJECTION_ACCESS_KEY_ID: ${GDA_LAKEHOUSE_PROJECTION_ACCESS_KEY_ID:-}
+      GDA_LAKEHOUSE_PROJECTION_SECRET_ACCESS_KEY: ${GDA_LAKEHOUSE_PROJECTION_SECRET_ACCESS_KEY:-}
+      GDA_LAKEHOUSE_PROJECTION_SESSION_TOKEN: ${GDA_LAKEHOUSE_PROJECTION_SESSION_TOKEN:-}
+      GDA_LAKEHOUSE_PROJECTION_SPARK_IMAGE: ${GDA_LAKEHOUSE_PROJECTION_SPARK_IMAGE:-gisdataagent/mmfe-spark-runtime:local}
+      GDA_LAKEHOUSE_PROJECTION_DOCKER_NETWORK: ${GDA_LAKEHOUSE_PROJECTION_DOCKER_NETWORK:-gisdataagent_agent-net}
+      GDA_LAKEHOUSE_PROJECTION_REPOSITORY_ROOT: ${GDA_LAKEHOUSE_PROJECTION_REPOSITORY_ROOT:-/app}
+      GDA_LAKEHOUSE_PROJECTION_JAVA_HOME: ${GDA_LAKEHOUSE_PROJECTION_JAVA_HOME:-/usr/lib/jvm/java-17-openjdk-arm64}
+      GDA_LAKEHOUSE_PROJECTION_TIMEOUT_SECONDS: ${GDA_LAKEHOUSE_PROJECTION_TIMEOUT_SECONDS:-600}
     volumes:
       - uploads:/app/data_agent/uploads
       - worldpop_cache:/app/data_agent/uploads/.worldpop_cache
+      - /Users/zhouning/codex-arcpy-mcp-plugin/plugins/arcpy-mcp/assets/arcpy-mcp-ca.crt:/Users/zhouning/codex-arcpy-mcp-plugin/plugins/arcpy-mcp/assets/arcpy-mcp-ca.crt:ro
+      - /Users/zhouning/codex-dts-mcp-plugin/plugins/dts-mcp/assets/dts-mcp-ca.crt:/Users/zhouning/codex-dts-mcp-plugin/plugins/dts-mcp/assets/dts-mcp-ca.crt:ro
       # Optional: mount Google service account credentials
       # - ./secrets/service-account.json:/app/secrets/service-account.json:ro
+    networks:
+      - agent-net
+
+  # ---------------------------------------------------------------------------
+  # Cross-store projection recovery (explicit optional profile)
+  # ---------------------------------------------------------------------------
+  projection-recovery-worker:
+    build: .
+    restart: unless-stopped
+    profiles:
+      - projection-recovery
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ["python", "-m", "data_agent.cross_store_projection_recovery_job_worker"]
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: gis_agent
+      POSTGRES_USER: agent_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-150}
+      POSTGRES_CONNECTION_RESERVE: ${POSTGRES_CONNECTION_RESERVE:-20}
+      DB_POOL_SIZE: ${GDA_WORKER_DB_POOL_SIZE:-5}
+      DB_MAX_OVERFLOW: ${GDA_WORKER_DB_MAX_OVERFLOW:-0}
+      ASYNC_POOL_MIN: "0"
+      ASYNC_POOL_MAX: "1"
+      GDA_PROJECTION_RECOVERY_TENANT_ID: ${GDA_PROJECTION_RECOVERY_TENANT_ID:-}
+      GDA_PROJECTION_RECOVERY_WORKER_ID: ${GDA_PROJECTION_RECOVERY_WORKER_ID:-worker:projection-recovery:compose}
+      GDA_PROJECTION_RECOVERY_WORKER_LIMIT: ${GDA_PROJECTION_RECOVERY_WORKER_LIMIT:-1}
+      GDA_PROJECTION_RECOVERY_WORKER_LEASE_SECONDS: ${GDA_PROJECTION_RECOVERY_WORKER_LEASE_SECONDS:-120}
+      GDA_PROJECTION_RECOVERY_WORKER_HEARTBEAT_SECONDS: ${GDA_PROJECTION_RECOVERY_WORKER_HEARTBEAT_SECONDS:-40}
+      GDA_PROJECTION_RECOVERY_WORKER_RETRY_DELAY_SECONDS: ${GDA_PROJECTION_RECOVERY_WORKER_RETRY_DELAY_SECONDS:-30}
+      GDA_PROJECTION_RECOVERY_WORKER_POLL_SECONDS: ${GDA_PROJECTION_RECOVERY_WORKER_POLL_SECONDS:-5}
+      GDA_PROJECTION_RECOVERY_ROWS_DIRECTORY: /app/data_agent/uploads/projection-recovery-rows
+      # Optional plan-bound cross-store controller admission evidence.
+      GDA_PROJECTION_RECOVERY_CONTROLLER_ADMISSION_FILE: ${GDA_PROJECTION_RECOVERY_CONTROLLER_ADMISSION_FILE:-}
+      GDA_PROJECTION_RECOVERY_COMPENSATION_STRATEGY: ${GDA_PROJECTION_RECOVERY_COMPENSATION_STRATEGY:-disabled}
+      GDA_POSTGIS_PROJECTION_TARGETS_JSON: ${GDA_POSTGIS_PROJECTION_TARGETS_JSON:-}
+      GDA_VECTOR_PROJECTION_TARGETS_JSON: ${GDA_VECTOR_PROJECTION_TARGETS_JSON:-}
+      GDA_RDF_PROJECTION_TARGETS_JSON: ${GDA_RDF_PROJECTION_TARGETS_JSON:-}
+      GDA_RDF_PROJECTION_USERNAME: ${GDA_RDF_PROJECTION_USERNAME:-}
+      GDA_RDF_PROJECTION_PASSWORD: ${GDA_RDF_PROJECTION_PASSWORD:-}
+      GDA_RDF_PROJECTION_TIMEOUT_SECONDS: ${GDA_RDF_PROJECTION_TIMEOUT_SECONDS:-120}
+      GDA_OBJECT_PROJECTION_TARGETS_JSON: ${GDA_OBJECT_PROJECTION_TARGETS_JSON:-}
+      GDA_OBJECT_PROJECTION_ACCESS_KEY_ID: ${GDA_OBJECT_PROJECTION_ACCESS_KEY_ID:-}
+      GDA_OBJECT_PROJECTION_SECRET_ACCESS_KEY: ${GDA_OBJECT_PROJECTION_SECRET_ACCESS_KEY:-}
+      GDA_OBJECT_PROJECTION_SESSION_TOKEN: ${GDA_OBJECT_PROJECTION_SESSION_TOKEN:-}
+      GDA_OBJECT_PROJECTION_TIMEOUT_SECONDS: ${GDA_OBJECT_PROJECTION_TIMEOUT_SECONDS:-120}
+      GDA_LAKEHOUSE_PROJECTION_TARGETS_JSON: ${GDA_LAKEHOUSE_PROJECTION_TARGETS_JSON:-}
+      GDA_LAKEHOUSE_PROJECTION_ACCESS_KEY_ID: ${GDA_LAKEHOUSE_PROJECTION_ACCESS_KEY_ID:-}
+      GDA_LAKEHOUSE_PROJECTION_SECRET_ACCESS_KEY: ${GDA_LAKEHOUSE_PROJECTION_SECRET_ACCESS_KEY:-}
+      GDA_LAKEHOUSE_PROJECTION_SESSION_TOKEN: ${GDA_LAKEHOUSE_PROJECTION_SESSION_TOKEN:-}
+      GDA_LAKEHOUSE_PROJECTION_SPARK_IMAGE: ${GDA_LAKEHOUSE_PROJECTION_SPARK_IMAGE:-gisdataagent/mmfe-spark-runtime:local}
+      GDA_LAKEHOUSE_PROJECTION_DOCKER_NETWORK: ${GDA_LAKEHOUSE_PROJECTION_DOCKER_NETWORK:-gisdataagent_agent-net}
+      GDA_LAKEHOUSE_PROJECTION_REPOSITORY_ROOT: /app
+      GDA_LAKEHOUSE_PROJECTION_JAVA_HOME: ${GDA_LAKEHOUSE_PROJECTION_JAVA_HOME:-/usr/lib/jvm/java-17-openjdk-arm64}
+      GDA_LAKEHOUSE_PROJECTION_TIMEOUT_SECONDS: ${GDA_LAKEHOUSE_PROJECTION_TIMEOUT_SECONDS:-600}
+    volumes:
+      - uploads:/app/data_agent/uploads
     networks:
       - agent-net
 
@@ -229,6 +363,12 @@ services:
       POSTGRES_DATABASE: gis_agent
       POSTGRES_USER: agent_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-150}
+      POSTGRES_CONNECTION_RESERVE: ${POSTGRES_CONNECTION_RESERVE:-20}
+      DB_POOL_SIZE: ${GDA_WORKER_DB_POOL_SIZE:-5}
+      DB_MAX_OVERFLOW: ${GDA_WORKER_DB_MAX_OVERFLOW:-0}
+      ASYNC_POOL_MIN: "0"
+      ASYNC_POOL_MAX: "1"
       CHAINLIT_AUTH_SECRET: ${CHAINLIT_AUTH_SECRET:-replace_with_a_real_secret}
       CLOUD_STORAGE_PROVIDER: ${CLOUD_STORAGE_PROVIDER:-aws}
       AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://minio:9000}
@@ -250,6 +390,198 @@ services:
       - agent-net
 
   # ---------------------------------------------------------------------------
+  # Retired GIS MVT cache-generation cleanup worker
+  # ---------------------------------------------------------------------------
+  gis-mvt-cache-purge-worker:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    command: ["python", "-m", "data_agent.gis_mvt_cache_purge_worker"]
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: gis_agent
+      POSTGRES_USER: agent_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-150}
+      POSTGRES_CONNECTION_RESERVE: ${POSTGRES_CONNECTION_RESERVE:-20}
+      DB_POOL_SIZE: ${GDA_WORKER_DB_POOL_SIZE:-2}
+      DB_MAX_OVERFLOW: "0"
+      ASYNC_POOL_MIN: "0"
+      ASYNC_POOL_MAX: "1"
+      GDA_GIS_MVT_CACHE_REDIS_URL: ${GDA_GIS_MVT_CACHE_REDIS_URL:-redis://redis:6379/1}
+      GDA_GIS_MVT_CACHE_KEY_PREFIX: ${GDA_GIS_MVT_CACHE_KEY_PREFIX:-gda:mvt:response:v1}
+      GDA_GIS_MVT_CACHE_PURGE_TENANT_ID: ${GDA_GIS_MVT_CACHE_PURGE_TENANT_ID:-planning}
+      GDA_GIS_MVT_CACHE_PURGE_WORKER_ID: ${GDA_GIS_MVT_CACHE_PURGE_WORKER_ID:-worker:gis-mvt-cache-purge:compose}
+      GDA_GIS_MVT_CACHE_PURGE_BATCH_SIZE: ${GDA_GIS_MVT_CACHE_PURGE_BATCH_SIZE:-10}
+      GDA_GIS_MVT_CACHE_PURGE_LEASE_SECONDS: ${GDA_GIS_MVT_CACHE_PURGE_LEASE_SECONDS:-60}
+      GDA_GIS_MVT_CACHE_PURGE_RETRY_SECONDS: ${GDA_GIS_MVT_CACHE_PURGE_RETRY_SECONDS:-30}
+      GDA_GIS_MVT_CACHE_PURGE_POLL_SECONDS: ${GDA_GIS_MVT_CACHE_PURGE_POLL_SECONDS:-5}
+      GDA_GIS_MVT_CACHE_PURGE_MAX_KEYS: ${GDA_GIS_MVT_CACHE_PURGE_MAX_KEYS:-10000}
+      GDA_GIS_MVT_CACHE_PURGE_SCAN_COUNT: ${GDA_GIS_MVT_CACHE_PURGE_SCAN_COUNT:-100}
+      GDA_GIS_MVT_CACHE_PURGE_PROVIDER: ${GDA_GIS_MVT_CACHE_PURGE_PROVIDER:-redis}
+      GDA_GIS_MVT_CACHE_PURGE_HTTP_ENDPOINT_URL: ${GDA_GIS_MVT_CACHE_PURGE_HTTP_ENDPOINT_URL:-}
+      GDA_GIS_MVT_CACHE_PURGE_HTTP_BEARER_TOKEN_FILE: ${GDA_GIS_MVT_CACHE_PURGE_HTTP_BEARER_TOKEN_FILE:-}
+      GDA_GIS_MVT_CACHE_PURGE_HTTP_TIMEOUT_SECONDS: ${GDA_GIS_MVT_CACHE_PURGE_HTTP_TIMEOUT_SECONDS:-5}
+    networks:
+      - agent-net
+
+  # Exact generic-SLO activation -> GIS ServiceSLO binding reconciler.
+  # The generic SLO authority remains the lifecycle owner; this worker only
+  # projects approved activations through migration 223's binding authority.
+  gis-service-slo-reconciliation-worker:
+    build: .
+    restart: unless-stopped
+    profiles:
+      - gis-slo
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ["python", "-m", "data_agent.gis_service_slo_reconciliation_worker"]
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: gis_agent
+      POSTGRES_USER: agent_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-150}
+      POSTGRES_CONNECTION_RESERVE: ${POSTGRES_CONNECTION_RESERVE:-20}
+      DB_POOL_SIZE: ${GDA_WORKER_DB_POOL_SIZE:-2}
+      DB_MAX_OVERFLOW: "0"
+      ASYNC_POOL_MIN: "0"
+      ASYNC_POOL_MAX: "1"
+      GDA_GIS_SLO_RECONCILIATION_TENANT_ID: ${GDA_GIS_SLO_RECONCILIATION_TENANT_ID:-}
+      GDA_GIS_SLO_RECONCILIATION_WORKER_ID: ${GDA_GIS_SLO_RECONCILIATION_WORKER_ID:-worker:gis-slo-reconciliation:compose}
+      GDA_GIS_SLO_RECONCILIATION_BATCH_SIZE: ${GDA_GIS_SLO_RECONCILIATION_BATCH_SIZE:-10}
+      GDA_GIS_SLO_RECONCILIATION_LEASE_SECONDS: ${GDA_GIS_SLO_RECONCILIATION_LEASE_SECONDS:-60}
+      GDA_GIS_SLO_RECONCILIATION_RETRY_SECONDS: ${GDA_GIS_SLO_RECONCILIATION_RETRY_SECONDS:-30}
+      GDA_GIS_SLO_RECONCILIATION_POLL_SECONDS: ${GDA_GIS_SLO_RECONCILIATION_POLL_SECONDS:-5}
+    networks:
+      - agent-net
+
+  # ---------------------------------------------------------------------------
+  # Governed DuckDB Blueprint provider worker
+  # ---------------------------------------------------------------------------
+  # This process is deliberately separate from the API.  It receives a
+  # tenant-scoped outbox command, reads admitted object versions and publishes
+  # immutable output evidence.  The optional profile keeps existing lightweight
+  # Compose deployments unchanged; enable it after the bucket-init job has
+  # provisioned the scoped identity and Object Lock bucket.
+  duckdb-blueprint-worker:
+    build: .
+    restart: unless-stopped
+    profiles:
+      - blueprint
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+      minio-bucket-init:
+        condition: service_completed_successfully
+      blueprint-worker-volume-init:
+        condition: service_completed_successfully
+    command: ["python", "-m", "data_agent.duckdb_blueprint_command_worker", "run"]
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: gis_agent
+      POSTGRES_USER: agent_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-150}
+      POSTGRES_CONNECTION_RESERVE: ${POSTGRES_CONNECTION_RESERVE:-20}
+      DB_POOL_SIZE: ${GDA_WORKER_DB_POOL_SIZE:-5}
+      DB_MAX_OVERFLOW: ${GDA_WORKER_DB_MAX_OVERFLOW:-0}
+      ASYNC_POOL_MIN: "0"
+      ASYNC_POOL_MAX: "1"
+      GDA_BLUEPRINT_DUCKDB_TENANT_ID: ${GDA_BLUEPRINT_DUCKDB_TENANT_ID:-local-dev}
+      GDA_BLUEPRINT_DUCKDB_WORKER_ID: ${GDA_BLUEPRINT_DUCKDB_WORKER_ID:-worker:blueprint-duckdb:compose}
+      GDA_BLUEPRINT_DUCKDB_OUTPUT_ROOT: /var/lib/gda/blueprint-workspace
+      GDA_BLUEPRINT_DUCKDB_RESULT_BACKEND: s3
+      GDA_BLUEPRINT_DUCKDB_OUTPUT_S3_BUCKET: ${GDA_BLUEPRINT_DUCKDB_OUTPUT_S3_BUCKET:-gis-agent-blueprint-results}
+      GDA_BLUEPRINT_DUCKDB_OUTPUT_S3_PREFIX: ${GDA_BLUEPRINT_DUCKDB_OUTPUT_S3_PREFIX:-blueprint-duckdb-results/v1}
+      GDA_BLUEPRINT_DUCKDB_INPUT_S3_PREFIXES: ${GDA_BLUEPRINT_DUCKDB_INPUT_S3_PREFIXES:-s3://${MMFE_LAKEHOUSE_BUCKET:-gis-agent-lakehouse}/products,s3://${AWS_S3_BUCKET:-gis-agent-uploads}/admitted}
+      GDA_BLUEPRINT_DUCKDB_BATCH_SIZE: ${GDA_BLUEPRINT_DUCKDB_BATCH_SIZE:-1}
+      GDA_BLUEPRINT_DUCKDB_LEASE_SECONDS: ${GDA_BLUEPRINT_DUCKDB_LEASE_SECONDS:-900}
+      GDA_BLUEPRINT_DUCKDB_TIMEOUT_CEILING_SECONDS: ${GDA_BLUEPRINT_DUCKDB_TIMEOUT_CEILING_SECONDS:-600}
+      GDA_BLUEPRINT_DUCKDB_IO_BUDGET_SECONDS: ${GDA_BLUEPRINT_DUCKDB_IO_BUDGET_SECONDS:-240}
+      GDA_BLUEPRINT_DUCKDB_S3_CONNECT_TIMEOUT_SECONDS: ${GDA_BLUEPRINT_DUCKDB_S3_CONNECT_TIMEOUT_SECONDS:-5}
+      GDA_BLUEPRINT_DUCKDB_S3_READ_TIMEOUT_SECONDS: ${GDA_BLUEPRINT_DUCKDB_S3_READ_TIMEOUT_SECONDS:-60}
+      GDA_BLUEPRINT_DUCKDB_RETRY_SECONDS: ${GDA_BLUEPRINT_DUCKDB_RETRY_SECONDS:-30}
+      GDA_BLUEPRINT_DUCKDB_POLL_SECONDS: ${GDA_BLUEPRINT_DUCKDB_POLL_SECONDS:-5}
+      GDA_BLUEPRINT_DUCKDB_STATUS_FILE: /var/run/gda-status/worker.json
+      GDA_BLUEPRINT_DUCKDB_HEALTH_MAX_AGE_SECONDS: ${GDA_BLUEPRINT_DUCKDB_HEALTH_MAX_AGE_SECONDS:-1200}
+      GDA_BLUEPRINT_DUCKDB_SPATIAL_EXTENSION_PATH: /app/duckdb-extensions/spatial.duckdb_extension
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://minio:9000}
+      AWS_ACCESS_KEY_ID: ${GDA_BLUEPRINT_DUCKDB_ACCESS_KEY_ID:-gda_blueprint_worker}
+      AWS_SECRET_ACCESS_KEY: ${GDA_BLUEPRINT_DUCKDB_SECRET_ACCESS_KEY:-local_dev_blueprint_worker_secret}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      CLOUD_STORAGE_PROVIDER: aws
+      PYTHONDONTWRITEBYTECODE: "1"
+      GDA_SKIP_RUNTIME_ENV_FILE: "1"
+      HOME: /tmp
+      TMPDIR: /tmp
+    volumes:
+      - blueprint-worker-workspace:/var/lib/gda/blueprint-workspace
+      - blueprint-worker-status:/var/run/gda-status
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -m
+        - data_agent.duckdb_blueprint_command_worker
+        - health
+        - --status-file
+        - /var/run/gda-status/worker.json
+        - --max-age-seconds
+        - "1200"
+      interval: 30s
+      timeout: 5s
+      start_period: 45s
+      retries: 3
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    networks:
+      - agent-net
+
+  # Named volumes are created by Docker as root.  The runtime image's agent
+  # user is UID/GID 999; initialize only the private worker workspace/status
+  # volumes and keep the worker itself non-root.
+  blueprint-worker-volume-init:
+    image: busybox:1.36
+    restart: "no"
+    profiles:
+      - blueprint
+    user: "0:0"
+    network_mode: none
+    command:
+      - sh
+      - -ec
+      - |
+        mkdir -p /workspace /status
+        chown 999:999 /workspace /status
+        chmod 0700 /workspace /status
+    volumes:
+      - blueprint-worker-workspace:/workspace
+      - blueprint-worker-status:/status
+
+  # ---------------------------------------------------------------------------
   # Governed DataIncident delivery (optional Alertmanager profile)
   # ---------------------------------------------------------------------------
   incident-notification-worker:
@@ -269,14 +601,22 @@ services:
       POSTGRES_DATABASE: gis_agent
       POSTGRES_USER: agent_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-150}
+      POSTGRES_CONNECTION_RESERVE: ${POSTGRES_CONNECTION_RESERVE:-20}
+      DB_POOL_SIZE: ${GDA_WORKER_DB_POOL_SIZE:-5}
+      DB_MAX_OVERFLOW: ${GDA_WORKER_DB_MAX_OVERFLOW:-0}
+      ASYNC_POOL_MIN: "0"
+      ASYNC_POOL_MAX: "1"
       GDA_INCIDENT_NOTIFICATION_TENANT_ID: ${GDA_INCIDENT_NOTIFICATION_TENANT_ID:-}
       GDA_INCIDENT_NOTIFICATION_WORKER_ID: ${GDA_INCIDENT_NOTIFICATION_WORKER_ID:-worker:incident-alertmanager:compose}
+      GDA_INCIDENT_NOTIFICATION_ROUTE_NAMESPACE: ${GDA_INCIDENT_NOTIFICATION_ROUTE_NAMESPACE:-}
       GDA_ALERTMANAGER_URL: ${GDA_ALERTMANAGER_URL:-}
       GDA_ALERTMANAGER_BEARER_TOKEN_FILE: ${GDA_ALERTMANAGER_BEARER_TOKEN_FILE:-}
       GDA_INCIDENT_NOTIFICATION_BATCH_SIZE: ${GDA_INCIDENT_NOTIFICATION_BATCH_SIZE:-10}
       GDA_INCIDENT_NOTIFICATION_LEASE_SECONDS: ${GDA_INCIDENT_NOTIFICATION_LEASE_SECONDS:-60}
       GDA_INCIDENT_NOTIFICATION_RETRY_SECONDS: ${GDA_INCIDENT_NOTIFICATION_RETRY_SECONDS:-30}
       GDA_INCIDENT_NOTIFICATION_POLL_SECONDS: ${GDA_INCIDENT_NOTIFICATION_POLL_SECONDS:-5}
+      GDA_INCIDENT_NOTIFICATION_METRICS_PORT: ${GDA_INCIDENT_NOTIFICATION_METRICS_PORT:-9465}
       GDA_ALERTMANAGER_TIMEOUT_SECONDS: ${GDA_ALERTMANAGER_TIMEOUT_SECONDS:-10}
     networks:
       - agent-net
@@ -301,6 +641,12 @@ services:
       POSTGRES_DATABASE: gis_agent
       POSTGRES_USER: agent_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-150}
+      POSTGRES_CONNECTION_RESERVE: ${POSTGRES_CONNECTION_RESERVE:-20}
+      DB_POOL_SIZE: ${GDA_WORKER_DB_POOL_SIZE:-5}
+      DB_MAX_OVERFLOW: ${GDA_WORKER_DB_MAX_OVERFLOW:-0}
+      ASYNC_POOL_MIN: "0"
+      ASYNC_POOL_MAX: "1"
       GDA_APPROVAL_NOTIFICATION_TENANT_ID: ${GDA_APPROVAL_NOTIFICATION_TENANT_ID:-}
       GDA_APPROVAL_NOTIFICATION_WORKER_ID: ${GDA_APPROVAL_NOTIFICATION_WORKER_ID:-worker:approval-alertmanager:compose}
       GDA_APPROVAL_NOTIFICATION_ROUTE_NAMESPACE: ${GDA_APPROVAL_NOTIFICATION_ROUTE_NAMESPACE:-}
@@ -311,6 +657,47 @@ services:
       GDA_APPROVAL_NOTIFICATION_RETRY_SECONDS: ${GDA_APPROVAL_NOTIFICATION_RETRY_SECONDS:-30}
       GDA_APPROVAL_NOTIFICATION_POLL_SECONDS: ${GDA_APPROVAL_NOTIFICATION_POLL_SECONDS:-5}
       GDA_APPROVAL_NOTIFICATION_METRICS_PORT: ${GDA_APPROVAL_NOTIFICATION_METRICS_PORT:-9465}
+      GDA_ALERTMANAGER_TIMEOUT_SECONDS: ${GDA_ALERTMANAGER_TIMEOUT_SECONDS:-10}
+    networks:
+      - agent-net
+
+  # ---------------------------------------------------------------------------
+  # ConsumerBinding migration delivery (optional Alertmanager profile)
+  # ---------------------------------------------------------------------------
+  consumer-binding-notification-worker:
+    build: .
+    restart: unless-stopped
+    profiles:
+      - alerts
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ["python", "-m", "data_agent.consumer_binding_notification_worker"]
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: gis_agent
+      POSTGRES_USER: agent_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-150}
+      POSTGRES_CONNECTION_RESERVE: ${POSTGRES_CONNECTION_RESERVE:-20}
+      DB_POOL_SIZE: ${GDA_WORKER_DB_POOL_SIZE:-5}
+      DB_MAX_OVERFLOW: ${GDA_WORKER_DB_MAX_OVERFLOW:-0}
+      ASYNC_POOL_MIN: "0"
+      ASYNC_POOL_MAX: "1"
+      GDA_CONSUMER_BINDING_NOTIFICATION_TENANT_ID: ${GDA_CONSUMER_BINDING_NOTIFICATION_TENANT_ID:-}
+      GDA_CONSUMER_BINDING_NOTIFICATION_WORKER_ID: ${GDA_CONSUMER_BINDING_NOTIFICATION_WORKER_ID:-worker:consumer-binding-alertmanager:compose}
+      GDA_CONSUMER_BINDING_NOTIFICATION_RECORDED_BY: ${GDA_CONSUMER_BINDING_NOTIFICATION_RECORDED_BY:-service:consumer-binding-notification-worker}
+      GDA_CONSUMER_BINDING_NOTIFICATION_ROUTE_NAMESPACE: ${GDA_CONSUMER_BINDING_NOTIFICATION_ROUTE_NAMESPACE:-}
+      GDA_ALERTMANAGER_URL: ${GDA_ALERTMANAGER_URL:-}
+      GDA_ALERTMANAGER_BEARER_TOKEN_FILE: ${GDA_ALERTMANAGER_BEARER_TOKEN_FILE:-}
+      GDA_CONSUMER_BINDING_NOTIFICATION_BATCH_SIZE: ${GDA_CONSUMER_BINDING_NOTIFICATION_BATCH_SIZE:-10}
+      GDA_CONSUMER_BINDING_NOTIFICATION_LEASE_SECONDS: ${GDA_CONSUMER_BINDING_NOTIFICATION_LEASE_SECONDS:-60}
+      GDA_CONSUMER_BINDING_NOTIFICATION_RETRY_SECONDS: ${GDA_CONSUMER_BINDING_NOTIFICATION_RETRY_SECONDS:-30}
+      GDA_CONSUMER_BINDING_NOTIFICATION_POLL_SECONDS: ${GDA_CONSUMER_BINDING_NOTIFICATION_POLL_SECONDS:-5}
+      GDA_CONSUMER_BINDING_NOTIFICATION_METRICS_PORT: ${GDA_CONSUMER_BINDING_NOTIFICATION_METRICS_PORT:-9469}
       GDA_ALERTMANAGER_TIMEOUT_SECONDS: ${GDA_ALERTMANAGER_TIMEOUT_SECONDS:-10}
     networks:
       - agent-net
@@ -335,6 +722,12 @@ services:
       POSTGRES_DATABASE: gis_agent
       POSTGRES_USER: agent_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-150}
+      POSTGRES_CONNECTION_RESERVE: ${POSTGRES_CONNECTION_RESERVE:-20}
+      DB_POOL_SIZE: ${GDA_WORKER_DB_POOL_SIZE:-5}
+      DB_MAX_OVERFLOW: ${GDA_WORKER_DB_MAX_OVERFLOW:-0}
+      ASYNC_POOL_MIN: "0"
+      ASYNC_POOL_MAX: "1"
       GDA_METADATA_FABRIC_TENANT_ID: ${GDA_METADATA_FABRIC_TENANT_ID:-}
       GDA_METADATA_FABRIC_WORKER_ID: ${GDA_METADATA_FABRIC_WORKER_ID:-worker:metadata-fabric:openmetadata:compose}
       GDA_OPENMETADATA_URL: ${GDA_OPENMETADATA_URL:-}
@@ -366,6 +759,12 @@ services:
       POSTGRES_DATABASE: gis_agent
       POSTGRES_USER: agent_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-150}
+      POSTGRES_CONNECTION_RESERVE: ${POSTGRES_CONNECTION_RESERVE:-20}
+      DB_POOL_SIZE: ${GDA_WORKER_DB_POOL_SIZE:-5}
+      DB_MAX_OVERFLOW: ${GDA_WORKER_DB_MAX_OVERFLOW:-0}
+      ASYNC_POOL_MIN: "0"
+      ASYNC_POOL_MAX: "1"
       GDA_METADATA_FABRIC_TENANT_ID: ${GDA_METADATA_FABRIC_TENANT_ID:-}
       GDA_MASTER_METADATA_WORKER_ID: ${GDA_MASTER_METADATA_WORKER_ID:-worker:master-metadata:openmetadata:compose}
       GDA_OPENMETADATA_URL: ${GDA_OPENMETADATA_URL:-}
@@ -414,6 +813,11 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-local_dev_minio_secret}
       AWS_S3_BUCKET: ${AWS_S3_BUCKET:-gis-agent-uploads}
       MMFE_LAKEHOUSE_BUCKET: ${MMFE_LAKEHOUSE_BUCKET:-gis-agent-lakehouse}
+      BLUEPRINT_DUCKDB_OUTPUT_BUCKET: ${GDA_BLUEPRINT_DUCKDB_OUTPUT_S3_BUCKET:-gis-agent-blueprint-results}
+      BLUEPRINT_DUCKDB_OUTPUT_PREFIX: ${GDA_BLUEPRINT_DUCKDB_OUTPUT_S3_PREFIX:-blueprint-duckdb-results/v1}
+      BLUEPRINT_DUCKDB_ACCESS_KEY_ID: ${GDA_BLUEPRINT_DUCKDB_ACCESS_KEY_ID:-gda_blueprint_worker}
+      BLUEPRINT_DUCKDB_SECRET_ACCESS_KEY: ${GDA_BLUEPRINT_DUCKDB_SECRET_ACCESS_KEY:-local_dev_blueprint_worker_secret}
+      BLUEPRINT_DUCKDB_POLICY: ${GDA_BLUEPRINT_DUCKDB_POLICY:-gda-blueprint-duckdb-worker}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
@@ -421,6 +825,28 @@ services:
         mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
         mc mb --ignore-existing local/"$$AWS_S3_BUCKET"
         mc mb --ignore-existing local/"$$MMFE_LAKEHOUSE_BUCKET"
+        # Blueprint output is created with Object Lock.  A pre-existing bucket
+        # without lock is intentionally not silently upgraded; the worker's
+        # readiness probe will fail closed and the operator must provision a
+        # new immutable bucket rather than weaken the evidence contract.
+        mc mb --with-lock --ignore-existing local/"$$BLUEPRINT_DUCKDB_OUTPUT_BUCKET"
+        mc retention set --default GOVERNANCE 1d local/"$$BLUEPRINT_DUCKDB_OUTPUT_BUCKET"
+        policy_file=$$(mktemp)
+        trap 'rm -f "$$policy_file"' EXIT
+        cat >"$$policy_file" <<POLICY
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {"Effect":"Allow","Action":["s3:GetBucketLocation"],"Resource":["arn:aws:s3:::$$MMFE_LAKEHOUSE_BUCKET","arn:aws:s3:::$$AWS_S3_BUCKET","arn:aws:s3:::$$BLUEPRINT_DUCKDB_OUTPUT_BUCKET"]},
+            {"Effect":"Allow","Action":["s3:GetBucketVersioning","s3:GetBucketObjectLockConfiguration"],"Resource":["arn:aws:s3:::$$BLUEPRINT_DUCKDB_OUTPUT_BUCKET"]},
+            {"Effect":"Allow","Action":["s3:GetObject","s3:GetObjectVersion"],"Resource":["arn:aws:s3:::$$MMFE_LAKEHOUSE_BUCKET/products/*","arn:aws:s3:::$$AWS_S3_BUCKET/admitted/*","arn:aws:s3:::$$BLUEPRINT_DUCKDB_OUTPUT_BUCKET/$$BLUEPRINT_DUCKDB_OUTPUT_PREFIX/*"]},
+            {"Effect":"Allow","Action":["s3:PutObject"],"Resource":["arn:aws:s3:::$$BLUEPRINT_DUCKDB_OUTPUT_BUCKET/$$BLUEPRINT_DUCKDB_OUTPUT_PREFIX/*"]}
+          ]
+        }
+        POLICY
+        mc admin user info local "$$BLUEPRINT_DUCKDB_ACCESS_KEY_ID" >/dev/null 2>&1 || mc admin user add local "$$BLUEPRINT_DUCKDB_ACCESS_KEY_ID" "$$BLUEPRINT_DUCKDB_SECRET_ACCESS_KEY"
+        mc admin policy info local "$$BLUEPRINT_DUCKDB_POLICY" >/dev/null 2>&1 || mc admin policy create local "$$BLUEPRINT_DUCKDB_POLICY" "$$policy_file"
+        mc admin policy attach local "$$BLUEPRINT_DUCKDB_POLICY" --user "$$BLUEPRINT_DUCKDB_ACCESS_KEY_ID"
         mc anonymous set none local/"$$AWS_S3_BUCKET" || true
         mc anonymous set none local/"$$MMFE_LAKEHOUSE_BUCKET" || true
         echo "[bucket-init] buckets ready: $$AWS_S3_BUCKET $$MMFE_LAKEHOUSE_BUCKET"
@@ -433,7 +859,7 @@ services:
   # authority for versions, mappings, provenance, publication and audit.
   # ---------------------------------------------------------------------------
   ontology-rdf:
-    image: "${FUSEKI_IMAGE:-gisdataagent-ontology-fuseki:5.5.0-nr-2.0.1}"
+    image: "${FUSEKI_IMAGE:-gisdataagent-ontology-fuseki:5.5.0-nr-2.3.0}"
     build:
       context: .
       dockerfile: docker/ontology-fuseki/Dockerfile
@@ -474,7 +900,7 @@ services:
           --data-urlencode 'query=SELECT (COUNT(*) AS ?triples) WHERE { ?s ?p ?o }' \
           -H 'Accept: application/sparql-results+json' \
           http://ontology-rdf:3030/ontology/query)"
-        echo "$$result" | grep -q '528252'
+        echo "$$result" | grep -q '537245'
     networks:
       - agent-net
 
@@ -637,6 +1063,8 @@ volumes:
   cad-uploads:
   ontology-fuseki-data:
   ingestion-lake:
+  blueprint-worker-workspace:
+  blueprint-worker-status:
 
 secrets:
   openmetadata_bearer_token:

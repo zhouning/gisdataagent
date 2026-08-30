@@ -7,13 +7,16 @@ HTTP, which is important for physically isolated deployments.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
+import zipfile
 
 from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse
 from starlette.routing import Route
 
+from ..openai_compatible_llm import LLMServiceError
 from .helpers import _get_user_from_request, _set_user_context
 
 
@@ -102,6 +105,28 @@ async def finalize_session(request: Request):
         return JSONResponse({"error": str(exc)}, status_code=409)
 
 
+async def ingest_session(request: Request):
+    """Continue a finalized browser upload through expansion, profiling and quality."""
+    actor, error = _auth(request)
+    if error:
+        return error
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    try:
+        result = _store().ingest_uploaded_session(
+            request.path_params["session_id"],
+            actor=actor,
+            run_quality=bool(body.get("run_quality", True)),
+        )
+        return JSONResponse(result, status_code=200 if result.get("resumed") else 202)
+    except FileNotFoundError:
+        return JSONResponse({"error": "upload session or Raw asset not found"}, status_code=404)
+    except (ValueError, RuntimeError, NotImplementedError, zipfile.BadZipFile) as exc:
+        return JSONResponse({"error": str(exc)}, status_code=409)
+
+
 async def local_scan(request: Request):
     actor, error = _auth(request)
     if error:
@@ -148,6 +173,19 @@ async def overview(request: Request):
         return JSONResponse(_store().overview(limit=int(raw_limit)))
     except (TypeError, ValueError) as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
+
+
+async def deep_quality(request: Request):
+    actor, error = _auth(request)
+    if error:
+        return error
+    try:
+        result = _store().run_deep_quality(request.path_params["run_id"], actor=actor)
+        return JSONResponse(result, status_code=202)
+    except FileNotFoundError:
+        return JSONResponse({"error": "run not found"}, status_code=404)
+    except (TypeError, ValueError, RuntimeError) as exc:
+        return JSONResponse({"error": str(exc)}, status_code=409)
 
 
 async def standardize_run(request: Request):
@@ -273,6 +311,10 @@ async def semantic_project(request: Request):
             actor=actor,
             mode=str(body.get("mode") or "rehearsal"),
             preview_limit=int(body.get("preview_limit") or 500),
+            publish_postgis=bool(body.get("publish_postgis", True)),
+            postgis_table_name=str(
+                body.get("postgis_table_name") or "land_parcel_current"
+            ),
         )
         return JSONResponse(result, status_code=200)
     except FileNotFoundError:
@@ -331,18 +373,32 @@ async def semantic_query(request: Request):
         question = str(body.get("question") or "").strip()
         if not question:
             return JSONResponse({"error": "question is required"}, status_code=400)
-        from ..dltb_vertical_demo import DLTBVerticalDemo
+        execution_engine = str(body.get("execution_engine") or "postgis")
+        from ..dltb_multi_engine_query import query_dltb
 
-        result = DLTBVerticalDemo.query(
+        result = await asyncio.to_thread(
+            query_dltb,
             _projection_path(_store(), projection_id),
             question,
+            execution_engine=execution_engine,
             limit=int(body.get("limit") or 100),
         )
         result["actor"] = actor
         return JSONResponse(result)
     except FileNotFoundError:
         return JSONResponse({"error": "semantic projection not found"}, status_code=404)
-    except (TypeError, ValueError, RuntimeError) as exc:
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=422)
+    except LLMServiceError as exc:
+        return JSONResponse(
+            {
+                "error": str(exc),
+                "code": "local_llm_unavailable",
+                "fallback_used": False,
+            },
+            status_code=503,
+        )
+    except (TypeError, RuntimeError) as exc:
         return JSONResponse({"error": str(exc)}, status_code=409)
 
 
@@ -362,10 +418,20 @@ def get_offline_ingest_routes() -> list[Route]:
             endpoint=finalize_session,
             methods=["POST"],
         ),
+        Route(
+            "/api/offline-ingest/sessions/{session_id}/ingest",
+            endpoint=ingest_session,
+            methods=["POST"],
+        ),
         Route("/api/offline-ingest/local-scan", endpoint=local_scan, methods=["POST"]),
         Route("/api/offline-ingest/overview", endpoint=overview, methods=["GET"]),
         Route("/api/offline-ingest/runs", endpoint=run_list, methods=["GET"]),
         Route("/api/offline-ingest/runs/{run_id}", endpoint=run_detail, methods=["GET"]),
+        Route(
+            "/api/offline-ingest/runs/{run_id}/quality",
+            endpoint=deep_quality,
+            methods=["POST"],
+        ),
         Route(
             "/api/offline-ingest/runs/{run_id}/standardize",
             endpoint=standardize_run,

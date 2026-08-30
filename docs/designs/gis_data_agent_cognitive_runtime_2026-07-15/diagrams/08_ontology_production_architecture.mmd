@@ -1,0 +1,17 @@
+flowchart TB
+  SP[Standards Platform<br/>Clauses · Terms · Data Elements · Value Domains] --> C[Ontology Knowledge Compiler]
+  OP[Existing Prototypes<br/>GIS YAML · MMFE Ontology] --> C
+  RS[Runtime Semantics<br/>Assets · Fields · Capabilities · Tools] --> C
+  C --> A[(Canonical Authority Store<br/>PostgreSQL · Version · ACL · Provenance · Review)]
+  A --> P1[Stage 1 Projection<br/>SQL · ltree · FTS · pgvector]
+  A --> P2[Stage 2 Projection<br/>SKOS · SHACL · JSON-LD / RDF]
+  A --> P3[Stage 3 Conditional Projection<br/>SPARQL / Dedicated Graph Read Model]
+  A --> PKG[Immutable OntologyPackage]
+  P1 --> R[OntologyResolver]
+  P2 --> R
+  P3 --> R
+  PKG --> R
+  R --> E[EvidenceBundle]
+  R --> PL[Planner / TaskGraph]
+  R --> EV[Evaluator]
+  R --> CR[Capability Registry]

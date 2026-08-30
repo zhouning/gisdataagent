@@ -23,6 +23,7 @@ from data_agent.api.data_product_routes import (
     get_data_product_routes,
 )
 from data_agent.api.platform_gateway_routes import GatewayPrincipal
+from data_agent.data_product_blueprint import DataProductBlueprintReleaseBinding
 from data_agent.data_product_registry import (
     DATA_PRODUCT_ROLLBACK_APPROVAL_ACTION,
     DATA_PRODUCT_ROLLBACK_SCHEMA,
@@ -68,6 +69,21 @@ def _version_payload() -> dict:
     return payload
 
 
+def _blueprint_release(version: dict) -> DataProductBlueprintReleaseBinding:
+    return DataProductBlueprintReleaseBinding(
+        tenant_id=version["tenant_id"],
+        product_urn=version["product_urn"],
+        version_key=version["version_key"],
+        definition_urn="gda://local-dev/definition/test-roads-build",
+        definition_version_id=uuid4(),
+        blueprint_sha256="a" * 64,
+        definition_sha256="b" * 64,
+        change_set_sha256="c" * 64,
+        test_report_sha256="e" * 64,
+        approval_case_ref="gda://local-dev/approval_case/test-roads-build-v1",
+    )
+
+
 def test_data_product_requires_complete_governance() -> None:
     with pytest.raises(ValueError, match="governance_ref"):
         DataProductSpec(
@@ -106,6 +122,77 @@ def test_product_version_rejects_self_predecessor() -> None:
     payload["manifest_sha256"] = data_product_manifest_fingerprint(payload)
     with pytest.raises(ValueError, match="own predecessor"):
         DataProductVersionSpec.model_validate(payload)
+
+
+def test_product_version_manifest_types_blueprint_release_and_binds_identity() -> None:
+    payload = _version_payload()
+    release = _blueprint_release(payload)
+    payload["distribution_manifest"]["blueprint_release"] = release.model_dump(
+        mode="json"
+    )
+    payload["manifest_sha256"] = data_product_manifest_fingerprint(payload)
+
+    version = DataProductVersionSpec.model_validate(payload)
+
+    assert version.distribution_manifest["blueprint_release"] == release.model_dump(
+        mode="json"
+    )
+    mismatched = {
+        **payload,
+        "distribution_manifest": {
+            **payload["distribution_manifest"],
+            "blueprint_release": {
+                **release.model_dump(mode="json"),
+                "version_key": "v2.0.0",
+            },
+        },
+    }
+    mismatched["manifest_sha256"] = data_product_manifest_fingerprint(mismatched)
+    with pytest.raises(ValueError, match="release identity"):
+        DataProductVersionSpec.model_validate(mismatched)
+
+
+def test_publish_requires_manifest_and_typed_blueprint_release_together() -> None:
+    payload = _version_payload()
+    release = _blueprint_release(payload)
+    payload["distribution_manifest"]["blueprint_release"] = release.model_dump(
+        mode="json"
+    )
+    payload["manifest_sha256"] = data_product_manifest_fingerprint(payload)
+    version = DataProductVersionSpec.model_validate(payload)
+    product = DataProductSpec(
+        tenant_id="local-dev",
+        product_urn="gda://local-dev/data_product/test-roads",
+        product_slug="test-roads",
+        title="Test roads",
+        description="A test product",
+        domain="transportation",
+        owner_ref="team:test",
+        governance_ref={
+            "classification": "internal",
+            "visibility": "private",
+            "license_id": "internal",
+            "attribution": "test",
+        },
+        created_at=datetime(2026, 8, 1, tzinfo=UTC),
+    )
+    registry = DataProductRegistry(engine=MagicMock())
+
+    with pytest.raises(ValueError, match="both required"):
+        registry.publish(
+            product,
+            version,
+            idempotency_key="publish-v1",
+            reason="publish approved blueprint",
+        )
+    with pytest.raises(ValueError, match="typed immutable"):
+        registry.publish(
+            product,
+            version,
+            idempotency_key="publish-v1",
+            reason="publish approved blueprint",
+            blueprint_release_binding=release.model_dump(mode="json"),
+        )
 
 
 def test_rollback_fingerprint_is_exact_and_approval_constants_are_typed() -> None:
@@ -342,6 +429,72 @@ def test_staged_publication_replay_returns_recorded_impact() -> None:
     load_impact.assert_called_once_with(connection, "local-dev", impact_id)
     calculate_impact.assert_not_called()
     record_impact.assert_not_called()
+
+
+def test_promotion_revalidates_persisted_blueprint_release() -> None:
+    current_id = uuid4()
+    target_id = uuid4()
+    product = {
+        "tenant_id": "planning",
+        "product_urn": "gda://planning/data_product/districts",
+        "product_slug": "districts",
+        "current_version_id": str(current_id),
+    }
+    target = {
+        "tenant_id": "planning",
+        "product_urn": product["product_urn"],
+        "data_product_version_id": str(target_id),
+        "version_key": "v2.0.0",
+        "distribution_manifest": {
+            "blueprint_release": {"schema": "gda.data_product_blueprint_release.v1"}
+        },
+    }
+    connection = MagicMock()
+    no_existing_event = MagicMock()
+    no_existing_event.mappings.return_value.one_or_none.return_value = None
+    connection.execute.side_effect = [
+        no_existing_event,
+        MagicMock(),
+        MagicMock(),
+    ]
+    registry = DataProductRegistry(engine=MagicMock())
+    transaction = MagicMock()
+    transaction.return_value.__enter__.return_value = connection
+    impact = {
+        "impact_fingerprint": "a" * 64,
+        "acknowledgement_required": False,
+        "consumer_migration_ready": True,
+    }
+
+    with (
+        patch.object(registry, "_transaction", transaction),
+        patch.object(registry, "_lock_promotion_scope"),
+        patch.object(
+            registry,
+            "_load_product",
+            side_effect=[product, product, {**product, "current_version_id": str(target_id)}],
+        ),
+        patch.object(registry, "_load_version", return_value=target),
+        patch.object(
+            registry,
+            "_validate_persisted_blueprint_release",
+        ) as validate_blueprint,
+        patch.object(registry, "_validate_persisted_architecture_release"),
+        patch.object(registry, "_is_descendant", return_value=True),
+        patch.object(registry, "_promotion_impact", return_value=impact),
+        patch.object(registry, "_record_promotion_impact", return_value=uuid4()),
+    ):
+        result = registry.promote(
+            "planning",
+            "districts",
+            "v2.0.0",
+            actor_subject="human:owner",
+            reason="promote approved Blueprint version",
+            idempotency_key="promote-v2",
+        )
+
+    assert result["pointer_changed"] is True
+    validate_blueprint.assert_called_once_with(connection, target)
 
 
 def test_promotion_impact_preview_route_returns_operator_view() -> None:

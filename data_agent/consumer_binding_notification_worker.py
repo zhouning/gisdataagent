@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import re
@@ -95,6 +96,53 @@ def render_consumer_binding_migration_alert(
     }
     if route_namespace is not None:
         alert["labels"]["namespace"] = route_namespace
+    impacts = envelope.gis_service_impacts
+    if impacts:
+        alert["labels"]["gda_gis_service_impact_count"] = str(len(impacts))
+        if len(impacts) == 1:
+            impact = impacts[0]
+            alert["labels"].update(
+                {
+                    "gda_service_urn": impact.service_urn,
+                    "gda_service_consumer_binding_id": str(
+                        impact.source_service_consumer_binding_id
+                    ),
+                    "gda_source_service_release_binding_id": str(
+                        impact.source_service_release_binding_id
+                    ),
+                    "gda_target_service_release_binding_id": str(
+                        impact.target_service_release_binding_id
+                    ),
+                    "gda_service_impact_sha256": impact.impact_sha256,
+                }
+            )
+            alert["annotations"].update(
+                {
+                    "gda_source_service_definition_version_id": str(
+                        impact.source_service_definition_version_id
+                    ),
+                    "gda_target_service_definition_version_id": str(
+                        impact.target_service_definition_version_id
+                    ),
+                    "gda_source_service_consumer_binding_sha256": (
+                        impact.source_binding_sha256
+                    ),
+                    "gda_source_service_release_binding_id": str(
+                        impact.source_service_release_binding_id
+                    ),
+                    "gda_target_service_release_binding_id": str(
+                        impact.target_service_release_binding_id
+                    ),
+                    "gda_service_impact_sha256": impact.impact_sha256,
+                }
+            )
+        else:
+            alert["annotations"]["gda_service_impacts_json"] = json.dumps(
+                [impact.model_dump(mode="json") for impact in impacts],
+                ensure_ascii=True,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
     return alert
 
 

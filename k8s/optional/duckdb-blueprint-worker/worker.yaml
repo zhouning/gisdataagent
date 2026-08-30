@@ -1,0 +1,212 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gis-agent-duckdb-blueprint-worker
+  namespace: gis-agent
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gis-agent-duckdb-blueprint-worker
+  namespace: gis-agent
+data:
+  GDA_BLUEPRINT_DUCKDB_RESULT_BACKEND: s3
+  GDA_BLUEPRINT_DUCKDB_OUTPUT_S3_BUCKET: gis-agent-blueprint-results
+  GDA_BLUEPRINT_DUCKDB_OUTPUT_S3_PREFIX: blueprint-duckdb-results/v1
+  GDA_BLUEPRINT_DUCKDB_INPUT_S3_PREFIXES: s3://gis-agent-lakehouse/products,s3://gis-agent-uploads/admitted
+  GDA_BLUEPRINT_DUCKDB_BATCH_SIZE: "1"
+  GDA_BLUEPRINT_DUCKDB_LEASE_SECONDS: "900"
+  GDA_BLUEPRINT_DUCKDB_TIMEOUT_CEILING_SECONDS: "600"
+  GDA_BLUEPRINT_DUCKDB_IO_BUDGET_SECONDS: "240"
+  GDA_BLUEPRINT_DUCKDB_S3_CONNECT_TIMEOUT_SECONDS: "5"
+  GDA_BLUEPRINT_DUCKDB_S3_READ_TIMEOUT_SECONDS: "60"
+  GDA_BLUEPRINT_DUCKDB_RETRY_SECONDS: "30"
+  GDA_BLUEPRINT_DUCKDB_POLL_SECONDS: "5"
+  GDA_BLUEPRINT_DUCKDB_HEALTH_MAX_AGE_SECONDS: "1200"
+  GDA_BLUEPRINT_DUCKDB_SPATIAL_EXTENSION_PATH: /app/duckdb-extensions/spatial.duckdb_extension
+  AWS_ENDPOINT_URL: http://minio:9000
+  AWS_REGION: us-east-1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gis-agent-duckdb-blueprint-worker
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: gis-agent-duckdb-blueprint-worker
+    app.kubernetes.io/component: blueprint-provider
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gis-agent-duckdb-blueprint-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gis-agent-duckdb-blueprint-worker
+        app.kubernetes.io/component: blueprint-provider
+    spec:
+      serviceAccountName: gis-agent-duckdb-blueprint-worker
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 660
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: gis-data-agent:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -ec
+          args:
+            - |
+              export GDA_BLUEPRINT_DUCKDB_WORKER_ID="worker:blueprint-duckdb:${POD_NAME}"
+              exec python -m data_agent.duckdb_blueprint_command_worker run
+          envFrom:
+            - configMapRef:
+                name: gis-agent-duckdb-blueprint-worker
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POSTGRES_HOST
+              value: postgres
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DATABASE
+              value: gis_agent
+            - name: POSTGRES_USER
+              value: agent_user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gis-agent-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_ADMIN_USER
+              value: ""
+            - name: POSTGRES_ADMIN_PASSWORD
+              value: ""
+            - name: GDA_BLUEPRINT_DUCKDB_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: gis-agent-duckdb-blueprint-runtime
+                  key: tenant-id
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: gis-agent-duckdb-blueprint-runtime
+                  key: s3-access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gis-agent-duckdb-blueprint-runtime
+                  key: s3-secret-access-key
+            - name: GDA_BLUEPRINT_DUCKDB_OUTPUT_ROOT
+              value: /var/run/gda-workspace
+            - name: GDA_BLUEPRINT_DUCKDB_STATUS_FILE
+              value: /var/run/gda-status/worker.json
+            - name: GDA_SKIP_RUNTIME_ENV_FILE
+              value: "1"
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: HOME
+              value: /tmp
+            - name: TMPDIR
+              value: /tmp
+            - name: DB_POOL_SIZE
+              value: "5"
+            - name: DB_MAX_OVERFLOW
+              value: "0"
+            - name: ASYNC_POOL_MIN
+              value: "0"
+            - name: ASYNC_POOL_MAX
+              value: "1"
+          volumeMounts:
+            - name: worker-workspace
+              mountPath: /var/run/gda-workspace
+            - name: worker-status
+              mountPath: /var/run/gda-status
+            - name: worker-tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          startupProbe:
+            exec:
+              command:
+                - python
+                - -m
+                - data_agent.duckdb_blueprint_command_worker
+                - liveness
+                - --status-file
+                - /var/run/gda-status/worker.json
+                - --max-age-seconds
+                - "1200"
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 72
+          readinessProbe:
+            exec:
+              command:
+                - python
+                - -m
+                - data_agent.duckdb_blueprint_command_worker
+                - health
+                - --status-file
+                - /var/run/gda-status/worker.json
+                - --max-age-seconds
+                - "1200"
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -m
+                - data_agent.duckdb_blueprint_command_worker
+                - liveness
+                - --status-file
+                - /var/run/gda-status/worker.json
+                - --max-age-seconds
+                - "1200"
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: worker-workspace
+          emptyDir:
+            sizeLimit: 3Gi
+        - name: worker-status
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+        - name: worker-tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 128Mi

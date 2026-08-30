@@ -9,7 +9,12 @@ from pydantic import ValidationError
 
 from data_agent.connectors import BaseConnector
 from data_agent.connectors import database as database_connector_module
-from data_agent.connectors.database import _connection_url, _read_only_sql
+from data_agent.connectors.database import (
+    _connection_url,
+    _governed_read_query,
+    _read_only_sql,
+    _runtime_query_request,
+)
 from data_agent.source_connector_governance import (
     CapabilityOperation,
     CapabilityStatus,
@@ -133,6 +138,66 @@ def test_database_runtime_credentials_and_read_only_sql_are_fail_closed() -> Non
         _read_only_sql("DELETE FROM public.demo")
     with pytest.raises(ValueError, match="one read-only"):
         _read_only_sql("SELECT 1; DELETE FROM public.demo")
+    bounded = _governed_read_query(
+        "SELECT id FROM makani.addresses",
+        ("makani",),
+        100,
+    )
+    assert bounded.endswith("LIMIT 100")
+    with pytest.raises(ValueError, match="unauthorized schema"):
+        _governed_read_query(
+            "SELECT id FROM public.addresses",
+            ("makani",),
+            100,
+        )
+    with pytest.raises(ValueError, match="schema-qualify"):
+        _governed_read_query("SELECT id FROM addresses", ("makani",), 100)
+    with pytest.raises(ValueError, match="blocked read-side-effect"):
+        _governed_read_query("SELECT pg_sleep(1) FROM makani.addresses", ("makani",), 100)
+
+
+def test_database_per_request_sql_cannot_override_governance_policy() -> None:
+    sql, table, geom_column = _runtime_query_request(
+        {
+            "allowed_schemas": ["layer"],
+            "statement_timeout_ms": 15000,
+            "max_rows": 1000,
+        },
+        {
+            "sql": "SELECT status, COUNT(*) FROM layer.st_pipeline GROUP BY status",
+            "geom_column": "geom",
+            "allowed_schemas": ["public"],
+            "max_rows": 999999,
+        },
+    )
+
+    assert sql.startswith("SELECT status")
+    assert table == ""
+    assert geom_column == "geom"
+
+
+def test_database_level_source_requires_metadata_only_schema_scope() -> None:
+    definition = SourceDefinition(
+        source_id="abu-dhabi-liveability",
+        version="1.0.0",
+        source_kind=SourceConnectorKind.DATABASE,
+        endpoint_url="postgresql://192.0.2.10:5444/liveability_data",
+        owner_ref="team:data-platform",
+        credential_reference=_credential(),
+        connector_version="1.0.0",
+        query_config={
+            "allowed_schemas": ["makani"],
+            "discovery_mode": "metadata_only",
+        },
+    )
+    assert definition.query_config.allowed_schemas == ("makani",)
+    with pytest.raises(ValidationError, match="requires table or allowed_schemas"):
+        SourceDefinition.model_validate(
+            {
+                **definition.model_dump(mode="json"),
+                "query_config": {"discovery_mode": "metadata_only"},
+            }
+        )
 
 
 @pytest.mark.asyncio
@@ -146,8 +211,22 @@ async def test_database_governed_discovery_is_scoped_to_definition_table(
         auth_config: dict,
         *,
         target_table: str | None = None,
+        allowed_schemas: tuple[str, ...] = (),
+        discovery_limit: int = 5000,
+        statement_timeout_ms: int = 15_000,
+        lock_timeout_ms: int = 2_000,
     ) -> dict:
-        calls.append((endpoint_url, auth_config, target_table))
+        calls.append(
+            (
+                endpoint_url,
+                auth_config,
+                target_table,
+                allowed_schemas,
+                discovery_limit,
+                statement_timeout_ms,
+                lock_timeout_ms,
+            )
+        )
         return {"layers": [{"name": target_table}], "truncated": False}
 
     monkeypatch.setattr(
@@ -167,8 +246,67 @@ async def test_database_governed_discovery_is_scoped_to_definition_table(
             "postgresql://localhost/gis_agent",
             {"type": "none"},
             "governed.source_table",
+            (),
+            5000,
+            15_000,
+            2_000,
         )
     ]
+
+
+@pytest.mark.asyncio
+async def test_metadata_only_database_certification_never_queries_source_rows() -> None:
+    class MetadataOnlyConnector(_FakeConnector):
+        async def discover(self, *args, **kwargs):
+            return {
+                "provider": "PostgreSQL",
+                "provider_version": "16.14; PostGIS 3.5",
+                "layers": [
+                    {
+                        "name": "makani.addresses",
+                        "type": "table",
+                        "columns": [
+                            {"name": "id", "type": "BIGINT", "nullable": False},
+                            {
+                                "name": "geom",
+                                "type": "geometry(POINT,EPSG:4326)",
+                                "nullable": True,
+                            },
+                        ],
+                        "primary_key": ["id"],
+                        "estimated_record_count": 42,
+                    }
+                ],
+            }
+
+        async def query(self, *args, **kwargs):
+            raise AssertionError("metadata-only certification must not query rows")
+
+    definition = SourceDefinition(
+        source_id="abu-dhabi-liveability",
+        version="1.0.0",
+        source_kind=SourceConnectorKind.DATABASE,
+        endpoint_url="postgresql://192.0.2.10:5444/liveability_data",
+        owner_ref="team:data-platform",
+        credential_reference=_credential(),
+        connector_version="1.0.0",
+        query_config={
+            "allowed_schemas": ["makani"],
+            "discovery_mode": "metadata_only",
+        },
+    )
+    resolver = MappingCredentialResolver(
+        {("credential:local-postgres", 1): {"type": "basic", "username": "u", "password": "p"}}
+    )
+    report = await certify_source_connector(
+        definition,
+        resolver,
+        connector=MetadataOnlyConnector(),
+    )
+    assert report.status is CertificationStatus.PASSED
+    assert report.profile and report.profile.metadata_only
+    assert report.profile.resource_count == 1
+    assert "no source rows sampled" in report.capabilities[2].message
 
 
 @pytest.mark.asyncio

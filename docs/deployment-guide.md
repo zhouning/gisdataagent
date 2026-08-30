@@ -251,6 +251,10 @@ Place your CA-signed certificate and key in a directory and mount them into the 
 bash scripts/backup-db.sh
 ```
 
+该命令生成 PostgreSQL custom-format `.dump`，不再对已经压缩的 `-Fc` 输出重复 gzip。
+未显式提供 `POSTGRES_ADMIN_PASSWORD` 时由 `.pgpass` 或交互式认证负责，不使用脚本内
+默认密码。
+
 ### Automated Backup (Docker)
 
 The `docker-compose.prod.yml` includes a `db-backup` service that runs daily.
@@ -265,16 +269,50 @@ docker compose exec db-backup ls -lh /backups/
 
 ### Restore
 
-```bash
-# Docker Compose
-docker compose exec -T db \
-  pg_restore -U postgres -d gis_agent --clean --if-exists \
-  < backups/gis_agent_20260101_000000.sql.gz
+禁止在仍承载流量的 `gis_agent` 上直接执行 `--clean`。每次备份方案变更和正式恢复前，
+先运行隔离演练：
 
-# Kubernetes
-kubectl -n gis-agent exec -i postgres-0 -- \
-  pg_restore -U postgres -d gis_agent --clean --if-exists \
-  < backup.dump
+```bash
+uv run python scripts/rehearse_compose_recovery.py \
+  --profile config/deployment_profiles/main-compose-dev.json \
+  --output /tmp/gda-recovery-report.json
+```
+
+仓库内的单次开发环境观测可独立复核：
+
+```bash
+uv run python scripts/verify_recovery_sli_baseline.py
+```
+
+校验器同时绑定 DeploymentProfile、Compose config、脱敏恢复报告、数据库逻辑身份和
+对象内容 inventory。通过只代表该次 SLI 观测可重建；SLO/RPO/RTO 仍需独立审批，
+`promotion_ready` 保持 false。
+
+PostgreSQL 的有界 physical PITR 使用独立命令，并可离线复核其版本化 seal：
+
+```bash
+uv run python scripts/rehearse_compose_pitr.py \
+  --profile config/deployment_profiles/main-compose-dev.json \
+  --output /tmp/gda-pitr-report.json
+
+uv run python scripts/verify_pitr_evidence.py
+```
+
+runner 通过临时 physical slot 在 base backup 结束后继续接收 WAL，并恢复到 target
+transaction、排除 later transaction。临时 client 使用数据库容器 loopback replication，
+不修改 HBA；恢复目标为 `--network none`。当前 `archive_mode=off`，该证据不能替代持续
+archive provider、slot 监控、加密/异地、RPO/RTO 或跨 PostgreSQL/MinIO 一致性验收。
+
+该入口把 PostGIS dump 恢复到 `template0` 创建的临时数据库，并将 MinIO 对象恢复到
+临时 bucket；迁移、标准、真实 TWM 表计数和逐对象内容 SHA-256 全部一致才通过。
+临时容器、匿名 volume、bucket 和本地介质在结束时清理，不修改现有 volume/bucket。
+
+正式灾难恢复必须在批准的替代实例或替代数据库中执行，完成同一套验证并切换流量；
+不能把以下命令指向当前生产数据库：
+
+```bash
+pg_restore --exit-on-error --single-transaction --no-owner --no-acl \
+  --dbname <replacement_database> backups/gis_agent_20260101_000000.dump
 ```
 
 ### Configuration
@@ -290,10 +328,11 @@ kubectl -n gis-agent exec -i postgres-0 -- \
 
 ### Health Check
 
-The application exposes a health endpoint at `/`:
+The application exposes liveness and readiness endpoints:
 
 ```bash
-curl -f http://localhost:8080/
+curl -f http://localhost:8000/health
+curl -f http://localhost:8000/ready
 ```
 
 ### Docker Compose

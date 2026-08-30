@@ -33,7 +33,7 @@ GIS Data Agent 的默认生产负载是 Spark/Sedona batch、Flink streaming、M
 | 层 | 选型 | 唯一职责 | 明确不负责 |
 |---|---|---|---|
 | DataOps orchestration | **Apache DolphinScheduler**（self-hosted） | process definition/version、visual DAG、schedule、complement/backfill、project/tenant/worker group/resource queue、任务插件、告警和 DataOps UI | Agent/HITL durable workflow、行动补偿、GWM session 真值 |
-| Durable Agent/GWMOps | **Temporal OSS**（self-hosted；认证基线 1.31.2） | Agent/GWM workflow、approval signal、timer、retry、activity、compensation、versioning/replay、长任务恢复 | catalog、DataOps batch/stream scheduler、Spark/Flink 调度 UI |
+| Durable Agent/GWMOps | **Temporal OSS**（self-hosted；server 1.29.7 + Python SDK 1.32.0 sandbox 认证基线） | Agent/GWM workflow、approval signal、timer、retry、activity、compensation、versioning/replay、长任务恢复 | catalog、DataOps batch/stream scheduler、Spark/Flink 调度 UI |
 | Execution lifecycle | Spark/Flink task plugin 或 submit、Spark Operator、Flink Kubernetes Operator、Kubernetes Job、PostGIS/DuckDB、Azure provider adapter | 提交、监视、取消和 reconcile 实际计算 | 业务 schedule、产品生命周期权威 |
 | Platform gateway | `gda-orchestration-gateway` | policy gate、DefinitionVersion -> ProcessDefinition/Workflow mapping、`PlatformRun` correlation、Artifact/lineage evidence、统一 API/地图/Agent 视图 | 不实现 DAG scheduler、queue、timer、lease 或 workflow engine |
 

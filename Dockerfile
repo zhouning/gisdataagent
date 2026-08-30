@@ -57,6 +57,15 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r requirements.txt \
         --index-url "${PIP_INDEX_URL}"
 
+# Blueprint Spatial is an offline runtime capability, never a worker-time
+# download. DuckDB verifies the official signed extension during image build;
+# the provider binds the copied binary hash and extension version in receipts.
+ENV GDA_BLUEPRINT_DUCKDB_SPATIAL_EXTENSION_PATH=/app/duckdb-extensions/spatial.duckdb_extension
+RUN mkdir -p /app/duckdb-extensions && \
+    python -c "import duckdb,pathlib,shutil; c=duckdb.connect(':memory:'); c.execute('INSTALL spatial'); p=pathlib.Path(c.execute(\"SELECT install_path FROM duckdb_extensions() WHERE extension_name='spatial'\").fetchone()[0]); c.close(); shutil.copyfile(p, pathlib.Path('/app/duckdb-extensions/spatial.duckdb_extension'))" && \
+    chmod 0444 /app/duckdb-extensions/spatial.duckdb_extension && \
+    rm -rf /root/.duckdb
+
 # pyproj 3.7+ can lose the PROJ database context in worker threads unless the
 # data directory is explicit. TWM state builds run through FastAPI's threadpool.
 ENV PROJ_DATA=/app/.venv/lib/python3.12/site-packages/pyproj/proj_dir/share/proj
