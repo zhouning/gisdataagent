@@ -1,5 +1,6 @@
 import { ChevronRight } from 'lucide-react';
 import OntologyTab from './datapanel/OntologyTab';
+import LanguageSwitcher from './LanguageSwitcher';
 import './StandaloneOntologyPage.css';
 
 /**
@@ -16,6 +17,8 @@ export default function StandaloneOntologyPage() {
         <main className="cim-main-content">
           <div className="cim-breadcrumb">
             <span>本体模型中心</span><ChevronRight size={12} /><strong>自然资源本体模型</strong>
+            <span className="cim-breadcrumb-spacer" />
+            <LanguageSwitcher compact />
           </div>
           <h1 className="cim-visually-hidden">自然资源本体模型</h1>
           <section className="cim-ontology-viewer" aria-label="自然资源本体模型浏览器">

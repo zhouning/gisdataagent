@@ -4,7 +4,9 @@ import 'leaflet.heat';
 import 'leaflet-draw';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import { Map as MapIcon, Pause, Play } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import Map3DView from './Map3DView';
+import { formatDate, formatNumber, getLocale, getLocaleHeaders } from '../i18n';
 
 interface MapLayer {
   name: string;
@@ -84,6 +86,117 @@ const BASEMAPS: Record<string, string> = {
   'ESRI Satellite': 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
 };
 
+const BASEMAP_LABEL_KEYS: Record<string, string> = {
+  'CartoDB Positron': 'map.basemapNames.cartoPositron', 'CartoDB Dark': 'map.basemapNames.cartoDark',
+  OpenStreetMap: 'map.basemapNames.openStreetMap', Gaode: 'map.basemapNames.gaode', '高德地图': 'map.basemapNames.gaode',
+  'Gaode Satellite': 'map.basemapNames.gaodeSatellite', 'ESRI Satellite': 'map.basemapNames.esriSatellite',
+  'Tianditu Vec': 'map.basemapNames.tiandituVector', '天地图': 'map.basemapNames.tiandituVector',
+  'Tianditu Img': 'map.basemapNames.tiandituImagery',
+};
+
+function mapDisplayName(name: string, t: (key: string, options?: any) => string): string {
+  const key = BASEMAP_LABEL_KEYS[name];
+  if (key) return t(key, { defaultValue: name });
+  if (!/[\u3400-\u9fff]/.test(name)) return name;
+  const replacements: Array<[RegExp, string]> = [
+    [/本次真实 SWMM 情景/g, 'Current real SWMM scenario'],
+    [/原生 OUT 时间轴/g, 'native OUT timeline'],
+    [/全量节点级时序结果/g, 'complete node-level time-series results'],
+    [/全量节点/g, 'all nodes'],
+    [/每帧包含零值节点/g, 'every frame includes zero-value nodes'],
+    [/无展示截断/g, 'no display truncation'],
+    [/当前强迫为 Open-Meteo 公开代理降雨/g, 'current forcing is Open-Meteo public proxy rainfall'],
+    [/公开代理降雨/g, 'public proxy rainfall'],
+    [/官方 Zone B DDF/g, 'official Zone B DDF'],
+    [/官方 DDF 总量/g, 'official DDF depth'],
+    [/假设时间分配/g, 'assumed temporal allocation'],
+    [/交替块法/g, 'alternating-block method'],
+    [/年一遇/g, '-year return period'],
+    [/分钟/g, 'minutes'],
+    [/小时/g, 'hours'],
+    [/百万升/g, 'million litres'],
+    [/结果回挂/g, 'results joined to'],
+    [/已接入/g, 'connected'],
+    [/待接入/g, 'pending integration'],
+    [/未校准/g, 'not calibrated'],
+    [/未工程准入/g, 'not engineering-admitted'],
+    [/客户真实节点/g, 'customer actual nodes'],
+    [/客户真实管线/g, 'customer actual pipes'],
+    [/客户真实几何/g, 'customer actual geometry'],
+    [/客户图层/g, 'customer layers'],
+    [/全市作业/g, 'citywide job'],
+    [/作业/g, 'job'],
+    [/已刷新/g, 'refreshed'],
+    [/运行中/g, 'running'],
+    [/失败分类/g, 'failure class'],
+    [/失败说明/g, 'failure explanation'],
+    [/失败原因/g, 'failure reason'],
+    [/节点数/g, 'node count'],
+    [/内部管段数/g, 'internal link count'],
+    [/跨块关联管段数/g, 'cross-partition link count'],
+    [/当前状态/g, 'current status'],
+    [/原始输入资产/g, 'raw input assets'],
+    [/结果空间图层/g, 'result spatial layer'],
+    [/全市连续网络诊断结果/g, 'continuous-citywide-network diagnostic results'],
+    [/阿布扎比暴雨内涝世界模型/g, 'Abu Dhabi Stormwater Flood World Model'],
+    [/城市暴雨内涝世界模型/g, 'Urban Stormwater Flood World Model'],
+    [/暴雨内涝世界模型/g, 'Stormwater Flood World Model'],
+    [/SWMM 全市连续网络/g, 'SWMM citywide continuous network'],
+    [/全市连续网络/g, 'citywide continuous network'],
+    [/SWMM 全市结果/g, 'SWMM citywide results'],
+    [/SWMM 结果图层/g, 'SWMM result layers'],
+    [/节点最大水深/g, 'maximum node water depth'],
+    [/节点溢流\/积水/g, 'node overflow/flooding'],
+    [/节点最大溢流\/积水/g, 'maximum node overflow/flooding'],
+    [/管段最大容量率/g, 'maximum link capacity fraction'],
+    [/管段最大流量\/流速/g, 'maximum link flow/velocity'],
+    [/管段最大流量/g, 'maximum link flow'],
+    [/管段最大流速/g, 'maximum link velocity'],
+    [/分区汇总（辅助）/g, 'partition summary (auxiliary)'],
+    [/全量节点级时序/g, 'complete node-level time series'],
+    [/运行失败/g, 'run failed'],
+    [/运行状态/g, 'runtime status'],
+    [/水动力状态/g, 'hydraulic status'],
+    [/水动力结果/g, 'hydraulic result'],
+    [/计算分块/g, 'compute partition'],
+    [/分区/g, 'partition'],
+    [/雨水管线/g, 'stormwater pipes'],
+    [/雨水节点/g, 'stormwater nodes'],
+    [/节点/g, 'nodes'],
+    [/管段/g, 'links'],
+    [/管线/g, 'pipes'],
+    [/真实/g, 'actual'],
+    [/客户/g, 'customer'],
+    [/结果/g, 'results'],
+    [/诊断层/g, 'diagnostic layer'],
+    [/原始输入/g, 'raw input'],
+    [/全市/g, 'citywide'],
+    [/最大水深/g, 'maximum depth'],
+    [/最大流量/g, 'maximum flow'],
+    [/最大流速/g, 'maximum velocity'],
+    [/最大容量率/g, 'maximum capacity fraction'],
+    [/积水/g, 'flooding'],
+  ];
+  let translated = name;
+  for (const [source, target] of replacements) translated = translated.replace(source, target);
+  return translated.replace(/[\u3400-\u9fff]+/g, 'additional detail');
+}
+
+function mapPopupLabel(value: string): string {
+  if (getLocale() !== 'en-US' || !/[\u3400-\u9fff]/.test(value)) return value;
+  const replacements: Array<[RegExp, string]> = [
+    [/S2真实地块/g, 'S2 actual parcel'], [/地块ID/g, 'Parcel ID'], [/村域/g, 'Planning area'], [/原始地类/g, 'Source land use'],
+    [/面积/g, 'Area'], [/真实地块/g, 'actual parcel'], [/点击地块后将回填左侧S2输入框/g, 'Click the parcel to populate the S2 input'],
+    [/点击可基于该地块发起新的S2请求/g, 'Click to start a new S2 request for this parcel'],
+    [/节点/g, 'Node'], [/管段/g, 'Link'], [/管线/g, 'Pipe'], [/分区/g, 'Partition'],
+    [/运行状态/g, 'Runtime status'], [/水深/g, 'Water depth'], [/流量/g, 'Flow'], [/流速/g, 'Velocity'],
+    [/积水/g, 'Flooding'], [/结果/g, 'Result'], [/客户/g, 'Customer'], [/原始输入/g, 'Raw input'],
+  ];
+  let translated = value;
+  for (const [source, target] of replacements) translated = translated.replace(source, target);
+  return translated.replace(/[\u3400-\u9fff]+/g, 'additional detail');
+}
+
 interface BasemapMetadata {
   min_zoom?: number;
   max_zoom?: number;
@@ -120,6 +233,9 @@ const COLOR_RAMPS: Record<string, string[]> = {
 };
 
 export default function MapPanel({ layers, center, zoom, layerControl }: MapPanelProps) {
+  const { t } = useTranslation('common');
+  const basemapLabel = useCallback((name: string) => mapDisplayName(name, t), [t]);
+  const mapLayerLabel = useCallback((name: string) => mapDisplayName(name, t), [t]);
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const layerGroupsRef = useRef<Map<string, L.Layer>>(new Map());
@@ -226,7 +342,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   }, [annotationMode, measureMode, drawMode]);
 
   useEffect(() => {
-    fetch('/api/config/basemaps', { credentials: 'include' })
+    fetch('/api/config/basemaps', { credentials: 'include', headers: getLocaleHeaders() })
       .then((r) => r.json())
       .then((cfg) => {
         const dmtBasemaps: Record<string, string> = {};
@@ -366,7 +482,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   // Fetch annotations on mount
   const fetchAnnotations = useCallback(async () => {
     try {
-      const resp = await fetch('/api/annotations', { credentials: 'include' });
+      const resp = await fetch('/api/annotations', { credentials: 'include', headers: getLocaleHeaders() });
       if (resp.ok) {
         const data = await resp.json();
         setAnnotations(data.annotations || []);
@@ -397,21 +513,21 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
         fillOpacity: ann.is_resolved ? 0.4 : 0.8,
       });
 
-      const time = ann.created_at ? new Date(ann.created_at).toLocaleString() : '';
+      const time = ann.created_at ? formatDate(ann.created_at, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
       marker.bindPopup(
         `<div class="annotation-popup">` +
-        `<b>${ann.title || '标注'}</b>` +
+        `<b>${ann.title || t('map.annotation')}</b>` +
         (ann.comment ? `<p>${ann.comment}</p>` : '') +
         `<div class="annotation-popup-meta">${ann.username} · ${time}</div>` +
         `<div class="annotation-popup-actions">` +
-        `<button onclick="document.dispatchEvent(new CustomEvent('ann-resolve', {detail: ${ann.id}}))">${ann.is_resolved ? '取消解决' : '标为已解决'}</button>` +
-        `<button onclick="document.dispatchEvent(new CustomEvent('ann-delete', {detail: ${ann.id}}))" class="danger">删除</button>` +
+        `<button onclick="document.dispatchEvent(new CustomEvent('ann-resolve', {detail: ${ann.id}}))">${ann.is_resolved ? t('map.reopenAnnotation') : t('map.resolveAnnotation')}</button>` +
+        `<button onclick="document.dispatchEvent(new CustomEvent('ann-delete', {detail: ${ann.id}}))" class="danger">${t('map.deleteAnnotation')}</button>` +
         `</div></div>`,
         { maxWidth: 250 }
       );
       marker.addTo(annotationLayerRef.current!);
     }
-  }, [annotations]);
+  }, [annotations, t]);
 
   // Event-driven annotation actions (replaces window.__ globals — F-2)
   useEffect(() => {
@@ -503,9 +619,9 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           totalDist += L.latLng(pts[i-1][0], pts[i-1][1]).distanceTo(L.latLng(pts[i][0], pts[i][1]));
         }
         if (totalDist < 1000) {
-          setMeasureResult(`距离: ${totalDist.toFixed(1)} m`);
+          setMeasureResult(t('map.distanceMeters', { value: formatNumber(totalDist, { maximumFractionDigits: 1 }) }));
         } else {
-          setMeasureResult(`距离: ${(totalDist / 1000).toFixed(2)} km`);
+          setMeasureResult(t('map.distanceKilometers', { value: formatNumber(totalDist / 1000, { maximumFractionDigits: 2 }) }));
         }
         // Area if 3+ points (shoelace formula on lat/lng approximation)
         if (pts.length >= 3) {
@@ -516,8 +632,10 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
             area -= pts[j][1] * pts[i][0];
           }
           area = Math.abs(area / 2) * 111320 * 111320 * Math.cos(pts[0][0] * Math.PI / 180);
-          const areaStr = area > 1e6 ? `${(area / 1e6).toFixed(2)} km²` : `${area.toFixed(0)} m²`;
-          setMeasureResult(prev => `${prev} | 面积: ${areaStr}`);
+          const areaStr = area > 1e6
+            ? t('map.squareKilometers', { value: formatNumber(area / 1e6, { maximumFractionDigits: 2 }) })
+            : t('map.squareMeters', { value: formatNumber(area, { maximumFractionDigits: 0 }) });
+          setMeasureResult(prev => t('map.distanceAndArea', { distance: prev, area: areaStr }));
         }
         return pts;
       });
@@ -525,7 +643,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
     map.on('click', handleMeasureClick);
     return () => { map.off('click', handleMeasureClick); };
-  }, [measureMode]);
+  }, [measureMode, t]);
 
   const clearMeasurement = () => {
     setMeasurePoints([]);
@@ -608,7 +726,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
           // Fetch GeoJSON if we only have a filename
           if (!geojsonData && layerConfig.geojson) {
-            const resp = await fetch(`/api/user/files/${layerConfig.geojson}`, { credentials: 'include' });
+            const resp = await fetch(`/api/user/files/${layerConfig.geojson}`, { credentials: 'include', headers: getLocaleHeaders() });
             if (!resp.ok) {
               console.warn(`[MapPanel] Failed to fetch ${layerConfig.geojson}: ${resp.status}`);
               continue;
@@ -699,7 +817,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
     };
 
     loadLayers();
-  }, [layers, viewMode]);
+  }, [layers, viewMode, t]);
 
   const scenarioTimelineLayer = layers.find((layer) => Boolean(layer.scenarioTimeline))
     || loadedLayers.find((layer) => Boolean(layer.scenarioTimeline));
@@ -948,7 +1066,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
             <line x1="2" y1="12" x2="22" y2="12"/>
             <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
           </svg>
-          <span>上传空间数据或发送分析请求<br/>地图将在此显示</span>
+          <span>{t('map.emptyLine1')}<br/>{t('map.emptyLine2')}</span>
         </div>
       )}
 
@@ -958,7 +1076,8 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           <button
             className="layer-control-toggle"
             onClick={() => setShowLayerControl(!showLayerControl)}
-            title="图层控制"
+            title={t('map.layerControl')}
+            aria-label={t('map.layerControl')}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="12 2 2 7 12 12 22 7 12 2"/>
@@ -968,7 +1087,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           </button>
           {showLayerControl && (
             <div className="layer-control-panel">
-              <div className="layer-control-title">图层</div>
+              <div className="layer-control-title">{t('map.layers')}</div>
               {loadedLayers.map((l) => (
                 <label key={l.name} className="layer-control-item">
                   <input
@@ -977,7 +1096,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
                     onChange={() => toggleLayer(l.name)}
                   />
                   <span className={`layer-type-dot ${l.type}`} />
-                  <span className="layer-control-name">{l.name}</span>
+                  <span className="layer-control-name">{mapLayerLabel(l.name)}</span>
                 </label>
               ))}
             </div>
@@ -988,7 +1107,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       {/* Legend for choropleth/bubble */}
       {choroplethLayer && choroplethLayer.breaks && (
         <div className="map-legend">
-          <div className="map-legend-title">{choroplethLayer.legend_title || choroplethLayer.value_column || '值'}</div>
+          <div className="map-legend-title">{choroplethLayer.legend_title ? mapLayerLabel(choroplethLayer.legend_title) : choroplethLayer.value_column || t('map.value')}</div>
           {choroplethLayer.breaks.map((b, i) => {
             const colors = COLOR_RAMPS[choroplethLayer.color_scheme || 'YlOrRd'];
             const color = pickRampColor(colors, i, choroplethLayer.breaks!.length);
@@ -1015,11 +1134,11 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
               : Object.entries(smap).map(([val, s]) => [val, s.fillColor || '#999'] as [string, string]);
             return (
             <div key={layer.name} style={{ marginBottom: categorizedLayers.length > 1 ? 8 : 0 }}>
-              <div className="map-legend-title">{layer.legend_title || layer.name}</div>
+              <div className="map-legend-title">{layer.legend_title ? mapLayerLabel(layer.legend_title) : mapLayerLabel(layer.name)}</div>
               {entries.map(([val, color]) => (
                 <div key={val} className="map-legend-item">
                   <span className="map-legend-color" style={{ background: color as string }} />
-                  <span className="map-legend-label">{labels[val] || val}</span>
+                  <span className="map-legend-label">{labels[val] ? mapLayerLabel(labels[val]) : val}</span>
                 </div>
               ))}
             </div>
@@ -1031,13 +1150,13 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
               className="map-directional-legend"
               style={{ marginTop: categorizedLayers.length > 0 ? 8 : 0 }}
             >
-              <div className="map-legend-title">{layer.legend_title || layer.name}</div>
+              <div className="map-legend-title">{layer.legend_title ? mapLayerLabel(layer.legend_title) : mapLayerLabel(layer.name)}</div>
               <div className="map-legend-item">
                 <span
                   className="map-legend-flow-arrow"
                   style={{ borderLeftColor: layer.style?.arrowColor || layer.style?.color || '#dc2626' }}
                 />
-                <span className="map-legend-label">箭头指向目标区</span>
+                <span className="map-legend-label">{t('map.arrowTarget')}</span>
               </div>
             </div>
           ))}
@@ -1055,8 +1174,8 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
             <button
               onClick={() => setScenarioTimelinePlaying((playing) => !playing)}
-              title={scenarioTimelinePlaying ? '暂停 SWMM 时间轴' : '播放 SWMM 时间轴'}
-              aria-label={scenarioTimelinePlaying ? '暂停 SWMM 时间轴' : '播放 SWMM 时间轴'}
+              title={scenarioTimelinePlaying ? t('map.pauseTimeline') : t('map.playTimeline')}
+              aria-label={scenarioTimelinePlaying ? t('map.pauseTimeline') : t('map.playTimeline')}
               style={{
                 background: scenarioTimelinePlaying ? '#dc2626' : '#2563eb', color: '#fff',
                 border: 'none', borderRadius: 6, width: 30, height: 30,
@@ -1067,11 +1186,11 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
               {scenarioTimelinePlaying ? <Pause size={14} /> : <Play size={14} />}
             </button>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#334155', whiteSpace: 'nowrap' }}>
-              SWMM 时间轴 · 全量 {Number(scenarioTimeline.totalNodeCount || 0).toLocaleString()} 节点
+              {t('map.swmmTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })}
             </span>
             <input
               type="range"
-              aria-label="SWMM 节点结果时间轴"
+              aria-label={t('map.swmmNodeTimeline')}
               min={0}
               max={Math.max(0, scenarioTimeline.periodCount - 1)}
               value={Math.min(scenarioTimeIndex, Math.max(0, scenarioTimeline.periodCount - 1))}
@@ -1087,11 +1206,11 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 5 }}>
             <span style={{ fontSize: 11, color: '#64748b' }}>
-              原生 OUT · {scenarioTimeline.timeValues[scenarioTimeIndex] || '读取中'}
+              {t('map.nativeOut', { time: scenarioTimeline.timeValues[scenarioTimeIndex] || t('map.loading') })}
             </span>
             <span style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', whiteSpace: 'nowrap' }}>
-              T+{Number(scenarioTimeline.elapsedMinutes[scenarioTimeIndex] || 0).toFixed(0)} 分钟
-              {scenarioTimelineLoading ? ' · 读取中' : ''}
+              {t('map.elapsedMinutes', { value: Number(scenarioTimeline.elapsedMinutes[scenarioTimeIndex] || 0).toFixed(0) })}
+              {scenarioTimelineLoading ? ` · ${t('map.loading')}` : ''}
             </span>
           </div>
         </div>
@@ -1107,8 +1226,8 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
         }}>
           <button
             onClick={() => setTimelinePlaying(!timelinePlaying)}
-            title={timelinePlaying ? '暂停' : '播放'}
-            aria-label={timelinePlaying ? '暂停地图时间序列' : '播放地图时间序列'}
+            title={timelinePlaying ? t('map.pause') : t('map.play')}
+            aria-label={timelinePlaying ? t('map.pauseTimeline') : t('map.playTimeline')}
             style={{
               background: timelinePlaying ? '#ef4444' : '#2563eb', color: '#fff',
               border: 'none', borderRadius: 6, width: 28, height: 28,
@@ -1127,7 +1246,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           </span>
           <input
             type="range"
-            aria-label="地图时间轴年份"
+            aria-label={t('map.timelineYear')}
             min={0}
             max={temporalYears.length - 1}
             value={temporalYears.indexOf(timelineYear)}
@@ -1153,7 +1272,8 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       <button
         className={`annotation-toggle ${annotationMode ? 'active' : ''}`}
         onClick={() => { setAnnotationMode(!annotationMode); setAnnotationForm(null); }}
-        title={annotationMode ? '退出标注模式' : '添加标注'}
+        title={annotationMode ? t('map.exitAnnotationMode') : t('map.addAnnotation')}
+        aria-label={annotationMode ? t('map.exitAnnotationMode') : t('map.addAnnotation')}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/>
@@ -1165,7 +1285,8 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       <button
         className="annotation-toggle"
         onClick={() => window.open('/api/annotations/export?format=geojson', '_blank')}
-        title="导出标注 (GeoJSON)"
+        title={t('map.exportAnnotations')}
+        aria-label={t('map.exportAnnotations')}
         style={{ bottom: 10, right: 50 }}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1177,7 +1298,8 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       <button
         className={`annotation-toggle ${measureMode ? 'active' : ''}`}
         onClick={() => { setMeasureMode(!measureMode); if (measureMode) clearMeasurement(); }}
-        title={measureMode ? '退出测量模式' : '距离/面积测量'}
+        title={measureMode ? t('map.exitMeasureMode') : t('map.measureDistanceArea')}
+        aria-label={measureMode ? t('map.exitMeasureMode') : t('map.measureDistanceArea')}
         style={{ bottom: annotationMode ? 90 : 50 }}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1209,7 +1331,8 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
             }
           }
         }}
-        title={drawMode ? '退出绘制模式' : '绘制要素 (点/线/面)'}
+        title={drawMode ? t('map.exitDrawMode') : t('map.drawFeatures')}
+        aria-label={drawMode ? t('map.exitDrawMode') : t('map.drawFeatures')}
         style={{ bottom: annotationMode ? 130 : 90 }}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1232,10 +1355,10 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(geojson),
               });
-              if (r.ok) { const d = await r.json(); alert(`已保存: ${d.file_path || '成功'}`); }
-            } catch { alert('保存失败'); }
+              if (r.ok) { const d = await r.json(); alert(t('map.saved', { result: d.file_path || t('map.success') })); }
+            } catch { alert(t('map.saveFailed')); }
           }}
-        >导出 GeoJSON</button>
+        >{t('map.exportGeoJSON')}</button>
       )}
 
       {/* Measurement result display */}
@@ -1248,7 +1371,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           {measureResult}
           <button onClick={clearMeasurement}
             style={{ marginLeft: 8, background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 11 }}>
-            清除
+            {t('map.clear')}
           </button>
         </div>
       )}
@@ -1256,24 +1379,24 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       {/* Annotation form popup */}
       {annotationForm && (
         <div className="annotation-form">
-          <div className="annotation-form-title">新建标注</div>
+          <div className="annotation-form-title">{t('map.newAnnotation')}</div>
           <input
             type="text"
-            placeholder="标题"
+            placeholder={t('map.annotationTitle')}
             value={annotationTitle}
             onChange={(e) => setAnnotationTitle(e.target.value)}
             className="annotation-form-input"
           />
           <textarea
-            placeholder="备注（可选）"
+            placeholder={t('map.annotationComment')}
             value={annotationComment}
             onChange={(e) => setAnnotationComment(e.target.value)}
             className="annotation-form-textarea"
             rows={2}
           />
           <div className="annotation-form-actions">
-            <button onClick={() => setAnnotationForm(null)} className="annotation-form-cancel">取消</button>
-            <button onClick={submitAnnotation} className="annotation-form-submit">添加</button>
+            <button onClick={() => setAnnotationForm(null)} className="annotation-form-cancel">{t('map.cancel')}</button>
+            <button onClick={submitAnnotation} className="annotation-form-submit">{t('map.add')}</button>
           </div>
         </div>
       )}
@@ -1286,15 +1409,15 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           type="button"
           className="basemap-switcher-toggle"
           onClick={() => setShowBasemapMenu(!showBasemapMenu)}
-          title={`切换底图（当前：${activeBasemap}）`}
-          aria-label="切换底图"
+          title={t('map.switchBasemapCurrent', { basemap: basemapLabel(activeBasemap) })}
+          aria-label={t('map.switchBasemap')}
           aria-expanded={showBasemapMenu}
         >
           <MapIcon size={17} />
         </button>
         {showBasemapMenu && (
-          <div className="basemap-switcher-menu" role="menu" aria-label="底图选项">
-            <div className="basemap-switcher-title">底图</div>
+          <div className="basemap-switcher-menu" role="menu" aria-label={t('map.basemapOptions')}>
+            <div className="basemap-switcher-title">{t('map.basemap')}</div>
             {Object.keys(availableBasemaps).map((name) => (
               <button
                 type="button"
@@ -1306,7 +1429,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
                   setShowBasemapMenu(false);
                 }}
               >
-                {name}
+                {basemapLabel(name)}
               </button>
             ))}
           </div>
@@ -1324,8 +1447,8 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
             <button
               onClick={() => setScenarioTimelinePlaying((playing) => !playing)}
-              title={scenarioTimelinePlaying ? '暂停 SWMM 时间轴' : '播放 SWMM 时间轴'}
-              aria-label={scenarioTimelinePlaying ? '暂停 SWMM 时间轴' : '播放 SWMM 时间轴'}
+              title={scenarioTimelinePlaying ? t('map.pauseTimeline') : t('map.playTimeline')}
+              aria-label={scenarioTimelinePlaying ? t('map.pauseTimeline') : t('map.playTimeline')}
               style={{
                 background: scenarioTimelinePlaying ? '#dc2626' : '#2563eb', color: '#fff',
                 border: 'none', borderRadius: 6, width: 30, height: 30,
@@ -1334,10 +1457,10 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
             >
               {scenarioTimelinePlaying ? <Pause size={14} /> : <Play size={14} />}
             </button>
-            <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>SWMM 时间轴 · 全量 {Number(scenarioTimeline.totalNodeCount || 0).toLocaleString()} 节点</span>
+            <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{t('map.swmmTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })}</span>
             <input
               type="range"
-              aria-label="3D SWMM 节点结果时间轴"
+              aria-label={t('map.swmmNodeTimeline3d')}
               min={0}
               max={Math.max(0, scenarioTimeline.periodCount - 1)}
               value={Math.min(scenarioTimeIndex, Math.max(0, scenarioTimeline.periodCount - 1))}
@@ -1353,11 +1476,11 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 5 }}>
             <span style={{ fontSize: 11, color: '#cbd5e1' }}>
-              原生 OUT · {scenarioTimeline.timeValues[scenarioTimeIndex] || '读取中'}
+              {t('map.nativeOut', { time: scenarioTimeline.timeValues[scenarioTimeIndex] || t('map.loading') })}
             </span>
             <span style={{ fontSize: 12, fontWeight: 700, color: '#7dd3fc', whiteSpace: 'nowrap' }}>
-              T+{Number(scenarioTimeline.elapsedMinutes[scenarioTimeIndex] || 0).toFixed(0)} 分钟
-              {scenarioTimelineLoading ? ' · 读取中' : ''}
+              {t('map.elapsedMinutes', { value: Number(scenarioTimeline.elapsedMinutes[scenarioTimeIndex] || 0).toFixed(0) })}
+              {scenarioTimelineLoading ? ` · ${t('map.loading')}` : ''}
             </span>
           </div>
         </div>
@@ -1367,7 +1490,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       <button
         className={`view-mode-toggle ${viewMode === '3d' ? 'active' : ''}`}
         onClick={() => setViewMode(viewMode === '3d' ? '2d' : '3d')}
-        title={viewMode === '3d' ? '切换到 2D' : '切换到 3D'}
+        title={viewMode === '3d' ? t('map.switchTo2D') : t('map.switchTo3D')}
       >
         {viewMode === '3d' ? '2D' : '3D'}
       </button>
@@ -1692,7 +1815,7 @@ function bindPopup(feature: any, layer: L.Layer) {
   if (entries.length === 0) return;
 
   const html = entries
-    .map(([k, v]) => `<b>${k}</b>: ${v ?? ''}`)
+    .map(([k, v]) => `<b>${mapPopupLabel(k)}</b>: ${v ?? ''}`)
     .join('<br/>');
   layer.bindPopup(html, { maxWidth: 300 });
   layer.bindTooltip(String(entries[0]?.[1] ?? ''), { sticky: true });
@@ -1701,24 +1824,24 @@ function bindPopup(feature: any, layer: L.Layer) {
 function bindS2ParcelPopup(feature: any, layer: L.Layer, layerName: string) {
   const properties = feature?.properties || {};
   const parcelId = String(feature?.id || properties.parcel_id || '');
-  const planningArea = String(properties.planning_area_id || '未标注');
+  const planningArea = String(properties.planning_area_id || (getLocale() === 'en-US' ? 'Unlabeled' : '未标注'));
   const landUse = String(
     properties.source_land_use_name
       || properties.current_land_use_class
-      || '未标注',
+      || (getLocale() === 'en-US' ? 'Unlabeled' : '未标注'),
   );
   const areaValue = Number(properties.area_m2);
-  const areaText = Number.isFinite(areaValue) ? `${areaValue.toFixed(1)} ㎡` : '未标注';
+  const areaText = Number.isFinite(areaValue) ? `${areaValue.toFixed(1)} m²` : (getLocale() === 'en-US' ? 'Unlabeled' : '未标注');
   const html = `
     <div class="s2-parcel-popup">
-      <strong>S2真实地块</strong>
+      <strong>${mapPopupLabel('S2真实地块')}</strong>
       <dl>
-        <dt>地块ID</dt><dd>${escapeHtml(parcelId)}</dd>
-        <dt>村域</dt><dd>${escapeHtml(planningArea)}</dd>
-        <dt>原始地类</dt><dd>${escapeHtml(landUse)}</dd>
-        <dt>面积</dt><dd>${escapeHtml(areaText)}</dd>
+        <dt>${mapPopupLabel('地块ID')}</dt><dd>${escapeHtml(parcelId)}</dd>
+        <dt>${mapPopupLabel('村域')}</dt><dd>${escapeHtml(planningArea)}</dd>
+        <dt>${mapPopupLabel('原始地类')}</dt><dd>${escapeHtml(landUse)}</dd>
+        <dt>${mapPopupLabel('面积')}</dt><dd>${escapeHtml(areaText)}</dd>
       </dl>
-      <small>${layerName === 'S2 可选真实地块' ? '点击地块后将回填左侧S2输入框' : '点击可基于该地块发起新的S2请求'}</small>
+      <small>${mapPopupLabel(layerName === 'S2 可选真实地块' ? '点击地块后将回填左侧S2输入框' : '点击可基于该地块发起新的S2请求')}</small>
     </div>`;
   layer.unbindPopup();
   layer.unbindTooltip();

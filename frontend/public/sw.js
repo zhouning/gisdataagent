@@ -8,9 +8,9 @@
  * - User data files: Cache on first load
  */
 
-const CACHE_NAME = 'gis-agent-v24-citywide-swmm';
-const TILE_CACHE = 'gis-agent-tiles-v24';
-const DATA_CACHE = 'gis-agent-data-v24';
+const CACHE_NAME = 'gis-agent-v25-i18n';
+const TILE_CACHE = 'gis-agent-tiles-v25';
+const DATA_CACHE = 'gis-agent-data-v25';
 
 // Static assets to precache on install
 const PRECACHE_URLS = [

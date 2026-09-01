@@ -11,9 +11,27 @@ from ..navigation_registry import (
     save_navigation_policies,
 )
 from ..user_context import current_tenant_id
+from ..i18n import set_language
+
+
+def _set_request_language(request: Request) -> None:
+    """Bind the browser's selected locale to this request context.
+
+    The frontend sends both headers so navigation and future API responses can
+    follow the same language without changing the user's account settings.
+    """
+    value = request.headers.get("x-locale") or request.headers.get("accept-language", "")
+    value = value.split(",", 1)[0].strip().lower()
+    if value.startswith("en"):
+        set_language("en")
+    elif value.startswith("ar"):
+        set_language("ar")
+    else:
+        set_language("zh")
 
 
 async def _workspace_navigation(request: Request):
+    _set_request_language(request)
     user = _get_user_from_request(request)
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
@@ -22,6 +40,7 @@ async def _workspace_navigation(request: Request):
 
 
 async def _admin_navigation_get(request: Request):
+    _set_request_language(request)
     _user, _username, _role, error = _require_admin(request)
     if error:
         return error
@@ -29,6 +48,7 @@ async def _admin_navigation_get(request: Request):
 
 
 async def _admin_navigation_put(request: Request):
+    _set_request_language(request)
     _user, username, _role, error = _require_admin(request)
     if error:
         return error

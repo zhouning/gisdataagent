@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Bell, Play, RefreshCw, RotateCcw, Save, Settings2 } from 'lucide-react';
+import { ArrowLeft, Bell, Play, RefreshCw, RotateCcw, Save, Settings2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { usePlatformBranding } from '../platformBranding';
+import { formatDate, formatNumber, getLocaleHeaders } from '../i18n';
 import NavigationSettingsSection from './NavigationSettingsSection';
 
 interface MetricsSummary {
@@ -71,36 +73,37 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ onBack }: AdminDashboardProps) {
+  const { t } = useTranslation('common');
   const [activeSection, setActiveSection] = useState<'metrics' | 'users' | 'audit' | 'system' | 'settings' | 'navigation' | 'bots' | 'a2a' | 'models' | 'costguard' | 'selfevolution'>('metrics');
 
   return (
     <div className="admin-dashboard">
       <div className="admin-header">
-        <button className="admin-back-btn" onClick={onBack}>&larr; 返回</button>
-        <h2>管理后台</h2>
+        <button className="admin-back-btn" onClick={onBack}><ArrowLeft size={15} />{t('admin.back')}</button>
+        <h2>{t('admin.title')}</h2>
         <div className="admin-nav">
           <button className={activeSection === 'metrics' ? 'active' : ''}
-            onClick={() => setActiveSection('metrics')}>系统指标</button>
+            onClick={() => setActiveSection('metrics')}>{t('admin.sections.metrics')}</button>
           <button className={activeSection === 'system' ? 'active' : ''}
-            onClick={() => setActiveSection('system')}>系统状态</button>
+            onClick={() => setActiveSection('system')}>{t('admin.sections.system')}</button>
           <button className={activeSection === 'settings' ? 'active' : ''}
-            onClick={() => setActiveSection('settings')}>系统配置</button>
+            onClick={() => setActiveSection('settings')}>{t('admin.sections.settings')}</button>
           <button className={activeSection === 'navigation' ? 'active' : ''}
-            onClick={() => setActiveSection('navigation')}>工作台导航</button>
+            onClick={() => setActiveSection('navigation')}>{t('admin.sections.navigation')}</button>
           <button className={activeSection === 'bots' ? 'active' : ''}
-            onClick={() => setActiveSection('bots')}>Bot 管理</button>
+            onClick={() => setActiveSection('bots')}>{t('admin.sections.bots')}</button>
           <button className={activeSection === 'a2a' ? 'active' : ''}
-            onClick={() => setActiveSection('a2a')}>A2A</button>
+            onClick={() => setActiveSection('a2a')}>{t('admin.sections.a2a')}</button>
           <button className={activeSection === 'models' ? 'active' : ''}
-            onClick={() => setActiveSection('models')}>模型配置</button>
+            onClick={() => setActiveSection('models')}>{t('admin.sections.models')}</button>
           <button className={activeSection === 'costguard' ? 'active' : ''}
-            onClick={() => setActiveSection('costguard')}>成本控制</button>
+            onClick={() => setActiveSection('costguard')}>{t('admin.sections.costGuard')}</button>
           <button className={activeSection === 'selfevolution' ? 'active' : ''}
-            onClick={() => setActiveSection('selfevolution')}>自主进化</button>
+            onClick={() => setActiveSection('selfevolution')}>{t('admin.sections.selfEvolution')}</button>
           <button className={activeSection === 'users' ? 'active' : ''}
-            onClick={() => setActiveSection('users')}>用户管理</button>
+            onClick={() => setActiveSection('users')}>{t('admin.sections.users')}</button>
           <button className={activeSection === 'audit' ? 'active' : ''}
-            onClick={() => setActiveSection('audit')}>审计日志</button>
+            onClick={() => setActiveSection('audit')}>{t('admin.sections.audit')}</button>
         </div>
       </div>
       <div className="admin-content">
@@ -121,6 +124,7 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
 }
 
 function PlatformSettingsSection() {
+  const { t } = useTranslation('common');
   const { branding, saveBranding } = usePlatformBranding();
   const [platformName, setPlatformName] = useState(branding.platform_name);
   const [platformSubtitle, setPlatformSubtitle] = useState(branding.platform_subtitle);
@@ -149,9 +153,9 @@ function PlatformSettingsSection() {
         platform_name: platformName,
         platform_subtitle: platformSubtitle,
       });
-      setMessage({ type: 'success', text: '已保存并同步到登录页、顶部栏和浏览器标题。' });
+      setMessage({ type: 'success', text: t('admin.platform.savedSuccess') });
     } catch (error) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : '保存失败' });
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : t('admin.platform.saveFailed') });
     } finally {
       setSaving(false);
     }
@@ -160,67 +164,77 @@ function PlatformSettingsSection() {
   return <section className="platform-settings-section">
     <div className="admin-section-heading">
       <span><Settings2 size={18} /></span>
-      <div><h3>平台品牌配置</h3><p>配置面向用户显示的平台名称，不影响内部 API、数据库对象或部署标识。</p></div>
+      <div><h3>{t('admin.platform.title')}</h3><p>{t('admin.platform.description')}</p></div>
     </div>
     <div className="platform-settings-form">
       <label>
-        <span>平台名称</span>
+        <span>{t('admin.platform.name')}</span>
         <input
           value={platformName}
           onChange={event => setPlatformName(event.target.value)}
           minLength={2}
           maxLength={80}
-          placeholder="Geospatial Data Agent"
+          placeholder={t('admin.platform.nameFallback')}
         />
-        <small>{platformName.trim().length}/80，将显示在登录页、顶部栏和网页标题中</small>
+        <small>{t('admin.platform.nameHint', { count: platformName.trim().length })}</small>
       </label>
       <label>
-        <span>平台副标题</span>
+        <span>{t('admin.platform.subtitle')}</span>
         <input
           value={platformSubtitle}
           onChange={event => setPlatformSubtitle(event.target.value)}
           maxLength={120}
-          placeholder="AI-Native Geospatial Data Platform"
+          placeholder={t('admin.platform.subtitleFallback')}
         />
-        <small>{platformSubtitle.trim().length}/120，显示在登录页的平台名称下方</small>
+        <small>{t('admin.platform.subtitleHint', { count: platformSubtitle.trim().length })}</small>
       </label>
-      <div className="platform-brand-preview" aria-label="品牌预览">
-        <span>预览</span>
-        <strong>{platformName.trim() || '平台名称'}</strong>
-        <small>{platformSubtitle.trim() || '平台副标题'}</small>
+      <div className="platform-brand-preview" aria-label={t('admin.platform.previewAria')}>
+        <span>{t('admin.platform.preview')}</span>
+        <strong>{platformName.trim() || t('admin.platform.nameFallback')}</strong>
+        <small>{platformSubtitle.trim() || t('admin.platform.subtitleFallback')}</small>
       </div>
       <div className="platform-settings-actions">
         <button className="btn-primary" onClick={save} disabled={!changed || saving || platformName.trim().length < 2}>
-          <Save size={15} />{saving ? '保存中' : '保存配置'}
+          <Save size={15} />{saving ? t('admin.platform.saving') : t('admin.platform.saveConfig')}
         </button>
         <button className="btn-secondary" onClick={reset} disabled={!changed || saving}>
-          <RotateCcw size={15} />撤销修改
+          <RotateCcw size={15} />{t('admin.platform.undoChanges')}
         </button>
         {message && <span className={`platform-settings-message ${message.type}`}>{message.text}</span>}
       </div>
     </div>
     {branding.updated_at && <p className="platform-settings-audit">
-      最近更新：{new Date(branding.updated_at).toLocaleString()} · {branding.updated_by || '系统'}
+      {t('admin.platform.lastUpdated', {
+        date: formatDate(branding.updated_at, { dateStyle: 'medium', timeStyle: 'short' }),
+        user: branding.updated_by || t('admin.platform.system'),
+      })}
     </p>}
   </section>;
 }
 
 function MetricsSection() {
+  const { t } = useTranslation('common');
   const [metrics, setMetrics] = useState<MetricsSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/admin/metrics/summary', { credentials: 'include' })
+    fetch('/api/admin/metrics/summary', { credentials: 'include', headers: getLocaleHeaders() })
       .then((r) => r.json())
       .then(setMetrics)
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="admin-loading">加载中...</div>;
-  if (!metrics) return <div className="admin-loading">无法加载指标数据</div>;
+  if (loading) return <div className="admin-loading">{t('admin.common.loading')}</div>;
+  if (!metrics) return <div className="admin-loading">{t('admin.metrics.loadFailed')}</div>;
 
-  const stats = metrics.audit_stats;
+  const stats = metrics.audit_stats || {
+    total_events: 0,
+    active_users: 0,
+    events_by_action: {},
+    events_by_status: {},
+    daily_counts: [],
+  };
   const pipelineActions = stats.events_by_action || {};
   const maxCount = Math.max(...Object.values(pipelineActions), 1);
 
@@ -228,25 +242,25 @@ function MetricsSection() {
     <div className="metrics-section">
       <div className="metrics-cards">
         <div className="metric-card">
-          <div className="metric-value">{stats.total_events}</div>
-          <div className="metric-label">总事件数 (30天)</div>
+          <div className="metric-value">{formatNumber(stats.total_events || 0)}</div>
+          <div className="metric-label">{t('admin.metrics.totalEvents30d')}</div>
         </div>
         <div className="metric-card">
-          <div className="metric-value">{stats.active_users}</div>
-          <div className="metric-label">活跃用户</div>
+          <div className="metric-value">{formatNumber(stats.active_users || 0)}</div>
+          <div className="metric-label">{t('admin.metrics.activeUsers')}</div>
         </div>
         <div className="metric-card">
-          <div className="metric-value">{metrics.user_count}</div>
-          <div className="metric-label">注册用户</div>
+          <div className="metric-value">{formatNumber(metrics.user_count || 0)}</div>
+          <div className="metric-label">{t('admin.metrics.registeredUsers')}</div>
         </div>
         <div className="metric-card">
-          <div className="metric-value">{pipelineActions['pipeline_complete'] || 0}</div>
-          <div className="metric-label">管线执行</div>
+          <div className="metric-value">{formatNumber(pipelineActions['pipeline_complete'] || 0)}</div>
+          <div className="metric-label">{t('admin.metrics.pipelineRuns')}</div>
         </div>
       </div>
 
       <div className="metrics-chart-section">
-        <h3>事件分布</h3>
+        <h3>{t('admin.metrics.eventDistribution')}</h3>
         <div className="bar-chart">
           {Object.entries(pipelineActions).slice(0, 10).map(([action, count]) => (
             <div key={action} className="bar-chart-row">
@@ -254,7 +268,7 @@ function MetricsSection() {
               <div className="bar-track">
                 <div className="bar-fill" style={{ width: `${(count / maxCount) * 100}%` }} />
               </div>
-              <span className="bar-value">{count}</span>
+              <span className="bar-value">{formatNumber(count)}</span>
             </div>
           ))}
         </div>
@@ -262,7 +276,7 @@ function MetricsSection() {
 
       {stats.daily_counts && stats.daily_counts.length > 0 && (
         <div className="metrics-chart-section">
-          <h3>每日事件趋势</h3>
+          <h3>{t('admin.metrics.dailyTrend')}</h3>
           <div className="daily-chart">
             {stats.daily_counts.slice(-14).map((d) => {
               const maxDaily = Math.max(...stats.daily_counts.map((x) => x.count), 1);
@@ -281,12 +295,13 @@ function MetricsSection() {
 }
 
 function UsersSection() {
+  const { t } = useTranslation('common');
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchUsers = () => {
     setLoading(true);
-    fetch('/api/admin/users', { credentials: 'include' })
+    fetch('/api/admin/users', { credentials: 'include', headers: getLocaleHeaders() })
       .then((r) => r.json())
       .then((data) => setUsers(data.users || []))
       .catch(() => {})
@@ -299,22 +314,25 @@ function UsersSection() {
     const resp = await fetch(`/api/admin/users/${username}/role`, {
       method: 'PUT',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
       body: JSON.stringify({ role }),
     });
     if (resp.ok) fetchUsers();
   };
 
   const deleteUser = async (username: string) => {
-    if (!confirm(`确定删除用户 ${username}?`)) return;
+    if (!confirm(t('admin.users.deleteConfirm', { username }))) return;
     const resp = await fetch(`/api/admin/users/${username}`, {
       method: 'DELETE',
       credentials: 'include',
+      headers: getLocaleHeaders(),
     });
     if (resp.ok) fetchUsers();
   };
 
-  if (loading) return <div className="admin-loading">加载中...</div>;
+  if (loading) return <div className="admin-loading">{t('admin.common.loading')}</div>;
+
+  const authProviderLabel = (provider: string) => t(`admin.users.authProviders.${provider}`, { defaultValue: provider });
 
   return (
     <div className="users-section">
@@ -322,12 +340,12 @@ function UsersSection() {
         <table className="data-table admin-table">
           <thead>
             <tr>
-              <th>用户名</th>
-              <th>显示名</th>
-              <th>角色</th>
-              <th>认证</th>
-              <th>注册时间</th>
-              <th>操作</th>
+              <th>{t('admin.users.username')}</th>
+              <th>{t('admin.users.displayName')}</th>
+              <th>{t('admin.users.role')}</th>
+              <th>{t('admin.users.authentication')}</th>
+              <th>{t('admin.users.registeredAt')}</th>
+              <th>{t('admin.users.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -341,20 +359,23 @@ function UsersSection() {
                     onChange={(e) => updateRole(u.username, e.target.value)}
                     className="role-select"
                   >
-                    <option value="admin">admin</option>
-                    <option value="analyst">analyst</option>
-                    <option value="viewer">viewer</option>
-                    <option value="standard_editor">standard_editor</option>
-                    <option value="standard_reviewer">standard_reviewer</option>
+                    <option value="admin">{t('admin.users.roles.admin')}</option>
+                    <option value="analyst">{t('admin.users.roles.analyst')}</option>
+                    <option value="viewer">{t('admin.users.roles.viewer')}</option>
+                    <option value="standard_editor">{t('admin.users.roles.standardEditor')}</option>
+                    <option value="standard_reviewer">{t('admin.users.roles.standardReviewer')}</option>
                   </select>
                 </td>
-                <td>{u.auth_provider}</td>
-                <td>{u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
+                <td>{authProviderLabel(u.auth_provider)}</td>
+                <td>{u.created_at ? formatDate(u.created_at, { dateStyle: 'medium' }) : '-'}</td>
                 <td>
-                  <button className="delete-btn" onClick={() => deleteUser(u.username)}>删除</button>
+                  <button className="delete-btn" onClick={() => deleteUser(u.username)}>{t('admin.users.delete')}</button>
                 </td>
               </tr>
             ))}
+            {users.length === 0 && (
+              <tr><td colSpan={6} style={{ textAlign: 'center' }}>{t('admin.users.empty')}</td></tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -367,19 +388,20 @@ function UsersSection() {
    ============================================================ */
 
 function SystemStatusSection() {
+  const { t } = useTranslation('common');
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/system/status', { credentials: 'include' })
+    fetch('/api/system/status', { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.json())
       .then(setStatus)
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="admin-loading">加载中...</div>;
-  if (!status) return <div className="admin-loading">无法加载系统状态</div>;
+  if (loading) return <div className="admin-loading">{t('admin.common.loading')}</div>;
+  if (!status) return <div className="admin-loading">{t('admin.system.loadFailed')}</div>;
 
   const StatusIcon = ({ ok }: { ok: boolean }) => (
     <span style={{ color: ok ? '#16a34a' : '#dc2626', fontWeight: 700 }}>{ok ? '✓' : '✗'}</span>
@@ -389,28 +411,28 @@ function SystemStatusSection() {
     <div className="metrics-section">
       <div className="metrics-cards">
         <div className="metric-card">
-          <div className="metric-value"><StatusIcon ok={status.database?.status === 'ok'} /> 数据库</div>
-          <div className="metric-label">{status.database?.status === 'ok' ? `${status.database.latency_ms}ms` : '未连接'}</div>
+          <div className="metric-value"><StatusIcon ok={status.database?.status === 'ok'} /> {t('admin.system.database')}</div>
+          <div className="metric-label">{status.database?.status === 'ok' ? `${formatNumber(status.database.latency_ms || 0)} ms` : t('admin.system.disconnected')}</div>
         </div>
         <div className="metric-card">
           <div className="metric-value"><StatusIcon ok={status.mcp_hub?.status === 'ok'} /> MCP Hub</div>
-          <div className="metric-label">{status.mcp_hub?.connected || 0}/{status.mcp_hub?.total || 0} 服务器</div>
+          <div className="metric-label">{t('admin.system.serverCount', { connected: formatNumber(status.mcp_hub?.connected || 0), total: formatNumber(status.mcp_hub?.total || 0) })}</div>
         </div>
         <div className="metric-card">
           <div className="metric-value"><StatusIcon ok={status.features?.arcpy} /> ArcPy</div>
-          <div className="metric-label">{status.features?.arcpy ? '可用' : '未配置'}</div>
+          <div className="metric-label">{status.features?.arcpy ? t('admin.system.available') : t('admin.system.notConfigured')}</div>
         </div>
         <div className="metric-card">
-          <div className="metric-value"><StatusIcon ok={status.features?.cloud_storage} /> 云存储</div>
-          <div className="metric-label">{status.features?.cloud_storage ? '已连接' : '未配置'}</div>
+          <div className="metric-value"><StatusIcon ok={status.features?.cloud_storage} /> {t('admin.system.cloudStorage')}</div>
+          <div className="metric-label">{status.features?.cloud_storage ? t('admin.system.connected') : t('admin.system.notConfigured')}</div>
         </div>
       </div>
 
       <div className="metrics-chart-section">
-        <h3>模型配置</h3>
+        <h3>{t('admin.system.modelConfig')}</h3>
         <div className="data-table-container">
           <table className="data-table admin-table">
-            <thead><tr><th>模型等级</th><th>当前模型</th></tr></thead>
+            <thead><tr><th>{t('admin.system.modelTier')}</th><th>{t('admin.system.currentModel')}</th></tr></thead>
             <tbody>
               {status.models && Object.entries(status.models).map(([tier, model]) => (
                 <tr key={tier}><td style={{ fontWeight: 600 }}>{tier}</td><td>{model as string}</td></tr>
@@ -421,7 +443,7 @@ function SystemStatusSection() {
       </div>
 
       <div className="metrics-chart-section">
-        <h3>功能特性</h3>
+        <h3>{t('admin.system.features')}</h3>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {status.features && Object.entries(status.features).map(([k, v]) => (
             <span key={k} style={{
@@ -442,19 +464,20 @@ function SystemStatusSection() {
    ============================================================ */
 
 function BotsSection() {
+  const { t } = useTranslation('common');
   const [bots, setBots] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/bots/status', { credentials: 'include' })
+    fetch('/api/bots/status', { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.json())
       .then(data => setBots(data.bots || {}))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="admin-loading">加载中...</div>;
-  if (!bots) return <div className="admin-loading">无法加载 Bot 状态</div>;
+  if (loading) return <div className="admin-loading">{t('admin.common.loading')}</div>;
+  if (!bots) return <div className="admin-loading">{t('admin.bots.loadFailed')}</div>;
 
   const platforms = [
     { key: 'wecom', icon: '💬', color: '#07c160' },
@@ -469,17 +492,17 @@ function BotsSection() {
           const bot = bots[p.key];
           if (!bot) return null;
           return (
-            <div key={p.key} className="metric-card" style={{ borderLeft: `4px solid ${bot.configured ? p.color : '#e5e7eb'}` }}>
-              <div className="metric-value">{p.icon} {bot.label}</div>
+            <div key={p.key} className="metric-card" style={{ borderInlineStart: `4px solid ${bot.configured ? p.color : '#e5e7eb'}` }}>
+              <div className="metric-value">{p.icon} {t(`admin.bots.platforms.${p.key}`, { defaultValue: bot.label || p.key })}</div>
               <div className="metric-label" style={{ color: bot.configured ? '#16a34a' : '#dc2626' }}>
-                {bot.configured ? '✓ 已配置' : '✗ 未配置'}
+                {bot.configured ? `✓ ${t('admin.bots.configured')}` : `✗ ${t('admin.bots.notConfigured')}`}
               </div>
               <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
-                环境变量: {bot.configured_keys}/{bot.total_env_keys}
+                {t('admin.bots.environmentVariables', { configured: bot.configured_keys, total: bot.total_env_keys })}
               </div>
               {bot.missing_keys && bot.missing_keys.length > 0 && (
                 <div style={{ fontSize: 10, color: '#dc2626', marginTop: 4 }}>
-                  缺失: {bot.missing_keys.join(', ')}
+                  {t('admin.bots.missing', { keys: bot.missing_keys.join(', ') })}
                 </div>
               )}
             </div>
@@ -487,10 +510,9 @@ function BotsSection() {
         })}
       </div>
       <div className="metrics-chart-section">
-        <h3>配置说明</h3>
+        <h3>{t('admin.common.configuration')}</h3>
         <p style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.6 }}>
-          Bot 通过环境变量配置。在 <code>data_agent/.env</code> 中设置对应平台的密钥，
-          重启应用后自动激活。Bot 接收用户消息 → 语义路由 → 管线执行 → 结果推送回平台。
+          {t('admin.bots.descriptionBefore')} <code>data_agent/.env</code> {t('admin.bots.descriptionAfter')}
         </p>
       </div>
     </div>
@@ -502,51 +524,52 @@ function BotsSection() {
    ============================================================ */
 
 function A2ASection() {
+  const { t } = useTranslation('common');
   const [card, setCard] = useState<any>(null);
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/a2a/card', { credentials: 'include' }).then(r => r.json()).catch(() => null),
-      fetch('/api/a2a/status', { credentials: 'include' }).then(r => r.json()).catch(() => null),
+      fetch('/api/a2a/card', { credentials: 'include', headers: getLocaleHeaders() }).then(r => r.json()).catch(() => null),
+      fetch('/api/a2a/status', { credentials: 'include', headers: getLocaleHeaders() }).then(r => r.json()).catch(() => null),
     ]).then(([c, s]) => {
       setCard(c);
       setStatus(s);
     }).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="admin-loading">加载中...</div>;
+  if (loading) return <div className="admin-loading">{t('admin.common.loading')}</div>;
 
   return (
     <div className="metrics-section">
       <div className="metrics-cards">
         <div className="metric-card">
-          <div className="metric-value">{status?.enabled ? '✓ 已启用' : '✗ 未启用'}</div>
-          <div className="metric-label">A2A 服务</div>
+          <div className="metric-value">{status?.enabled ? `✓ ${t('admin.a2a.enabled')}` : `✗ ${t('admin.a2a.disabled')}`}</div>
+          <div className="metric-label">{t('admin.a2a.service')}</div>
         </div>
         <div className="metric-card">
-          <div className="metric-value">{status?.uptime_seconds ? `${Math.round(status.uptime_seconds / 60)}分钟` : '-'}</div>
-          <div className="metric-label">运行时间</div>
+          <div className="metric-value">{status?.uptime_seconds ? t('admin.a2a.uptimeMinutes', { count: formatNumber(Math.round(status.uptime_seconds / 60)) }) : '-'}</div>
+          <div className="metric-label">{t('admin.a2a.uptime')}</div>
         </div>
         <div className="metric-card">
-          <div className="metric-value">{card?.skills?.length || 0}</div>
-          <div className="metric-label">暴露技能数</div>
+          <div className="metric-value">{formatNumber(card?.skills?.length || 0)}</div>
+          <div className="metric-label">{t('admin.a2a.exposedSkillCount')}</div>
         </div>
       </div>
 
-      {card && (
+      {card?.name && (
         <div className="metrics-chart-section">
-          <h3>Agent Card</h3>
+          <h3>{t('admin.a2a.agentCard')}</h3>
           <div style={{ padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{card.name}</div>
             <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>{card.description}</div>
             <div style={{ fontSize: 11, color: '#9ca3af' }}>
-              协议: {card.protocol_version} | Streaming: {card.capabilities?.streaming ? 'Yes' : 'No'}
+              {t('admin.a2a.protocol')}: {card.protocol_version} | Streaming: {card.capabilities?.streaming ? t('admin.common.yes') : t('admin.common.no')}
             </div>
           </div>
 
-          <h3 style={{ marginTop: 16 }}>暴露的技能</h3>
+          <h3 style={{ marginTop: 16 }}>{t('admin.a2a.exposedSkills')}</h3>
           {(card.skills || []).map((s: any) => (
             <div key={s.id} style={{
               padding: '8px 12px', marginBottom: 4, background: '#fff',
@@ -560,11 +583,10 @@ function A2ASection() {
       )}
 
       <div className="metrics-chart-section">
-        <h3>配置说明</h3>
+        <h3>{t('admin.common.configuration')}</h3>
         <p style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.6 }}>
-          A2A (Agent-to-Agent) 允许外部 Agent 通过标准协议发现和调用 Data Agent 的能力。
-          设置 <code>A2A_ENABLED=true</code> 环境变量启用。启用后，外部 Agent 可通过
-          <code>/api/a2a/card</code> 发现能力，通过 <code>/api/a2a/tasks/send</code> 提交任务。
+          {t('admin.a2a.descriptionStart')} <code>A2A_ENABLED=true</code> {t('admin.a2a.descriptionEnable')}
+          <code>/api/a2a/card</code> {t('admin.a2a.descriptionCard')} <code>/api/a2a/tasks/send</code> {t('admin.a2a.descriptionTasks')}
         </p>
       </div>
     </div>
@@ -576,16 +598,17 @@ function A2ASection() {
    ============================================================ */
 
 function ModelsSection() {
+  const { t } = useTranslation('common');
   const [config, setConfig] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [showCustom, setShowCustom] = useState(false);
   const [customForm, setCustomForm] = useState({ name: '', backend: 'litellm', api_base: '', tier: 'standard' });
-  const [msg, setMsg] = useState('');
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const loadConfig = () => {
-    fetch('/api/admin/model-config', { credentials: 'include' })
+    fetch('/api/admin/model-config', { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.json())
       .then(data => { setConfig(data); setEdits({}); })
       .catch(() => {})
@@ -594,18 +617,18 @@ function ModelsSection() {
 
   useEffect(() => { loadConfig(); }, []);
 
-  if (loading) return <div className="admin-loading">加载中...</div>;
-  if (!config) return <div className="admin-loading">无法加载模型配置</div>;
+  if (loading) return <div className="admin-loading">{t('admin.common.loading')}</div>;
+  if (!config) return <div className="admin-loading">{t('admin.models.loadFailed')}</div>;
 
   const tierLabels: Record<string, string> = {
-    fast: 'Fast（低成本快速）',
-    standard: 'Standard（平衡）',
-    premium: 'Premium（复杂推理）',
+    fast: t('admin.models.tiers.fast'),
+    standard: t('admin.models.tiers.standard'),
+    premium: t('admin.models.tiers.premium'),
   };
   const tierUsage: Record<string, string> = {
-    fast: '路由器、数据探查、质量检查',
-    standard: '数据处理、分析、可视化',
-    premium: '治理报告、复杂推理',
+    fast: t('admin.models.usage.fast'),
+    standard: t('admin.models.usage.standard'),
+    premium: t('admin.models.usage.premium'),
   };
 
   const availableModels: string[] = (config.available_models || []).map((m: any) => m.name);
@@ -623,33 +646,33 @@ function ModelsSection() {
 
   const handleSave = async () => {
     setSaving(true);
-    setMsg('');
+    setMessage(null);
     try {
       for (const [key, value] of Object.entries(edits)) {
         if (key.startsWith('tier_')) {
           const tier = key.replace('tier_', '');
           await fetch('/api/admin/model-config', {
             method: 'PUT', credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
             body: JSON.stringify({ tier, model: value }),
           });
         } else if (key === 'router_model') {
           await fetch('/api/admin/model-config', {
             method: 'PUT', credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
             body: JSON.stringify({ router_model: value }),
           });
         } else if (key === 'embedding_model') {
           await fetch('/api/admin/embedding-config', {
             method: 'PUT', credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
             body: JSON.stringify({ embedding_model: value }),
           });
         }
       }
-      setMsg('保存成功。Router 立即生效，Agent 层级需重启生效；Embedding 切换后建议执行 reindex。');
+      setMessage({ type: 'success', text: t('admin.models.saveSuccess') });
       loadConfig();
-    } catch { setMsg('保存失败'); }
+    } catch { setMessage({ type: 'error', text: t('admin.models.saveFailed') }); }
     setSaving(false);
   };
 
@@ -657,17 +680,17 @@ function ModelsSection() {
     if (!customForm.name) return;
     const resp = await fetch('/api/admin/model-config/custom', {
       method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
       body: JSON.stringify(customForm),
     });
     if (resp.ok) {
-      setMsg(`已注册自定义模型: ${customForm.name}`);
+      setMessage({ type: 'success', text: t('admin.models.customRegistered', { name: customForm.name }) });
       setCustomForm({ name: '', backend: 'litellm', api_base: '', tier: 'standard' });
       setShowCustom(false);
       loadConfig();
     } else {
       const err = await resp.json();
-      setMsg(`注册失败: ${err.error || '未知错误'}`);
+      setMessage({ type: 'error', text: t('admin.models.registerFailed', { error: err.error || t('admin.common.unknownError') }) });
     }
   };
 
@@ -675,15 +698,15 @@ function ModelsSection() {
 
   return (
     <div>
-      <h3>LLM 模型配置</h3>
+      <h3>{t('admin.models.title')}</h3>
       <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 12 }}>
-        配置各层级使用的 LLM 模型。支持 Gemini、Gemma、LiteLLM 兼容模型。
+        {t('admin.models.description')}
       </p>
 
       <div className="data-table-container">
         <table className="data-table admin-table">
           <thead>
-            <tr><th>层级</th><th>当前模型</th><th>用途</th></tr>
+            <tr><th>{t('admin.models.tier')}</th><th>{t('admin.models.currentModel')}</th><th>{t('admin.models.purpose')}</th></tr>
           </thead>
           <tbody>
             {Object.entries(config.tiers || {}).map(([tier, info]: [string, any]) => (
@@ -702,7 +725,7 @@ function ModelsSection() {
               </tr>
             ))}
             <tr>
-              <td style={{ fontWeight: 600 }}>Embedding（向量模型）</td>
+              <td style={{ fontWeight: 600 }}>{t('admin.models.embedding')}</td>
               <td>
                 <select
                   value={edits.embedding_model || config.embedding_model || 'nomic-embed-text-v2-moe'}
@@ -712,10 +735,10 @@ function ModelsSection() {
                   {availableEmbeddingModels.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </td>
-              <td style={{ fontSize: 11, color: '#6b7280' }}>知识库检索、NL2SQL few-shot、字段语义匹配</td>
+              <td style={{ fontSize: 11, color: '#6b7280' }}>{t('admin.models.embeddingUsage')}</td>
             </tr>
             <tr>
-              <td style={{ fontWeight: 600 }}>Router（意图路由）</td>
+              <td style={{ fontWeight: 600 }}>{t('admin.models.router')}</td>
               <td>
                 <select
                   value={edits.router_model || config.router_model}
@@ -725,7 +748,7 @@ function ModelsSection() {
                   {availableModels.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </td>
-              <td style={{ fontSize: 11, color: '#6b7280' }}>语义意图分类</td>
+              <td style={{ fontSize: 11, color: '#6b7280' }}>{t('admin.models.routerUsage')}</td>
             </tr>
           </tbody>
         </table>
@@ -735,48 +758,48 @@ function ModelsSection() {
         <button onClick={handleSave} disabled={!hasEdits || saving}
           style={{ padding: '6px 16px', borderRadius: 6, background: hasEdits ? '#3b82f6' : '#d1d5db',
                    color: '#fff', border: 'none', cursor: hasEdits ? 'pointer' : 'default', fontSize: 13 }}>
-          {saving ? '保存中...' : '保存配置'}
+          {saving ? t('admin.common.saving') : t('admin.models.saveConfig')}
         </button>
         <button onClick={() => setShowCustom(!showCustom)}
           style={{ padding: '6px 16px', borderRadius: 6, background: '#f1f5f9',
                    border: '1px solid #d1d5db', cursor: 'pointer', fontSize: 13 }}>
-          {showCustom ? '取消' : '添加自定义模型'}
+          {showCustom ? t('admin.common.cancel') : t('admin.models.addCustom')}
         </button>
-        {msg && <span style={{ fontSize: 12, color: msg.includes('失败') ? '#ef4444' : '#22c55e' }}>{msg}</span>}
+        {message && <span style={{ fontSize: 12, color: message.type === 'error' ? '#ef4444' : '#22c55e' }}>{message.text}</span>}
       </div>
 
       {showCustom && (
         <div style={{ marginTop: 12, padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
-            <label>模型名称
+            <label>{t('admin.models.modelName')}
               <input value={customForm.name} onChange={e => setCustomForm(p => ({ ...p, name: e.target.value }))}
-                placeholder="e.g. gemma-4-31b-it-vllm" style={{ width: '100%', padding: 4, borderRadius: 4, border: '1px solid #d1d5db' }} />
+                placeholder={t('admin.models.modelNamePlaceholder')} style={{ width: '100%', padding: 4, borderRadius: 4, border: '1px solid #d1d5db' }} />
             </label>
-            <label>Backend
+            <label>{t('admin.models.backend')}
               <select value={customForm.backend} onChange={e => setCustomForm(p => ({ ...p, backend: e.target.value }))}
                 style={{ width: '100%', padding: 4, borderRadius: 4, border: '1px solid #d1d5db' }}>
-                <option value="gemini">Gemini API</option>
-                <option value="litellm">LiteLLM</option>
-                <option value="lm_studio">LM Studio</option>
+                <option value="gemini">{t('admin.models.backends.gemini')}</option>
+                <option value="litellm">{t('admin.models.backends.litellm')}</option>
+                <option value="lm_studio">{t('admin.models.backends.lmStudio')}</option>
               </select>
             </label>
-            <label>API Base URL (可选)
+            <label>{t('admin.models.apiBaseOptional')}
               <input value={customForm.api_base} onChange={e => setCustomForm(p => ({ ...p, api_base: e.target.value }))}
-                placeholder="https://your-endpoint/v1" style={{ width: '100%', padding: 4, borderRadius: 4, border: '1px solid #d1d5db' }} />
+                placeholder={t('admin.models.apiBasePlaceholder')} style={{ width: '100%', padding: 4, borderRadius: 4, border: '1px solid #d1d5db' }} />
             </label>
-            <label>层级
+            <label>{t('admin.models.tier')}
               <select value={customForm.tier} onChange={e => setCustomForm(p => ({ ...p, tier: e.target.value }))}
                 style={{ width: '100%', padding: 4, borderRadius: 4, border: '1px solid #d1d5db' }}>
-                <option value="fast">Fast</option>
-                <option value="standard">Standard</option>
-                <option value="premium">Premium</option>
-                <option value="local">Local</option>
+                <option value="fast">{t('admin.models.tiers.fast')}</option>
+                <option value="standard">{t('admin.models.tiers.standard')}</option>
+                <option value="premium">{t('admin.models.tiers.premium')}</option>
+                <option value="local">{t('admin.models.tiers.local')}</option>
               </select>
             </label>
           </div>
           <button onClick={handleAddCustom} style={{ marginTop: 8, padding: '4px 12px', borderRadius: 4,
             background: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12 }}>
-            注册模型
+            {t('admin.models.registerModel')}
           </button>
         </div>
       )}
@@ -785,29 +808,30 @@ function ModelsSection() {
 }
 
 function CostGuardSection() {
+  const { t } = useTranslation('common');
   const [config, setConfig] = useState<{ warn_threshold: number; abort_threshold: number; usd_abort: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [edits, setEdits] = useState<Record<string, number>>({});
-  const [msg, setMsg] = useState('');
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const loadConfig = () => {
-    fetch('/api/admin/cost-guard-config', { credentials: 'include' })
+    fetch('/api/admin/cost-guard-config', { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.json())
-      .then(data => { setConfig(data); setEdits({}); setMsg(''); })
+      .then(data => { setConfig(data); setEdits({}); })
       .catch(() => {})
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { loadConfig(); }, []);
 
-  if (loading) return <div className="admin-loading">加载中...</div>;
-  if (!config) return <div className="admin-loading">无法加载成本控制配置</div>;
+  if (loading) return <div className="admin-loading">{t('admin.common.loading')}</div>;
+  if (!config) return <div className="admin-loading">{t('admin.costGuard.loadFailed')}</div>;
 
   const fields: { key: string; label: string; desc: string; unit: string }[] = [
-    { key: 'warn_threshold', label: '警告阈值', desc: '累计 token 达到此值时发出警告', unit: 'tokens' },
-    { key: 'abort_threshold', label: '中止阈值', desc: '累计 token 达到此值时强制中止 pipeline', unit: 'tokens' },
-    { key: 'usd_abort', label: 'USD 上限', desc: '单次 pipeline 费用达到此值时中止（0=不限）', unit: 'USD' },
+    { key: 'warn_threshold', label: t('admin.costGuard.warnThreshold'), desc: t('admin.costGuard.warnDescription'), unit: 'tokens' },
+    { key: 'abort_threshold', label: t('admin.costGuard.abortThreshold'), desc: t('admin.costGuard.abortDescription'), unit: 'tokens' },
+    { key: 'usd_abort', label: t('admin.costGuard.usdLimit'), desc: t('admin.costGuard.usdDescription'), unit: 'USD' },
   ];
 
   const handleSave = async () => {
@@ -815,13 +839,13 @@ function CostGuardSection() {
     try {
       const resp = await fetch('/api/admin/cost-guard-config', {
         method: 'PUT', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify(edits),
       });
       const data = await resp.json();
-      if (resp.ok) { setMsg('保存成功，下次 pipeline 执行时生效'); loadConfig(); }
-      else setMsg(data.error || '保存失败');
-    } catch { setMsg('网络错误'); }
+      if (resp.ok) { setMessage({ type: 'success', text: t('admin.costGuard.saveSuccess') }); loadConfig(); }
+      else setMessage({ type: 'error', text: data.error || t('admin.common.saveFailed') });
+    } catch { setMessage({ type: 'error', text: t('admin.common.networkError') }); }
     finally { setSaving(false); }
   };
 
@@ -829,12 +853,12 @@ function CostGuardSection() {
 
   return (
     <div className="admin-section">
-      <h3>CostGuard 成本控制</h3>
+      <h3>{t('admin.costGuard.title')}</h3>
       <p style={{ color: '#888', fontSize: 13, marginBottom: 16 }}>
-        控制单次 pipeline 执行的 token 消耗上限，防止异常查询导致过高费用。
+        {t('admin.costGuard.description')}
       </p>
       <table className="admin-table">
-        <thead><tr><th>参数</th><th>当前值</th><th>新值</th><th>说明</th></tr></thead>
+        <thead><tr><th>{t('admin.costGuard.parameter')}</th><th>{t('admin.costGuard.currentValue')}</th><th>{t('admin.costGuard.newValue')}</th><th>{t('admin.costGuard.explanation')}</th></tr></thead>
         <tbody>
           {fields.map(f => (
             <tr key={f.key}>
@@ -859,15 +883,16 @@ function CostGuardSection() {
       </table>
       <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
         <button disabled={!hasEdits || saving} onClick={handleSave}>
-          {saving ? '保存中...' : '保存'}
+          {saving ? t('admin.common.saving') : t('admin.common.save')}
         </button>
-        {msg && <span style={{ color: msg.includes('成功') ? '#4caf50' : '#f44336', fontSize: 13 }}>{msg}</span>}
+        {message && <span style={{ color: message.type === 'success' ? '#4caf50' : '#f44336', fontSize: 13 }}>{message.text}</span>}
       </div>
     </div>
   );
 }
 
 function SelfEvolutionSection() {
+  const { t, i18n } = useTranslation('common');
   const [cycles, setCycles] = useState<SelfEvolutionCycle[]>([]);
   const [selected, setSelected] = useState<SelfEvolutionCycle | null>(null);
   const [loading, setLoading] = useState(true);
@@ -887,38 +912,39 @@ function SelfEvolutionSection() {
     setLoading(true);
     const params = new URLSearchParams({ limit: String(limit) });
     if (statusFilter) params.set('status', statusFilter);
-    fetch(`/api/self-evolution/cycles?${params.toString()}`, { credentials: 'include' })
+    fetch(`/api/self-evolution/cycles?${params.toString()}`, { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.ok ? r.json() : Promise.reject(r))
       .then(data => {
         const next = data.cycles || [];
         setCycles(next);
         if (!selected && next.length) setSelected(next[0]);
       })
-      .catch(() => setMsg('无法加载自主进化审计记录'))
+      .catch(() => setMsg(t('admin.selfEvolution.loadFailed')))
       .finally(() => setLoading(false));
   };
 
   const loadSchedulerStatus = () => {
-    fetch('/api/self-evolution/scheduler', { credentials: 'include' })
+    fetch('/api/self-evolution/scheduler', { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.ok ? r.json() : Promise.reject(r))
       .then(setSchedulerStatus)
       .catch(() => {});
   };
 
   const loadReviewSummary = () => {
-    fetch('/api/self-evolution/review-summary?limit=5', { credentials: 'include' })
+    fetch('/api/self-evolution/review-summary?limit=5', { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.ok ? r.json() : Promise.reject(r))
       .then(setReviewSummary)
       .catch(() => {});
   };
 
   useEffect(() => { loadCycles(); loadSchedulerStatus(); loadReviewSummary(); }, [statusFilter]);
+  useEffect(() => { setMsg(''); }, [i18n.resolvedLanguage]);
 
   const loadCycleDetail = (id: number) => {
-    fetch(`/api/self-evolution/cycles/${id}`, { credentials: 'include' })
+    fetch(`/api/self-evolution/cycles/${id}`, { credentials: 'include', headers: getLocaleHeaders() })
       .then(r => r.ok ? r.json() : Promise.reject(r))
       .then(setSelected)
-      .catch(() => setMsg(`无法加载周期 #${id}`));
+      .catch(() => setMsg(t('admin.selfEvolution.loadCycleFailed', { id })));
   };
 
   const runCycle = async () => {
@@ -928,7 +954,7 @@ function SelfEvolutionSection() {
       const resp = await fetch('/api/self-evolution/run', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({
           limit,
           days,
@@ -940,13 +966,15 @@ function SelfEvolutionSection() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'run failed');
-      setMsg(data.cycle_id ? `已生成候选周期 #${data.cycle_id}` : '已完成运行，未写入审计记录');
+      if (!resp.ok) throw new Error(data.error || t('admin.common.unknownError'));
+      setMsg(data.cycle_id
+        ? t('admin.selfEvolution.candidateGenerated', { id: data.cycle_id })
+        : t('admin.selfEvolution.runCompleteNoAudit'));
       loadCycles();
       loadReviewSummary();
       if (data.cycle_id) loadCycleDetail(data.cycle_id);
     } catch (err: any) {
-      setMsg(`运行失败: ${err.message || '未知错误'}`);
+      setMsg(t('admin.selfEvolution.runFailed', { error: err.message || t('admin.common.unknownError') }));
     } finally {
       setRunning(false);
     }
@@ -960,7 +988,7 @@ function SelfEvolutionSection() {
       const resp = await fetch(`/api/self-evolution/cycles/${selected.id}/review`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({
           action,
           environment: 'dev',
@@ -970,13 +998,13 @@ function SelfEvolutionSection() {
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'review failed');
-      setMsg(`审批动作完成: ${action}`);
+      if (!resp.ok) throw new Error(data.error || t('admin.common.unknownError'));
+      setMsg(t('admin.selfEvolution.reviewComplete', { action }));
       loadCycles();
       loadReviewSummary();
       loadCycleDetail(selected.id);
     } catch (err: any) {
-      setMsg(`审批失败: ${err.message || '未知错误'}`);
+      setMsg(t('admin.selfEvolution.reviewFailed', { error: err.message || t('admin.common.unknownError') }));
     } finally {
       setReviewing('');
     }
@@ -989,23 +1017,25 @@ function SelfEvolutionSection() {
       const resp = await fetch('/api/self-evolution/scheduler', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
         body: JSON.stringify({ action }),
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'scheduler action failed');
+      if (!resp.ok) throw new Error(data.error || t('admin.common.unknownError'));
       setSchedulerStatus(data.scheduler || data);
       if (action === 'run_once') {
         const cycleId = data.result?.cycle_id;
-        setMsg(cycleId ? `调度器已生成候选周期 #${cycleId}` : '调度器运行完成');
+        setMsg(cycleId
+          ? t('admin.selfEvolution.schedulerCandidateGenerated', { id: cycleId })
+          : t('admin.selfEvolution.schedulerRunComplete'));
         loadCycles();
         loadReviewSummary();
         if (cycleId) loadCycleDetail(cycleId);
       } else {
-        setMsg(action === 'start' ? '调度器已启动' : '调度器已停止');
+        setMsg(action === 'start' ? t('admin.selfEvolution.schedulerStarted') : t('admin.selfEvolution.schedulerStopped'));
       }
     } catch (err: any) {
-      setMsg(`调度器操作失败: ${err.message || '未知错误'}`);
+      setMsg(t('admin.selfEvolution.schedulerFailed', { error: err.message || t('admin.common.unknownError') }));
     } finally {
       setSchedulerBusy('');
     }
@@ -1015,6 +1045,8 @@ function SelfEvolutionSection() {
     acc[c.status] = (acc[c.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+  const statusLabel = (status: string) => t(`admin.selfEvolution.statuses.${status}`, { defaultValue: status });
+  const approvalStatusLabel = (status: string) => t(`statusLabels.${status}`, { defaultValue: status });
   const summary = selected?.summary || {};
   const proposals = selected?.proposals || selected?.report?.proposals || {};
   const actions = proposals.next_actions || [];
@@ -1038,45 +1070,45 @@ function SelfEvolutionSection() {
     <div className="self-evolution-section">
       <div className="metrics-cards">
         <div className="metric-card">
-          <div className="metric-value">{cycles.length}</div>
-          <div className="metric-label">审计记录</div>
+          <div className="metric-value">{formatNumber(cycles.length)}</div>
+          <div className="metric-label">{t('admin.selfEvolution.auditRecords')}</div>
         </div>
         <div className="metric-card">
-          <div className="metric-value">{pendingCount}</div>
-          <div className="metric-label">待审候选</div>
+          <div className="metric-value">{formatNumber(pendingCount)}</div>
+          <div className="metric-label">{t('admin.selfEvolution.pendingCandidates')}</div>
         </div>
         <div className="metric-card">
           <div className="metric-value">{reviewSummary?.high_priority_count ?? '-'}</div>
-          <div className="metric-label">高优先级提醒</div>
+          <div className="metric-label">{t('admin.selfEvolution.highPriorityAlerts')}</div>
         </div>
         <div className="metric-card">
           <div className="metric-value">{reviewSummary?.pending_eval_candidates ?? '-'}</div>
-          <div className="metric-label">待审评测候选</div>
+          <div className="metric-label">{t('admin.selfEvolution.pendingEvalCandidates')}</div>
         </div>
       </div>
 
       <div className={`self-evolution-review-reminder ${pendingCount ? 'has-pending' : ''}`}>
         <div className="self-evolution-reminder-head">
           <div>
-            <strong><Bell size={14} /> 审批提醒</strong>
+            <strong><Bell size={14} /> {t('admin.selfEvolution.reviewReminder')}</strong>
             <span>
               {pendingCount
-                ? `有 ${pendingCount} 个自主进化候选等待人工复核`
-                : '当前没有待审批的自主进化候选'}
+                ? t('admin.selfEvolution.pendingReview', { count: formatNumber(pendingCount) })
+                : t('admin.selfEvolution.noPendingReview')}
             </span>
           </div>
           <button className="btn-secondary" onClick={loadReviewSummary}>
-            <RefreshCw size={13} /> 刷新提醒
+            <RefreshCw size={13} /> {t('admin.selfEvolution.refreshReminders')}
           </button>
         </div>
         {pendingCount > 0 && (
           <>
             <div className="self-evolution-reminder-stats">
-              <span>评测候选 {reviewSummary?.pending_eval_candidates ?? 0}</span>
-              <span>Prompt 建议 {reviewSummary?.pending_prompt_suggestions ?? 0}</span>
-              <span>工具建议 {reviewSummary?.pending_tool_suggestions ?? 0}</span>
+              <span>{t('admin.selfEvolution.evalCandidates')} {formatNumber(reviewSummary?.pending_eval_candidates ?? 0)}</span>
+              <span>{t('admin.selfEvolution.promptSuggestions')} {formatNumber(reviewSummary?.pending_prompt_suggestions ?? 0)}</span>
+              <span>{t('admin.selfEvolution.toolSuggestions')} {formatNumber(reviewSummary?.pending_tool_suggestions ?? 0)}</span>
               {reviewSummary?.latest_created_at && (
-                <span>最新 {new Date(reviewSummary.latest_created_at).toLocaleString()}</span>
+                <span>{t('admin.selfEvolution.latest')} {formatDate(reviewSummary.latest_created_at, { dateStyle: 'medium', timeStyle: 'short' })}</span>
               )}
             </div>
             <div className="self-evolution-reminder-list">
@@ -1084,9 +1116,9 @@ function SelfEvolutionSection() {
                 <button key={item.id} type="button" onClick={() => loadCycleDetail(item.id)}>
                   <strong>#{item.id}</strong>
                   <span className={`self-evolution-priority ${item.priority}`}>{item.priority}</span>
-                  <span>评测 {item.counts.eval_candidates || 0}</span>
+                  <span>{t('admin.selfEvolution.evaluations')} {formatNumber(item.counts.eval_candidates || 0)}</span>
                   <span>Prompt {item.counts.prompt_suggestions || 0}</span>
-                  <span>工具 {item.counts.tool_suggestions || 0}</span>
+                  <span>{t('admin.selfEvolution.tools')} {formatNumber(item.counts.tool_suggestions || 0)}</span>
                 </button>
               ))}
             </div>
@@ -1097,67 +1129,71 @@ function SelfEvolutionSection() {
       <div className="metrics-chart-section self-evolution-toolbar">
         <div className="self-evolution-scheduler-card">
           <div>
-            <strong>调度器</strong>
+            <strong>{t('admin.selfEvolution.scheduler')}</strong>
             <span>
-              {schedulerStatus?.active ? '运行中' : schedulerStatus?.enabled ? '已启用未运行' : '未启用'}
-              {schedulerStatus?.interval_seconds ? ` · 间隔 ${Math.round(schedulerStatus.interval_seconds / 60)} 分钟` : ''}
+              {schedulerStatus?.active
+                ? t('admin.selfEvolution.running')
+                : schedulerStatus?.enabled ? t('admin.selfEvolution.enabledIdle') : t('admin.selfEvolution.disabled')}
+              {schedulerStatus?.interval_seconds
+                ? ` · ${t('admin.selfEvolution.intervalMinutes', { count: formatNumber(Math.round(schedulerStatus.interval_seconds / 60)) })}`
+                : ''}
             </span>
             <small>
-              最近周期 {schedulerStatus?.last_cycle_id ? `#${schedulerStatus.last_cycle_id}` : '-'}
-              {schedulerStatus?.last_run_at ? ` · ${new Date(schedulerStatus.last_run_at).toLocaleString()}` : ''}
+              {t('admin.selfEvolution.lastCycle')} {schedulerStatus?.last_cycle_id ? `#${schedulerStatus.last_cycle_id}` : '-'}
+              {schedulerStatus?.last_run_at ? ` · ${formatDate(schedulerStatus.last_run_at, { dateStyle: 'medium', timeStyle: 'short' })}` : ''}
             </small>
           </div>
           <div className="self-evolution-actions">
-            <button className="btn-secondary" onClick={loadSchedulerStatus}>刷新状态</button>
+            <button className="btn-secondary" onClick={loadSchedulerStatus}>{t('admin.selfEvolution.refreshStatus')}</button>
             <button className="btn-secondary"
               disabled={Boolean(schedulerBusy)}
               onClick={() => controlScheduler(schedulerStatus?.active ? 'stop' : 'start')}>
               {schedulerBusy === 'start' || schedulerBusy === 'stop'
-                ? '处理中'
-                : schedulerStatus?.active ? '停止调度' : '启动调度'}
+                ? t('admin.selfEvolution.processing')
+                : schedulerStatus?.active ? t('admin.selfEvolution.stopScheduler') : t('admin.selfEvolution.startScheduler')}
             </button>
             <button className="btn-primary"
               disabled={Boolean(schedulerBusy)}
               onClick={() => controlScheduler('run_once')}>
-              {schedulerBusy === 'run_once' ? '运行中' : '调度器立即运行'}
+              {schedulerBusy === 'run_once' ? t('admin.selfEvolution.running') : t('admin.selfEvolution.runSchedulerNow')}
             </button>
           </div>
         </div>
 
         <div className="self-evolution-controls">
-          <label>窗口天数
+          <label>{t('admin.selfEvolution.windowDays')}
             <input type="number" min={1} max={90} value={days}
               onChange={e => setDays(Math.max(1, Math.min(90, Number(e.target.value) || 7)))} />
           </label>
-          <label>读取上限
+          <label>{t('admin.selfEvolution.readLimit')}
             <input type="number" min={1} max={100} value={limit}
               onChange={e => setLimit(Math.max(1, Math.min(100, Number(e.target.value) || 30)))} />
           </label>
-          <label>低分阈值
+          <label>{t('admin.selfEvolution.lowScoreThreshold')}
             <input type="number" min={0} max={1} step={0.05} value={minScore}
               onChange={e => setMinScore(Math.max(0, Math.min(1, Number(e.target.value) || 0)))} />
           </label>
-          <label>状态
+          <label>{t('admin.selfEvolution.status')}
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-              <option value="">全部</option>
-              <option value="proposed">proposed</option>
-              <option value="applied">applied</option>
-              <option value="failed">failed</option>
-              <option value="dismissed">dismissed</option>
+              <option value="">{t('admin.selfEvolution.all')}</option>
+              <option value="proposed">{statusLabel('proposed')}</option>
+              <option value="applied">{statusLabel('applied')}</option>
+              <option value="failed">{statusLabel('failed')}</option>
+              <option value="dismissed">{statusLabel('dismissed')}</option>
             </select>
           </label>
           <label className="self-evolution-check">
             <input type="checkbox" checked={includePrompts}
               onChange={e => setIncludePrompts(e.target.checked)} />
-            生成 prompt 建议
+            {t('admin.selfEvolution.generatePromptSuggestions')}
           </label>
         </div>
         <div className="self-evolution-actions">
           <button className="btn-primary" onClick={runCycle} disabled={running}>
-            <Play size={13} /> {running ? '运行中' : '运行 dry-run'}
+            <Play size={13} /> {running ? t('admin.selfEvolution.running') : t('admin.selfEvolution.runDryRun')}
           </button>
           <button className="btn-secondary" onClick={loadCycles} disabled={loading}>
-            <RefreshCw size={13} /> 刷新
+            <RefreshCw size={13} /> {t('admin.common.refresh')}
           </button>
         </div>
         {msg && <div className="self-evolution-message">{msg}</div>}
@@ -1165,22 +1201,22 @@ function SelfEvolutionSection() {
 
       <div className="self-evolution-layout">
         <div className="metrics-chart-section self-evolution-list">
-          <h3>进化周期</h3>
+          <h3>{t('admin.selfEvolution.cycles')}</h3>
           {loading ? (
-            <div className="admin-loading">加载中...</div>
+            <div className="admin-loading">{t('admin.common.loading')}</div>
           ) : (
             <div className="data-table-container">
               <table className="data-table admin-table">
                 <thead>
                   <tr>
                     <th>ID</th>
-                    <th>时间</th>
-                    <th>状态</th>
-                    <th>模式</th>
-                    <th>触发</th>
-                    <th>坏例</th>
-                    <th>工具建议</th>
-                    <th>评测候选</th>
+                    <th>{t('admin.selfEvolution.time')}</th>
+                    <th>{t('admin.selfEvolution.status')}</th>
+                    <th>{t('admin.selfEvolution.mode')}</th>
+                    <th>{t('admin.selfEvolution.trigger')}</th>
+                    <th>{t('admin.selfEvolution.badCases')}</th>
+                    <th>{t('admin.selfEvolution.toolSuggestions')}</th>
+                    <th>{t('admin.selfEvolution.evalCandidates')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1189,8 +1225,8 @@ function SelfEvolutionSection() {
                       className={selected?.id === c.id ? 'selected-row' : ''}
                       onClick={() => loadCycleDetail(c.id)}>
                       <td>#{c.id}</td>
-                      <td>{c.created_at ? new Date(c.created_at).toLocaleString() : '-'}</td>
-                      <td><span className={`status-badge ${c.status}`}>{c.status}</span></td>
+                      <td>{c.created_at ? formatDate(c.created_at, { dateStyle: 'medium', timeStyle: 'short' }) : '-'}</td>
+                      <td><span className={`status-badge ${c.status}`}>{statusLabel(c.status)}</span></td>
                       <td>{c.mode}</td>
                       <td>{c.trigger_source || '-'} / {c.triggered_by || '-'}</td>
                       <td>{c.summary?.bad_cases ?? 0}</td>
@@ -1199,7 +1235,7 @@ function SelfEvolutionSection() {
                     </tr>
                   ))}
                   {!cycles.length && (
-                    <tr><td colSpan={8} style={{ textAlign: 'center', color: '#888' }}>暂无记录</td></tr>
+                    <tr><td colSpan={8} style={{ textAlign: 'center', color: '#888' }}>{t('admin.selfEvolution.empty')}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1208,9 +1244,9 @@ function SelfEvolutionSection() {
         </div>
 
         <div className="metrics-chart-section self-evolution-detail">
-          <h3>{selected ? `周期 #${selected.id}` : '周期详情'}</h3>
+          <h3>{selected ? t('admin.selfEvolution.cycleTitle', { id: selected.id }) : t('admin.selfEvolution.cycleDetails')}</h3>
           {!selected ? (
-            <div className="admin-loading">选择一条记录</div>
+            <div className="admin-loading">{t('admin.selfEvolution.selectRecord')}</div>
           ) : (
             <>
               <div className="self-evolution-summary-grid">
@@ -1223,60 +1259,60 @@ function SelfEvolutionSection() {
               </div>
 
               <div className="self-evolution-detail-block">
-                <h4>下一步动作</h4>
+                <h4>{t('admin.selfEvolution.nextActions')}</h4>
                 {actions.length ? actions.map((a: any, idx: number) => (
                   <div key={`${a.action || idx}`} className="self-evolution-action-row">
                     <strong>{a.action || '-'}</strong>
                     <span>{a.reason || ''}</span>
                   </div>
-                )) : <p>无待处理动作</p>}
+                )) : <p>{t('admin.selfEvolution.noPendingActions')}</p>}
               </div>
 
               <div className="self-evolution-detail-block">
-                <h4>候选汇总</h4>
+                <h4>{t('admin.selfEvolution.candidateSummary')}</h4>
                 <div className="self-evolution-pill-row">
-                  <span>工具建议 {toolSuggestions.length}</span>
-                  <span>Prompt 建议 {promptSuggestions.length}</span>
-                  <span>评测候选 {evalCandidates.length}</span>
+                  <span>{t('admin.selfEvolution.toolSuggestions')} {formatNumber(toolSuggestions.length)}</span>
+                  <span>{t('admin.selfEvolution.promptSuggestions')} {formatNumber(promptSuggestions.length)}</span>
+                  <span>{t('admin.selfEvolution.evalCandidates')} {formatNumber(evalCandidates.length)}</span>
                 </div>
               </div>
 
               <div className="self-evolution-detail-block">
-                <h4>人工审批</h4>
+                <h4>{t('admin.selfEvolution.humanReview')}</h4>
                 <div className="self-evolution-review-actions">
                   <button className="btn-primary"
                     disabled={!evalCandidates.length || Boolean(reviewing)}
                     onClick={() => reviewCycle('approve_eval_candidates')}>
-                    {reviewing === 'approve_eval_candidates' ? '处理中' : '入库评测候选'}
+                    {reviewing === 'approve_eval_candidates' ? t('admin.selfEvolution.processing') : t('admin.selfEvolution.storeEvalCandidates')}
                   </button>
                   <button className="btn-secondary"
                     disabled={!promptSuggestions.some((p: any) => p.suggested_prompt) || Boolean(reviewing)}
                     onClick={() => reviewCycle('approve_prompt_suggestions')}>
-                    {reviewing === 'approve_prompt_suggestions' ? '处理中' : '创建 dev prompt 版本'}
+                    {reviewing === 'approve_prompt_suggestions' ? t('admin.selfEvolution.processing') : t('admin.selfEvolution.createDevPrompt')}
                   </button>
                   <button className="btn-secondary"
                     disabled={!hasPromptDevVersions || hasProdPromptDeployment || Boolean(reviewing)}
                     onClick={() => reviewCycle('deploy_prompt_versions_to_prod')}>
-                    {reviewing === 'deploy_prompt_versions_to_prod' ? '处理中' : '发布 prod prompt'}
+                    {reviewing === 'deploy_prompt_versions_to_prod' ? t('admin.selfEvolution.processing') : t('admin.selfEvolution.deployProdPrompt')}
                   </button>
                   <button className="btn-secondary btn-danger"
                     disabled={Boolean(reviewing)}
                     onClick={() => reviewCycle('dismiss')}>
-                    {reviewing === 'dismiss' ? '处理中' : '驳回候选'}
+                    {reviewing === 'dismiss' ? t('admin.selfEvolution.processing') : t('admin.selfEvolution.dismissCandidate')}
                   </button>
                 </div>
               </div>
 
               {approvals.length > 0 && (
                 <div className="self-evolution-detail-block">
-                  <h4>审批记录</h4>
+                  <h4>{t('admin.selfEvolution.approvalHistory')}</h4>
                   {approvals.map((approval: any, idx: number) => (
                     <div key={`${approval.action || idx}-${idx}`} className="self-evolution-action-row">
                       <strong>{approval.action || '-'}</strong>
                       <span>
-                        {approval.status || '-'}
+                        {approval.status ? approvalStatusLabel(approval.status) : '-'}
                         {approval.reviewed_by ? ` / ${approval.reviewed_by}` : ''}
-                        {approval.reviewed_at ? ` / ${new Date(approval.reviewed_at).toLocaleString()}` : ''}
+                        {approval.reviewed_at ? ` / ${formatDate(approval.reviewed_at, { dateStyle: 'medium', timeStyle: 'short' })}` : ''}
                       </span>
                     </div>
                   ))}
@@ -1285,18 +1321,18 @@ function SelfEvolutionSection() {
 
               {promptSuggestions.length > 0 && (
                 <div className="self-evolution-detail-block">
-                  <h4>Prompt 建议预览</h4>
+                  <h4>{t('admin.selfEvolution.promptPreview')}</h4>
                   {promptSuggestions.map((p: any, idx: number) => (
                     <details key={`${p.domain}/${p.prompt_key}/${idx}`} className="self-evolution-prompt-diff">
                       <summary>{p.domain}/{p.prompt_key}</summary>
                       <div className="self-evolution-diff-grid">
                         <div>
-                          <strong>当前 prompt</strong>
-                          <pre>{p.original_prompt || '未包含原文'}</pre>
+                          <strong>{t('admin.selfEvolution.currentPrompt')}</strong>
+                          <pre>{p.original_prompt || t('admin.selfEvolution.originalUnavailable')}</pre>
                         </div>
                         <div>
-                          <strong>建议 prompt</strong>
-                          <pre>{p.suggested_prompt || '未生成建议文本'}</pre>
+                          <strong>{t('admin.selfEvolution.suggestedPrompt')}</strong>
+                          <pre>{p.suggested_prompt || t('admin.selfEvolution.suggestionUnavailable')}</pre>
                         </div>
                       </div>
                       {p.changes?.length > 0 && (
@@ -1310,7 +1346,7 @@ function SelfEvolutionSection() {
               )}
 
               <details className="self-evolution-json">
-                <summary>完整报告 JSON</summary>
+                <summary>{t('admin.selfEvolution.fullReportJson')}</summary>
                 <pre>{JSON.stringify(selected.report || selected, null, 2)}</pre>
               </details>
             </>
@@ -1322,52 +1358,57 @@ function SelfEvolutionSection() {
 }
 
 function AuditSection() {
+  const { t } = useTranslation('common');
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(7);
+  const statusLabel = (status: string) => t(`admin.audit.statuses.${status}`, { defaultValue: status });
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/admin/audit?days=${days}&limit=100`, { credentials: 'include' })
+    fetch(`/api/admin/audit?days=${days}&limit=100`, { credentials: 'include', headers: getLocaleHeaders() })
       .then((r) => r.json())
       .then((data) => setEntries(data.entries || []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [days]);
 
-  if (loading) return <div className="admin-loading">加载中...</div>;
+  if (loading) return <div className="admin-loading">{t('admin.common.loading')}</div>;
 
   return (
     <div className="audit-section">
       <div className="history-filter" style={{ marginBottom: 12 }}>
         {[7, 30, 90].map((d) => (
           <button key={d} className={`history-range-btn ${days === d ? 'active' : ''}`}
-            onClick={() => setDays(d)}>{d}天</button>
+            onClick={() => setDays(d)}>{t('admin.audit.days', { count: formatNumber(d) })}</button>
         ))}
       </div>
       <div className="data-table-container">
         <table className="data-table admin-table">
           <thead>
             <tr>
-              <th>时间</th>
-              <th>用户</th>
-              <th>操作</th>
-              <th>状态</th>
-              <th>详情</th>
+              <th>{t('admin.audit.time')}</th>
+              <th>{t('admin.audit.user')}</th>
+              <th>{t('admin.audit.action')}</th>
+              <th>{t('admin.audit.status')}</th>
+              <th>{t('admin.audit.details')}</th>
             </tr>
           </thead>
           <tbody>
             {entries.map((e) => (
               <tr key={e.id}>
-                <td>{e.created_at ? new Date(e.created_at).toLocaleString() : '-'}</td>
+                <td>{e.created_at ? formatDate(e.created_at, { dateStyle: 'medium', timeStyle: 'short' }) : '-'}</td>
                 <td>{e.username}</td>
                 <td>{e.action}</td>
-                <td><span className={`status-badge ${e.status}`}>{e.status}</span></td>
+                <td><span className={`status-badge ${e.status}`}>{statusLabel(e.status)}</span></td>
                 <td title={JSON.stringify(e.details)}>
                   {e.details ? JSON.stringify(e.details).slice(0, 60) : '-'}
                 </td>
               </tr>
             ))}
+            {entries.length === 0 && (
+              <tr><td colSpan={5} style={{ textAlign: 'center' }}>{t('admin.audit.empty')}</td></tr>
+            )}
           </tbody>
         </table>
       </div>

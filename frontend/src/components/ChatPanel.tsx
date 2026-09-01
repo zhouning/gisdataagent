@@ -16,18 +16,20 @@ import {
 } from '@chainlit/react-client';
 import type { IFileRef, IAction } from '@chainlit/react-client';
 import ReactMarkdown from 'react-markdown';
+import { useTranslation } from 'react-i18next';
 import FeedbackBar from './FeedbackBar';
 import Nl2SqlAnswer from './Nl2SqlAnswer';
 import Nl2SqlClarification, { Nl2SqlClarificationPayload } from './Nl2SqlClarification';
+import { formatDate, getLocale, getLocaleHeaders, type Locale } from '../i18n';
 
-function cleanCotLeakage(text: string): string {
+function cleanCotLeakage(text: string, translate?: (key: string) => string): string {
   if (!text || text.length < 20) return text;
 
   if (text.length < 120 && (text.includes('DELETE/UPDATE/DROP') || text.includes('修改、删除或新增数据') || text.includes('我不能执行'))) {
-    return '我不能执行修改、删除或新增数据的操作。我只能帮助查询。';
+    return translate ? translate('chat.readOnlyNotice') : '我不能执行修改、删除或新增数据的操作。我只能帮助查询。';
   }
   if (text.length < 120 && text.startsWith('当前数据库中不存在')) {
-    return '当前数据库中不存在与该问题对应的数据字段或数据表，因此无法查询。';
+    return translate ? translate('chat.noMatchingData') : '当前数据库中不存在与该问题对应的数据字段或数据表，因此无法查询。';
   }
 
   const finalMarkers = ['已成功', '我无法', '查询成功', '经过查询', '结果如下', '以下是结果', '数据来源表'];
@@ -96,13 +98,14 @@ function dispatchWorkspaceUpdate(update: any) {
 }
 
 export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }: ChatPanelProps) {
+  const { t, i18n } = useTranslation('common');
   const { messages, threadId: currentThreadId } = useChatMessages();
   const chatInteract = useChatInteract() as ReturnType<typeof useChatInteract> & {
     setIdToResume?: (threadId?: string) => void;
   };
   const { sendMessage, uploadFile, clear } = chatInteract;
   const { askUser, actions, loading } = useChatData();
-  const { sessionId, connect, disconnect } = useChatSession();
+  const { sessionId, connect, disconnect, session } = useChatSession();
   const setRecoilIdToResume = useSetRecoilState(threadIdToResumeState);
   const threadIdToResume = useRecoilValue(threadIdToResumeState);
   const setMessages = useSetRecoilState(messagesState);
@@ -119,7 +122,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const [input, setInput] = useState('');
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isRecording, setIsRecording] = useState(false);
-  const [voiceLang, setVoiceLang] = useState<'zh-CN' | 'en-US'>('zh-CN');
+  const [voiceLang, setVoiceLang] = useState<Locale>(() => getLocale());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -130,6 +133,33 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const [s2MapSelection, setS2MapSelection] = useState<S2MapSelection | null>(null);
   const [nl2sqlExecutionEngine, setNl2SqlExecutionEngine] =
     useState<Nl2SqlExecutionEngine>(initialNl2SqlExecutionEngine);
+  // Chainlit's sendMessage optimistically adds the user message even when the
+  // Socket.IO transport is not connected.  Keep an explicit connection state
+  // so a click during the new-chat reconnect window cannot create a message
+  // that only exists in the browser and never reaches the backend.
+  const [socketConnected, setSocketConnected] = useState(false);
+
+  useEffect(() => {
+    setVoiceLang(getLocale());
+  }, [i18n.resolvedLanguage]);
+
+  useEffect(() => {
+    const socket = session?.socket;
+    if (!socket) {
+      setSocketConnected(false);
+      return;
+    }
+    const sync = () => setSocketConnected(Boolean(socket.connected));
+    sync();
+    socket.on('connect', sync);
+    socket.on('disconnect', sync);
+    socket.on('connect_error', sync);
+    return () => {
+      socket.off('connect', sync);
+      socket.off('disconnect', sync);
+      socket.off('connect_error', sync);
+    };
+  }, [session]);
 
   // Session management state
   const [showSessions, setShowSessions] = useState(false);
@@ -137,6 +167,22 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(null);
   const [connectMode, setConnectMode] = useState<'new' | 'resume' | null>(null);
+  // Socket.IO can be connected before Chainlit finishes on_chat_start.  The
+  // backend marks the session-ready welcome message explicitly; resumed
+  // threads use their existing thread id as the equivalent readiness signal.
+  const [sessionReady, setSessionReady] = useState(false);
+
+  useEffect(() => {
+    if (!socketConnected || connectMode) {
+      if (!socketConnected || connectMode) setSessionReady(false);
+      return;
+    }
+    const hasReadyMarker = (messages || []).some((step: any) => (
+      step?.metadata?.session_ready === true
+      || (step?.steps || []).some((child: any) => child?.metadata?.session_ready === true)
+    ));
+    if (hasReadyMarker || Boolean(currentThreadId)) setSessionReady(true);
+  }, [socketConnected, connectMode, messages, currentThreadId]);
 
   // Mention autocomplete state
   const [mentionTargets, setMentionTargets] = useState<Array<{
@@ -203,9 +249,10 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
       const detail = (rawEvent as CustomEvent).detail || {};
       const parcelId = String(detail.parcelId || '');
       if (!parcelId.startsWith('parcel_')) return;
-      const template = s2SelectionTemplateRef.current
-        || '@S2 帮我判断地块 {parcel_id} 改成公共服务用地并新增养老服务站是否同意。';
-      setInput(template.replace('{parcel_id}', parcelId));
+      const template = s2SelectionTemplateRef.current;
+      setInput(template
+        ? template.replace('{parcel_id}', parcelId)
+        : t('chat.s2SelectionPrompt', { parcelId }));
       setS2MapSelection({
         parcelId,
         planningAreaId: String(detail.planningAreaId || ''),
@@ -215,7 +262,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
     };
     window.addEventListener('s2-map-parcel-selected', handleS2ParcelSelection);
     return () => window.removeEventListener('s2-map-parcel-selected', handleS2ParcelSelection);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const handleChatPrefill = (rawEvent: Event) => {
@@ -290,6 +337,12 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const handleSend = useCallback(() => {
     const text = input.trim();
     if (!text && pendingFiles.length === 0) return;
+    if (!socketConnected || !sessionReady) {
+      // Do not call sendMessage here: it intentionally performs an optimistic
+      // local insert, which would otherwise look like a successful send.
+      console.warn('[ChatPanel] message not sent because Chainlit session is not ready');
+      return;
+    }
     const fileRefs: IFileRef[] = pendingFiles
       .filter((f) => f.id && !f.error)
       .map((f) => ({ id: f.id! }));
@@ -297,8 +350,8 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
       {
         name: 'user',
         type: 'user_message',
-        output: text || '(文件上传)',
-        metadata: { nl2sql_execution_engine: nl2sqlExecutionEngine },
+        output: text || t('chat.fileUploadMessage'),
+        metadata: { nl2sql_execution_engine: nl2sqlExecutionEngine, locale: getLocale() },
       },
       fileRefs.length > 0 ? fileRefs : undefined
     );
@@ -306,7 +359,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
     setS2MapSelection(null);
     setPendingFiles([]);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
-  }, [input, pendingFiles, sendMessage, nl2sqlExecutionEngine]);
+  }, [input, pendingFiles, sendMessage, nl2sqlExecutionEngine, socketConnected, sessionReady, t]);
 
   const handleNl2SqlClarificationSelect = useCallback((text: string) => {
     setInput(text);
@@ -497,7 +550,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
     }
 
     const timer = window.setTimeout(() => {
-      connect({ userEnv: {} });
+      connect({ userEnv: { locale: getLocale() } });
       if (connectMode === 'resume') {
         window.setTimeout(() => setResumingSessionId(null), 3000);
       }
@@ -515,6 +568,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
 
   const handleNewChat = useCallback(() => {
     // Clear resume ID so Chainlit creates a fresh thread
+    setSessionReady(false);
     setResumeThreadId(undefined);
     setResumingSessionId(null);
     setConnectMode('new');
@@ -522,6 +576,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   }, [setResumeThreadId]);
 
   const handleResumeSession = useCallback((threadId: string) => {
+    setSessionReady(false);
     setResumeThreadId(threadId);
     setResumingSessionId(threadId);
     setConnectMode('resume');
@@ -529,12 +584,12 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
 
   const handleDeleteSession = useCallback(async (threadId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('确定删除此会话？')) return;
+    if (!confirm(t('chat.deleteSessionConfirm'))) return;
     try {
       await fetch(`/api/sessions/${threadId}`, { method: 'DELETE', credentials: 'include' });
       setSessions(prev => prev.filter(s => s.id !== threadId));
     } catch { /* ignore */ }
-  }, []);
+  }, [t]);
 
   const handleToggleSessions = useCallback(() => {
     const next = !showSessions;
@@ -550,14 +605,14 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
         <svg className="chat-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
-        <span>对话</span>
+        <span>{t('chat.title')}</span>
         <div className="chat-header-actions">
-          <button className="chat-header-btn" onClick={handleNewChat} title="新建对话">
+          <button className="chat-header-btn" onClick={handleNewChat} title={t('chat.newChat')} aria-label={t('chat.newChat')}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 5v14M5 12h14"/>
             </svg>
           </button>
-          <button className={`chat-header-btn ${showSessions ? 'active' : ''}`} onClick={handleToggleSessions} title="历史会话">
+          <button className={`chat-header-btn ${showSessions ? 'active' : ''}`} onClick={handleToggleSessions} title={t('chat.history')} aria-label={t('chat.history')}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
             </svg>
@@ -569,13 +624,13 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
       {showSessions && (
         <div className="session-list">
           <div className="session-list-header">
-            <span>历史会话</span>
-            <button className="session-close-btn" onClick={() => setShowSessions(false)}>&times;</button>
+            <span>{t('chat.history')}</span>
+            <button className="session-close-btn" onClick={() => setShowSessions(false)} aria-label={t('chat.closeHistory')}>&times;</button>
           </div>
           {sessionsLoading ? (
-            <div className="session-empty">加载中...</div>
+            <div className="session-empty">{t('app.loading')}</div>
           ) : sessions.length === 0 ? (
-            <div className="session-empty">暂无历史会话</div>
+            <div className="session-empty">{t('chat.noHistory')}</div>
           ) : (
             <div className="session-items">
               {sessions.map(s => (
@@ -584,14 +639,15 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
                   className={`session-item ${s.id === currentThreadId ? 'session-item-active' : ''} ${s.id === resumingSessionId ? 'session-item-resuming' : ''}`}
                   onClick={() => handleResumeSession(s.id)}
                 >
-                  <div className="session-item-name">{s.name || '未命名会话'}</div>
+                  <div className="session-item-name">{s.name || t('chat.untitledSession')}</div>
                   <div className="session-item-meta">
-                    {s.id === resumingSessionId ? '恢复中...' : s.updated_at ? new Date(s.updated_at).toLocaleString() : ''}
+                    {s.id === resumingSessionId ? t('chat.resumeLoading') : s.updated_at ? formatDate(s.updated_at, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
                   </div>
                   <button
                     className="session-item-delete"
                     onClick={(e) => handleDeleteSession(s.id, e)}
-                    title="删除"
+                    title={t('chat.deleteSession')}
+                    aria-label={t('chat.deleteSession')}
                   >&times;</button>
                 </div>
               ))}
@@ -607,7 +663,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
           const routingInfo = meta?.routing_info;
           const nl2sqlPresentation = meta?.nl2sql_presentation;
           const nl2sqlClarification = meta?.nl2sql_clarification as Nl2SqlClarificationPayload | undefined;
-          const displayOutput = isUser ? (msg.output || '') : cleanCotLeakage(msg.output || '');
+          const displayOutput = isUser ? (msg.output || '') : cleanCotLeakage(msg.output || '', t);
           return (
             <div key={msg.id} className={`chat-message ${isUser ? 'user' : 'assistant'} ${nl2sqlPresentation ? 'nl2sql-message' : ''}`}>
               {!isUser && <div className="assistant-avatar">AI</div>}
@@ -615,16 +671,16 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
                 {routingInfo && !nl2sqlPresentation && (
                   <div className="routing-card">
                     <div className="routing-card-row">
-                      <span className="routing-label">意图</span>
+                      <span className="routing-label">{t('chat.intent')}</span>
                       <span className={`pipeline-badge ${routingInfo.pipeline}`}>{routingInfo.intent}</span>
                     </div>
                     <div className="routing-card-row">
-                      <span className="routing-label">管线</span>
+                      <span className="routing-label">{t('chat.pipeline')}</span>
                       <span className="routing-value">{routingInfo.pipeline_name}</span>
                     </div>
                     {routingInfo.reason && (
                       <div className="routing-card-row">
-                        <span className="routing-label">依据</span>
+                        <span className="routing-label">{t('chat.reason')}</span>
                         <span className="routing-reason">{routingInfo.reason}</span>
                       </div>
                     )}
@@ -700,7 +756,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
         {askUser && askUser.spec.type === 'file' && (
           <div className="chat-message assistant">
             <div className="assistant-avatar">AI</div>
-            <div className="message-content">请上传文件</div>
+            <div className="message-content">{t('chat.pleaseUploadFile')}</div>
           </div>
         )}
 
@@ -733,7 +789,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
         {s2MapSelection && (
           <div className="s2-map-selection-banner" role="status">
             <div>
-              <strong>已从地图选择地块</strong>
+              <strong>{t('chat.mapParcelSelected')}</strong>
               <span>{s2MapSelection.parcelId}</span>
               {(s2MapSelection.planningAreaId || s2MapSelection.sourceLandUseName) && (
                 <small>
@@ -747,7 +803,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
                 setS2MapSelection(null);
                 setInput('');
               }}
-              aria-label="清除地图选地"
+              aria-label={t('chat.clearMapSelection')}
             >×</button>
           </div>
         )}
@@ -763,22 +819,25 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
           </div>
         )}
         <div className="nl2sql-engine-row">
-          <span>问数执行</span>
-          <div className="nl2sql-engine-segment" role="group" aria-label="智能问数执行引擎">
+          <span>{t('chat.queryEngine')}</span>
+          <span className={`chat-transport-status ${sessionReady ? 'connected' : 'connecting'}`} role="status">
+            {sessionReady ? t('chat.connected') : socketConnected ? t('chat.initializing') : t('chat.connecting')}
+          </span>
+          <div className="nl2sql-engine-segment" role="group" aria-label={t('chat.queryEngineAria')}>
             <button
               type="button"
               className={nl2sqlExecutionEngine === 'postgis' ? 'active' : ''}
               onClick={() => selectNl2SqlExecutionEngine('postgis')}
-              title="通过 PostgreSQL/PostGIS 执行，生产默认路线"
+              title={t('chat.postgisTitle')}
               aria-pressed={nl2sqlExecutionEngine === 'postgis'}
             >PostGIS</button>
             <button
               type="button"
               className={nl2sqlExecutionEngine === 'lake' ? 'active' : ''}
               onClick={() => selectNl2SqlExecutionEngine('lake')}
-              title="通过 DuckDB 直接查询治理后的 GeoParquet"
+              title={t('chat.lakeTitle')}
               aria-pressed={nl2sqlExecutionEngine === 'lake'}
-            >数据湖</button>
+            >{t('chat.lake')}</button>
           </div>
         </div>
         <div className="chat-input-container">
@@ -819,7 +878,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
             onChange={handleFileSelect}
             style={{ display: 'none' }}
           />
-          <button className="btn-attach" onClick={() => fileInputRef.current?.click()} title="上传文件">
+          <button className="btn-attach" onClick={() => fileInputRef.current?.click()} title={t('chat.uploadFile')} aria-label={t('chat.uploadFile')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
             </svg>
@@ -829,14 +888,14 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
               className={`btn-voice ${isRecording ? 'recording' : ''}`}
               onClick={toggleVoiceRecording}
               onContextMenu={(e) => { e.preventDefault(); toggleVoiceLang(); }}
-              title={isRecording ? '停止录音' : `语音输入 (${voiceLang === 'zh-CN' ? '中文' : 'EN'})`}
+              title={isRecording ? t('chat.stopRecording') : `${t('chat.voiceInput')} (${voiceLang === 'zh-CN' ? t('language.zhCN') : voiceLang === 'ar-AE' ? t('language.arAE') : 'English'})`}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/>
                 <line x1="8" y1="23" x2="16" y2="23"/>
               </svg>
-              <span className="voice-lang-badge">{voiceLang === 'zh-CN' ? '中' : 'EN'}</span>
+              <span className="voice-lang-badge">{t(`chat.voiceBadge.${voiceLang}`, { defaultValue: voiceLang === 'zh-CN' ? 'ZH' : voiceLang === 'ar-AE' ? 'AR' : 'EN' })}</span>
             </button>
           )}
           <textarea
@@ -859,10 +918,15 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
             }}
             onKeyDown={handleKeyDown}
             onInput={handleTextareaInput}
-            placeholder="输入消息... (Enter 发送)"
+            placeholder={t('chat.inputPlaceholder')}
             rows={1}
           />
-          <button className="btn-send" onClick={handleSend} disabled={!input.trim() && pendingFiles.length === 0} title="发送">
+          <button
+            className="btn-send"
+            onClick={handleSend}
+            disabled={!socketConnected || !sessionReady || (!input.trim() && pendingFiles.length === 0)}
+            title={sessionReady ? t('chat.send') : t('chat.sessionInitializing')}
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
             </svg>
@@ -877,6 +941,25 @@ function flattenMessages(steps: any[]): any[] {
   const result: any[] = [];
   for (const step of steps) {
     if (step.type?.includes('message') && step.output) result.push(step);
+    // Chainlit emits uncaught handler exceptions as ``run`` steps with
+    // ``isError``.  They are not message steps, so filtering them out made a
+    // failed request look exactly like a request that never got a response.
+    // Keep the raw detail out of the UI and surface one actionable assistant
+    // message; the server log/audit trail remains the diagnostic source.
+    if (step.type === 'run' && step.isError && step.output) {
+      result.push({
+        ...step,
+        type: 'assistant_message',
+        output: '请求处理失败，系统未返回结果。请稍后重试；若持续出现，请联系管理员。',
+        metadata: {
+          ...(step.metadata || {}),
+          nl2sql_error: {
+            code: 'unhandled_backend_error',
+            sql_executed: false,
+          },
+        },
+      });
+    }
     if (step.steps && step.steps.length > 0) result.push(...flattenMessages(step.steps));
   }
   return result;

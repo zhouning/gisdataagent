@@ -46,6 +46,15 @@
 
 .cim-breadcrumb svg { color: #a7b1ba; }
 .cim-breadcrumb strong { color: #3c4854; font-weight: 600; }
+.cim-breadcrumb-spacer { flex: 1 1 auto; }
+.cim-breadcrumb .language-switcher { color: #52606d; font-size: 11px; }
+.cim-breadcrumb .language-switcher select {
+  min-width: 92px;
+  height: 27px;
+  border-color: var(--cim-border);
+  background: #f7f9fa;
+  color: #25313c;
+}
 
 .cim-visually-hidden {
   position: absolute;

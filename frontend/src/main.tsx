@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { RecoilRoot } from 'recoil';
 import { ChainlitAPI, ChainlitContext } from '@chainlit/react-client';
+import './i18n';
 import App from './App';
 import IrrigationWorldModelDemoTab from './components/datapanel/IrrigationWorldModelDemoTab';
 import { PlatformBrandingProvider } from './platformBranding';
@@ -13,7 +14,7 @@ const apiClient = new ChainlitAPI(CHAINLIT_SERVER, 'webapp');
 // v24.0: Register Service Worker for offline mode and citywide SWMM build.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/public/sw.js?version=24-citywide-swmm').catch(() => {
+      navigator.serviceWorker.register('/public/sw.js?version=25-i18n').catch(() => {
       // Non-fatal: SW registration may fail in dev mode
     });
   });

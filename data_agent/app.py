@@ -13,7 +13,7 @@ from typing import Any, List, Dict, Optional
 from dotenv import load_dotenv
 from google import genai as genai_client
 
-from data_agent.i18n import t, set_language, get_language
+from data_agent.i18n import t, set_language, get_language, LocaleMiddleware
 from data_agent.multimodal import (
     UploadType, classify_upload, prepare_image_part,
     extract_pdf_text, prepare_pdf_part,
@@ -1004,6 +1004,15 @@ try:
     logger.info("[GZip] response compression enabled (minimum_size=1024)")
 except Exception as _gz_err:
     logger.warning("GZip middleware failed: %s", _gz_err)
+
+# Bind the browser-selected UI locale to all HTTP/WebSocket handlers.  This
+# complements the explicit locale headers on frontend fetches and prevents
+# backend-generated messages from reverting to the default Chinese locale.
+try:
+    chainlit_app.add_middleware(LocaleMiddleware)
+    logger.info("[i18n] request locale middleware enabled")
+except Exception as _locale_err:
+    logger.warning("Locale middleware failed: %s", _locale_err)
 
 # --- Initialize OpenTelemetry tracing (v15.0) ---
 try:
@@ -3202,7 +3211,10 @@ async def start():
     # Ensure user upload directory exists
     get_user_upload_dir()
 
-    await cl.Message(content=f"Welcome, **{display_name}**! ({role})").send()
+    await cl.Message(
+        content=f"Welcome, **{display_name}**! ({role})",
+        metadata={"session_ready": True},
+    ).send()
     cl.user_session.set("auto_extract_count", 0)
 
     try:
@@ -4313,12 +4325,206 @@ async def _handle_makani_demo_message(
     return True
 
 
+async def _handle_abu_dhabi_unprefixed_message(
+    user_text: str,
+    user_id: str,
+    role: str,
+) -> bool:
+    """Resolve an ordinary left-chat question to one registered source.
+
+    Explicit ``@Liveability``/``@Makani``/``@AbuDhabi`` routes are handled
+    before this function.  For unprefixed text we use only the currently
+    published semantic artifacts.  A unique match is routed to the governed
+    handler; a close match is turned into a visible clarification instead of
+    falling through to the unconstrained general planner.
+    """
+
+    if str(user_text or "").lstrip().startswith("@"):
+        return False
+    from data_agent.abu_dhabi_source_router import resolve_abu_dhabi_source
+
+    decision = resolve_abu_dhabi_source(user_text)
+    if decision.disposition == "none":
+        return False
+    if decision.disposition == "clarify":
+        language = _message_language_hint(user_text)
+        content = {
+            "zh": (
+                "这个问题同时匹配到多个已登记的阿布扎比数据源，"
+                "为避免选错数据，请在问题前加 `@Liveability` 或 `@Makani`；"
+                "跨库汇总请使用 `@AbuDhabi`。"
+            ),
+            "en": (
+                "This question matches more than one registered Abu Dhabi source. "
+                "Prefix it with `@Liveability` or `@Makani`; use `@AbuDhabi` for "
+                "an approved cross-source aggregate."
+            ),
+            "ar": (
+                "يتطابق هذا السؤال مع أكثر من مصدر مسجل في أبوظبي. "
+                "أضف `@Liveability` أو `@Makani` في بداية السؤال؛ واستخدم "
+                "`@AbuDhabi` للتجميع المشترك المعتمد."
+            ),
+        }[language]
+        await cl.Message(
+            content=content,
+            metadata={
+                "routing_info": {
+                    "intent": "ABU_DHABI_SOURCE_SELECTION",
+                    "pipeline": "governed_source_resolution",
+                    "pipeline_name": "Abu Dhabi registered-source resolver",
+                    "reason": decision.reason,
+                },
+                "nl2sql_source_resolution": {
+                    "disposition": decision.disposition,
+                    "confidence": decision.confidence,
+                    "margin": decision.margin,
+                    "evidence": list(decision.evidence),
+                    "sql_executed": False,
+                },
+            },
+        ).send()
+        return True
+
+    if decision.source_key == "makani":
+        from data_agent.makani_nl2sql import SOURCE_ID
+
+        cl.user_session.set("selected_virtual_source_id", SOURCE_ID)
+        cl.user_session.set("selected_nl2sql_scope", "makani")
+        return await _handle_makani_demo_message(user_text, user_id, role)
+    if decision.source_key == "liveability":
+        from data_agent.liveability_nl2sql import SOURCE_ID
+
+        cl.user_session.set("selected_virtual_source_id", SOURCE_ID)
+        cl.user_session.set("selected_nl2sql_scope", "liveability")
+        return await _handle_liveability_demo_message(user_text, user_id, role)
+    return False
+
+
+def _classify_source_route_error(error: BaseException) -> tuple[str, bool]:
+    """Map an internal route failure to a stable, non-sensitive UI code."""
+
+    detail = str(error).casefold()
+    if "artifact_checksum_mismatch" in detail:
+        return "artifact_checksum_mismatch", False
+    if "migrationstateerror" in detail or "runtime_incompatible" in detail:
+        return "control_plane_not_ready", True
+    if "timeout" in detail or "timed out" in detail:
+        return "query_timeout", True
+    if "api key" in detail or "unauthorized" in detail or "401" in detail or "403" in detail:
+        return "model_provider_unavailable", True
+    return "source_query_failed", True
+
+
+def _message_language_hint(value: str) -> str:
+    if re.search(r"[\u0600-\u06ff]", value or ""):
+        return "ar"
+    if re.search(r"[\u3400-\u9fff]", value or ""):
+        return "zh"
+    return "en"
+
+
+async def _send_source_route_failure(
+    *,
+    user_text: str,
+    trace_id: str | None,
+    scope: str,
+    intent: str,
+    pipeline_name: str,
+    error: BaseException,
+) -> None:
+    """Turn an unhandled source-route exception into an actionable response.
+
+    Chainlit represents an uncaught ``on_message`` exception as a ``run`` step
+    with ``isError=true``.  The custom web client intentionally renders message
+    steps only, so that default behavior is indistinguishable from no reply.
+    Source routes therefore catch at this boundary and publish a normal
+    assistant message while keeping the raw exception in server logs only.
+    """
+
+    code, retryable = _classify_source_route_error(error)
+    logger.exception(
+        "[Trace:%s] %s source route failed (code=%s)",
+        trace_id or "-",
+        scope,
+        code,
+    )
+    language = _message_language_hint(user_text)
+    messages = {
+        "zh": {
+            "artifact_checksum_mismatch": "问数配置校验失败：当前语义工件与已发布清单不一致，未执行 SQL。请刷新语义发布状态后重试。",
+            "control_plane_not_ready": "问数运行环境尚未就绪，未执行 SQL。请稍后重试；如果持续出现，请检查控制库迁移状态。",
+            "query_timeout": "问数执行超时，未返回未经确认的结果。请缩小查询范围后重试。",
+            "model_provider_unavailable": "问数模型服务暂时不可用，未执行 SQL。请稍后重试。",
+            "source_query_failed": "问数处理失败，未返回未经治理的数据结果。请稍后重试；若持续出现，请联系管理员。",
+        },
+        "en": {
+            "artifact_checksum_mismatch": "Query configuration validation failed: the active semantic artifact does not match its published manifest. No SQL was executed.",
+            "control_plane_not_ready": "The query runtime is not ready, so no SQL was executed. Retry shortly; if it persists, check control-plane migrations.",
+            "query_timeout": "The query timed out and no unverified result was returned. Narrow the query scope and retry.",
+            "model_provider_unavailable": "The query model provider is temporarily unavailable, so no SQL was executed. Retry shortly.",
+            "source_query_failed": "The query could not be completed, so no ungoverned data result was returned. Retry shortly or contact an administrator.",
+        },
+        "ar": {
+            "artifact_checksum_mismatch": "فشل التحقق من إعدادات الاستعلام: لا يتطابق الأصل الدلالي النشط مع البيان المنشور، ولم يتم تنفيذ SQL.",
+            "control_plane_not_ready": "بيئة تشغيل الاستعلام غير جاهزة، ولذلك لم يتم تنفيذ SQL. أعد المحاولة لاحقاً وتحقق من ترحيلات طبقة التحكم إذا استمر الخطأ.",
+            "query_timeout": "انتهت مهلة الاستعلام ولم يتم عرض نتيجة غير موثقة. قلّل نطاق الاستعلام وأعد المحاولة.",
+            "model_provider_unavailable": "موفر نموذج الاستعلام غير متاح مؤقتاً، ولذلك لم يتم تنفيذ SQL. أعد المحاولة لاحقاً.",
+            "source_query_failed": "تعذر إكمال الاستعلام، ولم يتم عرض نتيجة بيانات غير محكومة. أعد المحاولة أو اتصل بالمسؤول.",
+        },
+    }[language]
+    content = messages.get(code, messages["source_query_failed"])
+    await cl.Message(
+        content=content,
+        metadata={
+            "routing_info": {
+                "intent": intent,
+                "pipeline": "governed_virtual_nl2semantic2sql",
+                "pipeline_name": pipeline_name,
+                "reason": "source route failure was caught and surfaced",
+            },
+            "nl2sql_error": {
+                "code": code,
+                "retryable": retryable,
+                "scope": scope,
+                "sql_executed": False,
+            },
+        },
+    ).send()
+
+
 @cl.on_message
 async def main(message: cl.Message):
     """Handle user message with File Upload Support and RBAC."""
+    # A browser can emit ``client_message`` immediately after Socket.IO
+    # connects, while the asynchronous ``on_chat_start`` initializer is still
+    # creating the Chainlit session.  Resolve identity from the underlying
+    # websocket session as a fallback and never pass ``None`` into the upload
+    # sandbox or context variables.
+    cl_user = cl.user_session.get("user")
+    if cl_user is None:
+        try:
+            cl_user = getattr(getattr(cl, "context", None), "session", None).user
+        except Exception:
+            cl_user = None
     user_id = cl.user_session.get("user_id")
-    session_id = cl.user_session.get("session_id")
-    role = cl.user_session.get("user_role", "analyst")
+    if not user_id and cl_user is not None:
+        user_id = getattr(cl_user, "identifier", None)
+    user_id = str(user_id or "dev_user")
+    role = cl.user_session.get("user_role")
+    if not role and cl_user is not None:
+        metadata = getattr(cl_user, "metadata", None) or {}
+        role = metadata.get("role")
+    role = str(role or "analyst")
+    session_id = cl.user_session.get("session_id") or cl.user_session.get("id")
+    if not session_id:
+        try:
+            session_id = getattr(getattr(cl, "context", None), "session", None).id
+        except Exception:
+            session_id = None
+    session_id = str(session_id or "default")
+    cl.user_session.set("user_id", user_id)
+    cl.user_session.set("session_id", session_id)
+    cl.user_session.set("user_role", role)
 
     # Re-set context variables (ContextVar is per-async-task)
     trace_id = _set_user_context(user_id, session_id, role)
@@ -4342,11 +4548,62 @@ async def main(message: cl.Message):
 
     # Source-scoped GPT-5.1 routes run the product NL2Semantic2SQL guards
     # against registered virtual databases before the general planner.
-    if await _handle_abu_dhabi_federated_message(user_text, user_id, role):
+    try:
+        if await _handle_abu_dhabi_federated_message(user_text, user_id, role):
+            return
+    except Exception as error:
+        await _send_source_route_failure(
+            user_text=user_text,
+            trace_id=trace_id,
+            scope="federated",
+            intent="ABU_DHABI_FEDERATED_NL2SQL",
+            pipeline_name="Abu Dhabi Liveability + Makani Federation",
+            error=error,
+        )
         return
-    if await _handle_makani_demo_message(user_text, user_id, role):
+    try:
+        if await _handle_makani_demo_message(user_text, user_id, role):
+            return
+    except Exception as error:
+        await _send_source_route_failure(
+            user_text=user_text,
+            trace_id=trace_id,
+            scope="makani",
+            intent="MAKANI_NL2SQL",
+            pipeline_name="Abu Dhabi Makani NL2Semantic2SQL",
+            error=error,
+        )
         return
-    if await _handle_liveability_demo_message(user_text, user_id, role):
+    try:
+        if await _handle_liveability_demo_message(user_text, user_id, role):
+            return
+    except Exception as error:
+        await _send_source_route_failure(
+            user_text=user_text,
+            trace_id=trace_id,
+            scope="liveability",
+            intent="LIVEABILITY_NL2SQL",
+            pipeline_name="Abu Dhabi Liveability NL2Semantic2SQL",
+            error=error,
+        )
+        return
+
+    # Unprefixed questions are resolved from the published semantic artifacts
+    # before any general-purpose planner is considered.  This keeps the left
+    # chat useful for ordinary questions while avoiding an accidental route to
+    # a long-running unconstrained planner.
+    try:
+        if await _handle_abu_dhabi_unprefixed_message(user_text, user_id, role):
+            return
+    except Exception as error:
+        await _send_source_route_failure(
+            user_text=user_text,
+            trace_id=trace_id,
+            scope="source_resolution",
+            intent="ABU_DHABI_SOURCE_SELECTION",
+            pipeline_name="Abu Dhabi registered-source resolver",
+            error=error,
+        )
         return
 
     if configured_models_require_google_cloud_project() and not os.environ.get("GOOGLE_CLOUD_PROJECT"):

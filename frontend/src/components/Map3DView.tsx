@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import DeckGL from '@deck.gl/react';
 import { GeoJsonLayer, ScatterplotLayer, ArcLayer, ColumnLayer } from '@deck.gl/layers';
 import { MVTLayer } from '@deck.gl/geo-layers';
@@ -59,6 +60,40 @@ interface TooltipInfo {
   x: number;
   y: number;
   text: string;
+}
+
+function map3dDisplayName(value: string, locale: string): string {
+  if (locale !== 'en-US' || !/[\u3400-\u9fff]/.test(value)) return value;
+  const replacements: Array<[RegExp, string]> = [
+    [/阿布扎比暴雨内涝世界模型/g, 'Abu Dhabi Stormwater Flood World Model'],
+    [/SWMM 全市连续网络/g, 'SWMM citywide continuous network'],
+    [/全市连续网络/g, 'citywide continuous network'],
+    [/全量节点级时序/g, 'complete node-level time series'],
+    [/节点最大水深/g, 'maximum node water depth'],
+    [/节点溢流\/积水/g, 'node overflow/flooding'],
+    [/管段最大容量率/g, 'maximum link capacity fraction'],
+    [/运行状态/g, 'runtime status'],
+    [/计算分块/g, 'compute partition'],
+    [/分区/g, 'partition'],
+    [/雨水管线/g, 'stormwater pipes'],
+    [/雨水节点/g, 'stormwater nodes'],
+    [/节点/g, 'nodes'],
+    [/管段/g, 'links'],
+    [/管线/g, 'pipes'],
+    [/客户/g, 'customer'],
+    [/结果/g, 'results'],
+    [/原始输入/g, 'raw input'],
+    [/全市/g, 'citywide'],
+    [/已接入/g, 'connected'],
+    [/官方/g, 'official'],
+    [/年一遇/g, '-year return period'],
+    [/分钟/g, 'minutes'],
+    [/小时/g, 'hours'],
+    [/百万升/g, 'million litres'],
+  ];
+  let translated = value;
+  for (const [source, target] of replacements) translated = translated.replace(source, target);
+  return translated.replace(/[\u3400-\u9fff]+/g, 'additional detail');
 }
 
 const BASEMAP_STYLES: Record<string, any> = {
@@ -142,6 +177,9 @@ function rasterBasemapStyle(
 export default function Map3DView({
   layers, center, zoom, basemap, basemaps, basemapMetadata, scenarioData,
 }: Map3DViewProps) {
+  const { t, i18n } = useTranslation('common');
+  const locale = i18n.resolvedLanguage || i18n.language;
+  const displayName = useCallback((value: string) => map3dDisplayName(value, locale), [locale]);
   const [layerData, setLayerData] = useState<Record<string, any>>({});
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
@@ -261,12 +299,12 @@ export default function Map3DView({
       const entries = Object.entries(props)
         .filter(([k]) => k !== 'geometry' && !k.startsWith('_'))
         .slice(0, 6);
-      const text = entries.map(([k, v]) => `${k}: ${v}`).join('\n');
+      const text = entries.map(([k, v]) => `${displayName(k)}: ${v}`).join('\n');
       setTooltip({ x: info.x, y: info.y, text });
     } else {
       setTooltip(null);
     }
-  }, []);
+  }, [displayName]);
 
   const onLayerHover = useCallback((info: any, layer: MapLayer) => {
     if (!info.object) {
@@ -286,14 +324,14 @@ export default function Map3DView({
           const value = field === layer.category_column
             ? (categoryLabels[raw] || categoryLabels[normalized] || raw)
             : raw;
-          return `${labels[field] || field}: ${value}`;
+          return `${displayName(labels[field] || field)}: ${value}`;
         })
         .filter(Boolean) as string[];
       setTooltip({ x: info.x, y: info.y, text: lines.join('\n') });
       return;
     }
     onHover(info);
-  }, [onHover]);
+  }, [onHover, displayName]);
 
   // Build deck.gl layers from MapLayer configs
   const deckLayers = useMemo(() => {
@@ -585,7 +623,7 @@ export default function Map3DView({
               color: '#e0e0e0', border: '1px solid #444', borderRadius: 4,
               padding: '4px 8px', cursor: 'pointer', fontSize: 12,
             }}>
-            图层
+            {t('map.layers', { defaultValue: 'Layers' })}
           </button>
           {showLayerPanel && (
             <div style={{
@@ -603,7 +641,7 @@ export default function Map3DView({
                       ...prev, [l.name]: prev[l.name] === false ? true : false
                     }))}
                   />
-                  {l.name}
+                  {displayName(l.name)}
                   <span style={{ marginLeft: 'auto', fontSize: 10, color: '#888' }}>{l.type}</span>
                 </label>
               ))}
@@ -631,7 +669,7 @@ export default function Map3DView({
               return (
                 <div key={layer.name} style={{ marginBottom: 6 }}>
                   <div style={{ color: '#e0e0e0', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
-                    {layer.legend_title || layer.name}
+                    {displayName(layer.legend_title || layer.name)}
                   </div>
                   {entries.map(([val, color]) => (
                     <div key={val} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '1px 0' }}>
@@ -640,7 +678,7 @@ export default function Map3DView({
                         background: color as string, border: '1px solid rgba(255,255,255,0.2)',
                         flexShrink: 0,
                       }} />
-                      <span style={{ color: '#ccc', fontSize: 11 }}>{labels[val] || val}</span>
+                      <span style={{ color: '#ccc', fontSize: 11 }}>{displayName(labels[val] || val)}</span>
                     </div>
                   ))}
                 </div>
@@ -663,7 +701,7 @@ export default function Map3DView({
               return (
                 <div key={layer.name} style={{ marginBottom: 6 }}>
                   <div style={{ color: '#e0e0e0', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
-                    {layer.legend_title || layer.value_column || layer.name}
+                    {displayName(layer.legend_title || layer.value_column || layer.name)}
                   </div>
                   {(layer.breaks || []).map((b, i) => (
                     <div key={`${layer.name}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '1px 0' }}>

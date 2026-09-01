@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "test": "vitest run",
+    "test:e2e:i18n": "playwright test e2e/i18n.pw.ts",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
@@ -33,6 +34,7 @@
     "echarts": "^6.0.0",
     "echarts-for-react": "^3.0.6",
     "flatgeobuf": "^3.35.0",
+    "i18next": "^25.10.10",
     "leaflet": "^1.9.4",
     "leaflet-draw": "^1.0.4",
     "leaflet.heat": "^0.2.0",
@@ -42,6 +44,7 @@
     "papaparse": "^5.5.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-i18next": "^16.6.6",
     "react-leaflet": "^4.2.1",
     "react-map-gl": "^8.1.0",
     "react-markdown": "^9.0.3",
@@ -50,6 +53,7 @@
     "turndown-plugin-gfm": "^1.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/leaflet": "^1.9.18",
     "@types/papaparse": "^5.3.15",
     "@types/react": "^18.3.18",

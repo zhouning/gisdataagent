@@ -5,7 +5,15 @@ key parity between zh/en, and preview functions in English mode.
 """
 
 import pytest
-from data_agent.i18n import t, set_language, get_language, _translations, _load_translations
+from data_agent.i18n import (
+    t,
+    set_language,
+    get_language,
+    reset_language as reset_i18n_language,
+    _language_from_headers,
+    _translations,
+    _load_translations,
+)
 
 
 # ===================================================================
@@ -51,6 +59,18 @@ class TestSwitchToEnglish:
         set_language("en")
         val = t("preview.title")
         assert "Data Preview" in val
+
+    def test_request_header_locale_resolution(self):
+        assert _language_from_headers({b"x-locale": b"en-US"}) == "en"
+        assert _language_from_headers({b"accept-language": b"ar-AE,ar;q=0.9"}) == "ar"
+        assert _language_from_headers({b"accept-language": b"zh-CN"}) == "zh"
+        assert _language_from_headers({b"accept-language": b"fr-FR"}) is None
+
+    def test_language_context_token_can_be_restored(self):
+        token = set_language("en")
+        assert get_language() == "en"
+        reset_i18n_language(token)
+        assert get_language() == "zh"
 
 
 class TestFallback:

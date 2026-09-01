@@ -1,5 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import Papa from 'papaparse';
+import { useTranslation } from 'react-i18next';
 import {
   FolderOpen, Table2, Database, Tag, Link, MapPin, BarChart3,
   Zap, Wrench, BookOpen, Lightbulb, Brain, Store, Globe, FlaskConical, Network,
@@ -78,6 +79,7 @@ import DataModelWorkbenchTab from './datapanel/DataModelWorkbenchTab';
 import OntologyTab from './datapanel/OntologyTab';
 import NaturalResourceOntologyDemoTab from './datapanel/NaturalResourceOntologyDemoTab';
 import ApprovalInboxTab from './datapanel/ApprovalInboxTab';
+import { getLocaleHeaders } from '../i18n';
 import GisWorkflowTab from './datapanel/GisWorkflowTab';
 import AbuDhabiFloodWorldModelTab from './datapanel/AbuDhabiFloodWorldModelTab';
 
@@ -394,6 +396,7 @@ export default function DataPanel({
   onRequestWidth,
   onAddMapLayer,
 }: DataPanelProps) {
+  const { t } = useTranslation('common');
   const [activeTab, setActiveTab] = useState<TabKey>('files');
   const [navigation, setNavigation] = useState<NavigationConfig>(() => fallbackNavigation());
   const [activeGroup, setActiveGroup] = useState<NavigationGroupKey>('data');
@@ -406,7 +409,10 @@ export default function DataPanel({
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/workspace/navigation', { credentials: 'include' })
+    fetch('/api/workspace/navigation', {
+      credentials: 'include',
+      headers: getLocaleHeaders(),
+    })
       .then(response => response.ok ? response.json() : null)
       .then(payload => {
         if (!cancelled) {
@@ -416,7 +422,7 @@ export default function DataPanel({
       })
       .catch(() => { /* fallback registry remains active */ });
     return () => { cancelled = true; };
-  }, [userRole, username]);
+  }, [userRole, username, t]);
 
   const allNavigationItems = navigation.groups.flatMap(group => group.sections.flatMap(section => section.items));
   const findNavigationItem = (tab: TabKey) => allNavigationItems.find(item => item.tab_key === tab);
@@ -528,12 +534,17 @@ export default function DataPanel({
   const currentGroup = navigation.groups.find(g => g.key === activeGroup) || navigation.groups[0];
   const currentSection = currentGroup?.sections.find(section => section.key === activeSection) || currentGroup?.sections[0];
   const hasVisibleNavigation = navigation.groups.length > 0;
+  const navigationLabel = (
+    kind: 'groups' | 'sections' | 'tabs',
+    key: string,
+    fallback: string,
+  ) => t(`dataPanel.${kind}.${key}`, { defaultValue: fallback });
 
   return (
     <div className="data-panel">
       <div className="data-panel-header">
         <LayoutGrid size={18} className="data-panel-header-icon" />
-        <span>工作台</span>
+        <span>{t('dataPanel.title')}</span>
       </div>
 
       {/* Primary group selector */}
@@ -543,10 +554,10 @@ export default function DataPanel({
             key={g.key}
             className={`data-panel-group ${activeGroup === g.key ? 'active' : ''}`}
             onClick={() => handleGroupClick(g.key)}
-            title={g.label}
+            title={navigationLabel('groups', g.key, g.label)}
           >
             <span className="group-icon">{g.icon}</span>
-            <span className="group-label">{g.label}</span>
+            <span className="group-label">{navigationLabel('groups', g.key, g.label)}</span>
             <span className="group-count">{g.sections.reduce((count, section) => count + section.items.length, 0)}</span>
           </button>
         ))}
@@ -564,7 +575,7 @@ export default function DataPanel({
                 if (section.items[0]) setActiveTab(section.items[0].tab_key);
               }}
             >
-              {section.label}<span>{section.items.length}</span>
+              {navigationLabel('sections', section.key, section.label)}<span>{section.items.length}</span>
             </button>
           ))}
         </div>
@@ -577,16 +588,16 @@ export default function DataPanel({
             key={t.tab_key}
             className={`data-panel-tab ${activeTab === t.tab_key ? 'active' : ''}`}
             onClick={() => handleTabClick(t.tab_key)}
-            title={t.label}
+            title={navigationLabel('tabs', t.tab_key, t.label)}
           >
             <span className="tab-icon">{t.icon}</span>
-            {t.label}
+            {navigationLabel('tabs', t.tab_key, t.label)}
           </button>
         ))}
       </div>
 
       <div className="data-panel-content">
-        {!hasVisibleNavigation && <div className="data-panel-empty">当前没有可见的工作台功能，请联系管理员。</div>}
+        {!hasVisibleNavigation && <div className="data-panel-empty">{t('dataPanel.empty')}</div>}
         {hasVisibleNavigation && <>
         {activeTab === 'files' && <FileManager onFileClick={(name) => { loadCsvData(name); handleTabClick('table'); }} />}
         {activeTab === 'table' && <DataTable columns={tableColumns} data={tableData} loading={loading} />}

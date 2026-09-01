@@ -34,12 +34,57 @@ def _load_translations():
 
 def set_language(lang: str):
     """Set the current language for the calling async context."""
-    _current_lang.set(lang)
+    return _current_lang.set(lang)
+
+
+def reset_language(token) -> None:
+    """Restore the language context returned by :func:`set_language`."""
+    _current_lang.reset(token)
 
 
 def get_language() -> str:
     """Return the current language code."""
     return _current_lang.get()
+
+
+def _language_from_headers(headers) -> str | None:
+    """Resolve the UI language from browser request headers."""
+    raw = headers.get(b'x-locale') or headers.get(b'accept-language')
+    if not raw:
+        return None
+    value = raw.decode('latin-1').split(',', 1)[0].strip().lower().replace('_', '-')
+    if value.startswith('en'):
+        return 'en'
+    if value.startswith('ar'):
+        return 'ar'
+    if value.startswith('zh'):
+        return 'zh'
+    return None
+
+
+class LocaleMiddleware:
+    """Bind the browser locale to every HTTP/WebSocket request.
+
+    Frontend controls send ``X-Locale`` and ``Accept-Language``.  Binding the
+    context at the ASGI boundary keeps API error messages and generated
+    navigation labels in sync even when a route does not explicitly parse the
+    headers itself.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get('type') not in {'http', 'websocket'}:
+            return await self.app(scope, receive, send)
+        locale = _language_from_headers(dict(scope.get('headers') or []))
+        if locale is None:
+            return await self.app(scope, receive, send)
+        token = set_language(locale)
+        try:
+            return await self.app(scope, receive, send)
+        finally:
+            reset_language(token)
 
 
 def t(key: str, **kwargs) -> str:
