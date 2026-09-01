@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import arAE from './locales/ar-AE/common.json';
 import enUS from './locales/en-US/common.json';
 import zhCN from './locales/zh-CN/common.json';
-import { getLocaleHeaders, isRtlLocale, normalizeLocale, resolveInitialLocale, setLocale } from './index';
+import i18n, { getLocaleHeaders, isRtlLocale, normalizeLocale, resolveInitialLocale, setLocale } from './index';
 
 function flattenKeys(value: unknown, prefix = ''): string[] {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return [prefix];
@@ -81,6 +81,14 @@ describe('translation resources', () => {
     expect(enUS.map.layerNames.s2SelectableParcel).toBe('S2 selectable source parcel');
     expect(flattenValues(enUS.map.layerNames).join(' ')).not.toMatch(/[\p{Script=Han}]/u);
     expect(flattenValues(arAE.map.layerNames).join(' ')).not.toMatch(/[\p{Script=Han}]/u);
+  });
+
+  it('interpolates numeric values in the English SWMM map timeline', async () => {
+    await setLocale('en-US');
+    expect(i18n.t('map.swmmTimeline', { count: '238,350' })).toBe('SWMM node timeline · 238,350 nodes');
+    expect(i18n.t('map.nativeOut', { time: '2024-04-16 03:25' })).toBe('Native OUT time: 2024-04-16 03:25');
+    expect(i18n.t('map.elapsedMinutes', { value: '25' })).toBe('Elapsed: 25 min');
+    await setLocale('zh-CN');
   });
 
   it('fully localizes the UWM livability workbenches', () => {
