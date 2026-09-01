@@ -583,6 +583,16 @@ export default function Map3DView({
           }
           return lineColor;
         },
+        // GeoJsonLayer defaults point radii to metres. At a citywide zoom that
+        // made valid FGB point features sub-pixel and appear missing. Map
+        // layer radius values are UI pixels, matching the 2D renderer.
+        pointType: 'circle',
+        getPointRadius: Number(layer.style?.radius ?? 3),
+        pointRadiusUnits: 'pixels',
+        pointRadiusMinPixels: Math.max(1, Number(layer.style?.radius ?? 3)),
+        pointRadiusMaxPixels: Math.max(1, Number(layer.style?.radius ?? 3)),
+        getLineWidth: Number(layer.style?.weight ?? 1),
+        lineWidthUnits: 'pixels',
         lineWidthMinPixels: 1,
         onHover: (info: any) => onLayerHover(info, layer),
       });

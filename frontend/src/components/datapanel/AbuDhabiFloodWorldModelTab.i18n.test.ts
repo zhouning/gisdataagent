@@ -21,4 +21,11 @@ describe('Abu Dhabi flood world-model English presentation', () => {
     expect(text).toContain('all nodes');
     expect(text).not.toMatch(/[\u3400-\u9fff]/u);
   });
+
+  it('distinguishes complete topology nodes from source facility points', () => {
+    const topology = translateAbuEnglishText('模型输入 · 管线端点拓扑节点（0.1 m 吸附派生，238,350 个）');
+    const facilities = translateAbuEnglishText('原始参考 · Makani SW_NODE 设施点（8,614 个，不代表全部管线端点）');
+    expect(topology).toBe('Model input · pipe-endpoint topology nodes (0.1 m snap-derived, 238,350 features)');
+    expect(facilities).toBe('Source reference · Makani SW_NODE facilities (8,614 features, not all pipe endpoints)');
+  });
 });

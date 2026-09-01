@@ -142,16 +142,27 @@ const gates = [
 // They are input/asset geometry only; no hydraulic variables are encoded here.
 const customerMapLayers = {
   extent: {
-    name: '原始输入 · 客户雨水管线（规范化全量，238,287 条）', type: 'fgb', fgb: 'abu_dhabi_customer_stormwater_pipeline_full.fgb',
+    name: '模型输入 · 客户 GDB 雨水管线（规范化全量，238,287 条）', type: 'fgb', fgb: 'abu_dhabi_customer_stormwater_gdb_pipeline_full.fgb',
     style: { color: '#38bdf8', weight: 1, opacity: 0.25 },
   },
   network: {
-    name: '原始输入 · 客户雨水管线（规范化全量，238,287 条）', type: 'fgb', fgb: 'abu_dhabi_customer_stormwater_pipeline_full.fgb',
+    name: '模型输入 · 客户 GDB 雨水管线（规范化全量，238,287 条）', type: 'fgb', fgb: 'abu_dhabi_customer_stormwater_gdb_pipeline_full.fgb',
     style: { color: '#f59e0b', weight: 1.5, opacity: 0.72 },
+    tooltip_fields: ['registered_pipeline_fid', 'source_node_id', 'target_node_id', 'recomputed_length_m', 'diameter_numeric', 'pipe_material', 'pipeline_status'],
+    tooltip_labels: { registered_pipeline_fid: '客户管段 FID', source_node_id: '起点拓扑 ID', target_node_id: '终点拓扑 ID', recomputed_length_m: '重算长度（m）', diameter_numeric: '管径候选值', pipe_material: '管材', pipeline_status: '管线状态' },
   },
   nodes: {
-    name: '原始输入 · 客户雨水节点（规范化全量，238,350 个）', type: 'fgb', fgb: 'abu_dhabi_customer_stormwater_nodes_full.fgb',
-    style: { color: '#22d3ee', fillColor: '#0891b2', radius: 3, weight: 1, fillOpacity: 0.72 },
+    name: '模型输入 · 管线端点拓扑节点（0.1 m 吸附派生，238,350 个）', type: 'fgb', fgb: 'abu_dhabi_customer_stormwater_topology_nodes_full.fgb',
+    style: { color: '#ecfeff', fillColor: '#06b6d4', radius: 2.5, weight: 0.5, opacity: 0.9, fillOpacity: 0.72 },
+    tooltip_fields: ['node_id', 'degree', 'endpoint_count', 'component_id', 'candidate_facility_count', 'candidate_facility_roles'],
+    tooltip_labels: { node_id: '拓扑节点 ID', degree: '连接度', endpoint_count: '吸附端点数', component_id: '连通分量', candidate_facility_count: '候选设施数', candidate_facility_roles: '候选设施角色' },
+  },
+  sourceNodes: {
+    name: '原始参考 · Makani SW_NODE 设施点（8,614 个，不代表全部管线端点）', type: 'fgb', fgb: 'abu_dhabi_customer_stormwater_nodes_full.fgb',
+    style: { color: '#fdf4ff', fillColor: '#d946ef', radius: 4, weight: 1, opacity: 0.95, fillOpacity: 0.86 },
+    visible: false,
+    tooltip_fields: ['UNITID', 'PointCode', 'Affiliation', 'GroundElev', 'WellBottomElev'],
+    tooltip_labels: { UNITID: '设施 ID', PointCode: '物探点号', Affiliation: '附属物类型', GroundElev: '地面高程', WellBottomElev: '井底高程' },
   },
 } as const;
 
@@ -246,11 +257,11 @@ const swmmResultLayers = {
 } as const;
 
 const stageLayerKeys: Record<string, Array<keyof typeof customerMapLayers>> = {
-  data: ['network', 'nodes'],
-  swmm: ['network', 'nodes'],
-  surface: ['network', 'nodes'],
+  data: ['network', 'nodes', 'sourceNodes'],
+  swmm: ['network', 'nodes', 'sourceNodes'],
+  surface: ['network', 'nodes', 'sourceNodes'],
   gwm: [],
-  validation: ['network', 'nodes'],
+  validation: ['network', 'nodes', 'sourceNodes'],
 };
 
 const stageResultLayerKeys: Record<string, Array<keyof typeof swmmResultLayers>> = {
@@ -453,6 +464,13 @@ const ABU_EN_REPLACEMENTS: Array<[string, string]> = [
   ['全市连续网络（单个 SWMM 作业）', 'Citywide continuous network (one SWMM job)'], ['内部调试分块（不作为全市结果）', 'Internal debug partitions (not citywide results)'],
   ['原始输入 · 客户雨水管线（规范化全量，238,287 条）', 'Raw input · customer stormwater pipes (normalized full set, 238,287 features)'],
   ['原始输入 · 客户雨水节点（规范化全量，238,350 个）', 'Raw input · customer stormwater nodes (normalized full set, 238,350 features)'],
+  ['模型输入 · 客户 GDB 雨水管线（规范化全量，238,287 条）', 'Model input · customer GDB stormwater pipes (normalized full set, 238,287 features)'],
+  ['模型输入 · 管线端点拓扑节点（0.1 m 吸附派生，238,350 个）', 'Model input · pipe-endpoint topology nodes (0.1 m snap-derived, 238,350 features)'],
+  ['原始参考 · Makani SW_NODE 设施点（8,614 个，不代表全部管线端点）', 'Source reference · Makani SW_NODE facilities (8,614 features, not all pipe endpoints)'],
+  ['拓扑节点 ID', 'Topology node ID'], ['连接度', 'Degree'], ['吸附端点数', 'Snapped endpoint count'], ['连通分量', 'Connected component'],
+  ['候选设施数', 'Candidate facility count'], ['候选设施角色', 'Candidate facility roles'], ['起点拓扑 ID', 'Source topology ID'], ['终点拓扑 ID', 'Target topology ID'],
+  ['重算长度（m）', 'Recomputed length (m)'], ['管径候选值', 'Candidate diameter'], ['管材', 'Pipe material'], ['管线状态', 'Pipe status'],
+  ['设施 ID', 'Facility ID'], ['物探点号', 'Survey point code'], ['附属物类型', 'Affiliation'], ['地面高程', 'Ground elevation'], ['井底高程', 'Well-bottom elevation'],
   ['降雨时长（分钟）', 'Rainfall duration (minutes)'], ['雨后计算（分钟）', 'Post-rainfall simulation (minutes)'], ['输出间隔（分钟）', 'Output interval (minutes)'], ['边界水位（m）', 'Boundary level (m)'],
   ['堵塞率（%）', 'Blockage (%)'], ['出水边界', 'Outfall boundary'], ['自由出水（诊断）', 'Open outfall (diagnostic)'], ['固定水位边界', 'Fixed-level boundary'],
   ['EPA SWMM 5.2.4（当前）', 'EPA SWMM 5.2.4 (current)'], ['SWMM + 二维（待准入）', 'SWMM + 2D (pending admission)'], ['GWM 快速推演（待训练）', 'GWM rapid rollout (training pending)'],
@@ -798,15 +816,18 @@ function buildCustomerMapUpdate(stageKey: string, ready: boolean, resultReady: b
         ? []
         : showProxyResults
           ? resultKeys.filter(key => key === 'links' || key === 'nodes').map(key => swmmResultLayers[key])
-          : []),
+      : []),
     ...(ready && !showResultLayers
       ? keys.map(key => resultKeys.length > 0
         ? {
           ...customerMapLayers[key],
           style: {
             ...customerMapLayers[key].style,
-            opacity: key === 'network' ? 0.18 : 0.35,
-            fillOpacity: key === 'nodes' ? 0.25 : undefined,
+            // Keep the raw customer network visible while a SWMM result is
+            // unavailable. Topology nodes must remain legible at city scale;
+            // the previous 0.25 fill opacity made them look absent.
+            opacity: key === 'network' ? 0.42 : key === 'sourceNodes' ? 0.95 : 0.86,
+            fillOpacity: key === 'nodes' ? 0.72 : key === 'sourceNodes' ? 0.86 : undefined,
           },
         }
         : customerMapLayers[key])
@@ -1428,8 +1449,8 @@ export default function AbuDhabiFloodWorldModelTab() {
       .then(files => {
         if (cancelled) return;
         const names = new Set(Array.isArray(files) ? files.map((file: any) => String(file.name || '')) : []);
-        const ready = names.has('abu_dhabi_customer_stormwater_pipeline_full.fgb')
-          && names.has('abu_dhabi_customer_stormwater_nodes_full.fgb');
+        const ready = names.has('abu_dhabi_customer_stormwater_gdb_pipeline_full.fgb')
+          && names.has('abu_dhabi_customer_stormwater_topology_nodes_full.fgb');
         const resultReady = names.has('abu_dhabi_swmm_public_proxy_pilot_nodes.geojson')
           && names.has('abu_dhabi_swmm_public_proxy_pilot_links.geojson');
         const cityCompiled = names.has('abu_dhabi_city_swmm_full_compile_summary.json');
