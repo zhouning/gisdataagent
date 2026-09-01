@@ -3023,6 +3023,8 @@
       "aria": "Urban rainfall flood scenario simulation",
       "title": "Scenario inputs",
       "badge": "SWMM diagnostic",
+      "run": "Run SWMM Simulation",
+      "running": "Running SWMM Simulation...",
       "disclaimer": "Run invokes EPA SWMM 5.2.4 on the continuous citywide network and stores native RPT / OUT. Design storms use the 2022 official Zone B DDF values for 2/5/10/25/50/100-year return periods at 180 minutes. The DDF does not publish a complete hyetograph; 5-minute alternating-block allocation and a 40% peak position are explicit modeling assumptions. Results are not calibrated or engineering-admitted."
     }
   }

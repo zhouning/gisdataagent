@@ -549,7 +549,8 @@ const ABU_EN_REPLACEMENTS: Array<[string, string]> = [
   ['当前原型固定 5 分钟路由步长', 'The current prototype uses a fixed 5-minute routing step'],
   ['已从最近一次完成的真实 EPA SWMM 情景恢复', 'Restored from the latest completed real EPA SWMM scenario'],
   ['正在读取预计算作业…', 'Reading the precomputed job…'], ['正在准备原生 OUT 时间轴…', 'Preparing the native OUT timeline…'],
-  ['正在加载全量节点到地图…', 'Loading all nodes onto the map…'], ['正在执行真实 SWMM…', 'Running real SWMM…'],
+  ['正在加载全量节点到地图…', 'Loading all nodes onto the map…'], ['正在执行真实 SWMM…', 'Running SWMM Simulation...'],
+  ['运行真实 SWMM 情景', 'Run SWMM Simulation'],
   ['真实 SWMM 情景提交失败', 'Failed to submit the real SWMM scenario'], ['真实 SWMM 情景运行失败', 'The real SWMM scenario failed'],
   ['预计算 SWMM 作业读取失败', 'Failed to read the precomputed SWMM job'], ['预计算 SWMM 时间轴读取失败', 'Failed to read the precomputed SWMM timeline'],
   ['预计算 SWMM 结果加载失败', 'Failed to load precomputed SWMM results'], ['全量 SWMM 节点结果读取失败', 'Failed to read the complete SWMM node results'],
@@ -1000,6 +1001,8 @@ export default function AbuDhabiFloodWorldModelTab() {
     'scenario.aria': '城市降雨内涝情景模拟',
     'scenario.title': '情景模拟输入',
     'scenario.badge': '真实 SWMM 诊断',
+    'scenario.run': '运行 SWMM 情景模拟',
+    'scenario.running': '正在运行 SWMM 情景模拟…',
     'scenario.disclaimer': '按钮会真实调用 EPA SWMM 5.2.4 的全市连续网络并保存原生 RPT / OUT；设计暴雨可直接使用 2022 年官方 Zone B DDF 的 2/5/10/25/50/100 年一遇、180 分钟雨量。DDF 表未给出完整时间雨型，当前 5 分钟交替块分配和 40% 峰值位置属于明确建模假设。结果未校准、未工程准入。',
   };
   const en = (key: string, fallback: string, options?: Record<string, unknown>) => {
@@ -1585,7 +1588,7 @@ export default function AbuDhabiFloodWorldModelTab() {
 
             {scenarioError && <div className="abu-flood-form-error"><AlertTriangle size={14} />{localizeAbuText(scenarioError)}</div>}
             <div className="abu-flood-scenario-actions">
-              <button className="abu-flood-map-action" type="button" onClick={runScenarioPreview} disabled={controlsBusy}><Play size={15} />{scenarioBusy ? localizeAbuText('正在执行真实 SWMM…') : localizeAbuText('运行真实 SWMM 情景')}</button>
+              <button className="abu-flood-map-action" type="button" onClick={runScenarioPreview} disabled={controlsBusy}><Play size={15} />{scenarioBusy ? en('scenario.running', 'Running SWMM Simulation...') : en('scenario.run', 'Run SWMM Simulation')}</button>
               {isOfficialZoneBStorm && <button className="abu-flood-reset-action abu-flood-precomputed-action" type="button" onClick={loadPrecomputedDesignStorm} disabled={controlsBusy || !designStormBatch}>{precomputedLoadStage ? <LoaderCircle className="abu-flood-loading-icon" size={14} /> : <FileCheck2 size={14} />}{precomputedLoadStage === 'job' ? localizeAbuText('正在读取预计算作业…') : precomputedLoadStage === 'timeline' ? localizeAbuText('正在准备原生 OUT 时间轴…') : precomputedLoadStage === 'map' ? localizeAbuText('正在加载全量节点到地图…') : localizeAbuText(`加载 ${scenario.returnPeriodYears} 年一遇预计算结果`)}</button>}
               <button className="abu-flood-reset-action" type="button" onClick={resetScenario} disabled={controlsBusy}><RotateCcw size={14} />{localizeAbuText('恢复默认')}</button>
             </div>

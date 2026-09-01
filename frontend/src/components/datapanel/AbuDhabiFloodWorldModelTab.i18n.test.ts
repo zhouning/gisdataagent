@@ -28,4 +28,9 @@ describe('Abu Dhabi flood world-model English presentation', () => {
     expect(topology).toBe('Model input · pipe-endpoint topology nodes (0.1 m snap-derived, 238,350 features)');
     expect(facilities).toBe('Source reference · Makani SW_NODE facilities (8,614 features, not all pipe endpoints)');
   });
+
+  it('labels SWMM execution as a simulation rather than a real-world result', () => {
+    expect(translateAbuEnglishText('运行真实 SWMM 情景')).toBe('Run SWMM Simulation');
+    expect(translateAbuEnglishText('正在执行真实 SWMM…')).toBe('Running SWMM Simulation...');
+  });
 });
