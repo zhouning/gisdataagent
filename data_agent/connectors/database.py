@@ -234,6 +234,17 @@ def _governed_read_query(sql: str, allowed_schemas: tuple[str, ...], row_limit: 
     }
     physical_tables = []
     for table in expression.find_all(exp.Table):
+        # sqlglot represents ``CROSS JOIN LATERAL
+        # jsonb_array_elements(...) AS item`` as a table-like node.  It is a
+        # governed PostgreSQL table function, not a physical relation, so it
+        # must not be subjected to the schema-qualification check below. The
+        # semantic/runtime guards validate its source field and JSON contract
+        # separately before this connector is called.
+        table_source = getattr(table, "this", None)
+        if isinstance(table_source, exp.Anonymous) and str(
+            getattr(table_source, "name", "") or ""
+        ).casefold() == "jsonb_array_elements":
+            continue
         table_name = str(table.name or "")
         schema_name = str(table.db or "")
         if not schema_name and table_name.casefold() in cte_names:

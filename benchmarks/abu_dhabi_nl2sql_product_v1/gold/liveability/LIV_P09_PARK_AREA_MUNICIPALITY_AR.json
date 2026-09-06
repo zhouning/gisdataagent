@@ -1,0 +1,46 @@
+{
+  "contract_id": "LIV_P09_PARK_AREA_MUNICIPALITY_AR_GOLD_V1",
+  "equivalence": {
+    "accepted_fingerprint_keys": [
+      "unordered_position_numeric6_fingerprint",
+      "position_numeric6_fingerprint",
+      "unordered_position_fingerprint",
+      "position_fingerprint"
+    ],
+    "column_aliases_compare_by_position": true,
+    "expected_fingerprints": {
+      "position_fingerprint": "0c1f13976578b2dc8881afaff9f0ff054982886f5652f44dcfebd947df7349a7",
+      "position_numeric6_fingerprint": "3c650623ce108735df54ddbf8d84c9d5b19c027701737274cd531c762bd68fec",
+      "unordered_position_fingerprint": "0c1f13976578b2dc8881afaff9f0ff054982886f5652f44dcfebd947df7349a7",
+      "unordered_position_numeric6_fingerprint": "3c650623ce108735df54ddbf8d84c9d5b19c027701737274cd531c762bd68fec"
+    },
+    "numeric_precision": 6,
+    "order_sensitive": false
+  },
+  "evaluation_only": true,
+  "expected_result": {
+    "columns": [
+      "municipality",
+      "total_area_sqm"
+    ],
+    "ordered_result_fingerprint": "83c8c17ff96996defdede78cfcc6a38cbfd09c8257724d0afb86ecc8be38dcdc",
+    "row_count": 3
+  },
+  "query": {
+    "bounded_limit": 1000,
+    "path": "benchmarks/abu_dhabi_nl2sql_product_v1/gold/liveability/LIV_P09_PARK_AREA_MUNICIPALITY_AR.sql",
+    "read_only": true,
+    "sha256": "729b16f0f829490b9d60c97a15d51615840c3917652ceb23bf0c40d75632d6b0"
+  },
+  "runtime_access": "prohibited",
+  "schema": "gda.nl2sql-gold-result-contract.v1",
+  "source_contract": {
+    "authorized_schema": "public",
+    "database_name": "liveability_data_20260730",
+    "discovery_fingerprint": "506d986836ac9a421a99c88c6d01b15abaa7b7f053d3d6a575cb1db9912c7269",
+    "profile_fingerprint": "f86a8a522797ae4bbf6d067967411f4a854f8a8c6fe468087428d73abbcd1768",
+    "semantic_version": "abu-dhabi-liveability-v4-reviewed-assets",
+    "source_id": 12
+  },
+  "status": "frozen_evaluation_only_product_gold_v1"
+}

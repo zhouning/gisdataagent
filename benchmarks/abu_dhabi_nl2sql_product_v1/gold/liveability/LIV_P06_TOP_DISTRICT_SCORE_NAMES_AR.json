@@ -1,0 +1,46 @@
+{
+  "contract_id": "LIV_P06_TOP_DISTRICT_SCORE_NAMES_AR_GOLD_V1",
+  "equivalence": {
+    "accepted_fingerprint_keys": [
+      "unordered_position_numeric6_fingerprint",
+      "position_numeric6_fingerprint",
+      "unordered_position_fingerprint",
+      "position_fingerprint"
+    ],
+    "column_aliases_compare_by_position": true,
+    "expected_fingerprints": {
+      "position_fingerprint": "307d6cf179ec06bace9bd97764be167da806d02bfaa17a9ac7d3560fe30c2e59",
+      "position_numeric6_fingerprint": "ba2202e5cc3dfc16cf2a96138495ffd45483f819acb74d7a325f17b770484aef",
+      "unordered_position_fingerprint": "febb76c7b7b3d904cf46bce0f3a2ceac80a68d91a475d790ec1103440ac80fd6",
+      "unordered_position_numeric6_fingerprint": "d9b1764e7cde82070cb58d61bf7a9bed196ce0b7fa4d7b4062bb4b4efd460a7b"
+    },
+    "numeric_precision": 6,
+    "order_sensitive": false
+  },
+  "evaluation_only": true,
+  "expected_result": {
+    "columns": [
+      "name_en",
+      "average_overall_score"
+    ],
+    "ordered_result_fingerprint": "901e899654ebeaf8b263d321551b864cfd7ec104d7afa13fe7511e8dbbc9796c",
+    "row_count": 10
+  },
+  "query": {
+    "bounded_limit": 1000,
+    "path": "benchmarks/abu_dhabi_nl2sql_product_v1/gold/liveability/LIV_P06_TOP_DISTRICT_SCORE_NAMES_AR.sql",
+    "read_only": true,
+    "sha256": "0eb6b9f2d43380571c01772722fce84d6c72263f554f4ed529bf0db4df7ebeb1"
+  },
+  "runtime_access": "prohibited",
+  "schema": "gda.nl2sql-gold-result-contract.v1",
+  "source_contract": {
+    "authorized_schema": "public",
+    "database_name": "liveability_data_20260730",
+    "discovery_fingerprint": "506d986836ac9a421a99c88c6d01b15abaa7b7f053d3d6a575cb1db9912c7269",
+    "profile_fingerprint": "f86a8a522797ae4bbf6d067967411f4a854f8a8c6fe468087428d73abbcd1768",
+    "semantic_version": "abu-dhabi-liveability-v4-reviewed-assets",
+    "source_id": 12
+  },
+  "status": "frozen_evaluation_only_product_gold_v1"
+}

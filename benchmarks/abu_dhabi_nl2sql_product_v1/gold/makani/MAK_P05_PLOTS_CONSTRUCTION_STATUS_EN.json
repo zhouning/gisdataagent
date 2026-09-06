@@ -1,0 +1,46 @@
+{
+  "contract_id": "MAK_P05_PLOTS_CONSTRUCTION_STATUS_EN_GOLD_V1",
+  "equivalence": {
+    "accepted_fingerprint_keys": [
+      "unordered_position_numeric6_fingerprint",
+      "position_numeric6_fingerprint",
+      "unordered_position_fingerprint",
+      "position_fingerprint"
+    ],
+    "column_aliases_compare_by_position": true,
+    "expected_fingerprints": {
+      "position_fingerprint": "cd9417db390ddf744b77ab837e305798ab0a708717c429cd29c94569cc38d32b",
+      "position_numeric6_fingerprint": "3ec67eafc7575813338245364937db85b8aa74607b0c5280f85ac39c3d34890f",
+      "unordered_position_fingerprint": "cd9417db390ddf744b77ab837e305798ab0a708717c429cd29c94569cc38d32b",
+      "unordered_position_numeric6_fingerprint": "3ec67eafc7575813338245364937db85b8aa74607b0c5280f85ac39c3d34890f"
+    },
+    "numeric_precision": 6,
+    "order_sensitive": false
+  },
+  "evaluation_only": true,
+  "expected_result": {
+    "columns": [
+      "construction_status",
+      "plot_count"
+    ],
+    "ordered_result_fingerprint": "55a618728d88637e72f3a67d93bf3dbe782dd916920b8762d81fa7283d9ba23e",
+    "row_count": 4
+  },
+  "query": {
+    "bounded_limit": 1000,
+    "path": "benchmarks/abu_dhabi_nl2sql_product_v1/gold/makani/MAK_P05_PLOTS_CONSTRUCTION_STATUS_EN.sql",
+    "read_only": true,
+    "sha256": "aa7f49ca02a40055ea691a86aa74696bace760835c7aa343f20692337d5c3a19"
+  },
+  "runtime_access": "prohibited",
+  "schema": "gda.nl2sql-gold-result-contract.v1",
+  "source_contract": {
+    "authorized_schema": "public",
+    "database_name": "makani_sync_full",
+    "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+    "profile_fingerprint": "a4d99a4084081224ffcf6a02cda777b2aaf6052521573a7ee68f022d62809253",
+    "semantic_version": "abu-dhabi-makani-v4-reviewed-assets",
+    "source_id": 13
+  },
+  "status": "frozen_evaluation_only_product_gold_v1"
+}

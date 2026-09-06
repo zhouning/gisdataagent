@@ -15,6 +15,7 @@ from data_agent.governed_virtual_nl2sql import (
     GovernedVirtualNL2SQLProposal,
     GovernedVirtualSQLProposal,
     _bind_reviewed_explicit_table,
+    _build_instruction,
     _compiled_ir_metric_contract_evidence,
     _generate_proposal,
     _ground_semantic_layer_for_prompt,
@@ -29,6 +30,7 @@ from data_agent.governed_virtual_nl2sql import (
     _semantic_asset_object_match_tokens,
     _semantic_asset_resolution,
     _semantic_asset_score,
+    _semantic_ir_retry_guidance,
     _semantic_binding_gate_rejection_report,
     _semantic_binding_resolution_requires_gate,
     _technical_query_binding_resolution,
@@ -37,22 +39,976 @@ from data_agent.governed_virtual_nl2sql import (
     _semantic_ir_contract,
     apply_llm_proxy_policy,
     apply_metric_projection_contract,
+    apply_reviewed_display_projection_policies_sql,
     classify_read_only_request,
     classify_sensitive_data_request,
+    normalize_governed_json_array_sql,
     normalize_reviewed_spatial_distance_sql,
     resolve_direct_metric_contract,
+    resolve_semantic_answerability_contract,
     run_governed_metric_contract,
     run_governed_virtual_nl2sql,
     _resource_name_candidates,
     _validate_source_and_discovery,
     validate_semantic_sql,
+    validate_ranked_measure_projection_sql,
 )
+
+
+@pytest.mark.parametrize(
+    ("question", "language"),
+    [
+        ("Which 10 districts need the most facilities?", "en"),
+        ("列出设施缺口最大的前10个区。", "zh"),
+        ("اعرض أعلى 10 مناطق حسب فجوة المرافق.", "ar"),
+    ],
+)
+def test_ranked_measure_projection_guard_rejects_label_only_top_n(question, language):
+    with pytest.raises(
+        GovernedVirtualNL2SQLError,
+        match="ranked_measure_projection_missing:needed_ap50",
+    ):
+        validate_ranked_measure_projection_sql(
+            question=question,
+            language=language,
+            sql=(
+                "SELECT d.name_en FROM public.fact_facility_provision AS f "
+                "JOIN public.dim_districts AS d ON f.district_id = d.district_id "
+                "ORDER BY f.needed_ap50 DESC LIMIT 10"
+            ),
+        )
+
+
+def test_ranked_measure_projection_guard_accepts_visible_rank_measure_alias():
+    validate_ranked_measure_projection_sql(
+        question="Which 10 districts need the most facilities?",
+        language="en",
+        sql=(
+            "SELECT d.name_en, SUM(f.needed_ap50) AS facilities_needed "
+            "FROM public.fact_facility_provision AS f "
+            "JOIN public.dim_districts AS d ON f.district_id = d.district_id "
+            "GROUP BY d.name_en ORDER BY facilities_needed DESC LIMIT 10"
+        ),
+    )
+
+
+def test_ranked_measure_projection_guard_ignores_non_ranking_ordering():
+    validate_ranked_measure_projection_sql(
+        question="List district names.",
+        language="en",
+        sql=(
+            "SELECT d.name_en FROM public.dim_districts AS d "
+            "ORDER BY d.district_id LIMIT 10"
+        ),
+    )
+
+
+def test_governed_json_array_normalization_guards_mixed_object_rows():
+    semantic = {
+        "json_access_contracts": [
+            {
+                "shape": "array",
+                "table": "public.fact_oi_indicators",
+                "json_field": "data",
+            }
+        ]
+    }
+    sql = (
+        "SELECT SUM((elem ->> 'Nb_of_Accidents')::numeric) AS total "
+        "FROM public.fact_oi_indicators "
+        "CROSS JOIN LATERAL jsonb_array_elements(public.fact_oi_indicators.data) AS elem"
+    )
+
+    normalized, corrections = normalize_governed_json_array_sql(sql, semantic)
+
+    assert "JSONB_TYPEOF(public.fact_oi_indicators.data) = 'array'" in normalized
+    assert "ELSE CAST('[]' AS JSONB) END" in normalized
+    assert corrections == [
+        "governed_json_array_type_guard:public.fact_oi_indicators.data"
+    ]
+
+
+def test_governed_json_array_normalization_is_idempotent():
+    semantic = {
+        "json_access_contracts": [
+            {
+                "shape": "array",
+                "table": "public.fact_oi_indicators",
+                "json_field": "data",
+            }
+        ]
+    }
+    sql = (
+        "SELECT SUM((elem ->> 'Nb_of_Accidents')::numeric) AS total "
+        "FROM public.fact_oi_indicators "
+        "CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN "
+        "jsonb_typeof(public.fact_oi_indicators.data) = 'array' THEN "
+        "public.fact_oi_indicators.data ELSE CAST('[]' AS JSONB) END) AS elem"
+    )
+
+    normalized, corrections = normalize_governed_json_array_sql(sql, semantic)
+
+    assert normalized == sql
+    assert corrections == []
 
 
 def test_provider_quota_and_auth_errors_are_not_retried():
     assert _is_non_retryable_model_error("google.genai.ClientError: API_KEY_LIMIT_EXCEEDED")
     assert _is_non_retryable_model_error("401 API_KEY_INVALID")
     assert not _is_non_retryable_model_error("temporary connection timeout")
+
+
+def test_semantic_ir_normalization_accepts_string_join_and_filter_aliases():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.indicator",
+            "projections": [
+                {
+                    "output_name": "row_count",
+                    "role": "metric",
+                    "aggregate": "count",
+                }
+            ],
+            "joins": [
+                {
+                    "left_entity": "liveability.indicator",
+                    "right_entity": "liveability.district",
+                    "left_field": "liveability.indicator.district_id",
+                    "right_field": "liveability.district.district_id",
+                }
+            ],
+            "filters": [
+                {
+                    "field": "liveability.indicator.indicator_type",
+                    "operator": "eq",
+                    "values": ["crash_data_pedestrian"],
+                }
+            ],
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    payload = json.loads(normalized)
+
+    join = payload["semantic_query"]["joins"][0]
+    assert join["left_field_ref"] == {
+        "semantic_entity": "liveability.indicator",
+        "semantic_field": "district_id",
+    }
+    assert join["right_field_ref"] == {
+        "semantic_entity": "liveability.district",
+        "semantic_field": "district_id",
+    }
+    filter_spec = payload["semantic_query"]["filters"][0]
+    assert filter_spec["field_ref"] == {
+        "semantic_entity": "liveability.indicator",
+        "semantic_field": "indicator_type",
+    }
+    assert "left_field" not in join and "right_field" not in join
+    assert "left_entity" not in join and "right_entity" not in join
+    assert "field" not in filter_spec
+    assert "semantic_ir_normalized_left_field" in corrections
+
+
+def test_semantic_ir_normalization_accepts_nested_join_endpoints():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.indicator",
+            "projections": [],
+            "joins": [
+                {
+                    "left": {
+                        "semantic_entity": "liveability.indicator",
+                        "semantic_field": "district_id",
+                    },
+                    "right": {
+                        "semantic_entity": "liveability.district",
+                        "semantic_field": "district_id",
+                    },
+                }
+            ],
+            "filters": [],
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    payload = json.loads(normalized)
+    join = payload["semantic_query"]["joins"][0]
+
+    assert join["left_field_ref"]["semantic_field"] == "district_id"
+    assert join["right_field_ref"]["semantic_field"] == "district_id"
+    assert "left" not in join and "right" not in join
+    assert "semantic_ir_normalized_left" in corrections
+
+
+def test_semantic_ir_normalization_moves_json_key_and_removes_duplicate_field():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.indicator",
+            "projections": [
+                {
+                    "output_name": "total",
+                    "role": "metric",
+                    "aggregate": "sum",
+                    "field_ref": {
+                        "semantic_entity": "liveability.indicator",
+                        "semantic_field": "data",
+                        "json_key": "Nb_of_Accidents",
+                    },
+                },
+            ],
+            "filters": [],
+            "joins": [],
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    projection = json.loads(normalized)["semantic_query"]["projections"][0]
+
+    assert projection["field_ref"] is None
+    assert projection["json_array"]["value_key"] == "Nb_of_Accidents"
+    assert "semantic_ir_normalized_json_key_into_array" in corrections
+
+
+def test_semantic_ir_normalization_accepts_direct_dimension_object():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.indicator",
+            "projections": [
+                {
+                    "alias": "district_name",
+                    "dimension": {
+                        "semantic_entity": "liveability.district",
+                        "semantic_field": "name_en",
+                    },
+                }
+            ],
+            "filters": [],
+            "joins": [],
+        },
+    }
+
+    normalized, _ = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    projection = json.loads(normalized)["semantic_query"]["projections"][0]
+    assert projection["role"] == "dimension"
+    assert projection["field_ref"]["semantic_field"] == "name_en"
+    assert "dimension" not in projection
+
+
+def test_semantic_ir_normalization_accepts_projection_alias_ordering():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.indicator",
+            "projections": [],
+            "filters": [],
+            "joins": [],
+            "order_by": [{"projection_alias": "total", "direction": "desc"}],
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    order = json.loads(normalized)["semantic_query"]["order_by"][0]
+    assert order == {"output_name": "total", "direction": "desc"}
+    assert "semantic_ir_normalized_order_projection_alias" in corrections
+
+
+def test_semantic_ir_normalization_accepts_known_schema_null_collections_and_non_spatial_alias():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "schema_id": "gda.semantic_query_ir.v1",
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.indicator",
+            "spatial_intent": "not_applicable",
+            "projections": [
+                {
+                    "output_name": "row_count",
+                    "role": "metric",
+                    "field_ref": None,
+                    "aggregate": "count",
+                    "derived_measure": None,
+                    "derived_expression": None,
+                    "json_array": None,
+                }
+            ],
+            "filters": [],
+            "having_filters": None,
+            "any_filter_groups": None,
+            "joins": [],
+            "order_by": None,
+            "extreme_order_by": None,
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    query = json.loads(normalized)["semantic_query"]
+
+    assert query["schema_id"] == "gda.ad_hoc_semantic_query_ir.v1"
+    assert query["spatial_intent"] == "none"
+    assert query["having_filters"] == []
+    assert query["any_filter_groups"] == []
+    assert query["order_by"] == []
+    assert query["extreme_order_by"] == []
+    GovernedSemanticIRProposal.model_validate_json(normalized)
+    assert "semantic_ir_normalized_schema_id" in corrections
+    assert "semantic_ir_normalized_spatial_intent" in corrections
+    assert "semantic_ir_defaulted_any_filter_groups" in corrections
+
+
+@pytest.mark.parametrize(
+    "provider_schema_id",
+    [
+        "GDA.SEMANTIC_QUERY_IR.V1",
+        " gda.semantic_ir.v1 ",
+        " GDA.AD_HOC_SEMANTIC_QUERY_IR.V1 ",
+        "gda-ad-hoc-semantic-query-ir-v1",
+        "gda.ad-hoc.semantic-query-ir.v1.0",
+    ],
+)
+def test_semantic_ir_normalization_accepts_known_schema_id_case_and_whitespace(
+    provider_schema_id,
+):
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "schema_id": provider_schema_id,
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.indicator",
+            "projections": [
+                {
+                    "output_name": "row_count",
+                    "role": "metric",
+                    "aggregate": "count",
+                }
+            ],
+            "filters": [],
+            "having_filters": [],
+            "any_filter_groups": [],
+            "joins": [],
+            "order_by": [],
+            "extreme_order_by": [],
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    query = json.loads(normalized)["semantic_query"]
+
+    assert query["schema_id"] == "gda.ad_hoc_semantic_query_ir.v1"
+    GovernedSemanticIRProposal.model_validate_json(normalized)
+    assert "semantic_ir_normalized_schema_id" in corrections
+
+
+def test_semantic_ir_normalization_accepts_singular_filter_and_semantic_field():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.facility_provision",
+            "projections": [],
+            "joins": [],
+            "filter": {
+                "semantic_field": "demand",
+                "operator": "gt",
+                "values": [0],
+            },
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    query = json.loads(normalized)["semantic_query"]
+
+    assert "filter" not in query
+    assert query["filters"] == [
+        {
+            "field_ref": {
+                "semantic_entity": "liveability.facility_provision",
+                "semantic_field": "demand",
+            },
+            "operator": "gt",
+            "values": [0],
+        }
+    ]
+    assert "semantic_ir_normalized_singular_filter" in corrections
+    assert "semantic_ir_normalized_filter_semantic_field" in corrections
+
+
+def test_semantic_ir_normalization_accepts_filter_field_object_and_entity_aliases():
+    """Provider field objects are representation aliases, not new semantics."""
+
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_facility_provision",
+            "projections": [],
+            "joins": [],
+            "filters": [
+                {
+                    "entity": "dmt_liveability.fact_facility_provision",
+                    "semantic_field": {"name": "demand_current"},
+                    "operator": "gt",
+                    "values": [0],
+                }
+            ],
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    filter_spec = json.loads(normalized)["semantic_query"]["filters"][0]
+
+    assert filter_spec["field_ref"] == {
+        "semantic_entity": "dmt_liveability.fact_facility_provision",
+        "semantic_field": "demand_current",
+    }
+    assert "entity" not in filter_spec
+    assert "semantic_field" not in filter_spec
+    assert "semantic_ir_normalized_filter_semantic_field" in corrections
+
+
+def test_semantic_ir_normalization_accepts_group_filter_field_object_alias():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_facility_provision",
+            "projections": [],
+            "joins": [],
+            "any_filter_groups": [
+                {
+                    "filters": [
+                        {
+                            "field": {"entity": "dmt_liveability.fact_facility_provision", "name": "demand_current"},
+                            "operator": "gt",
+                            "values": [0],
+                        },
+                        {
+                            "field_ref": {
+                                "semantic_entity": "dmt_liveability.fact_facility_provision",
+                                "semantic_field": "demand_current",
+                            },
+                            "operator": "lt",
+                            "values": [100],
+                        },
+                    ]
+                }
+            ],
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    first = json.loads(normalized)["semantic_query"]["any_filter_groups"][0]["filters"][0]
+
+    assert first["field_ref"]["semantic_field"] == "demand_current"
+    assert "field" not in first
+    assert "semantic_ir_normalized_group_filter_field" in corrections
+
+
+def test_semantic_ir_normalization_accepts_having_container_and_aggregate_aliases():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_facility_provision",
+            "projections": [],
+            "joins": [],
+            "having": {
+                "field": "demand_current",
+                "aggregation": "SUM",
+                "op": ">",
+                "value": 0,
+            },
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    having = json.loads(normalized)["semantic_query"]["having_filters"][0]
+
+    assert having["field_ref"] == {
+        "semantic_entity": "dmt_liveability.fact_facility_provision",
+        "semantic_field": "demand_current",
+    }
+    assert having["aggregate"] == "sum"
+    assert having["operator"] == "gt"
+    assert having["values"] == [0]
+    assert "semantic_ir_normalized_having" in corrections
+    assert "semantic_ir_normalized_having_aggregation" in corrections
+
+
+def test_semantic_ir_normalization_accepts_having_string_and_provider_field_object():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_facility_provision",
+            "projections": [],
+            "having_filters": [
+                {
+                    "field_ref": "dmt_liveability.fact_facility_provision.demand_current",
+                    "aggregate": "SUM",
+                    "operator": ">",
+                    "values": [0],
+                },
+                {
+                    "field_ref": {"entity": "dmt_liveability.fact_facility_provision", "name": "demand_current"},
+                    "aggregate": "sum",
+                    "operator": "gt",
+                    "values": [0],
+                },
+            ],
+        },
+    }
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    having = json.loads(normalized)["semantic_query"]["having_filters"]
+    assert having[0]["field_ref"] == {
+        "semantic_entity": "dmt_liveability.fact_facility_provision",
+        "semantic_field": "demand_current",
+    }
+    assert having[1]["field_ref"] == having[0]["field_ref"]
+    assert having[0]["operator"] == "gt"
+    assert "semantic_ir_normalized_having_field_ref" in corrections
+
+
+def test_semantic_ir_normalization_accepts_wrapped_proposal_with_outer_status():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "proposal": {
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "liveability.facility",
+                "projections": [
+                    {"output_name": "facility_count", "role": "metric", "aggregate": "count"}
+                ],
+                "filters": [],
+                "joins": [],
+            }
+        },
+        "presentation": {"chart_type": "bar"},
+    }
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    payload = json.loads(normalized)
+    assert "proposal" not in payload
+    assert payload["semantic_query"]["projections"][0]["role"] == "metric"
+    assert "semantic_ir_unwrapped_proposal_container" in corrections
+
+
+def test_semantic_ir_normalization_maps_unambiguous_role_aliases():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.facility",
+            "projections": [
+                {"output_name": "facility_count", "role": "measure", "aggregate": "count"},
+                {"output_name": "facility_type", "role": "group", "field_ref": "liveability.facility.facility_type"},
+            ],
+            "filters": [],
+            "joins": [],
+        },
+    }
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    projections = json.loads(normalized)["semantic_query"]["projections"]
+    assert [item["role"] for item in projections] == ["metric", "dimension"]
+    assert "semantic_ir_normalized_role" in corrections
+
+
+def test_semantic_ir_normalization_drops_empty_unsupported_query_envelope():
+    raw = {
+        "language": "en",
+        "proposal_status": "unsupported",
+        "reason": "not supported",
+        "semantic_query": {"status": "unsupported"},
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    payload = json.loads(normalized)
+    assert payload["status"] == "unsupported"
+    assert payload["semantic_query"] is None
+    assert "semantic_ir_removed_empty_unsupported_query" in corrections
+
+
+def test_semantic_ir_normalization_accepts_provider_refusal_reason_alias():
+    raw = {
+        "language": "en",
+        "status": "unsupported",
+        "unsupported_reason": "the requested metric is unavailable",
+        "semantic_query": {"status": "unsupported"},
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    payload = json.loads(normalized)
+    assert payload["reason"] == "the requested metric is unavailable"
+    assert "unsupported_reason" not in payload
+    assert "semantic_ir_normalized_refusal_reason" in corrections
+
+
+def test_semantic_ir_normalization_infers_roles_and_json_field_alias():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "semantic_query_status": "query",
+            "semantic_entity": "liveability.indicator",
+            "projections": [
+                {
+                    "alias": "district",
+                    "field_ref": {
+                        "semantic_entity": "liveability.district",
+                        "semantic_field": "name_en",
+                    },
+                },
+                {
+                    "alias": "total",
+                    "aggregate": "sum",
+                    "json_array": {
+                        "json_field": {
+                            "semantic_entity": "liveability.indicator",
+                            "semantic_field": "data",
+                        },
+                        "value_key": "Nb_of_Accidents",
+                    },
+                },
+            ],
+            "filters": [],
+            "joins": [],
+        },
+    }
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    payload = json.loads(normalized)
+    projections = payload["semantic_query"]["projections"]
+    assert projections[0]["role"] == "dimension"
+    assert projections[1]["role"] == "metric"
+    assert projections[1]["json_array"]["field_ref"]["semantic_field"] == "data"
+    assert "semantic_ir_normalized_json_array_json_field" in corrections
+
+
+def test_semantic_ir_normalization_moves_projection_json_key_into_array():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "semantic_entity": "liveability.indicator",
+            "projections": [
+                {
+                    "alias": "total",
+                    "role": "metric",
+                    "aggregate": "sum",
+                    "field_ref": {
+                        "semantic_entity": "liveability.indicator",
+                        "semantic_field": "data",
+                    },
+                    "json_key": "Nb_of_Accidents",
+                }
+            ],
+            "filters": [],
+            "joins": [],
+        },
+    }
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    projection = json.loads(normalized)["semantic_query"]["projections"][0]
+    assert projection["field_ref"] is None
+    assert projection["json_array"]["value_key"] == "Nb_of_Accidents"
+    assert "semantic_ir_normalized_json_key_projection" in corrections
+
+
+def test_semantic_ir_normalization_accepts_provider_projection_filter_and_presentation_aliases():
+    raw = {
+        "proposal": {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "liveability.facility",
+                "projections": [
+                    {
+                        "alias": "facility_count",
+                        "projection_type": "metric",
+                        "aggregate": "count",
+                    }
+                ],
+                "filters": [
+                    {
+                        "field": "stage",
+                        "op": "=",
+                        "val": "Existing",
+                        "kind": "comparison",
+                    }
+                ],
+                "joins": [],
+            },
+            "presentation": {"chart_type": "bar", "title": "Facilities"},
+        }
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    payload = json.loads(normalized)
+    assert payload["semantic_query"]["projections"][0]["role"] == "metric"
+    assert payload["semantic_query"]["projections"][0]["aggregate"] == "count"
+    assert payload["semantic_query"]["filters"][0]["operator"] == "eq"
+    assert payload["semantic_query"]["filters"][0]["values"] == ["Existing"]
+    assert "kind" not in payload["semantic_query"]["filters"][0]
+    assert "presentation" not in payload
+    assert "semantic_ir_unwrapped_proposal_container" in corrections
+    assert "semantic_ir_normalized_projection_type" in corrections
+    assert "semantic_ir_normalized_filter_op" in corrections
+    assert "semantic_ir_normalized_filter_val" in corrections
+    assert "semantic_ir_removed_filter_kind" in corrections
+
+
+def test_semantic_ir_normalization_accepts_array_or_group_and_separator_variance():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.facility",
+            "projections": [
+                {
+                    "output_name": "total",
+                    "role": "metric",
+                    "aggregate": "count",
+                }
+            ],
+            "filters": [],
+            "any_filter_groups": [
+                [
+                    {
+                        "field_ref": {"semantic_entity": "liveability.facility", "semantic_field": "facility type"},
+                        "operator": "eq",
+                        "values": ["Clinic"],
+                    },
+                    {
+                        "field_ref": {"semantic_entity": "liveability.facility", "semantic_field": "facility-type"},
+                        "operator": "eq",
+                        "values": ["Clinic"],
+                    },
+                ]
+            ],
+            "joins": [],
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    group = json.loads(normalized)["semantic_query"]["any_filter_groups"][0]
+    assert len(group["filters"]) == 2
+    assert [item["field_ref"]["semantic_field"] for item in group["filters"]] == [
+        "facility_type",
+        "facility_type",
+    ]
+    assert "semantic_ir_normalized_filter_group_array" in corrections
+
+
+def test_semantic_ir_normalization_accepts_field_alias_and_group_value():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.facility",
+            "projections": [{"output_name": "total", "role": "metric", "aggregate": "count"}],
+            "filters": [],
+            "any_filter_groups": [{"filters": [{
+                "field_ref": {"semantic_entity": "liveability.facility", "semantic_field": "facility_type"},
+                "operator": "eq", "value": "Clinic",
+            }]}],
+            "order_by": [{"field_alias": "total", "direction": "desc"}],
+            "joins": [],
+        },
+    }
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    query = json.loads(normalized)["semantic_query"]
+    assert query["order_by"][0]["output_name"] == "total"
+    assert query["any_filter_groups"][0]["filters"][0]["values"] == ["Clinic"]
+    assert "semantic_ir_normalized_order_field_alias" in corrections
+    assert "semantic_ir_normalized_group_filter_value" in corrections
+
+
+def test_semantic_ir_normalization_maps_unique_order_field_ref_to_projection_alias():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.district_score",
+            "projections": [
+                {
+                    "output_name": "target_score",
+                    "role": "attribute",
+                    "field_ref": {
+                        "semantic_entity": "liveability.district_score",
+                        "semantic_field": "overall_score",
+                    },
+                }
+            ],
+            "filters": [],
+            "order_by": [
+                {
+                    "field_ref": {
+                        "semantic_entity": "liveability.district_score",
+                        "semantic_field": "overall_score",
+                    },
+                    "direction": "desc",
+                }
+            ],
+            "joins": [],
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    order = json.loads(normalized)["semantic_query"]["order_by"][0]
+    assert order == {"output_name": "target_score", "direction": "desc"}
+    assert "semantic_ir_normalized_order_field_ref" in corrections
+
+
+def test_semantic_ir_normalization_leaves_ambiguous_order_field_ref_invalid():
+    field_ref = {
+        "semantic_entity": "liveability.district_score",
+        "semantic_field": "overall_score",
+    }
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.district_score",
+            "projections": [
+                {"output_name": "score", "role": "attribute", "field_ref": field_ref},
+                {"output_name": "average_score", "role": "metric", "aggregate": "avg", "field_ref": field_ref},
+            ],
+            "filters": [],
+            "order_by": [{"field_ref": field_ref, "direction": "desc"}],
+            "joins": [],
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    order = json.loads(normalized)["semantic_query"]["order_by"][0]
+    assert order["field_ref"] == field_ref
+    assert "output_name" not in order
+    assert "semantic_ir_normalized_order_field_ref" not in corrections
+
+
+def test_semantic_ir_normalization_maps_unique_order_logical_field_to_projection_alias():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.ic_scores",
+            "projections": [
+                {
+                    "output_name": "completion_rate",
+                    "role": "attribute",
+                    "field_ref": {
+                        "semantic_entity": "liveability.ic_scores",
+                        "semantic_field": "cycle_perc_existing",
+                    },
+                }
+            ],
+            "filters": [],
+            "order_by": [
+                {"output_name": "cycle_perc_existing", "direction": "asc"}
+            ],
+            "joins": [],
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    order = json.loads(normalized)["semantic_query"]["order_by"][0]
+    assert order == {"output_name": "completion_rate", "direction": "asc"}
+    assert "semantic_ir_normalized_order_logical_field_alias" in corrections
+
+
+def test_semantic_ir_normalization_infers_equality_operator_and_entity_alias():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.facility",
+            "projections": [{"output_name": "total", "role": "metric", "aggregate": "count"}],
+            "filters": [],
+            "joins": [{
+                "kind": "equality",
+                "left_field_ref": {"semantic_entity": "liveability.facility", "semantic_field": "district_id"},
+                "right_field_ref": {"semantic_entity": "liveability.district", "semantic_field": "district_id"},
+                "source_entity": "liveability.facility",
+                "target_entity": "liveability.district",
+            }],
+        },
+    }
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    join = json.loads(normalized)["semantic_query"]["joins"][0]
+    assert join["operator"] == "eq"
+    assert "source_entity" not in join and "target_entity" not in join
+    assert "semantic_ir_inferred_equality_join_operator" in corrections
+
+
+def test_semantic_ir_normalization_accepts_typed_group_filter_values():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.facility",
+            "projections": [{"output_name": "total", "role": "metric", "aggregate": "count"}],
+            "filters": [],
+            "any_filter_groups": [{"filters": [{
+                "field_ref": {"semantic_entity": "liveability.facility", "semantic_field": "is_active"},
+                "operator": "eq",
+                "values": [{"bool": "false"}],
+            }]}],
+        },
+    }
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    values = json.loads(normalized)["semantic_query"]["any_filter_groups"][0]["filters"][0]["values"]
+    assert values == [False]
+    assert "semantic_ir_normalized_group_typed_filter_values" in corrections
 from data_agent.semantic_query_ir import (
     AdHocSemanticQueryIR,
     build_compiled_ad_hoc_semantic_plan,
@@ -180,8 +1136,246 @@ async def test_native_gemini_ir_uses_json_mime_without_nested_provider_schema():
     assert "response_json_schema" not in config_payload
 
 
+@pytest.mark.asyncio
+async def test_native_gemini_ir_can_opt_into_bounded_provider_schema(monkeypatch):
+    captured: dict[str, object] = {}
+    monkeypatch.setenv("GDA_GEMINI_SEMANTIC_IR_STRUCTURED_OUTPUT", "true")
+
+    class Gemini:
+        __module__ = "google.adk.models.google_llm"
+        model = "gemini-3.7-flash"
+
+    class FakeAgent:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    class FakeRunner:
+        def __init__(self, **kwargs):
+            pass
+
+        async def run_async(self, **kwargs):
+            yield SimpleNamespace(
+                usage_metadata=None,
+                model_version="gemini-3.7-flash",
+                content=SimpleNamespace(
+                    parts=[
+                        SimpleNamespace(
+                            text=json.dumps(
+                                {
+                                    "language": "en",
+                                    "status": "unsupported",
+                                    "reason": "not supported",
+                                }
+                            )
+                        )
+                    ]
+                ),
+            )
+
+    with (
+        patch("google.adk.agents.LlmAgent", FakeAgent),
+        patch("google.adk.runners.Runner", FakeRunner),
+        patch("google.adk.sessions.InMemorySessionService", lambda: object()),
+    ):
+        result = await _generate_proposal(
+            Gemini(),
+            instruction="Return the governed semantic IR proposal.",
+            question="What is supported?",
+            timeout_seconds=5,
+            execution_profile="semantic_ir_experimental",
+        )
+
+    assert result["proposal"].status == "unsupported"
+    config = captured["generate_content_config"]
+    assert config.response_mime_type == "application/json"
+    assert config.response_json_schema["properties"]["semantic_query"]
+
+
 def _semantic_layer():
     return json.loads(SEMANTIC_PATH.read_text(encoding="utf-8"))
+
+
+def _answerability_contract():
+    return {
+        "contract_id": "TEST_ACCESSIBILITY_CONTEXT_V1",
+        "review_status": "reviewed",
+        "disposition": "clarify",
+        "priority": 100,
+        "match": {
+            "required_term_groups": {
+                "zh": [["可达性"], ["覆盖率"]],
+                "en": [["accessibility"], ["coverage"]],
+                "ar": [["إمكانية الوصول"], ["التغطية"]],
+            },
+            "required_context_term_groups": {
+                "zh": [
+                    {"context_id": "mode", "terms": ["步行", "驾车", "骑行"]},
+                    {"context_id": "threshold", "terms": ["分钟", "公里", "米"]},
+                ],
+                "en": [
+                    {"context_id": "mode", "terms": ["walking", "driving", "cycling"]},
+                    {"context_id": "threshold", "terms": ["minutes", "kilometres", "metres"]},
+                ],
+                "ar": [
+                    {"context_id": "mode", "terms": ["مشياً", "بالسيارة", "بالدراجة"]},
+                    {"context_id": "threshold", "terms": ["دقائق", "كيلومتر", "متر"]},
+                ],
+            },
+        },
+        "messages": {
+            "zh": "请补充出行方式和阈值。",
+            "en": "Please provide a travel mode and threshold.",
+            "ar": "يرجى تحديد وسيلة التنقل والحد.",
+        },
+    }
+
+
+def _row_scope_semantic():
+    return {
+        "table_bindings": [
+            {
+                "physical_table": "public.dim_districts",
+                "semantic_entity": "liveability.district",
+                "fields": [
+                    {"physical_field": "district_id", "semantic_field": "district_id"},
+                    {"physical_field": "name_en", "semantic_field": "name_en"},
+                    {"physical_field": "is_activated", "semantic_field": "is_activated"},
+                ],
+            },
+            {
+                "physical_table": "public.fact_scores",
+                "semantic_entity": "liveability.score",
+                "fields": [
+                    {"physical_field": "district_id", "semantic_field": "district_id"},
+                    {"physical_field": "score", "semantic_field": "score"},
+                ],
+            },
+        ],
+        "relationships": [
+            {
+                "left": "public.fact_scores.district_id",
+                "right": "public.dim_districts.district_id",
+                "kind": "equality",
+                "operator": "=",
+                "review_status": "reviewed",
+            }
+        ],
+        "row_scope_policies": [
+            {
+                "policy_id": "ACTIVE_DISTRICTS_V1",
+                "review_status": "reviewed",
+                "applies_to_tables": ["public.fact_scores"],
+                "required_predicate": {
+                    "table": "public.dim_districts",
+                    "field": "is_activated",
+                    "operator": "is_true",
+                },
+                "explicit_override_terms": {
+                    "zh": ["包括未启用区域"],
+                    "en": ["include inactive districts"],
+                    "ar": ["تضمين المناطق غير النشطة"],
+                },
+                "description": "Business analysis defaults to active assessed districts.",
+            }
+        ],
+    }
+
+
+def test_prompt_grounding_includes_row_scope_dependency_table_and_relationship():
+    semantic = _row_scope_semantic()
+
+    grounded, evidence = _ground_semantic_layer_for_prompt(
+        "What is the average score in public.fact_scores?",
+        semantic,
+    )
+
+    assert {
+        item["physical_table"] for item in grounded["table_bindings"]
+    } == {"public.fact_scores", "public.dim_districts"}
+    assert len(grounded["relationships"]) == 1
+    assert evidence["row_scope_dependency_tables"] == ["public.dim_districts"]
+
+
+def test_prompt_grounding_respects_explicit_row_scope_override():
+    semantic = _row_scope_semantic()
+
+    grounded, evidence = _ground_semantic_layer_for_prompt(
+        "What is the average score in public.fact_scores; include inactive districts?",
+        semantic,
+    )
+
+    assert [item["physical_table"] for item in grounded["table_bindings"]] == [
+        "public.fact_scores"
+    ]
+    assert grounded["relationships"] == []
+    assert evidence["row_scope_dependency_tables"] == []
+
+
+def test_semantic_answerability_contract_requires_missing_context_only():
+    semantic = {"semantic_answerability_contracts": [_answerability_contract()]}
+
+    missing = resolve_semantic_answerability_contract(
+        "Rank districts by mosque accessibility coverage.", "en", semantic
+    )
+    complete = resolve_semantic_answerability_contract(
+        "Rank districts by mosque accessibility coverage within 10 minutes walking.",
+        "en",
+        semantic,
+    )
+
+    assert missing["status"] == "matched"
+    assert missing["contract_id"] == "TEST_ACCESSIBILITY_CONTEXT_V1"
+    assert missing["missing_context_ids"] == ["mode", "threshold"]
+    assert complete["status"] == "none"
+
+
+def test_semantic_sql_enforces_configured_row_scope_policy():
+    semantic = _row_scope_semantic()
+    with pytest.raises(
+        GovernedVirtualNL2SQLError,
+        match="row_scope_required_dimension_missing:ACTIVE_DISTRICTS_V1",
+    ):
+        validate_semantic_sql(
+            "SELECT AVG(score) AS average_score FROM public.fact_scores",
+            ["public.fact_scores"],
+            semantic,
+            question="What is the average district score?",
+        )
+
+    with pytest.raises(
+        GovernedVirtualNL2SQLError,
+        match="row_scope_required_predicate_missing:ACTIVE_DISTRICTS_V1",
+    ):
+        validate_semantic_sql(
+            "SELECT AVG(s.score) AS average_score FROM public.fact_scores s "
+            "JOIN public.dim_districts d ON s.district_id=d.district_id",
+            ["public.fact_scores", "public.dim_districts"],
+            semantic,
+            question="What is the average district score?",
+        )
+
+    evidence = validate_semantic_sql(
+        "SELECT AVG(s.score) AS average_score FROM public.fact_scores s "
+        "JOIN public.dim_districts d ON s.district_id=d.district_id "
+        "WHERE d.is_activated IS TRUE",
+        ["public.fact_scores", "public.dim_districts"],
+        semantic,
+        question="What is the average district score?",
+    )
+    assert evidence["row_scope_policies"]["applied"] == ["ACTIVE_DISTRICTS_V1"]
+
+
+def test_semantic_sql_allows_explicit_row_scope_override():
+    semantic = _row_scope_semantic()
+    evidence = validate_semantic_sql(
+        "SELECT AVG(score) AS average_score FROM public.fact_scores",
+        ["public.fact_scores"],
+        semantic,
+        question="What is the average score? Include inactive districts.",
+    )
+    assert evidence["row_scope_policies"]["explicitly_bypassed"] == [
+        "ACTIVE_DISTRICTS_V1"
+    ]
 
 
 def test_compiled_ir_contract_evidence_matches_structure_without_alias_lock_in():
@@ -335,8 +1529,12 @@ def test_semantic_ir_model_candidate_does_not_rewrite_logical_identifiers():
         "makani.dictionary.aircompressor_1"
     )
     assert set(corrections) == {
+        "semantic_ir_defaulted_schema_id",
+        "semantic_ir_defaulted_result_count_alias",
         "semantic_ir_defaulted_field_ref",
         "semantic_ir_defaulted_derived_measure",
+        "semantic_ir_defaulted_derived_expression",
+        "semantic_ir_defaulted_json_array",
     }
 
 
@@ -382,8 +1580,10 @@ def test_semantic_ir_model_candidate_normalizes_gemini_projection_aliases():
                 "semantic_entity": "makani.school",
                 "semantic_field": "district_name",
             },
-            "aggregate": None,
-            "derived_measure": None,
+                "aggregate": None,
+                "derived_measure": None,
+                "derived_expression": None,
+                "json_array": None,
         },
         {
             "output_name": "capacity",
@@ -392,8 +1592,10 @@ def test_semantic_ir_model_candidate_normalizes_gemini_projection_aliases():
                 "semantic_entity": "makani.school",
                 "semantic_field": "capacity",
             },
-            "aggregate": "sum",
-            "derived_measure": None,
+                "aggregate": "sum",
+                "derived_measure": None,
+                "derived_expression": None,
+                "json_array": None,
         },
     ]
     assert GovernedSemanticIRProposal.model_validate(payload).semantic_query is not None
@@ -405,6 +1607,38 @@ def test_semantic_ir_model_candidate_normalizes_gemini_projection_aliases():
         "semantic_ir_normalized_metric_field",
         "semantic_ir_removed_metric_alias",
     } <= set(corrections)
+
+
+def test_semantic_ir_model_candidate_normalizes_flattened_projection_logical_field():
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "dmt_liveability.fact_ic_scores",
+                "projections": [
+                    {
+                        "output_name": "existing_completion",
+                        "semantic_entity": "dmt_liveability.fact_ic_scores",
+                        "semantic_field": "streetlight_perc_existing",
+                    }
+                ],
+            },
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    projection = json.loads(normalized)["semantic_query"]["projections"][0]
+    assert projection["role"] == "attribute"
+    assert projection["field_ref"] == {
+        "semantic_entity": "dmt_liveability.fact_ic_scores",
+        "semantic_field": "streetlight_perc_existing",
+    }
+    assert "semantic_entity" not in projection
+    assert "semantic_field" not in projection
+    assert "semantic_ir_normalized_projection_logical_field" in corrections
 
 
 def test_semantic_ir_model_candidate_normalizes_role_arrays_and_order_alias():
@@ -442,6 +1676,105 @@ def test_semantic_ir_model_candidate_normalizes_role_arrays_and_order_alias():
     assert query["order_by"] == [{"output_name": "total_capacity", "direction": "desc"}]
     assert "semantic_ir_normalized_role_projection_arrays" in corrections
     assert "semantic_ir_normalized_order_alias" in corrections
+
+
+def test_semantic_ir_model_candidate_normalizes_projection_name_and_duplicate_json_aggregate():
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "liveability.indicator",
+                "projections": [
+                    {
+                        "output_name": "pedestrian_crashes",
+                        "role": "metric",
+                        "aggregate": "sum",
+                        "json_array": {
+                            "field_ref": {
+                                "semantic_entity": "liveability.indicator",
+                                "semantic_field": "data",
+                            },
+                            "value_key": "Nb_of_Accidents",
+                            "aggregate": "SUM",
+                        },
+                    }
+                ],
+                "order_by": [
+                    {"projection_name": "pedestrian_crashes", "direction": "DESC"}
+                ],
+            },
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    query = json.loads(normalized)["semantic_query"]
+
+    assert query["order_by"] == [
+        {"output_name": "pedestrian_crashes", "direction": "desc"}
+    ]
+    assert "aggregate" not in query["projections"][0]["json_array"]
+    assert "semantic_ir_normalized_order_projection_name" in corrections
+    assert "semantic_ir_removed_duplicate_json_array_aggregate" in corrections
+
+
+def test_semantic_ir_model_candidate_normalizes_single_projection_object():
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "liveability.indicator",
+                "projections": {
+                    "output_name": "pedestrian_crashes",
+                    "role": "metric",
+                    "aggregate": "sum",
+                    "field_ref": {
+                        "semantic_entity": "liveability.indicator",
+                        "semantic_field": "accidents",
+                    },
+                },
+            },
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    query = json.loads(normalized)["semantic_query"]
+
+    assert isinstance(query["projections"], list)
+    assert query["projections"][0]["output_name"] == "pedestrian_crashes"
+    assert "semantic_ir_normalized_single_projection_object" in corrections
+
+
+def test_semantic_ir_instruction_requires_human_labels_and_disambiguation() -> None:
+    instruction = _build_instruction(
+        "ENTITY liveability.district",
+        execution_profile="semantic_ir_experimental",
+        question="Which districts have the highest score?",
+        language="en",
+    )
+
+    assert "project the reviewed human-readable primary label" in instruction
+    assert "also project the declared disambiguating dimension" in instruction
+    assert "project the governed entity identifier" not in instruction
+
+
+def test_semantic_ir_instruction_declares_canonical_provider_representation() -> None:
+    instruction = _build_instruction(
+        "ENTITY liveability.district",
+        execution_profile="semantic_ir_experimental",
+        question="Which districts have the highest score?",
+        language="en",
+    )
+
+    assert "Canonical representation rules:" in instruction
+    assert "Do not emit aliases such as `proposal_status`" in instruction
+    assert "Every join uses only `left_field_ref`" in instruction
+    assert "Filter `values` are arrays of raw JSON" in instruction
 
 
 def test_semantic_ir_model_candidate_normalizes_primary_entity_alias():
@@ -511,6 +1844,224 @@ def test_semantic_ir_model_candidate_normalizes_semantic_field_and_proposal_stat
     assert "semantic_ir_normalized_primary_semantic_entity" in corrections
 
 
+def test_semantic_ir_model_candidate_normalizes_short_schema_id_and_order_name():
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "schema_id": "v1",
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "makani.school",
+                "projections": [
+                    {
+                        "output_name": "school_count",
+                        "role": "metric",
+                        "aggregate": "count",
+                    }
+                ],
+                "order_by": [{"name": "school_count", "direction": "desc"}],
+            },
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    payload = json.loads(normalized)
+
+    assert payload["semantic_query"]["schema_id"] == "gda.ad_hoc_semantic_query_ir.v1"
+    assert payload["semantic_query"]["order_by"][0]["output_name"] == "school_count"
+    assert "name" not in payload["semantic_query"]["order_by"][0]
+    assert "semantic_ir_normalized_schema_id" in corrections
+    assert "semantic_ir_normalized_order_name" in corrections
+    assert GovernedSemanticIRProposal.model_validate(payload).status == "query"
+
+
+def test_semantic_ir_model_candidate_defaults_null_result_count_alias() -> None:
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "makani.school",
+                "projections": [
+                    {
+                        "output_name": "school_count",
+                        "role": "metric",
+                        "aggregate": "count",
+                    }
+                ],
+                "result_count_alias": None,
+            },
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    payload = json.loads(normalized)
+
+    assert payload["semantic_query"]["result_count_alias"] == "result_count"
+    assert "semantic_ir_defaulted_result_count_alias" in corrections
+    assert GovernedSemanticIRProposal.model_validate(payload).status == "query"
+
+
+def test_semantic_ir_model_candidate_normalizes_projection_output_name_order_alias() -> None:
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "makani.school",
+                "projections": [
+                    {
+                        "output_name": "school_count",
+                        "role": "metric",
+                        "aggregate": "count",
+                    }
+                ],
+                "order_by": [
+                    {
+                        "projection_output_name": "school_count",
+                        "direction": "desc",
+                    }
+                ],
+            },
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    payload = json.loads(normalized)
+
+    assert payload["semantic_query"]["order_by"] == [
+        {"output_name": "school_count", "direction": "desc"}
+    ]
+    assert "semantic_ir_normalized_order_projection_output_name" in corrections
+    assert GovernedSemanticIRProposal.model_validate(payload).status == "query"
+
+
+def test_semantic_ir_model_candidate_removes_duplicate_proposal_status():
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "proposal_status": "QUERY",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_query_status": "query",
+                "semantic_entity": "makani.school",
+                "projections": [
+                    {
+                        "output_name": "school_count",
+                        "role": "metric",
+                        "aggregate": "count",
+                    }
+                ],
+            },
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    payload = json.loads(normalized)
+
+    assert "proposal_status" not in payload
+    assert "semantic_query_status" not in payload["semantic_query"]
+    assert "semantic_ir_removed_duplicate_proposal_status" in corrections
+    assert "semantic_ir_removed_duplicate_semantic_query_status" in corrections
+    assert GovernedSemanticIRProposal.model_validate(payload).status == "query"
+
+
+def test_semantic_ir_model_candidate_keeps_conflicting_proposal_status_invalid():
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "proposal_status": "unsupported",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "makani.school",
+                "projections": [],
+            },
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    payload = json.loads(normalized)
+
+    assert payload["proposal_status"] == "unsupported"
+    assert "semantic_ir_removed_duplicate_proposal_status" not in corrections
+
+
+def test_semantic_ir_model_candidate_normalizes_refusal_and_typed_filter_values():
+    refusal = json.dumps(
+        {
+            "language": "en",
+            "status": "unsupported",
+            "reason": "data unavailable",
+            "semantic_query": {
+                "language": "en",
+                "status": "unsupported",
+                "semantic_entity": "makani.school",
+                "projections": [],
+                "filters": [
+                    {
+                        "semantic_entity": "makani.school",
+                        "field_ref": {
+                            "semantic_entity": "makani.school",
+                            "semantic_field": "is_active",
+                        },
+                        "operator": "eq",
+                        "values": [{"bool": "false"}],
+                    }
+                ],
+            },
+        }
+    )
+    normalized, corrections = _normalize_semantic_ir_model_candidate(refusal)
+    payload = json.loads(normalized)
+    assert payload["semantic_query"] is None
+    assert "semantic_ir_removed_unsupported_nested_plan" in corrections
+
+    query = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "makani.school",
+                "projections": [
+                    {
+                        "output_name": "school_count",
+                        "role": "metric",
+                        "aggregate": "count",
+                    }
+                ],
+                "filters": [
+                    {
+                        "semantic_entity": "makani.school",
+                        "field_ref": {
+                            "semantic_entity": "makani.school",
+                            "semantic_field": "is_active",
+                        },
+                        "operator": "eq",
+                        "values": [{"bool": "false"}],
+                    }
+                ],
+            },
+        }
+    )
+    normalized, corrections = _normalize_semantic_ir_model_candidate(query)
+    filter_spec = json.loads(normalized)["semantic_query"]["filters"][0]
+    assert "semantic_entity" not in filter_spec
+    assert filter_spec["values"] == [False]
+    assert "semantic_ir_normalized_typed_filter_values" in corrections
+
+
 def test_semantic_ir_model_candidate_does_not_drop_unconvertible_role_arrays():
     candidate = json.dumps(
         {
@@ -527,6 +2078,109 @@ def test_semantic_ir_model_candidate_does_not_drop_unconvertible_role_arrays():
     )
     normalized, _ = _normalize_semantic_ir_model_candidate(candidate)
     assert "dimensions" in json.loads(normalized)["semantic_query"]
+
+
+def test_semantic_ir_normalization_repairs_scalar_partition_and_boolean_string():
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "makani.school",
+                "projections": [
+                    {
+                        "output_name": "district",
+                        "role": "dimension",
+                        "field_ref": "makani.school.district",
+                    },
+                    {
+                        "output_name": "fc",
+                        "role": "metric",
+                        "aggregate": "max",
+                        "field_ref": "makani.school.fc",
+                    },
+                ],
+                "partition_by": "district",
+                "distinct_rows": "false",
+            },
+        }
+    )
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    query = json.loads(normalized)["semantic_query"]
+    assert query["partition_by"] == ["district"]
+    assert query["distinct_rows"] is False
+    assert "semantic_ir_normalized_partition_by_scalar" in corrections
+    assert "semantic_ir_normalized_distinct_rows" in corrections
+
+
+@pytest.mark.parametrize(
+    "wrapped",
+    [
+        {"bool": False},
+        {"boolean": "false"},
+        {"boolean_value": False},
+        {"value": {"bool": False}},
+    ],
+)
+def test_semantic_ir_normalization_repairs_provider_boolean_wrappers(wrapped):
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "makani.school",
+                "projections": [
+                    {
+                        "output_name": "row_count",
+                        "role": "metric",
+                        "aggregate": "count",
+                    }
+                ],
+                "distinct_rows": wrapped,
+            },
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    query = json.loads(normalized)["semantic_query"]
+
+    assert query["distinct_rows"] is False
+    assert "semantic_ir_normalized_distinct_rows" in corrections
+    GovernedSemanticIRProposal.model_validate_json(normalized)
+
+
+def test_semantic_ir_normalization_leaves_ambiguous_boolean_wrapper_invalid():
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "makani.school",
+                "projections": [
+                    {
+                        "output_name": "row_count",
+                        "role": "metric",
+                        "aggregate": "count",
+                    }
+                ],
+                "distinct_rows": {"value": False, "source": "provider"},
+            },
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    query = json.loads(normalized)["semantic_query"]
+
+    assert query["distinct_rows"] == {"value": False, "source": "provider"}
+    assert "semantic_ir_normalized_distinct_rows" not in corrections
+    with pytest.raises(ValueError):
+        GovernedSemanticIRProposal.model_validate_json(normalized)
 
 
 def test_semantic_ir_model_candidate_does_not_infer_metric_aggregate():
@@ -824,6 +2478,99 @@ def test_semantic_ir_instruction_requires_exact_reviewed_metric_pattern_shape():
     assert "treat that" in instruction
     assert "pattern as the answer contract" in instruction
     assert "`total` does not mean `COUNT(*)`" in instruction
+
+
+def test_semantic_ir_instruction_pins_provider_protocol_shape():
+    from data_agent.governed_virtual_nl2sql import _build_instruction
+
+    instruction = _build_instruction(
+        "REVIEWED LOGICAL METRIC PATTERNS:\n  - none",
+        execution_profile="semantic_ir_experimental",
+    )
+    assert "gda.ad_hoc_semantic_query_ir.v1" in instruction
+    assert "Role `metric` always requires an explicit aggregate" in instruction
+    assert "never put `field_ref` inside an order item" in instruction
+
+
+def test_semantic_ir_retry_guidance_restates_schema_without_semantic_authority():
+    guidance = _semantic_ir_retry_guidance(
+        "model_structured_output_schema_invalid:"
+        "missing@semantic_query.joins.0.kind:Field required;"
+        "extra_forbidden@semantic_query.projections.0.provider_hint"
+    )
+    assert "explicit kind and operator" in guidance
+    assert "provider-only keys" in guidance
+    assert "public.fact" not in guidance
+
+
+def test_semantic_ir_retry_guidance_repairs_missing_metric_measure_source():
+    guidance = _semantic_ir_retry_guidance(
+        "model_structured_output_schema_invalid:"
+        "value_error@semantic_query.projections.2:Value error non-count metric "
+        "requires a semantic field or derived expression"
+    )
+    assert "non-count metric projection" in guidance
+    assert "logical field_ref" in guidance
+    assert "public.fact" not in guidance
+
+
+def test_semantic_ir_retry_guidance_distinguishes_direct_values_from_metrics():
+    guidance = _semantic_ir_retry_guidance(
+        "model_structured_output_schema_invalid:"
+        "value_error@semantic_query.projections.1:Value error metric projection "
+        "requires an aggregate"
+    )
+    assert "role=attribute" in guidance
+    assert "explicit aggregate" in guidance
+    assert "never guess an aggregate" in guidance
+
+
+def test_semantic_ir_retry_guidance_requires_projection_alias_for_ordering():
+    guidance = _semantic_ir_retry_guidance(
+        "model_structured_output_schema_invalid:"
+        "extra_forbidden@semantic_query.order_by.0.field_ref:Extra inputs are not permitted;"
+        "missing@semantic_query.order_by.0.output_name:Field required"
+    )
+    assert "output_name of an existing projection" in guidance
+    assert "do not put a logical field_ref" in guidance
+
+
+def test_semantic_ir_retry_guidance_restores_governed_row_scope():
+    guidance = _semantic_ir_retry_guidance(
+        "row_scope_required_predicate_missing:REVIEWED_SCOPE_V1"
+    )
+    assert "required row-scope predicate" in guidance
+    assert "exact logical field" in guidance
+    assert "REVIEWED_SCOPE_V1" not in guidance
+
+
+def test_semantic_ir_retry_guidance_requests_raw_scalar_filter_values():
+    guidance = _semantic_ir_retry_guidance(
+        "model_structured_output_schema_invalid:"
+        "bool_type@semantic_query.filters.0.values.0.bool:Input should be a valid boolean"
+    )
+    assert "raw scalar strings" in guidance
+    assert "typed object" in guidance
+
+
+def test_semantic_ir_retry_guidance_requires_json_array_projection_shape():
+    guidance = _semantic_ir_retry_guidance(
+        "semantic_json_array_projection_required"
+    )
+    assert "JSON-array contract" in guidance
+    assert "allowed value_key" in guidance
+    assert "public.fact" not in guidance
+
+
+def test_semantic_ir_retry_guidance_repairs_protocol_discriminator_and_count_alias():
+    guidance = _semantic_ir_retry_guidance(
+        "model_structured_output_schema_invalid:"
+        "literal_error@semantic_query.schema_id:Input should match literal;"
+        "string_type@semantic_query.result_count_alias:Input should be a valid string"
+    )
+    assert "gda.ad_hoc_semantic_query_ir.v1" in guidance
+    assert "snake_case string" in guidance
+    assert "public.fact" not in guidance
 
 
 @pytest.mark.parametrize(
@@ -1198,6 +2945,40 @@ def test_reviewed_full_alias_dominates_similarly_named_assets():
     assert evidence[0]["asset_id"] == "makani.dictionary.ad_rural_code_hcr_overlay"
 
 
+def test_reviewed_fpp_indicator_outranks_related_park_geometry_asset():
+    semantic = json.loads(
+        SEMANTIC_PATH.with_name(
+            "liveability_data_20260730_semantic_layer_v24_display_disambiguation_20260902.json"
+        ).read_text(encoding="utf-8")
+    )
+
+    selected, evidence = _retrieve_reviewed_assets(
+        "Which ten districts have the lowest Parks or POS FPP scores at the Existing stage?",
+        semantic,
+    )
+
+    assert selected[0]["asset_id"] == "liveability.facility_provision_gap"
+    assert evidence[0]["asset_id"] == "liveability.facility_provision_gap"
+    assert "liveability.park_calculation_plot" not in {
+        item["asset_id"] for item in selected
+    }
+
+
+def test_reviewed_multiword_count_alias_selects_facility_provision_asset():
+    semantic = json.loads(
+        SEMANTIC_PATH.with_name(
+            "liveability_data_20260730_semantic_layer_v24_display_disambiguation_20260902.json"
+        ).read_text(encoding="utf-8")
+    )
+
+    selected, _evidence = _retrieve_reviewed_assets(
+        "How many parks are in each district?",
+        semantic,
+    )
+
+    assert selected[0]["asset_id"] == "liveability.facility_provision_gap"
+
+
 def test_semantic_binding_resolution_fails_closed_for_unpublished_sibling():
     semantic = {
         "table_bindings": [
@@ -1280,6 +3061,131 @@ def test_semantic_binding_resolution_marks_equal_published_siblings_ambiguous():
     # Published status does not make a generic shared alias unambiguous.  The
     # runtime must ask for a qualifier instead of letting the model guess.
     assert _semantic_binding_resolution_requires_gate(ambiguous)
+
+
+def test_semantic_binding_gate_allows_complementary_published_identities():
+    resolution = {
+        "status": "ambiguous",
+        "reason_code": "multiple_semantic_bindings",
+        "candidates": [
+            {
+                "physical_table": "public.dim_districts",
+                "score": 668.0,
+                "matched_terms": [{"kind": "alias", "term": "districts"}],
+            },
+            {
+                "physical_table": "public.dim_stages",
+                "score": 666.0,
+                "matched_terms": [{"kind": "alias", "term": "existing"}],
+            },
+            {
+                "physical_table": "public.fact_scores",
+                "score": 654.0,
+                "matched_terms": [{"kind": "alias", "term": "quantitative score"}],
+            },
+        ],
+    }
+
+    assert not _semantic_binding_resolution_requires_gate(resolution)
+
+
+def test_semantic_binding_gate_keeps_shared_alias_fail_closed():
+    resolution = {
+        "status": "ambiguous",
+        "reason_code": "multiple_semantic_bindings",
+        "candidates": [
+            {
+                "physical_table": "public.station_a",
+                "score": 668.0,
+                "matched_terms": [{"kind": "alias", "term": "Station"}],
+            },
+            {
+                "physical_table": "public.station_b",
+                "score": 668.0,
+                "matched_terms": [{"kind": "label", "term": "station"}],
+            },
+        ],
+    }
+
+    assert _semantic_binding_resolution_requires_gate(resolution)
+
+
+def test_baseline_prompt_includes_general_multi_stage_and_set_rules():
+    instruction = _build_instruction("SEMANTIC CONTEXT")
+
+    assert 'For "first time after" or threshold-crossing questions' in instruction
+    assert 'For "every/all assessed entity" questions' in instruction
+    assert "requesting both highest and lowest groups" in instruction
+    assert "For band/distribution questions" in instruction
+
+
+def test_technical_binding_does_not_match_generic_business_words_as_fields():
+    semantic = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "docs/customer/abu_dhabi_liveability_site_validation/"
+            "liveability_data_20260730_semantic_layer_v7_published_table_cards_20260901.json"
+        ).read_text(encoding="utf-8")
+    )
+    resolution = _technical_query_binding_resolution(
+        "Which districts have zero existing neighbourhood majlis but a positive 50% target need?",
+        semantic,
+    )
+    assert resolution["status"] in {"none", "business"}
+
+
+def test_current_makani_plot_status_question_uses_field_evidence_not_unrelated_alias():
+    """Field aliases must not make an unrelated table win entity resolution."""
+
+    semantic = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "docs/customer/abu_dhabi_liveability_site_validation/"
+            "makani_sync_full_semantic_layer_v6_95_cards_observed_domains_20260831.json"
+        ).read_text(encoding="utf-8")
+    )
+    resolution = _semantic_asset_resolution(
+        "What is the construction-status breakdown of all plots, and what share is already built?",
+        semantic,
+    )
+    assert resolution["status"] == "resolved"
+    assert resolution["requested_tables"] == ["public.udm_plot"]
+
+
+def test_current_makani_plot_filter_question_uses_observed_domain_evidence():
+    semantic = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "docs/customer/abu_dhabi_liveability_site_validation/"
+            "makani_sync_full_semantic_layer_v6_95_cards_observed_domains_20260831.json"
+        ).read_text(encoding="utf-8")
+    )
+    resolution = _semantic_asset_resolution(
+        "How many plots are allocated and municipally serviced but still not started?",
+        semantic,
+    )
+    assert resolution["status"] == "resolved"
+    assert resolution["requested_tables"] == ["public.udm_plot"]
+
+
+def test_temporal_population_comparison_retrieves_nearest_published_year_sibling():
+    semantic = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "docs/customer/abu_dhabi_liveability_site_validation/"
+            "makani_sync_full_semantic_layer_v6_95_cards_observed_domains_20260831.json"
+        ).read_text(encoding="utf-8")
+    )
+    grounded, evidence = _ground_semantic_layer_for_prompt(
+        "What is the city's current total population, and how much has it grown since last year?",
+        semantic,
+    )
+    tables = {binding["physical_table"] for binding in grounded["table_bindings"]}
+    assert tables == {
+        "public.scad_districts_populationestimate_2023",
+        "public.scad_districts_populationestimate_2024",
+    }
+    assert evidence["strategy"] == "reviewed_business_asset_retrieval"
 
 
 def test_semantic_binding_resolution_prefers_published_label_over_sibling_technical_name():
@@ -1403,6 +3309,36 @@ def test_semantic_binding_resolution_prefers_specific_measure_over_shared_dimens
     assert resolution["requested_tables"] == [
         "public.poi_adek_schools_locations"
     ]
+
+
+def test_liveability_metric_intent_prefers_fact_over_facility_type_dimension():
+    semantic = json.loads(
+        SEMANTIC_PATH.with_name(
+            "liveability_data_20260730_semantic_layer_v7_published_table_cards_20260901.json"
+        ).read_text(encoding="utf-8")
+    )
+    resolution = _semantic_asset_resolution(
+        "After the Pipeline stage is completed, which districts will have a Community Hub FPP score exceed 50% for the first time?",
+        semantic,
+    )
+    assert resolution["status"] == "resolved"
+    assert resolution["requested_tables"] == ["public.fact_facility_provision"]
+
+
+def test_liveability_plural_quantitative_score_resolves_reviewed_score_fact():
+    semantic = json.loads(
+        SEMANTIC_PATH.with_name(
+            "liveability_data_20260730_semantic_layer_v7_published_table_cards_20260901.json"
+        ).read_text(encoding="utf-8")
+    )
+    resolution = _semantic_asset_resolution(
+        "Divide all assessed districts into high above 75%, medium from 50% to 75%, "
+        "and low below 50% bands based on their Existing quantitative scores. "
+        "How many districts are in each band, and which districts are in the low band?",
+        semantic,
+    )
+    assert resolution["status"] == "resolved"
+    assert resolution["requested_tables"] == ["public.fact_district_scores"]
 
 
 def test_semantic_binding_resolution_prefers_long_published_identity_over_generic_field_aliases():
@@ -2154,6 +4090,43 @@ def test_semantic_sql_accepts_bound_aggregate_and_declared_join():
     ]
 
 
+def test_semantic_sql_accepts_declared_join_using_syntax():
+    semantic = _semantic_layer()
+    joined = validate_semantic_sql(
+        "SELECT d.name_en, AVG(s.overall_score) AS average_score "
+        "FROM public.fact_district_scores AS s "
+        "JOIN public.dim_districts AS d USING (district_id) "
+        "GROUP BY d.name_en",
+        ["public.fact_district_scores", "public.dim_districts"],
+        semantic,
+    )
+    assert joined["tables"] == [
+        "public.dim_districts",
+        "public.fact_district_scores",
+    ]
+
+
+def test_semantic_sql_order_by_output_alias_precedes_ambiguous_input_field():
+    semantic = json.loads(
+        SEMANTIC_PATH.with_name(
+            "liveability_data_20260730_semantic_layer_v24_display_disambiguation_20260902.json"
+        ).read_text(encoding="utf-8")
+    )
+    evidence = validate_semantic_sql(
+        'SELECT d.name_en AS district_name, d.municipality AS municipality '
+        'FROM public.fact_oi_indicators AS o '
+        'JOIN public.dim_districts AS d ON o.district_id = d.district_id '
+        'WHERE d.is_activated IS TRUE ORDER BY municipality LIMIT 10',
+        ["public.fact_oi_indicators", "public.dim_districts"],
+        semantic,
+    )
+
+    assert evidence["tables"] == [
+        "public.dim_districts",
+        "public.fact_oi_indicators",
+    ]
+
+
 @pytest.mark.parametrize(
     ("sql", "tables", "error"),
     [
@@ -2587,6 +4560,367 @@ def test_metric_projection_contract_preserves_filter_and_limit():
     assert "COUNT(DISTINCT s.district_id) AS district_count" in rewritten
 
 
+def test_metric_projection_contract_applies_reviewed_literal_value_filters():
+    semantic = json.loads(
+        SEMANTIC_PATH.with_name(
+            "liveability_data_20260730_semantic_layer_v24_display_disambiguation_20260902.json"
+        ).read_text(encoding="utf-8")
+    )
+    contract = {
+        "contract_id": "LIVEABILITY_PARKS_EXISTING_FPP_BY_DISTRICT_TEST",
+        "review_status": "reviewed_candidate",
+        "priority": 99,
+        "operation": "grouped_summary",
+        "match": {
+            "required_term_groups": {
+                "zh": [["公园"], ["FPP"], ["现有"], ["最低"]],
+                "en": [["parks"], ["FPP"], ["existing"], ["lowest"]],
+                "ar": [["الحدائق"], ["FPP"], ["القائم"], ["الأدنى"]],
+            },
+            "specificity_terms": ["Parks FPP", "lowest"],
+        },
+        "tables": ["public.fact_facility_provision", "public.dim_districts"],
+        "dimensions": [
+            {"table": "public.dim_districts", "field": "name_en", "alias": "district_name"},
+            {"table": "public.dim_districts", "field": "municipality", "alias": "municipality"},
+        ],
+        "metrics": [
+            {
+                "aggregate": "avg",
+                "table": "public.fact_facility_provision",
+                "field": "kpi_existing",
+                "alias": "avg_existing_fpp",
+            }
+        ],
+        "filters": [
+            {
+                "table": "public.fact_facility_provision",
+                "field": "subcategory_name",
+                "operator": "in",
+                "values": [
+                    "Park_District",
+                    "Park_Local",
+                    "Park_Neighbourhoud",
+                    "Park_Other",
+                ],
+            },
+            {
+                "table": "public.dim_districts",
+                "field": "is_activated",
+                "operator": "is_true",
+            },
+        ],
+        "metric_order_by": [{"alias": "avg_existing_fpp", "direction": "asc"}],
+        "direct_execution": {"enabled": False},
+    }
+    semantic["metric_contracts"].append(contract)
+    question = "Which districts have the lowest Parks FPP at the Existing stage?"
+    sql = (
+        "SELECT d.name_en, d.municipality, AVG(f.kpi_existing) AS score "
+        "FROM public.fact_facility_provision AS f "
+        "JOIN public.dim_districts AS d ON f.district_id = d.district_id "
+        "GROUP BY d.name_en, d.municipality LIMIT 10"
+    )
+
+    rewritten, evidence = apply_metric_projection_contract(
+        question=question,
+        language="en",
+        sql=sql,
+        proposal_tables=contract["tables"],
+        semantic_layer=semantic,
+    )
+
+    assert evidence is not None
+    assert evidence["contract_id"] == contract["contract_id"]
+    assert "f.subcategory_name IN ('Park_District', 'Park_Local', 'Park_Neighbourhoud', 'Park_Other')" in rewritten
+    assert "d.is_activated IS TRUE" in rewritten
+    assert "ORDER BY avg_existing_fpp ASC" in rewritten
+    validate_semantic_sql(rewritten, contract["tables"], semantic)
+
+
+def test_reviewed_display_policy_adds_companion_identity_and_rank_tiebreaker():
+    semantic = {
+        "display_projection_policies": [
+            {
+                "policy_id": "district_label_disambiguation_v1",
+                "review_status": "reviewed",
+                "physical_table": "public.dim_districts",
+                "primary_label_field": "name_en",
+                "companion_fields": ["municipality"],
+                "application": ["grouped_result", "ranked_result"],
+            }
+        ],
+        "table_bindings": [
+            {
+                "semantic_entity": "district",
+                "physical_table": "public.dim_districts",
+                "execution_eligible": True,
+                "primary_key": ["district_id"],
+                "fields": [
+                    {"semantic_field": "district_id", "physical_field": "district_id"},
+                    {"semantic_field": "name_en", "physical_field": "name_en"},
+                    {"semantic_field": "municipality", "physical_field": "municipality"},
+                ],
+            },
+            {
+                "semantic_entity": "facility_provision",
+                "physical_table": "public.fact_facility_provision",
+                "execution_eligible": True,
+                "primary_key": ["district_id", "subcategory_name"],
+                "fields": [
+                    {"semantic_field": "district_id", "physical_field": "district_id"},
+                    {"semantic_field": "needed_ap50", "physical_field": "needed_ap50"},
+                ],
+            },
+        ],
+    }
+    sql = (
+        "SELECT d.name_en AS district_name, SUM(f.needed_ap50) AS needed "
+        "FROM public.fact_facility_provision AS f "
+        "JOIN public.dim_districts AS d ON f.district_id = d.district_id "
+        "GROUP BY d.name_en ORDER BY needed DESC LIMIT 10"
+    )
+
+    rewritten, corrections = apply_reviewed_display_projection_policies_sql(sql, semantic)
+
+    assert rewritten.startswith(
+        "SELECT d.name_en AS district_name, d.municipality, SUM(f.needed_ap50) AS needed"
+    )
+    assert "GROUP BY d.name_en, d.municipality, d.district_id" in rewritten
+    assert "ORDER BY needed DESC, d.district_id ASC" in rewritten
+    assert corrections == [
+        "reviewed_display_companion:district_label_disambiguation_v1:municipality",
+        "reviewed_group_identity:district_label_disambiguation_v1:district_id",
+        "deterministic_rank_tiebreaker:district_label_disambiguation_v1:district_id",
+    ]
+
+
+def test_reviewed_display_policy_places_identity_before_existing_label_tiebreaker():
+    semantic = {
+        "display_projection_policies": [
+            {
+                "policy_id": "district_label_disambiguation_v1",
+                "review_status": "reviewed",
+                "physical_table": "public.dim_districts",
+                "primary_label_field": "name_en",
+                "companion_fields": ["municipality"],
+                "application": ["grouped_result", "ranked_result"],
+            }
+        ],
+        "table_bindings": [
+            {
+                "semantic_entity": "district",
+                "physical_table": "public.dim_districts",
+                "execution_eligible": True,
+                "primary_key": ["district_id"],
+                "fields": [
+                    {"semantic_field": "district_id", "physical_field": "district_id"},
+                    {"semantic_field": "name_en", "physical_field": "name_en"},
+                    {"semantic_field": "municipality", "physical_field": "municipality"},
+                ],
+            },
+            {
+                "semantic_entity": "facility_provision",
+                "physical_table": "public.fact_facility_provision",
+                "execution_eligible": True,
+                "primary_key": ["district_id", "subcategory_name"],
+                "fields": [
+                    {"semantic_field": "district_id", "physical_field": "district_id"},
+                    {"semantic_field": "needed_ap50", "physical_field": "needed_ap50"},
+                ],
+            },
+        ],
+    }
+    sql = (
+        "SELECT d.name_en AS district_name, SUM(f.needed_ap50) AS needed "
+        "FROM public.fact_facility_provision AS f "
+        "JOIN public.dim_districts AS d ON f.district_id = d.district_id "
+        "GROUP BY d.name_en ORDER BY needed DESC, d.name_en ASC LIMIT 10"
+    )
+
+    rewritten, corrections = apply_reviewed_display_projection_policies_sql(sql, semantic)
+
+    assert "ORDER BY needed DESC, d.district_id ASC, d.name_en ASC" in rewritten
+    assert (
+        "deterministic_rank_tiebreaker:district_label_disambiguation_v1:district_id"
+        in corrections
+    )
+
+
+def test_canonical_metric_contract_does_not_discard_unbound_threshold_or_listing():
+    semantic = json.loads(
+        SEMANTIC_PATH.with_name(
+            "liveability_data_20260730_semantic_layer_v25_existing_fpp_metric_pattern_20260903.json"
+        ).read_text(encoding="utf-8")
+    )
+    contract = next(
+        item
+        for item in semantic["metric_contracts"]
+        if item["contract_id"] == "LIVEABILITY_DISTRICT_SCORE_COUNT_BY_STAGE_V4"
+    )
+    sql = (
+        "SELECT d.name_en AS district_name, s.overall_score "
+        "FROM public.fact_district_scores AS s "
+        "JOIN public.dim_calc_versions AS v ON v.calc_version_id = s.calc_version_id "
+        "JOIN public.dim_districts AS d ON d.district_id = s.district_id "
+        "WHERE s.stage = 'AP50' AND s.overall_score > 90 "
+        "AND v.current_flag IS TRUE AND d.is_activated IS TRUE "
+        "ORDER BY s.overall_score DESC LIMIT 1000"
+    )
+
+    rewritten, evidence = apply_metric_projection_contract(
+        question=(
+            "Which districts have a quantitative liveability score above 90% "
+            "at the Target stage, and how many are there?"
+        ),
+        language="en",
+        sql=sql,
+        proposal_tables=contract["tables"],
+        semantic_layer=semantic,
+    )
+
+    assert rewritten == sql
+    assert evidence is None
+
+
+def test_reviewed_display_policy_is_idempotent_for_complete_ranked_result():
+    semantic = {
+        "display_projection_policies": [
+            {
+                "policy_id": "district_label_disambiguation_v1",
+                "review_status": "reviewed",
+                "physical_table": "public.dim_districts",
+                "primary_label_field": "name_en",
+                "companion_fields": ["municipality"],
+                "application": ["grouped_result", "ranked_result"],
+            }
+        ],
+        "table_bindings": [
+            {
+                "semantic_entity": "district",
+                "physical_table": "public.dim_districts",
+                "execution_eligible": True,
+                "primary_key": ["district_id"],
+                "fields": [
+                    {"semantic_field": "district_id", "physical_field": "district_id"},
+                    {"semantic_field": "name_en", "physical_field": "name_en"},
+                    {"semantic_field": "municipality", "physical_field": "municipality"},
+                ],
+            }
+        ],
+    }
+    sql = (
+        "SELECT d.name_en AS district_name, d.municipality, COUNT(*) AS total "
+        "FROM public.dim_districts AS d "
+        "GROUP BY d.name_en, d.municipality, d.district_id "
+        "ORDER BY total DESC, d.district_id ASC LIMIT 10"
+    )
+
+    rewritten, corrections = apply_reviewed_display_projection_policies_sql(sql, semantic)
+
+    assert rewritten == sql
+    assert corrections == []
+
+
+def test_reviewed_display_policy_rebinds_cte_companion_to_derived_scope():
+    """CTE/window results must expose and reference companions in one scope."""
+    semantic = {
+        "display_projection_policies": [
+            {
+                "policy_id": "district_label_disambiguation_v1",
+                "review_status": "reviewed",
+                "physical_table": "public.dim_districts",
+                "primary_label_field": "name_en",
+                "companion_fields": ["municipality"],
+                "application": ["entity_list", "ranked_result"],
+            }
+        ],
+        "table_bindings": [
+            {
+                "semantic_entity": "district",
+                "physical_table": "public.dim_districts",
+                "execution_eligible": True,
+                "primary_key": ["district_id"],
+                "fields": [
+                    {"semantic_field": "district_id", "physical_field": "district_id"},
+                    {"semantic_field": "name_en", "physical_field": "name_en"},
+                    {"semantic_field": "municipality", "physical_field": "municipality"},
+                ],
+            }
+        ],
+    }
+    sql = (
+        "WITH ranked AS ("
+        "SELECT d.name_en, ROW_NUMBER() OVER (ORDER BY d.name_en) AS rn "
+        "FROM public.dim_districts AS d) "
+        "SELECT name_en, dim_districts.municipality FROM ranked AS d ORDER BY rn LIMIT 10"
+    )
+
+    rewritten, corrections = apply_reviewed_display_projection_policies_sql(sql, semantic)
+
+    assert "d.municipality" in rewritten
+    assert "SELECT d.name_en, ROW_NUMBER() OVER (ORDER BY d.name_en) AS rn, d.municipality" in rewritten
+    assert "SELECT name_en, d.municipality FROM ranked AS d" in rewritten
+    assert "reviewed_derived_projection_companion:district_label_disambiguation_v1:municipality" in corrections
+    assert "reviewed_derived_projection_rebind:district_label_disambiguation_v1:municipality" in corrections
+
+
+def test_semantic_ir_contract_renders_reviewed_literal_value_filters():
+    semantic = json.loads(
+        SEMANTIC_PATH.with_name(
+            "liveability_data_20260730_semantic_layer_v24_display_disambiguation_20260902.json"
+        ).read_text(encoding="utf-8")
+    )
+    contract = {
+        "contract_id": "LIVEABILITY_PARKS_EXISTING_FPP_BY_DISTRICT_TEST",
+        "review_status": "reviewed_candidate",
+        "priority": 99,
+        "operation": "grouped_summary",
+        "match": {
+            "required_term_groups": {
+                "zh": [["公园"], ["FPP"], ["现有"], ["最低"]],
+                "en": [["parks"], ["FPP"], ["existing"], ["lowest"]],
+                "ar": [["الحدائق"], ["FPP"], ["القائم"], ["الأدنى"]],
+            },
+            "specificity_terms": ["Parks FPP", "lowest"],
+        },
+        "tables": ["public.fact_facility_provision", "public.dim_districts"],
+        "dimensions": [
+            {"table": "public.dim_districts", "field": "name_en", "alias": "district_name"},
+            {"table": "public.dim_districts", "field": "municipality", "alias": "municipality"},
+        ],
+        "metrics": [
+            {
+                "aggregate": "avg",
+                "table": "public.fact_facility_provision",
+                "field": "kpi_existing",
+                "alias": "avg_existing_fpp",
+            }
+        ],
+        "filters": [
+            {
+                "table": "public.fact_facility_provision",
+                "field": "subcategory_name",
+                "operator": "in",
+                "values": ["Park_District", "Park_Local"],
+            }
+        ],
+        "metric_order_by": [{"alias": "avg_existing_fpp", "direction": "asc"}],
+        "direct_execution": {"enabled": False},
+    }
+    semantic["metric_contracts"].append(contract)
+
+    rendered = _semantic_ir_contract(
+        semantic,
+        question="Which districts have the lowest Parks FPP at the Existing stage?",
+        language="en",
+    )
+
+    assert "MATCHED REVIEWED LOGICAL METRIC PATTERN" in rendered
+    assert "subcategory_name in ['Park_District', 'Park_Local']" in rendered
+    assert "avg_existing_fpp asc" in rendered
+
+
 def test_metric_projection_contract_does_not_capture_specific_component_score():
     sql = (
         "SELECT d.municipality, s.stage, AVG(s.social_score) AS average_social_score "
@@ -2958,6 +5292,240 @@ def test_semantic_ir_model_candidate_normalizes_provider_projection_shape():
     assert "semantic_ir_normalized_projection_alias" in corrections
 
 
+def test_semantic_ir_model_candidate_normalizes_nested_metric_ref_with_explicit_role():
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "liveability.facility",
+                "projections": [
+                    {
+                        "output_name": "average_score",
+                        "role": "metric",
+                        "aggregate": "avg",
+                        "metric": {
+                            "semantic_entity": "liveability.facility",
+                            "semantic_field": "existing_score",
+                        },
+                    }
+                ],
+            },
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    projection = json.loads(normalized)["semantic_query"]["projections"][0]
+
+    assert projection["field_ref"] == {
+        "semantic_entity": "liveability.facility",
+        "semantic_field": "existing_score",
+    }
+    assert "metric" not in projection
+    assert "semantic_ir_normalized_metric_field_ref" in corrections
+
+
+def test_semantic_ir_normalization_accepts_role_projection_aliases_and_field_object_variants():
+    candidate = json.dumps(
+        {
+            "semantic_query": {
+                "status": "query",
+                "semantic_entity": "liveability.facility",
+                "attribute_projections": [
+                    {
+                        "alias": "facility_type",
+                        "field": {
+                            "entity": "liveability.facility",
+                            "semantic_field": "facility_type",
+                        },
+                    }
+                ],
+                "metric_projections": [
+                    {
+                        "alias": "facility_count",
+                        "field": {
+                            "semantic_entity": "liveability.facility",
+                            "name": "facility_id",
+                        },
+                        "aggregation": "count",
+                    }
+                ],
+            }
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    query = json.loads(normalized)["semantic_query"]
+
+    assert [item["role"] for item in query["projections"]] == ["attribute", "metric"]
+    assert query["projections"][0]["field_ref"] == {
+        "semantic_entity": "liveability.facility",
+        "semantic_field": "facility_type",
+    }
+    assert query["projections"][1]["field_ref"] == {
+        "semantic_entity": "liveability.facility",
+        "semantic_field": "facility_id",
+    }
+    assert query["projections"][1]["aggregate"] == "count"
+    assert "semantic_ir_normalized_role_projection_arrays" in corrections
+
+
+def test_semantic_ir_normalization_removes_only_redundant_flattened_filter_aliases():
+    candidate = json.dumps(
+        {
+            "semantic_query": {
+                "status": "query",
+                "semantic_entity": "liveability.facility",
+                "projections": [
+                    {"output_name": "rows", "role": "metric", "aggregate": "count"}
+                ],
+                "filters": [
+                    {
+                        "field_ref": {
+                            "semantic_entity": "liveability.facility",
+                            "semantic_field": "stage",
+                        },
+                        "semantic_entity": "liveability.facility",
+                        "semantic_field": "stage",
+                        "operator": "eq",
+                        "values": ["Existing"],
+                    }
+                ],
+            }
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    filter_spec = json.loads(normalized)["semantic_query"]["filters"][0]
+
+    assert filter_spec["field_ref"] == {
+        "semantic_entity": "liveability.facility",
+        "semantic_field": "stage",
+    }
+    assert "semantic_entity" not in filter_spec
+    assert "semantic_field" not in filter_spec
+    assert "semantic_ir_removed_duplicate_filter_semantic_field" in corrections
+
+
+def test_semantic_ir_normalization_removes_redundant_generic_join_entity_only_when_matching():
+    candidate = json.dumps(
+        {
+            "semantic_query": {
+                "status": "query",
+                "semantic_entity": "liveability.facility",
+                "projections": [
+                    {"output_name": "rows", "role": "metric", "aggregate": "count"}
+                ],
+                "joins": [
+                    {
+                        "entity": "liveability.district",
+                        "left_field_ref": {
+                            "semantic_entity": "liveability.facility",
+                            "semantic_field": "district_id",
+                        },
+                        "right_field_ref": {
+                            "semantic_entity": "liveability.district",
+                            "semantic_field": "district_id",
+                        },
+                        "kind": "equality",
+                        "operator": "eq",
+                    }
+                ],
+            }
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    join = json.loads(normalized)["semantic_query"]["joins"][0]
+
+    assert "entity" not in join
+    assert "semantic_ir_removed_redundant_join_entity" in corrections
+
+
+def test_semantic_ir_normalization_accepts_extreme_ordering_alias():
+    candidate = json.dumps(
+        {
+            "semantic_query": {
+                "status": "query",
+                "semantic_entity": "liveability.facility",
+                "projections": [
+                    {
+                        "output_name": "facility_type",
+                        "role": "dimension",
+                        "field_ref": {
+                            "semantic_entity": "liveability.facility",
+                            "semantic_field": "facility_type",
+                        },
+                    },
+                    {
+                        "output_name": "facility_count",
+                        "role": "metric",
+                        "aggregate": "count",
+                    },
+                ],
+                "extremes": [
+                    {"projection_alias": "facility_count", "direction": "DESC"},
+                    {"projection_alias": "facility_count", "direction": "ASC"},
+                ],
+            }
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    query = json.loads(normalized)["semantic_query"]
+
+    assert query["extreme_order_by"] == [
+        {"output_name": "facility_count", "direction": "desc"},
+        {"output_name": "facility_count", "direction": "asc"},
+    ]
+    assert "semantic_ir_normalized_extremes_alias" in corrections
+
+
+def test_semantic_ir_normalization_accepts_order_item_extreme_alias():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.facility",
+            "projections": [
+                {
+                    "output_name": "facility_type",
+                    "role": "dimension",
+                    "field_ref": {
+                        "semantic_entity": "liveability.facility",
+                        "semantic_field": "facility_type",
+                    },
+                },
+                {
+                    "output_name": "facility_count",
+                    "role": "metric",
+                    "aggregate": "count",
+                },
+            ],
+            "extreme_order_by": [
+                {"order_item": "facility_count", "direction": "DESC"},
+                {
+                    "order_item": {"projection_alias": "facility_count"},
+                    "direction": "ASC",
+                },
+            ],
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    extreme = json.loads(normalized)["semantic_query"]["extreme_order_by"]
+
+    assert extreme == [
+        {"output_name": "facility_count", "direction": "desc"},
+        {"output_name": "facility_count", "direction": "asc"},
+    ]
+    assert "semantic_ir_normalized_extreme_order_order_item" in corrections
+
+
 def test_semantic_ir_model_candidate_normalizes_provider_projection_kind():
     candidate = json.dumps(
         {
@@ -2980,6 +5548,31 @@ def test_semantic_ir_model_candidate_normalizes_provider_projection_kind():
     assert projection["role"] == "metric"
     assert "kind" not in projection
     assert "semantic_ir_normalized_projection_kind" in corrections
+
+
+def test_semantic_ir_model_candidate_removes_redundant_projection_kind_alias():
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "semantic_entity": "liveability.facility",
+                "projections": [
+                    {
+                        "output_name": "facility_count",
+                        "role": "metric",
+                        "kind": "metric",
+                        "aggregate": "count",
+                    }
+                ],
+            },
+        }
+    )
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    projection = json.loads(normalized)["semantic_query"]["projections"][0]
+    assert projection["role"] == "metric"
+    assert "kind" not in projection
+    assert "semantic_ir_removed_redundant_projection_kind" in corrections
 
 
 def test_semantic_ir_model_candidate_removes_redundant_offset_and_field_alias():
@@ -3052,6 +5645,257 @@ def test_semantic_ir_model_candidate_normalizes_provider_join_field_names():
     assert "left_field" not in join
     assert "right_field" not in join
     assert "semantic_ir_normalized_left_field" in corrections
+
+
+@pytest.mark.parametrize("kind_alias", ["join_type", "join_kind"])
+def test_semantic_ir_model_candidate_removes_duplicate_join_kind_alias(kind_alias):
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "liveability.facility",
+                "projections": [],
+                "joins": [
+                    {
+                        "left_field_ref": {
+                            "semantic_entity": "liveability.facility",
+                            "semantic_field": "district_id",
+                        },
+                        "right_field_ref": {
+                            "semantic_entity": "liveability.district",
+                            "semantic_field": "district_id",
+                        },
+                        "kind": "equality",
+                        kind_alias: "EQUALITY",
+                        "operator": "eq",
+                    }
+                ],
+            },
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    join = json.loads(normalized)["semantic_query"]["joins"][0]
+
+    assert kind_alias not in join
+    assert f"semantic_ir_removed_duplicate_{kind_alias}" in corrections
+
+
+@pytest.mark.parametrize(
+    "provider_kind",
+    ["INNER", "inner join", "inner_join", "equi join", "equi_join", "equijoin"],
+)
+def test_semantic_ir_model_candidate_normalizes_inner_equality_join_kind(
+    provider_kind,
+):
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "liveability.facility",
+                "projections": [],
+                "joins": [
+                    {
+                        "left_field_ref": {
+                            "semantic_entity": "liveability.facility",
+                            "semantic_field": "district_id",
+                        },
+                        "right_field_ref": {
+                            "semantic_entity": "liveability.district",
+                            "semantic_field": "district_id",
+                        },
+                        "kind": provider_kind,
+                        "operator": "eq",
+                    }
+                ],
+            },
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    join = json.loads(normalized)["semantic_query"]["joins"][0]
+
+    assert join["kind"] == "equality"
+    assert "semantic_ir_normalized_kind" in corrections
+
+
+def test_semantic_ir_model_candidate_keeps_conflicting_join_kind_alias_invalid():
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "liveability.facility",
+                "projections": [],
+                "joins": [
+                    {
+                        "left_field_ref": {
+                            "semantic_entity": "liveability.facility",
+                            "semantic_field": "district_id",
+                        },
+                        "right_field_ref": {
+                            "semantic_entity": "liveability.district",
+                            "semantic_field": "district_id",
+                        },
+                        "kind": "equality",
+                        "join_kind": "spatial",
+                        "operator": "eq",
+                    }
+                ],
+            },
+        }
+    )
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    join = json.loads(normalized)["semantic_query"]["joins"][0]
+
+    assert join["join_kind"] == "spatial"
+    assert "semantic_ir_removed_duplicate_join_kind" not in corrections
+
+
+def test_semantic_ir_model_candidate_normalizes_source_target_join_field_names():
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "semantic_entity": "liveability.facility",
+                "projections": [
+                    {
+                        "output_name": "facility_count",
+                        "role": "metric",
+                        "aggregate": "count",
+                    }
+                ],
+                "joins": [
+                    {
+                        "source_field": {
+                            "semantic_entity": "liveability.facility",
+                            "semantic_field": "district_id",
+                        },
+                        "target_field": {
+                            "semantic_entity": "liveability.district",
+                            "semantic_field": "district_id",
+                        },
+                        "kind": "equality",
+                        "operator": "eq",
+                    }
+                ],
+            },
+        }
+    )
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    join = json.loads(normalized)["semantic_query"]["joins"][0]
+    assert join["left_field_ref"]["semantic_entity"] == "liveability.facility"
+    assert join["right_field_ref"]["semantic_entity"] == "liveability.district"
+    assert "source_field" not in join
+    assert "target_field" not in join
+    assert "semantic_ir_normalized_source_field" in corrections
+    assert "semantic_ir_normalized_target_field" in corrections
+
+
+def test_semantic_ir_model_candidate_keeps_conflicting_source_join_alias_invalid():
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "semantic_entity": "liveability.facility",
+                "projections": [],
+                "joins": [
+                    {
+                        "left_field": "liveability.facility.district_id",
+                        "source_field": "liveability.facility.facility_id",
+                        "right_field": "liveability.district.district_id",
+                        "kind": "equality",
+                        "operator": "eq",
+                    }
+                ],
+            },
+        }
+    )
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    join = json.loads(normalized)["semantic_query"]["joins"][0]
+    assert "left_field_ref" not in join
+    assert join["left_field"] != join["source_field"]
+    assert "semantic_ir_normalized_left_field" not in corrections
+    assert "semantic_ir_normalized_source_field" not in corrections
+
+
+def test_semantic_ir_model_candidate_removes_matching_joined_entity_metadata():
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "liveability.facility",
+                "projections": [],
+                "joins": [
+                    {
+                        "left_field_ref": {
+                            "semantic_entity": "liveability.facility",
+                            "semantic_field": "district_id",
+                        },
+                        "right_field_ref": {
+                            "semantic_entity": "liveability.district",
+                            "semantic_field": "district_id",
+                        },
+                        "joined_entity": "liveability.district",
+                        "kind": "equality",
+                        "operator": "eq",
+                    }
+                ],
+            },
+        }
+    )
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    join = json.loads(normalized)["semantic_query"]["joins"][0]
+    assert "joined_entity" not in join
+    assert "semantic_ir_removed_redundant_joined_entity" in corrections
+
+
+def test_semantic_ir_model_candidate_keeps_conflicting_joined_entity_invalid():
+    candidate = json.dumps(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "liveability.facility",
+                "projections": [],
+                "joins": [
+                    {
+                        "left_field_ref": {
+                            "semantic_entity": "liveability.facility",
+                            "semantic_field": "district_id",
+                        },
+                        "right_field_ref": {
+                            "semantic_entity": "liveability.district",
+                            "semantic_field": "district_id",
+                        },
+                        "joined_entity": "liveability.unreviewed_entity",
+                        "kind": "equality",
+                        "operator": "eq",
+                    }
+                ],
+            },
+        }
+    )
+    normalized, corrections = _normalize_semantic_ir_model_candidate(candidate)
+    join = json.loads(normalized)["semantic_query"]["joins"][0]
+    assert join["joined_entity"] == "liveability.unreviewed_entity"
+    assert "semantic_ir_removed_redundant_joined_entity" not in corrections
 
 
 @pytest.mark.asyncio
@@ -3417,6 +6261,50 @@ async def test_read_only_policy_rejects_before_model_or_virtual_source_access(
     }
     assert report["source_rows_persisted"] is False
     verify.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "execution_profile",
+    ["baseline_sql", "semantic_ir_experimental"],
+)
+async def test_answerability_contract_rejects_before_model_or_source_access(
+    tmp_path,
+    execution_profile,
+):
+    semantic = _semantic_layer()
+    semantic["semantic_answerability_contracts"] = [_answerability_contract()]
+    semantic_path = tmp_path / "semantic.json"
+    semantic_path.write_text(json.dumps(semantic), encoding="utf-8")
+
+    with (
+        patch("data_agent.migration_runner.verify_schema_state") as verify,
+        patch("data_agent.model_gateway.create_model") as create_model,
+        patch("data_agent.governed_virtual_nl2sql.resolve_direct_metric_contract") as direct,
+        patch("data_agent.governed_virtual_nl2sql._generate_proposal") as generate,
+        patch("data_agent.virtual_sources.get_virtual_source") as get_source,
+    ):
+        report = await run_governed_virtual_nl2sql(
+            question="Rank districts by mosque accessibility coverage.",
+            semantic_layer_path=semantic_path,
+            source_id=12,
+            owner="abu-dhabi-site-operator",
+            execution_profile=execution_profile,
+        )
+
+    assert report["status"] == "rejected"
+    assert report["planner"]["route"] == (
+        "deterministic_semantic_answerability_contract"
+    )
+    assert report["answerability"]["contract_id"] == (
+        "TEST_ACCESSIBILITY_CONTEXT_V1"
+    )
+    assert report["clarification"]["missing_context_ids"] == ["mode", "threshold"]
+    verify.assert_not_called()
+    create_model.assert_not_called()
+    direct.assert_not_called()
+    generate.assert_not_called()
+    get_source.assert_not_called()
     create_model.assert_not_called()
     direct.assert_not_called()
     generate.assert_not_called()
@@ -3541,3 +6429,71 @@ async def test_product_route_selectively_executes_direct_metric_without_llm():
     create_model.assert_not_called()
     generate.assert_not_called()
     query.assert_awaited_once()
+
+
+def test_direct_metric_grouped_count_falls_back_for_dual_extreme_shape():
+    semantic_path = SEMANTIC_PATH.with_name(
+        "liveability_data_20260730_semantic_layer_v3.json"
+    )
+    semantic = json.loads(semantic_path.read_text(encoding="utf-8"))
+
+    resolution = resolve_direct_metric_contract(
+        (
+            "At the Existing stage, which facility type has the highest "
+            "citywide count and which has the lowest count?"
+        ),
+        "en",
+        semantic,
+    )
+
+    assert resolution["status"] == "fallback"
+    assert resolution["contract_id"] == "LIVEABILITY_FACILITY_COUNT_BY_STAGE_TYPE_V4"
+    assert resolution["fallback_reason"] == "unbound_modifier:dual_extreme"
+
+
+def test_direct_metric_explicit_metric_sort_supports_single_extreme_shape():
+    semantic_path = SEMANTIC_PATH.with_name(
+        "liveability_data_20260730_semantic_layer_v3.json"
+    )
+    semantic = json.loads(semantic_path.read_text(encoding="utf-8"))
+
+    resolution = resolve_direct_metric_contract(
+        "Which lifecycle stage has the lowest count of liveability facilities?",
+        "en",
+        semantic,
+    )
+
+    assert resolution["status"] == "matched"
+    assert resolution["contract_id"] == "LIVEABILITY_LEAST_FACILITY_STAGE_V6"
+
+
+def test_v11_reviewed_contract_policies_allow_only_published_shapes_and_thresholds():
+    semantic = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "docs/customer/abu_dhabi_liveability_site_validation/"
+            "liveability_data_20260730_semantic_layer_v11_runtime_contracts_20260901.json"
+        ).read_text(encoding="utf-8")
+    )
+    cases = {
+        "crossover": (
+            "After the Pipeline stage is completed, which districts will have a "
+            "Community Hub FPP score exceed 50% for the first time?"
+        ),
+        "improvement": (
+            "Which district has the largest increase in quantitative liveability "
+            "score from Existing to Target, and how many percentage points does it improve?"
+        ),
+        "capex": (
+            "Which facility type has the highest Unit CAPEX for new construction, "
+            "and what is the unit cost in AED?"
+        ),
+    }
+    resolved = {
+        key: resolve_direct_metric_contract(question, "en", semantic)
+        for key, question in cases.items()
+    }
+    assert all(item["status"] == "matched" for item in resolved.values())
+    assert resolved["crossover"]["contract_id"] == "LIVEABILITY_FPP_CROSSOVER_BY_DISTRICT_V1"
+    assert resolved["improvement"]["contract_id"] == "LIVEABILITY_DISTRICT_SCORE_IMPROVEMENT_CURRENT_TO_TARGET_V1"
+    assert resolved["capex"]["contract_id"] == "LIVEABILITY_UNIT_CONSTRUCTION_CAPEX_TOP1_V1"

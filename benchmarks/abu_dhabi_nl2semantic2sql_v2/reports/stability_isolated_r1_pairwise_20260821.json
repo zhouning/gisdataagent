@@ -1,0 +1,2209 @@
+{
+  "schema": "gda.abu-dhabi-nl2semantic2sql-v2-pairwise.v1",
+  "status": "passed",
+  "paired_configuration_verified": true,
+  "comparison_role": "semantic_ir_candidate_vs_baseline_sql",
+  "baseline_report": "benchmarks/abu_dhabi_nl2semantic2sql_v2/reports/stability_isolated_r1_baseline_20260821.json",
+  "candidate_report": "benchmarks/abu_dhabi_nl2semantic2sql_v2/reports/stability_isolated_r1_semantic_ir_20260821.json",
+  "metrics": {
+    "all_cases": {
+      "case_count": 36,
+      "baseline_passed_case_count": 36,
+      "candidate_passed_case_count": 36,
+      "baseline_pass_rate": 1.0,
+      "candidate_pass_rate": 1.0,
+      "candidate_minus_baseline_pass_rate": 0.0,
+      "baseline_execute_result_equivalent_count": 21,
+      "candidate_execute_result_equivalent_count": 21,
+      "outcome_counts": {
+        "both_passed": 36
+      },
+      "baseline_failure_class_counts": {},
+      "candidate_failure_class_counts": {},
+      "candidate_valid_ir_but_wrong_result_count": 0,
+      "paired_generation": {
+        "paired_model_generation_case_count": 6,
+        "baseline_mean_latency_ms": 3152.512,
+        "candidate_mean_latency_ms": 4434.917,
+        "candidate_minus_baseline_mean_latency_ms": 1282.405,
+        "baseline_p95_latency_ms": 4606.759,
+        "candidate_p95_latency_ms": 5888.127,
+        "usage": {
+          "input_tokens": {
+            "baseline_total": 9604,
+            "candidate_total": 12657,
+            "candidate_minus_baseline_total": 3053
+          },
+          "output_tokens": {
+            "baseline_total": 1399,
+            "candidate_total": 2352,
+            "candidate_minus_baseline_total": 953
+          },
+          "reasoning_tokens": {
+            "baseline_total": 826,
+            "candidate_total": 1058,
+            "candidate_minus_baseline_total": 232
+          }
+        }
+      }
+    },
+    "route_comparison": {
+      "case_count": 6,
+      "baseline_passed_case_count": 6,
+      "candidate_passed_case_count": 6,
+      "baseline_pass_rate": 1.0,
+      "candidate_pass_rate": 1.0,
+      "candidate_minus_baseline_pass_rate": 0.0,
+      "baseline_execute_result_equivalent_count": 6,
+      "candidate_execute_result_equivalent_count": 6,
+      "outcome_counts": {
+        "both_passed": 6
+      },
+      "baseline_failure_class_counts": {},
+      "candidate_failure_class_counts": {},
+      "candidate_valid_ir_but_wrong_result_count": 0,
+      "paired_generation": {
+        "paired_model_generation_case_count": 6,
+        "baseline_mean_latency_ms": 3152.512,
+        "candidate_mean_latency_ms": 4434.917,
+        "candidate_minus_baseline_mean_latency_ms": 1282.405,
+        "baseline_p95_latency_ms": 4606.759,
+        "candidate_p95_latency_ms": 5888.127,
+        "usage": {
+          "input_tokens": {
+            "baseline_total": 9604,
+            "candidate_total": 12657,
+            "candidate_minus_baseline_total": 3053
+          },
+          "output_tokens": {
+            "baseline_total": 1399,
+            "candidate_total": 2352,
+            "candidate_minus_baseline_total": 953
+          },
+          "reasoning_tokens": {
+            "baseline_total": 826,
+            "candidate_total": 1058,
+            "candidate_minus_baseline_total": 232
+          }
+        }
+      }
+    },
+    "by_category": {
+      "admission_policy_shared_control": {
+        "case_count": 12,
+        "baseline_passed_case_count": 12,
+        "candidate_passed_case_count": 12,
+        "baseline_pass_rate": 1.0,
+        "candidate_pass_rate": 1.0,
+        "candidate_minus_baseline_pass_rate": 0.0,
+        "baseline_execute_result_equivalent_count": 0,
+        "candidate_execute_result_equivalent_count": 0,
+        "outcome_counts": {
+          "both_passed": 12
+        },
+        "baseline_failure_class_counts": {},
+        "candidate_failure_class_counts": {},
+        "candidate_valid_ir_but_wrong_result_count": 0,
+        "paired_generation": {
+          "paired_model_generation_case_count": 0,
+          "baseline_mean_latency_ms": null,
+          "candidate_mean_latency_ms": null,
+          "candidate_minus_baseline_mean_latency_ms": null,
+          "baseline_p95_latency_ms": null,
+          "candidate_p95_latency_ms": null,
+          "usage": {
+            "input_tokens": {
+              "baseline_total": 0,
+              "candidate_total": 0,
+              "candidate_minus_baseline_total": 0
+            },
+            "output_tokens": {
+              "baseline_total": 0,
+              "candidate_total": 0,
+              "candidate_minus_baseline_total": 0
+            },
+            "reasoning_tokens": {
+              "baseline_total": 0,
+              "candidate_total": 0,
+              "candidate_minus_baseline_total": 0
+            }
+          }
+        }
+      },
+      "federated_shared_control": {
+        "case_count": 6,
+        "baseline_passed_case_count": 6,
+        "candidate_passed_case_count": 6,
+        "baseline_pass_rate": 1.0,
+        "candidate_pass_rate": 1.0,
+        "candidate_minus_baseline_pass_rate": 0.0,
+        "baseline_execute_result_equivalent_count": 3,
+        "candidate_execute_result_equivalent_count": 3,
+        "outcome_counts": {
+          "both_passed": 6
+        },
+        "baseline_failure_class_counts": {},
+        "candidate_failure_class_counts": {},
+        "candidate_valid_ir_but_wrong_result_count": 0,
+        "paired_generation": {
+          "paired_model_generation_case_count": 0,
+          "baseline_mean_latency_ms": null,
+          "candidate_mean_latency_ms": null,
+          "candidate_minus_baseline_mean_latency_ms": null,
+          "baseline_p95_latency_ms": null,
+          "candidate_p95_latency_ms": null,
+          "usage": {
+            "input_tokens": {
+              "baseline_total": 0,
+              "candidate_total": 0,
+              "candidate_minus_baseline_total": 0
+            },
+            "output_tokens": {
+              "baseline_total": 0,
+              "candidate_total": 0,
+              "candidate_minus_baseline_total": 0
+            },
+            "reasoning_tokens": {
+              "baseline_total": 0,
+              "candidate_total": 0,
+              "candidate_minus_baseline_total": 0
+            }
+          }
+        }
+      },
+      "reviewed_metric_contract_shared_control": {
+        "case_count": 12,
+        "baseline_passed_case_count": 12,
+        "candidate_passed_case_count": 12,
+        "baseline_pass_rate": 1.0,
+        "candidate_pass_rate": 1.0,
+        "candidate_minus_baseline_pass_rate": 0.0,
+        "baseline_execute_result_equivalent_count": 12,
+        "candidate_execute_result_equivalent_count": 12,
+        "outcome_counts": {
+          "both_passed": 12
+        },
+        "baseline_failure_class_counts": {},
+        "candidate_failure_class_counts": {},
+        "candidate_valid_ir_but_wrong_result_count": 0,
+        "paired_generation": {
+          "paired_model_generation_case_count": 0,
+          "baseline_mean_latency_ms": null,
+          "candidate_mean_latency_ms": null,
+          "candidate_minus_baseline_mean_latency_ms": null,
+          "baseline_p95_latency_ms": null,
+          "candidate_p95_latency_ms": null,
+          "usage": {
+            "input_tokens": {
+              "baseline_total": 0,
+              "candidate_total": 0,
+              "candidate_minus_baseline_total": 0
+            },
+            "output_tokens": {
+              "baseline_total": 0,
+              "candidate_total": 0,
+              "candidate_minus_baseline_total": 0
+            },
+            "reasoning_tokens": {
+              "baseline_total": 0,
+              "candidate_total": 0,
+              "candidate_minus_baseline_total": 0
+            }
+          }
+        }
+      },
+      "route_or_contract_mismatch": {
+        "case_count": 1,
+        "baseline_passed_case_count": 1,
+        "candidate_passed_case_count": 1,
+        "baseline_pass_rate": 1.0,
+        "candidate_pass_rate": 1.0,
+        "candidate_minus_baseline_pass_rate": 0.0,
+        "baseline_execute_result_equivalent_count": 1,
+        "candidate_execute_result_equivalent_count": 1,
+        "outcome_counts": {
+          "both_passed": 1
+        },
+        "baseline_failure_class_counts": {},
+        "candidate_failure_class_counts": {},
+        "candidate_valid_ir_but_wrong_result_count": 0,
+        "paired_generation": {
+          "paired_model_generation_case_count": 1,
+          "baseline_mean_latency_ms": 2812.402,
+          "candidate_mean_latency_ms": 5888.127,
+          "candidate_minus_baseline_mean_latency_ms": 3075.725,
+          "baseline_p95_latency_ms": 2812.402,
+          "candidate_p95_latency_ms": 5888.127,
+          "usage": {
+            "input_tokens": {
+              "baseline_total": 1771,
+              "candidate_total": 2184,
+              "candidate_minus_baseline_total": 413
+            },
+            "output_tokens": {
+              "baseline_total": 266,
+              "candidate_total": 515,
+              "candidate_minus_baseline_total": 249
+            },
+            "reasoning_tokens": {
+              "baseline_total": 149,
+              "candidate_total": 271,
+              "candidate_minus_baseline_total": 122
+            }
+          }
+        }
+      },
+      "single_source_free_form_route": {
+        "case_count": 5,
+        "baseline_passed_case_count": 5,
+        "candidate_passed_case_count": 5,
+        "baseline_pass_rate": 1.0,
+        "candidate_pass_rate": 1.0,
+        "candidate_minus_baseline_pass_rate": 0.0,
+        "baseline_execute_result_equivalent_count": 5,
+        "candidate_execute_result_equivalent_count": 5,
+        "outcome_counts": {
+          "both_passed": 5
+        },
+        "baseline_failure_class_counts": {},
+        "candidate_failure_class_counts": {},
+        "candidate_valid_ir_but_wrong_result_count": 0,
+        "paired_generation": {
+          "paired_model_generation_case_count": 5,
+          "baseline_mean_latency_ms": 3220.533,
+          "candidate_mean_latency_ms": 4144.275,
+          "candidate_minus_baseline_mean_latency_ms": 923.741,
+          "baseline_p95_latency_ms": 4606.759,
+          "candidate_p95_latency_ms": 5466.738,
+          "usage": {
+            "input_tokens": {
+              "baseline_total": 7833,
+              "candidate_total": 10473,
+              "candidate_minus_baseline_total": 2640
+            },
+            "output_tokens": {
+              "baseline_total": 1133,
+              "candidate_total": 1837,
+              "candidate_minus_baseline_total": 704
+            },
+            "reasoning_tokens": {
+              "baseline_total": 677,
+              "candidate_total": 787,
+              "candidate_minus_baseline_total": 110
+            }
+          }
+        }
+      }
+    }
+  },
+  "candidate_promotion_assessment": {
+    "promotion_supported": false,
+    "candidate_only_passed_case_count": 0,
+    "baseline_only_passed_case_count": 0,
+    "reason": "candidate_does_not_outperform_baseline"
+  },
+  "cases": [
+    {
+      "case_id": "L2_L01",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "holdout",
+      "family": "asset_field_grain",
+      "expected_outcome": "execute",
+      "category": "reviewed_metric_contract_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "LIVEABILITY_FACILITY_COUNT_BY_STAGE_TYPE_V4",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "LIVEABILITY_FACILITY_COUNT_BY_STAGE_TYPE_V4",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_L02",
+      "scope": "liveability",
+      "language": "en",
+      "split": "holdout",
+      "family": "asset_field_grain",
+      "expected_outcome": "execute",
+      "category": "reviewed_metric_contract_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "LIVEABILITY_FACILITY_COUNT_BY_STAGE_DISTRICT_ID_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "LIVEABILITY_FACILITY_COUNT_BY_STAGE_DISTRICT_ID_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_L03",
+      "scope": "liveability",
+      "language": "ar",
+      "split": "holdout",
+      "family": "multilingual_entity_resolution",
+      "expected_outcome": "execute",
+      "category": "reviewed_metric_contract_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "LIVEABILITY_FACILITY_COUNT_BY_TYPE_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "LIVEABILITY_FACILITY_COUNT_BY_TYPE_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_L04",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "validation",
+      "family": "ranking_and_grain",
+      "expected_outcome": "execute",
+      "category": "reviewed_metric_contract_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "LIVEABILITY_LEAST_FACILITY_STAGE_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "LIVEABILITY_LEAST_FACILITY_STAGE_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_L05",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "holdout",
+      "family": "governed_multi_asset_join",
+      "expected_outcome": "execute",
+      "category": "reviewed_metric_contract_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "LIVEABILITY_POPULATION_AND_FACILITY_COUNT_BY_DISTRICT_V5",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "LIVEABILITY_POPULATION_AND_FACILITY_COUNT_BY_DISTRICT_V5",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_L06",
+      "scope": "liveability",
+      "language": "en",
+      "split": "holdout",
+      "family": "metric_definition",
+      "expected_outcome": "execute",
+      "category": "single_source_free_form_route",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "governed_free_form_llm",
+        "llm_invoked": true,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": false,
+        "generation_latency_ms": 4606.759,
+        "usage": {
+          "input_tokens": 1371,
+          "output_tokens": 138,
+          "reasoning_tokens": 61
+        },
+        "observed_model_versions": [
+          "gpt-5.1-2025-11-13"
+        ]
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "semantic_ir_experimental_llm",
+        "llm_invoked": true,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": 4618.108,
+        "usage": {
+          "input_tokens": 1991,
+          "output_tokens": 227,
+          "reasoning_tokens": 39
+        },
+        "observed_model_versions": [
+          "gpt-5.1-2025-11-13"
+        ]
+      }
+    },
+    {
+      "case_id": "L2_L07",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "validation",
+      "family": "spatial_predicate",
+      "expected_outcome": "execute",
+      "category": "reviewed_metric_contract_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "LIVEABILITY_FACILITY_COUNT_BY_TYPE_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "LIVEABILITY_FACILITY_COUNT_BY_TYPE_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_L08",
+      "scope": "liveability",
+      "language": "en",
+      "split": "validation",
+      "family": "ranking_and_join",
+      "expected_outcome": "execute",
+      "category": "route_or_contract_mismatch",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "governed_free_form_llm",
+        "llm_invoked": true,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "LIVEABILITY_TOP_DISTRICTS_BY_SCORE_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": false,
+        "generation_latency_ms": 2812.402,
+        "usage": {
+          "input_tokens": 1771,
+          "output_tokens": 266,
+          "reasoning_tokens": 149
+        },
+        "observed_model_versions": [
+          "gpt-5.1-2025-11-13"
+        ]
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "semantic_ir_experimental_llm",
+        "llm_invoked": true,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": 5888.127,
+        "usage": {
+          "input_tokens": 2184,
+          "output_tokens": 515,
+          "reasoning_tokens": 271
+        },
+        "observed_model_versions": [
+          "gpt-5.1-2025-11-13"
+        ]
+      }
+    },
+    {
+      "case_id": "L2_L09",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "holdout",
+      "family": "multi_measure_semantics",
+      "expected_outcome": "execute",
+      "category": "single_source_free_form_route",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "governed_free_form_llm",
+        "llm_invoked": true,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": false,
+        "generation_latency_ms": 3220.497,
+        "usage": {
+          "input_tokens": 1506,
+          "output_tokens": 296,
+          "reasoning_tokens": 191
+        },
+        "observed_model_versions": [
+          "gpt-5.1-2025-11-13"
+        ]
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "semantic_ir_experimental_llm",
+        "llm_invoked": true,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": 3312.395,
+        "usage": {
+          "input_tokens": 2115,
+          "output_tokens": 409,
+          "reasoning_tokens": 102
+        },
+        "observed_model_versions": [
+          "gpt-5.1-2025-11-13"
+        ]
+      }
+    },
+    {
+      "case_id": "L2_L10",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "metric_ambiguity",
+      "expected_outcome": "execute",
+      "category": "reviewed_metric_contract_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "LIVEABILITY_FACILITY_TOTAL_V5",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "LIVEABILITY_FACILITY_TOTAL_V5",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_L11",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "unsupported_join",
+      "expected_outcome": "clarify",
+      "category": "admission_policy_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_L12",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "unpublished_candidate",
+      "expected_outcome": "clarify",
+      "category": "admission_policy_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_L13",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "unsupported_prediction",
+      "expected_outcome": "refuse",
+      "category": "admission_policy_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "refuse",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "refuse",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_L14",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "sensitive_data",
+      "expected_outcome": "refuse",
+      "category": "admission_policy_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "refuse",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "refuse",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_L15",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "underspecified_business_language",
+      "expected_outcome": "clarify",
+      "category": "admission_policy_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_M01",
+      "scope": "makani",
+      "language": "zh",
+      "split": "holdout",
+      "family": "asset_field_grain",
+      "expected_outcome": "execute",
+      "category": "reviewed_metric_contract_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "MAKANI_BUILDING_COUNT_BY_PHYSICAL_STATUS_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "MAKANI_BUILDING_COUNT_BY_PHYSICAL_STATUS_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_M02",
+      "scope": "makani",
+      "language": "en",
+      "split": "holdout",
+      "family": "multilingual_entity_resolution",
+      "expected_outcome": "execute",
+      "category": "reviewed_metric_contract_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "MAKANI_BUILDING_COUNT_BY_MUNICIPALITY_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "MAKANI_BUILDING_COUNT_BY_MUNICIPALITY_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_M03",
+      "scope": "makani",
+      "language": "ar",
+      "split": "holdout",
+      "family": "multilingual_entity_resolution",
+      "expected_outcome": "execute",
+      "category": "reviewed_metric_contract_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "MAKANI_BUILDING_COUNT_BY_PHYSICAL_STATUS_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "MAKANI_BUILDING_COUNT_BY_PHYSICAL_STATUS_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_M04",
+      "scope": "makani",
+      "language": "zh",
+      "split": "validation",
+      "family": "multi_dimension",
+      "expected_outcome": "execute",
+      "category": "reviewed_metric_contract_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "MAKANI_BUILDING_COUNT_BY_PRIMARY_USE_MUNICIPALITY_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "MAKANI_BUILDING_COUNT_BY_PRIMARY_USE_MUNICIPALITY_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_M05",
+      "scope": "makani",
+      "language": "zh",
+      "split": "holdout",
+      "family": "spatial_container",
+      "expected_outcome": "execute",
+      "category": "reviewed_metric_contract_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "MAKANI_BUILDING_IDENTIFIER_COUNT_BY_DISTRICT_SPATIAL_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": "MAKANI_BUILDING_IDENTIFIER_COUNT_BY_DISTRICT_SPATIAL_V6",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_M06",
+      "scope": "makani",
+      "language": "en",
+      "split": "holdout",
+      "family": "measure_definition",
+      "expected_outcome": "execute",
+      "category": "single_source_free_form_route",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "governed_free_form_llm",
+        "llm_invoked": true,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": false,
+        "generation_latency_ms": 2362.993,
+        "usage": {
+          "input_tokens": 1707,
+          "output_tokens": 191,
+          "reasoning_tokens": 113
+        },
+        "observed_model_versions": [
+          "gpt-5.1-2025-11-13"
+        ]
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "semantic_ir_experimental_llm",
+        "llm_invoked": true,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": 2398.05,
+        "usage": {
+          "input_tokens": 2134,
+          "output_tokens": 255,
+          "reasoning_tokens": 62
+        },
+        "observed_model_versions": [
+          "gpt-5.1-2025-11-13"
+        ]
+      }
+    },
+    {
+      "case_id": "L2_M07",
+      "scope": "makani",
+      "language": "zh",
+      "split": "validation",
+      "family": "asset_field_grain",
+      "expected_outcome": "execute",
+      "category": "single_source_free_form_route",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "governed_free_form_llm",
+        "llm_invoked": true,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": false,
+        "generation_latency_ms": 3777.668,
+        "usage": {
+          "input_tokens": 1361,
+          "output_tokens": 279,
+          "reasoning_tokens": 189
+        },
+        "observed_model_versions": [
+          "gpt-5.1-2025-11-13"
+        ]
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "semantic_ir_experimental_llm",
+        "llm_invoked": true,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": 5466.738,
+        "usage": {
+          "input_tokens": 1985,
+          "output_tokens": 432,
+          "reasoning_tokens": 271
+        },
+        "observed_model_versions": [
+          "gpt-5.1-2025-11-13"
+        ]
+      }
+    },
+    {
+      "case_id": "L2_M08",
+      "scope": "makani",
+      "language": "zh",
+      "split": "holdout",
+      "family": "ranking_and_metric",
+      "expected_outcome": "execute",
+      "category": "single_source_free_form_route",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "governed_free_form_llm",
+        "llm_invoked": true,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": false,
+        "generation_latency_ms": 2134.75,
+        "usage": {
+          "input_tokens": 1888,
+          "output_tokens": 229,
+          "reasoning_tokens": 123
+        },
+        "observed_model_versions": [
+          "gpt-5.1-2025-11-13"
+        ]
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "semantic_ir_experimental_llm",
+        "llm_invoked": true,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": true,
+        "generation_latency_ms": 4926.083,
+        "usage": {
+          "input_tokens": 2248,
+          "output_tokens": 514,
+          "reasoning_tokens": 313
+        },
+        "observed_model_versions": [
+          "gpt-5.1-2025-11-13"
+        ]
+      }
+    },
+    {
+      "case_id": "L2_M09",
+      "scope": "makani",
+      "language": "zh",
+      "split": "holdout",
+      "family": "unreviewed_multi_asset_relationship",
+      "expected_outcome": "clarify",
+      "category": "admission_policy_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_M10",
+      "scope": "makani",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "field_ambiguity",
+      "expected_outcome": "clarify",
+      "category": "admission_policy_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_M11",
+      "scope": "makani",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "relationship_cardinality",
+      "expected_outcome": "clarify",
+      "category": "admission_policy_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_M12",
+      "scope": "makani",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "unpublished_spatial_metric",
+      "expected_outcome": "clarify",
+      "category": "admission_policy_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_M13",
+      "scope": "makani",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "unsupported_prediction",
+      "expected_outcome": "refuse",
+      "category": "admission_policy_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "refuse",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "refuse",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_M14",
+      "scope": "makani",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "sensitive_data",
+      "expected_outcome": "refuse",
+      "category": "admission_policy_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "refuse",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "refuse",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_M15",
+      "scope": "makani",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "underspecified_business_language",
+      "expected_outcome": "clarify",
+      "category": "admission_policy_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_F01",
+      "scope": "federated",
+      "language": "zh",
+      "split": "holdout",
+      "family": "cross_source_separate_aggregate",
+      "expected_outcome": "execute",
+      "category": "federated_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "reviewed_federated_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": false,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "reviewed_federated_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": false,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_F02",
+      "scope": "federated",
+      "language": "zh",
+      "split": "holdout",
+      "family": "cross_source_separate_aggregate",
+      "expected_outcome": "execute",
+      "category": "federated_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "reviewed_federated_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": false,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "reviewed_federated_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": false,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_F03",
+      "scope": "federated",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "cross_source_join",
+      "expected_outcome": "refuse",
+      "category": "federated_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "refuse",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "refuse",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_F04",
+      "scope": "federated",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "cross_source_grain",
+      "expected_outcome": "clarify",
+      "category": "federated_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "clarify",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_F05",
+      "scope": "federated",
+      "language": "en",
+      "split": "holdout",
+      "family": "cross_source_separate_aggregate",
+      "expected_outcome": "execute",
+      "category": "federated_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "reviewed_federated_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": false,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "ok",
+        "observed_outcome": null,
+        "planner_route": "reviewed_federated_metric_contract",
+        "llm_invoked": false,
+        "result_equivalent": true,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "semantic_plan_execution_authority": false,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    },
+    {
+      "case_id": "L2_F06",
+      "scope": "federated",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "cross_source_mutation",
+      "expected_outcome": "refuse",
+      "category": "federated_shared_control",
+      "outcome": "both_passed",
+      "baseline": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "refuse",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      },
+      "candidate": {
+        "passed": true,
+        "observed_status": "rejected",
+        "observed_outcome": "refuse",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "result_equivalent": null,
+        "failure_reasons": [],
+        "error": null,
+        "metric_contract_id": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "semantic_plan_execution_authority": null,
+        "generation_latency_ms": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        },
+        "observed_model_versions": []
+      }
+    }
+  ],
+  "limitations": [
+    "Federated and admission-policy cases are shared controls, not compiler advantage evidence.",
+    "A shared reviewed metric contract is a control even when both profiles execute it.",
+    "No production promotion is authorized by one paired run.",
+    "The comparison contains no questions, SQL, source rows, or private Gold fingerprints."
+  ]
+}

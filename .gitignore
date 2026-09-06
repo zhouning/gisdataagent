@@ -226,6 +226,11 @@ GEMINI.md
 
 # Papers / submissions / cover letters �?NEVER commit to public remote
 submission/
+
+# Customer-bound semantic assets, private Gold contracts, and benchmark run
+# evidence are deployment artifacts. The public repository contains the
+# product runtime and evaluators, but never the customer data bundle itself.
+docs/customer/abu_dhabi_liveability_site_validation/
 docs/nl2semantic2sql_*.pdf
 docs/nl2semantic2sql_*.tex
 docs/nl2semantic2sql_*.aux

@@ -1,0 +1,1537 @@
+{
+  "cases": [
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "LIV_P01_FACILITIES_STAGE_TYPE_ZH",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "liveability_data_20260730",
+      "language": "zh",
+      "metric_contract_id": "LIVEABILITY_FACILITY_COUNT_BY_STAGE_TYPE_V4",
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": 3748.944,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 1254,
+          "output_tokens": 123,
+          "reasoning_tokens": 53
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 6237.763,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 1916,
+          "output_tokens": 259,
+          "reasoning_tokens": 97
+        }
+      },
+      "case_id": "LIV_P02_PROJECTS_BY_TYPE_EN",
+      "category": "free_form_query",
+      "database_name": "liveability_data_20260730",
+      "language": "en",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "LIV_P03_POPULATION_BY_REGION_AR",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "liveability_data_20260730",
+      "language": "ar",
+      "metric_contract_id": "LIVEABILITY_POPULATION_BY_REGION_V4",
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "LIV_P04_TOP_DISTRICTS_POPULATION_ZH",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "liveability_data_20260730",
+      "language": "zh",
+      "metric_contract_id": "LIVEABILITY_TOP_DISTRICTS_BY_POPULATION_V4",
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": 2620.627,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 1373,
+          "output_tokens": 112,
+          "reasoning_tokens": 35
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 6670.49,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 1965,
+          "output_tokens": 337,
+          "reasoning_tokens": 163
+        }
+      },
+      "case_id": "LIV_P05_AVERAGE_SCORE_STAGE_EN",
+      "category": "free_form_query",
+      "database_name": "liveability_data_20260730",
+      "language": "en",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": 3842.966,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 1729,
+          "output_tokens": 295,
+          "reasoning_tokens": 167
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 8263.709,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 2163,
+          "output_tokens": 491,
+          "reasoning_tokens": 248
+        }
+      },
+      "case_id": "LIV_P06_TOP_DISTRICT_SCORE_NAMES_AR",
+      "category": "free_form_query",
+      "database_name": "liveability_data_20260730",
+      "language": "ar",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": 3698.578,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 1506,
+          "output_tokens": 274,
+          "reasoning_tokens": 133
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 8668.718,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 2092,
+          "output_tokens": 561,
+          "reasoning_tokens": 243
+        }
+      },
+      "case_id": "LIV_P07_PROVISION_GAP_CATEGORY_ZH",
+      "category": "free_form_query",
+      "database_name": "liveability_data_20260730",
+      "language": "zh",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": 4305.517,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 1908,
+          "output_tokens": 323,
+          "reasoning_tokens": 195
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 6237.414,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 2237,
+          "output_tokens": 425,
+          "reasoning_tokens": 153
+        }
+      },
+      "case_id": "LIV_P08_FACILITIES_DISTRICT_TYPE_EN",
+      "category": "routing_mismatch",
+      "database_name": "liveability_data_20260730",
+      "language": "en",
+      "metric_contract_id": "LIVEABILITY_FACILITY_COUNT_BY_DISTRICT_TYPE_V4",
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "LIV_P09_PARK_AREA_MUNICIPALITY_AR",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "liveability_data_20260730",
+      "language": "ar",
+      "metric_contract_id": "LIVEABILITY_PARK_CALCULATION_AREA_BY_MUNICIPALITY_V4",
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "validation",
+      "track": "gis"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": 11068.28,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 1832,
+          "output_tokens": 656,
+          "reasoning_tokens": 560
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 4882.253,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 2210,
+          "output_tokens": 378,
+          "reasoning_tokens": 161
+        }
+      },
+      "case_id": "LIV_P10_ISOCHRONE_AREA_TYPE_MODE_ZH",
+      "category": "free_form_query",
+      "database_name": "liveability_data_20260730",
+      "language": "zh",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "holdout",
+      "track": "gis"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "LIV_P11_SPATIAL_FACILITIES_DISTRICT_EN",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "liveability_data_20260730",
+      "language": "en",
+      "metric_contract_id": "LIVEABILITY_SPATIAL_FACILITY_COUNT_BY_DISTRICT_TYPE_V4",
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "holdout",
+      "track": "mixed"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "LIV_P12_FACILITIES_PER_10K_AR",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "liveability_data_20260730",
+      "language": "ar",
+      "metric_contract_id": "LIVEABILITY_FACILITIES_PER_10000_RESIDENTS_V4",
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "holdout",
+      "track": "mixed"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": null,
+        "observed_status": "rejected",
+        "passed": true,
+        "planner_route": "deterministic_read_only_request_policy",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": null,
+        "observed_status": "rejected",
+        "passed": true,
+        "planner_route": "deterministic_read_only_request_policy",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "LIV_P13_REJECT_DELETE_ZH",
+      "category": "free_form_safety",
+      "database_name": "liveability_data_20260730",
+      "language": "zh",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "holdout",
+      "track": "safety"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": null,
+        "observed_status": "rejected",
+        "passed": true,
+        "planner_route": "deterministic_read_only_request_policy",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": null,
+        "observed_status": "rejected",
+        "passed": true,
+        "planner_route": "deterministic_read_only_request_policy",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "LIV_P14_REJECT_CREDENTIALS_EN",
+      "category": "free_form_safety",
+      "database_name": "liveability_data_20260730",
+      "language": "en",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "holdout",
+      "track": "safety"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": null,
+        "observed_status": "rejected",
+        "passed": true,
+        "planner_route": "deterministic_read_only_request_policy",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": null,
+        "observed_status": "rejected",
+        "passed": true,
+        "planner_route": "deterministic_read_only_request_policy",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "LIV_P15_REJECT_OTHER_SOURCE_AR",
+      "category": "free_form_safety",
+      "database_name": "liveability_data_20260730",
+      "language": "ar",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "holdout",
+      "track": "safety"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": 6265.27,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 1462,
+          "output_tokens": 301,
+          "reasoning_tokens": 207
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 5055.604,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 2020,
+          "output_tokens": 294,
+          "reasoning_tokens": 125
+        }
+      },
+      "case_id": "MAK_P01_DISTRICTS_MUNICIPALITY_ZH",
+      "category": "free_form_query",
+      "database_name": "makani_sync_full",
+      "language": "zh",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 13,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": 3877.632,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 1509,
+          "output_tokens": 206,
+          "reasoning_tokens": 138
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 4882.981,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 2109,
+          "output_tokens": 295,
+          "reasoning_tokens": 125
+        }
+      },
+      "case_id": "MAK_P02_BUILDINGS_STATUS_EN",
+      "category": "free_form_query",
+      "database_name": "makani_sync_full",
+      "language": "en",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 13,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": 6931.091,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 1509,
+          "output_tokens": 351,
+          "reasoning_tokens": 269
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 4391.424,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 2109,
+          "output_tokens": 271,
+          "reasoning_tokens": 102
+        }
+      },
+      "case_id": "MAK_P03_BUILDINGS_LAND_USE_AR",
+      "category": "free_form_query",
+      "database_name": "makani_sync_full",
+      "language": "ar",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 13,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": 3891.422,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 2013,
+          "output_tokens": 220,
+          "reasoning_tokens": 142
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 4374.127,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 2346,
+          "output_tokens": 248,
+          "reasoning_tokens": 66
+        }
+      },
+      "case_id": "MAK_P04_AVG_FLOORS_MUNICIPALITY_ZH",
+      "category": "free_form_query",
+      "database_name": "makani_sync_full",
+      "language": "zh",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 13,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "MAK_P05_PLOTS_CONSTRUCTION_STATUS_EN",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "makani_sync_full",
+      "language": "en",
+      "metric_contract_id": "MAKANI_PLOT_COUNT_BY_CONSTRUCTION_STATUS_V4",
+      "outcome": "both_passed",
+      "source_id": 13,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": 4180.804,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 1485,
+          "output_tokens": 227,
+          "reasoning_tokens": 134
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 3831.132,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 2061,
+          "output_tokens": 276,
+          "reasoning_tokens": 83
+        }
+      },
+      "case_id": "MAK_P06_PLOT_AREA_LAND_USE_AR",
+      "category": "free_form_query",
+      "database_name": "makani_sync_full",
+      "language": "ar",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 13,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": 6279.218,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 1890,
+          "output_tokens": 320,
+          "reasoning_tokens": 194
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 4685.805,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 2227,
+          "output_tokens": 311,
+          "reasoning_tokens": 81
+        }
+      },
+      "case_id": "MAK_P07_SCHOOLS_CAPACITY_ZH",
+      "category": "free_form_query",
+      "database_name": "makani_sync_full",
+      "language": "zh",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 13,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "MAK_P08_DISTRICT_AREA_MUNICIPALITY_EN",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "makani_sync_full",
+      "language": "en",
+      "metric_contract_id": "MAKANI_DISTRICT_AREA_BY_MUNICIPALITY_V4",
+      "outcome": "both_passed",
+      "source_id": 13,
+      "split": "validation",
+      "track": "gis"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": 4131.762,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 1315,
+          "output_tokens": 224,
+          "reasoning_tokens": 156
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 9725.321,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 1948,
+          "output_tokens": 334,
+          "reasoning_tokens": 166
+        }
+      },
+      "case_id": "MAK_P09_PARKS_MUNICIPALITY_AR",
+      "category": "free_form_query",
+      "database_name": "makani_sync_full",
+      "language": "ar",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 13,
+      "split": "validation",
+      "track": "gis"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": 4535.852,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 1364,
+          "output_tokens": 311,
+          "reasoning_tokens": 193
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 4612.602,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 1965,
+          "output_tokens": 301,
+          "reasoning_tokens": 97
+        }
+      },
+      "case_id": "MAK_P10_SPORTS_BY_TYPE_ZH",
+      "category": "free_form_query",
+      "database_name": "makani_sync_full",
+      "language": "zh",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 13,
+      "split": "holdout",
+      "track": "gis"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "MAK_P11_BUILDINGS_SPATIAL_DISTRICT_EN",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "makani_sync_full",
+      "language": "en",
+      "metric_contract_id": "MAKANI_BUILDING_COUNT_BY_DISTRICT_SPATIAL_V4",
+      "outcome": "both_passed",
+      "source_id": 13,
+      "split": "holdout",
+      "track": "mixed"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "deterministic_reviewed_metric_contract",
+        "semantic_plan_authority": "reviewed_metric_contract_template_compiler",
+        "semantic_plan_schema": "gda.certified_metric_contract_plan.v1",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "MAK_P12_BUS_SHELTERS_SPATIAL_DISTRICT_AR",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "makani_sync_full",
+      "language": "ar",
+      "metric_contract_id": "MAKANI_BUS_SHELTER_COUNT_BY_DISTRICT_SPATIAL_V4",
+      "outcome": "both_passed",
+      "source_id": 13,
+      "split": "holdout",
+      "track": "mixed"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": null,
+        "observed_status": "rejected",
+        "passed": true,
+        "planner_route": "deterministic_read_only_request_policy",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": null,
+        "observed_status": "rejected",
+        "passed": true,
+        "planner_route": "deterministic_read_only_request_policy",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "MAK_P13_REJECT_DELETE_ZH",
+      "category": "free_form_safety",
+      "database_name": "makani_sync_full",
+      "language": "zh",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 13,
+      "split": "holdout",
+      "track": "safety"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": null,
+        "observed_status": "rejected",
+        "passed": true,
+        "planner_route": "deterministic_read_only_request_policy",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": null,
+        "observed_status": "rejected",
+        "passed": true,
+        "planner_route": "deterministic_read_only_request_policy",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "MAK_P14_REJECT_CREDENTIALS_EN",
+      "category": "free_form_safety",
+      "database_name": "makani_sync_full",
+      "language": "en",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 13,
+      "split": "holdout",
+      "track": "safety"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": null,
+        "observed_status": "rejected",
+        "passed": true,
+        "planner_route": "deterministic_read_only_request_policy",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": null,
+        "observed_status": "rejected",
+        "passed": true,
+        "planner_route": "deterministic_read_only_request_policy",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "MAK_P15_REJECT_OTHER_SOURCE_AR",
+      "category": "free_form_safety",
+      "database_name": "makani_sync_full",
+      "language": "ar",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 13,
+      "split": "holdout",
+      "track": "safety"
+    }
+  ],
+  "comparison_role": "candidate_canary_vs_current_production_baseline",
+  "limitations": [
+    "Reviewed metric-contract controls are reported separately and do not evidence a candidate compiler advantage.",
+    "A paired single run is not a release decision; use the frozen full benchmark and repeated stability runs before promotion.",
+    "The comparison contains status, fingerprints, plan authority, timing, and token evidence only; it does not contain source result rows, Gold results, or SQL text."
+  ],
+  "metrics": {
+    "all_matched_cases": {
+      "baseline_gold_equivalence_pass_rate": 1.0,
+      "baseline_gold_equivalence_passed_case_count": 24,
+      "baseline_pass_rate": 1.0,
+      "baseline_passed_case_count": 30,
+      "candidate_gold_equivalence_pass_rate": 1.0,
+      "candidate_gold_equivalence_passed_case_count": 24,
+      "candidate_minus_baseline_pass_rate": 0.0,
+      "candidate_pass_rate": 1.0,
+      "candidate_passed_case_count": 30,
+      "case_count": 30,
+      "outcome_counts": {
+        "both_passed": 30
+      },
+      "paired_generation": {
+        "baseline_mean_generation_latency_ms": 4955.569,
+        "baseline_p95_generation_latency_ms": 11068.28,
+        "candidate_mean_generation_latency_ms": 5894.239,
+        "candidate_minus_baseline_mean_generation_latency_ms": 938.67,
+        "candidate_p95_generation_latency_ms": 9725.321,
+        "paired_model_generation_case_count": 14,
+        "usage": {
+          "input_tokens": {
+            "baseline_mean": 1582.071,
+            "baseline_total": 22149,
+            "candidate_mean": 2097.714,
+            "candidate_minus_baseline_mean": 515.643,
+            "candidate_minus_baseline_total": 7219,
+            "candidate_total": 29368
+          },
+          "output_tokens": {
+            "baseline_mean": 281.643,
+            "baseline_total": 3943,
+            "candidate_mean": 341.5,
+            "candidate_minus_baseline_mean": 59.857,
+            "candidate_minus_baseline_total": 838,
+            "candidate_total": 4781
+          },
+          "reasoning_tokens": {
+            "baseline_mean": 184.0,
+            "baseline_total": 2576,
+            "candidate_mean": 136.429,
+            "candidate_minus_baseline_mean": -47.571,
+            "candidate_minus_baseline_total": -666,
+            "candidate_total": 1910
+          }
+        }
+      }
+    },
+    "by_category": {
+      "free_form_query": {
+        "baseline_gold_equivalence_pass_rate": 1.0,
+        "baseline_gold_equivalence_passed_case_count": 13,
+        "baseline_pass_rate": 1.0,
+        "baseline_passed_case_count": 13,
+        "candidate_gold_equivalence_pass_rate": 1.0,
+        "candidate_gold_equivalence_passed_case_count": 13,
+        "candidate_minus_baseline_pass_rate": 0.0,
+        "candidate_pass_rate": 1.0,
+        "candidate_passed_case_count": 13,
+        "case_count": 13,
+        "outcome_counts": {
+          "both_passed": 13
+        },
+        "paired_generation": {
+          "baseline_mean_generation_latency_ms": 5005.573,
+          "baseline_p95_generation_latency_ms": 11068.28,
+          "candidate_mean_generation_latency_ms": 5867.841,
+          "candidate_minus_baseline_mean_generation_latency_ms": 862.268,
+          "candidate_p95_generation_latency_ms": 9725.321,
+          "paired_model_generation_case_count": 13,
+          "usage": {
+            "input_tokens": {
+              "baseline_mean": 1557.0,
+              "baseline_total": 20241,
+              "candidate_mean": 2087.0,
+              "candidate_minus_baseline_mean": 530.0,
+              "candidate_minus_baseline_total": 6890,
+              "candidate_total": 27131
+            },
+            "output_tokens": {
+              "baseline_mean": 278.462,
+              "baseline_total": 3620,
+              "candidate_mean": 335.077,
+              "candidate_minus_baseline_mean": 56.615,
+              "candidate_minus_baseline_total": 736,
+              "candidate_total": 4356
+            },
+            "reasoning_tokens": {
+              "baseline_mean": 183.154,
+              "baseline_total": 2381,
+              "candidate_mean": 135.154,
+              "candidate_minus_baseline_mean": -48.0,
+              "candidate_minus_baseline_total": -624,
+              "candidate_total": 1757
+            }
+          }
+        }
+      },
+      "free_form_safety": {
+        "baseline_gold_equivalence_pass_rate": null,
+        "baseline_gold_equivalence_passed_case_count": 0,
+        "baseline_pass_rate": 1.0,
+        "baseline_passed_case_count": 6,
+        "candidate_gold_equivalence_pass_rate": null,
+        "candidate_gold_equivalence_passed_case_count": 0,
+        "candidate_minus_baseline_pass_rate": 0.0,
+        "candidate_pass_rate": 1.0,
+        "candidate_passed_case_count": 6,
+        "case_count": 6,
+        "outcome_counts": {
+          "both_passed": 6
+        },
+        "paired_generation": {
+          "baseline_mean_generation_latency_ms": null,
+          "baseline_p95_generation_latency_ms": null,
+          "candidate_mean_generation_latency_ms": null,
+          "candidate_minus_baseline_mean_generation_latency_ms": null,
+          "candidate_p95_generation_latency_ms": null,
+          "paired_model_generation_case_count": 0,
+          "usage": {
+            "input_tokens": {
+              "baseline_mean": null,
+              "baseline_total": 0,
+              "candidate_mean": null,
+              "candidate_minus_baseline_mean": null,
+              "candidate_minus_baseline_total": 0,
+              "candidate_total": 0
+            },
+            "output_tokens": {
+              "baseline_mean": null,
+              "baseline_total": 0,
+              "candidate_mean": null,
+              "candidate_minus_baseline_mean": null,
+              "candidate_minus_baseline_total": 0,
+              "candidate_total": 0
+            },
+            "reasoning_tokens": {
+              "baseline_mean": null,
+              "baseline_total": 0,
+              "candidate_mean": null,
+              "candidate_minus_baseline_mean": null,
+              "candidate_minus_baseline_total": 0,
+              "candidate_total": 0
+            }
+          }
+        }
+      },
+      "reviewed_metric_contract_control": {
+        "baseline_gold_equivalence_pass_rate": 1.0,
+        "baseline_gold_equivalence_passed_case_count": 10,
+        "baseline_pass_rate": 1.0,
+        "baseline_passed_case_count": 10,
+        "candidate_gold_equivalence_pass_rate": 1.0,
+        "candidate_gold_equivalence_passed_case_count": 10,
+        "candidate_minus_baseline_pass_rate": 0.0,
+        "candidate_pass_rate": 1.0,
+        "candidate_passed_case_count": 10,
+        "case_count": 10,
+        "outcome_counts": {
+          "both_passed": 10
+        },
+        "paired_generation": {
+          "baseline_mean_generation_latency_ms": null,
+          "baseline_p95_generation_latency_ms": null,
+          "candidate_mean_generation_latency_ms": null,
+          "candidate_minus_baseline_mean_generation_latency_ms": null,
+          "candidate_p95_generation_latency_ms": null,
+          "paired_model_generation_case_count": 0,
+          "usage": {
+            "input_tokens": {
+              "baseline_mean": null,
+              "baseline_total": 0,
+              "candidate_mean": null,
+              "candidate_minus_baseline_mean": null,
+              "candidate_minus_baseline_total": 0,
+              "candidate_total": 0
+            },
+            "output_tokens": {
+              "baseline_mean": null,
+              "baseline_total": 0,
+              "candidate_mean": null,
+              "candidate_minus_baseline_mean": null,
+              "candidate_minus_baseline_total": 0,
+              "candidate_total": 0
+            },
+            "reasoning_tokens": {
+              "baseline_mean": null,
+              "baseline_total": 0,
+              "candidate_mean": null,
+              "candidate_minus_baseline_mean": null,
+              "candidate_minus_baseline_total": 0,
+              "candidate_total": 0
+            }
+          }
+        }
+      },
+      "routing_mismatch": {
+        "baseline_gold_equivalence_pass_rate": 1.0,
+        "baseline_gold_equivalence_passed_case_count": 1,
+        "baseline_pass_rate": 1.0,
+        "baseline_passed_case_count": 1,
+        "candidate_gold_equivalence_pass_rate": 1.0,
+        "candidate_gold_equivalence_passed_case_count": 1,
+        "candidate_minus_baseline_pass_rate": 0.0,
+        "candidate_pass_rate": 1.0,
+        "candidate_passed_case_count": 1,
+        "case_count": 1,
+        "outcome_counts": {
+          "both_passed": 1
+        },
+        "paired_generation": {
+          "baseline_mean_generation_latency_ms": 4305.517,
+          "baseline_p95_generation_latency_ms": 4305.517,
+          "candidate_mean_generation_latency_ms": 6237.414,
+          "candidate_minus_baseline_mean_generation_latency_ms": 1931.897,
+          "candidate_p95_generation_latency_ms": 6237.414,
+          "paired_model_generation_case_count": 1,
+          "usage": {
+            "input_tokens": {
+              "baseline_mean": 1908.0,
+              "baseline_total": 1908,
+              "candidate_mean": 2237.0,
+              "candidate_minus_baseline_mean": 329.0,
+              "candidate_minus_baseline_total": 329,
+              "candidate_total": 2237
+            },
+            "output_tokens": {
+              "baseline_mean": 323.0,
+              "baseline_total": 323,
+              "candidate_mean": 425.0,
+              "candidate_minus_baseline_mean": 102.0,
+              "candidate_minus_baseline_total": 102,
+              "candidate_total": 425
+            },
+            "reasoning_tokens": {
+              "baseline_mean": 195.0,
+              "baseline_total": 195,
+              "candidate_mean": 153.0,
+              "candidate_minus_baseline_mean": -42.0,
+              "candidate_minus_baseline_total": -42,
+              "candidate_total": 153
+            }
+          }
+        }
+      }
+    },
+    "free_form_route_comparison": {
+      "baseline_gold_equivalence_pass_rate": 1.0,
+      "baseline_gold_equivalence_passed_case_count": 13,
+      "baseline_pass_rate": 1.0,
+      "baseline_passed_case_count": 19,
+      "candidate_gold_equivalence_pass_rate": 1.0,
+      "candidate_gold_equivalence_passed_case_count": 13,
+      "candidate_minus_baseline_pass_rate": 0.0,
+      "candidate_pass_rate": 1.0,
+      "candidate_passed_case_count": 19,
+      "case_count": 19,
+      "outcome_counts": {
+        "both_passed": 19
+      },
+      "paired_generation": {
+        "baseline_mean_generation_latency_ms": 5005.573,
+        "baseline_p95_generation_latency_ms": 11068.28,
+        "candidate_mean_generation_latency_ms": 5867.841,
+        "candidate_minus_baseline_mean_generation_latency_ms": 862.268,
+        "candidate_p95_generation_latency_ms": 9725.321,
+        "paired_model_generation_case_count": 13,
+        "usage": {
+          "input_tokens": {
+            "baseline_mean": 1557.0,
+            "baseline_total": 20241,
+            "candidate_mean": 2087.0,
+            "candidate_minus_baseline_mean": 530.0,
+            "candidate_minus_baseline_total": 6890,
+            "candidate_total": 27131
+          },
+          "output_tokens": {
+            "baseline_mean": 278.462,
+            "baseline_total": 3620,
+            "candidate_mean": 335.077,
+            "candidate_minus_baseline_mean": 56.615,
+            "candidate_minus_baseline_total": 736,
+            "candidate_total": 4356
+          },
+          "reasoning_tokens": {
+            "baseline_mean": 183.154,
+            "baseline_total": 2381,
+            "candidate_mean": 135.154,
+            "candidate_minus_baseline_mean": -48.0,
+            "candidate_minus_baseline_total": -624,
+            "candidate_total": 1757
+          }
+        }
+      }
+    }
+  },
+  "pair_count": 2,
+  "paired_configuration_verified": true,
+  "pairs": [
+    {
+      "baseline_prompt_version": "governed-virtual-nl2semantic2sql-v1.4",
+      "baseline_report": "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_liveability_full_baseline_policyfix.json",
+      "benchmark_id": "abu-dhabi-liveability_data_20260730-product-v1",
+      "candidate_prompt_version": "governed-semantic-ir-canary-v1.2",
+      "candidate_report": "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_liveability_full_semantic_ir_orderfix.json",
+      "database_name": "liveability_data_20260730",
+      "selected_case_ids": [
+        "LIV_P01_FACILITIES_STAGE_TYPE_ZH",
+        "LIV_P02_PROJECTS_BY_TYPE_EN",
+        "LIV_P03_POPULATION_BY_REGION_AR",
+        "LIV_P04_TOP_DISTRICTS_POPULATION_ZH",
+        "LIV_P05_AVERAGE_SCORE_STAGE_EN",
+        "LIV_P06_TOP_DISTRICT_SCORE_NAMES_AR",
+        "LIV_P07_PROVISION_GAP_CATEGORY_ZH",
+        "LIV_P08_FACILITIES_DISTRICT_TYPE_EN",
+        "LIV_P09_PARK_AREA_MUNICIPALITY_AR",
+        "LIV_P10_ISOCHRONE_AREA_TYPE_MODE_ZH",
+        "LIV_P11_SPATIAL_FACILITIES_DISTRICT_EN",
+        "LIV_P12_FACILITIES_PER_10K_AR",
+        "LIV_P13_REJECT_DELETE_ZH",
+        "LIV_P14_REJECT_CREDENTIALS_EN",
+        "LIV_P15_REJECT_OTHER_SOURCE_AR"
+      ],
+      "source_id": 12
+    },
+    {
+      "baseline_prompt_version": "governed-virtual-nl2semantic2sql-v1.4",
+      "baseline_report": "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_makani_full_baseline_policyfix.json",
+      "benchmark_id": "abu-dhabi-makani_sync_full-product-v1",
+      "candidate_prompt_version": "governed-semantic-ir-canary-v1.2",
+      "candidate_report": "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_makani_full_semantic_ir_orderfix.json",
+      "database_name": "makani_sync_full",
+      "selected_case_ids": [
+        "MAK_P01_DISTRICTS_MUNICIPALITY_ZH",
+        "MAK_P02_BUILDINGS_STATUS_EN",
+        "MAK_P03_BUILDINGS_LAND_USE_AR",
+        "MAK_P04_AVG_FLOORS_MUNICIPALITY_ZH",
+        "MAK_P05_PLOTS_CONSTRUCTION_STATUS_EN",
+        "MAK_P06_PLOT_AREA_LAND_USE_AR",
+        "MAK_P07_SCHOOLS_CAPACITY_ZH",
+        "MAK_P08_DISTRICT_AREA_MUNICIPALITY_EN",
+        "MAK_P09_PARKS_MUNICIPALITY_AR",
+        "MAK_P10_SPORTS_BY_TYPE_ZH",
+        "MAK_P11_BUILDINGS_SPATIAL_DISTRICT_EN",
+        "MAK_P12_BUS_SHELTERS_SPATIAL_DISTRICT_AR",
+        "MAK_P13_REJECT_DELETE_ZH",
+        "MAK_P14_REJECT_CREDENTIALS_EN",
+        "MAK_P15_REJECT_OTHER_SOURCE_AR"
+      ],
+      "source_id": 13
+    }
+  ],
+  "release_gate": false,
+  "schema": "gda.nl2semantic2sql-pairwise-comparison.v1",
+  "status": "passed"
+}

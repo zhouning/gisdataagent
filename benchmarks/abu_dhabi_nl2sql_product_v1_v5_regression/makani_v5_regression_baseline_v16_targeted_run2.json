@@ -1,0 +1,1312 @@
+{
+  "benchmark": {
+    "benchmark_id": "abu-dhabi-makani_sync_full-product-v1-v5-regression",
+    "claim_boundary": {
+      "customer_steward_semantic_certification_complete": false,
+      "gold_result_equivalence_supported": true,
+      "schema_or_sql_leakage_allowed": false,
+      "scope": "business-language product baseline on one governed source",
+      "single_run_is_not_release_reliability": true
+    },
+    "completeness": {
+      "status": "complete_runtime_gold_freeze"
+    },
+    "coverage": {
+      "case_count": 15,
+      "language_counts": {
+        "ar": 5,
+        "en": 5,
+        "zh": 5
+      },
+      "query_case_count": 12,
+      "refusal_case_count": 3,
+      "source_rows_persisted": false,
+      "split_counts": {
+        "holdout": 6,
+        "validation": 9
+      },
+      "track_counts": {
+        "gis": 3,
+        "mixed": 2,
+        "safety": 3,
+        "warehouse": 7
+      }
+    },
+    "definition_complete": true,
+    "evaluation_profile": {
+      "isolation": {
+        "benchmark_generated_from_runtime_contracts": false,
+        "gold_results_available_to_runtime": false,
+        "gold_sql_available_to_runtime": false,
+        "questions_used_in_runtime_prompts": false
+      },
+      "leakage_check_passed": true,
+      "profile_id": "business-language-clean-v1",
+      "split_counts": {
+        "holdout": 6,
+        "validation": 9
+      },
+      "status": "frozen",
+      "track_counts": {
+        "gis": 3,
+        "mixed": 2,
+        "safety": 3,
+        "warehouse": 7
+      }
+    },
+    "execution_profile": "baseline_sql",
+    "max_concurrency": 1,
+    "metric_contract_version": "abu-dhabi-makani-business-v6",
+    "prompt_version": "governed-virtual-nl2semantic2sql-v1.6",
+    "request_interval_seconds": 2.0,
+    "run_complete": false,
+    "selected_case_ids": [
+      "MAK_P02_BUILDINGS_STATUS_EN",
+      "MAK_P03_BUILDINGS_LAND_USE_AR",
+      "MAK_P11_BUILDINGS_SPATIAL_DISTRICT_EN"
+    ],
+    "semantic_layer_version": "abu-dhabi-makani-v5-dictionary-published",
+    "source_file_sha256": "fed2ea703e9faef16eea3033dc37c46a7ebf158fcebe20dc0d2d02d2bf917974",
+    "version": "1.0.0-frozen-business-language-clean"
+  },
+  "benchmark_accuracy_claim": false,
+  "cases": [
+    {
+      "capabilities": [
+        "entity_resolution",
+        "group_by",
+        "count"
+      ],
+      "case_id": "MAK_P02_BUILDINGS_STATUS_EN",
+      "checks": {
+        "database_scope_match": true,
+        "forbidden_tables_absent": true,
+        "gold_columns_match": true,
+        "gold_exact_columns_match": false,
+        "gold_exact_result_fingerprint_match": false,
+        "gold_result_equivalence_match": true,
+        "gold_result_fingerprint_match": true,
+        "gold_row_count_match": true,
+        "language_match": true,
+        "max_row_count": true,
+        "required_columns_present": true,
+        "schema_scope_match": true,
+        "source_id_match": true,
+        "source_rows_not_persisted": true,
+        "status_match": true,
+        "table_set_match": true
+      },
+      "diagnostic_differences": [
+        "gold_exact_columns_match",
+        "gold_exact_result_fingerprint_match"
+      ],
+      "failure_class": null,
+      "failure_reasons": [],
+      "language": "en",
+      "observed": {
+        "columns": [
+          "public.udm_building.physicalstatus"
+        ],
+        "equivalence_fingerprints": {
+          "position_fingerprint": "9d20f51a786dd0ba83b1d1bffab85290bcc155e7c8e24fe25ed3b724978be29d",
+          "position_numeric6_fingerprint": "762d0ef357ce489c849eb0c36755a845aa4ac0e4865d1d6c1dd00f318e9cc7c8",
+          "unordered_position_fingerprint": "093d5b9b10e5873634cc2e686ba38d9793dcd06c9c65bc464acd4cd9bd6448a7",
+          "unordered_position_numeric6_fingerprint": "22a1f4b667de47fd963588bbd82f6cf71dd78fea1bc29ab8940b4f7f3e0b5f74"
+        },
+        "error": null,
+        "generation": null,
+        "gold_result_contract": {
+          "contract_id": "MAK_P02_BUILDINGS_STATUS_EN_GOLD_V1",
+          "equivalence": {
+            "accepted_fingerprint_keys": [
+              "unordered_position_numeric6_fingerprint",
+              "position_numeric6_fingerprint",
+              "unordered_position_fingerprint",
+              "position_fingerprint"
+            ],
+            "column_aliases_compare_by_position": true,
+            "expected_fingerprints": {
+              "position_fingerprint": "9d20f51a786dd0ba83b1d1bffab85290bcc155e7c8e24fe25ed3b724978be29d",
+              "position_numeric6_fingerprint": "762d0ef357ce489c849eb0c36755a845aa4ac0e4865d1d6c1dd00f318e9cc7c8",
+              "unordered_position_fingerprint": "093d5b9b10e5873634cc2e686ba38d9793dcd06c9c65bc464acd4cd9bd6448a7",
+              "unordered_position_numeric6_fingerprint": "22a1f4b667de47fd963588bbd82f6cf71dd78fea1bc29ab8940b4f7f3e0b5f74"
+            },
+            "order_sensitive": false
+          },
+          "path": "/Users/zhouning/gisdataagent/benchmarks/abu_dhabi_nl2sql_product_v1_v5_regression/gold/makani/MAK_P02_BUILDINGS_STATUS_EN.json",
+          "sha256": "e9a245f360e81a5a2f8f3f7bf030463d71934b12693a87c65239f4e278ec8a1e"
+        },
+        "language": "en",
+        "model": null,
+        "planner": {
+          "candidate_contract_ids": [
+            "MAKANI_BUILDING_COUNT_BY_PHYSICAL_STATUS_V6"
+          ],
+          "contract_id": "MAKANI_BUILDING_COUNT_BY_PHYSICAL_STATUS_V6",
+          "execution_contract_schema": "gda.governed-metric-contract-result.v1",
+          "fallback_reason": null,
+          "llm_invoked": false,
+          "resolution": "unique_reviewed_canonical_metric",
+          "route": "deterministic_reviewed_metric_contract"
+        },
+        "prompt": null,
+        "reason": null,
+        "result_columns": [
+          "physical_status",
+          "building_count"
+        ],
+        "result_fingerprint": "7d0268cc49d61c9bfc2767a408bd2a279d4fe9c3439e3a534c75db9733b2fe4d",
+        "row_count": 60,
+        "semantic_caveats": [
+          "makani_technical_catalog_not_business_approval",
+          "makani_dictionary_mapping_candidate",
+          "makani_arabic_terminology_provisional"
+        ],
+        "semantic_metric_contract": {
+          "application": "deterministic_reviewed_metric_compilation",
+          "canonical_sql_sha256": "99ff6dcb450fc6a1dde09b3f126ec01e504758293f1147645492f4d01608c34d",
+          "contract_id": "MAKANI_BUILDING_COUNT_BY_PHYSICAL_STATUS_V6",
+          "dimensions": [
+            "physical_status"
+          ],
+          "filters": [],
+          "metric_contract_version": "abu-dhabi-makani-business-v6",
+          "metrics": [
+            "building_count"
+          ],
+          "tables": [
+            "public.udm_building"
+          ]
+        },
+        "semantic_plan": {
+          "authority": "reviewed_metric_contract_template_compiler",
+          "compiled_statement": "SELECT physicalstatus AS physical_status,\n       COUNT(*) AS building_count\nFROM public.udm_building\nGROUP BY physicalstatus\nORDER BY physicalstatus\nLIMIT 1000",
+          "execution_authority": true,
+          "fingerprints": {
+            "compiled_statement_sha256": "99ff6dcb450fc6a1dde09b3f126ec01e504758293f1147645492f4d01608c34d",
+            "logical_plan_sha256": "173bed106e424d681adb79387a897effbd7f2db63060f2cc86d038414b347376",
+            "physical_plan_sha256": "fe2d5d7be8d1a787b1d3ebdad03e0d8587fb977ed21c516c59bb5327da719328",
+            "semantic_ir_sha256": "abfab55468d8ea02dfdddeda2e72c1d726c7b0e6a2230141607007e9e80e2e79"
+          },
+          "logical_plan": {
+            "ir_sha256": "abfab55468d8ea02dfdddeda2e72c1d726c7b0e6a2230141607007e9e80e2e79",
+            "nodes": [
+              {
+                "attributes": {
+                  "source_id": 13,
+                  "table": "public.udm_building"
+                },
+                "input_node_ids": [],
+                "node_id": "scan_001",
+                "operator": "scan"
+              },
+              {
+                "attributes": {
+                  "group_count": 1,
+                  "metric_count": 1
+                },
+                "input_node_ids": [
+                  "scan_001"
+                ],
+                "node_id": "aggregate_001",
+                "operator": "aggregate"
+              },
+              {
+                "attributes": {
+                  "outputs": [
+                    "physical_status",
+                    "building_count"
+                  ]
+                },
+                "input_node_ids": [
+                  "aggregate_001"
+                ],
+                "node_id": "project_001",
+                "operator": "project"
+              },
+              {
+                "attributes": {
+                  "order_count": 1
+                },
+                "input_node_ids": [
+                  "project_001"
+                ],
+                "node_id": "sort_001",
+                "operator": "sort"
+              },
+              {
+                "attributes": {
+                  "enforcement": "sql",
+                  "row_limit": 1000
+                },
+                "input_node_ids": [
+                  "sort_001"
+                ],
+                "node_id": "limit_001",
+                "operator": "limit"
+              }
+            ],
+            "root_node_id": "limit_001",
+            "schema_id": "gda.semantic_logical_plan.v1"
+          },
+          "physical_plan": {
+            "columns": [
+              "public.udm_building.physicalstatus"
+            ],
+            "compilation_mode": "reviewed_contract_compiler",
+            "dialect": "postgres",
+            "engine": "postgresql_postgis",
+            "logical_plan_sha256": "173bed106e424d681adb79387a897effbd7f2db63060f2cc86d038414b347376",
+            "read_only": true,
+            "schema_id": "gda.semantic_physical_plan.v1",
+            "source_ids": [
+              13
+            ],
+            "spatial_operators": [],
+            "statement_sha256": "99ff6dcb450fc6a1dde09b3f126ec01e504758293f1147645492f4d01608c34d",
+            "tables": [
+              "public.udm_building"
+            ]
+          },
+          "schema_id": "gda.certified_metric_contract_plan.v1",
+          "semantic_ir": {
+            "group_expression_sha256s": [
+              "9803e5d9a44a9b718e3245546d4bbb5a2581ecf4eccd020f94f6c02c2a33f1f6"
+            ],
+            "joins": [],
+            "limit_enforcement": "sql",
+            "metric_contract_id": "MAKANI_BUILDING_COUNT_BY_PHYSICAL_STATUS_V6",
+            "metric_contract_version": "abu-dhabi-makani-business-v6",
+            "operation": "aggregate",
+            "order_by": [
+              {
+                "direction": "asc",
+                "expression_sha256": "9803e5d9a44a9b718e3245546d4bbb5a2581ecf4eccd020f94f6c02c2a33f1f6",
+                "output_name": "physicalstatus"
+              }
+            ],
+            "predicates": [],
+            "projections": [
+              {
+                "aggregate": null,
+                "expression_kind": "field",
+                "expression_sha256": "9803e5d9a44a9b718e3245546d4bbb5a2581ecf4eccd020f94f6c02c2a33f1f6",
+                "output_name": "physical_status",
+                "role": "dimension",
+                "source_fields": [
+                  {
+                    "field": "physicalstatus",
+                    "table": "public.udm_building"
+                  }
+                ]
+              },
+              {
+                "aggregate": "count",
+                "expression_kind": "aggregate",
+                "expression_sha256": "1464b4c5bc20377961e5849993a762c16d19ac1081eaec971d4a10800efd9b17",
+                "output_name": "building_count",
+                "role": "metric",
+                "source_fields": []
+              }
+            ],
+            "result_limit": 1000,
+            "route": "reviewed_metric_contract",
+            "schema_id": "gda.semantic_query_ir.v1",
+            "semantic_version": "abu-dhabi-makani-v5-dictionary-published",
+            "sources": [
+              {
+                "authorized_schemas": [
+                  "public"
+                ],
+                "database_name": "makani_sync_full",
+                "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+                "source_id": 13,
+                "source_name": "abu-dhabi-makani-dev",
+                "tables": [
+                  "public.udm_building"
+                ]
+              }
+            ],
+            "task_frame": {
+              "language": "en",
+              "operation": "aggregate",
+              "question_sha256": "65b8822d309ace32027c6ac615c20a5942448ad21535920e17e1a0d108e1ebed",
+              "schema_id": "gda.semantic_task_frame.v1",
+              "source_ids": [
+                13
+              ]
+            }
+          },
+          "status": "planned",
+          "validation": {
+            "checks": [
+              {
+                "check_id": "source_scope_bound",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "table_scope_exact",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "referenced_tables_governed",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "referenced_columns_governed",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "join_operators_governed",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "result_limit_bounded",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "projection_contract_present",
+                "detail": null,
+                "passed": true
+              }
+            ],
+            "ir_sha256": "abfab55468d8ea02dfdddeda2e72c1d726c7b0e6a2230141607007e9e80e2e79",
+            "reason_codes": [],
+            "schema_id": "gda.semantic_ir_validation.v1",
+            "valid": true
+          }
+        },
+        "source": {
+          "authorized_schemas": [
+            "public"
+          ],
+          "database_name": "makani_sync_full",
+          "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+          "execution_mode": "registered_governed_virtual_read_only",
+          "source_id": 13,
+          "source_name": "abu-dhabi-makani-dev"
+        },
+        "source_rows_persisted": false,
+        "sql_sha256": "99ff6dcb450fc6a1dde09b3f126ec01e504758293f1147645492f4d01608c34d",
+        "status": "ok",
+        "tables": [
+          "public.udm_building"
+        ]
+      },
+      "question": "How many mapped buildings are in each physical lifecycle status?",
+      "split": "validation",
+      "status": "passed",
+      "track": "warehouse"
+    },
+    {
+      "capabilities": [
+        "entity_resolution",
+        "business_field_resolution",
+        "group_by",
+        "count"
+      ],
+      "case_id": "MAK_P03_BUILDINGS_LAND_USE_AR",
+      "checks": {
+        "database_scope_match": true,
+        "forbidden_tables_absent": true,
+        "gold_columns_match": true,
+        "gold_exact_columns_match": true,
+        "gold_exact_result_fingerprint_match": true,
+        "gold_result_equivalence_match": true,
+        "gold_result_fingerprint_match": true,
+        "gold_row_count_match": true,
+        "language_match": true,
+        "max_row_count": true,
+        "required_columns_present": true,
+        "schema_scope_match": true,
+        "source_id_match": true,
+        "source_rows_not_persisted": true,
+        "status_match": true,
+        "table_set_match": true
+      },
+      "diagnostic_differences": [],
+      "failure_class": null,
+      "failure_reasons": [],
+      "language": "ar",
+      "observed": {
+        "columns": [
+          "public.udm_building.primaryuseengdesc"
+        ],
+        "equivalence_fingerprints": {
+          "position_fingerprint": "47acd5c50130e0f54f91eaa0c2bed137e1ebc9ce9a5a3df72cea6e5dd96ef8ab",
+          "position_numeric6_fingerprint": "614591a2baac39d17088e4c9406d7969369a54c52a8c34140df1079756ec9d2b",
+          "unordered_position_fingerprint": "47acd5c50130e0f54f91eaa0c2bed137e1ebc9ce9a5a3df72cea6e5dd96ef8ab",
+          "unordered_position_numeric6_fingerprint": "614591a2baac39d17088e4c9406d7969369a54c52a8c34140df1079756ec9d2b"
+        },
+        "error": null,
+        "generation": {
+          "attempt": 1,
+          "latency_ms": 7870.247,
+          "observed_model_versions": [
+            "gpt-5.1-2025-11-13"
+          ],
+          "usage": {
+            "input_tokens": 3865,
+            "output_tokens": 530,
+            "reasoning_tokens": 458
+          }
+        },
+        "gold_result_contract": {
+          "contract_id": "MAK_P03_BUILDINGS_LAND_USE_AR_GOLD_V1",
+          "equivalence": {
+            "accepted_fingerprint_keys": [
+              "unordered_position_numeric6_fingerprint",
+              "position_numeric6_fingerprint",
+              "unordered_position_fingerprint",
+              "position_fingerprint"
+            ],
+            "column_aliases_compare_by_position": true,
+            "expected_fingerprints": {
+              "position_fingerprint": "47acd5c50130e0f54f91eaa0c2bed137e1ebc9ce9a5a3df72cea6e5dd96ef8ab",
+              "position_numeric6_fingerprint": "614591a2baac39d17088e4c9406d7969369a54c52a8c34140df1079756ec9d2b",
+              "unordered_position_fingerprint": "47acd5c50130e0f54f91eaa0c2bed137e1ebc9ce9a5a3df72cea6e5dd96ef8ab",
+              "unordered_position_numeric6_fingerprint": "614591a2baac39d17088e4c9406d7969369a54c52a8c34140df1079756ec9d2b"
+            },
+            "order_sensitive": false
+          },
+          "path": "/Users/zhouning/gisdataagent/benchmarks/abu_dhabi_nl2sql_product_v1_v5_regression/gold/makani/MAK_P03_BUILDINGS_LAND_USE_AR.json",
+          "sha256": "2d7bc7c5ca636bf408c45c7bb2b7ac276245bd996aafb1529df89fa20a2961a9"
+        },
+        "language": "ar",
+        "model": {
+          "adk_route": "openai/gpt-5.1",
+          "reasoning_effort": "medium",
+          "requested": "gpt-5.1"
+        },
+        "planner": {
+          "direct_metric_candidate_contract_ids": [],
+          "fallback_reason": "no_direct_metric_match",
+          "llm_invoked": true,
+          "route": "governed_free_form_llm"
+        },
+        "prompt": {
+          "entity_resolution": [],
+          "grounding": {
+            "asset_matches": [
+              {
+                "asset_id": "makani.building",
+                "physical_tables": [
+                  "public.udm_building"
+                ],
+                "score": 55.5
+              }
+            ],
+            "candidate_counts_after": {
+              "metric_contract_count": 5,
+              "relationship_count": 0,
+              "semantic_asset_count": 1,
+              "semantic_caveat_count": 3,
+              "table_count": 1
+            },
+            "candidate_counts_after_entity_resolution": {
+              "metric_contract_count": 5,
+              "relationship_count": 0,
+              "semantic_asset_count": 1,
+              "semantic_caveat_count": 3,
+              "table_count": 1
+            },
+            "candidate_counts_before": {
+              "metric_contract_count": 775,
+              "relationship_count": 14,
+              "semantic_asset_count": 604,
+              "semantic_caveat_count": 3,
+              "table_count": 764
+            },
+            "execution_validation_scope": "full_semantic_layer",
+            "explicit_table_matches": [],
+            "strategy": "reviewed_business_asset_retrieval"
+          },
+          "sha256": "8c9ef9201671cf0b0b983926146a38996f8319892e82ad1d96d891c25f77b13c",
+          "version": "governed-virtual-nl2semantic2sql-v1.6"
+        },
+        "reason": null,
+        "result_columns": [
+          "primaryuseengdesc",
+          "building_count"
+        ],
+        "result_fingerprint": "3b9c61a353ca38f2a4bc719bcb509d736a85be73d584c537f28ca664c0c2fe51",
+        "row_count": 20,
+        "semantic_caveats": [
+          "makani_technical_catalog_not_business_approval",
+          "makani_dictionary_mapping_candidate",
+          "makani_arabic_terminology_provisional"
+        ],
+        "semantic_metric_contract": null,
+        "semantic_plan": {
+          "execution_authority": false,
+          "fallback_reason": null,
+          "fingerprints": {
+            "logical_plan_sha256": "925aa39f0c888eb0e4b8c03bb7b19b4f043b4148522721eb4994a6128def3a43",
+            "physical_plan_sha256": "442864076cb403fa77b1b8c2bf571de10145961483125a6e213e34c86a5effe5",
+            "semantic_ir_sha256": "96f37d5069f70083f5659433a2ea38459ac65f46e5a724c9fbacb4c448131d7e"
+          },
+          "logical_plan": {
+            "ir_sha256": "96f37d5069f70083f5659433a2ea38459ac65f46e5a724c9fbacb4c448131d7e",
+            "nodes": [
+              {
+                "attributes": {
+                  "source_id": 13,
+                  "table": "public.udm_building"
+                },
+                "input_node_ids": [],
+                "node_id": "scan_001",
+                "operator": "scan"
+              },
+              {
+                "attributes": {
+                  "group_count": 1,
+                  "metric_count": 1
+                },
+                "input_node_ids": [
+                  "scan_001"
+                ],
+                "node_id": "aggregate_001",
+                "operator": "aggregate"
+              },
+              {
+                "attributes": {
+                  "outputs": [
+                    "primaryuseengdesc",
+                    "building_count"
+                  ]
+                },
+                "input_node_ids": [
+                  "aggregate_001"
+                ],
+                "node_id": "project_001",
+                "operator": "project"
+              },
+              {
+                "attributes": {
+                  "enforcement": "source_executor",
+                  "row_limit": 1000
+                },
+                "input_node_ids": [
+                  "project_001"
+                ],
+                "node_id": "limit_001",
+                "operator": "limit"
+              }
+            ],
+            "root_node_id": "limit_001",
+            "schema_id": "gda.semantic_logical_plan.v1"
+          },
+          "physical_plan": {
+            "columns": [
+              "public.udm_building.primaryuseengdesc"
+            ],
+            "compilation_mode": "validated_sql_ast_shadow",
+            "dialect": "postgres",
+            "engine": "postgresql_postgis",
+            "logical_plan_sha256": "925aa39f0c888eb0e4b8c03bb7b19b4f043b4148522721eb4994a6128def3a43",
+            "read_only": true,
+            "schema_id": "gda.semantic_physical_plan.v1",
+            "source_ids": [
+              13
+            ],
+            "spatial_operators": [],
+            "statement_sha256": "40c07547eeacca98ea3b7877fd0e8855c52f98f5463949b33af692b61e3129c9",
+            "tables": [
+              "public.udm_building"
+            ]
+          },
+          "schema_id": "gda.shadow_semantic_plan_evidence.v1",
+          "semantic_ir": {
+            "group_expression_sha256s": [
+              "402ff40485545b02a2d93b4af471ee4e772b99c371191835a75b6e7defbf7ea1"
+            ],
+            "joins": [],
+            "limit_enforcement": "source_executor",
+            "metric_contract_id": null,
+            "metric_contract_version": "abu-dhabi-makani-business-v6",
+            "operation": "aggregate",
+            "order_by": [],
+            "predicates": [],
+            "projections": [
+              {
+                "aggregate": null,
+                "expression_kind": "field",
+                "expression_sha256": "402ff40485545b02a2d93b4af471ee4e772b99c371191835a75b6e7defbf7ea1",
+                "output_name": "primaryuseengdesc",
+                "role": "dimension",
+                "source_fields": [
+                  {
+                    "field": "primaryuseengdesc",
+                    "table": "public.udm_building"
+                  }
+                ]
+              },
+              {
+                "aggregate": "count",
+                "expression_kind": "aggregate",
+                "expression_sha256": "1464b4c5bc20377961e5849993a762c16d19ac1081eaec971d4a10800efd9b17",
+                "output_name": "building_count",
+                "role": "metric",
+                "source_fields": []
+              }
+            ],
+            "result_limit": 1000,
+            "route": "governed_sql_ast",
+            "schema_id": "gda.semantic_query_ir.v1",
+            "semantic_version": "abu-dhabi-makani-v5-dictionary-published",
+            "sources": [
+              {
+                "authorized_schemas": [
+                  "public"
+                ],
+                "database_name": "makani_sync_full",
+                "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+                "source_id": 13,
+                "source_name": "abu-dhabi-makani-dev",
+                "tables": [
+                  "public.udm_building"
+                ]
+              }
+            ],
+            "task_frame": {
+              "language": "ar",
+              "operation": "aggregate",
+              "question_sha256": "9e3ebcc73193b1a324654d03be5cf51597a4b4218a68a0f2f631c68982cc2d4b",
+              "schema_id": "gda.semantic_task_frame.v1",
+              "source_ids": [
+                13
+              ]
+            }
+          },
+          "status": "planned",
+          "validation": {
+            "checks": [
+              {
+                "check_id": "source_scope_bound",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "table_scope_exact",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "referenced_tables_governed",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "referenced_columns_governed",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "join_operators_governed",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "result_limit_bounded",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "projection_contract_present",
+                "detail": null,
+                "passed": true
+              }
+            ],
+            "ir_sha256": "96f37d5069f70083f5659433a2ea38459ac65f46e5a724c9fbacb4c448131d7e",
+            "reason_codes": [],
+            "schema_id": "gda.semantic_ir_validation.v1",
+            "valid": true
+          }
+        },
+        "source": {
+          "authorized_schemas": [
+            "public"
+          ],
+          "database_name": "makani_sync_full",
+          "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+          "execution_mode": "registered_governed_virtual_read_only",
+          "source_id": 13,
+          "source_name": "abu-dhabi-makani-dev"
+        },
+        "source_rows_persisted": false,
+        "sql_sha256": "40c07547eeacca98ea3b7877fd0e8855c52f98f5463949b33af692b61e3129c9",
+        "status": "ok",
+        "tables": [
+          "public.udm_building"
+        ]
+      },
+      "question": "كم عدد المباني لكل استخدام رئيسي للأرض؟",
+      "split": "validation",
+      "status": "passed",
+      "track": "warehouse"
+    },
+    {
+      "capabilities": [
+        "entity_resolution",
+        "spatial_join",
+        "contains",
+        "group_by",
+        "count"
+      ],
+      "case_id": "MAK_P11_BUILDINGS_SPATIAL_DISTRICT_EN",
+      "checks": {
+        "database_scope_match": true,
+        "forbidden_tables_absent": true,
+        "gold_columns_match": true,
+        "gold_exact_columns_match": true,
+        "gold_exact_result_fingerprint_match": true,
+        "gold_result_equivalence_match": true,
+        "gold_result_fingerprint_match": true,
+        "gold_row_count_match": true,
+        "language_match": true,
+        "max_row_count": true,
+        "required_columns_present": true,
+        "schema_scope_match": true,
+        "source_id_match": true,
+        "source_rows_not_persisted": true,
+        "status_match": true,
+        "table_set_match": true
+      },
+      "diagnostic_differences": [],
+      "failure_class": null,
+      "failure_reasons": [],
+      "language": "en",
+      "observed": {
+        "columns": [
+          "public.udm_building.shape",
+          "public.udm_district.nameenglish",
+          "public.udm_district.shape"
+        ],
+        "equivalence_fingerprints": {
+          "position_fingerprint": "6649a4916913a21cb5b9ce818fa22aed5ee76dcf5f93ac39dfc73a384d4c1c97",
+          "position_numeric6_fingerprint": "6f7f27c20a4fe20904460b5236d4e5a74898b229d147e23cb964fb7c7fbd24e9",
+          "unordered_position_fingerprint": "7cc3c080ed8809920e6f5871bd852ae70f95b9d1650accfd62e9bab867b790a4",
+          "unordered_position_numeric6_fingerprint": "06a3ab1f51e354c3b7ab89ecea4e2ddc70d886cef30470cab02df8a2f8255a00"
+        },
+        "error": null,
+        "generation": null,
+        "gold_result_contract": {
+          "contract_id": "MAK_P11_BUILDINGS_SPATIAL_DISTRICT_EN_GOLD_V1",
+          "equivalence": {
+            "accepted_fingerprint_keys": [
+              "unordered_position_numeric6_fingerprint",
+              "position_numeric6_fingerprint",
+              "unordered_position_fingerprint",
+              "position_fingerprint"
+            ],
+            "column_aliases_compare_by_position": true,
+            "expected_fingerprints": {
+              "position_fingerprint": "6649a4916913a21cb5b9ce818fa22aed5ee76dcf5f93ac39dfc73a384d4c1c97",
+              "position_numeric6_fingerprint": "6f7f27c20a4fe20904460b5236d4e5a74898b229d147e23cb964fb7c7fbd24e9",
+              "unordered_position_fingerprint": "7cc3c080ed8809920e6f5871bd852ae70f95b9d1650accfd62e9bab867b790a4",
+              "unordered_position_numeric6_fingerprint": "06a3ab1f51e354c3b7ab89ecea4e2ddc70d886cef30470cab02df8a2f8255a00"
+            },
+            "order_sensitive": false
+          },
+          "path": "/Users/zhouning/gisdataagent/benchmarks/abu_dhabi_nl2sql_product_v1_v5_regression/gold/makani/MAK_P11_BUILDINGS_SPATIAL_DISTRICT_EN.json",
+          "sha256": "315d627ad96adebe2b557845c9121dc2f235ac215057c9af2762dad66f212626"
+        },
+        "language": "en",
+        "model": null,
+        "planner": {
+          "candidate_contract_ids": [
+            "MAKANI_BUILDING_COUNT_BY_DISTRICT_SPATIAL_V4",
+            "MAKANI_BUILDING_IDENTIFIER_COUNT_BY_DISTRICT_SPATIAL_V6"
+          ],
+          "contract_id": "MAKANI_BUILDING_IDENTIFIER_COUNT_BY_DISTRICT_SPATIAL_V6",
+          "execution_contract_schema": "gda.governed-metric-contract-result.v1",
+          "fallback_reason": null,
+          "llm_invoked": false,
+          "resolution": "unique_reviewed_canonical_metric",
+          "route": "deterministic_reviewed_metric_contract"
+        },
+        "prompt": null,
+        "reason": null,
+        "result_columns": [
+          "district_name",
+          "building_count"
+        ],
+        "result_fingerprint": "2b994fe30584b8816d3fe7399c7fa956dc2b92a22fc64adb48d841cb8c63e271",
+        "row_count": 211,
+        "semantic_caveats": [
+          "makani_technical_catalog_not_business_approval",
+          "makani_dictionary_mapping_candidate",
+          "makani_arabic_terminology_provisional"
+        ],
+        "semantic_metric_contract": {
+          "application": "deterministic_reviewed_metric_compilation",
+          "canonical_sql_sha256": "59c45aa802cccaa98e01f2895b6212bc55ea7e5e66f154563341e594f52a0b3c",
+          "contract_id": "MAKANI_BUILDING_IDENTIFIER_COUNT_BY_DISTRICT_SPATIAL_V6",
+          "dimensions": [
+            "district_name"
+          ],
+          "filters": [],
+          "metric_contract_version": "abu-dhabi-makani-business-v6",
+          "metrics": [
+            "building_count"
+          ],
+          "tables": [
+            "public.udm_district",
+            "public.udm_building"
+          ]
+        },
+        "semantic_plan": {
+          "authority": "reviewed_metric_contract_template_compiler",
+          "compiled_statement": "SELECT d.nameenglish AS district_name,\n       COUNT(*) AS building_count\nFROM public.udm_district AS d\nJOIN public.udm_building AS b ON ST_Intersects(d.shape, b.shape)\nGROUP BY d.nameenglish\nORDER BY d.nameenglish\nLIMIT 1000",
+          "execution_authority": true,
+          "fingerprints": {
+            "compiled_statement_sha256": "59c45aa802cccaa98e01f2895b6212bc55ea7e5e66f154563341e594f52a0b3c",
+            "logical_plan_sha256": "71c74230b603f899e57f6c8707abcbc9a4fab88faed407e16f8ec65b902fc97e",
+            "physical_plan_sha256": "5fddbfbef66800c1ecd0004fc94f537218cb2de7b58506381be4223461fd782a",
+            "semantic_ir_sha256": "ba91faafb131783fa31b51365b98846ea5cb5c40baddb5d18cdc38e98b4e4195"
+          },
+          "logical_plan": {
+            "ir_sha256": "ba91faafb131783fa31b51365b98846ea5cb5c40baddb5d18cdc38e98b4e4195",
+            "nodes": [
+              {
+                "attributes": {
+                  "source_id": 13,
+                  "table": "public.udm_building"
+                },
+                "input_node_ids": [],
+                "node_id": "scan_001",
+                "operator": "scan"
+              },
+              {
+                "attributes": {
+                  "source_id": 13,
+                  "table": "public.udm_district"
+                },
+                "input_node_ids": [],
+                "node_id": "scan_002",
+                "operator": "scan"
+              },
+              {
+                "attributes": {
+                  "kind": "spatial",
+                  "operator": "st_intersects"
+                },
+                "input_node_ids": [
+                  "scan_001",
+                  "scan_002"
+                ],
+                "node_id": "join_001",
+                "operator": "join"
+              },
+              {
+                "attributes": {
+                  "group_count": 1,
+                  "metric_count": 1
+                },
+                "input_node_ids": [
+                  "join_001"
+                ],
+                "node_id": "aggregate_001",
+                "operator": "aggregate"
+              },
+              {
+                "attributes": {
+                  "outputs": [
+                    "district_name",
+                    "building_count"
+                  ]
+                },
+                "input_node_ids": [
+                  "aggregate_001"
+                ],
+                "node_id": "project_001",
+                "operator": "project"
+              },
+              {
+                "attributes": {
+                  "order_count": 1
+                },
+                "input_node_ids": [
+                  "project_001"
+                ],
+                "node_id": "sort_001",
+                "operator": "sort"
+              },
+              {
+                "attributes": {
+                  "enforcement": "sql",
+                  "row_limit": 1000
+                },
+                "input_node_ids": [
+                  "sort_001"
+                ],
+                "node_id": "limit_001",
+                "operator": "limit"
+              }
+            ],
+            "root_node_id": "limit_001",
+            "schema_id": "gda.semantic_logical_plan.v1"
+          },
+          "physical_plan": {
+            "columns": [
+              "public.udm_building.shape",
+              "public.udm_district.nameenglish",
+              "public.udm_district.shape"
+            ],
+            "compilation_mode": "reviewed_contract_compiler",
+            "dialect": "postgres",
+            "engine": "postgresql_postgis",
+            "logical_plan_sha256": "71c74230b603f899e57f6c8707abcbc9a4fab88faed407e16f8ec65b902fc97e",
+            "read_only": true,
+            "schema_id": "gda.semantic_physical_plan.v1",
+            "source_ids": [
+              13
+            ],
+            "spatial_operators": [
+              "st_intersects"
+            ],
+            "statement_sha256": "59c45aa802cccaa98e01f2895b6212bc55ea7e5e66f154563341e594f52a0b3c",
+            "tables": [
+              "public.udm_building",
+              "public.udm_district"
+            ]
+          },
+          "schema_id": "gda.certified_metric_contract_plan.v1",
+          "semantic_ir": {
+            "group_expression_sha256s": [
+              "7435b07ee9e52ee14182451974ff7f2b7f6c3e267d68bf98edd0aac939b82da6"
+            ],
+            "joins": [
+              {
+                "expression_sha256": "5e28ad2610f969d55f9edccd2dede53d2cf7dc11f054b431b4afafcf79148824",
+                "kind": "spatial",
+                "operator": "st_intersects",
+                "source_fields": [
+                  {
+                    "field": "shape",
+                    "table": "public.udm_building"
+                  },
+                  {
+                    "field": "shape",
+                    "table": "public.udm_district"
+                  }
+                ]
+              }
+            ],
+            "limit_enforcement": "sql",
+            "metric_contract_id": "MAKANI_BUILDING_IDENTIFIER_COUNT_BY_DISTRICT_SPATIAL_V6",
+            "metric_contract_version": "abu-dhabi-makani-business-v6",
+            "operation": "aggregate",
+            "order_by": [
+              {
+                "direction": "asc",
+                "expression_sha256": "7435b07ee9e52ee14182451974ff7f2b7f6c3e267d68bf98edd0aac939b82da6",
+                "output_name": "nameenglish"
+              }
+            ],
+            "predicates": [],
+            "projections": [
+              {
+                "aggregate": null,
+                "expression_kind": "field",
+                "expression_sha256": "7435b07ee9e52ee14182451974ff7f2b7f6c3e267d68bf98edd0aac939b82da6",
+                "output_name": "district_name",
+                "role": "dimension",
+                "source_fields": [
+                  {
+                    "field": "nameenglish",
+                    "table": "public.udm_district"
+                  }
+                ]
+              },
+              {
+                "aggregate": "count",
+                "expression_kind": "aggregate",
+                "expression_sha256": "1464b4c5bc20377961e5849993a762c16d19ac1081eaec971d4a10800efd9b17",
+                "output_name": "building_count",
+                "role": "metric",
+                "source_fields": []
+              }
+            ],
+            "result_limit": 1000,
+            "route": "reviewed_metric_contract",
+            "schema_id": "gda.semantic_query_ir.v1",
+            "semantic_version": "abu-dhabi-makani-v5-dictionary-published",
+            "sources": [
+              {
+                "authorized_schemas": [
+                  "public"
+                ],
+                "database_name": "makani_sync_full",
+                "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+                "source_id": 13,
+                "source_name": "abu-dhabi-makani-dev",
+                "tables": [
+                  "public.udm_building",
+                  "public.udm_district"
+                ]
+              }
+            ],
+            "task_frame": {
+              "language": "en",
+              "operation": "aggregate",
+              "question_sha256": "fd6b9b80170a5b30dcc33c22b49c9baa27867aeba4a3f5285496ad989352a967",
+              "schema_id": "gda.semantic_task_frame.v1",
+              "source_ids": [
+                13
+              ]
+            }
+          },
+          "status": "planned",
+          "validation": {
+            "checks": [
+              {
+                "check_id": "source_scope_bound",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "table_scope_exact",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "referenced_tables_governed",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "referenced_columns_governed",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "join_operators_governed",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "result_limit_bounded",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "projection_contract_present",
+                "detail": null,
+                "passed": true
+              }
+            ],
+            "ir_sha256": "ba91faafb131783fa31b51365b98846ea5cb5c40baddb5d18cdc38e98b4e4195",
+            "reason_codes": [],
+            "schema_id": "gda.semantic_ir_validation.v1",
+            "valid": true
+          }
+        },
+        "source": {
+          "authorized_schemas": [
+            "public"
+          ],
+          "database_name": "makani_sync_full",
+          "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+          "execution_mode": "registered_governed_virtual_read_only",
+          "source_id": 13,
+          "source_name": "abu-dhabi-makani-dev"
+        },
+        "source_rows_persisted": false,
+        "sql_sha256": "59c45aa802cccaa98e01f2895b6212bc55ea7e5e66f154563341e594f52a0b3c",
+        "status": "ok",
+        "tables": [
+          "public.udm_building",
+          "public.udm_district"
+        ]
+      },
+      "question": "Using the mapped boundaries, how many buildings fall inside each district?",
+      "split": "holdout",
+      "status": "passed",
+      "track": "mixed"
+    }
+  ],
+  "experiment": {
+    "comparison_requires_matched_baseline_and_candidate": true,
+    "default_production_route": true,
+    "execution_profile": "baseline_sql",
+    "release_gate": false,
+    "reviewed_metric_contracts": "matched_control_only",
+    "route_role": "current_production_baseline"
+  },
+  "generated_at": "2026-08-22T06:08:13.829456+00:00",
+  "limitations": [
+    "This is a single-run product baseline. Release reliability requires the separately configured repeated-run stability evaluation.",
+    "Gold SQL and Gold results are evaluation-only artifacts and are not available to runtime prompts, retrieval, or semantic assets.",
+    "This report covers a selected case subset; it cannot support a full benchmark accuracy claim.",
+    "Arabic labels and source categorical values remain subject to customer review."
+  ],
+  "metrics": {
+    "by_language": {
+      "ar": {
+        "case_count": 1,
+        "case_pass_rate": 1.0,
+        "gold_case_count": 1,
+        "gold_exact_result_match_passed_case_count": 1,
+        "gold_exact_result_match_rate": 1.0,
+        "gold_result_equivalence_pass_rate": 1.0,
+        "gold_result_equivalence_passed_case_count": 1,
+        "passed_case_count": 1,
+        "refusal_case_count": 0,
+        "refusal_recall": null
+      },
+      "en": {
+        "case_count": 2,
+        "case_pass_rate": 1.0,
+        "gold_case_count": 2,
+        "gold_exact_result_match_passed_case_count": 1,
+        "gold_exact_result_match_rate": 0.5,
+        "gold_result_equivalence_pass_rate": 1.0,
+        "gold_result_equivalence_passed_case_count": 2,
+        "passed_case_count": 2,
+        "refusal_case_count": 0,
+        "refusal_recall": null
+      }
+    },
+    "by_stage": {
+      "asset_resolution": {
+        "case_count": 3,
+        "pass_rate": 1.0,
+        "passed_case_count": 3
+      },
+      "execution_result": {
+        "case_count": 3,
+        "pass_rate": 1.0,
+        "passed_case_count": 3
+      },
+      "question_understanding": {
+        "case_count": 3,
+        "pass_rate": 1.0,
+        "passed_case_count": 3
+      },
+      "source_governance": {
+        "case_count": 3,
+        "pass_rate": 1.0,
+        "passed_case_count": 3
+      }
+    },
+    "by_track": {
+      "mixed": {
+        "case_count": 1,
+        "case_pass_rate": 1.0,
+        "gold_case_count": 1,
+        "passed_case_count": 1
+      },
+      "warehouse": {
+        "case_count": 2,
+        "case_pass_rate": 1.0,
+        "gold_case_count": 2,
+        "passed_case_count": 2
+      }
+    },
+    "case_count": 3,
+    "case_pass_rate": 1.0,
+    "expected_query_case_count": 3,
+    "failure_class_counts": {},
+    "gold_exact_result_match_passed_case_count": 2,
+    "gold_exact_result_match_rate": 0.6666666666666666,
+    "gold_result_contract_case_count": 3,
+    "gold_result_equivalence_pass_rate": 1.0,
+    "gold_result_equivalence_passed_case_count": 3,
+    "gold_result_equivalence_supported": true,
+    "infrastructure_failure_case_count": 0,
+    "language_case_counts": {
+      "ar": 1,
+      "en": 2
+    },
+    "mean_generation_latency_ms": 7870.247,
+    "p95_generation_latency_ms": 7870.247,
+    "passed_case_count": 3,
+    "planner": {
+      "direct_metric_gold_case_count": 2,
+      "direct_metric_gold_equivalence_pass_rate": 1.0,
+      "direct_metric_gold_equivalence_passed_case_count": 2,
+      "direct_metric_route_count": 2,
+      "direct_metric_route_rate": 0.6666666666666666,
+      "fallback_reason_counts": {
+        "no_direct_metric_match": 1
+      },
+      "llm_avoided_case_count": 2,
+      "llm_invocation_case_rate": 0.3333333333333333,
+      "llm_invoked_case_count": 1,
+      "observation_count": 3,
+      "route_counts": {
+        "deterministic_reviewed_metric_contract": 2,
+        "governed_free_form_llm": 1
+      }
+    },
+    "query_execution_success_count": 3,
+    "query_execution_success_rate": 1.0,
+    "refusal": {
+      "expected_refusal_case_count": 0,
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "observed_refusal_count": 0,
+      "precision": null,
+      "recall": null,
+      "true_positive_count": 0
+    },
+    "semantic_metric_contract_application_count": 2,
+    "semantic_metric_contract_counts": {
+      "MAKANI_BUILDING_COUNT_BY_PHYSICAL_STATUS_V6": 1,
+      "MAKANI_BUILDING_IDENTIFIER_COUNT_BY_DISTRICT_SPATIAL_V6": 1
+    },
+    "semantic_plan": {
+      "expected_query_case_count": 3,
+      "fallback_reason_counts": {},
+      "mode": "shadow_non_authoritative",
+      "observation_count": 3,
+      "planned_count": 3,
+      "release_gate": false,
+      "route_counts": {
+        "governed_sql_ast": 1,
+        "reviewed_metric_contract": 2
+      },
+      "shadow_coverage_rate": 1.0,
+      "validated_count": 3
+    },
+    "status_counts": {
+      "ok": 3
+    },
+    "usage": {
+      "input_tokens": 3865,
+      "output_tokens": 530,
+      "reasoning_tokens": 458
+    }
+  },
+  "model": {
+    "observed_versions": [
+      "gpt-5.1-2025-11-13"
+    ],
+    "reasoning_effort": "medium",
+    "requested": "gpt-5.1"
+  },
+  "product_baseline_claim_valid": false,
+  "product_evaluation_run_valid": false,
+  "schema": "gda.free-form-nl2sql-benchmark-report.v1",
+  "scope": "business_language_product_evaluation",
+  "source": {
+    "authorized_schemas": [
+      "public"
+    ],
+    "database_name": "makani_sync_full",
+    "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+    "execution_mode": "registered_governed_virtual_read_only",
+    "owner": "abu-dhabi-site-operator",
+    "profile_fingerprint": "a4d99a4084081224ffcf6a02cda777b2aaf6052521573a7ee68f022d62809253",
+    "source_id": 13
+  },
+  "source_rows_persisted": false,
+  "status": "passed"
+}

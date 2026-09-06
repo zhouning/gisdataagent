@@ -1,0 +1,569 @@
+{
+  "benchmark": {
+    "benchmark_id": "abu-dhabi-makani_sync_full-product-v1",
+    "claim_boundary": {
+      "customer_steward_semantic_certification_complete": false,
+      "gold_result_equivalence_supported": true,
+      "schema_or_sql_leakage_allowed": false,
+      "scope": "business-language product baseline on one governed source",
+      "single_run_is_not_release_reliability": true
+    },
+    "completeness": {
+      "status": "complete_runtime_gold_freeze"
+    },
+    "coverage": {
+      "case_count": 15,
+      "language_counts": {
+        "ar": 5,
+        "en": 5,
+        "zh": 5
+      },
+      "query_case_count": 12,
+      "refusal_case_count": 3,
+      "source_rows_persisted": false,
+      "split_counts": {
+        "holdout": 6,
+        "validation": 9
+      },
+      "track_counts": {
+        "gis": 3,
+        "mixed": 2,
+        "safety": 3,
+        "warehouse": 7
+      }
+    },
+    "definition_complete": true,
+    "evaluation_profile": {
+      "isolation": {
+        "benchmark_generated_from_runtime_contracts": false,
+        "gold_results_available_to_runtime": false,
+        "gold_sql_available_to_runtime": false,
+        "questions_used_in_runtime_prompts": false
+      },
+      "leakage_check_passed": true,
+      "profile_id": "business-language-clean-v1",
+      "split_counts": {
+        "holdout": 6,
+        "validation": 9
+      },
+      "status": "frozen",
+      "track_counts": {
+        "gis": 3,
+        "mixed": 2,
+        "safety": 3,
+        "warehouse": 7
+      }
+    },
+    "max_concurrency": 1,
+    "metric_contract_version": "abu-dhabi-makani-inventory-v3",
+    "prompt_version": "governed-virtual-nl2semantic2sql-v1.4",
+    "request_interval_seconds": 2.0,
+    "run_complete": false,
+    "selected_case_ids": [
+      "MAK_P05_PLOTS_CONSTRUCTION_STATUS_EN"
+    ],
+    "semantic_layer_version": "abu-dhabi-makani-v4-reviewed-assets",
+    "source_file_sha256": "3ea3e891b984df5351f3ab78f0fd4d8e4542d9da590cf425a630ace165ebd45f",
+    "version": "1.0.0-frozen-business-language-clean"
+  },
+  "benchmark_accuracy_claim": false,
+  "cases": [
+    {
+      "capabilities": [
+        "entity_resolution",
+        "business_field_resolution",
+        "group_by",
+        "count"
+      ],
+      "case_id": "MAK_P05_PLOTS_CONSTRUCTION_STATUS_EN",
+      "checks": {
+        "database_scope_match": true,
+        "forbidden_tables_absent": true,
+        "gold_columns_match": true,
+        "gold_exact_columns_match": true,
+        "gold_exact_result_fingerprint_match": true,
+        "gold_result_equivalence_match": true,
+        "gold_result_fingerprint_match": true,
+        "gold_row_count_match": true,
+        "language_match": true,
+        "max_row_count": true,
+        "required_columns_present": true,
+        "schema_scope_match": true,
+        "source_id_match": true,
+        "source_rows_not_persisted": true,
+        "status_match": true,
+        "table_set_match": true
+      },
+      "diagnostic_differences": [],
+      "failure_class": null,
+      "failure_reasons": [],
+      "language": "en",
+      "observed": {
+        "columns": [
+          "public.udm_plot.construction_status"
+        ],
+        "equivalence_fingerprints": {
+          "position_fingerprint": "cd9417db390ddf744b77ab837e305798ab0a708717c429cd29c94569cc38d32b",
+          "position_numeric6_fingerprint": "3ec67eafc7575813338245364937db85b8aa74607b0c5280f85ac39c3d34890f",
+          "unordered_position_fingerprint": "cd9417db390ddf744b77ab837e305798ab0a708717c429cd29c94569cc38d32b",
+          "unordered_position_numeric6_fingerprint": "3ec67eafc7575813338245364937db85b8aa74607b0c5280f85ac39c3d34890f"
+        },
+        "error": null,
+        "generation": {
+          "attempt": 1,
+          "latency_ms": 4217.439,
+          "observed_model_versions": [
+            "gpt-5.1-2025-11-13"
+          ],
+          "usage": {
+            "input_tokens": 1483,
+            "output_tokens": 183,
+            "reasoning_tokens": 111
+          }
+        },
+        "gold_result_contract": {
+          "contract_id": "MAK_P05_PLOTS_CONSTRUCTION_STATUS_EN_GOLD_V1",
+          "equivalence": {
+            "accepted_fingerprint_keys": [
+              "unordered_position_numeric6_fingerprint",
+              "position_numeric6_fingerprint",
+              "unordered_position_fingerprint",
+              "position_fingerprint"
+            ],
+            "column_aliases_compare_by_position": true,
+            "expected_fingerprints": {
+              "position_fingerprint": "cd9417db390ddf744b77ab837e305798ab0a708717c429cd29c94569cc38d32b",
+              "position_numeric6_fingerprint": "3ec67eafc7575813338245364937db85b8aa74607b0c5280f85ac39c3d34890f",
+              "unordered_position_fingerprint": "cd9417db390ddf744b77ab837e305798ab0a708717c429cd29c94569cc38d32b",
+              "unordered_position_numeric6_fingerprint": "3ec67eafc7575813338245364937db85b8aa74607b0c5280f85ac39c3d34890f"
+            },
+            "order_sensitive": false
+          },
+          "path": "/Users/zhouning/gisdataagent/benchmarks/abu_dhabi_nl2sql_product_v1/gold/makani/MAK_P05_PLOTS_CONSTRUCTION_STATUS_EN.json",
+          "sha256": "5b111bec6502c089884e733e9a23d5c57dfc0f40b4bcfe13867342113c3a5482"
+        },
+        "language": "en",
+        "model": {
+          "adk_route": "openai/gpt-5.1",
+          "reasoning_effort": "medium",
+          "requested": "gpt-5.1"
+        },
+        "prompt": {
+          "grounding": {
+            "asset_matches": [
+              {
+                "asset_id": "makani.plot",
+                "physical_tables": [
+                  "public.udm_plot"
+                ],
+                "score": 35.5
+              }
+            ],
+            "candidate_counts_after": {
+              "metric_contract_count": 2,
+              "relationship_count": 0,
+              "semantic_asset_count": 1,
+              "semantic_caveat_count": 3,
+              "table_count": 1
+            },
+            "candidate_counts_before": {
+              "metric_contract_count": 768,
+              "relationship_count": 4,
+              "semantic_asset_count": 7,
+              "semantic_caveat_count": 3,
+              "table_count": 764
+            },
+            "execution_validation_scope": "full_semantic_layer",
+            "explicit_table_matches": [],
+            "strategy": "reviewed_business_asset_retrieval"
+          },
+          "sha256": "33c499a4837704390172721f5ec489ebd72757a9870feb2761fec2bf840b02f0",
+          "version": "governed-virtual-nl2semantic2sql-v1.4"
+        },
+        "reason": null,
+        "result_columns": [
+          "construction_status",
+          "plot_count"
+        ],
+        "result_fingerprint": "55a618728d88637e72f3a67d93bf3dbe782dd916920b8762d81fa7283d9ba23e",
+        "row_count": 4,
+        "semantic_caveats": [
+          "makani_technical_catalog_not_business_approval",
+          "makani_dictionary_mapping_candidate",
+          "makani_arabic_terminology_provisional"
+        ],
+        "semantic_metric_contract": {
+          "application": "reviewed_canonical_sql_template",
+          "canonical_sql_sha256": "92339b648397b6592c12c356eabf8f5fbd059acf1c39ccf75cedf4fe80aefb80",
+          "contract_id": "MAKANI_PLOT_COUNT_BY_CONSTRUCTION_STATUS_V4",
+          "dimensions": [
+            "construction_status"
+          ],
+          "filters": [],
+          "metric_contract_version": "abu-dhabi-makani-inventory-v3",
+          "metrics": [
+            "plot_count"
+          ],
+          "model_sql_sha256": "d3a1afaa088482d4567acf50294b02c71a2b06a1088bb9688b9115159aa178c2",
+          "preserved_clauses": [
+            "reviewed_template"
+          ],
+          "tables": [
+            "public.udm_plot"
+          ]
+        },
+        "semantic_plan": {
+          "execution_authority": false,
+          "fallback_reason": null,
+          "fingerprints": {
+            "logical_plan_sha256": "65fb07d7ef51a74d6f794d5ef369403964a4996e25e985e2853043ac076b3905",
+            "physical_plan_sha256": "37c29b12ab3087aec4c4591050c575bf77bf8dd2aee9d3a177236bc2a0ba548d",
+            "semantic_ir_sha256": "f2143d0a0fd8a8b1318cd74462fa54f8d876c50fb9f5ab49d5be16a009f0b128"
+          },
+          "logical_plan": {
+            "ir_sha256": "f2143d0a0fd8a8b1318cd74462fa54f8d876c50fb9f5ab49d5be16a009f0b128",
+            "nodes": [
+              {
+                "attributes": {
+                  "source_id": 13,
+                  "table": "public.udm_plot"
+                },
+                "input_node_ids": [],
+                "node_id": "scan_001",
+                "operator": "scan"
+              },
+              {
+                "attributes": {
+                  "group_count": 1,
+                  "metric_count": 1
+                },
+                "input_node_ids": [
+                  "scan_001"
+                ],
+                "node_id": "aggregate_001",
+                "operator": "aggregate"
+              },
+              {
+                "attributes": {
+                  "outputs": [
+                    "construction_status",
+                    "plot_count"
+                  ]
+                },
+                "input_node_ids": [
+                  "aggregate_001"
+                ],
+                "node_id": "project_001",
+                "operator": "project"
+              },
+              {
+                "attributes": {
+                  "order_count": 1
+                },
+                "input_node_ids": [
+                  "project_001"
+                ],
+                "node_id": "sort_001",
+                "operator": "sort"
+              },
+              {
+                "attributes": {
+                  "enforcement": "sql",
+                  "row_limit": 1000
+                },
+                "input_node_ids": [
+                  "sort_001"
+                ],
+                "node_id": "limit_001",
+                "operator": "limit"
+              }
+            ],
+            "root_node_id": "limit_001",
+            "schema_id": "gda.semantic_logical_plan.v1"
+          },
+          "physical_plan": {
+            "columns": [
+              "public.udm_plot.construction_status"
+            ],
+            "compilation_mode": "reviewed_contract_shadow",
+            "dialect": "postgres",
+            "engine": "postgresql_postgis",
+            "logical_plan_sha256": "65fb07d7ef51a74d6f794d5ef369403964a4996e25e985e2853043ac076b3905",
+            "read_only": true,
+            "schema_id": "gda.semantic_physical_plan.v1",
+            "source_ids": [
+              13
+            ],
+            "spatial_operators": [],
+            "statement_sha256": "92339b648397b6592c12c356eabf8f5fbd059acf1c39ccf75cedf4fe80aefb80",
+            "tables": [
+              "public.udm_plot"
+            ]
+          },
+          "schema_id": "gda.shadow_semantic_plan_evidence.v1",
+          "semantic_ir": {
+            "group_expression_sha256s": [
+              "061406cd3f2bad28c1847f24526a262ae555d34ace9887ed87c4c4268fb15423"
+            ],
+            "joins": [],
+            "limit_enforcement": "sql",
+            "metric_contract_id": "MAKANI_PLOT_COUNT_BY_CONSTRUCTION_STATUS_V4",
+            "metric_contract_version": "abu-dhabi-makani-inventory-v3",
+            "operation": "aggregate",
+            "order_by": [
+              {
+                "direction": "asc",
+                "expression_sha256": "061406cd3f2bad28c1847f24526a262ae555d34ace9887ed87c4c4268fb15423",
+                "output_name": "construction_status"
+              }
+            ],
+            "predicates": [],
+            "projections": [
+              {
+                "aggregate": null,
+                "expression_kind": "field",
+                "expression_sha256": "061406cd3f2bad28c1847f24526a262ae555d34ace9887ed87c4c4268fb15423",
+                "output_name": "construction_status",
+                "role": "dimension",
+                "source_fields": [
+                  {
+                    "field": "construction_status",
+                    "table": "public.udm_plot"
+                  }
+                ]
+              },
+              {
+                "aggregate": "count",
+                "expression_kind": "aggregate",
+                "expression_sha256": "1464b4c5bc20377961e5849993a762c16d19ac1081eaec971d4a10800efd9b17",
+                "output_name": "plot_count",
+                "role": "metric",
+                "source_fields": []
+              }
+            ],
+            "result_limit": 1000,
+            "route": "reviewed_metric_contract",
+            "schema_id": "gda.semantic_query_ir.v1",
+            "semantic_version": "abu-dhabi-makani-v4-reviewed-assets",
+            "sources": [
+              {
+                "authorized_schemas": [
+                  "public"
+                ],
+                "database_name": "makani_sync_full",
+                "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+                "source_id": 13,
+                "source_name": "abu-dhabi-makani-dev",
+                "tables": [
+                  "public.udm_plot"
+                ]
+              }
+            ],
+            "task_frame": {
+              "language": "en",
+              "operation": "aggregate",
+              "question_sha256": "71d64d15bf680255d9c76989e7a8f9c6c7db5c9764b41d23e4e803ca82a7091c",
+              "schema_id": "gda.semantic_task_frame.v1",
+              "source_ids": [
+                13
+              ]
+            }
+          },
+          "status": "planned",
+          "validation": {
+            "checks": [
+              {
+                "check_id": "source_scope_bound",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "table_scope_exact",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "referenced_tables_governed",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "referenced_columns_governed",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "join_operators_governed",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "result_limit_bounded",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "projection_contract_present",
+                "detail": null,
+                "passed": true
+              }
+            ],
+            "ir_sha256": "f2143d0a0fd8a8b1318cd74462fa54f8d876c50fb9f5ab49d5be16a009f0b128",
+            "reason_codes": [],
+            "schema_id": "gda.semantic_ir_validation.v1",
+            "valid": true
+          }
+        },
+        "source": {
+          "authorized_schemas": [
+            "public"
+          ],
+          "database_name": "makani_sync_full",
+          "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+          "execution_mode": "registered_governed_virtual_read_only",
+          "source_id": 13,
+          "source_name": "abu-dhabi-makani-dev"
+        },
+        "source_rows_persisted": false,
+        "sql_sha256": "92339b648397b6592c12c356eabf8f5fbd059acf1c39ccf75cedf4fe80aefb80",
+        "status": "ok",
+        "tables": [
+          "public.udm_plot"
+        ]
+      },
+      "question": "Show the number of land plots in each construction status.",
+      "split": "validation",
+      "status": "passed",
+      "track": "warehouse"
+    }
+  ],
+  "generated_at": "2026-08-19T19:55:30.778734+00:00",
+  "limitations": [
+    "This is a single-run product baseline. Release reliability requires the separately configured repeated-run stability evaluation.",
+    "Gold SQL and Gold results are evaluation-only artifacts and are not available to runtime prompts, retrieval, or semantic assets.",
+    "This report covers a selected case subset; it cannot support a full benchmark accuracy claim.",
+    "Arabic labels and source categorical values remain subject to customer review."
+  ],
+  "metrics": {
+    "by_language": {
+      "en": {
+        "case_count": 1,
+        "case_pass_rate": 1.0,
+        "gold_case_count": 1,
+        "gold_exact_result_match_passed_case_count": 1,
+        "gold_exact_result_match_rate": 1.0,
+        "gold_result_equivalence_pass_rate": 1.0,
+        "gold_result_equivalence_passed_case_count": 1,
+        "passed_case_count": 1,
+        "refusal_case_count": 0,
+        "refusal_recall": null
+      }
+    },
+    "by_stage": {
+      "asset_resolution": {
+        "case_count": 1,
+        "pass_rate": 1.0,
+        "passed_case_count": 1
+      },
+      "execution_result": {
+        "case_count": 1,
+        "pass_rate": 1.0,
+        "passed_case_count": 1
+      },
+      "question_understanding": {
+        "case_count": 1,
+        "pass_rate": 1.0,
+        "passed_case_count": 1
+      },
+      "source_governance": {
+        "case_count": 1,
+        "pass_rate": 1.0,
+        "passed_case_count": 1
+      }
+    },
+    "by_track": {
+      "warehouse": {
+        "case_count": 1,
+        "case_pass_rate": 1.0,
+        "gold_case_count": 1,
+        "passed_case_count": 1
+      }
+    },
+    "case_count": 1,
+    "case_pass_rate": 1.0,
+    "expected_query_case_count": 1,
+    "failure_class_counts": {},
+    "gold_exact_result_match_passed_case_count": 1,
+    "gold_exact_result_match_rate": 1.0,
+    "gold_result_contract_case_count": 1,
+    "gold_result_equivalence_pass_rate": 1.0,
+    "gold_result_equivalence_passed_case_count": 1,
+    "gold_result_equivalence_supported": true,
+    "infrastructure_failure_case_count": 0,
+    "language_case_counts": {
+      "en": 1
+    },
+    "mean_generation_latency_ms": 4217.439,
+    "p95_generation_latency_ms": 4217.439,
+    "passed_case_count": 1,
+    "query_execution_success_count": 1,
+    "query_execution_success_rate": 1.0,
+    "refusal": {
+      "expected_refusal_case_count": 0,
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "observed_refusal_count": 0,
+      "precision": null,
+      "recall": null,
+      "true_positive_count": 0
+    },
+    "semantic_metric_contract_application_count": 1,
+    "semantic_metric_contract_counts": {
+      "MAKANI_PLOT_COUNT_BY_CONSTRUCTION_STATUS_V4": 1
+    },
+    "semantic_plan": {
+      "expected_query_case_count": 1,
+      "fallback_reason_counts": {},
+      "mode": "shadow_non_authoritative",
+      "observation_count": 1,
+      "planned_count": 1,
+      "release_gate": false,
+      "route_counts": {
+        "reviewed_metric_contract": 1
+      },
+      "shadow_coverage_rate": 1.0,
+      "validated_count": 1
+    },
+    "status_counts": {
+      "ok": 1
+    },
+    "usage": {
+      "input_tokens": 1483,
+      "output_tokens": 183,
+      "reasoning_tokens": 111
+    }
+  },
+  "model": {
+    "observed_versions": [
+      "gpt-5.1-2025-11-13"
+    ],
+    "reasoning_effort": "medium",
+    "requested": "gpt-5.1"
+  },
+  "product_baseline_claim_valid": false,
+  "schema": "gda.free-form-nl2sql-benchmark-report.v1",
+  "scope": "business_language_product_evaluation",
+  "source": {
+    "authorized_schemas": [
+      "public"
+    ],
+    "database_name": "makani_sync_full",
+    "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+    "execution_mode": "registered_governed_virtual_read_only",
+    "owner": "abu-dhabi-site-operator",
+    "profile_fingerprint": "a4d99a4084081224ffcf6a02cda777b2aaf6052521573a7ee68f022d62809253",
+    "source_id": 13
+  },
+  "source_rows_persisted": false,
+  "status": "passed"
+}

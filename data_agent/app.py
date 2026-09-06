@@ -3794,7 +3794,6 @@ async def _handle_liveability_demo_message(
     """Run free-form NL2Semantic2SQL on the selected Liveability source."""
 
     from data_agent.liveability_nl2sql import (
-        SEMANTIC_LAYER_PATH,
         SOURCE_ID,
         describe_liveability_nl2sql_request,
         format_liveability_nl2sql_response,
@@ -3889,10 +3888,11 @@ async def _handle_liveability_demo_message(
         from data_agent.abu_dhabi_nl2sql_presentation import (
             build_nl2sql_answer_presentation,
         )
+        from data_agent.abu_dhabi_artifact_registry import current_artifact_path
 
         presentation = build_nl2sql_answer_presentation(
             report,
-            semantic_layer_path=SEMANTIC_LAYER_PATH,
+            semantic_layer_path=current_artifact_path("liveability", "semantic"),
             language=request.language,
             total_ms=total_ms,
         )

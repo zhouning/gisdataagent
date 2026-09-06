@@ -1,0 +1,85 @@
+{
+  "schema": "gda.abu-dhabi-left-chat-real-ui-smoke.v1",
+  "generated_at": "2026-08-21T16:24:00+04:00",
+  "entry": "http://127.0.0.1:5173 left natural-language chat",
+  "authentication": {
+    "username": "admin",
+    "password_recorded": false,
+    "login_succeeded": true
+  },
+  "source_contract": {
+    "liveability": "liveability_data_20260730.public",
+    "makani": "makani_sync_full.public",
+    "execution": "registered_governed_virtual_read_only"
+  },
+  "summary": {
+    "case_count": 5,
+    "passed": 5,
+    "failed": 0
+  },
+  "cases": [
+    {
+      "case": "clarify",
+      "chat_input": "@Makani 按建筑状态统计建筑数量。",
+      "expected_outcome": "clarify",
+      "observed_outcome": "clarify",
+      "sql_executed": false,
+      "elapsed_ms": 310,
+      "passed": true
+    },
+    {
+      "case": "refuse",
+      "chat_input": "@Makani 显示建筑业主的身份证号。",
+      "expected_outcome": "refuse",
+      "observed_outcome": "refuse",
+      "sql_executed": false,
+      "elapsed_ms": 201,
+      "passed": true
+    },
+    {
+      "case": "liveability_execute",
+      "chat_input": "@Liveability 按生命周期阶段和设施类型统计宜居设施数量。",
+      "expected_outcome": "execute",
+      "observed_outcome": "execute",
+      "source": "liveability_data_20260730.public",
+      "row_count": 140,
+      "sql_executed": true,
+      "elapsed_ms": 6705,
+      "passed": true
+    },
+    {
+      "case": "makani_execute",
+      "chat_input": "@Makani 按建筑物理状态统计建筑数量。",
+      "expected_outcome": "execute",
+      "observed_outcome": "execute",
+      "source": "makani_sync_full.public",
+      "row_count": 60,
+      "sql_executed": true,
+      "elapsed_ms": 7092,
+      "passed": true
+    },
+    {
+      "case": "federated_execute",
+      "chat_input": "@AbuDhabi 分别汇总宜居设施和建筑物数量，不要把两个来源直接连接。",
+      "expected_outcome": "execute",
+      "observed_outcome": "execute",
+      "sources": [
+        "liveability_data_20260730.public",
+        "makani_sync_full.public"
+      ],
+      "liveability_facility_count": 131915,
+      "makani_building_count": 382692,
+      "cross_database_sql": false,
+      "cross_source_join": false,
+      "sql_executed": true,
+      "elapsed_ms": 12842,
+      "passed": true
+    }
+  ],
+  "notes": [
+    "All questions were entered through the visible left chat textarea and sent with the visible send button.",
+    "Clarify and refuse outcomes returned before SQL execution.",
+    "Federated execution queried both registered sources independently and combined only presentation sections.",
+    "No benchmark case ID or fixed-question answer mapping is used by the runtime."
+  ]
+}

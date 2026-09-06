@@ -1,0 +1,577 @@
+{
+  "schema": "gda.abu-dhabi-nl2semantic2sql-v2-report.v1",
+  "status": "passed",
+  "generated_at": "2026-08-21T09:12:58.427209+00:00",
+  "evaluation_scope": "private_gold_governed_product_evaluation",
+  "execution_profile": "baseline_sql",
+  "public_benchmark": {
+    "path": "benchmarks/abu_dhabi_nl2semantic2sql_v2/abu_dhabi_nl2semantic2sql_benchmark_v2.json",
+    "sha256": "087cebf726a8f92a74e06152c8ad79ebce98a3847bfc4123786e288d0a22372c",
+    "benchmark_id": "abu-dhabi-nl2semantic2sql-v2-public",
+    "version": "2.0.0",
+    "selected_case_ids": [
+      "L2_L09",
+      "L2_M06"
+    ]
+  },
+  "private_gold": {
+    "contract_id": "abu-dhabi-nl2semantic2sql-v2-private-gold-20260821",
+    "sha256": "5a74f911dd7aa72b6e3cf399ade829917d34ecfb49859736864a109f71d73c04",
+    "runtime_accessible": false
+  },
+  "runtime_isolation": {
+    "runtime_module_scan_passed": true,
+    "questions_loaded_only_by_evaluator": true,
+    "gold_loaded_only_by_evaluator": true,
+    "source_rows_persisted": false
+  },
+  "metrics": {
+    "case_count": 2,
+    "passed_case_count": 2,
+    "case_pass_rate": 1.0,
+    "execute_case_count": 2,
+    "execute_passed_case_count": 2,
+    "execute_pass_rate": 1.0,
+    "clarify_case_count": 0,
+    "clarify_passed_case_count": 0,
+    "refuse_case_count": 0,
+    "refuse_passed_case_count": 0,
+    "result_contract_case_count": 2,
+    "result_contract_passed_case_count": 2,
+    "mean_generation_latency_ms": 3154.448,
+    "planner_route_counts": {
+      "governed_free_form_llm": 2
+    },
+    "failure_class_counts": {}
+  },
+  "cases": [
+    {
+      "case_id": "L2_L09",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "holdout",
+      "family": "multi_measure_semantics",
+      "expected_outcome": "execute",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true,
+        "result_equivalent": true
+      },
+      "observed": {
+        "status": "ok",
+        "outcome": null,
+        "reason": null,
+        "planner_route": "governed_free_form_llm",
+        "llm_invoked": true,
+        "semantic_plan": {
+          "schema": "gda.shadow_semantic_plan_evidence.v1",
+          "status": "planned",
+          "execution_authority": false,
+          "fallback_reason": null,
+          "fingerprints": {
+            "semantic_ir_sha256": "f82e31d2a86a9c7c8e8c39f08d1b5d319ad564b33fd014fc1edc6dbaed92006a",
+            "logical_plan_sha256": "15c3898695b946c31f8f9c9a2c70f2ec2e89aa5aabc1c6a493c6e46217d072e8",
+            "physical_plan_sha256": "ca511957ed9c90247f365f5c6454eebad09db1ec4cd46a3fca2da68ce7cebec2"
+          },
+          "semantic_ir": {
+            "schema_id": "gda.semantic_query_ir.v1",
+            "route": "governed_sql_ast",
+            "semantic_version": "abu-dhabi-liveability-v4-reviewed-assets",
+            "metric_contract_version": "abu-dhabi-liveability-business-v6",
+            "metric_contract_id": null,
+            "task_frame": {
+              "schema_id": "gda.semantic_task_frame.v1",
+              "question_sha256": "ff87bc479e0f371c22152f239669ef36f4c2157b220a62d2f8c2d5ad16d1cbc9",
+              "language": "zh",
+              "operation": "aggregate",
+              "source_ids": [
+                12
+              ]
+            },
+            "sources": [
+              {
+                "source_id": 12,
+                "source_name": "abu-dhabi-liveability-dev",
+                "database_name": "liveability_data_20260730",
+                "authorized_schemas": [
+                  "public"
+                ],
+                "discovery_fingerprint": "2973c578794b73d67484dae28e59a859375f59ff564fb3d1ce657ce3e15758f4",
+                "tables": [
+                  "public.fact_facility_provision"
+                ]
+              }
+            ],
+            "operation": "aggregate",
+            "projections": [
+              {
+                "output_name": "category_name",
+                "role": "dimension",
+                "expression_kind": "field",
+                "aggregate": null,
+                "source_fields": [
+                  {
+                    "table": "public.fact_facility_provision",
+                    "field": "category_name"
+                  }
+                ],
+                "expression_sha256": "59ea7b3d87239121a440c4f9192da01706200274dc3d13f99863a6f1d71448aa"
+              },
+              {
+                "output_name": "total_demand_current",
+                "role": "metric",
+                "expression_kind": "aggregate",
+                "aggregate": "sum",
+                "source_fields": [
+                  {
+                    "table": "public.fact_facility_provision",
+                    "field": "demand_current"
+                  }
+                ],
+                "expression_sha256": "3b4bb2927dd9ea8891839bb3174b54dca72534c0f7067d3702419b23be1ee8f4"
+              },
+              {
+                "output_name": "total_existing_count",
+                "role": "metric",
+                "expression_kind": "aggregate",
+                "aggregate": "sum",
+                "source_fields": [
+                  {
+                    "table": "public.fact_facility_provision",
+                    "field": "existing_count"
+                  }
+                ],
+                "expression_sha256": "23d7d715b435ab366a3589084db0250ffab7aa9cebeee232954a662afd8dec31"
+              },
+              {
+                "output_name": "total_pipeline_count",
+                "role": "metric",
+                "expression_kind": "aggregate",
+                "aggregate": "sum",
+                "source_fields": [
+                  {
+                    "table": "public.fact_facility_provision",
+                    "field": "pipeline_count"
+                  }
+                ],
+                "expression_sha256": "f75ce38a53806b59fdc0c65998b303cb23fd8ebf4a887a7977ff7ccf0792f289"
+              },
+              {
+                "output_name": "total_needed_current",
+                "role": "metric",
+                "expression_kind": "aggregate",
+                "aggregate": "sum",
+                "source_fields": [
+                  {
+                    "table": "public.fact_facility_provision",
+                    "field": "needed_current"
+                  }
+                ],
+                "expression_sha256": "56763280d1c2b6fb1190885f01d308a2622529db9ed0dd56bc3c5296cb722081"
+              }
+            ],
+            "predicates": [],
+            "joins": [],
+            "group_expression_sha256s": [
+              "59ea7b3d87239121a440c4f9192da01706200274dc3d13f99863a6f1d71448aa"
+            ],
+            "order_by": [],
+            "result_limit": 1000,
+            "limit_enforcement": "source_executor"
+          },
+          "validation": {
+            "schema_id": "gda.semantic_ir_validation.v1",
+            "valid": true,
+            "ir_sha256": "f82e31d2a86a9c7c8e8c39f08d1b5d319ad564b33fd014fc1edc6dbaed92006a",
+            "checks": [
+              {
+                "check_id": "source_scope_bound",
+                "passed": true,
+                "detail": null
+              },
+              {
+                "check_id": "table_scope_exact",
+                "passed": true,
+                "detail": null
+              },
+              {
+                "check_id": "referenced_tables_governed",
+                "passed": true,
+                "detail": null
+              },
+              {
+                "check_id": "referenced_columns_governed",
+                "passed": true,
+                "detail": null
+              },
+              {
+                "check_id": "join_operators_governed",
+                "passed": true,
+                "detail": null
+              },
+              {
+                "check_id": "result_limit_bounded",
+                "passed": true,
+                "detail": null
+              },
+              {
+                "check_id": "projection_contract_present",
+                "passed": true,
+                "detail": null
+              }
+            ],
+            "reason_codes": []
+          },
+          "logical_plan": {
+            "schema_id": "gda.semantic_logical_plan.v1",
+            "ir_sha256": "f82e31d2a86a9c7c8e8c39f08d1b5d319ad564b33fd014fc1edc6dbaed92006a",
+            "root_node_id": "limit_001",
+            "nodes": [
+              {
+                "node_id": "scan_001",
+                "operator": "scan",
+                "input_node_ids": [],
+                "attributes": {
+                  "source_id": 12,
+                  "table": "public.fact_facility_provision"
+                }
+              },
+              {
+                "node_id": "aggregate_001",
+                "operator": "aggregate",
+                "input_node_ids": [
+                  "scan_001"
+                ],
+                "attributes": {
+                  "group_count": 1,
+                  "metric_count": 4
+                }
+              },
+              {
+                "node_id": "project_001",
+                "operator": "project",
+                "input_node_ids": [
+                  "aggregate_001"
+                ],
+                "attributes": {
+                  "outputs": [
+                    "category_name",
+                    "total_demand_current",
+                    "total_existing_count",
+                    "total_pipeline_count",
+                    "total_needed_current"
+                  ]
+                }
+              },
+              {
+                "node_id": "limit_001",
+                "operator": "limit",
+                "input_node_ids": [
+                  "project_001"
+                ],
+                "attributes": {
+                  "row_limit": 1000,
+                  "enforcement": "source_executor"
+                }
+              }
+            ]
+          },
+          "physical_plan": {
+            "schema_id": "gda.semantic_physical_plan.v1",
+            "engine": "postgresql_postgis",
+            "dialect": "postgres",
+            "compilation_mode": "validated_sql_ast_shadow",
+            "logical_plan_sha256": "15c3898695b946c31f8f9c9a2c70f2ec2e89aa5aabc1c6a493c6e46217d072e8",
+            "statement_sha256": "ca0a94f624688cb4cede5ba82b50d36c46b0e2d751b8040c67b94c74a8e5cbf0",
+            "source_ids": [
+              12
+            ],
+            "tables": [
+              "public.fact_facility_provision"
+            ],
+            "columns": [
+              "public.fact_facility_provision.category_name",
+              "public.fact_facility_provision.demand_current",
+              "public.fact_facility_provision.existing_count",
+              "public.fact_facility_provision.needed_current",
+              "public.fact_facility_provision.pipeline_count"
+            ],
+            "spatial_operators": [],
+            "read_only": true
+          }
+        },
+        "semantic_metric_contract": {},
+        "result": {
+          "row_count": 9,
+          "result_fingerprint": "70cbe7744ba6cfdde038e4cc0178faeed62e3421d7d68c96340402043d11e0d5",
+          "equivalence_fingerprints": {
+            "position_fingerprint": "edc00ffa7fb641def3ed2f7f620b22ea24eaa552d47f9f5479d399a75c0790be",
+            "position_numeric6_fingerprint": "3b5d7532427cd91e29dd5a0f70a16c6a2a73e79ba9d9b1aaca01cfb4af8ec100",
+            "unordered_position_fingerprint": "44982a1e27e1ecca2f171930783a7e2d503595d4040da0879bfeccf93c90a83c",
+            "unordered_position_numeric6_fingerprint": "ffe9953e7e52f2923b9959e0adf543f3ce979b6d3ff3efe0e4f617fffd757cb3"
+          },
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": 4087.586,
+          "usage": {
+            "input_tokens": 1506,
+            "output_tokens": 255,
+            "reasoning_tokens": 105
+          },
+          "observed_model_versions": [
+            "gpt-5.1-2025-11-13"
+          ]
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    },
+    {
+      "case_id": "L2_M06",
+      "scope": "makani",
+      "language": "en",
+      "split": "holdout",
+      "family": "measure_definition",
+      "expected_outcome": "execute",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true,
+        "result_equivalent": true
+      },
+      "observed": {
+        "status": "ok",
+        "outcome": null,
+        "reason": null,
+        "planner_route": "governed_free_form_llm",
+        "llm_invoked": true,
+        "semantic_plan": {
+          "schema": "gda.shadow_semantic_plan_evidence.v1",
+          "status": "planned",
+          "execution_authority": false,
+          "fallback_reason": null,
+          "fingerprints": {
+            "semantic_ir_sha256": "48a61a722432ae8d77b9631f17e35997edd702cb3da8a0dc63e804b49becdfda",
+            "logical_plan_sha256": "698ad2c3197e3bd1274202353b7701eaaace650ec7227ce85bbd9b3d805a6298",
+            "physical_plan_sha256": "58e74611bb7db82511f21a52d43b07f90a27124c229fa564a867dbe8e6e4b80f"
+          },
+          "semantic_ir": {
+            "schema_id": "gda.semantic_query_ir.v1",
+            "route": "governed_sql_ast",
+            "semantic_version": "abu-dhabi-makani-v4-reviewed-assets",
+            "metric_contract_version": "abu-dhabi-makani-business-v6",
+            "metric_contract_id": null,
+            "task_frame": {
+              "schema_id": "gda.semantic_task_frame.v1",
+              "question_sha256": "fd8cdd32069db3a6c23999376fc43a763a659c09a3809735b7ccf2df3bd0e8cf",
+              "language": "en",
+              "operation": "aggregate",
+              "source_ids": [
+                13
+              ]
+            },
+            "sources": [
+              {
+                "source_id": 13,
+                "source_name": "abu-dhabi-makani-dev",
+                "database_name": "makani_sync_full",
+                "authorized_schemas": [
+                  "public"
+                ],
+                "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+                "tables": [
+                  "public.udm_building"
+                ]
+              }
+            ],
+            "operation": "aggregate",
+            "projections": [
+              {
+                "output_name": "municipalityname",
+                "role": "dimension",
+                "expression_kind": "field",
+                "aggregate": null,
+                "source_fields": [
+                  {
+                    "table": "public.udm_building",
+                    "field": "municipalityname"
+                  }
+                ],
+                "expression_sha256": "2f1b1bcedfd38417c42d5f27bd7ffe4ddb8139168a0d7efe4822bac1b28bd3da"
+              },
+              {
+                "output_name": "avg_number_of_floors",
+                "role": "metric",
+                "expression_kind": "aggregate",
+                "aggregate": "avg",
+                "source_fields": [
+                  {
+                    "table": "public.udm_building",
+                    "field": "buildingnumberoffloors"
+                  }
+                ],
+                "expression_sha256": "469fe611c1211e94aaae972ab47aac122e0e48951efeb6acc897bddca6b48776"
+              }
+            ],
+            "predicates": [],
+            "joins": [],
+            "group_expression_sha256s": [
+              "2f1b1bcedfd38417c42d5f27bd7ffe4ddb8139168a0d7efe4822bac1b28bd3da"
+            ],
+            "order_by": [],
+            "result_limit": 1000,
+            "limit_enforcement": "source_executor"
+          },
+          "validation": {
+            "schema_id": "gda.semantic_ir_validation.v1",
+            "valid": true,
+            "ir_sha256": "48a61a722432ae8d77b9631f17e35997edd702cb3da8a0dc63e804b49becdfda",
+            "checks": [
+              {
+                "check_id": "source_scope_bound",
+                "passed": true,
+                "detail": null
+              },
+              {
+                "check_id": "table_scope_exact",
+                "passed": true,
+                "detail": null
+              },
+              {
+                "check_id": "referenced_tables_governed",
+                "passed": true,
+                "detail": null
+              },
+              {
+                "check_id": "referenced_columns_governed",
+                "passed": true,
+                "detail": null
+              },
+              {
+                "check_id": "join_operators_governed",
+                "passed": true,
+                "detail": null
+              },
+              {
+                "check_id": "result_limit_bounded",
+                "passed": true,
+                "detail": null
+              },
+              {
+                "check_id": "projection_contract_present",
+                "passed": true,
+                "detail": null
+              }
+            ],
+            "reason_codes": []
+          },
+          "logical_plan": {
+            "schema_id": "gda.semantic_logical_plan.v1",
+            "ir_sha256": "48a61a722432ae8d77b9631f17e35997edd702cb3da8a0dc63e804b49becdfda",
+            "root_node_id": "limit_001",
+            "nodes": [
+              {
+                "node_id": "scan_001",
+                "operator": "scan",
+                "input_node_ids": [],
+                "attributes": {
+                  "source_id": 13,
+                  "table": "public.udm_building"
+                }
+              },
+              {
+                "node_id": "aggregate_001",
+                "operator": "aggregate",
+                "input_node_ids": [
+                  "scan_001"
+                ],
+                "attributes": {
+                  "group_count": 1,
+                  "metric_count": 1
+                }
+              },
+              {
+                "node_id": "project_001",
+                "operator": "project",
+                "input_node_ids": [
+                  "aggregate_001"
+                ],
+                "attributes": {
+                  "outputs": [
+                    "municipalityname",
+                    "avg_number_of_floors"
+                  ]
+                }
+              },
+              {
+                "node_id": "limit_001",
+                "operator": "limit",
+                "input_node_ids": [
+                  "project_001"
+                ],
+                "attributes": {
+                  "row_limit": 1000,
+                  "enforcement": "source_executor"
+                }
+              }
+            ]
+          },
+          "physical_plan": {
+            "schema_id": "gda.semantic_physical_plan.v1",
+            "engine": "postgresql_postgis",
+            "dialect": "postgres",
+            "compilation_mode": "validated_sql_ast_shadow",
+            "logical_plan_sha256": "698ad2c3197e3bd1274202353b7701eaaace650ec7227ce85bbd9b3d805a6298",
+            "statement_sha256": "1798577867f1bee1fe24f86fe6b6ea3d60446e2f50ca8bc2d858bdcaf582a430",
+            "source_ids": [
+              13
+            ],
+            "tables": [
+              "public.udm_building"
+            ],
+            "columns": [
+              "public.udm_building.buildingnumberoffloors",
+              "public.udm_building.municipalityname"
+            ],
+            "spatial_operators": [],
+            "read_only": true
+          }
+        },
+        "semantic_metric_contract": {},
+        "result": {
+          "row_count": 3,
+          "result_fingerprint": "ffd5e73261c1a72463097c737008468f234a461068a74c4710e17d0668adf72c",
+          "equivalence_fingerprints": {
+            "position_fingerprint": "f22bb471b6fc8402b830a511eb25437bbd8b9c1fb9eb04790c2ce6c615ee12e6",
+            "position_numeric6_fingerprint": "71cb4c606447b1e714babbc0805f0006f2c172b567afe3bd887dba42216e259d",
+            "unordered_position_fingerprint": "f22bb471b6fc8402b830a511eb25437bbd8b9c1fb9eb04790c2ce6c615ee12e6",
+            "unordered_position_numeric6_fingerprint": "71cb4c606447b1e714babbc0805f0006f2c172b567afe3bd887dba42216e259d"
+          },
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": 2221.311,
+          "usage": {
+            "input_tokens": 1707,
+            "output_tokens": 178,
+            "reasoning_tokens": 100
+          },
+          "observed_model_versions": [
+            "gpt-5.1-2025-11-13"
+          ]
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    }
+  ],
+  "limitations": [
+    "A report is valid only for the selected frozen public benchmark and matching private Gold checksum.",
+    "Federated cases test independent source aggregates and application-level presentation; they do not authorize cross-database SQL or joins.",
+    "The SemanticQueryIR profile is an isolated candidate route and cannot become production solely from this report."
+  ]
+}

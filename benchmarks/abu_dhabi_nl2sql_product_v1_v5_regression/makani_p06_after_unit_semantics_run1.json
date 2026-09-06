@@ -1,0 +1,600 @@
+{
+  "benchmark": {
+    "benchmark_id": "abu-dhabi-makani_sync_full-product-v1-v5-regression",
+    "claim_boundary": {
+      "customer_steward_semantic_certification_complete": false,
+      "gold_result_equivalence_supported": true,
+      "schema_or_sql_leakage_allowed": false,
+      "scope": "business-language product baseline on one governed source",
+      "single_run_is_not_release_reliability": true
+    },
+    "completeness": {
+      "status": "complete_runtime_gold_freeze"
+    },
+    "coverage": {
+      "case_count": 15,
+      "language_counts": {
+        "ar": 5,
+        "en": 5,
+        "zh": 5
+      },
+      "query_case_count": 12,
+      "refusal_case_count": 3,
+      "source_rows_persisted": false,
+      "split_counts": {
+        "holdout": 6,
+        "validation": 9
+      },
+      "track_counts": {
+        "gis": 3,
+        "mixed": 2,
+        "safety": 3,
+        "warehouse": 7
+      }
+    },
+    "definition_complete": true,
+    "evaluation_profile": {
+      "isolation": {
+        "benchmark_generated_from_runtime_contracts": false,
+        "gold_results_available_to_runtime": false,
+        "gold_sql_available_to_runtime": false,
+        "questions_used_in_runtime_prompts": false
+      },
+      "leakage_check_passed": true,
+      "profile_id": "business-language-clean-v1",
+      "split_counts": {
+        "holdout": 6,
+        "validation": 9
+      },
+      "status": "frozen",
+      "track_counts": {
+        "gis": 3,
+        "mixed": 2,
+        "safety": 3,
+        "warehouse": 7
+      }
+    },
+    "execution_profile": "baseline_sql",
+    "max_concurrency": 1,
+    "metric_contract_version": "abu-dhabi-makani-business-v6",
+    "prompt_version": "governed-virtual-nl2semantic2sql-v1.6",
+    "request_interval_seconds": 0.0,
+    "run_complete": false,
+    "selected_case_ids": [
+      "MAK_P06_PLOT_AREA_LAND_USE_AR"
+    ],
+    "semantic_layer_version": "abu-dhabi-makani-v5-dictionary-published",
+    "source_file_sha256": "fed2ea703e9faef16eea3033dc37c46a7ebf158fcebe20dc0d2d02d2bf917974",
+    "version": "1.0.0-frozen-business-language-clean"
+  },
+  "benchmark_accuracy_claim": false,
+  "cases": [
+    {
+      "capabilities": [
+        "entity_resolution",
+        "business_field_resolution",
+        "group_by",
+        "sum"
+      ],
+      "case_id": "MAK_P06_PLOT_AREA_LAND_USE_AR",
+      "checks": {
+        "database_scope_match": true,
+        "forbidden_tables_absent": true,
+        "gold_columns_match": true,
+        "gold_exact_columns_match": false,
+        "gold_exact_result_fingerprint_match": false,
+        "gold_result_equivalence_match": true,
+        "gold_result_fingerprint_match": true,
+        "gold_row_count_match": true,
+        "language_match": true,
+        "max_row_count": true,
+        "required_columns_present": true,
+        "schema_scope_match": true,
+        "source_id_match": true,
+        "source_rows_not_persisted": true,
+        "status_match": true,
+        "table_set_match": true
+      },
+      "diagnostic_differences": [
+        "gold_exact_columns_match",
+        "gold_exact_result_fingerprint_match"
+      ],
+      "failure_class": null,
+      "failure_reasons": [],
+      "language": "ar",
+      "observed": {
+        "columns": [
+          "public.udm_plot.plannedareametric",
+          "public.udm_plot.primaryuseengdesc"
+        ],
+        "equivalence_fingerprints": {
+          "position_fingerprint": "76d6e9a7de94e4a94ca650f779a582bee5033a211d1e300fc9ecd3b38dd022f2",
+          "position_numeric6_fingerprint": "5c4e2e7a09f9f57e8ceea3f0e225aaddc0024502a39157c837b87a0acf91fa37",
+          "unordered_position_fingerprint": "76d6e9a7de94e4a94ca650f779a582bee5033a211d1e300fc9ecd3b38dd022f2",
+          "unordered_position_numeric6_fingerprint": "5c4e2e7a09f9f57e8ceea3f0e225aaddc0024502a39157c837b87a0acf91fa37"
+        },
+        "error": null,
+        "generation": {
+          "attempt": 1,
+          "latency_ms": 9791.17,
+          "observed_model_versions": [
+            "gpt-5.1-2025-11-13"
+          ],
+          "usage": {
+            "input_tokens": 6361,
+            "output_tokens": 294,
+            "reasoning_tokens": 204
+          }
+        },
+        "gold_result_contract": {
+          "contract_id": "MAK_P06_PLOT_AREA_LAND_USE_AR_GOLD_V1",
+          "equivalence": {
+            "accepted_fingerprint_keys": [
+              "unordered_position_numeric6_fingerprint",
+              "position_numeric6_fingerprint",
+              "unordered_position_fingerprint",
+              "position_fingerprint"
+            ],
+            "column_aliases_compare_by_position": true,
+            "expected_fingerprints": {
+              "position_fingerprint": "76d6e9a7de94e4a94ca650f779a582bee5033a211d1e300fc9ecd3b38dd022f2",
+              "position_numeric6_fingerprint": "5c4e2e7a09f9f57e8ceea3f0e225aaddc0024502a39157c837b87a0acf91fa37",
+              "unordered_position_fingerprint": "76d6e9a7de94e4a94ca650f779a582bee5033a211d1e300fc9ecd3b38dd022f2",
+              "unordered_position_numeric6_fingerprint": "5c4e2e7a09f9f57e8ceea3f0e225aaddc0024502a39157c837b87a0acf91fa37"
+            },
+            "order_sensitive": false
+          },
+          "path": "/Users/zhouning/gisdataagent/benchmarks/abu_dhabi_nl2sql_product_v1_v5_regression/gold/makani/MAK_P06_PLOT_AREA_LAND_USE_AR.json",
+          "sha256": "c0470e071775ac8c34aae6f86603fde9881158063870bb69b6104252eb999265"
+        },
+        "language": "ar",
+        "model": {
+          "adk_route": "openai/gpt-5.1",
+          "reasoning_effort": "medium",
+          "requested": "gpt-5.1"
+        },
+        "planner": {
+          "direct_metric_candidate_contract_ids": [],
+          "fallback_reason": "no_direct_metric_match",
+          "llm_invoked": true,
+          "route": "governed_free_form_llm"
+        },
+        "prompt": {
+          "entity_resolution": [],
+          "grounding": {
+            "asset_matches": [
+              {
+                "asset_id": "makani.plot",
+                "physical_tables": [
+                  "public.udm_plot"
+                ],
+                "score": 40.0
+              }
+            ],
+            "candidate_counts_after": {
+              "metric_contract_count": 2,
+              "relationship_count": 0,
+              "semantic_asset_count": 1,
+              "semantic_caveat_count": 3,
+              "table_count": 1
+            },
+            "candidate_counts_after_entity_resolution": {
+              "metric_contract_count": 2,
+              "relationship_count": 0,
+              "semantic_asset_count": 1,
+              "semantic_caveat_count": 3,
+              "table_count": 1
+            },
+            "candidate_counts_before": {
+              "metric_contract_count": 775,
+              "relationship_count": 14,
+              "semantic_asset_count": 604,
+              "semantic_caveat_count": 3,
+              "table_count": 764
+            },
+            "execution_validation_scope": "full_semantic_layer",
+            "explicit_table_matches": [],
+            "strategy": "reviewed_business_asset_retrieval"
+          },
+          "sha256": "69a2ba51d23a62e3d258062f345e444287dfa77423e7c853b03c2e625fb411b1",
+          "version": "governed-virtual-nl2semantic2sql-v1.6"
+        },
+        "reason": null,
+        "result_columns": [
+          "primary_land_use",
+          "total_planned_area_m2"
+        ],
+        "result_fingerprint": "f16b10c206c78c3f2f0a81596c3ae3b80034df03c858b901ae840c8f76c157e0",
+        "row_count": 19,
+        "semantic_caveats": [
+          "makani_technical_catalog_not_business_approval",
+          "makani_dictionary_mapping_candidate",
+          "makani_arabic_terminology_provisional"
+        ],
+        "semantic_metric_contract": null,
+        "semantic_plan": {
+          "execution_authority": false,
+          "fallback_reason": null,
+          "fingerprints": {
+            "logical_plan_sha256": "f6341ee31fca641be7bb67bacb49e92817d0ed8a62e940e59fa42710a40902e8",
+            "physical_plan_sha256": "6fbd07a4036274af5c47e92103011fa1ee66566d1190caa9fe14b78009e90842",
+            "semantic_ir_sha256": "7011cdf6261aa09bfb5ed7dd5ffd54bb05124935a91171d4c1de8147f80b19be"
+          },
+          "logical_plan": {
+            "ir_sha256": "7011cdf6261aa09bfb5ed7dd5ffd54bb05124935a91171d4c1de8147f80b19be",
+            "nodes": [
+              {
+                "attributes": {
+                  "source_id": 13,
+                  "table": "public.udm_plot"
+                },
+                "input_node_ids": [],
+                "node_id": "scan_001",
+                "operator": "scan"
+              },
+              {
+                "attributes": {
+                  "group_count": 1,
+                  "metric_count": 1
+                },
+                "input_node_ids": [
+                  "scan_001"
+                ],
+                "node_id": "aggregate_001",
+                "operator": "aggregate"
+              },
+              {
+                "attributes": {
+                  "outputs": [
+                    "primary_land_use",
+                    "total_planned_area_m2"
+                  ]
+                },
+                "input_node_ids": [
+                  "aggregate_001"
+                ],
+                "node_id": "project_001",
+                "operator": "project"
+              },
+              {
+                "attributes": {
+                  "order_count": 1
+                },
+                "input_node_ids": [
+                  "project_001"
+                ],
+                "node_id": "sort_001",
+                "operator": "sort"
+              },
+              {
+                "attributes": {
+                  "enforcement": "source_executor",
+                  "row_limit": 1000
+                },
+                "input_node_ids": [
+                  "sort_001"
+                ],
+                "node_id": "limit_001",
+                "operator": "limit"
+              }
+            ],
+            "root_node_id": "limit_001",
+            "schema_id": "gda.semantic_logical_plan.v1"
+          },
+          "physical_plan": {
+            "columns": [
+              "public.udm_plot.plannedareametric",
+              "public.udm_plot.primaryuseengdesc"
+            ],
+            "compilation_mode": "validated_sql_ast_shadow",
+            "dialect": "postgres",
+            "engine": "postgresql_postgis",
+            "logical_plan_sha256": "f6341ee31fca641be7bb67bacb49e92817d0ed8a62e940e59fa42710a40902e8",
+            "read_only": true,
+            "schema_id": "gda.semantic_physical_plan.v1",
+            "source_ids": [
+              13
+            ],
+            "spatial_operators": [],
+            "statement_sha256": "515670f9f2b668750a38bc6657980a5e47c04cf0a4e2f45474952f2370bdeb65",
+            "tables": [
+              "public.udm_plot"
+            ]
+          },
+          "schema_id": "gda.shadow_semantic_plan_evidence.v1",
+          "semantic_ir": {
+            "group_expression_sha256s": [
+              "402ff40485545b02a2d93b4af471ee4e772b99c371191835a75b6e7defbf7ea1"
+            ],
+            "joins": [],
+            "limit_enforcement": "source_executor",
+            "metric_contract_id": null,
+            "metric_contract_version": "abu-dhabi-makani-business-v6",
+            "operation": "aggregate",
+            "order_by": [
+              {
+                "direction": "asc",
+                "expression_sha256": "402ff40485545b02a2d93b4af471ee4e772b99c371191835a75b6e7defbf7ea1",
+                "output_name": "primaryuseengdesc"
+              }
+            ],
+            "predicates": [],
+            "projections": [
+              {
+                "aggregate": null,
+                "expression_kind": "field",
+                "expression_sha256": "402ff40485545b02a2d93b4af471ee4e772b99c371191835a75b6e7defbf7ea1",
+                "output_name": "primary_land_use",
+                "role": "dimension",
+                "source_fields": [
+                  {
+                    "field": "primaryuseengdesc",
+                    "table": "public.udm_plot"
+                  }
+                ]
+              },
+              {
+                "aggregate": "sum",
+                "expression_kind": "aggregate",
+                "expression_sha256": "e976d30dd79cb07daba373f385e6160ad70a29c344e789ef055c0ac1290cfc73",
+                "output_name": "total_planned_area_m2",
+                "role": "metric",
+                "source_fields": [
+                  {
+                    "field": "plannedareametric",
+                    "table": "public.udm_plot"
+                  }
+                ]
+              }
+            ],
+            "result_limit": 1000,
+            "route": "governed_sql_ast",
+            "schema_id": "gda.semantic_query_ir.v1",
+            "semantic_version": "abu-dhabi-makani-v5-dictionary-published",
+            "sources": [
+              {
+                "authorized_schemas": [
+                  "public"
+                ],
+                "database_name": "makani_sync_full",
+                "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+                "source_id": 13,
+                "source_name": "abu-dhabi-makani-dev",
+                "tables": [
+                  "public.udm_plot"
+                ]
+              }
+            ],
+            "task_frame": {
+              "language": "ar",
+              "operation": "aggregate",
+              "question_sha256": "d8e62eb45dfa5ce907b5216ca0f6509a7356d5d4d3a7103cd0e7c28ae27cf178",
+              "schema_id": "gda.semantic_task_frame.v1",
+              "source_ids": [
+                13
+              ]
+            }
+          },
+          "status": "planned",
+          "validation": {
+            "checks": [
+              {
+                "check_id": "source_scope_bound",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "table_scope_exact",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "referenced_tables_governed",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "referenced_columns_governed",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "join_operators_governed",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "result_limit_bounded",
+                "detail": null,
+                "passed": true
+              },
+              {
+                "check_id": "projection_contract_present",
+                "detail": null,
+                "passed": true
+              }
+            ],
+            "ir_sha256": "7011cdf6261aa09bfb5ed7dd5ffd54bb05124935a91171d4c1de8147f80b19be",
+            "reason_codes": [],
+            "schema_id": "gda.semantic_ir_validation.v1",
+            "valid": true
+          }
+        },
+        "source": {
+          "authorized_schemas": [
+            "public"
+          ],
+          "database_name": "makani_sync_full",
+          "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+          "execution_mode": "registered_governed_virtual_read_only",
+          "source_id": 13,
+          "source_name": "abu-dhabi-makani-dev"
+        },
+        "source_rows_persisted": false,
+        "sql_sha256": "515670f9f2b668750a38bc6657980a5e47c04cf0a4e2f45474952f2370bdeb65",
+        "status": "ok",
+        "tables": [
+          "public.udm_plot"
+        ]
+      },
+      "planning_differences": [],
+      "question": "ما إجمالي المساحة المخططة لقطع الأراضي حسب الاستخدام الرئيسي للأرض؟",
+      "split": "validation",
+      "status": "passed",
+      "track": "warehouse"
+    }
+  ],
+  "experiment": {
+    "comparison_requires_matched_baseline_and_candidate": true,
+    "default_production_route": true,
+    "execution_profile": "baseline_sql",
+    "release_gate": false,
+    "reviewed_metric_contracts": "matched_control_only",
+    "route_role": "current_production_baseline"
+  },
+  "generated_at": "2026-08-22T06:29:13.278547+00:00",
+  "limitations": [
+    "This is a single-run product baseline. Release reliability requires the separately configured repeated-run stability evaluation.",
+    "Gold SQL and Gold results are evaluation-only artifacts and are not available to runtime prompts, retrieval, or semantic assets.",
+    "This report covers a selected case subset; it cannot support a full benchmark accuracy claim.",
+    "Arabic labels and source categorical values remain subject to customer review."
+  ],
+  "metrics": {
+    "by_language": {
+      "ar": {
+        "case_count": 1,
+        "case_pass_rate": 1.0,
+        "gold_case_count": 1,
+        "gold_exact_result_match_passed_case_count": 0,
+        "gold_exact_result_match_rate": 0.0,
+        "gold_result_equivalence_pass_rate": 1.0,
+        "gold_result_equivalence_passed_case_count": 1,
+        "passed_case_count": 1,
+        "refusal_case_count": 0,
+        "refusal_recall": null
+      }
+    },
+    "by_stage": {
+      "asset_resolution": {
+        "case_count": 1,
+        "pass_rate": 1.0,
+        "passed_case_count": 1
+      },
+      "execution_result": {
+        "case_count": 1,
+        "pass_rate": 1.0,
+        "passed_case_count": 1
+      },
+      "question_understanding": {
+        "case_count": 1,
+        "pass_rate": 1.0,
+        "passed_case_count": 1
+      },
+      "source_governance": {
+        "case_count": 1,
+        "pass_rate": 1.0,
+        "passed_case_count": 1
+      }
+    },
+    "by_track": {
+      "warehouse": {
+        "case_count": 1,
+        "case_pass_rate": 1.0,
+        "gold_case_count": 1,
+        "passed_case_count": 1
+      }
+    },
+    "case_count": 1,
+    "case_pass_rate": 1.0,
+    "expected_query_case_count": 1,
+    "failure_class_counts": {},
+    "gold_exact_result_match_passed_case_count": 0,
+    "gold_exact_result_match_rate": 0.0,
+    "gold_result_contract_case_count": 1,
+    "gold_result_equivalence_pass_rate": 1.0,
+    "gold_result_equivalence_passed_case_count": 1,
+    "gold_result_equivalence_supported": true,
+    "infrastructure_failure_case_count": 0,
+    "language_case_counts": {
+      "ar": 1
+    },
+    "mean_generation_latency_ms": 9791.17,
+    "p95_generation_latency_ms": 9791.17,
+    "passed_case_count": 1,
+    "planner": {
+      "direct_metric_gold_case_count": 0,
+      "direct_metric_gold_equivalence_pass_rate": null,
+      "direct_metric_gold_equivalence_passed_case_count": 0,
+      "direct_metric_route_count": 0,
+      "direct_metric_route_rate": 0.0,
+      "fallback_reason_counts": {
+        "no_direct_metric_match": 1
+      },
+      "llm_avoided_case_count": 0,
+      "llm_invocation_case_rate": 1.0,
+      "llm_invoked_case_count": 1,
+      "observation_count": 1,
+      "route_counts": {
+        "governed_free_form_llm": 1
+      }
+    },
+    "query_execution_success_count": 1,
+    "query_execution_success_rate": 1.0,
+    "refusal": {
+      "expected_refusal_case_count": 0,
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "observed_refusal_count": 0,
+      "precision": null,
+      "recall": null,
+      "true_positive_count": 0
+    },
+    "semantic_metric_contract_application_count": 0,
+    "semantic_metric_contract_counts": {},
+    "semantic_plan": {
+      "expected_query_case_count": 1,
+      "fallback_reason_counts": {},
+      "mode": "shadow_non_authoritative",
+      "observation_count": 1,
+      "planned_count": 1,
+      "release_gate": false,
+      "route_counts": {
+        "governed_sql_ast": 1
+      },
+      "shadow_coverage_rate": 1.0,
+      "validated_count": 1
+    },
+    "status_counts": {
+      "ok": 1
+    },
+    "usage": {
+      "input_tokens": 6361,
+      "output_tokens": 294,
+      "reasoning_tokens": 204
+    }
+  },
+  "model": {
+    "observed_versions": [
+      "gpt-5.1-2025-11-13"
+    ],
+    "reasoning_effort": "medium",
+    "requested": "gpt-5.1"
+  },
+  "product_baseline_claim_valid": false,
+  "product_evaluation_run_valid": false,
+  "schema": "gda.free-form-nl2sql-benchmark-report.v1",
+  "scope": "business_language_product_evaluation",
+  "source": {
+    "authorized_schemas": [
+      "public"
+    ],
+    "database_name": "makani_sync_full",
+    "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+    "execution_mode": "registered_governed_virtual_read_only",
+    "owner": "abu-dhabi-site-operator",
+    "profile_fingerprint": "a4d99a4084081224ffcf6a02cda777b2aaf6052521573a7ee68f022d62809253",
+    "source_id": 13
+  },
+  "source_rows_persisted": false,
+  "status": "passed"
+}

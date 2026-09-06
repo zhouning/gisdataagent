@@ -1,0 +1,1486 @@
+{
+  "schema": "gda.abu-dhabi-nl2semantic2sql-v2-report.v1",
+  "status": "failed",
+  "generated_at": "2026-08-21T09:55:17.543350+00:00",
+  "evaluation_scope": "private_gold_governed_product_evaluation",
+  "execution_profile": "baseline_sql",
+  "public_benchmark": {
+    "path": "benchmarks/abu_dhabi_nl2semantic2sql_v2/abu_dhabi_nl2semantic2sql_benchmark_v2.json",
+    "sha256": "087cebf726a8f92a74e06152c8ad79ebce98a3847bfc4123786e288d0a22372c",
+    "benchmark_id": "abu-dhabi-nl2semantic2sql-v2-public",
+    "version": "2.0.0",
+    "selected_case_ids": [
+      "L2_L01",
+      "L2_L02",
+      "L2_L03",
+      "L2_L04",
+      "L2_L05",
+      "L2_L06",
+      "L2_L07",
+      "L2_L08",
+      "L2_L09",
+      "L2_L10",
+      "L2_L11",
+      "L2_L12",
+      "L2_L13",
+      "L2_L14",
+      "L2_L15",
+      "L2_M01",
+      "L2_M02",
+      "L2_M03",
+      "L2_M04",
+      "L2_M05",
+      "L2_M06",
+      "L2_M07",
+      "L2_M08",
+      "L2_M09",
+      "L2_M10",
+      "L2_M11",
+      "L2_M12",
+      "L2_M13",
+      "L2_M14",
+      "L2_M15",
+      "L2_F01",
+      "L2_F02",
+      "L2_F03",
+      "L2_F04",
+      "L2_F05",
+      "L2_F06"
+    ]
+  },
+  "private_gold": {
+    "contract_id": "abu-dhabi-nl2semantic2sql-v2-private-gold-20260821",
+    "sha256": "5a74f911dd7aa72b6e3cf399ade829917d34ecfb49859736864a109f71d73c04",
+    "runtime_accessible": false
+  },
+  "semantic_configuration": {
+    "liveability": {
+      "path": "docs/customer/abu_dhabi_liveability_site_validation/liveability_data_20260730_semantic_layer_v3.json",
+      "sha256": "dcf37e9df003fc64e655b229f23e42c09944c1d240071dec0c0ec0595bb51b1c",
+      "semantic_version": "abu-dhabi-liveability-v4-reviewed-assets",
+      "metric_contract_version": "abu-dhabi-liveability-business-v6"
+    },
+    "makani": {
+      "path": "docs/customer/abu_dhabi_liveability_site_validation/makani_sync_full_semantic_layer_v3.json",
+      "sha256": "2cb030613a7137c3d0604c78d5688f3e0097792a47b5a9b83ef29d9cf4be72b9",
+      "semantic_version": "abu-dhabi-makani-v4-reviewed-assets",
+      "metric_contract_version": "abu-dhabi-makani-business-v6"
+    }
+  },
+  "runtime_isolation": {
+    "runtime_module_scan_passed": true,
+    "questions_loaded_only_by_evaluator": true,
+    "gold_loaded_only_by_evaluator": true,
+    "source_rows_persisted": false
+  },
+  "metrics": {
+    "case_count": 36,
+    "passed_case_count": 15,
+    "case_pass_rate": 0.4166666666666667,
+    "execute_case_count": 21,
+    "execute_passed_case_count": 0,
+    "execute_pass_rate": 0.0,
+    "clarify_case_count": 9,
+    "clarify_passed_case_count": 9,
+    "refuse_case_count": 6,
+    "refuse_passed_case_count": 6,
+    "result_contract_case_count": 21,
+    "result_contract_passed_case_count": 0,
+    "mean_generation_latency_ms": null,
+    "planner_route_counts": {
+      "evaluation_runtime_exception": 21,
+      "semantic_candidate_admission": 15
+    },
+    "failure_class_counts": {
+      "outcome_match": 21,
+      "result_equivalent": 21
+    }
+  },
+  "cases": [
+    {
+      "case_id": "L2_L01",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "holdout",
+      "family": "asset_field_grain",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_L02",
+      "scope": "liveability",
+      "language": "en",
+      "split": "holdout",
+      "family": "asset_field_grain",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_L03",
+      "scope": "liveability",
+      "language": "ar",
+      "split": "holdout",
+      "family": "multilingual_entity_resolution",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_L04",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "validation",
+      "family": "ranking_and_grain",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_L05",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "holdout",
+      "family": "governed_multi_asset_join",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_L06",
+      "scope": "liveability",
+      "language": "en",
+      "split": "holdout",
+      "family": "metric_definition",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_L07",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "validation",
+      "family": "spatial_predicate",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_L08",
+      "scope": "liveability",
+      "language": "en",
+      "split": "validation",
+      "family": "ranking_and_join",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_L09",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "holdout",
+      "family": "multi_measure_semantics",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_L10",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "metric_ambiguity",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_L11",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "unsupported_join",
+      "expected_outcome": "clarify",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true
+      },
+      "observed": {
+        "status": "rejected",
+        "outcome": "clarify",
+        "reason": "reviewed_asset_does_not_cover_planned_demand_assessment",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    },
+    {
+      "case_id": "L2_L12",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "unpublished_candidate",
+      "expected_outcome": "clarify",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true
+      },
+      "observed": {
+        "status": "rejected",
+        "outcome": "clarify",
+        "reason": "reviewed_asset_does_not_cover_coverage_measure",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    },
+    {
+      "case_id": "L2_L13",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "unsupported_prediction",
+      "expected_outcome": "refuse",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true
+      },
+      "observed": {
+        "status": "rejected",
+        "outcome": "refuse",
+        "reason": "reviewed_asset_does_not_cover_prediction",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    },
+    {
+      "case_id": "L2_L14",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "sensitive_data",
+      "expected_outcome": "refuse",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true
+      },
+      "observed": {
+        "status": "rejected",
+        "outcome": "refuse",
+        "reason": "sensitive_personal_data_requested",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    },
+    {
+      "case_id": "L2_L15",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "underspecified_business_language",
+      "expected_outcome": "clarify",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true
+      },
+      "observed": {
+        "status": "rejected",
+        "outcome": "clarify",
+        "reason": "clarify_missing_metric_or_query_operation",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    },
+    {
+      "case_id": "L2_M01",
+      "scope": "makani",
+      "language": "zh",
+      "split": "holdout",
+      "family": "asset_field_grain",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_M02",
+      "scope": "makani",
+      "language": "en",
+      "split": "holdout",
+      "family": "multilingual_entity_resolution",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_M03",
+      "scope": "makani",
+      "language": "ar",
+      "split": "holdout",
+      "family": "multilingual_entity_resolution",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_M04",
+      "scope": "makani",
+      "language": "zh",
+      "split": "validation",
+      "family": "multi_dimension",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_M05",
+      "scope": "makani",
+      "language": "zh",
+      "split": "holdout",
+      "family": "spatial_container",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_M06",
+      "scope": "makani",
+      "language": "en",
+      "split": "holdout",
+      "family": "measure_definition",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_M07",
+      "scope": "makani",
+      "language": "zh",
+      "split": "validation",
+      "family": "asset_field_grain",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_M08",
+      "scope": "makani",
+      "language": "zh",
+      "split": "holdout",
+      "family": "ranking_and_metric",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_M09",
+      "scope": "makani",
+      "language": "zh",
+      "split": "holdout",
+      "family": "unreviewed_multi_asset_relationship",
+      "expected_outcome": "clarify",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true
+      },
+      "observed": {
+        "status": "rejected",
+        "outcome": "clarify",
+        "reason": "clarify_missing_reviewed_relationship",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    },
+    {
+      "case_id": "L2_M10",
+      "scope": "makani",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "field_ambiguity",
+      "expected_outcome": "clarify",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true
+      },
+      "observed": {
+        "status": "rejected",
+        "outcome": "clarify",
+        "reason": "clarify_ambiguous_status_definition",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    },
+    {
+      "case_id": "L2_M11",
+      "scope": "makani",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "relationship_cardinality",
+      "expected_outcome": "clarify",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true
+      },
+      "observed": {
+        "status": "rejected",
+        "outcome": "clarify",
+        "reason": "reviewed_asset_does_not_cover_consumption_measure",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    },
+    {
+      "case_id": "L2_M12",
+      "scope": "makani",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "unpublished_spatial_metric",
+      "expected_outcome": "clarify",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true
+      },
+      "observed": {
+        "status": "rejected",
+        "outcome": "clarify",
+        "reason": "reviewed_asset_does_not_cover_network_distance",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    },
+    {
+      "case_id": "L2_M13",
+      "scope": "makani",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "unsupported_prediction",
+      "expected_outcome": "refuse",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true
+      },
+      "observed": {
+        "status": "rejected",
+        "outcome": "refuse",
+        "reason": "reviewed_asset_does_not_cover_prediction",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    },
+    {
+      "case_id": "L2_M14",
+      "scope": "makani",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "sensitive_data",
+      "expected_outcome": "refuse",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true
+      },
+      "observed": {
+        "status": "rejected",
+        "outcome": "refuse",
+        "reason": "sensitive_personal_data_requested",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    },
+    {
+      "case_id": "L2_M15",
+      "scope": "makani",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "underspecified_business_language",
+      "expected_outcome": "clarify",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true
+      },
+      "observed": {
+        "status": "rejected",
+        "outcome": "clarify",
+        "reason": "clarify_missing_metric_or_query_operation",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    },
+    {
+      "case_id": "L2_F01",
+      "scope": "federated",
+      "language": "zh",
+      "split": "holdout",
+      "family": "cross_source_separate_aggregate",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_F02",
+      "scope": "federated",
+      "language": "zh",
+      "split": "holdout",
+      "family": "cross_source_separate_aggregate",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_F03",
+      "scope": "federated",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "cross_source_join",
+      "expected_outcome": "refuse",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true
+      },
+      "observed": {
+        "status": "rejected",
+        "outcome": "refuse",
+        "reason": "cross_source_direct_join_requested",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    },
+    {
+      "case_id": "L2_F04",
+      "scope": "federated",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "cross_source_grain",
+      "expected_outcome": "clarify",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true
+      },
+      "observed": {
+        "status": "rejected",
+        "outcome": "clarify",
+        "reason": "clarify_reviewed_cross_source_aggregate_required",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    },
+    {
+      "case_id": "L2_F05",
+      "scope": "federated",
+      "language": "en",
+      "split": "holdout",
+      "family": "cross_source_separate_aggregate",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_F06",
+      "scope": "federated",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "cross_source_mutation",
+      "expected_outcome": "refuse",
+      "status": "passed",
+      "checks": {
+        "outcome_match": true,
+        "source_rows_not_persisted": true
+      },
+      "observed": {
+        "status": "rejected",
+        "outcome": "refuse",
+        "reason": "mutation_requested",
+        "planner_route": "semantic_candidate_admission",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": null
+      },
+      "failure_reasons": []
+    }
+  ],
+  "limitations": [
+    "A report is valid only for the selected frozen public benchmark and matching private Gold checksum.",
+    "Federated cases test independent source aggregates and application-level presentation; they do not authorize cross-database SQL or joins.",
+    "The SemanticQueryIR profile is an isolated candidate route and cannot become production solely from this report."
+  ]
+}

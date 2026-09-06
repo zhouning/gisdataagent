@@ -1,14 +1,58 @@
 # 空间语义层 — 技术架构与对比分析
 
-> GIS Data Agent (ADK Edition) PRD P2 F1（历史通用设计）
-> 版本: 1.1 | 日期: 2026-08-24 | Commit: `current working tree`
+> **状态刷新（2026-08-30）**：本文保留通用空间语义层的历史设计与 MetricFlow/本体对比。
+> 阿布扎比两库的当前生产语义层、双路线实现、真实 Gemini 测试和反硬编码审计，以
+> [`nl2semantic2sql_architecture.md`](nl2semantic2sql_architecture.md) 第 13 节和
+> [`GIS_Data_Agent_SemanticQueryIR_架构与生产实现说明_20260822.md`](GIS_Data_Agent_SemanticQueryIR_架构与生产实现说明_20260822.md)
+> 第 12.4 节为准。不要把本文件中的“轻量语义层”历史描述理解为当前两库的完整业务语义
+> 已经完成。
+
+### 当前两库实现快照（2026-08-30）
+
+| 数据源 | 技术表绑定 | 业务审核可执行 | 技术问数可用 | 明确排除 | 业务语义完整性 |
+|---|---:|---:|---:|---:|---|
+| Liveability | 161 | 8 | 140 | 13 | 未完成，当前只对 reviewed asset subset 授权 |
+| Makani | 772 | 604 | 764 | 7 | 未完成，当前只对 reviewed asset subset 授权 |
+
+这意味着“技术元数据全覆盖”与“业务语义全覆盖”是两件事：前者用于资源目录、字段查看和
+候选生成，后者才允许自然语言业务问数执行。两库均通过统一虚拟入湖/元数据控制面接入，
+源数据行不写入控制库。近 100% 的准确率只适用于冻结、已审核且 Gold 可验证的子集；
+反硬编码证据和真实 Gemini 测试见
+[`nl2semantic2sql_architecture.md`](nl2semantic2sql_architecture.md) 第 13.10 节。
+
+### 实测对当前语义层设计的反馈
+
+当前产品入口通过 current artifact registry 获取已发布语义版本。Liveability 当前 artifact
+包含 165 个 metric contract/pattern、5 条关系和 4 条 caveat；Makani 包含 775 个 metric
+contract/pattern、14 条关系和 4 条 caveat。它们与全量表/字段技术 binding 一起参与候选
+解析、执行授权和结果解释。
+
+真实 Gemini 测试得到的最重要结论不是“有别名就能达到 100%”，而是：
+
+1. **技术元数据覆盖只解决可发现性。** 表、字段、类型、geometry/SRID 全量可见，不代表
+   系统已经知道业务粒度、指标口径、值域和正确关系。
+2. **高分依赖审核子集的唯一绑定。** 业务标签、字段角色、数字后缀、粒度、关系方向和
+   metric pattern 把候选收缩到可验证范围；证据不足时必须澄清或拒绝。
+3. **语义层同时参与生成前和执行前。** 它既提供 grounding，也通过
+   `retrieval_eligible`/`execution_eligible`、表列白名单、关系和空间规则约束最终提案。
+4. **配置必须版本化 CRUD。** 自动反向生成的资产先进入 draft，人工修改、审核、发布和回滚
+   形成新版本；运行时只读取明确晋级的 current artifact，不能直接执行草稿。
+5. **LLM 不是语义真值。** Gemini 可以用领域知识帮助生成候选和解释问题，但业务真值仍由
+   字典、本体、审核语义资产、源元数据和发布流程共同确定。
+
+因此，180/180 的恢复子集说明已发布语义和治理链在该冻结范围内有效；它不改变两库
+`business_semantic_coverage_complete=false` 的事实。继续提升任意问数能力，主要工作是补齐
+未审核业务资产的粒度、值域、关系和指标口径，而不是把技术目录题变成固定 SQL。
+
+> GIS Data Agent (ADK Edition) PRD P2 F1（历史通用设计 + 当前实测反馈）
+> 版本: 1.3 | 日期: 2026-08-30 | Commit: `current working tree`
 
 > 本文是原始通用 GIS 语义层设计。阿布扎比两库的当前产品实现、元数据/本体/语义层信任边界、v4 全表绑定、执行门禁、SemanticQueryIR 和 benchmark 口径以 [`nl2semantic2sql_architecture.md` 第 13 节](nl2semantic2sql_architecture.md#13-2026-08-当前生产架构阿布扎比两库) 为准。
 
 > **阅读边界**：本文第 1-5 节描述早期 YAML + 注册表语义层的通用机制，不应被理解为
 > 当前阿布扎比 v4 运行时的完整配置格式。当前配置还包含 source binding、ontology overlay、
 > candidate catalog、relationship catalog、`execution_eligible`、metric contracts 和
-> evidence 版本；产品入口加载的是两库各自的 v4 全表语义资产。
+> evidence 版本；产品入口通过 current artifact registry 加载两库各自已发布的全表语义资产。
 
 ---
 

@@ -1,0 +1,46 @@
+{
+  "contract_id": "MAK_P02_BUILDINGS_STATUS_EN_GOLD_V1",
+  "equivalence": {
+    "accepted_fingerprint_keys": [
+      "unordered_position_numeric6_fingerprint",
+      "position_numeric6_fingerprint",
+      "unordered_position_fingerprint",
+      "position_fingerprint"
+    ],
+    "column_aliases_compare_by_position": true,
+    "expected_fingerprints": {
+      "position_fingerprint": "9d20f51a786dd0ba83b1d1bffab85290bcc155e7c8e24fe25ed3b724978be29d",
+      "position_numeric6_fingerprint": "762d0ef357ce489c849eb0c36755a845aa4ac0e4865d1d6c1dd00f318e9cc7c8",
+      "unordered_position_fingerprint": "093d5b9b10e5873634cc2e686ba38d9793dcd06c9c65bc464acd4cd9bd6448a7",
+      "unordered_position_numeric6_fingerprint": "22a1f4b667de47fd963588bbd82f6cf71dd78fea1bc29ab8940b4f7f3e0b5f74"
+    },
+    "numeric_precision": 6,
+    "order_sensitive": false
+  },
+  "evaluation_only": true,
+  "expected_result": {
+    "columns": [
+      "physicalstatus",
+      "building_count"
+    ],
+    "ordered_result_fingerprint": "96acccffba7822e32572846c9921863176a43121180121d383b2e7ddc6811025",
+    "row_count": 60
+  },
+  "query": {
+    "bounded_limit": 1000,
+    "path": "benchmarks/abu_dhabi_nl2sql_product_v1/gold/makani/MAK_P02_BUILDINGS_STATUS_EN.sql",
+    "read_only": true,
+    "sha256": "94be88b73c6d397157600dbea657da0d992e719089597732c337cdd2b9e4f3ce"
+  },
+  "runtime_access": "prohibited",
+  "schema": "gda.nl2sql-gold-result-contract.v1",
+  "source_contract": {
+    "authorized_schema": "public",
+    "database_name": "makani_sync_full",
+    "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+    "profile_fingerprint": "a4d99a4084081224ffcf6a02cda777b2aaf6052521573a7ee68f022d62809253",
+    "semantic_version": "abu-dhabi-makani-v4-reviewed-assets",
+    "source_id": 13
+  },
+  "status": "frozen_evaluation_only_product_gold_v1"
+}

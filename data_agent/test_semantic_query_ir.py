@@ -18,6 +18,8 @@ from data_agent.semantic_query_ir import (
     build_shadow_semantic_plan_evidence,
     infer_spatial_intent,
 )
+from data_agent.governed_virtual_nl2sql import validate_semantic_sql
+from data_agent.connectors.database import validate_database_read_query
 
 SOURCE = {
     "source_id": 12,
@@ -37,6 +39,16 @@ LIVEABILITY_SEMANTIC_PATH = (
     / "docs/customer/abu_dhabi_liveability_site_validation"
     / "liveability_data_20260730_semantic_layer_v3.json"
 )
+LIVEABILITY_PUBLISHED_JSON_SEMANTIC_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "docs/customer/abu_dhabi_liveability_site_validation"
+    / "liveability_data_20260730_semantic_layer_v8_published_table_cards_json_contract_20260901.json"
+)
+LIVEABILITY_V24_SEMANTIC_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "docs/customer/abu_dhabi_liveability_site_validation"
+    / "liveability_data_20260730_semantic_layer_v24_display_disambiguation_20260902.json"
+)
 
 
 def _makani_semantic_layer() -> dict:
@@ -45,6 +57,14 @@ def _makani_semantic_layer() -> dict:
 
 def _liveability_semantic_layer() -> dict:
     return json.loads(LIVEABILITY_SEMANTIC_PATH.read_text(encoding="utf-8"))
+
+
+def _liveability_published_json_semantic_layer() -> dict:
+    return json.loads(LIVEABILITY_PUBLISHED_JSON_SEMANTIC_PATH.read_text(encoding="utf-8"))
+
+
+def _liveability_v24_semantic_layer() -> dict:
+    return json.loads(LIVEABILITY_V24_SEMANTIC_PATH.read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize(
@@ -142,6 +162,397 @@ def test_ad_hoc_semantic_ir_accepts_single_entity_count_without_field_reference(
         max_rows=1000,
     )
     assert 'SELECT COUNT(*) AS "building_count"' in plan.compiled_statement
+
+
+def test_ad_hoc_semantic_compiler_adds_reviewed_display_companion() -> None:
+    semantic_layer = _liveability_v24_semantic_layer()
+    semantic_ir = AdHocSemanticQueryIR.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_facility_provision",
+            "projections": [
+                {
+                    "output_name": "district_name",
+                    "role": "dimension",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "name_en",
+                    },
+                },
+                {
+                    "output_name": "facility_count",
+                    "role": "metric",
+                    "aggregate": "count",
+                },
+            ],
+            "joins": [
+                {
+                    "left_field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_facility_provision",
+                        "semantic_field": "district_id",
+                    },
+                    "right_field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "district_id",
+                    },
+                    "kind": "equality",
+                    "operator": "eq",
+                }
+            ],
+        }
+    )
+
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=semantic_ir,
+        source=SOURCE,
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+    )
+
+    assert plan.compiler_added_output_names == ("municipality",)
+    assert [item.output_name for item in plan.semantic_ir.projections] == [
+        "district_name",
+        "municipality",
+        "facility_count",
+    ]
+    assert 'gda_join_001."municipality" AS "municipality"' in plan.compiled_statement
+
+
+def test_ad_hoc_semantic_compiler_compiles_independent_grouped_extrema() -> None:
+    semantic_layer = _makani_semantic_layer()
+    semantic_ir = AdHocSemanticQueryIR.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_utility.udm_building",
+            "projections": [
+                {
+                    "output_name": "municipality_name",
+                    "role": "dimension",
+                    "field_ref": {
+                        "semantic_entity": "dmt_utility.udm_building",
+                        "semantic_field": "municipalityname",
+                    },
+                },
+                {
+                    "output_name": "building_count",
+                    "role": "metric",
+                    "aggregate": "count",
+                },
+            ],
+            "extreme_order_by": [
+                {"output_name": "building_count", "direction": "desc"},
+                {"output_name": "building_count", "direction": "asc"},
+            ],
+        }
+    )
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=semantic_ir,
+        source={"source_id": 13, "database_name": "makani_sync_full"},
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+    )
+
+    assert plan.compiled_statement.count("FETCH FIRST 1 ROW WITH TIES") == 2
+    assert "UNION ALL" in plan.compiled_statement
+    # Each ordered FETCH branch must be parenthesized for PostgreSQL.  Run
+    # the same governed SQL validator used by the runtime so this regression
+    # catches parser failures before a live benchmark consumes a model call.
+    evidence = validate_semantic_sql(
+        plan.compiled_statement,
+        list(plan.physical_plan.tables),
+        semantic_layer,
+    )
+    assert evidence["tables"] == list(plan.physical_plan.tables)
+    bounded = validate_database_read_query(
+        plan.compiled_statement,
+        {"allowed_schemas": ["public"], "max_rows": 1000},
+        limit=2,
+    )
+    assert bounded.startswith("SELECT * FROM (WITH ")
+    assert bounded.endswith("LIMIT 2")
+    assert 'ORDER BY "building_count" DESC' in plan.compiled_statement
+    assert 'ORDER BY "building_count" ASC' in plan.compiled_statement
+    set_nodes = [node for node in plan.logical_plan.nodes if node.operator == "set_operation"]
+    assert len(set_nodes) == 1
+    assert set_nodes[0].attributes["branch_count"] == 2
+
+
+def test_ad_hoc_semantic_compiler_places_aggregate_condition_in_having() -> None:
+    semantic_layer = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "docs/customer/abu_dhabi_liveability_site_validation"
+            / "liveability_data_20260730_semantic_layer_v21_answerability_data_quality_20260902.json"
+        ).read_text(encoding="utf-8")
+    )
+    semantic_ir = AdHocSemanticQueryIR.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_facility_provision",
+            "projections": [
+                {
+                    "output_name": "facility_type",
+                    "role": "dimension",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_facility_provision",
+                        "semantic_field": "subcategory_name",
+                    },
+                },
+                {
+                    "output_name": "existing_facility_count",
+                    "role": "metric",
+                    "aggregate": "sum",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_facility_provision",
+                        "semantic_field": "existing_count",
+                    },
+                },
+            ],
+            "having_filters": [
+                {
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_facility_provision",
+                        "semantic_field": "demand_current",
+                    },
+                    "aggregate": "sum",
+                    "operator": "gt",
+                    "values": [0],
+                }
+            ],
+        }
+    )
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=semantic_ir,
+        source={"source_id": 12, "database_name": "liveability_data_20260730"},
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+    )
+
+    assert 'HAVING SUM(gda_source."demand_current") > :gda_p_001' in plan.compiled_statement
+    assert 'WHERE gda_source."demand_current"' not in plan.compiled_statement
+    having_nodes = [
+        node for node in plan.logical_plan.nodes
+        if node.operator == "filter" and node.attributes.get("predicate_stage") == "post_aggregate"
+    ]
+    assert len(having_nodes) == 1
+
+
+def test_ad_hoc_semantic_compiler_hides_condition_only_metric_projection() -> None:
+    semantic_layer = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "docs/customer/abu_dhabi_liveability_site_validation"
+            / "liveability_data_20260730_semantic_layer_v32_facility_type_semantics_20260904.json"
+        ).read_text(encoding="utf-8")
+    )
+    semantic_ir = AdHocSemanticQueryIR.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_facility_provision",
+            "projections": [
+                {
+                    "output_name": "facility_type",
+                    "role": "dimension",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_facility_provision",
+                        "semantic_field": "subcategory_name",
+                    },
+                },
+                {
+                    "output_name": "min_fpp_score",
+                    "role": "metric",
+                    "aggregate": "min",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_facility_provision",
+                        "semantic_field": "kpi_existing",
+                    },
+                },
+            ],
+            "having_filters": [
+                {
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_facility_provision",
+                        "semantic_field": "kpi_existing",
+                    },
+                    "aggregate": "min",
+                    "operator": "gte",
+                    "values": [100],
+                }
+            ],
+        }
+    )
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=semantic_ir,
+        source={"source_id": 12, "database_name": "liveability_data_20260730"},
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+        question="Which facility types have an FPP score of 100% in every assessed district?",
+    )
+
+    assert 'SELECT gda_source."subcategory_name" AS "facility_type"' in plan.compiled_statement
+    assert 'AS "min_fpp_score"' not in plan.compiled_statement
+    assert plan.compiler_hidden_output_names == ("min_fpp_score",)
+    assert 'HAVING MIN(gda_source."kpi_existing") >= :gda_p_001' in plan.compiled_statement
+
+
+def test_ad_hoc_semantic_compiler_resolves_source_value_and_value_set_aliases() -> None:
+    semantic_layer = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "docs/customer/abu_dhabi_liveability_site_validation"
+            / "liveability_data_20260730_semantic_layer_v21_answerability_data_quality_20260902.json"
+        ).read_text(encoding="utf-8")
+    )
+    binding = next(
+        item for item in semantic_layer["table_bindings"]
+        if item.get("physical_table") == "public.fact_facility_provision"
+    )
+    field = next(
+        item for item in binding["fields"]
+        if item.get("physical_field") == "subcategory_name"
+    )
+    field["value_semantics"] = {
+        "Healthcare_Medical_Centre": [
+            "Healthcare_Medical_Centre", "clinic", "clinics", "medical centre"
+        ],
+    }
+    field["value_domain"] = ["Healthcare_Medical_Centre", "Neighbourhood_Majlis"]
+    field["value_set_semantics"] = [{
+        "source_values": ["Park_Local", "Park_District"],
+        "aliases": ["parks"],
+    }]
+    semantic_ir = AdHocSemanticQueryIR.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_facility_provision",
+            "projections": [{
+                "output_name": "facility_count",
+                "role": "metric",
+                "aggregate": "count",
+            }],
+            "filters": [{
+                "field_ref": {
+                    "semantic_entity": "dmt_liveability.fact_facility_provision",
+                    "semantic_field": "subcategory_name",
+                },
+                "operator": "eq",
+                "values": ["parks"],
+            }],
+        }
+    )
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=semantic_ir,
+        source={"source_id": 12, "database_name": "liveability_data_20260730"},
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+    )
+    assert 'IN (:gda_p_001, :gda_p_002)' in plan.compiled_statement
+    assert plan.parameter_bindings["gda_p_001"] == "Park_Local"
+    assert plan.parameter_bindings["gda_p_002"] == "Park_District"
+
+    clinic_ir = semantic_ir.model_copy(
+        update={
+            "filters": (
+                semantic_ir.filters[0].model_copy(update={"values": ("Clinic",)}),
+            )
+        }
+    )
+    clinic_plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=clinic_ir,
+        source={"source_id": 12, "database_name": "liveability_data_20260730"},
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+    )
+    assert clinic_plan.parameter_bindings["gda_p_001"] == "Healthcare_Medical_Centre"
+
+
+def test_ad_hoc_semantic_compiler_prefers_observed_case_for_colliding_enum_keys() -> None:
+    semantic_layer = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "docs/customer/abu_dhabi_liveability_site_validation"
+            / "liveability_data_20260730_semantic_layer_v34_enum_domains_20260904.json"
+        ).read_text(encoding="utf-8")
+    )
+    semantic_ir = AdHocSemanticQueryIR.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_district_scores",
+            "projections": [
+                {
+                    "output_name": "score",
+                    "role": "metric",
+                    "aggregate": "max",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_district_scores",
+                        "semantic_field": "overall_score",
+                    },
+                }
+            ],
+            "filters": [
+                {
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_district_scores",
+                        "semantic_field": "stage",
+                    },
+                    "operator": "eq",
+                    "values": ["Target stage"],
+                }
+            ],
+        }
+    )
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=semantic_ir,
+        source={"source_id": 12, "database_name": "liveability_data_20260730"},
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+    )
+    assert plan.parameter_bindings["gda_p_001"] == "AP50"
+
+
+def test_ad_hoc_semantic_ir_rejects_conflicting_global_and_extreme_ordering() -> None:
+    with pytest.raises(ValueError, match="cannot combine global and extreme ordering"):
+        AdHocSemanticQueryIR.model_validate(
+            {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "dmt_utility.udm_building",
+                "projections": [
+                    {
+                        "output_name": "municipality_name",
+                        "role": "dimension",
+                        "field_ref": {
+                            "semantic_entity": "dmt_utility.udm_building",
+                            "semantic_field": "municipalityname",
+                        },
+                    },
+                    {
+                        "output_name": "building_count",
+                        "role": "metric",
+                        "aggregate": "count",
+                    },
+                ],
+                "order_by": [
+                    {"output_name": "building_count", "direction": "desc"}
+                ],
+                "extreme_order_by": [
+                    {"output_name": "building_count", "direction": "asc"}
+                ],
+            }
+        )
 
 
 def test_ad_hoc_semantic_compiler_rejects_generic_intersection_as_within() -> None:
@@ -455,6 +866,194 @@ def test_ad_hoc_semantic_compiler_rejects_join_key_for_entity_count() -> None:
         )
 
 
+def _pedestrian_crash_json_array_ir(*, value_key: str = "Nb_of_Accidents") -> AdHocSemanticQueryIR:
+    return AdHocSemanticQueryIR.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_oi_indicators",
+            "projections": [
+                {
+                    "output_name": "district_name",
+                    "role": "dimension",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "name_en",
+                    },
+                },
+                {
+                    "output_name": "pedestrian_crashes",
+                    "role": "metric",
+                    "aggregate": "sum",
+                    "field_ref": None,
+                    "derived_measure": None,
+                    "json_array": {
+                        "field_ref": {
+                            "semantic_entity": "dmt_liveability.fact_oi_indicators",
+                            "semantic_field": "data",
+                        },
+                        "value_key": value_key,
+                    },
+                },
+            ],
+            "filters": [
+                {
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_oi_indicators",
+                        "semantic_field": "indicator_type",
+                    },
+                    "operator": "eq",
+                    "values": ["crash_pedestrian"],
+                }
+            ],
+            "joins": [
+                {
+                    "left_field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_oi_indicators",
+                        "semantic_field": "district_id",
+                    },
+                    "right_field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "district_id",
+                    },
+                    "kind": "equality",
+                    "operator": "eq",
+                }
+            ],
+            "order_by": [{"output_name": "pedestrian_crashes", "direction": "desc"}],
+            "limit": 10,
+        }
+    )
+
+
+def test_ad_hoc_semantic_compiler_compiles_governed_json_array_metric() -> None:
+    semantic_layer = _liveability_published_json_semantic_layer()
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=_pedestrian_crash_json_array_ir(),
+        source={"source_id": 12, "database_name": "liveability_data_20260730"},
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+    )
+    assert "jsonb_array_elements" in plan.compiled_statement
+    assert "Nb_of_Accidents" in plan.compiled_statement
+    # Each source row may contain multiple JSON objects.  The compiler must
+    # aggregate those elements inside the correlated subquery before applying
+    # the outer source-row aggregate; a scalar subquery would fail at runtime
+    # with PostgreSQL's "more than one row returned" error.
+    assert "COALESCE(SUM((gda_json_item_001 ->> 'Nb_of_Accidents')::double precision), 0)" in plan.compiled_statement
+    assert "crash_pedestrian" not in plan.compiled_statement
+    assert plan.parameter_bindings["gda_p_001"] == "crash_pedestrian"
+    aggregate_node = next(node for node in plan.logical_plan.nodes if node.operator == "aggregate")
+    assert aggregate_node.attributes["json_array_metrics"][0]["value_key"] == "Nb_of_Accidents"
+
+
+def test_ad_hoc_semantic_compiler_rejects_whole_json_array_numeric_aggregate() -> None:
+    semantic_layer = _liveability_published_json_semantic_layer()
+    semantic_ir = AdHocSemanticQueryIR.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_oi_indicators",
+            "projections": [
+                {
+                    "output_name": "pedestrian_crashes",
+                    "role": "metric",
+                    "aggregate": "sum",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_oi_indicators",
+                        "semantic_field": "data",
+                    },
+                }
+            ],
+            "filters": [
+                {
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_oi_indicators",
+                        "semantic_field": "indicator_type",
+                    },
+                    "operator": "eq",
+                    "values": ["crash_pedestrian"],
+                }
+            ],
+        }
+    )
+
+    with pytest.raises(
+        SemanticIRCompilationError,
+        match="semantic_json_array_projection_required",
+    ):
+        build_compiled_ad_hoc_semantic_plan(
+            semantic_ir=semantic_ir,
+            source={"source_id": 12, "database_name": "liveability_data_20260730"},
+            semantic_version=semantic_layer["semantic_version"],
+            semantic_layer=semantic_layer,
+            max_rows=1000,
+        )
+
+
+def test_ad_hoc_semantic_compiler_rejects_undeclared_json_key() -> None:
+    semantic_layer = _liveability_published_json_semantic_layer()
+    with pytest.raises(SemanticIRCompilationError, match="semantic_json_array_contract_not_found_or_ambiguous"):
+        build_compiled_ad_hoc_semantic_plan(
+            semantic_ir=_pedestrian_crash_json_array_ir(value_key="not_a_real_key"),
+            source={"source_id": 12, "database_name": "liveability_data_20260730"},
+            semantic_version=semantic_layer["semantic_version"],
+            semantic_layer=semantic_layer,
+            max_rows=1000,
+        )
+
+
+def test_ad_hoc_semantic_compiler_requires_json_indicator_filter() -> None:
+    semantic_layer = _liveability_published_json_semantic_layer()
+    ir = _pedestrian_crash_json_array_ir()
+    ir = ir.model_copy(update={"filters": ()})
+    with pytest.raises(SemanticIRCompilationError, match="semantic_json_array_indicator_filter_required"):
+        build_compiled_ad_hoc_semantic_plan(
+            semantic_ir=ir,
+            source={"source_id": 12, "database_name": "liveability_data_20260730"},
+            semantic_version=semantic_layer["semantic_version"],
+            semantic_layer=semantic_layer,
+            max_rows=1000,
+        )
+
+
+def test_validate_semantic_sql_accepts_compiler_owned_json_array_sql() -> None:
+    semantic_layer = _liveability_published_json_semantic_layer()
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=_pedestrian_crash_json_array_ir(value_key="Total_Injuries"),
+        source={"source_id": 12, "database_name": "liveability_data_20260730"},
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+    )
+    evidence = validate_semantic_sql(
+        plan.compiled_statement,
+        list(plan.physical_plan.tables),
+        semantic_layer,
+        sql_params=plan.parameter_bindings,
+    )
+    assert "public.fact_oi_indicators.data" in evidence["columns"]
+
+
+def test_validate_semantic_sql_rejects_json_array_without_type_filter() -> None:
+    semantic_layer = _liveability_published_json_semantic_layer()
+    sql = """SELECT (SELECT SUM((x ->> 'Nb_of_Accidents')::double precision)
+FROM jsonb_array_elements(CASE WHEN jsonb_typeof(o.data)='array' THEN o.data ELSE '[]'::jsonb END) AS x)
+FROM public.fact_oi_indicators AS o"""
+    with pytest.raises(Exception, match="json_array_indicator_filter_rejected"):
+        validate_semantic_sql(sql, ["public.fact_oi_indicators"], semantic_layer)
+
+
+def test_validate_semantic_sql_rejects_undeclared_json_key() -> None:
+    semantic_layer = _liveability_published_json_semantic_layer()
+    sql = """SELECT (SELECT SUM((x ->> 'Secret_Key')::double precision)
+FROM jsonb_array_elements(CASE WHEN jsonb_typeof(o.data)='array' THEN o.data ELSE '[]'::jsonb END) AS x)
+FROM public.fact_oi_indicators AS o WHERE o.indicator_type = 'crash_pedestrian'"""
+    with pytest.raises(Exception, match="json_accessor_key_rejected"):
+        validate_semantic_sql(sql, ["public.fact_oi_indicators"], semantic_layer)
+
+
 def test_ad_hoc_semantic_compiler_resolves_reviewed_asset_and_field_aliases() -> None:
     semantic_layer = _makani_semantic_layer()
     semantic_ir = AdHocSemanticQueryIR.model_validate(
@@ -481,6 +1080,95 @@ def test_ad_hoc_semantic_compiler_resolves_reviewed_asset_and_field_aliases() ->
     )
 
     assert 'FROM public.aa_hotels_cleanup_poly AS gda_source' in plan.compiled_statement
+
+
+def test_numeric_question_literal_is_satisfied_by_unambiguous_reviewed_field_alias() -> None:
+    """A reviewed AP50 alias carries the 50% meaning without a raw 50 predicate."""
+
+    semantic_layer = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "docs/customer/abu_dhabi_liveability_site_validation"
+            / "liveability_data_20260730_semantic_layer_v31_ap50_semantic_aliases_20260903.json"
+        ).read_text(encoding="utf-8")
+    )
+    # Exercise the same logical alias path used by a provider while keeping
+    # the source-published canonical field as the compiler authority.
+    facility_binding = next(
+        item
+        for item in semantic_layer["table_bindings"]
+        if item.get("physical_table") == "public.fact_facility_provision"
+    )
+    needed = next(
+        item for item in facility_binding["fields"] if item.get("semantic_field") == "needed_ap50"
+    )
+    needed["aliases"] = [*(needed.get("aliases") or []), "target_need"]
+    ir = AdHocSemanticQueryIR.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": facility_binding["semantic_entity"],
+            "projections": [
+                {
+                    "output_name": "district_name",
+                    "role": "dimension",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "name_en",
+                    },
+                },
+                {
+                    "output_name": "needed",
+                    "role": "attribute",
+                    "field_ref": {
+                        "semantic_entity": facility_binding["semantic_entity"],
+                        "semantic_field": "target_need",
+                    },
+                },
+            ],
+            "filters": [
+                {
+                    "field_ref": {
+                        "semantic_entity": facility_binding["semantic_entity"],
+                        "semantic_field": "subcategory_name",
+                    },
+                    "operator": "eq",
+                    "values": ["Library"],
+                },
+                {
+                    "field_ref": {
+                        "semantic_entity": facility_binding["semantic_entity"],
+                        "semantic_field": "target_need",
+                    },
+                    "operator": "gt",
+                    "values": [0],
+                },
+            ],
+            "joins": [
+                {
+                    "left_field_ref": {
+                        "semantic_entity": facility_binding["semantic_entity"],
+                        "semantic_field": "district_id",
+                    },
+                    "right_field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "district_id",
+                    },
+                    "kind": "equality",
+                    "operator": "eq",
+                }
+            ],
+        }
+    )
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=ir,
+        source={"source_id": 12, "database_name": "liveability_data_20260730"},
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+        question="Which districts still need libraries to reach the 50% target (needed>0)?",
+    )
+    assert '"needed_ap50"' in plan.compiled_statement
 
 
 def test_ad_hoc_semantic_compiler_rejects_explicitly_inactive_binding() -> None:
@@ -730,7 +1418,7 @@ def test_ad_hoc_semantic_compiler_applies_reviewed_topology_geometry_policy() ->
     ) in plan.compiled_statement
 
 
-def _compile_liveability_ir(payload: dict):
+def _compile_liveability_ir(payload: dict, *, question: str | None = None):
     semantic_layer = _liveability_semantic_layer()
     return build_compiled_ad_hoc_semantic_plan(
         semantic_ir=AdHocSemanticQueryIR.model_validate(payload),
@@ -738,7 +1426,87 @@ def _compile_liveability_ir(payload: dict):
         semantic_version=semantic_layer["semantic_version"],
         semantic_layer=semantic_layer,
         max_rows=1000,
+        question=question,
     )
+
+
+def test_ad_hoc_semantic_compiler_binds_explicit_reviewed_enum_list_to_in_filter() -> None:
+    semantic_layer = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "docs/customer/abu_dhabi_liveability_site_validation"
+            / "liveability_data_20260730_semantic_layer_v34_enum_domains_20260904.json"
+        ).read_text(encoding="utf-8")
+    )
+    semantic_ir = AdHocSemanticQueryIR.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.dim_districts",
+            "projections": [
+                {
+                    "output_name": "classification",
+                    "role": "dimension",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "classification",
+                    },
+                },
+                {"output_name": "district_count", "role": "metric", "aggregate": "count"},
+            ],
+        }
+    )
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=semantic_ir,
+        source={"source_id": 12, "database_name": "liveability_data_20260730"},
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+        question="Show Urban and Rural districts.",
+    )
+    assert plan.compiler_semantic_filter_corrections == (
+        "semantic_ir_added_explicit_domain_filter:dmt_liveability.dim_districts.classification",
+    )
+    assert set(plan.parameter_bindings.values()) == {"urban", "rural"}
+    assert 'gda_source."classification" IN (' in plan.compiled_statement
+
+
+def test_ad_hoc_semantic_compiler_does_not_add_enum_filter_for_single_category_reference() -> None:
+    semantic_layer = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "docs/customer/abu_dhabi_liveability_site_validation"
+            / "liveability_data_20260730_semantic_layer_v34_enum_domains_20260904.json"
+        ).read_text(encoding="utf-8")
+    )
+    semantic_ir = AdHocSemanticQueryIR.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.dim_districts",
+            "projections": [
+                {
+                    "output_name": "classification",
+                    "role": "dimension",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "classification",
+                    },
+                },
+                {"output_name": "district_count", "role": "metric", "aggregate": "count"},
+            ],
+        }
+    )
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=semantic_ir,
+        source={"source_id": 12, "database_name": "liveability_data_20260730"},
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+        question="Show the district classification distribution.",
+    )
+    assert plan.compiler_semantic_filter_corrections == ()
+    assert " WHERE " not in plan.compiled_statement
 
 
 def test_ad_hoc_semantic_compiler_compiles_reviewed_district_score_join() -> None:
@@ -848,6 +1616,483 @@ def test_ad_hoc_semantic_compiler_compiles_reviewed_facility_district_count() ->
 
     assert 'COUNT(*) AS "facility_count"' in plan.compiled_statement
     assert 'GROUP BY gda_join_001."name_en", gda_source."facility_type"' in plan.compiled_statement
+
+
+def test_ad_hoc_semantic_compiler_preserves_detail_rows_with_requested_total_count() -> None:
+    """A list-plus-count request must not collapse into a count-only group."""
+
+    plan = _compile_liveability_ir(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_district_scores",
+            "projections": [
+                {
+                    "output_name": "district_name",
+                    "role": "dimension",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "name_en",
+                    },
+                },
+                {
+                    "output_name": "overall_score",
+                    "role": "attribute",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_district_scores",
+                        "semantic_field": "overall_score",
+                    },
+                },
+            ],
+            "include_result_count": True,
+            "result_count_alias": "district_count",
+            "joins": [
+                {
+                    "left_field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_district_scores",
+                        "semantic_field": "district_id",
+                    },
+                    "right_field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "district_id",
+                    },
+                    "kind": "equality",
+                    "operator": "eq",
+                }
+            ],
+            "filters": [
+                {
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_district_scores",
+                        "semantic_field": "overall_score",
+                    },
+                    "operator": "gt",
+                    "values": [90],
+                }
+            ],
+        },
+        question=(
+            "Which districts have a quantitative liveability score above 90% "
+            "and how many are there?"
+        ),
+    )
+
+    assert 'gda_source."overall_score" AS "overall_score"' in plan.compiled_statement
+    assert 'COUNT(*) OVER () AS "district_count"' in plan.compiled_statement
+    assert "GROUP BY" not in plan.compiled_statement
+
+
+def test_ad_hoc_semantic_compiler_rejects_list_count_without_count_companion() -> None:
+    semantic_ir = AdHocSemanticQueryIR.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_district_scores",
+            "projections": [
+                {
+                    "output_name": "district_name",
+                    "role": "dimension",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "name_en",
+                    },
+                },
+                {
+                    "output_name": "overall_score",
+                    "role": "attribute",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_district_scores",
+                        "semantic_field": "overall_score",
+                    },
+                },
+            ],
+            "joins": [
+                {
+                    "left_field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_district_scores",
+                        "semantic_field": "district_id",
+                    },
+                    "right_field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "district_id",
+                    },
+                    "kind": "equality",
+                    "operator": "eq",
+                }
+            ],
+        }
+    )
+    with pytest.raises(SemanticIRCompilationError, match="semantic_ir_result_count_required"):
+        build_compiled_ad_hoc_semantic_plan(
+            semantic_ir=semantic_ir,
+            source={"source_id": 12, "database_name": "liveability_data_20260730"},
+            semantic_version="test",
+            semantic_layer=_liveability_semantic_layer(),
+            max_rows=1000,
+            question="Which districts are listed and how many are there?",
+        )
+
+
+def test_ad_hoc_semantic_compiler_does_not_treat_metric_count_as_total_count_request():
+    """A phrase such as 'highest citywide count' names a metric, not a row total."""
+
+    semantic_ir = AdHocSemanticQueryIR.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_facility_provision",
+            "projections": [
+                {
+                    "output_name": "facility_type",
+                    "role": "dimension",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_facility_provision",
+                        "semantic_field": "category_name",
+                    },
+                },
+                {
+                    "output_name": "facility_count",
+                    "role": "metric",
+                    "aggregate": "count",
+                },
+            ],
+        }
+    )
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=semantic_ir,
+        source={"source_id": 12, "database_name": "liveability_data_20260730"},
+        semantic_version=_liveability_semantic_layer()["semantic_version"],
+        semantic_layer=_liveability_semantic_layer(),
+        max_rows=1000,
+        question=(
+            "Which facility type has the highest citywide count and which has "
+            "the lowest count among facility types with non-zero demand?"
+        ),
+    )
+    assert 'COUNT(*) AS "facility_count"' in plan.compiled_statement
+
+
+def test_ad_hoc_semantic_compiler_appends_dimension_tiebreakers_to_metric_order() -> None:
+    """A bounded Top-N grouped metric must be deterministic under ties."""
+
+    semantic_layer = _liveability_v24_semantic_layer()
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=AdHocSemanticQueryIR.model_validate({
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_facility_provision",
+            "projections": [
+                {
+                    "output_name": "district_name",
+                    "role": "dimension",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "name_en",
+                    },
+                },
+                {
+                    "output_name": "existing_count",
+                    "role": "metric",
+                    "aggregate": "sum",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_facility_provision",
+                        "semantic_field": "existing_count",
+                    },
+                },
+            ],
+            "joins": [
+                {
+                    "left_field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_facility_provision",
+                        "semantic_field": "district_id",
+                    },
+                    "right_field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "district_id",
+                    },
+                    "kind": "equality",
+                    "operator": "eq",
+                }
+            ],
+            "order_by": [
+                {"output_name": "existing_count", "direction": "desc"}
+            ],
+            "limit": 10,
+        }),
+        source={"source_id": 12, "database_name": "liveability_data_20260730"},
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+    )
+
+    assert plan.compiler_added_ordering_tiebreakers == (
+        "dmt_liveability.dim_districts.district_id",
+    )
+    assert (
+        'ORDER BY "existing_count" DESC NULLS LAST, gda_join_001."district_id" ASC'
+        in plan.compiled_statement
+    )
+    sort_node = next(
+        node for node in plan.logical_plan.nodes if node.node_id == "sort_001"
+    )
+    assert sort_node.attributes["ordering_source"] == (
+        "semantic_ir_with_dimension_tiebreakers"
+    )
+
+
+def test_ad_hoc_semantic_compiler_stabilizes_detail_top_n_with_projected_entity_key() -> None:
+    """A detail Top-N must not pick an arbitrary subset when values tie."""
+
+    semantic_layer = _liveability_v24_semantic_layer()
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=AdHocSemanticQueryIR.model_validate({
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_ic_scores",
+            "projections": [
+                {
+                    "output_name": "district_name",
+                    "role": "attribute",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "name_en",
+                    },
+                },
+                {
+                    "output_name": "municipality",
+                    "role": "attribute",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "municipality",
+                    },
+                },
+                {
+                    "output_name": "existing_cycle_ic_completion_rate",
+                    "role": "attribute",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_ic_scores",
+                        "semantic_field": "cycle_perc_existing",
+                    },
+                },
+            ],
+            "filters": [
+                {
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "is_activated",
+                    },
+                    "operator": "eq",
+                    "values": [True],
+                },
+                {
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_calc_versions",
+                        "semantic_field": "current_flag",
+                    },
+                    "operator": "eq",
+                    "values": [True],
+                },
+            ],
+            "joins": [
+                {
+                    "left_field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_ic_scores",
+                        "semantic_field": "district_id",
+                    },
+                    "right_field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "district_id",
+                    },
+                    "kind": "equality",
+                    "operator": "eq",
+                },
+                {
+                    "left_field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_ic_scores",
+                        "semantic_field": "calc_version_id",
+                    },
+                    "right_field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_calc_versions",
+                        "semantic_field": "calc_version_id",
+                    },
+                    "kind": "equality",
+                    "operator": "eq",
+                },
+            ],
+            "order_by": [
+                {
+                    "output_name": "existing_cycle_ic_completion_rate",
+                    "direction": "asc",
+                }
+            ],
+            "limit": 10,
+        }),
+        source={"source_id": 12, "database_name": "liveability_data_20260730"},
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+    )
+
+    assert plan.compiler_added_ordering_tiebreakers == (
+        "dmt_liveability.dim_districts.district_id",
+    )
+    assert (
+        'ORDER BY "existing_cycle_ic_completion_rate" ASC, '
+        'gda_join_001."district_id" ASC'
+        in plan.compiled_statement
+    )
+    assert "public.dim_districts.district_id" in plan.physical_plan.columns
+    sort_node = next(
+        node for node in plan.logical_plan.nodes if node.node_id == "sort_001"
+    )
+    assert sort_node.attributes["ordering_source"] == (
+        "semantic_ir_with_detail_tiebreakers"
+    )
+
+
+def test_ad_hoc_semantic_compiler_preserves_primary_key_grain_for_label_grouping() -> None:
+    semantic_layer = _liveability_semantic_layer()
+    district_binding = next(
+        item
+        for item in semantic_layer["table_bindings"]
+        if item["semantic_entity"] == "dmt_liveability.dim_districts"
+    )
+    district_binding["primary_key"] = ["district_id"]
+    semantic_ir = AdHocSemanticQueryIR.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_district_scores",
+            "projections": [
+                {
+                    "output_name": "district_name",
+                    "role": "dimension",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "name_en",
+                    },
+                },
+                {
+                    "output_name": "average_score",
+                    "role": "metric",
+                    "aggregate": "avg",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_district_scores",
+                        "semantic_field": "overall_score",
+                    },
+                },
+            ],
+            "joins": [
+                {
+                    "left_field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_district_scores",
+                        "semantic_field": "district_id",
+                    },
+                    "right_field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "district_id",
+                    },
+                    "kind": "equality",
+                    "operator": "eq",
+                }
+            ],
+        }
+    )
+
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=semantic_ir,
+        source={"source_id": 12, "database_name": "liveability_data_20260730"},
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+    )
+
+    assert (
+        'GROUP BY gda_join_001."name_en", gda_join_001."district_id"'
+        in plan.compiled_statement
+    )
+
+
+def test_ad_hoc_semantic_compiler_compiles_median_as_ordered_set_aggregate() -> None:
+    plan = _compile_liveability_ir(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_district_scores",
+            "projections": [
+                {
+                    "output_name": "median_score",
+                    "role": "metric",
+                    "aggregate": "median",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_district_scores",
+                        "semantic_field": "overall_score",
+                    },
+                }
+            ],
+        }
+    )
+    assert (
+        'PERCENTILE_CONT(0.5) WITHIN GROUP '
+        '(ORDER BY gda_source."overall_score") AS "median_score"'
+    ) in plan.compiled_statement
+
+
+def test_ad_hoc_semantic_compiler_compiles_reviewed_numeric_addition_expression() -> None:
+    # Use the current reviewed layer for this arithmetic contract.  The
+    # historical v3 fixture intentionally contains metadata-only bindings for
+    # some tables (including fact_ic_scores), so it is not an execution fixture.
+    semantic_layer = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "docs/customer/abu_dhabi_liveability_site_validation"
+            / "liveability_data_20260730_semantic_layer_v21_answerability_data_quality_20260902.json"
+        ).read_text(encoding="utf-8")
+    )
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=AdHocSemanticQueryIR.model_validate(
+            {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_ic_scores",
+            "projections": [
+                {
+                    "output_name": "existing_completion",
+                    "role": "attribute",
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_ic_scores",
+                        "semantic_field": "streetlight_perc_existing",
+                    },
+                },
+                {
+                    "output_name": "post_pipeline_completion",
+                    "role": "attribute",
+                    "derived_expression": {
+                        "operator": "add",
+                        "operands": [
+                            {
+                                "semantic_entity": "dmt_liveability.fact_ic_scores",
+                                "semantic_field": "streetlight_perc_existing",
+                            },
+                            {
+                                "semantic_entity": "dmt_liveability.fact_ic_scores",
+                                "semantic_field": "streetlight_perc_pipeline",
+                            },
+                        ],
+                    },
+                },
+            ],
+            }
+        ),
+        source={"source_id": 12, "database_name": "liveability_data_20260730"},
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+    )
+    assert (
+        '(gda_source."streetlight_perc_existing" + '
+        'gda_source."streetlight_perc_pipeline") AS "post_pipeline_completion"'
+    ) in plan.compiled_statement
 
 
 def test_ad_hoc_semantic_compiler_rejects_spatial_question_without_spatial_join() -> None:
@@ -1278,4 +2523,218 @@ def test_federated_plan_falls_back_on_contract_drift() -> None:
     assert plan.status == "legacy_fallback"
     assert plan.fallback_reason == (
         "federated_plan_unavailable:federated_source_metric_contract_drift"
+    )
+
+
+def test_band_summary_compiler_is_restricted_and_parameterized() -> None:
+    semantic_layer = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "docs/customer/abu_dhabi_liveability_site_validation"
+            / "liveability_data_20260730_semantic_layer_v34_enum_domains_20260904.json"
+        ).read_text(encoding="utf-8")
+    )
+    semantic_ir = AdHocSemanticQueryIR.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "dmt_liveability.fact_district_scores",
+            "band_summary": {
+                "score_field_ref": {
+                    "semantic_entity": "dmt_liveability.fact_district_scores",
+                    "semantic_field": "overall_score",
+                },
+                "member_field_ref": {
+                    "semantic_entity": "dmt_liveability.dim_districts",
+                    "semantic_field": "name_en",
+                },
+                "bands": [
+                    {"key": "high", "lower": 75, "lower_inclusive": False},
+                    {
+                        "key": "medium",
+                        "lower": 50,
+                        "lower_inclusive": True,
+                        "upper": 75,
+                        "upper_inclusive": True,
+                    },
+                    {"key": "low", "upper": 50, "upper_inclusive": False},
+                ],
+                "member_band": "low",
+                "count_output_name": "district_count",
+                "member_output_name": "low_band_districts",
+            },
+            "filters": [
+                {
+                    "field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_district_scores",
+                        "semantic_field": "stage",
+                    },
+                    "operator": "eq",
+                    "values": ["Existing"],
+                }
+            ],
+            "joins": [
+                {
+                    "left_field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_district_scores",
+                        "semantic_field": "district_id",
+                    },
+                    "right_field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "district_id",
+                    },
+                    "kind": "equality",
+                    "operator": "eq",
+                },
+                {
+                    "left_field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_district_scores",
+                        "semantic_field": "calc_version_id",
+                    },
+                    "right_field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_calc_versions",
+                        "semantic_field": "calc_version_id",
+                    },
+                    "kind": "equality",
+                    "operator": "eq",
+                },
+            ],
+        }
+    )
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=semantic_ir,
+        source=SOURCE,
+        semantic_version=semantic_layer["semantic_version"],
+        semantic_layer=semantic_layer,
+        max_rows=1000,
+        question=(
+            "Divide all assessed districts into high above 75%, medium from 50% "
+            "to 75%, and low below 50% bands based on their Existing quantitative "
+            "scores. How many districts are in each band, and which districts are "
+            "in the low band?"
+        ),
+    )
+    assert "CASE WHEN" in plan.compiled_statement
+    assert "STRING_AGG" in plan.compiled_statement
+    assert "75.0" not in plan.compiled_statement
+    assert plan.parameter_bindings["gda_band_lower_001_002"] == 75.0
+    assert plan.semantic_ir.band_summary is not None
+    assert plan.logical_plan.nodes[-1].attributes["row_limit"] == 3
+
+
+def test_band_summary_rejects_invalid_band_bounds() -> None:
+    with pytest.raises(ValueError, match="lower bound"):
+        AdHocSemanticQueryIR.model_validate(
+            {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "dmt_liveability.fact_district_scores",
+                "band_summary": {
+                    "score_field_ref": {
+                        "semantic_entity": "dmt_liveability.fact_district_scores",
+                        "semantic_field": "overall_score",
+                    },
+                    "member_field_ref": {
+                        "semantic_entity": "dmt_liveability.dim_districts",
+                        "semantic_field": "name_en",
+                    },
+                    "bands": [
+                        {"key": "low", "upper": 50, "upper_inclusive": False},
+                        {
+                            "key": "high",
+                            "lower": 75,
+                            "lower_inclusive": False,
+                            "upper": 70,
+                        },
+                    ],
+                    "member_band": "low",
+                },
+            }
+        )
+
+
+def test_universal_quantification_compiles_from_reviewed_sentinel_policy() -> None:
+    """Every-assessed-district semantics are compiler-owned, not SQL text."""
+
+    root = Path(__file__).resolve().parents[1]
+    semantic = json.loads(
+        (
+            root
+            / "docs/customer/abu_dhabi_liveability_site_validation"
+            / "liveability_data_20260730_semantic_layer_v35_fpp_sentinel_four_stage_20260904.json"
+        ).read_text(encoding="utf-8")
+    )
+    entity = "dmt_liveability.fact_facility_provision"
+    district = "dmt_liveability.dim_districts"
+    ir = AdHocSemanticQueryIR.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": entity,
+            "projections": [
+                {
+                    "output_name": "facility_type",
+                    "role": "dimension",
+                    "field_ref": {
+                        "semantic_entity": entity,
+                        "semantic_field": "subcategory_name",
+                    },
+                }
+            ],
+            "filters": [
+                {
+                    "field_ref": {
+                        "semantic_entity": district,
+                        "semantic_field": "is_activated",
+                    },
+                    "operator": "eq",
+                    "values": [True],
+                }
+            ],
+            "joins": [
+                {
+                    "left_field_ref": {
+                        "semantic_entity": entity,
+                        "semantic_field": "district_id",
+                    },
+                    "right_field_ref": {
+                        "semantic_entity": district,
+                        "semantic_field": "district_id",
+                    },
+                    "kind": "equality",
+                    "operator": "eq",
+                }
+            ],
+            "universal_conditions": [
+                {
+                    "policy_id": "liveability.fpp.assessed_district_universal_v1",
+                    "field_ref": {
+                        "semantic_entity": entity,
+                        "semantic_field": "kpi_existing",
+                    },
+                    "operator": "eq",
+                    "values": [100],
+                }
+            ],
+        }
+    )
+    plan = build_compiled_ad_hoc_semantic_plan(
+        semantic_ir=ir,
+        source={"source_id": 12, "database_name": "liveability_data_20260730"},
+        semantic_version=semantic["semantic_version"],
+        semantic_layer=semantic,
+        max_rows=1000,
+        question="Which facility types have an FPP score of 100% in every assessed district?",
+    )
+    sql = plan.compiled_statement
+    assert "gda_universal_base" in sql
+    assert "COUNT(DISTINCT gda_universal_scope)" in sql
+    assert '"kpi_existing" > :gda_universal_valid_001' in sql
+    assert '"kpi_existing" <= :gda_universal_valid_002' in sql
+    assert plan.parameter_bindings["gda_universal_target_001"] == 100
+    aggregate_node = next(
+        node for node in plan.logical_plan.nodes if node.operator == "aggregate"
+    )
+    assert aggregate_node.attributes["universal_quantification"]["policy_id"] == (
+        "liveability.fpp.assessed_district_universal_v1"
     )

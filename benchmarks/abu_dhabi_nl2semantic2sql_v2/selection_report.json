@@ -1,0 +1,721 @@
+{
+  "schema": "gda.abu-dhabi-nl2semantic2sql-benchmark-v2-selection-report",
+  "benchmark_id": "abu-dhabi-nl2semantic2sql-v2-public",
+  "scope": "candidate_selection_only",
+  "claim_boundary": {
+    "sql_correctness_evaluated": false,
+    "result_correctness_evaluated": false,
+    "runtime_llm_quality_evaluated": false,
+    "multi_asset_scoring": "reviewed_asset_set_coverage"
+  },
+  "metrics": {
+    "evaluated_case_count": 30,
+    "execute_asset_selection_case_count": 18,
+    "execute_single_asset_case_count": 15,
+    "execute_single_asset_top1_accuracy": 1.0,
+    "execute_multi_asset_case_count": 3,
+    "execute_multi_asset_reviewed_set_coverage_accuracy": 1.0,
+    "execute_asset_selection_pass_rate": 1.0,
+    "execute_reviewed_admission_rate": 1.0,
+    "non_execute_safety_gate_rate": 1.0,
+    "scored_selection_case_count": 22,
+    "overall_selection_pass_rate": 1.0
+  },
+  "cases": [
+    {
+      "case_id": "L2_L01",
+      "scope": "liveability",
+      "family": "asset_field_grain",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.liveability.dim_facilities",
+      "top_business_label": "宜居设施",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.fact_isochrones",
+        "abu_dhabi.liveability.fact_adeo_facilities",
+        "abu_dhabi.liveability.dim_facility_types",
+        "abu_dhabi.liveability.fact_ap_items",
+        "abu_dhabi.liveability.fact_qualitative_2025",
+        "abu_dhabi.liveability.param_cost_rates",
+        "abu_dhabi.liveability.param_fp_criteria"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true
+    },
+    {
+      "case_id": "L2_L02",
+      "scope": "liveability",
+      "family": "asset_field_grain",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.liveability.dim_facilities",
+      "top_business_label": "宜居设施",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.dim_districts",
+        "abu_dhabi.liveability.fact_isochrones",
+        "abu_dhabi.liveability.dim_facility_types",
+        "abu_dhabi.liveability.fact_adeo_facilities",
+        "abu_dhabi.liveability.fact_ap_items",
+        "abu_dhabi.liveability.fact_qualitative_2025",
+        "abu_dhabi.liveability.param_cost_rates"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true
+    },
+    {
+      "case_id": "L2_L03",
+      "scope": "liveability",
+      "family": "multilingual_entity_resolution",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.liveability.dim_facilities",
+      "top_business_label": "宜居设施",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.dim_districts",
+        "abu_dhabi.liveability.dim_projects",
+        "abu_dhabi.liveability.fact_district_scores",
+        "abu_dhabi.liveability.fact_population"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true
+    },
+    {
+      "case_id": "L2_L04",
+      "scope": "liveability",
+      "family": "ranking_and_grain",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.liveability.dim_facilities",
+      "top_business_label": "宜居设施",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.fact_isochrones",
+        "abu_dhabi.liveability.fact_adeo_facilities",
+        "abu_dhabi.liveability.dim_facility_types",
+        "abu_dhabi.liveability.fact_ap_items",
+        "abu_dhabi.liveability.fact_qualitative_2025",
+        "abu_dhabi.liveability.param_cost_rates",
+        "abu_dhabi.liveability.param_fp_criteria"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true
+    },
+    {
+      "case_id": "L2_L05",
+      "scope": "liveability",
+      "family": "governed_multi_asset_join",
+      "expected_outcome": "execute",
+      "observed_status": "reviewed_asset_set",
+      "top_candidate_id": "abu_dhabi.liveability.dim_facilities",
+      "top_business_label": "宜居设施",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.dim_districts",
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.fact_population"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.fact_population",
+        "abu_dhabi.liveability.param_provision_standards",
+        "abu_dhabi.liveability.fact_adeo_facilities",
+        "abu_dhabi.liveability.fact_isochrones",
+        "abu_dhabi.liveability.fact_ap_items",
+        "abu_dhabi.liveability.fact_qualitative_2025",
+        "abu_dhabi.liveability.dim_districts"
+      ],
+      "scoring_rule": "reviewed_asset_set_coverage",
+      "passed": true
+    },
+    {
+      "case_id": "L2_L06",
+      "scope": "liveability",
+      "family": "metric_definition",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.liveability.fact_district_scores",
+      "top_business_label": "行政区宜居度评分",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.fact_district_scores"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.fact_district_scores",
+        "abu_dhabi.liveability.fact_fp_facility_scores",
+        "abu_dhabi.liveability.fact_fp_scores",
+        "abu_dhabi.liveability.fact_ic_scores",
+        "abu_dhabi.liveability.fact_qualitative_facility_scores",
+        "abu_dhabi.liveability.fact_dmt_strategy",
+        "abu_dhabi.liveability.fact_qualitative_stats",
+        "abu_dhabi.liveability.dim_parks_calc_plots"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true
+    },
+    {
+      "case_id": "L2_L07",
+      "scope": "liveability",
+      "family": "spatial_predicate",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.liveability.dim_facilities",
+      "top_business_label": "宜居设施",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.fact_adeo_facilities",
+        "abu_dhabi.liveability.fact_isochrones",
+        "abu_dhabi.liveability.param_fp_criteria",
+        "abu_dhabi.liveability.param_provision_standards",
+        "abu_dhabi.liveability.fact_qualitative_2025",
+        "abu_dhabi.liveability.param_cost_rates",
+        "abu_dhabi.liveability.fact_ap_items"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true
+    },
+    {
+      "case_id": "L2_L08",
+      "scope": "liveability",
+      "family": "ranking_and_join",
+      "expected_outcome": "execute",
+      "observed_status": "reviewed_asset_set",
+      "top_candidate_id": "abu_dhabi.liveability.dim_districts",
+      "top_business_label": "宜居行政区",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.dim_districts",
+        "abu_dhabi.liveability.fact_district_scores"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.dim_districts",
+        "abu_dhabi.liveability.fact_district_scores",
+        "abu_dhabi.liveability.fact_fp_facility_scores",
+        "abu_dhabi.liveability.fact_fp_scores",
+        "abu_dhabi.liveability.fact_ic_scores",
+        "abu_dhabi.liveability.fact_qualitative_facility_scores",
+        "abu_dhabi.liveability.dim_parks_calc_plots",
+        "abu_dhabi.liveability.fact_dmt_strategy"
+      ],
+      "scoring_rule": "reviewed_asset_set_coverage",
+      "passed": true
+    },
+    {
+      "case_id": "L2_L09",
+      "scope": "liveability",
+      "family": "multi_measure_semantics",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.liveability.fact_facility_provision",
+      "top_business_label": "设施供需缺口",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.fact_facility_provision"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.fact_facility_provision",
+        "abu_dhabi.liveability.dim_parks_calc_plots",
+        "abu_dhabi.liveability.fact_adeo_facilities",
+        "abu_dhabi.liveability.fact_fc_demand",
+        "abu_dhabi.liveability.fact_isochrones",
+        "abu_dhabi.liveability.param_fp_criteria",
+        "abu_dhabi.liveability.param_provision_standards",
+        "abu_dhabi.liveability.dim_facilities"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true
+    },
+    {
+      "case_id": "L2_L10",
+      "scope": "liveability",
+      "family": "metric_ambiguity",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.liveability.dim_facilities",
+      "top_business_label": "宜居设施",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.fact_adeo_facilities",
+        "abu_dhabi.liveability.fact_isochrones",
+        "abu_dhabi.liveability.param_fp_criteria",
+        "abu_dhabi.liveability.param_provision_standards",
+        "abu_dhabi.liveability.dim_facility_types",
+        "abu_dhabi.liveability.fact_ap_items",
+        "abu_dhabi.liveability.fact_qualitative_2025"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true
+    },
+    {
+      "case_id": "L2_L11",
+      "scope": "liveability",
+      "family": "unsupported_join",
+      "expected_outcome": "clarify",
+      "observed_status": "reviewed_asset_set",
+      "top_candidate_id": "abu_dhabi.liveability.fact_facility_provision",
+      "top_business_label": "设施供需缺口",
+      "expected_candidate_ids": [],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.fact_facility_provision",
+        "abu_dhabi.liveability.fact_population",
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.param_provision_standards",
+        "abu_dhabi.liveability.fact_qol_cycle_4th",
+        "abu_dhabi.liveability.fact_fc_demand",
+        "abu_dhabi.liveability.dim_districts",
+        "abu_dhabi.liveability.fact_isochrones"
+      ],
+      "scoring_rule": "not_scored",
+      "passed": null
+    },
+    {
+      "case_id": "L2_L12",
+      "scope": "liveability",
+      "family": "unpublished_candidate",
+      "expected_outcome": "clarify",
+      "observed_status": "reviewed_asset_set",
+      "top_candidate_id": "abu_dhabi.liveability.fact_isochrones",
+      "top_business_label": "设施服务可达区",
+      "expected_candidate_ids": [],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.fact_isochrones",
+        "abu_dhabi.liveability.fact_population",
+        "abu_dhabi.liveability.param_provision_standards",
+        "abu_dhabi.liveability.fact_qol_cycle_4th",
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.dim_parks_calc_plots",
+        "abu_dhabi.liveability.fact_fc_demand",
+        "abu_dhabi.liveability.fact_fp_scores"
+      ],
+      "scoring_rule": "non_execution_gate",
+      "passed": true
+    },
+    {
+      "case_id": "L2_L13",
+      "scope": "liveability",
+      "family": "unsupported_prediction",
+      "expected_outcome": "refuse",
+      "observed_status": "unsupported_prediction_request",
+      "top_candidate_id": "abu_dhabi.liveability.fact_facility_provision",
+      "top_business_label": "设施供需缺口",
+      "expected_candidate_ids": [],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.fact_facility_provision",
+        "abu_dhabi.liveability.dim_parks_calc_plots",
+        "abu_dhabi.liveability.fact_fc_demand",
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.dim_districts",
+        "abu_dhabi.liveability.fact_isochrones",
+        "abu_dhabi.liveability.fact_ap_budget_stats",
+        "abu_dhabi.liveability.fact_ap_detailed_budget"
+      ],
+      "scoring_rule": "not_scored",
+      "passed": null
+    },
+    {
+      "case_id": "L2_L14",
+      "scope": "liveability",
+      "family": "sensitive_data",
+      "expected_outcome": "refuse",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.liveability.fact_population",
+      "top_business_label": "人口统计",
+      "expected_candidate_ids": [],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.fact_population",
+        "abu_dhabi.liveability.param_provision_standards",
+        "abu_dhabi.liveability.fact_qol_cycle_4th",
+        "abu_dhabi.liveability.fact_fc_demand",
+        "abu_dhabi.liveability.dim_parks_calc_plots",
+        "abu_dhabi.liveability.fact_ap_detailed_budget",
+        "abu_dhabi.liveability.fact_qualitative_2025",
+        "abu_dhabi.liveability.fact_fp_scores"
+      ],
+      "scoring_rule": "not_scored",
+      "passed": null
+    },
+    {
+      "case_id": "L2_L15",
+      "scope": "liveability",
+      "family": "underspecified_business_language",
+      "expected_outcome": "clarify",
+      "observed_status": "underspecified_query",
+      "top_candidate_id": "abu_dhabi.liveability.dim_facilities",
+      "top_business_label": "宜居设施",
+      "expected_candidate_ids": [],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.dim_calc_versions",
+        "abu_dhabi.liveability.sys_permissions",
+        "abu_dhabi.liveability.sys_roles",
+        "abu_dhabi.liveability.fact_facility_provision",
+        "abu_dhabi.liveability.fact_isochrones",
+        "abu_dhabi.liveability.fact_adeo_facilities",
+        "abu_dhabi.liveability.fact_fc_demand"
+      ],
+      "scoring_rule": "non_execution_gate",
+      "passed": true
+    },
+    {
+      "case_id": "L2_M01",
+      "scope": "makani",
+      "family": "asset_field_grain",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.makani.udm_building",
+      "top_business_label": "建筑物",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.udm_building"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.tbl_bdms_bldg_addc_consumption",
+        "abu_dhabi.makani.adwea_e_streetlight",
+        "abu_dhabi.makani.upc_building",
+        "abu_dhabi.makani.udm_buildingmiscconstruction",
+        "abu_dhabi.makani.bdms_bldg_landuse",
+        "abu_dhabi.makani.bdms_door_height",
+        "abu_dhabi.makani.bdms_floors_height"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true
+    },
+    {
+      "case_id": "L2_M02",
+      "scope": "makani",
+      "family": "multilingual_entity_resolution",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.makani.udm_building",
+      "top_business_label": "建筑物",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.udm_building"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.ud_building",
+        "abu_dhabi.makani.udm_municipality",
+        "abu_dhabi.makani.udm_buildingmiscconstruction",
+        "abu_dhabi.makani.upc_building",
+        "abu_dhabi.makani.udm_adr_municipality",
+        "abu_dhabi.makani.udm_buildingcourtyard",
+        "abu_dhabi.makani.udm_buildingoverhang"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true
+    },
+    {
+      "case_id": "L2_M03",
+      "scope": "makani",
+      "family": "multilingual_entity_resolution",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.makani.udm_building",
+      "top_business_label": "建筑物",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.udm_building"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.poi_adek_schools_locations"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true
+    },
+    {
+      "case_id": "L2_M04",
+      "scope": "makani",
+      "family": "multi_dimension",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.makani.udm_building",
+      "top_business_label": "建筑物",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.udm_building"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.udm_district",
+        "abu_dhabi.makani.tbl_bdms_bldg_addc_consumption",
+        "abu_dhabi.makani.upc_building",
+        "abu_dhabi.makani.bdms_bldg_landuse",
+        "abu_dhabi.makani.udm_tawajudiboundary",
+        "abu_dhabi.makani.masterplan_ud_plot",
+        "abu_dhabi.makani.paa_utc"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true
+    },
+    {
+      "case_id": "L2_M05",
+      "scope": "makani",
+      "family": "spatial_container",
+      "expected_outcome": "execute",
+      "observed_status": "reviewed_asset_set",
+      "top_candidate_id": "abu_dhabi.makani.udm_district",
+      "top_business_label": "Makani 行政片区",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.udm_district"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.udm_district",
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.tbl_bdms_bldg_addc_consumption",
+        "abu_dhabi.makani.upc_precincts",
+        "abu_dhabi.makani.alain_administrativeboundary",
+        "abu_dhabi.makani.adac_airport_buildings",
+        "abu_dhabi.makani.alain_historic_buildings",
+        "abu_dhabi.makani.bdms_bldg_landuse"
+      ],
+      "scoring_rule": "reviewed_asset_set_coverage",
+      "passed": true
+    },
+    {
+      "case_id": "L2_M06",
+      "scope": "makani",
+      "family": "measure_definition",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.makani.udm_building",
+      "top_business_label": "建筑物",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.udm_building"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.ud_building",
+        "abu_dhabi.makani.adwea_e_streetlight",
+        "abu_dhabi.makani.udm_municipality",
+        "abu_dhabi.makani.bdms_floors_height",
+        "abu_dhabi.makani.upc_building",
+        "abu_dhabi.makani.udm_buildingoverhang",
+        "abu_dhabi.makani.udm_buildingcourtyard"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true
+    },
+    {
+      "case_id": "L2_M07",
+      "scope": "makani",
+      "family": "asset_field_grain",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.makani.udm_sportfacilities",
+      "top_business_label": "体育设施",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.udm_sportfacilities"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.udm_sportfacilities",
+        "abu_dhabi.makani.adwea_w_t_water_facility",
+        "abu_dhabi.makani.adwea_w_waterstructure",
+        "abu_dhabi.makani.power_structure",
+        "abu_dhabi.makani.rw_aa_meter",
+        "abu_dhabi.makani.rw_ad_meter",
+        "abu_dhabi.makani.udm_coastalfacilities",
+        "abu_dhabi.makani.udm_roadbarrier"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true
+    },
+    {
+      "case_id": "L2_M08",
+      "scope": "makani",
+      "family": "ranking_and_metric",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.makani.poi_adek_schools_locations",
+      "top_business_label": "学校",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.poi_adek_schools_locations"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.poi_adek_schools_locations",
+        "abu_dhabi.makani.udm_district",
+        "abu_dhabi.makani.udm_tawajudiboundary",
+        "abu_dhabi.makani.udm_bldhighestpoint",
+        "abu_dhabi.makani.udm_bldmchighestpoint",
+        "abu_dhabi.makani.udm_bldmcstructhighestpoint",
+        "abu_dhabi.makani.udm_bldstructhighestpoint",
+        "abu_dhabi.makani.main_roads_utility_corridor_ifp2018_reservation"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true
+    },
+    {
+      "case_id": "L2_M09",
+      "scope": "makani",
+      "family": "unreviewed_multi_asset_relationship",
+      "expected_outcome": "clarify",
+      "observed_status": "reviewed_asset_set",
+      "top_candidate_id": "abu_dhabi.makani.udm_district",
+      "top_business_label": "Makani 行政片区",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.udm_district",
+        "abu_dhabi.makani.udm_park"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.udm_district",
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.udm_park",
+        "abu_dhabi.makani.upc_precincts",
+        "abu_dhabi.makani.tbl_bdms_bldg_addc_consumption",
+        "abu_dhabi.makani.jebel_hafeet_national_park_1",
+        "abu_dhabi.makani.parks_details",
+        "abu_dhabi.makani.parks_details_1"
+      ],
+      "scoring_rule": "not_scored",
+      "passed": null
+    },
+    {
+      "case_id": "L2_M10",
+      "scope": "makani",
+      "family": "field_ambiguity",
+      "expected_outcome": "clarify",
+      "observed_status": "ambiguous_candidates",
+      "top_candidate_id": "abu_dhabi.makani.udm_building",
+      "top_business_label": "建筑物",
+      "expected_candidate_ids": [],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.tbl_bdms_bldg_addc_consumption",
+        "abu_dhabi.makani.adwea_e_streetlight",
+        "abu_dhabi.makani.upc_building",
+        "abu_dhabi.makani.bdms_bldg_landuse",
+        "abu_dhabi.makani.bdms_door_height",
+        "abu_dhabi.makani.bdms_floors_height",
+        "abu_dhabi.makani.bdms_window_height"
+      ],
+      "scoring_rule": "non_execution_gate",
+      "passed": true
+    },
+    {
+      "case_id": "L2_M11",
+      "scope": "makani",
+      "family": "relationship_cardinality",
+      "expected_outcome": "clarify",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.makani.udm_building",
+      "top_business_label": "建筑物",
+      "expected_candidate_ids": [],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.bdms_bldg_landuse",
+        "abu_dhabi.makani.tbl_bdms_bldg_addc_consumption",
+        "abu_dhabi.makani.bdms_door_height",
+        "abu_dhabi.makani.bdms_floors_height",
+        "abu_dhabi.makani.bdms_window_height",
+        "abu_dhabi.makani.scad_districts_populationestimate_mid2018",
+        "abu_dhabi.makani.sub_adr_building"
+      ],
+      "scoring_rule": "not_scored",
+      "passed": null
+    },
+    {
+      "case_id": "L2_M12",
+      "scope": "makani",
+      "family": "unpublished_spatial_metric",
+      "expected_outcome": "clarify",
+      "observed_status": "underspecified_query",
+      "top_candidate_id": "abu_dhabi.makani.udm_building",
+      "top_business_label": "建筑物",
+      "expected_candidate_ids": [],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.poi_adek_schools_locations",
+        "abu_dhabi.makani.tbl_bdms_bldg_addc_consumption",
+        "abu_dhabi.makani.udm_slope",
+        "abu_dhabi.makani.alain_historic_buildings",
+        "abu_dhabi.makani.ir_pumpingstationstructure_1",
+        "abu_dhabi.makani.ud_buildboundary",
+        "abu_dhabi.makani.ud_building"
+      ],
+      "scoring_rule": "not_scored",
+      "passed": null
+    },
+    {
+      "case_id": "L2_M13",
+      "scope": "makani",
+      "family": "unsupported_prediction",
+      "expected_outcome": "refuse",
+      "observed_status": "unsupported_prediction_request",
+      "top_candidate_id": "abu_dhabi.makani.udm_building",
+      "top_business_label": "建筑物",
+      "expected_candidate_ids": [],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.tbl_bdms_bldg_addc_consumption",
+        "abu_dhabi.makani.upc_building",
+        "abu_dhabi.makani.bdms_bldg_landuse",
+        "abu_dhabi.makani.bdms_door_height",
+        "abu_dhabi.makani.bdms_floors_height",
+        "abu_dhabi.makani.bdms_window_height",
+        "abu_dhabi.makani.adac_airport_buildings"
+      ],
+      "scoring_rule": "not_scored",
+      "passed": null
+    },
+    {
+      "case_id": "L2_M14",
+      "scope": "makani",
+      "family": "sensitive_data",
+      "expected_outcome": "refuse",
+      "observed_status": "sensitive_data_request",
+      "top_candidate_id": "abu_dhabi.makani.udm_building",
+      "top_business_label": "建筑物",
+      "expected_candidate_ids": [],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.tbl_bdms_bldg_addc_consumption",
+        "abu_dhabi.makani.alain_historic_buildings",
+        "abu_dhabi.makani.bdms_bldg_landuse",
+        "abu_dhabi.makani.ir_pumpingstationstructure_1",
+        "abu_dhabi.makani.sub_adr_building",
+        "abu_dhabi.makani.ud_buildboundary",
+        "abu_dhabi.makani.ud_sub_address_building"
+      ],
+      "scoring_rule": "not_scored",
+      "passed": null
+    },
+    {
+      "case_id": "L2_M15",
+      "scope": "makani",
+      "family": "underspecified_business_language",
+      "expected_outcome": "clarify",
+      "observed_status": "underspecified_query",
+      "top_candidate_id": "abu_dhabi.makani.upc_building",
+      "top_business_label": "UPC 早期规划建筑数据",
+      "expected_candidate_ids": [],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.upc_building",
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.bdms_floors_height",
+        "abu_dhabi.makani.tbl_bdms_bldg_addc_consumption",
+        "abu_dhabi.makani.adwea_e_streetlight",
+        "abu_dhabi.makani.bdms_door_height",
+        "abu_dhabi.makani.bdms_window_height",
+        "abu_dhabi.makani.bdms_bldg_landuse"
+      ],
+      "scoring_rule": "non_execution_gate",
+      "passed": true
+    }
+  ]
+}

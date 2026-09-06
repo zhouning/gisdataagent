@@ -1,0 +1,47 @@
+{
+  "contract_id": "MAK_P10_SPORTS_BY_TYPE_ZH_GOLD_V1",
+  "equivalence": {
+    "accepted_fingerprint_keys": [
+      "unordered_position_numeric6_fingerprint",
+      "position_numeric6_fingerprint",
+      "unordered_position_fingerprint",
+      "position_fingerprint"
+    ],
+    "column_aliases_compare_by_position": true,
+    "expected_fingerprints": {
+      "position_fingerprint": "247e356cf19533e4ccdd4456fd1da1b1b6683d52a70a66d3a967be8cabf70a8f",
+      "position_numeric6_fingerprint": "619a9ec60a3ba21e3ef5c63ced8b32655710accd49eeea53e8b41ff561058fc2",
+      "unordered_position_fingerprint": "247e356cf19533e4ccdd4456fd1da1b1b6683d52a70a66d3a967be8cabf70a8f",
+      "unordered_position_numeric6_fingerprint": "619a9ec60a3ba21e3ef5c63ced8b32655710accd49eeea53e8b41ff561058fc2"
+    },
+    "numeric_precision": 6,
+    "order_sensitive": false
+  },
+  "evaluation_only": true,
+  "expected_result": {
+    "columns": [
+      "sportfacilitytype",
+      "sportstype",
+      "sport_facility_count"
+    ],
+    "ordered_result_fingerprint": "2087d6ee81f8ed869fd600c5af32bc2b5979ba9148c8c1f874ea2ca1fbecadec",
+    "row_count": 17
+  },
+  "query": {
+    "bounded_limit": 1000,
+    "path": "benchmarks/abu_dhabi_nl2sql_product_v1/gold/makani/MAK_P10_SPORTS_BY_TYPE_ZH.sql",
+    "read_only": true,
+    "sha256": "7f294fd998f4e44bf27602dac91da87f2f13793c8830609e09f26fffde88c1e2"
+  },
+  "runtime_access": "prohibited",
+  "schema": "gda.nl2sql-gold-result-contract.v1",
+  "source_contract": {
+    "authorized_schema": "public",
+    "database_name": "makani_sync_full",
+    "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+    "profile_fingerprint": "a4d99a4084081224ffcf6a02cda777b2aaf6052521573a7ee68f022d62809253",
+    "semantic_version": "abu-dhabi-makani-v4-reviewed-assets",
+    "source_id": 13
+  },
+  "status": "frozen_evaluation_only_product_gold_v1"
+}

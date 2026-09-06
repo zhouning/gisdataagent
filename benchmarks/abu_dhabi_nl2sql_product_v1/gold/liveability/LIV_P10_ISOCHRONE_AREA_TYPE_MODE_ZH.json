@@ -1,0 +1,47 @@
+{
+  "contract_id": "LIV_P10_ISOCHRONE_AREA_TYPE_MODE_ZH_GOLD_V1",
+  "equivalence": {
+    "accepted_fingerprint_keys": [
+      "unordered_position_numeric6_fingerprint",
+      "position_numeric6_fingerprint",
+      "unordered_position_fingerprint",
+      "position_fingerprint"
+    ],
+    "column_aliases_compare_by_position": true,
+    "expected_fingerprints": {
+      "position_fingerprint": "1633902c6cbba5e7770dbed172df754a25078bb76efe1f23474edc87f1a47655",
+      "position_numeric6_fingerprint": "1633902c6cbba5e7770dbed172df754a25078bb76efe1f23474edc87f1a47655",
+      "unordered_position_fingerprint": "1633902c6cbba5e7770dbed172df754a25078bb76efe1f23474edc87f1a47655",
+      "unordered_position_numeric6_fingerprint": "1633902c6cbba5e7770dbed172df754a25078bb76efe1f23474edc87f1a47655"
+    },
+    "numeric_precision": 6,
+    "order_sensitive": false
+  },
+  "evaluation_only": true,
+  "expected_result": {
+    "columns": [
+      "facility_type",
+      "mode",
+      "average_area_sqkm"
+    ],
+    "ordered_result_fingerprint": "2dcfc268e2948e0de18b401f1fa34336990b3e35e5a7a67d7ba03fa146ba38bd",
+    "row_count": 0
+  },
+  "query": {
+    "bounded_limit": 1000,
+    "path": "benchmarks/abu_dhabi_nl2sql_product_v1/gold/liveability/LIV_P10_ISOCHRONE_AREA_TYPE_MODE_ZH.sql",
+    "read_only": true,
+    "sha256": "43151d4a7199641fc739c0c38778ba8802b91bfd410fa2a0bf4e5c105fbc49f0"
+  },
+  "runtime_access": "prohibited",
+  "schema": "gda.nl2sql-gold-result-contract.v1",
+  "source_contract": {
+    "authorized_schema": "public",
+    "database_name": "liveability_data_20260730",
+    "discovery_fingerprint": "506d986836ac9a421a99c88c6d01b15abaa7b7f053d3d6a575cb1db9912c7269",
+    "profile_fingerprint": "f86a8a522797ae4bbf6d067967411f4a854f8a8c6fe468087428d73abbcd1768",
+    "semantic_version": "abu-dhabi-liveability-v4-reviewed-assets",
+    "source_id": 12
+  },
+  "status": "frozen_evaluation_only_product_gold_v1"
+}

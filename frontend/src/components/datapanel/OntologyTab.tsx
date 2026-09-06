@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import OntologyConceptNode from './ontology/OntologyConceptNode';
 import OntologyModelingPanel from './ontology/OntologyModelingPanel';
+import SemanticInteropPanel from './SemanticInteropPanel';
 import './ontology/ontology.css';
 import './ontology/value-domains.css';
 
@@ -820,6 +821,7 @@ export default function OntologyTab({
   if (loading && !status) return <div className="ontology-state"><RefreshCw className="spin" size={18} />正在加载本体</div>;
 
   return <div className={`ontology-workbench${fullscreen ? ' is-fullscreen' : ''}${className ? ` ${className}` : ''}`}>
+    <SemanticInteropPanel userRole={userRole} defaultKind="ontology" defaultSource={overlays.find(item => item.overlay_id === selectedOverlayId)?.source_key} compact />
     <header className="ontology-header">
       <div className="ontology-title"><Network size={18} /><div><strong>{status?.title || '行业本体模型'}</strong><span>v{status?.semantic_version || '-'}</span></div></div>
       {supportsOntologyRegistry && ontologyProfiles.length > 0 && <label className="ontology-profile-select"><span>行业本体</span><select value={ontologyKey} onChange={event => setOntologyKey(event.target.value)}>{ontologyProfiles.map(profile => <option key={profile.ontology_key} value={profile.ontology_key}>{profile.short_title}</option>)}</select></label>}

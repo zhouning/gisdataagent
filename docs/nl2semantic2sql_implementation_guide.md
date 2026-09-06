@@ -1,11 +1,11 @@
-# NL2Semantic2SQL — 技术架构与复现指南 (v3.1 current)
+# NL2Semantic2SQL — 技术架构与复现指南 (v3.3 current)
 
 > GIS Data Agent (ADK Edition) — 跨域自然语言到 SQL 框架
-> 版本: 3.1 | 日期: 2026-08-24 | Branch: current working tree
+> 版本: 3.3 | 日期: 2026-08-30 | Branch: current working tree
 > 作者: 周宁 (Beijing SuperMap Software Co., Ltd.)
 > 前置版本: `semantic_layer_architecture.md` v1.1 (2026-08-24，历史通用 GIS 语义层说明)
 
-> 本文前半部分保留历史 P2/通用 NL2SQL 的复现记录。阿布扎比两库的当前实现、双路线边界、v4 语义层和最新评测口径以 [`docs/nl2semantic2sql_architecture.md`](nl2semantic2sql_architecture.md) 第 13 节为准。历史 benchmark 数字不能直接作为当前产品准确率。
+> 本文前半部分保留历史 P2/通用 NL2SQL 的复现记录。阿布扎比两库的当前实现、双路线边界、已发布全表语义层、真实 Gemini 测试和反硬编码审计以 [`docs/nl2semantic2sql_architecture.md`](nl2semantic2sql_architecture.md) 第 13 节为准。历史 benchmark 数字不能直接作为当前产品准确率。
 
 ---
 
@@ -74,7 +74,7 @@ NL2Semantic2SQL 是一个**统一**的自然语言查询框架，通过**意图�
 │         └──────┬───────┘                                            │
 │                ▼                                                    │
 │         ┌──────────────┐                                            │
-│         │ Stage 4:     │  ← Single LLM call (Gemini 2.5 Flash)      │
+│         │ Stage 4:     │  ← Single LLM call (current: Gemini 3.7 Flash)│
 │         │ SQL          │    Temperature=0.0, JSON-strict prompt     │
 │         │ Generation   │                                            │
 │         └──────┬───────┘                                            │
@@ -239,7 +239,7 @@ prompt = (
     + "QUESTION: {user_text}\n\nSQL:"
 )
 resp = client.models.generate_content(
-    model="gemini-2.5-flash",
+    model="gemini-3.7-flash",
     contents=[prompt],
     config=GenerateContentConfig(temperature=0.0, http_options={"timeout": 60_000}),
 )
@@ -838,11 +838,13 @@ Semantic grounding is the dominant contributor (65% of total gain).
 @Liveability <question>
   -> data_agent/liveability_nl2sql.py
   -> governed_virtual_nl2sql.run_governed_virtual_nl2sql()
-  -> liveability_data_20260730_semantic_layer_v4_full_coverage.json
+  -> current_artifact_path("liveability", "semantic")
+  -> liveability_data_20260730_semantic_layer_current_20260826.json
 
 @Makani <question>
   -> data_agent/makani_nl2sql.py
   -> governed_virtual_nl2sql.run_governed_virtual_nl2sql()
+  -> current_artifact_path("makani", "semantic")
   -> makani_sync_full_semantic_layer_v4_full_coverage.json
 ```
 
@@ -891,7 +893,7 @@ Gold 只供 evaluator 读取，不能进入运行时 prompt。真实源库离线
 
 ### 12.4.5 生产前检查清单
 
-- [ ] 两个入口都加载 v4 全表语义层，且 source binding 指纹与发现快照一致。
+- [ ] 两个入口都通过 current artifact registry 加载已发布全表语义层，且 source binding 指纹与发现快照一致。
 - [ ] 所有未审核表的 `execution_eligible` 明确为 `false`。
 - [ ] 相似资产和数字后缀具备唯一性/歧义回归测试。
 - [ ] 公共电话亭等公共设施不被个人敏感数据策略误拒，个人/居民联系方式仍拒绝。
@@ -917,6 +919,71 @@ Gold 只供 evaluator 读取，不能进入运行时 prompt。真实源库离线
 已经替代基线”或“全表业务语义已经完善”。完整 benchmark 资产的用途和 claim boundary
 见 [`docs/nl2semantic2sql_architecture.md`](nl2semantic2sql_architecture.md) 第 13.8 节。
 
+### 12.4.7 真实测试后的准确率解释与反硬编码证明
+
+当前实现接近 100% 的原因不是 Gemini 被针对题目训练，也不是代码按 `case_id` 返回固定
+答案，而是“已审核语义配置 + 受限模型生成 + 确定性门禁 + 结果合同”的组合。必须把
+以下几类能力分开：
+
+1. **产品语义配置**：业务标签、别名、字段角色、粒度、值域、关系和 reviewed metric
+   contract 由版本化语义层维护；它们是可审计的领域知识，不包含 benchmark Gold 结果。
+2. **模型推理**：普通自由问数由当前配置的 Gemini 3.7 Flash 生成受治理 SQL；模型只能看到
+   当前问题和 grounding 后的语义上下文。
+3. **执行治理**：SQL 经过表/字段/关系/空间/只读/预算校验，并在已登记虚拟源上执行。
+4. **结果验证**：evaluator 读取独立 Gold result contract，按声明的列、行数和等价指纹判断，
+   不能因 SQL 文本相似就判定成功。
+
+本轮新增的
+[`scripts/audit_abu_dhabi_nl2sql_integrity.py`](../scripts/audit_abu_dhabi_nl2sql_integrity.py)
+对 7 个运行时代码模块做静态和运行时渲染审计，审计快照为
+[`abu_dhabi_nl2sql_integrity_audit_20260830.json`](customer/abu_dhabi_liveability_site_validation/abu_dhabi_nl2sql_integrity_audit_20260830.json)。
+审计结果：
+
+- 2823 个 benchmark case ID、2820 个问题文本在运行时代码字符串常量中 **0 命中**；
+- 两个语义层的 930 个物理表名、928 个指标/Gold ID 和 canonical SQL 在运行时代码常量中
+  **0 命中**；
+- 运行时 **0 个** evaluator/benchmark 导入；
+- 两份语义层中完整 benchmark case ID 和问题原文 **0 命中**；
+- baseline 与 IR prompt 的 Gold SQL、Gold 结果、expected result 和源行标记 **0 命中**；
+- benchmark 的 `used_for_prompt_or_runtime_assets` 逐题均为 `false`；
+- 稳定恢复批次 180/180 均为 `governed_free_form_llm` 和 `gemini-3.7-flash`，
+  确定性指标直达路由为 0；
+- 记录中的稳定恢复批次通过 artifact 不可变检查，且 runtime/Gold 隔离字段全部通过。
+
+最强的动态交叉证据来自 Makani 稳定恢复 180 题：180 个问题全部唯一，180 题全部实际调用
+`gemini-3.7-flash`，全部走 `governed_free_form_llm`，没有直接指标路由；180/180 的结果
+均通过 Gold result contract，生成 SQL 具有 65 个不同的 SQL 指纹。这里的 65 个 SQL 指纹
+不是“每题必须不同”，因为同一业务合同的多语言变体可能产生等价 SQL；它说明运行时不是
+把一条固定 SQL 复制给所有题。
+
+这次真实测试还把“准确率高”分解成了可定位的阶段和运行代价：
+
+| 指标 | 180 题稳定恢复 | 2328 题历史全量诊断 |
+|---|---:|---:|
+| source governance | 180/180 | 2328/2328 |
+| question understanding | 180/180 | 2324/2328 |
+| asset resolution | 180/180 | 2320/2325 |
+| execution result equivalence | 180/180 | 2320/2325 |
+| `governed_free_form_llm` | 180 | 2305 |
+| 确定性指标合同 | 0 | 16 |
+| 平均模型生成延迟 | 8385.945 ms | 9949.508 ms |
+| P95 模型生成延迟 | 21543.852 ms | 20548.730 ms |
+| 失败分类 | 无 | 4 个 unexpected refusal，1 个 gold result mismatch |
+
+因此复现时不能只复现 prompt。至少要同时复现 source registration/fingerprint、技术元数据、
+本体/字典对齐、语义 binding、候选解析、metric contract 路由、SQL/IR validator、只读执行、
+结果合同 comparator 和失败分类；缺少其中任何一层，都不是当前高分架构的等价实现。
+
+需要明确的边界：审计证明的是当前提交版本和指定 artifact 没有发现答案硬编码证据，不能
+替代代码审查，也不能把未审核表的技术目录统计解释成业务语义正确。Makani 2328 题历史
+全量测量的业务语言结果为 1840/1845（99.729%），Liveability 当前独立 cohort 分析为
+386/387（99.742%，未重新调用模型）；二者都不是新的 release score。只有在同一冻结输入
+下完成双库全量重跑，才可以发布新的全量准确率。
+
+当前 Makani 全量稳定重跑已在同一冻结输入下启动。checkpoint 只用于断点恢复、输入一致性
+校验和运行审计；运行期间不修改 benchmark、语义层或 Gold cohort，完成前不发布中间进度
+比例，也不将中间通过题写成准确率结论。
+
 ### 12.5 BIRD 上不显著的原因分析
 
 可能因素：
@@ -930,8 +997,8 @@ Gold 只供 evaluator 读取，不能进入运行时 prompt。真实源库离线
 ## 附录 A: 配置参数
 
 ```python
-# 模型（历史通用配置；阿布扎比产品入口以 12.4 的 GPT-5.1 profile 为准）
-MODEL_GENERATION = "gemini-2.5-flash"   # 历史通用主生成模型
+# 模型（历史通用配置；阿布扎比产品入口当前使用 Gemini 3.7 Flash）
+MODEL_GENERATION = "gemini-3.7-flash"   # 当前 LAN 运行模型
 MODEL_INTENT_JUDGE = "gemini-2.0-flash"  # 历史意图 LLM judge
 MODEL_RETRY = "gemini-2.0-flash"         # 历史自纠错 retry
 TEMPERATURE = 0.0
@@ -1025,9 +1092,134 @@ v1.0（`semantic_layer_architecture.md`，2026-02-27）只覆盖 GIS 场景，�
 
 ---
 
-**文档版本**: 2.0
-**最后更新**: 2026-05-04
+**文档版本**: 3.3（前半部分保留 2026-05 历史复现内容，第 12.4 节为当前阿布扎比实现）
+**最后更新**: 2026-08-30
 **作者**: 周宁 (Beijing SuperMap Software Co., Ltd.)
 **邮箱**: zhouning1@supermap.com
 **仓库**: https://github.com/zhouning/gisdataagent (branch: `feat/v12-extensible-platform`)
 **论文**: `docs/nl2semantic2sql_cross_domain_paper.pdf` (中英双语版)
+
+## 13. 2026-09-02 当前实现和实测补充
+
+当前 Liveability 发布资产已经切换到 v21 语义层和 v20 本体，绑定源
+`10.255.254.109:5444`（source_id 12）。最新表卡来源为
+`/Users/zhouning/Downloads/阿布扎比/liveability_kb.zip`，165/165 张表和 3479/3479
+个显式字段均与当前发现匹配。技术目录覆盖 176 张资源和 3778 个字段，但业务语义仍是
+部分审核资产，不能把技术元数据覆盖率写成全库业务可回答率。
+
+在 v8 严格 benchmark 上，`semantic_ir_experimental` 使用 Gemini 3.7 Flash 的全量结果为
+50/76 产品合同通过（65.79%）、5/27 Gold 严格等价（18.52%）、14/27 查询执行成功
+（51.85%）、基础设施失败 0。该路线仍是候选/影子路线，默认生产路线仍为
+`baseline_sql`。失败主要集中在双极值、分段成员、条件聚合、Top-N 分组、复合投影和
+模型随机拒答，不能通过题号特判或固定答案处理。
+
+本轮针对 Gemini 输出的 `proposal` 容器、`projection_type`、`op/val`、数组 OR filter、
+`field_alias`、`order_item`、展示 metadata 和逻辑字段分隔符差异加入了无损协议归一化。
+归一化只修复表示层，不增加任何业务能力；最终仍由严格 IR schema、语义白名单、关系审核、
+只读门禁和确定性编译器裁决。新增的通用 `having_filters` 将显式聚合条件编译到
+`HAVING`，与行级 `filters` 的 `WHERE` 语义分离，避免在所有数据源上发生“先过滤再汇总”的
+口径错误。
+
+当前聚焦产品/IR/候选/记分卡套件为 306 passed；协议归一化专项为 25 项。F016 双极值
+真实 Gemini 端到端复测报告为
+`liveability_customer_strict_v8_gemini37flash_semantic_ir_f016_extreme_v33_20260902.json`：
+1/1 查询执行成功、1/1 Gold 结果等价、基础设施失败 0。该单题结果不能替代 27 题全量
+配对指标；历史全量 Semantic IR 基线仍为 14/27 查询执行成功（51.85%）、5/27 Gold 等价。
+
+这些数字只能说明当前冻结题集和当前发布版本的实测边界，不能外推为两库全库任意问数
+准确率。要达到最终目标，还必须继续扩充两库的字段/表/关系/时间/空间/聚合 benchmark，
+完成业务语义审核与数据质量登记，并以同一冻结输入做 baseline/IR 的重复配对稳定性测试。
+
+## 14. 2026-09-04 v34 / v36 实测更新
+
+最新 Liveability 表卡 `liveability_kb.zip` 已生成 v34 语义层和 v33 本体，165/165 张表卡、
+3479/3479 个字段匹配 source_id=12 当前发现。v36 运行报告为
+`docs/customer/abu_dhabi_liveability_site_validation/liveability_v36_gemini37flash_semantic_ir_full76_representation_enumfix_20260904.json`。
+
+本轮只做两类通用、可审计的修复：
+
+1. 将 Gemini 输出的单元素 `partition_by` 字符串和布尔字符串 `"false"` 归一化为协议要求
+   的数组/布尔类型；
+2. 对语义字典中 `AP50`/`ap50` 的大小写碰撞，以当前源只读观测值域作为唯一执行拼写。
+
+随后每个提案仍经过严格 IR schema、active semantic binding、reviewed relationship、只读
+SQL/PostGIS 门禁和真实数据库执行。没有新增题号分支、固定答案、Gold 查询或 Gold 结果
+注入。
+
+| 指标 | v35 | v36 |
+| --- | ---: | ---: |
+| 总题通过 | 73/76（96.05%） | **76/76（100%）** |
+| Gold 等价查询 | 25/28（89.29%） | **28/28（100%）** |
+| 查询执行成功 | 26/28（92.86%） | **28/28（100%）** |
+| 拒答 precision / recall | 100% / 100% | **100% / 100%** |
+| 基础设施失败 | 0 | **0** |
+
+F016、F052 的失败原因为模型结构化输出容器类型错误；F019 的失败原因为语义值域大小写
+碰撞，实际源审计返回 8 个符合条件的区。三题修复后独立重测全部通过，说明改进来自通用
+协议/语义编译能力，而非 benchmark 特例。
+
+注意：v36 的 100% 是当前冻结 76 题、当前源指纹和当前语义快照上的有限样本结果，不能
+外推为两个数据库全库任意问数 100%，也不能改变 `baseline_sql` 默认生产、Semantic IR
+候选路线的发布边界。全库目标仍需逐表逐字段业务审核、关系与指标合同、枚举/阶段/空间/
+聚合覆盖，以及两条路线的配对稳定性测试。
+
+## 15. 2026-09-05 结构化协议修复与 F003 证据审计
+
+针对 Gemini 3.7 Flash 偶发把 `distinct_rows`/`include_result_count` 输出成
+`{"bool": false}`、`{"boolean": "false"}` 或等价单值包装对象的问题，运行时新增了
+provider-neutral 的无损布尔归一化。只接受唯一、无歧义的布尔表示；多键或冲突包装继续由
+严格 schema 拒绝。该修复不增加任何字段、过滤、关系或 SQL 能力，相关测试为
+`data_agent/test_governed_virtual_nl2sql.py`，当前通过 289 项。
+
+F030（“Which facility types have an FPP score of 100% in every assessed district?”）在真实
+source_id=12 与 Gemini 端到端重试中通过：查询执行成功 1/1、Gold 等价 1/1。编译器使用已
+审核的 `liveability.fpp.assessed_district_universal_v1` 策略，排除 `0`/`9999` 哨兵值，按
+设施类型分组并验证每个设施类型自身的所有有效评估行，不要求错误的全局行政区覆盖。
+证据报告：`/tmp/live_f030_ir_after_bool_normalization_retry.json`。
+
+F003 的最新源审计没有授权新增业务语义：表卡与 source_id=12 只审计确认了
+`Park_Local`、`Park_Neighbourhoud`、`Park_District`、`Park_Other` 等来源类型；题目要求的
+`Pocket`、`Regional`、`Beach`、`Linear Park` 映射没有独立业务依据，面积字段又分布在公园
+计算地块/供需事实与设施几何不同粒度中。因此系统继续安全拒答并记录语义待治理项，未将
+这些名称硬编码成答案，也未把不同粒度强行拼接。
+
+修复后的完整 76 题报告已归档为
+`docs/customer/abu_dhabi_liveability_site_validation/liveability_v40_gemini37flash_semantic_ir_full76_bool_normalization_20260905.json`。
+本轮结果：总通过 `76/76`，Gold 等价查询 `28/28`，查询执行成功 `28/28`，拒答
+precision/recall `100%/100%`，基础设施失败 `0`；Gemini 平均生成延迟约 `5710 ms`，
+p95 约 `9431 ms`。其中 8 题走 reviewed metric contract，20 题走已验证的 semantic IR
+PostGIS compiler，LLM 调用率 `41/76`。精确列名/行序指纹为 `13/28`，不作为主准确率，
+因为 Gold 合同允许位置与数值等价。
+
+### 15.1 v37 同配置双路线回归
+
+2026-09-05 使用 v37 语义层完成了同源双路线 76 题真实回归。baseline v51 为 75/76
+（98.68%），28/28 查询执行、27/28 Gold 等价、48/48 拒答正确；Semantic IR v52 为
+76/76（100%），28/28 查询执行、28/28 Gold 等价、48/48 拒答正确，IR 计划与编译验证
+28/28。两份报告均无基础设施失败。唯一 baseline 失败为 F032：生成结果遗漏了问题要求的
+`needed_ap50` 度量列；Semantic IR 通过同一题。F024 在本轮按已发布的等价结果合同通过。
+
+运行时现已增加通用排名投影门禁，缺少首要排序度量时只触发标准 Gemini 重试，不自动补充
+业务字段。F032 门禁后的独立复测为 1/1 Gold 等价、1/1 执行成功。
+
+报告路径：
+
+```text
+docs/customer/abu_dhabi_liveability_site_validation/liveability_v51_gemini37flash_baseline_full76_v37_20260905.json
+docs/customer/abu_dhabi_liveability_site_validation/liveability_v52_gemini37flash_semantic_ir_full76_v37_20260905.json
+docs/customer/abu_dhabi_liveability_site_validation/liveability_v51_v52_dual_route_pairwise_20260905.json
+```
+
+Semantic IR 仍是候选路线；必须完成重复稳定性、全库语义审核和 Makani 同源配对评测后，
+才可改变 baseline 默认生产路由。100% 只适用于当前 v14 冻结样本与 v37 语义快照。
+
+## 2026-09-06 标准互操作实现
+
+标准互操作代码位于 `data_agent/semantic_interop/`，不改变现有 baseline/IR 运行路径。
+支持本体 overlay 的 Turtle/JSON-LD 导出与严格回读，语义层的 Turtle/JSON-LD/YAML 导出，
+以及 Apache Ossie Core Metadata `0.2.0.dev0` YAML 导入/导出。Ossie 映射覆盖 dataset、
+field、relationship、metric 的便携结构；空间谓词、GDA 业务审核、源指纹、执行资格和不能
+安全表达的合同保留在 GDA `custom_extensions`，防止静默丢失。
+
+运行命令和导入模式见 `docs/semantic_interoperability.md`。没有 GDA 扩展的外部 Ossie
+文件不能直接进入问数运行时，只能使用 `projection-only` 生成待审核草稿。

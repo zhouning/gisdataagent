@@ -270,7 +270,7 @@ def _artifact_semantic_index(source_id: int) -> dict[str, dict[str, Any]]:
             current_artifact_path(source_key, "semantic").read_text(encoding="utf-8")
         )
         candidates = json.loads(
-            current_artifact_path(source_key, "candidates").read_text(encoding="utf-8")
+            current_artifact_path(source_key, "semantic_candidates").read_text(encoding="utf-8")
         )
     except (OSError, ValueError, json.JSONDecodeError, KeyError):
         return {}
@@ -285,6 +285,11 @@ def _artifact_semantic_index(source_id: int) -> dict[str, dict[str, Any]]:
         index[table] = {
             "semantic_status": binding.get("semantic_coverage_status")
             or binding.get("binding_status"),
+            "semantic_display_name": (binding.get("labels") or {}).get("zh")
+            or (binding.get("labels") or {}).get("en"),
+            "semantic_description": binding.get("business_description") or "",
+            "semantic_aliases": list(binding.get("aliases") or []),
+            "semantic_grain": binding.get("business_grain"),
             "semantic_asset_id": None,
             "semantic_review_status": None,
             "semantic_execution_eligible": bool(binding.get("execution_eligible") is True),
@@ -293,6 +298,7 @@ def _artifact_semantic_index(source_id: int) -> dict[str, dict[str, Any]]:
                 "activation_reason": binding.get("activation_reason"),
                 "dictionary_status": (binding.get("dictionary_mapping") or {}).get("status"),
                 "dictionary_path": (binding.get("dictionary_mapping") or {}).get("dictionary_path"),
+                "business_table_card": binding.get("business_table_card_evidence"),
             },
             "fields": {},
         }
@@ -311,11 +317,20 @@ def _artifact_semantic_index(source_id: int) -> dict[str, dict[str, Any]]:
                 {
                     "semantic_asset_id": asset.get("asset_id"),
                     "semantic_review_status": review_status or None,
+                    "semantic_display_name": (asset.get("labels") or {}).get("zh")
+                    or (asset.get("labels") or {}).get("en"),
+                    "semantic_description": asset.get("description") or "",
+                    "semantic_aliases": list(asset.get("aliases") or []),
+                    "semantic_grain": asset.get("grain"),
                     "semantic_execution_eligible": reviewed,
                     "semantic_retrieval_eligible": reviewed,
                     "semantic_status": (
                         "reviewed_business_semantics" if reviewed else "technical_semantics_complete_business_review_pending"
                     ),
+                    "semantic_evidence": {
+                        **(entry.get("semantic_evidence") or {}),
+                        "business_table_card": asset.get("business_table_card_evidence"),
+                    },
                 }
             )
             for field in asset.get("fields") or []:
@@ -328,9 +343,27 @@ def _artifact_semantic_index(source_id: int) -> dict[str, dict[str, Any]]:
                     "semantic_field": field.get("semantic_field"),
                     "semantic_labels": dict(field.get("labels") or {}),
                     "business_role": field.get("business_role"),
-                    "semantic_status": "reviewed_business_semantics",
+                    "description": field.get("description") or field.get("definition") or "",
+                    "aliases": list(field.get("aliases") or []),
+                    "unit": field.get("unit") or "",
+                    "value_semantics": field.get("value_semantics") or {},
+                    "value_domain": list(field.get("value_domain") or []),
+                    "definition_status": field.get("definition_status"),
+                    "semantic_status": (
+                        "reviewed_business_semantics" if reviewed else "inferred_candidate"
+                    ),
                     "semantic_execution_eligible": reviewed,
-                    "semantic_inference": None,
+                    "business_table_card_evidence": field.get("business_table_card_evidence"),
+                    "semantic_inference": (
+                        field.get("inference")
+                        if reviewed and field.get("inference")
+                        else (None if reviewed else {
+                            "method": "ontology_plus_dictionary_plus_technical_metadata",
+                            "confidence": "candidate",
+                            "runtime_authority": False,
+                            "review_required": True,
+                        })
+                    ),
                 }
 
     for candidate in candidates.get("assets") or []:
@@ -377,6 +410,12 @@ def _artifact_semantic_index(source_id: int) -> dict[str, dict[str, Any]]:
                 "semantic_field": published_field.get("semantic_field") or existing.get("semantic_field"),
                 "semantic_labels": dict(published_field.get("labels") or existing.get("semantic_labels") or {}),
                 "business_role": published_field.get("business_role") or existing.get("business_role"),
+                "description": published_field.get("description") or existing.get("description") or "",
+                "aliases": list(published_field.get("aliases") or existing.get("aliases") or []),
+                "unit": published_field.get("unit") or existing.get("unit") or "",
+                "value_semantics": published_field.get("value_semantics") or existing.get("value_semantics") or {},
+                "value_domain": list(published_field.get("value_domain") or existing.get("value_domain") or []),
+                "definition_status": published_field.get("definition_status") or existing.get("definition_status"),
                 "semantic_status": existing.get("semantic_status") or (
                     "reviewed_business_semantics" if published_field else "inferred_candidate"
                 ),
@@ -390,8 +429,9 @@ def _artifact_semantic_index(source_id: int) -> dict[str, dict[str, Any]]:
                         "dictionary_evidence": bool(field.get("dictionary_supported")),
                         "runtime_authority": False,
                         "review_required": True,
-                    }
+                        }
                 ),
+                "business_table_card_evidence": published_field.get("business_table_card_evidence") or existing.get("business_table_card_evidence"),
                 "dictionary_evidence": {
                     "supported": bool(field.get("dictionary_supported")),
                     "description_available": bool(field.get("dictionary_description")),
@@ -413,6 +453,10 @@ def _attach_semantic_evidence(resources: list[dict], source_id: int) -> list[dic
         item = {
             **resource,
             "semantic_status": evidence.get("semantic_status"),
+            "semantic_display_name": evidence.get("semantic_display_name"),
+            "semantic_description": evidence.get("semantic_description") or "",
+            "semantic_aliases": list(evidence.get("semantic_aliases") or []),
+            "semantic_grain": evidence.get("semantic_grain"),
             "semantic_asset_id": evidence.get("semantic_asset_id"),
             "semantic_review_status": evidence.get("semantic_review_status"),
             "semantic_execution_eligible": bool(evidence.get("semantic_execution_eligible")),
@@ -429,13 +473,22 @@ def _attach_semantic_evidence(resources: list[dict], source_id: int) -> list[dic
                     "semantic_field": field.get("semantic_field"),
                     "semantic_labels": _redact_metadata(field.get("semantic_labels") or {}),
                     "business_role": field.get("business_role"),
+                    "description": field.get("description") or "",
+                    "aliases": list(field.get("aliases") or []),
+                    "unit": field.get("unit") or "",
+                    "value_semantics": _redact_metadata(field.get("value_semantics") or {}),
+                    "value_domain": list(field.get("value_domain") or []),
+                    "definition_status": field.get("definition_status"),
                     "semantic_status": field.get("semantic_status"),
                     "semantic_execution_eligible": bool(field.get("semantic_execution_eligible")),
                     "semantic_inference": _redact_metadata(field.get("semantic_inference")),
+                    "business_table_card_evidence": _redact_metadata(field.get("business_table_card_evidence") or {}),
                     "dictionary_evidence": _redact_metadata(field.get("dictionary_evidence") or {}),
                 }
             )
         item["columns"] = enriched_columns
+        if not item.get("comment") and item.get("semantic_description"):
+            item["comment"] = item["semantic_description"]
         enriched.append(item)
     return enriched
 

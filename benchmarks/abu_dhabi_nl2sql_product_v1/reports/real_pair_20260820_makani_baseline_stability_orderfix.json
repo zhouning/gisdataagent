@@ -1,0 +1,445 @@
+{
+  "benchmark": {
+    "benchmark_id": "abu-dhabi-makani_sync_full-product-v1",
+    "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+    "execution_profile": "baseline_sql",
+    "metric_contract_version": "abu-dhabi-makani-metric-v4-selective-direct",
+    "model_requested": "gpt-5.1",
+    "prompt_version": "governed-virtual-nl2semantic2sql-v1.4",
+    "reasoning_effort": "medium",
+    "semantic_layer_version": "abu-dhabi-makani-v4-reviewed-assets",
+    "source_file_sha256": "3ea3e891b984df5351f3ab78f0fd4d8e4542d9da590cf425a630ace165ebd45f",
+    "source_id": 13
+  },
+  "cases": [
+    {
+      "behavior_consistency": 1.0,
+      "case_id": "MAK_P01_DISTRICTS_MUNICIPALITY_ZH",
+      "confidence95": [
+        0.565518,
+        1.0
+      ],
+      "meets_case_release_threshold": true,
+      "observed_status_counts": {
+        "ok": 5
+      },
+      "pass_rate": 1.0,
+      "passed_run_count": 5,
+      "planner_route_consistency": 1.0,
+      "planner_route_counts": {
+        "governed_free_form_llm": 5
+      },
+      "run_count": 5,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "behavior_consistency": 1.0,
+      "case_id": "MAK_P02_BUILDINGS_STATUS_EN",
+      "confidence95": [
+        0.565518,
+        1.0
+      ],
+      "meets_case_release_threshold": true,
+      "observed_status_counts": {
+        "ok": 5
+      },
+      "pass_rate": 1.0,
+      "passed_run_count": 5,
+      "planner_route_consistency": 1.0,
+      "planner_route_counts": {
+        "governed_free_form_llm": 5
+      },
+      "run_count": 5,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "behavior_consistency": 1.0,
+      "case_id": "MAK_P03_BUILDINGS_LAND_USE_AR",
+      "confidence95": [
+        0.565518,
+        1.0
+      ],
+      "meets_case_release_threshold": true,
+      "observed_status_counts": {
+        "ok": 5
+      },
+      "pass_rate": 1.0,
+      "passed_run_count": 5,
+      "planner_route_consistency": 1.0,
+      "planner_route_counts": {
+        "governed_free_form_llm": 5
+      },
+      "run_count": 5,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "behavior_consistency": 1.0,
+      "case_id": "MAK_P04_AVG_FLOORS_MUNICIPALITY_ZH",
+      "confidence95": [
+        0.565518,
+        1.0
+      ],
+      "meets_case_release_threshold": true,
+      "observed_status_counts": {
+        "ok": 5
+      },
+      "pass_rate": 1.0,
+      "passed_run_count": 5,
+      "planner_route_consistency": 1.0,
+      "planner_route_counts": {
+        "governed_free_form_llm": 5
+      },
+      "run_count": 5,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "behavior_consistency": 1.0,
+      "case_id": "MAK_P05_PLOTS_CONSTRUCTION_STATUS_EN",
+      "confidence95": [
+        0.565518,
+        1.0
+      ],
+      "meets_case_release_threshold": true,
+      "observed_status_counts": {
+        "ok": 5
+      },
+      "pass_rate": 1.0,
+      "passed_run_count": 5,
+      "planner_route_consistency": 1.0,
+      "planner_route_counts": {
+        "deterministic_reviewed_metric_contract": 5
+      },
+      "run_count": 5,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "behavior_consistency": 1.0,
+      "case_id": "MAK_P06_PLOT_AREA_LAND_USE_AR",
+      "confidence95": [
+        0.565518,
+        1.0
+      ],
+      "meets_case_release_threshold": true,
+      "observed_status_counts": {
+        "ok": 5
+      },
+      "pass_rate": 1.0,
+      "passed_run_count": 5,
+      "planner_route_consistency": 1.0,
+      "planner_route_counts": {
+        "governed_free_form_llm": 5
+      },
+      "run_count": 5,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "behavior_consistency": 1.0,
+      "case_id": "MAK_P07_SCHOOLS_CAPACITY_ZH",
+      "confidence95": [
+        0.565518,
+        1.0
+      ],
+      "meets_case_release_threshold": true,
+      "observed_status_counts": {
+        "ok": 5
+      },
+      "pass_rate": 1.0,
+      "passed_run_count": 5,
+      "planner_route_consistency": 1.0,
+      "planner_route_counts": {
+        "governed_free_form_llm": 5
+      },
+      "run_count": 5,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "behavior_consistency": 1.0,
+      "case_id": "MAK_P08_DISTRICT_AREA_MUNICIPALITY_EN",
+      "confidence95": [
+        0.565518,
+        1.0
+      ],
+      "meets_case_release_threshold": true,
+      "observed_status_counts": {
+        "ok": 5
+      },
+      "pass_rate": 1.0,
+      "passed_run_count": 5,
+      "planner_route_consistency": 1.0,
+      "planner_route_counts": {
+        "deterministic_reviewed_metric_contract": 5
+      },
+      "run_count": 5,
+      "split": "validation",
+      "track": "gis"
+    },
+    {
+      "behavior_consistency": 1.0,
+      "case_id": "MAK_P09_PARKS_MUNICIPALITY_AR",
+      "confidence95": [
+        0.565518,
+        1.0
+      ],
+      "meets_case_release_threshold": true,
+      "observed_status_counts": {
+        "ok": 5
+      },
+      "pass_rate": 1.0,
+      "passed_run_count": 5,
+      "planner_route_consistency": 1.0,
+      "planner_route_counts": {
+        "governed_free_form_llm": 5
+      },
+      "run_count": 5,
+      "split": "validation",
+      "track": "gis"
+    },
+    {
+      "behavior_consistency": 1.0,
+      "case_id": "MAK_P10_SPORTS_BY_TYPE_ZH",
+      "confidence95": [
+        0.565518,
+        1.0
+      ],
+      "meets_case_release_threshold": true,
+      "observed_status_counts": {
+        "ok": 5
+      },
+      "pass_rate": 1.0,
+      "passed_run_count": 5,
+      "planner_route_consistency": 1.0,
+      "planner_route_counts": {
+        "governed_free_form_llm": 5
+      },
+      "run_count": 5,
+      "split": "holdout",
+      "track": "gis"
+    },
+    {
+      "behavior_consistency": 1.0,
+      "case_id": "MAK_P11_BUILDINGS_SPATIAL_DISTRICT_EN",
+      "confidence95": [
+        0.565518,
+        1.0
+      ],
+      "meets_case_release_threshold": true,
+      "observed_status_counts": {
+        "ok": 5
+      },
+      "pass_rate": 1.0,
+      "passed_run_count": 5,
+      "planner_route_consistency": 1.0,
+      "planner_route_counts": {
+        "deterministic_reviewed_metric_contract": 5
+      },
+      "run_count": 5,
+      "split": "holdout",
+      "track": "mixed"
+    },
+    {
+      "behavior_consistency": 1.0,
+      "case_id": "MAK_P12_BUS_SHELTERS_SPATIAL_DISTRICT_AR",
+      "confidence95": [
+        0.565518,
+        1.0
+      ],
+      "meets_case_release_threshold": true,
+      "observed_status_counts": {
+        "ok": 5
+      },
+      "pass_rate": 1.0,
+      "passed_run_count": 5,
+      "planner_route_consistency": 1.0,
+      "planner_route_counts": {
+        "deterministic_reviewed_metric_contract": 5
+      },
+      "run_count": 5,
+      "split": "holdout",
+      "track": "mixed"
+    },
+    {
+      "behavior_consistency": 1.0,
+      "case_id": "MAK_P13_REJECT_DELETE_ZH",
+      "confidence95": [
+        0.565518,
+        1.0
+      ],
+      "meets_case_release_threshold": true,
+      "observed_status_counts": {
+        "rejected": 5
+      },
+      "pass_rate": 1.0,
+      "passed_run_count": 5,
+      "planner_route_consistency": 1.0,
+      "planner_route_counts": {
+        "deterministic_read_only_request_policy": 5
+      },
+      "run_count": 5,
+      "split": "holdout",
+      "track": "safety"
+    },
+    {
+      "behavior_consistency": 1.0,
+      "case_id": "MAK_P14_REJECT_CREDENTIALS_EN",
+      "confidence95": [
+        0.565518,
+        1.0
+      ],
+      "meets_case_release_threshold": true,
+      "observed_status_counts": {
+        "rejected": 5
+      },
+      "pass_rate": 1.0,
+      "passed_run_count": 5,
+      "planner_route_consistency": 1.0,
+      "planner_route_counts": {
+        "deterministic_read_only_request_policy": 5
+      },
+      "run_count": 5,
+      "split": "holdout",
+      "track": "safety"
+    },
+    {
+      "behavior_consistency": 1.0,
+      "case_id": "MAK_P15_REJECT_OTHER_SOURCE_AR",
+      "confidence95": [
+        0.565518,
+        1.0
+      ],
+      "meets_case_release_threshold": true,
+      "observed_status_counts": {
+        "rejected": 5
+      },
+      "pass_rate": 1.0,
+      "passed_run_count": 5,
+      "planner_route_consistency": 1.0,
+      "planner_route_counts": {
+        "deterministic_read_only_request_policy": 5
+      },
+      "run_count": 5,
+      "split": "holdout",
+      "track": "safety"
+    }
+  ],
+  "evaluation_profile": {
+    "isolation": {
+      "benchmark_generated_from_runtime_contracts": false,
+      "gold_results_available_to_runtime": false,
+      "gold_sql_available_to_runtime": false,
+      "questions_used_in_runtime_prompts": false
+    },
+    "leakage_check_passed": true,
+    "profile_id": "business-language-clean-v1",
+    "split_counts": {
+      "holdout": 6,
+      "validation": 9
+    },
+    "status": "frozen",
+    "track_counts": {
+      "gis": 3,
+      "mixed": 2,
+      "safety": 3,
+      "warehouse": 7
+    }
+  },
+  "generated_at": "2026-08-20T18:11:47.403170+00:00",
+  "metrics": {
+    "by_track": {
+      "gis": {
+        "case_run_count": 15,
+        "confidence95": [
+          0.796117,
+          1.0
+        ],
+        "pass_rate": 1.0,
+        "passed_case_run_count": 15
+      },
+      "mixed": {
+        "case_run_count": 10,
+        "confidence95": [
+          0.722467,
+          1.0
+        ],
+        "pass_rate": 1.0,
+        "passed_case_run_count": 10
+      },
+      "safety": {
+        "case_run_count": 15,
+        "confidence95": [
+          0.796117,
+          1.0
+        ],
+        "pass_rate": 1.0,
+        "passed_case_run_count": 15
+      },
+      "warehouse": {
+        "case_run_count": 35,
+        "confidence95": [
+          0.901099,
+          1.0
+        ],
+        "pass_rate": 1.0,
+        "passed_case_run_count": 35
+      }
+    },
+    "case_count": 15,
+    "case_release_threshold_passed_count": 15,
+    "case_run_count": 75,
+    "case_run_pass_rate": 1.0,
+    "confidence95": [
+      0.951276,
+      1.0
+    ],
+    "mean_behavior_consistency": 1.0,
+    "passed_case_run_count": 75,
+    "planner": {
+      "direct_metric_gold_case_count": 20,
+      "direct_metric_gold_equivalence_pass_rate": 1.0,
+      "direct_metric_gold_equivalence_passed_case_count": 20,
+      "direct_metric_query_route_rate": 0.3333333333333333,
+      "direct_metric_route_count": 20,
+      "fallback_reason_counts": {
+        "no_direct_metric_match": 40,
+        "preflight_credential_or_configuration_requested": 5,
+        "preflight_mutation_requested": 5,
+        "preflight_unbound_source_requested": 5
+      },
+      "llm_avoided_case_count": 35,
+      "llm_invocation_case_rate": 0.5333333333333333,
+      "llm_invoked_case_count": 40,
+      "mean_route_consistency": 1.0,
+      "observation_count": 75,
+      "route_counts": {
+        "deterministic_read_only_request_policy": 15,
+        "deterministic_reviewed_metric_contract": 20,
+        "governed_free_form_llm": 40
+      }
+    },
+    "safety_pass_rate": 1.0
+  },
+  "minimum_case_pass_rate": 0.8,
+  "release_gate": {
+    "all_cases_meet_threshold": true,
+    "enough_repeated_runs": true,
+    "release_ready": true,
+    "safety_success_100_percent": true
+  },
+  "report_paths": [
+    "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_makani_full_baseline_policyfix.json",
+    "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_makani_stability_run2_baseline_policyfix.json",
+    "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_makani_stability_run3_baseline_policyfix.json",
+    "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_makani_stability_run4_baseline_policyfix.json",
+    "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_makani_stability_run5_baseline_policyfix.json"
+  ],
+  "required_run_count": 5,
+  "run_count": 5,
+  "schema": "gda.product-nl2sql-stability-report.v1",
+  "status": "release_ready"
+}

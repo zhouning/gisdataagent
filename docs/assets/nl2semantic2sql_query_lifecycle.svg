@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="790" viewBox="0 0 1600 790">
+  <defs>
+    <marker id="arrow2" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#52606d"/>
+    </marker>
+    <style>
+      .title { font: 700 30px Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill:#102a43; }
+      .head { font: 700 20px Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill:#102a43; }
+      .body { font: 17px Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill:#243b53; }
+      .muted { font: 15px Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill:#486581; }
+      .node { stroke-width:2; rx:14; }
+      .arrow { stroke:#52606d; stroke-width:3; fill:none; marker-end:url(#arrow2); }
+    </style>
+  </defs>
+  <rect width="1600" height="790" fill="#f8fafc"/>
+  <text x="800" y="48" text-anchor="middle" class="title">单题响应时序：给出学校容量最高的市辖区</text>
+  <text x="800" y="78" text-anchor="middle" class="muted">同一共享前置链路，在两条路线的提案与执行阶段分叉</text>
+
+  <rect x="60" y="135" width="220" height="100" class="node" fill="#e3f8ff" stroke="#0b7285"/>
+  <text x="170" y="175" text-anchor="middle" class="head">用户问题</text>
+  <text x="170" y="207" text-anchor="middle" class="body">自然语言输入</text>
+
+  <rect x="345" y="115" width="265" height="140" class="node" fill="#fff3bf" stroke="#f08c00"/>
+  <text x="477" y="155" text-anchor="middle" class="head">请求与策略预检</text>
+  <text x="365" y="190" class="body">语言、只读、安全</text>
+  <text x="365" y="220" class="body">source_id=13</text>
+
+  <rect x="675" y="115" width="265" height="140" class="node" fill="#fff3bf" stroke="#f08c00"/>
+  <text x="807" y="155" text-anchor="middle" class="head">语义 grounding</text>
+  <text x="695" y="190" class="body">772 表 → 2 候选</text>
+  <text x="695" y="220" class="body">→ makani.school</text>
+
+  <rect x="1005" y="115" width="265" height="140" class="node" fill="#e7f5e8" stroke="#2b8a3e"/>
+  <text x="1137" y="155" text-anchor="middle" class="head">Gemini 提案</text>
+  <text x="1025" y="190" class="body">baseline：SQL</text>
+  <text x="1025" y="220" class="body">IR：SemanticQueryIR</text>
+
+  <path d="M280 185 L345 185" class="arrow"/>
+  <path d="M610 185 L675 185" class="arrow"/>
+  <path d="M940 185 L1005 185" class="arrow"/>
+
+  <rect x="160" y="380" width="470" height="220" class="node" fill="#dbeafe" stroke="#2f80ed"/>
+  <text x="395" y="420" text-anchor="middle" class="head">baseline_sql 当前实测</text>
+  <text x="190" y="462" class="body">SQL 校验 → 真实只读执行</text>
+  <text x="190" y="500" class="body">Abu Dhabi / 413298</text>
+  <text x="190" y="548" class="muted">status=ok；DB=212.787 ms</text>
+
+  <rect x="850" y="380" width="590" height="220" class="node" fill="#f0e5f7" stroke="#8e44ad"/>
+  <text x="1145" y="420" text-anchor="middle" class="head">semantic_ir_experimental 当前实测</text>
+  <text x="880" y="462" class="body">schema 校验：两个 projection 缺少 output_name</text>
+  <text x="880" y="500" class="body">不编译、不生成 SQL、不执行数据库</text>
+  <text x="880" y="548" class="muted">status=error；不允许静默回退 baseline</text>
+
+  <path d="M1137 255 L395 380" class="arrow"/>
+  <path d="M1137 255 L1145 380" class="arrow"/>
+
+  <rect x="430" y="675" width="740" height="58" class="node" fill="#ffffff" stroke="#52606d"/>
+  <text x="800" y="711" text-anchor="middle" class="body">结果合同 / fingerprint / route / model / failure class 全部留痕</text>
+</svg>

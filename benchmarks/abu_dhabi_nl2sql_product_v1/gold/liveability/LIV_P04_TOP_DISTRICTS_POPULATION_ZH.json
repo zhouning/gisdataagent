@@ -1,0 +1,46 @@
+{
+  "contract_id": "LIV_P04_TOP_DISTRICTS_POPULATION_ZH_GOLD_V1",
+  "equivalence": {
+    "accepted_fingerprint_keys": [
+      "unordered_position_numeric6_fingerprint",
+      "position_numeric6_fingerprint",
+      "unordered_position_fingerprint",
+      "position_fingerprint"
+    ],
+    "column_aliases_compare_by_position": true,
+    "expected_fingerprints": {
+      "position_fingerprint": "8e6543239278db2ac21c6d48cd6a80a47f315ea7ae4fc027e062a18ec27642f8",
+      "position_numeric6_fingerprint": "58709f2d91f03c29c7bc2de1050df52bbb2bde84c62054e0b4fe09e6a43cda3c",
+      "unordered_position_fingerprint": "4a07a9804d8dff3c946f8aefaa656a50c26a831213e6ed6ea6ff46637b2b8cdd",
+      "unordered_position_numeric6_fingerprint": "7d99518d3993afd9eeb23cc38ab7032bfec4f134412aaa0dc4f1a3e2f8a88867"
+    },
+    "numeric_precision": 6,
+    "order_sensitive": false
+  },
+  "evaluation_only": true,
+  "expected_result": {
+    "columns": [
+      "district_name_en",
+      "total_population"
+    ],
+    "ordered_result_fingerprint": "caab9a5a0ba9a8095421126cc6d23b48a8dcfd81f93ea2180225d0df8618f407",
+    "row_count": 10
+  },
+  "query": {
+    "bounded_limit": 1000,
+    "path": "benchmarks/abu_dhabi_nl2sql_product_v1/gold/liveability/LIV_P04_TOP_DISTRICTS_POPULATION_ZH.sql",
+    "read_only": true,
+    "sha256": "658c8e3a5e2d99b6a7aa4cfbe58177ab372114a222606515c7f493a2f3b50b51"
+  },
+  "runtime_access": "prohibited",
+  "schema": "gda.nl2sql-gold-result-contract.v1",
+  "source_contract": {
+    "authorized_schema": "public",
+    "database_name": "liveability_data_20260730",
+    "discovery_fingerprint": "506d986836ac9a421a99c88c6d01b15abaa7b7f053d3d6a575cb1db9912c7269",
+    "profile_fingerprint": "f86a8a522797ae4bbf6d067967411f4a854f8a8c6fe468087428d73abbcd1768",
+    "semantic_version": "abu-dhabi-liveability-v4-reviewed-assets",
+    "source_id": 12
+  },
+  "status": "frozen_evaluation_only_product_gold_v1"
+}

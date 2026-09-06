@@ -6,6 +6,23 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 from data_agent.database_tools import get_db_connection_url, query_database, import_to_postgis
 
 class TestDatabase(unittest.TestCase):
+    def test_governed_read_query_allows_governed_json_array_table_function(self):
+        from data_agent.connectors.database import _governed_read_query
+
+        sql = (
+            "SELECT d.name_en, SUM((item ->> 'Nb_of_Accidents')::numeric) AS total "
+            "FROM public.fact_oi_indicators AS f "
+            "JOIN public.dim_districts AS d ON f.district_id = d.district_id "
+            "CROSS JOIN LATERAL jsonb_array_elements("
+            "CASE WHEN jsonb_typeof(f.data) = 'array' THEN f.data "
+            "ELSE CAST('[]' AS JSONB) END) AS item "
+            "WHERE f.indicator_type = 'crash_data_pedestrian' "
+            "GROUP BY d.name_en"
+        )
+
+        bounded = _governed_read_query(sql, ("public",), 1000)
+
+        self.assertIn("LIMIT 1000", bounded)
     @patch.dict(os.environ, {
         "DATABASE_URL": "postgresql+asyncpg://agent:p%40ss@db:5432/gis",
         "POSTGRES_USER": "legacy",

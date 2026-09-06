@@ -1,0 +1,47 @@
+{
+  "contract_id": "LIV_P08_FACILITIES_DISTRICT_TYPE_EN_GOLD_V1",
+  "equivalence": {
+    "accepted_fingerprint_keys": [
+      "unordered_position_numeric6_fingerprint",
+      "position_numeric6_fingerprint",
+      "unordered_position_fingerprint",
+      "position_fingerprint"
+    ],
+    "column_aliases_compare_by_position": true,
+    "expected_fingerprints": {
+      "position_fingerprint": "58461efe2b04c8d04d029246fe6f95c8e4b8c7a1826cad3cc8731f4b256fc3d8",
+      "position_numeric6_fingerprint": "addf0b684ae9a1ee7cf85349d8f935c905bcf9480119dc43955bfea87234b986",
+      "unordered_position_fingerprint": "110d35d7751657b7d69848f8e01ed1f6f1ab724ab5d3d875b8f01cf10832e917",
+      "unordered_position_numeric6_fingerprint": "afcd581937726fdd2794d8d8745d007218709f816e9d82dd436680fd694b92b3"
+    },
+    "numeric_precision": 6,
+    "order_sensitive": false
+  },
+  "evaluation_only": true,
+  "expected_result": {
+    "columns": [
+      "district_name",
+      "facility_type",
+      "facility_count"
+    ],
+    "ordered_result_fingerprint": "39a646e569f8be5a42658b1fbebc28045449d352d1814f75210cf09e8d2d3988",
+    "row_count": 1000
+  },
+  "query": {
+    "bounded_limit": 1000,
+    "path": "benchmarks/abu_dhabi_nl2sql_product_v1/gold/liveability/LIV_P08_FACILITIES_DISTRICT_TYPE_EN.sql",
+    "read_only": true,
+    "sha256": "f0e5091f7d32920f0f393b3f6f0bc423419bf02aeb26308b70c75b1a299cdf39"
+  },
+  "runtime_access": "prohibited",
+  "schema": "gda.nl2sql-gold-result-contract.v1",
+  "source_contract": {
+    "authorized_schema": "public",
+    "database_name": "liveability_data_20260730",
+    "discovery_fingerprint": "506d986836ac9a421a99c88c6d01b15abaa7b7f053d3d6a575cb1db9912c7269",
+    "profile_fingerprint": "f86a8a522797ae4bbf6d067967411f4a854f8a8c6fe468087428d73abbcd1768",
+    "semantic_version": "abu-dhabi-liveability-v4-reviewed-assets",
+    "source_id": 12
+  },
+  "status": "frozen_evaluation_only_product_gold_v1"
+}

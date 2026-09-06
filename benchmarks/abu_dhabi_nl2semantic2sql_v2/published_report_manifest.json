@@ -1,0 +1,30 @@
+{
+  "schema": "gda.abu-dhabi-nl2semantic2sql-v2-published-report-manifest.v1",
+  "release_id": "real-source-v6-20260821",
+  "published_at": "2026-08-21T09:33:02Z",
+  "reports": {
+    "baseline_sql": {
+      "path": "benchmarks/abu_dhabi_nl2semantic2sql_v2/reports/real_source_baseline_v6_final_20260821_0928utc.json",
+      "sha256": "5ab5d0514183dce22ac47467b0cfbf100f50b8a5c38190dd56b6642fa7dea069"
+    },
+    "semantic_ir_experimental": {
+      "path": "benchmarks/abu_dhabi_nl2semantic2sql_v2/reports/real_source_semantic_ir_v6_final_20260821_0931utc.json",
+      "sha256": "41ec68c61a3da82865d7425b836f513112155f0775c0a75ba1ea1bb51380e724"
+    },
+    "pairwise": {
+      "path": "benchmarks/abu_dhabi_nl2semantic2sql_v2/reports/pairwise_v6_final_20260821_0933utc.json",
+      "sha256": "ead0f2df7c2f1e88c5cced2cd571ab68cf7534e50c73587b48dcaadf7de5bae9"
+    },
+    "stability": {
+      "path": "benchmarks/abu_dhabi_nl2semantic2sql_v2/reports/stability_summary_3run_20260821.json",
+      "sha256": "b549e56253285f5097666e327032ca5913417034244c3abc62deb24e0195ec57"
+    }
+  },
+  "publication_policy": {
+    "private_gold_payload_included": false,
+    "source_rows_included": false,
+    "report_checksums_verified_on_read": true,
+    "single_run_can_promote_candidate": false,
+    "repeated_stability_evidence_required": true
+  }
+}

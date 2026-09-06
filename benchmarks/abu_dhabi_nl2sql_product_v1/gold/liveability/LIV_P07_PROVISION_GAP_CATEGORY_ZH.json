@@ -1,0 +1,49 @@
+{
+  "contract_id": "LIV_P07_PROVISION_GAP_CATEGORY_ZH_GOLD_V1",
+  "equivalence": {
+    "accepted_fingerprint_keys": [
+      "unordered_position_numeric6_fingerprint",
+      "position_numeric6_fingerprint",
+      "unordered_position_fingerprint",
+      "position_fingerprint"
+    ],
+    "column_aliases_compare_by_position": true,
+    "expected_fingerprints": {
+      "position_fingerprint": "44982a1e27e1ecca2f171930783a7e2d503595d4040da0879bfeccf93c90a83c",
+      "position_numeric6_fingerprint": "ffe9953e7e52f2923b9959e0adf543f3ce979b6d3ff3efe0e4f617fffd757cb3",
+      "unordered_position_fingerprint": "44982a1e27e1ecca2f171930783a7e2d503595d4040da0879bfeccf93c90a83c",
+      "unordered_position_numeric6_fingerprint": "ffe9953e7e52f2923b9959e0adf543f3ce979b6d3ff3efe0e4f617fffd757cb3"
+    },
+    "numeric_precision": 6,
+    "order_sensitive": false
+  },
+  "evaluation_only": true,
+  "expected_result": {
+    "columns": [
+      "category_name",
+      "current_demand",
+      "existing_count",
+      "pipeline_count",
+      "current_gap"
+    ],
+    "ordered_result_fingerprint": "608bce2bbd0de65b6d7eed2431fa067fe60334f991ee848269c8f7a6f03e7ede",
+    "row_count": 9
+  },
+  "query": {
+    "bounded_limit": 1000,
+    "path": "benchmarks/abu_dhabi_nl2sql_product_v1/gold/liveability/LIV_P07_PROVISION_GAP_CATEGORY_ZH.sql",
+    "read_only": true,
+    "sha256": "41f25f3d42ae8d6de1e753510cd7d551396a602d98eb1cf1cf01abf51b1f099f"
+  },
+  "runtime_access": "prohibited",
+  "schema": "gda.nl2sql-gold-result-contract.v1",
+  "source_contract": {
+    "authorized_schema": "public",
+    "database_name": "liveability_data_20260730",
+    "discovery_fingerprint": "506d986836ac9a421a99c88c6d01b15abaa7b7f053d3d6a575cb1db9912c7269",
+    "profile_fingerprint": "f86a8a522797ae4bbf6d067967411f4a854f8a8c6fe468087428d73abbcd1768",
+    "semantic_version": "abu-dhabi-liveability-v4-reviewed-assets",
+    "source_id": 12
+  },
+  "status": "frozen_evaluation_only_product_gold_v1"
+}

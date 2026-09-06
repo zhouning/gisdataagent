@@ -940,6 +940,45 @@ html[lang^='ar'] {
 .abu-flood-deliverable > span { color: var(--text-tertiary); font-family: var(--font-mono); font-size: 9px; }
 .abu-flood-deliverable svg { color: var(--success); }
 .abu-flood-deliverable strong { color: var(--text-secondary); font-size: 9px; line-height: 1.35; }
+.abu-flood-event-evidence { display: flex; flex-direction: column; gap: 10px; }
+.abu-flood-event-loading { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 160px; color: var(--text-tertiary); font-size: 10px; }
+.abu-flood-event-boundary { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: flex-start; gap: 9px; padding: 10px; border: 1px solid rgba(245,158,11,.38); border-left: 3px solid var(--warning); border-radius: 5px; background: rgba(245,158,11,.06); }
+.abu-flood-event-boundary > svg { color: var(--warning); margin-top: 1px; }
+.abu-flood-event-boundary strong { display: block; color: var(--text); font-size: 10px; }
+.abu-flood-event-boundary p { margin-top: 4px; color: var(--text-secondary); font-size: 9px; line-height: 1.5; }
+.abu-flood-event-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.abu-flood-event-fact { min-width: 0; padding: 9px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg); }
+.abu-flood-event-fact > span { display: block; color: var(--text-tertiary); font-size: 8px; line-height: 1.3; }
+.abu-flood-event-fact > strong { display: block; margin: 5px 0 4px; color: var(--text); font-family: var(--font-mono); font-size: 13px; }
+.abu-flood-event-fact p { min-height: 34px; color: var(--text-secondary); font-size: 8px; line-height: 1.45; }
+.abu-flood-event-fact a,
+.abu-flood-event-timeline-item a { display: inline-flex; align-items: center; gap: 4px; margin-top: 7px; color: #67e8f9; font-size: 8px; text-decoration: none; }
+.abu-flood-event-fact a:hover,
+.abu-flood-event-timeline-item a:hover { text-decoration: underline; }
+.abu-flood-event-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 10px; }
+.abu-flood-event-panel,
+.abu-flood-event-gaps { min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg); }
+.abu-flood-event-panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.abu-flood-event-panel-heading h4 { margin-top: 3px; color: var(--text); font-size: 11px; }
+.abu-flood-event-chart { display: flex; align-items: flex-end; gap: 2px; height: 112px; padding: 8px 5px 4px; border-bottom: 1px solid var(--border-light); background: linear-gradient(to top, rgba(56,189,248,.06), transparent); }
+.abu-flood-event-chart > span { min-width: 2px; flex: 1 1 0; border-radius: 1px 1px 0 0; background: linear-gradient(to top, #38bdf8, #f59e0b); opacity: .9; }
+.abu-flood-event-chart-axis { display: flex; justify-content: space-between; gap: 5px; margin-top: 5px; color: var(--text-tertiary); font-family: var(--font-mono); font-size: 8px; }
+.abu-flood-event-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-top: 9px; }
+.abu-flood-event-stats > div { padding: 6px; border: 1px solid rgba(148,163,184,.16); border-radius: 4px; }
+.abu-flood-event-stats span { display: block; color: var(--text-tertiary); font-size: 8px; }
+.abu-flood-event-stats strong { display: block; margin-top: 3px; color: var(--text-secondary); font-family: var(--font-mono); font-size: 10px; }
+.abu-flood-event-assumptions { margin: 9px 0 0 15px; color: var(--text-tertiary); font-size: 8px; line-height: 1.45; }
+.abu-flood-event-timeline { display: flex; flex-direction: column; gap: 0; max-height: 370px; overflow: auto; }
+.abu-flood-event-timeline-item { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; padding: 7px 0; border-bottom: 1px solid rgba(148,163,184,.13); }
+.abu-flood-event-timeline-item:last-child { border-bottom: 0; }
+.abu-flood-event-timeline-item time { color: var(--warning); font-family: var(--font-mono); font-size: 8px; line-height: 1.4; }
+.abu-flood-event-timeline-item strong { display: block; color: var(--text-secondary); font-size: 9px; line-height: 1.3; }
+.abu-flood-event-timeline-item p { margin-top: 2px; color: var(--text-tertiary); font-size: 8px; line-height: 1.4; }
+.abu-flood-event-gap-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.abu-flood-event-gap-grid > div { padding: 8px; border: 1px solid rgba(148,163,184,.16); border-radius: 4px; }
+.abu-flood-event-gap-grid strong { display: block; color: var(--text-secondary); font-size: 9px; line-height: 1.35; }
+.abu-flood-event-gap-grid span { display: block; margin-top: 4px; color: var(--text-tertiary); font-size: 8px; line-height: 1.4; }
+.abu-flood-event-map-note { display: flex; align-items: center; gap: 6px; margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--border); color: var(--warning); font-size: 8px; }
 .abu-flood-status-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 11px; border: 1px solid rgba(245,158,11,.35); border-radius: 6px; background: rgba(245,158,11,.06); }
 .abu-flood-status-footer > div { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .abu-flood-status-footer svg { color: var(--warning); flex: 0 0 auto; }
@@ -953,7 +992,10 @@ html[lang^='ar'] {
   .abu-flood-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .abu-flood-map-section,
   .abu-flood-detail-grid,
-  .abu-flood-scenario-grid { grid-template-columns: 1fr; }
+  .abu-flood-scenario-grid,
+  .abu-flood-event-grid { grid-template-columns: 1fr; }
+  .abu-flood-event-facts { grid-template-columns: 1fr; }
+  .abu-flood-event-gap-grid { grid-template-columns: 1fr; }
   .abu-flood-map-layers { border-top: 1px solid var(--border); border-left: 0; }
   .abu-flood-scenario-result { border-top: 1px solid var(--border); border-left: 0; }
   .abu-flood-stage-track { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
@@ -10017,6 +10059,22 @@ html[lang^='ar'] {
 .semantic-alert { padding: 6px 10px; border-radius: 4px; font-size: 12px; }
 .semantic-alert.error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
 .semantic-alert.info { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #93c5fd; }
+
+.semantic-interop-panel { background: var(--surface); border: 1px solid var(--border-light); padding: 10px 12px; }
+.semantic-interop-panel.compact { margin: 8px 10px 0; }
+.semantic-interop-heading { align-items: center; display: flex; gap: 12px; justify-content: space-between; }
+.semantic-interop-heading h4 { color: var(--text); font-size: 13px; margin: 2px 0 3px; }
+.semantic-interop-heading span:not(.semantic-workspace-kicker) { color: var(--text-tertiary); font-size: 10px; }
+.semantic-interop-authority { align-items: center; color: var(--text-tertiary); display: inline-flex; font-size: 10px; gap: 4px; white-space: nowrap; }
+.semantic-interop-controls { align-items: end; display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+.semantic-interop-controls label { color: var(--text-tertiary); display: flex; flex-direction: column; font-size: 10px; gap: 3px; }
+.semantic-interop-controls select { background: var(--surface-elevated); border: 1px solid var(--border); color: var(--text-secondary); font-size: 11px; min-width: 128px; padding: 5px 7px; }
+.semantic-interop-controls button { align-items: center; display: inline-flex; gap: 4px; }
+.semantic-interop-panel .semantic-alert { align-items: center; display: flex; gap: 5px; margin-top: 8px; }
+.semantic-interop-stages { border-top: 1px solid var(--border); color: var(--text-tertiary); display: flex; flex-direction: column; font-size: 10px; gap: 4px; margin-top: 8px; padding-top: 7px; }
+.semantic-interop-stages > div { align-items: center; display: flex; flex-wrap: wrap; gap: 5px 12px; }
+.semantic-interop-stages > div span:first-child { color: var(--primary); font-family: var(--font-mono); }
+.semantic-interop-stages em { color: #fbbf24; font-style: normal; }
 
 .semantic-body { display: flex; gap: 10px; flex: 1; overflow: hidden; min-height: 0; }
 

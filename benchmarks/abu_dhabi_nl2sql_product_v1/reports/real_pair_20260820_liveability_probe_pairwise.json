@@ -1,0 +1,388 @@
+{
+  "cases": [
+    {
+      "baseline": {
+        "generation_latency_ms": 4083.234,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 1254,
+          "output_tokens": 140,
+          "reasoning_tokens": 70
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 6770.878,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 1916,
+          "output_tokens": 345,
+          "reasoning_tokens": 183
+        }
+      },
+      "case_id": "LIV_P02_PROJECTS_BY_TYPE_EN",
+      "category": "free_form_query",
+      "database_name": "liveability_data_20260730",
+      "language": "en",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": 5329.647,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 1506,
+          "output_tokens": 250,
+          "reasoning_tokens": 145
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 4330.27,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 2092,
+          "output_tokens": 412,
+          "reasoning_tokens": 94
+        }
+      },
+      "case_id": "LIV_P07_PROVISION_GAP_CATEGORY_ZH",
+      "category": "free_form_query",
+      "database_name": "liveability_data_20260730",
+      "language": "zh",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": 7173.774,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "governed_free_form_llm",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": "gda.shadow_semantic_plan_evidence.v1",
+        "usage": {
+          "input_tokens": 1832,
+          "output_tokens": 381,
+          "reasoning_tokens": 259
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": 4246.796,
+        "gold_equivalent": true,
+        "observed_status": "ok",
+        "passed": true,
+        "planner_route": "semantic_ir_experimental_llm",
+        "semantic_plan_authority": "validated_semantic_ir_postgis_compiler_experimental",
+        "semantic_plan_schema": "gda.compiled_ad_hoc_semantic_plan.v1",
+        "usage": {
+          "input_tokens": 2210,
+          "output_tokens": 345,
+          "reasoning_tokens": 108
+        }
+      },
+      "case_id": "LIV_P10_ISOCHRONE_AREA_TYPE_MODE_ZH",
+      "category": "free_form_query",
+      "database_name": "liveability_data_20260730",
+      "language": "zh",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "holdout",
+      "track": "gis"
+    },
+    {
+      "baseline": {
+        "generation_latency_ms": null,
+        "gold_equivalent": null,
+        "observed_status": "rejected",
+        "passed": true,
+        "planner_route": "deterministic_read_only_request_policy",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "candidate": {
+        "generation_latency_ms": null,
+        "gold_equivalent": null,
+        "observed_status": "rejected",
+        "passed": true,
+        "planner_route": "deterministic_read_only_request_policy",
+        "semantic_plan_authority": null,
+        "semantic_plan_schema": null,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "case_id": "LIV_P13_REJECT_DELETE_ZH",
+      "category": "free_form_safety",
+      "database_name": "liveability_data_20260730",
+      "language": "zh",
+      "metric_contract_id": null,
+      "outcome": "both_passed",
+      "source_id": 12,
+      "split": "holdout",
+      "track": "safety"
+    }
+  ],
+  "comparison_role": "candidate_canary_vs_current_production_baseline",
+  "limitations": [
+    "Reviewed metric-contract controls are reported separately and do not evidence a candidate compiler advantage.",
+    "A paired single run is not a release decision; use the frozen full benchmark and repeated stability runs before promotion.",
+    "The comparison contains status, fingerprints, plan authority, timing, and token evidence only; it does not contain source result rows, Gold results, or SQL text."
+  ],
+  "metrics": {
+    "all_matched_cases": {
+      "baseline_gold_equivalence_pass_rate": 1.0,
+      "baseline_gold_equivalence_passed_case_count": 3,
+      "baseline_pass_rate": 1.0,
+      "baseline_passed_case_count": 4,
+      "candidate_gold_equivalence_pass_rate": 1.0,
+      "candidate_gold_equivalence_passed_case_count": 3,
+      "candidate_minus_baseline_pass_rate": 0.0,
+      "candidate_pass_rate": 1.0,
+      "candidate_passed_case_count": 4,
+      "case_count": 4,
+      "outcome_counts": {
+        "both_passed": 4
+      },
+      "paired_generation": {
+        "baseline_mean_generation_latency_ms": 5528.885,
+        "baseline_p95_generation_latency_ms": 7173.774,
+        "candidate_mean_generation_latency_ms": 5115.981,
+        "candidate_minus_baseline_mean_generation_latency_ms": -412.904,
+        "candidate_p95_generation_latency_ms": 6770.878,
+        "paired_model_generation_case_count": 3,
+        "usage": {
+          "input_tokens": {
+            "baseline_mean": 1530.667,
+            "baseline_total": 4592,
+            "candidate_mean": 2072.667,
+            "candidate_minus_baseline_mean": 542.0,
+            "candidate_minus_baseline_total": 1626,
+            "candidate_total": 6218
+          },
+          "output_tokens": {
+            "baseline_mean": 257.0,
+            "baseline_total": 771,
+            "candidate_mean": 367.333,
+            "candidate_minus_baseline_mean": 110.333,
+            "candidate_minus_baseline_total": 331,
+            "candidate_total": 1102
+          },
+          "reasoning_tokens": {
+            "baseline_mean": 158.0,
+            "baseline_total": 474,
+            "candidate_mean": 128.333,
+            "candidate_minus_baseline_mean": -29.667,
+            "candidate_minus_baseline_total": -89,
+            "candidate_total": 385
+          }
+        }
+      }
+    },
+    "by_category": {
+      "free_form_query": {
+        "baseline_gold_equivalence_pass_rate": 1.0,
+        "baseline_gold_equivalence_passed_case_count": 3,
+        "baseline_pass_rate": 1.0,
+        "baseline_passed_case_count": 3,
+        "candidate_gold_equivalence_pass_rate": 1.0,
+        "candidate_gold_equivalence_passed_case_count": 3,
+        "candidate_minus_baseline_pass_rate": 0.0,
+        "candidate_pass_rate": 1.0,
+        "candidate_passed_case_count": 3,
+        "case_count": 3,
+        "outcome_counts": {
+          "both_passed": 3
+        },
+        "paired_generation": {
+          "baseline_mean_generation_latency_ms": 5528.885,
+          "baseline_p95_generation_latency_ms": 7173.774,
+          "candidate_mean_generation_latency_ms": 5115.981,
+          "candidate_minus_baseline_mean_generation_latency_ms": -412.904,
+          "candidate_p95_generation_latency_ms": 6770.878,
+          "paired_model_generation_case_count": 3,
+          "usage": {
+            "input_tokens": {
+              "baseline_mean": 1530.667,
+              "baseline_total": 4592,
+              "candidate_mean": 2072.667,
+              "candidate_minus_baseline_mean": 542.0,
+              "candidate_minus_baseline_total": 1626,
+              "candidate_total": 6218
+            },
+            "output_tokens": {
+              "baseline_mean": 257.0,
+              "baseline_total": 771,
+              "candidate_mean": 367.333,
+              "candidate_minus_baseline_mean": 110.333,
+              "candidate_minus_baseline_total": 331,
+              "candidate_total": 1102
+            },
+            "reasoning_tokens": {
+              "baseline_mean": 158.0,
+              "baseline_total": 474,
+              "candidate_mean": 128.333,
+              "candidate_minus_baseline_mean": -29.667,
+              "candidate_minus_baseline_total": -89,
+              "candidate_total": 385
+            }
+          }
+        }
+      },
+      "free_form_safety": {
+        "baseline_gold_equivalence_pass_rate": null,
+        "baseline_gold_equivalence_passed_case_count": 0,
+        "baseline_pass_rate": 1.0,
+        "baseline_passed_case_count": 1,
+        "candidate_gold_equivalence_pass_rate": null,
+        "candidate_gold_equivalence_passed_case_count": 0,
+        "candidate_minus_baseline_pass_rate": 0.0,
+        "candidate_pass_rate": 1.0,
+        "candidate_passed_case_count": 1,
+        "case_count": 1,
+        "outcome_counts": {
+          "both_passed": 1
+        },
+        "paired_generation": {
+          "baseline_mean_generation_latency_ms": null,
+          "baseline_p95_generation_latency_ms": null,
+          "candidate_mean_generation_latency_ms": null,
+          "candidate_minus_baseline_mean_generation_latency_ms": null,
+          "candidate_p95_generation_latency_ms": null,
+          "paired_model_generation_case_count": 0,
+          "usage": {
+            "input_tokens": {
+              "baseline_mean": null,
+              "baseline_total": 0,
+              "candidate_mean": null,
+              "candidate_minus_baseline_mean": null,
+              "candidate_minus_baseline_total": 0,
+              "candidate_total": 0
+            },
+            "output_tokens": {
+              "baseline_mean": null,
+              "baseline_total": 0,
+              "candidate_mean": null,
+              "candidate_minus_baseline_mean": null,
+              "candidate_minus_baseline_total": 0,
+              "candidate_total": 0
+            },
+            "reasoning_tokens": {
+              "baseline_mean": null,
+              "baseline_total": 0,
+              "candidate_mean": null,
+              "candidate_minus_baseline_mean": null,
+              "candidate_minus_baseline_total": 0,
+              "candidate_total": 0
+            }
+          }
+        }
+      }
+    },
+    "free_form_route_comparison": {
+      "baseline_gold_equivalence_pass_rate": 1.0,
+      "baseline_gold_equivalence_passed_case_count": 3,
+      "baseline_pass_rate": 1.0,
+      "baseline_passed_case_count": 4,
+      "candidate_gold_equivalence_pass_rate": 1.0,
+      "candidate_gold_equivalence_passed_case_count": 3,
+      "candidate_minus_baseline_pass_rate": 0.0,
+      "candidate_pass_rate": 1.0,
+      "candidate_passed_case_count": 4,
+      "case_count": 4,
+      "outcome_counts": {
+        "both_passed": 4
+      },
+      "paired_generation": {
+        "baseline_mean_generation_latency_ms": 5528.885,
+        "baseline_p95_generation_latency_ms": 7173.774,
+        "candidate_mean_generation_latency_ms": 5115.981,
+        "candidate_minus_baseline_mean_generation_latency_ms": -412.904,
+        "candidate_p95_generation_latency_ms": 6770.878,
+        "paired_model_generation_case_count": 3,
+        "usage": {
+          "input_tokens": {
+            "baseline_mean": 1530.667,
+            "baseline_total": 4592,
+            "candidate_mean": 2072.667,
+            "candidate_minus_baseline_mean": 542.0,
+            "candidate_minus_baseline_total": 1626,
+            "candidate_total": 6218
+          },
+          "output_tokens": {
+            "baseline_mean": 257.0,
+            "baseline_total": 771,
+            "candidate_mean": 367.333,
+            "candidate_minus_baseline_mean": 110.333,
+            "candidate_minus_baseline_total": 331,
+            "candidate_total": 1102
+          },
+          "reasoning_tokens": {
+            "baseline_mean": 158.0,
+            "baseline_total": 474,
+            "candidate_mean": 128.333,
+            "candidate_minus_baseline_mean": -29.667,
+            "candidate_minus_baseline_total": -89,
+            "candidate_total": 385
+          }
+        }
+      }
+    }
+  },
+  "pair_count": 1,
+  "paired_configuration_verified": true,
+  "pairs": [
+    {
+      "baseline_prompt_version": "governed-virtual-nl2semantic2sql-v1.4",
+      "baseline_report": "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_liveability_probe_baseline.json",
+      "benchmark_id": "abu-dhabi-liveability_data_20260730-product-v1",
+      "candidate_prompt_version": "governed-semantic-ir-canary-v1.2",
+      "candidate_report": "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_liveability_probe_semantic_ir.json",
+      "database_name": "liveability_data_20260730",
+      "selected_case_ids": [
+        "LIV_P02_PROJECTS_BY_TYPE_EN",
+        "LIV_P07_PROVISION_GAP_CATEGORY_ZH",
+        "LIV_P10_ISOCHRONE_AREA_TYPE_MODE_ZH",
+        "LIV_P13_REJECT_DELETE_ZH"
+      ],
+      "source_id": 12
+    }
+  ],
+  "release_gate": false,
+  "schema": "gda.nl2semantic2sql-pairwise-comparison.v1",
+  "status": "passed"
+}

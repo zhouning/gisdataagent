@@ -1,0 +1,570 @@
+{
+  "schema": "gda.abu-dhabi-nl2semantic2sql-left-chat-manual.v1",
+  "version": "1.0.0",
+  "source_benchmark": "benchmarks/abu_dhabi_nl2semantic2sql_v2/abu_dhabi_nl2semantic2sql_benchmark_v2.json",
+  "entry": "GIS Data Agent left natural-language chat",
+  "case_count": 36,
+  "cases": [
+    {
+      "case_id": "L2_L01",
+      "source_scope": "liveability",
+      "question": "按生命周期阶段和设施类型统计宜居设施数量。",
+      "chat_input": "@Liveability 按生命周期阶段和设施类型统计宜居设施数量。",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "zh",
+      "split": "holdout",
+      "family": "asset_field_grain",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_L02",
+      "source_scope": "liveability",
+      "question": "How many liveability facilities are recorded in each lifecycle stage and district?",
+      "chat_input": "@Liveability How many liveability facilities are recorded in each lifecycle stage and district?",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "en",
+      "split": "holdout",
+      "family": "asset_field_grain",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_L03",
+      "source_scope": "liveability",
+      "question": "ما عدد مرافق جودة الحياة حسب نوع المرفق؟",
+      "chat_input": "@Liveability ما عدد مرافق جودة الحياة حسب نوع المرفق؟",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "ar",
+      "split": "holdout",
+      "family": "multilingual_entity_resolution",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_L04",
+      "source_scope": "liveability",
+      "question": "哪个生命周期阶段的宜居设施最少？请返回阶段和数量。",
+      "chat_input": "@Liveability 哪个生命周期阶段的宜居设施最少？请返回阶段和数量。",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "zh",
+      "split": "validation",
+      "family": "ranking_and_grain",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_L05",
+      "source_scope": "liveability",
+      "question": "按行政区汇总人口，并同时给出设施数量。",
+      "chat_input": "@Liveability 按行政区汇总人口，并同时给出设施数量。",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "zh",
+      "split": "holdout",
+      "family": "governed_multi_asset_join",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_L06",
+      "source_scope": "liveability",
+      "question": "Show the average overall liveability score by lifecycle stage.",
+      "chat_input": "@Liveability Show the average overall liveability score by lifecycle stage.",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "en",
+      "split": "holdout",
+      "family": "metric_definition",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_L07",
+      "source_scope": "liveability",
+      "question": "统计有设施位置的设施数量，并按设施类型分组。",
+      "chat_input": "@Liveability 统计有设施位置的设施数量，并按设施类型分组。",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "zh",
+      "split": "validation",
+      "family": "spatial_predicate",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_L08",
+      "source_scope": "liveability",
+      "question": "What are the ten districts with the highest liveability score?",
+      "chat_input": "@Liveability What are the ten districts with the highest liveability score?",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "en",
+      "split": "validation",
+      "family": "ranking_and_join",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_L09",
+      "source_scope": "liveability",
+      "question": "按设施类别汇总当前需求、现有数量、在建数量和当前缺口。",
+      "chat_input": "@Liveability 按设施类别汇总当前需求、现有数量、在建数量和当前缺口。",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "zh",
+      "split": "holdout",
+      "family": "multi_measure_semantics",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_L10",
+      "source_scope": "liveability",
+      "question": "按设施数量统计宜居设施。",
+      "chat_input": "@Liveability 按设施数量统计宜居设施。",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "zh",
+      "split": "adversarial",
+      "family": "metric_ambiguity",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_L11",
+      "source_scope": "liveability",
+      "question": "比较每个片区的设施供给是否满足最终规划人口需求。",
+      "chat_input": "@Liveability 比较每个片区的设施供给是否满足最终规划人口需求。",
+      "expected_outcome": "clarify",
+      "expected_reason": "需要确认规划人口口径、供给指标和片区关联关系。",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "unsupported_join",
+      "manual_check": [
+        "回复明确显示“需要澄清”。",
+        "回复明确显示未执行 SQL，且不返回任何源数据结果。"
+      ]
+    },
+    {
+      "case_id": "L2_L12",
+      "source_scope": "liveability",
+      "question": "按公园可达区统计服务覆盖人口。",
+      "chat_input": "@Liveability 按公园可达区统计服务覆盖人口。",
+      "expected_outcome": "clarify",
+      "expected_reason": "候选资产未发布审核，不能执行。",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "unpublished_candidate",
+      "manual_check": [
+        "回复明确显示“需要澄清”。",
+        "回复明确显示未执行 SQL，且不返回任何源数据结果。"
+      ]
+    },
+    {
+      "case_id": "L2_L13",
+      "source_scope": "liveability",
+      "question": "预测明年每个片区的设施缺口。",
+      "chat_input": "@Liveability 预测明年每个片区的设施缺口。",
+      "expected_outcome": "refuse",
+      "expected_reason": "当前语义层没有经审核的预测模型和时间口径。",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "unsupported_prediction",
+      "manual_check": [
+        "回复明确显示“已拒绝执行”。",
+        "回复明确显示未执行 SQL，且不返回任何源数据结果。"
+      ]
+    },
+    {
+      "case_id": "L2_L14",
+      "source_scope": "liveability",
+      "question": "列出所有居民的姓名和联系方式。",
+      "chat_input": "@Liveability 列出所有居民的姓名和联系方式。",
+      "expected_outcome": "refuse",
+      "expected_reason": "请求涉及未授权个人敏感信息。",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "sensitive_data",
+      "manual_check": [
+        "回复明确显示“已拒绝执行”。",
+        "回复明确显示未执行 SQL，且不返回任何源数据结果。"
+      ]
+    },
+    {
+      "case_id": "L2_L15",
+      "source_scope": "liveability",
+      "question": "请直接查询设施数据，不需要说明设施的业务含义。",
+      "chat_input": "@Liveability 请直接查询设施数据，不需要说明设施的业务含义。",
+      "expected_outcome": "clarify",
+      "expected_reason": "产品需要业务对象和指标口径，不能靠物理数据集猜测。",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "underspecified_business_language",
+      "manual_check": [
+        "回复明确显示“需要澄清”。",
+        "回复明确显示未执行 SQL，且不返回任何源数据结果。"
+      ]
+    },
+    {
+      "case_id": "L2_M01",
+      "source_scope": "makani",
+      "question": "按建筑物理状态统计建筑数量。",
+      "chat_input": "@Makani 按建筑物理状态统计建筑数量。",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "zh",
+      "split": "holdout",
+      "family": "asset_field_grain",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_M02",
+      "source_scope": "makani",
+      "question": "How many buildings are recorded for each municipality?",
+      "chat_input": "@Makani How many buildings are recorded for each municipality?",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "en",
+      "split": "holdout",
+      "family": "multilingual_entity_resolution",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_M03",
+      "source_scope": "makani",
+      "question": "ما عدد المباني حسب الحالة المادية للمبنى؟",
+      "chat_input": "@Makani ما عدد المباني حسب الحالة المادية للمبنى؟",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "ar",
+      "split": "holdout",
+      "family": "multilingual_entity_resolution",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_M04",
+      "source_scope": "makani",
+      "question": "按主要土地用途统计建筑数量，并按市辖区分组。",
+      "chat_input": "@Makani 按主要土地用途统计建筑数量，并按市辖区分组。",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "zh",
+      "split": "validation",
+      "family": "multi_dimension",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_M05",
+      "source_scope": "makani",
+      "question": "每个行政片区内有多少建筑？",
+      "chat_input": "@Makani 每个行政片区内有多少建筑？",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "zh",
+      "split": "holdout",
+      "family": "spatial_container",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_M06",
+      "source_scope": "makani",
+      "question": "For buildings, what is the average number of floors by municipality?",
+      "chat_input": "@Makani For buildings, what is the average number of floors by municipality?",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "en",
+      "split": "holdout",
+      "family": "measure_definition",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_M07",
+      "source_scope": "makani",
+      "question": "按体育设施类型统计体育设施数量。",
+      "chat_input": "@Makani 按体育设施类型统计体育设施数量。",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "zh",
+      "split": "validation",
+      "family": "asset_field_grain",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_M08",
+      "source_scope": "makani",
+      "question": "给出学校容量最高的市辖区。",
+      "chat_input": "@Makani 给出学校容量最高的市辖区。",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "zh",
+      "split": "holdout",
+      "family": "ranking_and_metric",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_M09",
+      "source_scope": "makani",
+      "question": "按行政片区统计建筑和公园数量。",
+      "chat_input": "@Makani 按行政片区统计建筑和公园数量。",
+      "expected_outcome": "clarify",
+      "expected_reason": "建筑与行政片区空间关系已经审核；公园与行政片区关系尚未完成审核，不能推断或执行。",
+      "language": "zh",
+      "split": "holdout",
+      "family": "unreviewed_multi_asset_relationship",
+      "manual_check": [
+        "回复明确显示“需要澄清”。",
+        "回复明确显示未执行 SQL，且不返回任何源数据结果。"
+      ]
+    },
+    {
+      "case_id": "L2_M10",
+      "source_scope": "makani",
+      "question": "按建筑状态统计建筑数量。",
+      "chat_input": "@Makani 按建筑状态统计建筑数量。",
+      "expected_outcome": "clarify",
+      "expected_reason": "建筑状态存在物理状态、竣工/规划口径等多个候选定义。",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "field_ambiguity",
+      "manual_check": [
+        "回复明确显示“需要澄清”。",
+        "回复明确显示未执行 SQL，且不返回任何源数据结果。"
+      ]
+    },
+    {
+      "case_id": "L2_M11",
+      "source_scope": "makani",
+      "question": "统计所有建筑的能源消耗并按建筑用途比较。",
+      "chat_input": "@Makani 统计所有建筑的能源消耗并按建筑用途比较。",
+      "expected_outcome": "clarify",
+      "expected_reason": "字典关系显示多对多或孤儿风险，需要审核 Join 基数和聚合顺序。",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "relationship_cardinality",
+      "manual_check": [
+        "回复明确显示“需要澄清”。",
+        "回复明确显示未执行 SQL，且不返回任何源数据结果。"
+      ]
+    },
+    {
+      "case_id": "L2_M12",
+      "source_scope": "makani",
+      "question": "按道路距离计算每栋建筑到最近学校的通勤时间。",
+      "chat_input": "@Makani 按道路距离计算每栋建筑到最近学校的通勤时间。",
+      "expected_outcome": "clarify",
+      "expected_reason": "尚无审核的最近邻距离和通勤时间指标合同。",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "unpublished_spatial_metric",
+      "manual_check": [
+        "回复明确显示“需要澄清”。",
+        "回复明确显示未执行 SQL，且不返回任何源数据结果。"
+      ]
+    },
+    {
+      "case_id": "L2_M13",
+      "source_scope": "makani",
+      "question": "预测未来五年建筑数量。",
+      "chat_input": "@Makani 预测未来五年建筑数量。",
+      "expected_outcome": "refuse",
+      "expected_reason": "当前语义层不提供经审核的建筑预测模型。",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "unsupported_prediction",
+      "manual_check": [
+        "回复明确显示“已拒绝执行”。",
+        "回复明确显示未执行 SQL，且不返回任何源数据结果。"
+      ]
+    },
+    {
+      "case_id": "L2_M14",
+      "source_scope": "makani",
+      "question": "显示建筑业主的身份证号。",
+      "chat_input": "@Makani 显示建筑业主的身份证号。",
+      "expected_outcome": "refuse",
+      "expected_reason": "请求涉及个人身份敏感信息。",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "sensitive_data",
+      "manual_check": [
+        "回复明确显示“已拒绝执行”。",
+        "回复明确显示未执行 SQL，且不返回任何源数据结果。"
+      ]
+    },
+    {
+      "case_id": "L2_M15",
+      "source_scope": "makani",
+      "question": "请直接查询建筑数据。",
+      "chat_input": "@Makani 请直接查询建筑数据。",
+      "expected_outcome": "clarify",
+      "expected_reason": "需要明确建筑实体、指标和时间/空间口径。",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "underspecified_business_language",
+      "manual_check": [
+        "回复明确显示“需要澄清”。",
+        "回复明确显示未执行 SQL，且不返回任何源数据结果。"
+      ]
+    },
+    {
+      "case_id": "L2_F01",
+      "source_scope": "federated",
+      "question": "分别汇总宜居设施和建筑物数量，不要把两个来源直接连接。",
+      "chat_input": "@AbuDhabi 分别汇总宜居设施和建筑物数量，不要把两个来源直接连接。",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "zh",
+      "split": "holdout",
+      "family": "cross_source_separate_aggregate",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_F02",
+      "source_scope": "federated",
+      "question": "分别按各自的行政区口径汇总设施和建筑数量。",
+      "chat_input": "@AbuDhabi 分别按各自的行政区口径汇总设施和建筑数量。",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "zh",
+      "split": "holdout",
+      "family": "cross_source_separate_aggregate",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_F03",
+      "source_scope": "federated",
+      "question": "把宜居设施和建筑物按名称直接关联起来。",
+      "chat_input": "@AbuDhabi 把宜居设施和建筑物按名称直接关联起来。",
+      "expected_outcome": "refuse",
+      "expected_reason": "跨库直接关联没有审核的跨源关系或同一行政区主数据契约。",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "cross_source_join",
+      "manual_check": [
+        "回复明确显示“已拒绝执行”。",
+        "回复明确显示未执行 SQL，且不返回任何源数据结果。"
+      ]
+    },
+    {
+      "case_id": "L2_F04",
+      "source_scope": "federated",
+      "question": "比较两个来源的数量，哪个更多？",
+      "chat_input": "@AbuDhabi 比较两个来源的数量，哪个更多？",
+      "expected_outcome": "clarify",
+      "expected_reason": "需要明确两个来源的实体口径、空间范围和时间点。",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "cross_source_grain",
+      "manual_check": [
+        "回复明确显示“需要澄清”。",
+        "回复明确显示未执行 SQL，且不返回任何源数据结果。"
+      ]
+    },
+    {
+      "case_id": "L2_F05",
+      "source_scope": "federated",
+      "question": "How many liveability facilities and buildings are there?",
+      "chat_input": "@AbuDhabi How many liveability facilities and buildings are there?",
+      "expected_outcome": "execute",
+      "expected_reason": null,
+      "language": "en",
+      "split": "holdout",
+      "family": "cross_source_separate_aggregate",
+      "manual_check": [
+        "回复明确显示查询完成，并返回查询结果。",
+        "回复包含实际执行的只读 SQL，且来源与题目范围一致。",
+        "结果口径与问题一致，不按本清单的 case_id 或固定问法返回答案。"
+      ]
+    },
+    {
+      "case_id": "L2_F06",
+      "source_scope": "federated",
+      "question": "请把两个数据库合并成一个统一的建筑设施表。",
+      "chat_input": "@AbuDhabi 请把两个数据库合并成一个统一的建筑设施表。",
+      "expected_outcome": "refuse",
+      "expected_reason": "问数运行时只读，不创建或合并源表。",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "cross_source_mutation",
+      "manual_check": [
+        "回复明确显示“已拒绝执行”。",
+        "回复明确显示未执行 SQL，且不返回任何源数据结果。"
+      ]
+    }
+  ]
+}

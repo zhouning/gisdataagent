@@ -1,0 +1,759 @@
+{
+  "benchmark": {
+    "benchmark_id": "abu-dhabi-liveability-makani-federated-v4",
+    "claim_boundary": {
+      "supported": "reviewed independent aggregate sections from sources 12 and 13",
+      "unsupported": [
+        "arbitrary cross-source joins",
+        "row-level entity matching",
+        "cross-source spatial linkage",
+        "cross-database SQL"
+      ]
+    },
+    "coverage": {
+      "cases_per_language": 3,
+      "gold_case_count": 6,
+      "languages": [
+        "zh",
+        "en",
+        "ar"
+      ],
+      "refusal_case_count": 3,
+      "reviewed_cross_source_contract_count": 2
+    },
+    "definition_complete": true,
+    "planner_version": "abu-dhabi-federated-contract-planner-v2",
+    "run_complete": true,
+    "selected_case_ids": [
+      "ABU_DHABI_FEDERATED_LIVEABILITY_FACILITIES_AND_MAKANI_SUBSTATIONS_V4_ZH",
+      "ABU_DHABI_FEDERATED_LIVEABILITY_FACILITIES_AND_MAKANI_SUBSTATIONS_V4_EN",
+      "ABU_DHABI_FEDERATED_LIVEABILITY_FACILITIES_AND_MAKANI_SUBSTATIONS_V4_AR",
+      "ABU_DHABI_FEDERATED_LIVEABILITY_SCORES_AND_MAKANI_WATER_MAINS_V4_ZH",
+      "ABU_DHABI_FEDERATED_LIVEABILITY_SCORES_AND_MAKANI_WATER_MAINS_V4_EN",
+      "ABU_DHABI_FEDERATED_LIVEABILITY_SCORES_AND_MAKANI_WATER_MAINS_V4_AR",
+      "ABU_DHABI_FEDERATED_REFUSAL_ROW_JOIN_ZH",
+      "ABU_DHABI_FEDERATED_REFUSAL_ROW_JOIN_EN",
+      "ABU_DHABI_FEDERATED_REFUSAL_ROW_JOIN_AR"
+    ],
+    "semantic_layer_version": "abu-dhabi-liveability-makani-federated-v4",
+    "source_file_sha256": "112bbeac89d22fcff5687cf29e62f733eec5b063227e9d634f35c568c2a1da07",
+    "version": "v4.0.0-runtime-gold-freeze"
+  },
+  "benchmark_accuracy_claim": true,
+  "cases": [
+    {
+      "case_id": "ABU_DHABI_FEDERATED_LIVEABILITY_FACILITIES_AND_MAKANI_SUBSTATIONS_V4_ZH",
+      "checks": {
+        "application_merge_match": true,
+        "bundle_fingerprint_match": true,
+        "contract_match": true,
+        "cross_database_sql_disabled": true,
+        "cross_source_join_disabled": true,
+        "deterministic_contract_execution": true,
+        "federated_semantic_plan_validated": true,
+        "language_match": true,
+        "section_count_match": true,
+        "section_rows_not_persisted": true,
+        "source_gold_equivalence_match": true,
+        "source_ids_match": true,
+        "source_rows_not_persisted": true,
+        "source_semantic_plans_validated": true,
+        "status_match": true
+      },
+      "failure_reasons": [],
+      "gold_bundle": {
+        "bundle_contract_id": "ABU_DHABI_FEDERATED_LIVEABILITY_FACILITIES_AND_MAKANI_SUBSTATIONS_V4",
+        "path": "/Users/zhouning/gisdataagent/docs/customer/abu_dhabi_liveability_site_validation/gold_candidates/federated_v4/LIVEABILITY_FACILITIES_AND_MAKANI_SUBSTATIONS_V4.json",
+        "sha256": "1bfd691590493475b22395ffba59c274192515f43960a50888a9866f111d0820"
+      },
+      "language": "zh",
+      "observed": {
+        "application": "independent_sections",
+        "bundle_fingerprint": "239c03c01e958b5b970cff15f9fcbfdaf8a28faf112fabc946c671d7987b43ad",
+        "contract_id": "liveability_facilities_and_makani_substations_v4",
+        "cross_database_sql": false,
+        "cross_source_join": false,
+        "error": null,
+        "language": "zh",
+        "reason": null,
+        "section_count": 2,
+        "semantic_plan_sha256": "9242e1652aa5104cbe3df48b58dc0640d13085488563fb6c338421116a9ee111",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "source_evidence": [
+          {
+            "equivalence_fingerprint": "c4fdd77d164c0466742eb1d3c3782cee8844db899d166d047b2306db9b389432",
+            "row_count": 140,
+            "source": "liveability",
+            "source_id": 12,
+            "source_rows_persisted": false
+          },
+          {
+            "equivalence_fingerprint": "ef90a91b5b4d63fb71bddde62cbc33af9f7804d9b7de924bbafdf3f5627be062",
+            "row_count": 80,
+            "source": "makani",
+            "source_id": 13,
+            "source_rows_persisted": false
+          }
+        ],
+        "source_ids": [
+          12,
+          13
+        ],
+        "source_rows_persisted": false,
+        "status": "ok",
+        "subplans": [
+          {
+            "llm_invoked": false,
+            "metric_contract_id": "LIVEABILITY_FACILITY_COUNT_BY_STAGE_TYPE_V4",
+            "planner_route": "deterministic_reviewed_metric_contract",
+            "semantic_plan_sha256": "7a2a97af430effd584e0233e29cfde28adae2554d1f3ec430372e78060993e84",
+            "semantic_plan_status": "planned",
+            "source": "liveability",
+            "source_id": 12
+          },
+          {
+            "llm_invoked": false,
+            "metric_contract_id": "MAKANI_SUBSTATION_COUNT_BY_STATUS_TYPE_V4",
+            "planner_route": "deterministic_reviewed_metric_contract",
+            "semantic_plan_sha256": "65f7e6391d273939774e6ed384db98113bccd98b613576ea89a74888bfec12cb",
+            "semantic_plan_status": "planned",
+            "source": "makani",
+            "source_id": 13
+          }
+        ],
+        "subquery_failures": []
+      },
+      "question": "请分别汇总宜居设施在各建设阶段和设施类别的数量，同时汇总配电变电站在各运行状态和设备类别的数量。",
+      "status": "passed"
+    },
+    {
+      "case_id": "ABU_DHABI_FEDERATED_LIVEABILITY_FACILITIES_AND_MAKANI_SUBSTATIONS_V4_EN",
+      "checks": {
+        "application_merge_match": true,
+        "bundle_fingerprint_match": true,
+        "contract_match": true,
+        "cross_database_sql_disabled": true,
+        "cross_source_join_disabled": true,
+        "deterministic_contract_execution": true,
+        "federated_semantic_plan_validated": true,
+        "language_match": true,
+        "section_count_match": true,
+        "section_rows_not_persisted": true,
+        "source_gold_equivalence_match": true,
+        "source_ids_match": true,
+        "source_rows_not_persisted": true,
+        "source_semantic_plans_validated": true,
+        "status_match": true
+      },
+      "failure_reasons": [],
+      "gold_bundle": {
+        "bundle_contract_id": "ABU_DHABI_FEDERATED_LIVEABILITY_FACILITIES_AND_MAKANI_SUBSTATIONS_V4",
+        "path": "/Users/zhouning/gisdataagent/docs/customer/abu_dhabi_liveability_site_validation/gold_candidates/federated_v4/LIVEABILITY_FACILITIES_AND_MAKANI_SUBSTATIONS_V4.json",
+        "sha256": "1bfd691590493475b22395ffba59c274192515f43960a50888a9866f111d0820"
+      },
+      "language": "en",
+      "observed": {
+        "application": "independent_sections",
+        "bundle_fingerprint": "239c03c01e958b5b970cff15f9fcbfdaf8a28faf112fabc946c671d7987b43ad",
+        "contract_id": "liveability_facilities_and_makani_substations_v4",
+        "cross_database_sql": false,
+        "cross_source_join": false,
+        "error": null,
+        "language": "en",
+        "reason": null,
+        "section_count": 2,
+        "semantic_plan_sha256": "fc31927183ca30372fd71ad808741cd9b2dab424ef5c1f9b2ecf3b979be7a4a1",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "source_evidence": [
+          {
+            "equivalence_fingerprint": "c4fdd77d164c0466742eb1d3c3782cee8844db899d166d047b2306db9b389432",
+            "row_count": 140,
+            "source": "liveability",
+            "source_id": 12,
+            "source_rows_persisted": false
+          },
+          {
+            "equivalence_fingerprint": "ef90a91b5b4d63fb71bddde62cbc33af9f7804d9b7de924bbafdf3f5627be062",
+            "row_count": 80,
+            "source": "makani",
+            "source_id": 13,
+            "source_rows_persisted": false
+          }
+        ],
+        "source_ids": [
+          12,
+          13
+        ],
+        "source_rows_persisted": false,
+        "status": "ok",
+        "subplans": [
+          {
+            "llm_invoked": false,
+            "metric_contract_id": "LIVEABILITY_FACILITY_COUNT_BY_STAGE_TYPE_V4",
+            "planner_route": "deterministic_reviewed_metric_contract",
+            "semantic_plan_sha256": "82bdebc8f1c1cd8779217c443df70dd00456c4246d675ea641dd31afad7c3f78",
+            "semantic_plan_status": "planned",
+            "source": "liveability",
+            "source_id": 12
+          },
+          {
+            "llm_invoked": false,
+            "metric_contract_id": "MAKANI_SUBSTATION_COUNT_BY_STATUS_TYPE_V4",
+            "planner_route": "deterministic_reviewed_metric_contract",
+            "semantic_plan_sha256": "db59e76abfb7053794f8f0bf823dfc4efe6d3c80352851ff25b9bdb6eca520fe",
+            "semantic_plan_status": "planned",
+            "source": "makani",
+            "source_id": 13
+          }
+        ],
+        "subquery_failures": []
+      },
+      "question": "Provide one breakdown of community facilities across development phases and facility categories, plus another of power substations across operating conditions and equipment categories.",
+      "status": "passed"
+    },
+    {
+      "case_id": "ABU_DHABI_FEDERATED_LIVEABILITY_FACILITIES_AND_MAKANI_SUBSTATIONS_V4_AR",
+      "checks": {
+        "application_merge_match": true,
+        "bundle_fingerprint_match": true,
+        "contract_match": true,
+        "cross_database_sql_disabled": true,
+        "cross_source_join_disabled": true,
+        "deterministic_contract_execution": true,
+        "federated_semantic_plan_validated": true,
+        "language_match": true,
+        "section_count_match": true,
+        "section_rows_not_persisted": true,
+        "source_gold_equivalence_match": true,
+        "source_ids_match": true,
+        "source_rows_not_persisted": true,
+        "source_semantic_plans_validated": true,
+        "status_match": true
+      },
+      "failure_reasons": [],
+      "gold_bundle": {
+        "bundle_contract_id": "ABU_DHABI_FEDERATED_LIVEABILITY_FACILITIES_AND_MAKANI_SUBSTATIONS_V4",
+        "path": "/Users/zhouning/gisdataagent/docs/customer/abu_dhabi_liveability_site_validation/gold_candidates/federated_v4/LIVEABILITY_FACILITIES_AND_MAKANI_SUBSTATIONS_V4.json",
+        "sha256": "1bfd691590493475b22395ffba59c274192515f43960a50888a9866f111d0820"
+      },
+      "language": "ar",
+      "observed": {
+        "application": "independent_sections",
+        "bundle_fingerprint": "239c03c01e958b5b970cff15f9fcbfdaf8a28faf112fabc946c671d7987b43ad",
+        "contract_id": "liveability_facilities_and_makani_substations_v4",
+        "cross_database_sql": false,
+        "cross_source_join": false,
+        "error": null,
+        "language": "ar",
+        "reason": null,
+        "section_count": 2,
+        "semantic_plan_sha256": "536c994df3b4630732d3c842456b04d2800efb93070becbbf46ddc45567e9273",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "source_evidence": [
+          {
+            "equivalence_fingerprint": "c4fdd77d164c0466742eb1d3c3782cee8844db899d166d047b2306db9b389432",
+            "row_count": 140,
+            "source": "liveability",
+            "source_id": 12,
+            "source_rows_persisted": false
+          },
+          {
+            "equivalence_fingerprint": "ef90a91b5b4d63fb71bddde62cbc33af9f7804d9b7de924bbafdf3f5627be062",
+            "row_count": 80,
+            "source": "makani",
+            "source_id": 13,
+            "source_rows_persisted": false
+          }
+        ],
+        "source_ids": [
+          12,
+          13
+        ],
+        "source_rows_persisted": false,
+        "status": "ok",
+        "subplans": [
+          {
+            "llm_invoked": false,
+            "metric_contract_id": "LIVEABILITY_FACILITY_COUNT_BY_STAGE_TYPE_V4",
+            "planner_route": "deterministic_reviewed_metric_contract",
+            "semantic_plan_sha256": "4abf85199c2ccaf10e920cd19ebc4b21c4af4cfc2bc96ebd719075a5200123b7",
+            "semantic_plan_status": "planned",
+            "source": "liveability",
+            "source_id": 12
+          },
+          {
+            "llm_invoked": false,
+            "metric_contract_id": "MAKANI_SUBSTATION_COUNT_BY_STATUS_TYPE_V4",
+            "planner_route": "deterministic_reviewed_metric_contract",
+            "semantic_plan_sha256": "4b8998389236394860ce9898c6e2785cf897339ac8917e8b8d5fbb106d09f7f5",
+            "semantic_plan_status": "planned",
+            "source": "makani",
+            "source_id": 13
+          }
+        ],
+        "subquery_failures": []
+      },
+      "question": "قدّم ملخصاً للمرافق المجتمعية عبر مراحل التطوير وفئات المرافق، وملخصاً آخر لمحطات توزيع الكهرباء عبر أوضاع التشغيل وفئات المعدات.",
+      "status": "passed"
+    },
+    {
+      "case_id": "ABU_DHABI_FEDERATED_LIVEABILITY_SCORES_AND_MAKANI_WATER_MAINS_V4_ZH",
+      "checks": {
+        "application_merge_match": true,
+        "bundle_fingerprint_match": true,
+        "contract_match": true,
+        "cross_database_sql_disabled": true,
+        "cross_source_join_disabled": true,
+        "deterministic_contract_execution": true,
+        "federated_semantic_plan_validated": true,
+        "language_match": true,
+        "section_count_match": true,
+        "section_rows_not_persisted": true,
+        "source_gold_equivalence_match": true,
+        "source_ids_match": true,
+        "source_rows_not_persisted": true,
+        "source_semantic_plans_validated": true,
+        "status_match": true
+      },
+      "failure_reasons": [],
+      "gold_bundle": {
+        "bundle_contract_id": "ABU_DHABI_FEDERATED_LIVEABILITY_SCORES_AND_MAKANI_WATER_MAINS_V4",
+        "path": "/Users/zhouning/gisdataagent/docs/customer/abu_dhabi_liveability_site_validation/gold_candidates/federated_v4/LIVEABILITY_SCORES_AND_MAKANI_WATER_MAINS_V4.json",
+        "sha256": "523987e190171f4fa5d99da91003acd41f9b35ab6922b8de8ace8221cf856c26"
+      },
+      "language": "zh",
+      "observed": {
+        "application": "independent_sections",
+        "bundle_fingerprint": "2d63a9b7ca986695aafb20a6f4056e0b6fa1f3e710850ee04ccb1523d6b4a576",
+        "contract_id": "liveability_scores_and_makani_water_mains_v4",
+        "cross_database_sql": false,
+        "cross_source_join": false,
+        "error": null,
+        "language": "zh",
+        "reason": null,
+        "section_count": 2,
+        "semantic_plan_sha256": "599c405f5fd5041d873602c2ea0cb57f05077aee81f36d29cae4e95d1cff157c",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "source_evidence": [
+          {
+            "equivalence_fingerprint": "d9824ff96f18ee01860f4105e2b87aace43b637d033e4153177e348fe98f2347",
+            "row_count": 3,
+            "source": "liveability",
+            "source_id": 12,
+            "source_rows_persisted": false
+          },
+          {
+            "equivalence_fingerprint": "5280f462076a5a25eba7ba84032a6dea97591ab287194ae76183cbd034b136a6",
+            "row_count": 48,
+            "source": "makani",
+            "source_id": 13,
+            "source_rows_persisted": false
+          }
+        ],
+        "source_ids": [
+          12,
+          13
+        ],
+        "source_rows_persisted": false,
+        "status": "ok",
+        "subplans": [
+          {
+            "llm_invoked": false,
+            "metric_contract_id": "LIVEABILITY_DISTRICT_SCORE_COUNT_BY_STAGE_V4",
+            "planner_route": "deterministic_reviewed_metric_contract",
+            "semantic_plan_sha256": "6a8cc04f743aa8d72314094799be2f73b42f56daeeec7ab07ba495cd8b705614",
+            "semantic_plan_status": "planned",
+            "source": "liveability",
+            "source_id": 12
+          },
+          {
+            "llm_invoked": false,
+            "metric_contract_id": "MAKANI_WATER_MAIN_COUNT_BY_LIFECYCLE_SUBTYPE_V4",
+            "planner_route": "deterministic_reviewed_metric_contract",
+            "semantic_plan_sha256": "8cf7a004079ce3a8614e07d18e2d1ebaf926b1c5eb7df840e1ee93af0186fcbb",
+            "semantic_plan_status": "planned",
+            "source": "makani",
+            "source_id": 13
+          }
+        ],
+        "subquery_failures": []
+      },
+      "question": "请并列给出区级宜居评价在各评估期的记录量，以及配水主管在不同资产生命周期和管线分类下的记录量。",
+      "status": "passed"
+    },
+    {
+      "case_id": "ABU_DHABI_FEDERATED_LIVEABILITY_SCORES_AND_MAKANI_WATER_MAINS_V4_EN",
+      "checks": {
+        "application_merge_match": true,
+        "bundle_fingerprint_match": true,
+        "contract_match": true,
+        "cross_database_sql_disabled": true,
+        "cross_source_join_disabled": true,
+        "deterministic_contract_execution": true,
+        "federated_semantic_plan_validated": true,
+        "language_match": true,
+        "section_count_match": true,
+        "section_rows_not_persisted": true,
+        "source_gold_equivalence_match": true,
+        "source_ids_match": true,
+        "source_rows_not_persisted": true,
+        "source_semantic_plans_validated": true,
+        "status_match": true
+      },
+      "failure_reasons": [],
+      "gold_bundle": {
+        "bundle_contract_id": "ABU_DHABI_FEDERATED_LIVEABILITY_SCORES_AND_MAKANI_WATER_MAINS_V4",
+        "path": "/Users/zhouning/gisdataagent/docs/customer/abu_dhabi_liveability_site_validation/gold_candidates/federated_v4/LIVEABILITY_SCORES_AND_MAKANI_WATER_MAINS_V4.json",
+        "sha256": "523987e190171f4fa5d99da91003acd41f9b35ab6922b8de8ace8221cf856c26"
+      },
+      "language": "en",
+      "observed": {
+        "application": "independent_sections",
+        "bundle_fingerprint": "2d63a9b7ca986695aafb20a6f4056e0b6fa1f3e710850ee04ccb1523d6b4a576",
+        "contract_id": "liveability_scores_and_makani_water_mains_v4",
+        "cross_database_sql": false,
+        "cross_source_join": false,
+        "error": null,
+        "language": "en",
+        "reason": null,
+        "section_count": 2,
+        "semantic_plan_sha256": "e0c442b296cb7931fb1cd3eb3ccf41e989a028afc29627c1fbd151f45dc1dd8a",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "source_evidence": [
+          {
+            "equivalence_fingerprint": "d9824ff96f18ee01860f4105e2b87aace43b637d033e4153177e348fe98f2347",
+            "row_count": 3,
+            "source": "liveability",
+            "source_id": 12,
+            "source_rows_persisted": false
+          },
+          {
+            "equivalence_fingerprint": "5280f462076a5a25eba7ba84032a6dea97591ab287194ae76183cbd034b136a6",
+            "row_count": 48,
+            "source": "makani",
+            "source_id": 13,
+            "source_rows_persisted": false
+          }
+        ],
+        "source_ids": [
+          12,
+          13
+        ],
+        "source_rows_persisted": false,
+        "status": "ok",
+        "subplans": [
+          {
+            "llm_invoked": false,
+            "metric_contract_id": "LIVEABILITY_DISTRICT_SCORE_COUNT_BY_STAGE_V4",
+            "planner_route": "deterministic_reviewed_metric_contract",
+            "semantic_plan_sha256": "38751d75d9250abcba94ed82f2969edac42095877bb02d5a057f99e9c550ef1c",
+            "semantic_plan_status": "planned",
+            "source": "liveability",
+            "source_id": 12
+          },
+          {
+            "llm_invoked": false,
+            "metric_contract_id": "MAKANI_WATER_MAIN_COUNT_BY_LIFECYCLE_SUBTYPE_V4",
+            "planner_route": "deterministic_reviewed_metric_contract",
+            "semantic_plan_sha256": "91cc51a3c9b2387444e0ec997c4df274ef5a50bfd4df982c714c8232a0552708",
+            "semantic_plan_status": "planned",
+            "source": "makani",
+            "source_id": 13
+          }
+        ],
+        "subquery_failures": []
+      },
+      "question": "Show district liveability assessments across assessment periods, alongside water distribution mains across asset lifecycle conditions and pipe classifications.",
+      "status": "passed"
+    },
+    {
+      "case_id": "ABU_DHABI_FEDERATED_LIVEABILITY_SCORES_AND_MAKANI_WATER_MAINS_V4_AR",
+      "checks": {
+        "application_merge_match": true,
+        "bundle_fingerprint_match": true,
+        "contract_match": true,
+        "cross_database_sql_disabled": true,
+        "cross_source_join_disabled": true,
+        "deterministic_contract_execution": true,
+        "federated_semantic_plan_validated": true,
+        "language_match": true,
+        "section_count_match": true,
+        "section_rows_not_persisted": true,
+        "source_gold_equivalence_match": true,
+        "source_ids_match": true,
+        "source_rows_not_persisted": true,
+        "source_semantic_plans_validated": true,
+        "status_match": true
+      },
+      "failure_reasons": [],
+      "gold_bundle": {
+        "bundle_contract_id": "ABU_DHABI_FEDERATED_LIVEABILITY_SCORES_AND_MAKANI_WATER_MAINS_V4",
+        "path": "/Users/zhouning/gisdataagent/docs/customer/abu_dhabi_liveability_site_validation/gold_candidates/federated_v4/LIVEABILITY_SCORES_AND_MAKANI_WATER_MAINS_V4.json",
+        "sha256": "523987e190171f4fa5d99da91003acd41f9b35ab6922b8de8ace8221cf856c26"
+      },
+      "language": "ar",
+      "observed": {
+        "application": "independent_sections",
+        "bundle_fingerprint": "2d63a9b7ca986695aafb20a6f4056e0b6fa1f3e710850ee04ccb1523d6b4a576",
+        "contract_id": "liveability_scores_and_makani_water_mains_v4",
+        "cross_database_sql": false,
+        "cross_source_join": false,
+        "error": null,
+        "language": "ar",
+        "reason": null,
+        "section_count": 2,
+        "semantic_plan_sha256": "16d620297183c26b113dc0a4d8ace5348c143582f3bd10e6b676c0fa6839946e",
+        "semantic_plan_status": "planned",
+        "semantic_plan_valid": true,
+        "source_evidence": [
+          {
+            "equivalence_fingerprint": "d9824ff96f18ee01860f4105e2b87aace43b637d033e4153177e348fe98f2347",
+            "row_count": 3,
+            "source": "liveability",
+            "source_id": 12,
+            "source_rows_persisted": false
+          },
+          {
+            "equivalence_fingerprint": "5280f462076a5a25eba7ba84032a6dea97591ab287194ae76183cbd034b136a6",
+            "row_count": 48,
+            "source": "makani",
+            "source_id": 13,
+            "source_rows_persisted": false
+          }
+        ],
+        "source_ids": [
+          12,
+          13
+        ],
+        "source_rows_persisted": false,
+        "status": "ok",
+        "subplans": [
+          {
+            "llm_invoked": false,
+            "metric_contract_id": "LIVEABILITY_DISTRICT_SCORE_COUNT_BY_STAGE_V4",
+            "planner_route": "deterministic_reviewed_metric_contract",
+            "semantic_plan_sha256": "a66b980c74a4862fac3f3c4c93b1583d6c918ccd47d43de65583d9033f42912b",
+            "semantic_plan_status": "planned",
+            "source": "liveability",
+            "source_id": 12
+          },
+          {
+            "llm_invoked": false,
+            "metric_contract_id": "MAKANI_WATER_MAIN_COUNT_BY_LIFECYCLE_SUBTYPE_V4",
+            "planner_route": "deterministic_reviewed_metric_contract",
+            "semantic_plan_sha256": "4cf477980d8ea3b0e93237e6f5a7177eba19f3f53d193a0e124abbf41a851a74",
+            "semantic_plan_status": "planned",
+            "source": "makani",
+            "source_id": 13
+          }
+        ],
+        "subquery_failures": []
+      },
+      "question": "اعرض تقييمات جودة الحياة للمناطق عبر فترات التقييم، إلى جانب خطوط توزيع المياه الرئيسية عبر أوضاع دورة حياة الأصل وتصنيفات الأنابيب.",
+      "status": "passed"
+    },
+    {
+      "case_id": "ABU_DHABI_FEDERATED_REFUSAL_ROW_JOIN_ZH",
+      "checks": {
+        "language_match": true,
+        "no_source_execution": true,
+        "rejection_reason_match": true,
+        "source_rows_not_persisted": true,
+        "status_match": true
+      },
+      "failure_reasons": [],
+      "gold_bundle": null,
+      "language": "zh",
+      "observed": {
+        "application": null,
+        "bundle_fingerprint": null,
+        "contract_id": null,
+        "cross_database_sql": null,
+        "cross_source_join": null,
+        "error": null,
+        "language": "zh",
+        "reason": "question_not_covered_by_reviewed_cross_source_contract",
+        "section_count": null,
+        "semantic_plan_sha256": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "source_evidence": [],
+        "source_ids": [],
+        "source_rows_persisted": false,
+        "status": "rejected",
+        "subplans": [],
+        "subquery_failures": []
+      },
+      "question": "把每一条 Makani 资产记录与最近的 Liveability 设施逐条关联起来。",
+      "status": "passed"
+    },
+    {
+      "case_id": "ABU_DHABI_FEDERATED_REFUSAL_ROW_JOIN_EN",
+      "checks": {
+        "language_match": true,
+        "no_source_execution": true,
+        "rejection_reason_match": true,
+        "source_rows_not_persisted": true,
+        "status_match": true
+      },
+      "failure_reasons": [],
+      "gold_bundle": null,
+      "language": "en",
+      "observed": {
+        "application": null,
+        "bundle_fingerprint": null,
+        "contract_id": null,
+        "cross_database_sql": null,
+        "cross_source_join": null,
+        "error": null,
+        "language": "en",
+        "reason": "question_not_covered_by_reviewed_cross_source_contract",
+        "section_count": null,
+        "semantic_plan_sha256": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "source_evidence": [],
+        "source_ids": [],
+        "source_rows_persisted": false,
+        "status": "rejected",
+        "subplans": [],
+        "subquery_failures": []
+      },
+      "question": "Match every individual Makani asset record with its nearest Liveability facility.",
+      "status": "passed"
+    },
+    {
+      "case_id": "ABU_DHABI_FEDERATED_REFUSAL_ROW_JOIN_AR",
+      "checks": {
+        "language_match": true,
+        "no_source_execution": true,
+        "rejection_reason_match": true,
+        "source_rows_not_persisted": true,
+        "status_match": true
+      },
+      "failure_reasons": [],
+      "gold_bundle": null,
+      "language": "ar",
+      "observed": {
+        "application": null,
+        "bundle_fingerprint": null,
+        "contract_id": null,
+        "cross_database_sql": null,
+        "cross_source_join": null,
+        "error": null,
+        "language": "ar",
+        "reason": "question_not_covered_by_reviewed_cross_source_contract",
+        "section_count": null,
+        "semantic_plan_sha256": null,
+        "semantic_plan_status": null,
+        "semantic_plan_valid": null,
+        "source_evidence": [],
+        "source_ids": [],
+        "source_rows_persisted": false,
+        "status": "rejected",
+        "subplans": [],
+        "subquery_failures": []
+      },
+      "question": "طابق كل سجل أصل فردي في مكاني مع أقرب مرفق لجودة الحياة.",
+      "status": "passed"
+    }
+  ],
+  "evaluation_integrity": {
+    "gold_loaded_only_by_benchmark_runner": true,
+    "runtime_semantic_contains_benchmark_questions": false,
+    "runtime_semantic_contains_gold_references": false
+  },
+  "execution_policy": {
+    "cross_database_sql": false,
+    "cross_source_join": false,
+    "mode": "parallel_registered_virtual_sources_application_merge",
+    "source_rows_persisted": false
+  },
+  "generated_at": "2026-08-19T20:19:33.623377+00:00",
+  "limitations": [
+    "Only 2 reviewed independent aggregate contracts are evaluated.",
+    "Arbitrary cross-source joins, row-level matching, and spatial linkage are rejected.",
+    "Arabic labels and source categorical values remain subject to customer review."
+  ],
+  "metrics": {
+    "by_language": {
+      "ar": {
+        "case_count": 3,
+        "case_pass_rate": 1.0,
+        "passed_case_count": 3
+      },
+      "en": {
+        "case_count": 3,
+        "case_pass_rate": 1.0,
+        "passed_case_count": 3
+      },
+      "zh": {
+        "case_count": 3,
+        "case_pass_rate": 1.0,
+        "passed_case_count": 3
+      }
+    },
+    "case_count": 9,
+    "case_pass_rate": 1.0,
+    "expected_query_case_count": 6,
+    "gold_bundle_case_count": 6,
+    "gold_bundle_equivalence_pass_rate": 1.0,
+    "gold_bundle_equivalence_passed_case_count": 6,
+    "infrastructure_failure_case_count": 0,
+    "llm_invocation_count": 0,
+    "passed_case_count": 9,
+    "query_execution_success_count": 6,
+    "refusal_case_count": 3,
+    "refusal_passed_case_count": 3,
+    "refusal_recall": 1.0,
+    "source_semantic_plan_validated_count": 12,
+    "source_subquery_count": 12,
+    "status_counts": {
+      "ok": 6,
+      "rejected": 3
+    },
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0
+    }
+  },
+  "planner": {
+    "llm_invoked": false,
+    "requested_model_not_used": "gpt-5.1",
+    "requested_reasoning_effort_not_used": "medium",
+    "route": "reviewed_federated_metric_contract",
+    "version": "abu-dhabi-federated-contract-planner-v2"
+  },
+  "schema": "gda.federated-free-form-nl2sql-benchmark-report.v1",
+  "scope": "reviewed_cross_source_independent_aggregate_evaluation",
+  "source_rows_persisted": false,
+  "sources": [
+    {
+      "authorized_schemas": [
+        "public"
+      ],
+      "database_name": "liveability_data_20260730",
+      "discovery_fingerprint": "506d986836ac9a421a99c88c6d01b15abaa7b7f053d3d6a575cb1db9912c7269",
+      "profile_fingerprint": "f86a8a522797ae4bbf6d067967411f4a854f8a8c6fe468087428d73abbcd1768",
+      "source": "liveability",
+      "source_id": 12
+    },
+    {
+      "authorized_schemas": [
+        "public"
+      ],
+      "database_name": "makani_sync_full",
+      "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+      "profile_fingerprint": "a4d99a4084081224ffcf6a02cda777b2aaf6052521573a7ee68f022d62809253",
+      "source": "makani",
+      "source_id": 13
+    }
+  ],
+  "status": "passed"
+}

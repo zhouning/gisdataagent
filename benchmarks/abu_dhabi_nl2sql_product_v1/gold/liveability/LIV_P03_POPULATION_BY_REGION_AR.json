@@ -1,0 +1,46 @@
+{
+  "contract_id": "LIV_P03_POPULATION_BY_REGION_AR_GOLD_V1",
+  "equivalence": {
+    "accepted_fingerprint_keys": [
+      "unordered_position_numeric6_fingerprint",
+      "position_numeric6_fingerprint",
+      "unordered_position_fingerprint",
+      "position_fingerprint"
+    ],
+    "column_aliases_compare_by_position": true,
+    "expected_fingerprints": {
+      "position_fingerprint": "1e6c3f8726870c064ae791af0e4533547028413bc16bc7f055df2178fece78b9",
+      "position_numeric6_fingerprint": "df97ebb0e91e0762a2819264f2ed1365c2318959d5481c34624c0e06cb1a21ee",
+      "unordered_position_fingerprint": "a374df752c86df61c5ed6afb31d939cb4d50628e25c1d413c030d459f99b9dd7",
+      "unordered_position_numeric6_fingerprint": "3f00500351e2b99fe9b709c129175bb6e4a2698b6d90489aae58fa2ec963a15d"
+    },
+    "numeric_precision": 6,
+    "order_sensitive": false
+  },
+  "evaluation_only": true,
+  "expected_result": {
+    "columns": [
+      "region",
+      "total_population"
+    ],
+    "ordered_result_fingerprint": "81823b3b2d88acf0a303345397c14997885696afb3899d23417baaeda8be4bf9",
+    "row_count": 7
+  },
+  "query": {
+    "bounded_limit": 1000,
+    "path": "benchmarks/abu_dhabi_nl2sql_product_v1/gold/liveability/LIV_P03_POPULATION_BY_REGION_AR.sql",
+    "read_only": true,
+    "sha256": "145e19eeacb1781640b3c4bdb734c9125417d821dfcf34faf1008e3df46bce20"
+  },
+  "runtime_access": "prohibited",
+  "schema": "gda.nl2sql-gold-result-contract.v1",
+  "source_contract": {
+    "authorized_schema": "public",
+    "database_name": "liveability_data_20260730",
+    "discovery_fingerprint": "506d986836ac9a421a99c88c6d01b15abaa7b7f053d3d6a575cb1db9912c7269",
+    "profile_fingerprint": "f86a8a522797ae4bbf6d067967411f4a854f8a8c6fe468087428d73abbcd1768",
+    "semantic_version": "abu-dhabi-liveability-v4-reviewed-assets",
+    "source_id": 12
+  },
+  "status": "frozen_evaluation_only_product_gold_v1"
+}

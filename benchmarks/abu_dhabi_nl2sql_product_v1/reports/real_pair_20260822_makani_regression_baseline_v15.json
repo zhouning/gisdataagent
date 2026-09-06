@@ -1,0 +1,7 @@
+{
+  "generated_at": "2026-08-22T05:46:28.862259+00:00",
+  "message": "Gold semantic version differs from semantic layer: /Users/zhouning/gisdataagent/benchmarks/abu_dhabi_nl2sql_product_v1/gold/makani/MAK_P01_DISTRICTS_MUNICIPALITY_ZH.json",
+  "schema": "gda.free-form-nl2sql-benchmark-report.v1",
+  "stage": "benchmark_preflight",
+  "status": "error"
+}

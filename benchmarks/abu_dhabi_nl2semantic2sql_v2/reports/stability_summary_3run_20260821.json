@@ -1,0 +1,216 @@
+{
+  "schema": "gda.abu-dhabi-nl2semantic2sql-v2-stability.v1",
+  "status": "passed",
+  "benchmark": {
+    "benchmark_id": "abu-dhabi-nl2semantic2sql-v2-public",
+    "version": "2.0.0",
+    "sha256": "087cebf726a8f92a74e06152c8ad79ebce98a3847bfc4123786e288d0a22372c"
+  },
+  "semantic_configuration": {
+    "liveability": {
+      "semantic_version": "abu-dhabi-liveability-v4-reviewed-assets",
+      "metric_contract_version": "abu-dhabi-liveability-business-v6",
+      "sha256": "dcf37e9df003fc64e655b229f23e42c09944c1d240071dec0c0ec0595bb51b1c"
+    },
+    "makani": {
+      "semantic_version": "abu-dhabi-makani-v4-reviewed-assets",
+      "metric_contract_version": "abu-dhabi-makani-business-v6",
+      "sha256": "2cb030613a7137c3d0604c78d5688f3e0097792a47b5a9b83ef29d9cf4be72b9"
+    }
+  },
+  "configuration_audit": {
+    "run_count": 3,
+    "each_run_pair_controlled": true,
+    "public_benchmark_consistent": true,
+    "private_gold_consistent": true,
+    "semantic_configuration_consistent": true,
+    "runtime_isolation_invariants_consistent": true,
+    "platform_schema_gate_modes": [
+      "isolated_evaluator_bypass",
+      "product_default_verified"
+    ]
+  },
+  "metrics": {
+    "route_observation_count": 18,
+    "baseline_route_passed_count": 17,
+    "candidate_route_passed_count": 17,
+    "baseline_route_pass_rate": 0.9444444444444444,
+    "candidate_route_pass_rate": 0.9444444444444444,
+    "candidate_minus_baseline_pass_rate": 0.0,
+    "outcome_counts": {
+      "baseline_only_passed": 1,
+      "both_passed": 16,
+      "candidate_only_passed": 1
+    },
+    "latency": {
+      "run_deltas_ms": [
+        -286.737,
+        1282.405,
+        1042.847
+      ],
+      "mean_candidate_minus_baseline_ms": 679.505,
+      "median_candidate_minus_baseline_ms": 1042.847,
+      "candidate_faster_run_count": 1,
+      "baseline_faster_run_count": 2
+    },
+    "usage_candidate_minus_baseline_total": {
+      "input_tokens": 9238,
+      "output_tokens": 2272,
+      "reasoning_tokens": 88
+    }
+  },
+  "runs": [
+    {
+      "run_id": "pairwise_v6_final_20260821_0933utc",
+      "artifact_sha256": {
+        "pairwise": "ead0f2df7c2f1e88c5cced2cd571ab68cf7534e50c73587b48dcaadf7de5bae9",
+        "baseline": "5ab5d0514183dce22ac47467b0cfbf100f50b8a5c38190dd56b6642fa7dea069",
+        "candidate": "41ec68c61a3da82865d7425b836f513112155f0775c0a75ba1ea1bb51380e724"
+      },
+      "baseline_status": "passed",
+      "candidate_status": "passed",
+      "baseline_all_passed": 36,
+      "candidate_all_passed": 36,
+      "baseline_route_passed": 6,
+      "candidate_route_passed": 6,
+      "route_case_count": 6,
+      "candidate_minus_baseline_mean_latency_ms": -286.737
+    },
+    {
+      "run_id": "stability_isolated_r1_pairwise_20260821",
+      "artifact_sha256": {
+        "pairwise": "aefcecbb91cf700dda589abb6cfc8d281931165aca013120d6ae7a71fec59905",
+        "baseline": "bfaae1b107105416aa444d0e2ec14b6d2e438133ad7fa43d8479158b8eb362f9",
+        "candidate": "f2dedc4d53495202383a9d73b2b466571ddf577f87b8c0c628b25cce804c408d"
+      },
+      "baseline_status": "passed",
+      "candidate_status": "passed",
+      "baseline_all_passed": 36,
+      "candidate_all_passed": 36,
+      "baseline_route_passed": 6,
+      "candidate_route_passed": 6,
+      "route_case_count": 6,
+      "candidate_minus_baseline_mean_latency_ms": 1282.405
+    },
+    {
+      "run_id": "stability_isolated_r2_pairwise_20260821",
+      "artifact_sha256": {
+        "pairwise": "43337cf63116a9ac18fc897177249b961f95b0939f7a6a15b20a95f9d1e60491",
+        "baseline": "1a01d1040450f3761d4557024ed954d62605cd4f0d3d1714ea3c39207f1de9a5",
+        "candidate": "f4f1b453c1f9f44f59ecbdb3b3759895e4fadd8563800c446a6373fc3bee1e0c"
+      },
+      "baseline_status": "failed",
+      "candidate_status": "failed",
+      "baseline_all_passed": 35,
+      "candidate_all_passed": 35,
+      "baseline_route_passed": 5,
+      "candidate_route_passed": 5,
+      "route_case_count": 6,
+      "candidate_minus_baseline_mean_latency_ms": 1042.847
+    }
+  ],
+  "route_cases": [
+    {
+      "case_id": "L2_L06",
+      "scope": "liveability",
+      "family": "metric_definition",
+      "category": "single_source_free_form_route",
+      "baseline_passed_run_count": 3,
+      "candidate_passed_run_count": 3,
+      "run_count": 3,
+      "baseline_pass_rate": 1.0,
+      "candidate_pass_rate": 1.0
+    },
+    {
+      "case_id": "L2_L08",
+      "scope": "liveability",
+      "family": "ranking_and_join",
+      "category": "route_or_contract_mismatch",
+      "baseline_passed_run_count": 3,
+      "candidate_passed_run_count": 2,
+      "run_count": 3,
+      "baseline_pass_rate": 1.0,
+      "candidate_pass_rate": 0.6666666666666666
+    },
+    {
+      "case_id": "L2_L09",
+      "scope": "liveability",
+      "family": "multi_measure_semantics",
+      "category": "single_source_free_form_route",
+      "baseline_passed_run_count": 3,
+      "candidate_passed_run_count": 3,
+      "run_count": 3,
+      "baseline_pass_rate": 1.0,
+      "candidate_pass_rate": 1.0
+    },
+    {
+      "case_id": "L2_M06",
+      "scope": "makani",
+      "family": "measure_definition",
+      "category": "single_source_free_form_route",
+      "baseline_passed_run_count": 3,
+      "candidate_passed_run_count": 3,
+      "run_count": 3,
+      "baseline_pass_rate": 1.0,
+      "candidate_pass_rate": 1.0
+    },
+    {
+      "case_id": "L2_M07",
+      "scope": "makani",
+      "family": "asset_field_grain",
+      "category": "single_source_free_form_route",
+      "baseline_passed_run_count": 3,
+      "candidate_passed_run_count": 3,
+      "run_count": 3,
+      "baseline_pass_rate": 1.0,
+      "candidate_pass_rate": 1.0
+    },
+    {
+      "case_id": "L2_M08",
+      "scope": "makani",
+      "family": "ranking_and_metric",
+      "category": "single_source_free_form_route",
+      "baseline_passed_run_count": 2,
+      "candidate_passed_run_count": 3,
+      "run_count": 3,
+      "baseline_pass_rate": 0.6666666666666666,
+      "candidate_pass_rate": 1.0
+    }
+  ],
+  "unstable_route_cases": [
+    {
+      "case_id": "L2_L08",
+      "scope": "liveability",
+      "family": "ranking_and_join",
+      "category": "route_or_contract_mismatch",
+      "baseline_passed_run_count": 3,
+      "candidate_passed_run_count": 2,
+      "run_count": 3,
+      "baseline_pass_rate": 1.0,
+      "candidate_pass_rate": 0.6666666666666666
+    },
+    {
+      "case_id": "L2_M08",
+      "scope": "makani",
+      "family": "ranking_and_metric",
+      "category": "single_source_free_form_route",
+      "baseline_passed_run_count": 2,
+      "candidate_passed_run_count": 3,
+      "run_count": 3,
+      "baseline_pass_rate": 0.6666666666666666,
+      "candidate_pass_rate": 1.0
+    }
+  ],
+  "promotion_assessment": {
+    "promotion_supported": false,
+    "accuracy_conclusion": "tied_across_repeated_runs",
+    "latency_conclusion": "direction_inconsistent_across_runs",
+    "reason": "candidate_does_not_demonstrate_repeated_accuracy_advantage"
+  },
+  "limitations": [
+    "Only six cases per run exercise a different model planning route.",
+    "The repeated sample is sufficient to expose instability, not to prove equivalence.",
+    "Latency includes remote model and network variance and is interpreted by direction across runs.",
+    "No questions, SQL, source rows, private Gold identifiers, or result fingerprints are included."
+  ]
+}

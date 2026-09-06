@@ -1,0 +1,7 @@
+{
+  "generated_at": "2026-08-20T14:54:03.609121+00:00",
+  "message": "Database schema is not ready; run the migration authority or explicit legacy reconciliation before starting the application: {\"checksum_mismatches\": [], \"metadata_mismatches\": [], \"missing_checksums\": [], \"pending\": [], \"status\": \"database_unconfigured\", \"unknown_applied\": []}",
+  "schema": "gda.free-form-nl2sql-benchmark-report.v1",
+  "stage": "benchmark_preflight",
+  "status": "error"
+}

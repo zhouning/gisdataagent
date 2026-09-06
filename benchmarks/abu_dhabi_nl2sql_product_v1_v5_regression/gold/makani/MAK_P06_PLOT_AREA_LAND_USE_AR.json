@@ -1,0 +1,46 @@
+{
+  "contract_id": "MAK_P06_PLOT_AREA_LAND_USE_AR_GOLD_V1",
+  "equivalence": {
+    "accepted_fingerprint_keys": [
+      "unordered_position_numeric6_fingerprint",
+      "position_numeric6_fingerprint",
+      "unordered_position_fingerprint",
+      "position_fingerprint"
+    ],
+    "column_aliases_compare_by_position": true,
+    "expected_fingerprints": {
+      "position_fingerprint": "76d6e9a7de94e4a94ca650f779a582bee5033a211d1e300fc9ecd3b38dd022f2",
+      "position_numeric6_fingerprint": "5c4e2e7a09f9f57e8ceea3f0e225aaddc0024502a39157c837b87a0acf91fa37",
+      "unordered_position_fingerprint": "76d6e9a7de94e4a94ca650f779a582bee5033a211d1e300fc9ecd3b38dd022f2",
+      "unordered_position_numeric6_fingerprint": "5c4e2e7a09f9f57e8ceea3f0e225aaddc0024502a39157c837b87a0acf91fa37"
+    },
+    "numeric_precision": 6,
+    "order_sensitive": false
+  },
+  "evaluation_only": true,
+  "expected_result": {
+    "columns": [
+      "primaryuseengdesc",
+      "total_planned_area_sqm"
+    ],
+    "ordered_result_fingerprint": "b4145d58faa4debfa2e9d0b036b2be353830ee414a59c9bc0f0ee6330b546077",
+    "row_count": 19
+  },
+  "query": {
+    "bounded_limit": 1000,
+    "path": "benchmarks/abu_dhabi_nl2sql_product_v1/gold/makani/MAK_P06_PLOT_AREA_LAND_USE_AR.sql",
+    "read_only": true,
+    "sha256": "65b91bbf877294d903cd86df239e1f3a5302223f858801ab4eca3d8eb751af2a"
+  },
+  "runtime_access": "prohibited",
+  "schema": "gda.nl2sql-gold-result-contract.v1",
+  "source_contract": {
+    "authorized_schema": "public",
+    "database_name": "makani_sync_full",
+    "discovery_fingerprint": "5cc21bb2cb21307949e78a86b7141266c3ccd0854b1e51f094c143b31c25747f",
+    "profile_fingerprint": "a4d99a4084081224ffcf6a02cda777b2aaf6052521573a7ee68f022d62809253",
+    "semantic_version": "abu-dhabi-makani-v5-dictionary-published",
+    "source_id": 13
+  },
+  "status": "frozen_evaluation_only_product_gold_v1"
+}

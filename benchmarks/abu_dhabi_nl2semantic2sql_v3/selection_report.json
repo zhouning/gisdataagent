@@ -1,0 +1,600 @@
+{
+  "schema": "gda.abu-dhabi-nl2semantic2sql-benchmark-v3-selection-report",
+  "benchmark_id": "abu-dhabi-nl2semantic2sql-v3-challenge",
+  "scope": "candidate_selection_only",
+  "claim_boundary": {
+    "sql_correctness_evaluated": false,
+    "result_correctness_evaluated": false,
+    "runtime_llm_quality_evaluated": false,
+    "federated_runtime_policy_evaluated": false
+  },
+  "metrics": {
+    "case_count": 26,
+    "scored_case_count": 22,
+    "execute_case_count": 12,
+    "single_asset_case_count": 5,
+    "single_asset_top1_accuracy": 1.0,
+    "composite_case_count": 7,
+    "composite_reviewed_set_coverage_accuracy": 1.0,
+    "non_execute_case_count": 10,
+    "non_execute_safety_gate_rate": 1.0,
+    "overall_scored_pass_rate": 1.0
+  },
+  "cases": [
+    {
+      "case_id": "L3_01",
+      "scope": "liveability",
+      "family": "three_dimension_grain",
+      "difficulty": "hard",
+      "expected_outcome": "execute",
+      "observed_status": "reviewed_asset_set",
+      "top_candidate_id": "abu_dhabi.liveability.dim_facilities",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.dim_districts",
+        "abu_dhabi.liveability.dim_facilities"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.dim_districts",
+        "abu_dhabi.liveability.fact_isochrones",
+        "abu_dhabi.liveability.fact_adeo_facilities",
+        "abu_dhabi.liveability.fact_ap_items",
+        "abu_dhabi.liveability.fact_qualitative_2025",
+        "abu_dhabi.liveability.dim_facility_types",
+        "abu_dhabi.liveability.param_cost_rates"
+      ],
+      "scoring_rule": "reviewed_asset_set_coverage",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "L3_02",
+      "scope": "liveability",
+      "family": "multi_measure_ratio",
+      "difficulty": "hard",
+      "expected_outcome": "execute",
+      "observed_status": "reviewed_asset_set",
+      "top_candidate_id": "abu_dhabi.liveability.dim_facilities",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.dim_districts",
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.fact_population"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.fact_population",
+        "abu_dhabi.liveability.param_provision_standards",
+        "abu_dhabi.liveability.fact_adeo_facilities",
+        "abu_dhabi.liveability.dim_facility_types",
+        "abu_dhabi.liveability.fact_isochrones",
+        "abu_dhabi.liveability.param_cost_rates",
+        "abu_dhabi.liveability.dim_districts"
+      ],
+      "scoring_rule": "reviewed_asset_set_coverage",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "L3_03",
+      "scope": "liveability",
+      "family": "nested_aggregate",
+      "difficulty": "hard",
+      "expected_outcome": "execute",
+      "observed_status": "reviewed_asset_set",
+      "top_candidate_id": "abu_dhabi.liveability.fact_district_scores",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.dim_districts",
+        "abu_dhabi.liveability.fact_district_scores"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.fact_district_scores",
+        "abu_dhabi.liveability.dim_districts",
+        "abu_dhabi.liveability.dim_parks_calc_plots",
+        "abu_dhabi.liveability.fact_fp_facility_scores",
+        "abu_dhabi.liveability.fact_dmt_strategy",
+        "abu_dhabi.liveability.fact_fp_scores",
+        "abu_dhabi.liveability.fact_proximity_stats",
+        "abu_dhabi.liveability.param_domain_weights"
+      ],
+      "scoring_rule": "reviewed_asset_set_coverage",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "L3_04",
+      "scope": "liveability",
+      "family": "conditional_multi_measure",
+      "difficulty": "hard",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.liveability.fact_facility_provision",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.fact_facility_provision"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.fact_facility_provision",
+        "abu_dhabi.liveability.dim_parks_calc_plots",
+        "abu_dhabi.liveability.fact_parks_demand",
+        "abu_dhabi.liveability.fact_fc_demand",
+        "abu_dhabi.liveability.dim_stages",
+        "abu_dhabi.liveability.fact_dmt_strategy",
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.dim_udm_plots"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "L3_05",
+      "scope": "liveability",
+      "family": "derived_metric_unit",
+      "difficulty": "hard",
+      "expected_outcome": "execute",
+      "observed_status": "reviewed_asset_set",
+      "top_candidate_id": "abu_dhabi.liveability.dim_facilities",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.dim_districts",
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.fact_population"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.param_provision_standards",
+        "abu_dhabi.liveability.dim_districts",
+        "abu_dhabi.liveability.fact_isochrones",
+        "abu_dhabi.liveability.fact_adeo_facilities",
+        "abu_dhabi.liveability.fact_qualitative_2025",
+        "abu_dhabi.liveability.param_cost_rates",
+        "abu_dhabi.liveability.fact_population"
+      ],
+      "scoring_rule": "reviewed_asset_set_coverage",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "L3_06",
+      "scope": "liveability",
+      "family": "multilingual_multi_dimension",
+      "difficulty": "hard",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.liveability.fact_district_scores",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.fact_district_scores"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.fact_district_scores",
+        "abu_dhabi.liveability.dim_districts",
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.dim_projects",
+        "abu_dhabi.liveability.fact_population"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "L3_07",
+      "scope": "liveability",
+      "family": "reviewed_spatial_relation",
+      "difficulty": "hard",
+      "expected_outcome": "clarify",
+      "observed_status": "ambiguous_candidates",
+      "top_candidate_id": "abu_dhabi.liveability.fact_isochrones",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.fact_isochrones"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.fact_isochrones",
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.dim_parks_calc_plots",
+        "abu_dhabi.liveability.fact_population",
+        "abu_dhabi.liveability.fact_ap_detailed_budget",
+        "abu_dhabi.liveability.fact_facility_provision",
+        "abu_dhabi.liveability.fact_ap_budget_stats",
+        "abu_dhabi.liveability.fact_ghadan21"
+      ],
+      "scoring_rule": "non_execute_safety_gate",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "L3_08",
+      "scope": "liveability",
+      "family": "unsupported_prediction",
+      "difficulty": "hard",
+      "expected_outcome": "refuse",
+      "observed_status": "unsupported_prediction_request",
+      "top_candidate_id": "abu_dhabi.liveability.fact_facility_provision",
+      "expected_candidate_ids": [
+        "abu_dhabi.liveability.fact_facility_provision"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.fact_facility_provision",
+        "abu_dhabi.liveability.dim_stages",
+        "abu_dhabi.liveability.dim_parks_calc_plots",
+        "abu_dhabi.liveability.fact_fc_demand",
+        "abu_dhabi.liveability.fact_dmt_strategy",
+        "abu_dhabi.liveability.fact_parks_demand",
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.dim_districts"
+      ],
+      "scoring_rule": "non_execute_safety_gate",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "L3_09",
+      "scope": "liveability",
+      "family": "sensitive_data",
+      "difficulty": "hard",
+      "expected_outcome": "refuse",
+      "observed_status": "sensitive_data_request",
+      "top_candidate_id": "abu_dhabi.liveability.dim_facilities",
+      "expected_candidate_ids": [],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.fact_district_scores",
+        "abu_dhabi.liveability.dim_districts",
+        "abu_dhabi.liveability.fact_isochrones",
+        "abu_dhabi.liveability.fact_facility_provision",
+        "abu_dhabi.liveability.dim_parks_calc_plots",
+        "abu_dhabi.liveability.fact_qualitative_2025",
+        "abu_dhabi.liveability.fact_ap_items"
+      ],
+      "scoring_rule": "non_execute_safety_gate",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "L3_10",
+      "scope": "liveability",
+      "family": "underspecified_business_intent",
+      "difficulty": "hard",
+      "expected_outcome": "clarify",
+      "observed_status": "underspecified_query",
+      "top_candidate_id": "abu_dhabi.liveability.dim_facilities",
+      "expected_candidate_ids": [],
+      "selected_candidate_ids": [
+        "abu_dhabi.liveability.dim_facilities",
+        "abu_dhabi.liveability.dim_facility_types",
+        "abu_dhabi.liveability.fact_adeo_facilities",
+        "abu_dhabi.liveability.fact_facility_provision",
+        "abu_dhabi.liveability.fact_fp_facility_scores",
+        "abu_dhabi.liveability.fact_isochrones",
+        "abu_dhabi.liveability.fact_qualitative_facility_scores",
+        "abu_dhabi.liveability.fact_ap_detailed_budget"
+      ],
+      "scoring_rule": "non_execute_safety_gate",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "M3_01",
+      "scope": "makani",
+      "family": "long_tail_asset_retrieval",
+      "difficulty": "hard",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.makani.adwea_e_substation",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.adwea_e_substation"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.adwea_e_substation",
+        "abu_dhabi.makani.adwea_e_streetlight",
+        "abu_dhabi.makani.adwea_e_busbar",
+        "abu_dhabi.makani.adwea_e_t_electricfacility",
+        "abu_dhabi.makani.aadc_meter_data",
+        "abu_dhabi.makani.addc_meter_data",
+        "abu_dhabi.makani.scad_districts_populationestimate_2020",
+        "abu_dhabi.makani.scad_districts_populationestimate_2023"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "M3_02",
+      "scope": "makani",
+      "family": "lookalike_asset_pair",
+      "difficulty": "hard",
+      "expected_outcome": "execute",
+      "observed_status": "reviewed_asset_set",
+      "top_candidate_id": "abu_dhabi.makani.adwea_e_priohelecsegment",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.adwea_e_priohelecsegment",
+        "abu_dhabi.makani.adwea_e_priugelecsegment"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.adwea_e_priohelecsegment",
+        "abu_dhabi.makani.adwea_e_priugelecsegment",
+        "abu_dhabi.makani.adwea_e_secugelecsegment",
+        "abu_dhabi.makani.adwea_e_secohelecsegment",
+        "abu_dhabi.makani.adwea_e_t_overheadline",
+        "abu_dhabi.makani.scad_districts_populationestimate_mid2018",
+        "abu_dhabi.makani.adwea_e_t_bureleclinesgmt",
+        "abu_dhabi.makani.adwea_e_ductedge"
+      ],
+      "scoring_rule": "reviewed_asset_set_coverage",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "M3_03",
+      "scope": "makani",
+      "family": "dictionary_alias_resolution",
+      "difficulty": "hard",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.makani.adwea_e_streetlight",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.adwea_e_streetlight"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.adwea_e_streetlight",
+        "abu_dhabi.makani.streetlight",
+        "abu_dhabi.makani.udm_municipality",
+        "abu_dhabi.makani.uae_all_municipalities",
+        "abu_dhabi.makani.udm_adr_municipality",
+        "abu_dhabi.makani.udm_district",
+        "abu_dhabi.makani.catchbasin",
+        "abu_dhabi.makani.chamber"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "M3_04",
+      "scope": "makani",
+      "family": "utility_metric_and_grain",
+      "difficulty": "hard",
+      "expected_outcome": "execute",
+      "observed_status": "published_asset_selected",
+      "top_candidate_id": "abu_dhabi.makani.adssc_s_sgravitypipe",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.adssc_s_sgravitypipe"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.adssc_s_sgravitypipe",
+        "abu_dhabi.makani.adssc_s_spressmain",
+        "abu_dhabi.makani.adssc_s_sduct",
+        "abu_dhabi.makani.sewerage_pipeline",
+        "abu_dhabi.makani.adwea_e_streetlight",
+        "abu_dhabi.makani.adssc_s_sgravitydisgechbr",
+        "abu_dhabi.makani.adssc_s_sgravityhouseconn",
+        "abu_dhabi.makani.adssc_s_sgravitymanhole"
+      ],
+      "scoring_rule": "single_asset_top1",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "M3_05",
+      "scope": "makani",
+      "family": "temporal_status_asset_family",
+      "difficulty": "hard",
+      "expected_outcome": "execute",
+      "observed_status": "reviewed_asset_set",
+      "top_candidate_id": "abu_dhabi.makani.utilityservicecorridor_planned_approved",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.utilityservicecorridor_existing",
+        "abu_dhabi.makani.utilityservicecorridor_planned",
+        "abu_dhabi.makani.utilityservicecorridor_planned_approved"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.utilityservicecorridor_planned_approved",
+        "abu_dhabi.makani.ud_utility_service_corridor",
+        "abu_dhabi.makani.utilityservicecorridor_planned",
+        "abu_dhabi.makani.utilityservicecorridor_existing",
+        "abu_dhabi.makani.upc_utility_service_corridor",
+        "abu_dhabi.makani.utility_service_corridor",
+        "abu_dhabi.makani.telephone_cable",
+        "abu_dhabi.makani.upc_utility_sub_service_corridor"
+      ],
+      "scoring_rule": "reviewed_asset_set_coverage",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "M3_06",
+      "scope": "makani",
+      "family": "spatial_container_ranking",
+      "difficulty": "hard",
+      "expected_outcome": "execute",
+      "observed_status": "reviewed_asset_set",
+      "top_candidate_id": "abu_dhabi.makani.poi_adek_schools_locations",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.poi_adek_schools_locations",
+        "abu_dhabi.makani.udm_district"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.poi_adek_schools_locations",
+        "abu_dhabi.makani.udm_district",
+        "abu_dhabi.makani.scad_districts_populationestimate_2023",
+        "abu_dhabi.makani.scad_districts_populationestimate_2024",
+        "abu_dhabi.makani.ins_overlay_district",
+        "abu_dhabi.makani.scad_districts_populationestimate_2020",
+        "abu_dhabi.makani.scad_districts_populationestimate_mid2018",
+        "abu_dhabi.makani.scad_districts_populationestimate_mid2019"
+      ],
+      "scoring_rule": "reviewed_asset_set_coverage",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "M3_07",
+      "scope": "makani",
+      "family": "multi_asset_reviewed_join",
+      "difficulty": "hard",
+      "expected_outcome": "clarify",
+      "observed_status": "ambiguous_candidates",
+      "top_candidate_id": "abu_dhabi.makani.udm_district",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.adwea_e_streetlight",
+        "abu_dhabi.makani.adwea_e_substation",
+        "abu_dhabi.makani.udm_district"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.udm_district",
+        "abu_dhabi.makani.adwea_e_streetlight",
+        "abu_dhabi.makani.adwea_e_busbar",
+        "abu_dhabi.makani.adwea_e_substation",
+        "abu_dhabi.makani.upc_precincts",
+        "abu_dhabi.makani.adwea_e_t_electricfacility",
+        "abu_dhabi.makani.controlpanel_1",
+        "abu_dhabi.makani.controlpanel_2"
+      ],
+      "scoring_rule": "non_execute_safety_gate",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "M3_08",
+      "scope": "makani",
+      "family": "unpublished_network_metric",
+      "difficulty": "hard",
+      "expected_outcome": "clarify",
+      "observed_status": "underspecified_query",
+      "top_candidate_id": "abu_dhabi.makani.poi_adek_schools_locations",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.poi_adek_schools_locations",
+        "abu_dhabi.makani.udm_building"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.poi_adek_schools_locations",
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.ud_building",
+        "abu_dhabi.makani.adwea_e_streetlight",
+        "abu_dhabi.makani.sub_adr_building",
+        "abu_dhabi.makani.ud_sub_address_building",
+        "abu_dhabi.makani.adac_airport_buildings",
+        "abu_dhabi.makani.alain_historic_buildings"
+      ],
+      "scoring_rule": "non_execute_safety_gate",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "M3_09",
+      "scope": "makani",
+      "family": "ambiguous_status_definition",
+      "difficulty": "hard",
+      "expected_outcome": "clarify",
+      "observed_status": "ambiguous_candidates",
+      "top_candidate_id": "abu_dhabi.makani.udm_building",
+      "expected_candidate_ids": [
+        "abu_dhabi.makani.udm_building"
+      ],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.tbl_bdms_bldg_addc_consumption",
+        "abu_dhabi.makani.adwea_e_streetlight",
+        "abu_dhabi.makani.upc_building",
+        "abu_dhabi.makani.bdms_bldg_landuse",
+        "abu_dhabi.makani.bdms_door_height",
+        "abu_dhabi.makani.bdms_floors_height",
+        "abu_dhabi.makani.bdms_window_height"
+      ],
+      "scoring_rule": "non_execute_safety_gate",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "M3_10",
+      "scope": "makani",
+      "family": "unsupported_prediction",
+      "difficulty": "hard",
+      "expected_outcome": "refuse",
+      "observed_status": "unsupported_prediction_request",
+      "top_candidate_id": "abu_dhabi.makani.adwea_e_streetlight",
+      "expected_candidate_ids": [],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.adwea_e_streetlight",
+        "abu_dhabi.makani.adwea_e_t_electricfacility",
+        "abu_dhabi.makani.adwea_e_substation",
+        "abu_dhabi.makani.power_structure",
+        "abu_dhabi.makani.adwea_w_t_water_facility",
+        "abu_dhabi.makani.adwea_w_waterstructure",
+        "abu_dhabi.makani.etihad_railway_facilities",
+        "abu_dhabi.makani.poi_dct_facility"
+      ],
+      "scoring_rule": "non_execute_safety_gate",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "M3_11",
+      "scope": "makani",
+      "family": "sensitive_data",
+      "difficulty": "hard",
+      "expected_outcome": "refuse",
+      "observed_status": "sensitive_data_request",
+      "top_candidate_id": "abu_dhabi.makani.udm_building",
+      "expected_candidate_ids": [],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.udm_building",
+        "abu_dhabi.makani.tbl_bdms_bldg_addc_consumption",
+        "abu_dhabi.makani.alain_historic_buildings",
+        "abu_dhabi.makani.bdms_bldg_landuse",
+        "abu_dhabi.makani.ir_pumpingstationstructure_1",
+        "abu_dhabi.makani.sub_adr_building",
+        "abu_dhabi.makani.ud_buildboundary",
+        "abu_dhabi.makani.ud_sub_address_building"
+      ],
+      "scoring_rule": "non_execute_safety_gate",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "M3_12",
+      "scope": "makani",
+      "family": "underspecified_business_intent",
+      "difficulty": "hard",
+      "expected_outcome": "clarify",
+      "observed_status": "underspecified_query",
+      "top_candidate_id": "abu_dhabi.makani.boxculvert",
+      "expected_candidate_ids": [],
+      "selected_candidate_ids": [
+        "abu_dhabi.makani.boxculvert",
+        "abu_dhabi.makani.boxculvert_1",
+        "abu_dhabi.makani.boxculvert_2",
+        "abu_dhabi.makani.bubblers",
+        "abu_dhabi.makani.catchbasin",
+        "abu_dhabi.makani.catchbasin_1",
+        "abu_dhabi.makani.catchbasin_2",
+        "abu_dhabi.makani.chamber"
+      ],
+      "scoring_rule": "non_execute_safety_gate",
+      "passed": true,
+      "scored": true
+    },
+    {
+      "case_id": "F3_01",
+      "scope": "federated",
+      "scored": false,
+      "reason": "federated_policy_scored_by_federated_runtime"
+    },
+    {
+      "case_id": "F3_02",
+      "scope": "federated",
+      "scored": false,
+      "reason": "federated_policy_scored_by_federated_runtime"
+    },
+    {
+      "case_id": "F3_03",
+      "scope": "federated",
+      "scored": false,
+      "reason": "federated_policy_scored_by_federated_runtime"
+    },
+    {
+      "case_id": "F3_04",
+      "scope": "federated",
+      "scored": false,
+      "reason": "federated_policy_scored_by_federated_runtime"
+    }
+  ]
+}

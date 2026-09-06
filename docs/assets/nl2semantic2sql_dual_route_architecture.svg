@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="880" viewBox="0 0 1600 880">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#52606d"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#9aa5b1" flood-opacity="0.28"/>
+    </filter>
+    <style>
+      .title { font: 700 30px Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill:#102a43; }
+      .label { font: 700 22px Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill:#102a43; }
+      .small { font: 18px Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill:#243b53; }
+      .tiny { font: 16px Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill:#486581; }
+      .box { stroke-width:2; rx:16; filter:url(#shadow); }
+      .arrow { stroke:#52606d; stroke-width:3; fill:none; marker-end:url(#arrow); }
+      .dashed { stroke-dasharray:10 8; }
+    </style>
+  </defs>
+  <rect width="1600" height="880" fill="#f5f7fa"/>
+  <text x="800" y="52" text-anchor="middle" class="title">GIS Data Agent 智能问数：共享治理控制面 + 双执行路线</text>
+
+  <rect x="60" y="105" width="290" height="135" class="box" fill="#e3f8ff" stroke="#0b7285"/>
+  <text x="205" y="150" text-anchor="middle" class="label">左侧对话框</text>
+  <text x="205" y="187" text-anchor="middle" class="small">自然语言问题</text>
+  <text x="205" y="214" text-anchor="middle" class="tiny">不要求用户提供表名或连接串</text>
+
+  <rect x="420" y="85" width="360" height="175" class="box" fill="#fff3bf" stroke="#f08c00"/>
+  <text x="600" y="125" text-anchor="middle" class="label">共享治理控制面</text>
+  <text x="600" y="158" text-anchor="middle" class="small">Source registry / 元数据</text>
+  <text x="600" y="186" text-anchor="middle" class="small">本体 + 业务字典 + 语义层</text>
+  <text x="600" y="214" text-anchor="middle" class="small">published / execution_eligible 门禁</text>
+  <text x="600" y="242" text-anchor="middle" class="tiny">grounding：全量可见，问题相关上下文收缩</text>
+
+  <rect x="850" y="105" width="300" height="135" class="box" fill="#e7f5e8" stroke="#2b8a3e"/>
+  <text x="1000" y="150" text-anchor="middle" class="label">Gemini 适配层</text>
+  <text x="1000" y="185" text-anchor="middle" class="small">按 route 请求不同提案合同</text>
+  <text x="1000" y="214" text-anchor="middle" class="tiny">模型只理解问题，不拥有执行权限</text>
+
+  <path d="M350 173 L420 173" class="arrow"/>
+  <path d="M780 173 L850 173" class="arrow"/>
+
+  <rect x="80" y="345" width="640" height="345" class="box" fill="#ffffff" stroke="#2f80ed"/>
+  <rect x="80" y="345" width="640" height="58" rx="16" fill="#dbeafe" stroke="#2f80ed"/>
+  <text x="400" y="382" text-anchor="middle" class="label">路线 A：baseline_sql（当前默认生产）</text>
+  <text x="110" y="440" class="small">1. Gemini 返回受治理 SQL 提案</text>
+  <text x="110" y="482" class="small">2. 表/字段绑定 + SQL postprocessor</text>
+  <text x="110" y="524" class="small">3. 语义、只读、schema、预算校验</text>
+  <text x="110" y="566" class="small">4. PostgreSQL/PostGIS 真实只读执行</text>
+  <text x="110" y="608" class="small">5. 结果合同、指纹、审计证据</text>
+  <text x="110" y="652" class="tiny">执行 authority：已准入 SQL</text>
+
+  <rect x="880" y="345" width="640" height="345" class="box" fill="#ffffff" stroke="#8e44ad"/>
+  <rect x="880" y="345" width="640" height="58" rx="16" fill="#f0e5f7" stroke="#8e44ad"/>
+  <text x="1200" y="382" text-anchor="middle" class="label">路线 B：semantic_ir_experimental（候选路线）</text>
+  <text x="910" y="440" class="small">1. Gemini 返回逻辑 SemanticQueryIR</text>
+  <text x="910" y="482" class="small">2. Pydantic schema 校验</text>
+  <text x="910" y="524" class="small">3. compiler 绑定 active semantic layer</text>
+  <text x="910" y="566" class="small">4. 生成 SQL，再走同样的安全门禁</text>
+  <text x="910" y="608" class="small">5. 通过后才允许真实只读执行</text>
+  <text x="910" y="652" class="tiny">执行 authority：validated compiler output</text>
+
+  <path d="M1000 240 L400 345" class="arrow"/>
+  <path d="M1000 240 L1200 345" class="arrow"/>
+
+  <rect x="300" y="745" width="1000" height="82" class="box" fill="#fff5f5" stroke="#c92a2a"/>
+  <text x="800" y="780" text-anchor="middle" class="label" fill="#c92a2a">统一规则：失败显式记录，实验路线不得静默回退并计为成功</text>
+  <text x="800" y="808" text-anchor="middle" class="small">结果等价比较独立于运行时；benchmark / Gold 不进入 prompt</text>
+  <path d="M400 690 L520 745" class="arrow dashed"/>
+  <path d="M1200 690 L1080 745" class="arrow dashed"/>
+</svg>

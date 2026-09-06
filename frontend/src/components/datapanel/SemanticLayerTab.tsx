@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { SemanticGovernancePanel } from './SemanticGovernancePanel';
 import { SemanticReviewQueuePanel } from './SemanticReviewQueuePanel';
 import { BenchmarkReviewQueuePanel } from './BenchmarkReviewQueuePanel';
+import SemanticInteropPanel from './SemanticInteropPanel';
 interface SourceMeta {
   table_name: string;
   display_name: string;
@@ -45,6 +46,28 @@ interface ColumnAnnotation {
   semantic_execution_eligible?: boolean;
   semantic_inference?: Record<string, any> | null;
   dictionary_evidence?: Record<string, any>;
+  value_domain?: Array<string | number>;
+  value_semantics?: Record<string, any>;
+  definition_status?: string | null;
+  business_table_card_evidence?: Record<string, any>;
+}
+
+function ValueDomainEvidence({ column }: { column: ColumnAnnotation }) {
+  const nestedDomain = Array.isArray(column.value_semantics?.value_domain)
+    ? column.value_semantics?.value_domain
+    : [];
+  const values = (column.value_domain?.length ? column.value_domain : nestedDomain)
+    .map(value => String(value).trim())
+    .filter(Boolean);
+  const evidence = column.business_table_card_evidence
+    || column.value_semantics?.source_evidence;
+  const artifact = String(column.value_semantics?.source_artifact || '');
+  return <div className="semantic-value-evidence" title={artifact || undefined}>
+    {values.length > 0
+      ? <span>{values.slice(0, 4).join(' · ')}{values.length > 4 ? ` · +${values.length - 4}` : ''}</span>
+      : <i>—</i>}
+    <small>{evidence ? '95 表卡' : column.dictionary_evidence?.supported ? '字典' : column.semantic_inference ? '推断候选' : '—'}</small>
+  </div>;
 }
 
 interface SemanticCatalogTable {
@@ -96,6 +119,16 @@ interface ResolveResult {
   [key: string]: any;
 }
 
+function semanticColumnCounts(columns: ColumnAnnotation[] = []) {
+  return columns.reduce((counts, column) => {
+    counts.evidence += (column.semantic_field || column.semantic_labels || column.business_role || column.semantic_inference || column.semantic_status) ? 1 : 0;
+    if (column.semantic_status === 'reviewed_business_semantics') counts.reviewed += 1;
+    else if (column.semantic_status === 'inferred_candidate') counts.candidate += 1;
+    else if (!column.semantic_status && !(column.semantic_field || column.semantic_labels || column.business_role || column.semantic_inference)) counts.blank += 1;
+    return counts;
+  }, { evidence: 0, reviewed: 0, candidate: 0, blank: 0 });
+}
+
 const EMPTY_SRC_FORM = {
   display_name: '', description: '',
   synonyms: '', suggested_analyses: '',
@@ -140,8 +173,6 @@ export default function SemanticLayerTab({ userRole, requestedTarget }: { userRo
   const [previewQ, setPreviewQ] = useState('');
   const [previewRes, setPreviewRes] = useState<ResolveResult | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { refreshAll(); loadDomains(); }, []);
 
@@ -245,10 +276,21 @@ export default function SemanticLayerTab({ userRole, requestedTarget }: { userRo
       const catalogColumns = new Map((table.columns || []).map(column => [column.column_name.toLocaleLowerCase(), column]));
       setDetail({
         ...r.data,
-        columns: (r.data.columns || []).map(column => ({
-          ...catalogColumns.get(column.column_name.toLocaleLowerCase()),
-          ...column,
-        })),
+        columns: (r.data.columns || []).map(column => {
+          const catalogColumn = catalogColumns.get(column.column_name.toLocaleLowerCase());
+          const merged = { ...catalogColumn, ...column };
+          // The table detail endpoint may return a legacy empty CRUD row.
+          // Keep the non-empty artifact-backed card evidence visible instead
+          // of replacing it with an empty string/null from that row.
+          for (const key of ['semantic_domain', 'aliases', 'unit', 'description', 'value_semantics', 'value_domain', 'semantic_field', 'semantic_labels', 'business_role', 'semantic_status']) {
+            const detailValue = (column as any)[key];
+            const catalogValue = (catalogColumn as any)?.[key];
+            if ((detailValue === undefined || detailValue === null || detailValue === '' || (Array.isArray(detailValue) && detailValue.length === 0) || (typeof detailValue === 'object' && detailValue && !Array.isArray(detailValue) && Object.keys(detailValue).length === 0)) && catalogValue !== undefined) {
+              (merged as any)[key] = catalogValue;
+            }
+          }
+          return merged;
+        }),
       });
       if (r.data?.source) {
         setSrcForm({
@@ -385,37 +427,6 @@ export default function SemanticLayerTab({ userRole, requestedTarget }: { userRo
     else { setError(r.data?.error || '预览失败'); setPreviewRes(null); }
   }
 
-  async function exportJSON() {
-    const r = await api('/api/semantic/export');
-    if (!r.ok) { setError(r.data?.error || '导出失败'); return; }
-    const blob = new Blob([JSON.stringify(r.data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `semantic_layer_${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  async function importJSON(file: File) {
-    try {
-      const text = await file.text();
-      const body = JSON.parse(text);
-      const nSrc = (body.sources || []).length;
-      const nAnn = (body.annotations || []).length;
-      if (!confirm(`将导入 ${nSrc} 张表的元数据 + ${nAnn} 条列标注。继续？`)) return;
-      setSaving(true);
-      const r = await api('/api/semantic/import', { method: 'POST', body: JSON.stringify(body) });
-      setSaving(false);
-      if (r.ok) {
-        setInfo(`导入成功: 表 ${r.data.sources_ok}OK/${r.data.sources_failed}FAIL, 列 ${r.data.annotations_ok}OK/${r.data.annotations_failed}FAIL`);
-        await refreshAll();
-      } else setError(r.data?.error || '导入失败');
-    } catch (e) {
-      setError('JSON 解析失败: ' + String(e));
-    }
-  }
-
   const sourceProfiles = useMemo(() => {
     return catalogSources.map(source => ({
       key: source.source_key,
@@ -442,6 +453,15 @@ export default function SemanticLayerTab({ userRole, requestedTarget }: { userRo
     });
   }, [catalogTables, catalogSearch, selectedSourceKey]);
 
+  const catalogSemanticStats = useMemo(() => filteredCatalogTables.reduce((stats, table) => {
+    const counts = semanticColumnCounts(table.columns || []);
+    stats.evidence += counts.evidence;
+    stats.reviewed += counts.reviewed;
+    stats.candidate += counts.candidate;
+    stats.blank += counts.blank;
+    return stats;
+  }, { evidence: 0, reviewed: 0, candidate: 0, blank: 0 }), [filteredCatalogTables]);
+
   return (
     <div className="semantic-layer-tab">
       <section className="semantic-workspace-intro">
@@ -459,6 +479,8 @@ export default function SemanticLayerTab({ userRole, requestedTarget }: { userRo
         <button type="button" className={activeView === 'preview' ? 'active' : ''} onClick={() => setActiveView('preview')}><strong>解析验证</strong><span>检查语义如何参与问数</span></button>
       </nav>
 
+      <SemanticInteropPanel userRole={userRole} defaultKind="semantic-layer" defaultSource={selectedSourceKey || undefined} />
+
       {activeView === 'catalog' && <section className="semantic-catalog-workspace">
         <div className="semantic-catalog-heading">
           <div><span className="semantic-workspace-kicker">TECHNICAL SEMANTICS</span><h4>全库表与字段语义</h4><p>表来自统一元数据目录，已注册和未注册表都可查看物理字段；注册后才能保存表级和字段级语义。</p></div>
@@ -472,11 +494,11 @@ export default function SemanticLayerTab({ userRole, requestedTarget }: { userRo
           </div>
         </div>
         <div className="semantic-toolbar">
-          <div className="semantic-toolbar-info">显示 <b>{filteredCatalogTables.length}</b> / {catalogTables.length} 张表 · 已标注字段 <b>{filteredCatalogTables.reduce((sum, table) => sum + table.annotation_count, 0)}</b></div>
+          <div className="semantic-toolbar-info">显示 <b>{filteredCatalogTables.length}</b> / {catalogTables.length} 张表 · 语义证据 <b>{catalogSemanticStats.evidence}</b> · 业务已审核 <b>{catalogSemanticStats.reviewed}</b> · 待业务审核 <b>{catalogSemanticStats.candidate}</b> · 空白 <b>{catalogSemanticStats.blank}</b></div>
           <input type="text" placeholder="搜索表、字段、别名或描述" value={catalogSearch} onChange={e => setCatalogSearch(e.target.value)} className="semantic-search" />
-          {canEdit && <><button className="btn-secondary" onClick={() => fileInputRef.current?.click()}>↑ 导入</button><input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && importJSON(e.target.files[0])} /></>}
-          <button className="btn-secondary" onClick={exportJSON}>↓ 导出</button>
+          <span className="semantic-toolbar-hint">标准导入/导出请使用上方“标准互操作”；所有外部文件先进入不可执行草稿。</span>
         </div>
+        <div className="semantic-status-legend"><span><b>语义证据</b>：技术目录、推断或字典已形成可追溯标注</span><span><b>业务已审核</b>：可进入相应执行合同</span><span><b>待业务审核</b>：可浏览、可提交审核，但不自动进入生产 SQL</span></div>
         {error && <div className="semantic-alert error">⚠ {error}</div>}
         {info && <div className="semantic-alert info">{info}</div>}
         <div className="semantic-body">
@@ -487,7 +509,7 @@ export default function SemanticLayerTab({ userRole, requestedTarget }: { userRo
             {filteredCatalogTables.map(table => (
               <button type="button" key={`${table.source_key}:${table.table_name}`} className={`semantic-source-item ${selected === table.table_name ? 'active' : ''}`} onClick={() => void selectCatalogTable(table)}>
                 <span className="semantic-source-name">{table.display_name || table.table_name}</span>
-                <span className="semantic-source-sub">{table.table_name} · {table.columns.length} 字段 · {table.annotation_count} 已标注 · {table.semantic_status === 'reviewed_business_semantics' ? '语义已审核' : table.semantic_status === 'excluded' ? '已排除' : '待业务审核'}</span>
+                <span className="semantic-source-sub">{table.table_name} · {table.columns.length} 字段 · 语义证据 {semanticColumnCounts(table.columns || []).evidence} · 业务已审核 {semanticColumnCounts(table.columns || []).reviewed} · 待审核 {semanticColumnCounts(table.columns || []).candidate} · {table.semantic_status === 'reviewed_business_semantics' ? '语义已审核' : table.semantic_status === 'excluded' ? '已排除' : '待业务审核'}</span>
                 <span className="semantic-source-sub">{table.source_name || '未命名数据源'} · {table.ingestion_mode === 'virtual_source' ? '虚拟入湖' : table.ingestion_mode || '目录资产'}{!sources.some(source => source.table_name === table.table_name) ? ' · 未注册' : ''} · 字典{table.dictionary_evidence?.support_status === 'dictionary_exact_supported' ? '完整支持' : table.dictionary_evidence?.support_status === 'dictionary_partial_supported' ? '部分支持' : table.dictionary_evidence?.support_status === 'dictionary_unmatched' ? '未对齐' : '无证据'}</span>
               </button>
             ))}
@@ -502,7 +524,7 @@ export default function SemanticLayerTab({ userRole, requestedTarget }: { userRo
                 {!editingSrc && !detail.source && <div className="semantic-meta"><strong>此表尚未注册语义配置。</strong><span>物理字段已可浏览，点击“注册语义”后可维护表级说明、问数策略和字段标注。</span></div>}
                 {editingSrc && <div className="semantic-form"><label>显示名<input type="text" value={srcForm.display_name} onChange={e => setSrcForm(f => ({ ...f, display_name: e.target.value }))} /></label><label>描述<textarea rows={2} value={srcForm.description} onChange={e => setSrcForm(f => ({ ...f, description: e.target.value }))} /></label><label>同义词（逗号分隔）<input type="text" value={srcForm.synonyms} onChange={e => setSrcForm(f => ({ ...f, synonyms: e.target.value }))} /></label><label>建议分析（逗号分隔）<input type="text" value={srcForm.suggested_analyses} onChange={e => setSrcForm(f => ({ ...f, suggested_analyses: e.target.value }))} /></label><label className="semantic-checkbox-label"><input type="checkbox" checked={nl2sqlEnabled} onChange={e => setNl2sqlEnabled(e.target.checked)} />参与智能问数</label><label>问数优先级（-1000 至 1000）<input type="number" min={-1000} max={1000} step={1} value={nl2sqlPriority} onChange={e => setNl2sqlPriority(Number(e.target.value || 0))} /></label><div><button className="btn-primary" disabled={saving} onClick={saveSource}>{saving ? '保存中...' : '保存'}</button><button className="btn-secondary" onClick={() => setEditingSrc(false)}>取消</button></div></div>}
               </div>
-              <div className="semantic-section"><div className="semantic-section-header"><h4>字段语义 ({(detail.columns || []).length} 列)</h4><span className="semantic-detail-evidence">状态来自统一元数据语义证据；推断候选不会自动获得执行权限。</span></div><div className="semantic-column-scroll"><table className="semantic-cols"><thead><tr><th>列名</th><th>数据类型</th><th>可空</th><th>业务语义</th><th>角色</th><th>状态 / 证据</th><th>Domain</th><th>别名</th><th>单位</th><th>描述</th>{canEdit && <th>操作</th>}</tr></thead><tbody>{(detail.columns || []).map(c => { const isEditing = editingCol === c.column_name; const labels = c.semantic_labels || {}; const status = c.semantic_status || ''; return isEditing ? <tr key={c.column_name} className="semantic-col-editing"><td><b>{c.column_name}</b></td><td colSpan={canEdit ? 10 : 9}><div className="semantic-inline-form"><div><label>Domain<select value={colForm.semantic_domain} onChange={e => setColForm(f => ({ ...f, semantic_domain: e.target.value }))}><option value="">(无)</option>{domains.map(d => <option key={d.name} value={d.name}>{d.name} - {d.description}</option>)}</select></label><label>单位<input type="text" value={colForm.unit} onChange={e => setColForm(f => ({ ...f, unit: e.target.value }))} /></label></div><label>别名（逗号分隔）<input type="text" value={colForm.aliases} onChange={e => setColForm(f => ({ ...f, aliases: e.target.value }))} /></label><label>描述 / 使用规则<textarea rows={2} value={colForm.description} onChange={e => setColForm(f => ({ ...f, description: e.target.value }))} /></label><div><button className="btn-primary" disabled={saving} onClick={saveCol}>保存</button><button className="btn-secondary" onClick={() => setEditingCol(null)}>取消</button></div></div></td></tr> : <tr key={c.column_name}><td><b>{c.column_name}</b>{c.is_geometry && <span className="semantic-geom-badge"> GEOM</span>}</td><td>{c.data_type || ''}</td><td>{c.nullable === false ? '否' : '是'}</td><td>{labels.zh || labels.en || labels.ar || c.semantic_field || <i>—</i>}</td><td>{c.business_role || <i>—</i>}</td><td><span className={`metadata-semantic-status metadata-semantic-${status}`}>{status === 'reviewed_business_semantics' ? '已审核' : status === 'inferred_candidate' ? `推断候选${c.semantic_inference?.confidence ? `·${c.semantic_inference.confidence}` : ''}` : status || '未标注'}</span>{c.dictionary_evidence?.supported && <small className="semantic-evidence-tag">字典</small>}</td><td>{c.semantic_domain || <i>—</i>}</td><td>{(c.aliases || []).join(', ') || <i>—</i>}</td><td>{c.unit || <i>—</i>}</td><td className="semantic-col-desc">{c.description || <i>—</i>}</td>{canEdit && <td><button className="btn-mini" onClick={() => detail.source ? beginEditCol(c) : setInfo('请先注册此表的语义配置，再编辑字段标注。')}>编辑</button>{c.semantic_domain && detail.source && <button className="btn-mini btn-danger" onClick={() => deleteCol(c.column_name)}>清除</button>}</td>}</tr>; })}</tbody></table></div></div>
+              <div className="semantic-section"><div className="semantic-section-header"><h4>字段语义 ({(detail.columns || []).length} 列)</h4><span className="semantic-detail-evidence">状态来自统一元数据语义证据；推断候选不会自动获得执行权限。</span></div><div className="semantic-column-scroll"><table className="semantic-cols"><thead><tr><th>列名</th><th>数据类型</th><th>可空</th><th>业务语义</th><th>角色</th><th>状态 / 证据</th><th>值域 / 来源</th><th>Domain</th><th>别名</th><th>单位</th><th>描述</th>{canEdit && <th>操作</th>}</tr></thead><tbody>{(detail.columns || []).map(c => { const isEditing = editingCol === c.column_name; const labels = c.semantic_labels || {}; const status = c.semantic_status || ''; return isEditing ? <tr key={c.column_name} className="semantic-col-editing"><td><b>{c.column_name}</b></td><td colSpan={canEdit ? 11 : 10}><div className="semantic-inline-form"><div><label>Domain<select value={colForm.semantic_domain} onChange={e => setColForm(f => ({ ...f, semantic_domain: e.target.value }))}><option value="">(无)</option>{domains.map(d => <option key={d.name} value={d.name}>{d.name} - {d.description}</option>)}</select></label><label>单位<input type="text" value={colForm.unit} onChange={e => setColForm(f => ({ ...f, unit: e.target.value }))} /></label></div><label>别名（逗号分隔）<input type="text" value={colForm.aliases} onChange={e => setColForm(f => ({ ...f, aliases: e.target.value }))} /></label><label>描述 / 使用规则<textarea rows={2} value={colForm.description} onChange={e => setColForm(f => ({ ...f, description: e.target.value }))} /></label><div><button className="btn-primary" disabled={saving} onClick={saveCol}>保存</button><button className="btn-secondary" onClick={() => setEditingCol(null)}>取消</button></div></div></td></tr> : <tr key={c.column_name}><td><b>{c.column_name}</b>{c.is_geometry && <span className="semantic-geom-badge"> GEOM</span>}</td><td>{c.data_type || ''}</td><td>{c.nullable === false ? '否' : '是'}</td><td>{labels.zh || labels.en || labels.ar || c.semantic_field || <i>—</i>}</td><td>{c.business_role || <i>—</i>}</td><td><span className={`metadata-semantic-status metadata-semantic-${status}`}>{status === 'reviewed_business_semantics' ? '已审核' : status === 'inferred_candidate' ? `推断候选${c.semantic_inference?.confidence ? `·${c.semantic_inference.confidence}` : ''}` : status || '未标注'}</span>{c.dictionary_evidence?.supported && <small className="semantic-evidence-tag">字典</small>}</td><td><ValueDomainEvidence column={c} /></td><td>{c.semantic_domain || <i>—</i>}</td><td>{(c.aliases || []).join(', ') || <i>—</i>}</td><td>{c.unit || <i>—</i>}</td><td className="semantic-col-desc">{c.description || <i>—</i>}</td>{canEdit && <td><button className="btn-mini" onClick={() => detail.source ? beginEditCol(c) : setInfo('请先注册此表的语义配置，再编辑字段标注。')}>编辑</button>{c.semantic_domain && detail.source && <button className="btn-mini btn-danger" onClick={() => deleteCol(c.column_name)}>清除</button>}</td>}</tr>; })}</tbody></table></div></div>
             </>}
           </div>
         </div>

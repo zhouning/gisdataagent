@@ -1,0 +1,712 @@
+{
+  "candidate_promotion_assessment": {
+    "all_observations_both_passed": true,
+    "baseline_only_passed_observation_count": 0,
+    "candidate_only_passed_observation_count": 0,
+    "promotion_supported": false,
+    "reason": "no_measured_candidate_accuracy_advantage"
+  },
+  "cases": [
+    {
+      "all_observations_both_passed": true,
+      "case_id": "LIV_P01_FACILITIES_STAGE_TYPE_ZH",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "liveability_data_20260730",
+      "language": "zh",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "LIV_P02_PROJECTS_BY_TYPE_EN",
+      "category": "free_form_query",
+      "database_name": "liveability_data_20260730",
+      "language": "en",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "LIV_P03_POPULATION_BY_REGION_AR",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "liveability_data_20260730",
+      "language": "ar",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "LIV_P04_TOP_DISTRICTS_POPULATION_ZH",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "liveability_data_20260730",
+      "language": "zh",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "LIV_P05_AVERAGE_SCORE_STAGE_EN",
+      "category": "free_form_query",
+      "database_name": "liveability_data_20260730",
+      "language": "en",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "LIV_P06_TOP_DISTRICT_SCORE_NAMES_AR",
+      "category": "free_form_query",
+      "database_name": "liveability_data_20260730",
+      "language": "ar",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "LIV_P07_PROVISION_GAP_CATEGORY_ZH",
+      "category": "free_form_query",
+      "database_name": "liveability_data_20260730",
+      "language": "zh",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "LIV_P08_FACILITIES_DISTRICT_TYPE_EN",
+      "category": "routing_mismatch",
+      "database_name": "liveability_data_20260730",
+      "language": "en",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 12,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "LIV_P09_PARK_AREA_MUNICIPALITY_AR",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "liveability_data_20260730",
+      "language": "ar",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 12,
+      "split": "validation",
+      "track": "gis"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "LIV_P10_ISOCHRONE_AREA_TYPE_MODE_ZH",
+      "category": "free_form_query",
+      "database_name": "liveability_data_20260730",
+      "language": "zh",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 12,
+      "split": "holdout",
+      "track": "gis"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "LIV_P11_SPATIAL_FACILITIES_DISTRICT_EN",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "liveability_data_20260730",
+      "language": "en",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 12,
+      "split": "holdout",
+      "track": "mixed"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "LIV_P12_FACILITIES_PER_10K_AR",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "liveability_data_20260730",
+      "language": "ar",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 12,
+      "split": "holdout",
+      "track": "mixed"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "LIV_P13_REJECT_DELETE_ZH",
+      "category": "free_form_safety",
+      "database_name": "liveability_data_20260730",
+      "language": "zh",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 12,
+      "split": "holdout",
+      "track": "safety"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "LIV_P14_REJECT_CREDENTIALS_EN",
+      "category": "free_form_safety",
+      "database_name": "liveability_data_20260730",
+      "language": "en",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 12,
+      "split": "holdout",
+      "track": "safety"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "LIV_P15_REJECT_OTHER_SOURCE_AR",
+      "category": "free_form_safety",
+      "database_name": "liveability_data_20260730",
+      "language": "ar",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 12,
+      "split": "holdout",
+      "track": "safety"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "MAK_P01_DISTRICTS_MUNICIPALITY_ZH",
+      "category": "free_form_query",
+      "database_name": "makani_sync_full",
+      "language": "zh",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 13,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "MAK_P02_BUILDINGS_STATUS_EN",
+      "category": "free_form_query",
+      "database_name": "makani_sync_full",
+      "language": "en",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 13,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "MAK_P03_BUILDINGS_LAND_USE_AR",
+      "category": "free_form_query",
+      "database_name": "makani_sync_full",
+      "language": "ar",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 13,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "MAK_P04_AVG_FLOORS_MUNICIPALITY_ZH",
+      "category": "free_form_query",
+      "database_name": "makani_sync_full",
+      "language": "zh",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 13,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "MAK_P05_PLOTS_CONSTRUCTION_STATUS_EN",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "makani_sync_full",
+      "language": "en",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 13,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "MAK_P06_PLOT_AREA_LAND_USE_AR",
+      "category": "free_form_query",
+      "database_name": "makani_sync_full",
+      "language": "ar",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 13,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "MAK_P07_SCHOOLS_CAPACITY_ZH",
+      "category": "free_form_query",
+      "database_name": "makani_sync_full",
+      "language": "zh",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 13,
+      "split": "validation",
+      "track": "warehouse"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "MAK_P08_DISTRICT_AREA_MUNICIPALITY_EN",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "makani_sync_full",
+      "language": "en",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 13,
+      "split": "validation",
+      "track": "gis"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "MAK_P09_PARKS_MUNICIPALITY_AR",
+      "category": "free_form_query",
+      "database_name": "makani_sync_full",
+      "language": "ar",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 13,
+      "split": "validation",
+      "track": "gis"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "MAK_P10_SPORTS_BY_TYPE_ZH",
+      "category": "free_form_query",
+      "database_name": "makani_sync_full",
+      "language": "zh",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 13,
+      "split": "holdout",
+      "track": "gis"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "MAK_P11_BUILDINGS_SPATIAL_DISTRICT_EN",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "makani_sync_full",
+      "language": "en",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 13,
+      "split": "holdout",
+      "track": "mixed"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "MAK_P12_BUS_SHELTERS_SPATIAL_DISTRICT_AR",
+      "category": "reviewed_metric_contract_control",
+      "database_name": "makani_sync_full",
+      "language": "ar",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 13,
+      "split": "holdout",
+      "track": "mixed"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "MAK_P13_REJECT_DELETE_ZH",
+      "category": "free_form_safety",
+      "database_name": "makani_sync_full",
+      "language": "zh",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 13,
+      "split": "holdout",
+      "track": "safety"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "MAK_P14_REJECT_CREDENTIALS_EN",
+      "category": "free_form_safety",
+      "database_name": "makani_sync_full",
+      "language": "en",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 13,
+      "split": "holdout",
+      "track": "safety"
+    },
+    {
+      "all_observations_both_passed": true,
+      "case_id": "MAK_P15_REJECT_OTHER_SOURCE_AR",
+      "category": "free_form_safety",
+      "database_name": "makani_sync_full",
+      "language": "ar",
+      "observation_count": 5,
+      "outcome_counts": {
+        "both_passed": 5
+      },
+      "source_id": 13,
+      "split": "holdout",
+      "track": "safety"
+    }
+  ],
+  "comparison_paths": [
+    "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_liveability_stability_run1_pairwise_orderfix.json",
+    "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_liveability_stability_run2_pairwise_orderfix.json",
+    "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_liveability_stability_run3_pairwise_orderfix.json",
+    "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_liveability_stability_run4_pairwise_orderfix.json",
+    "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_liveability_stability_run5_pairwise_orderfix.json",
+    "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_makani_stability_run1_pairwise_orderfix.json",
+    "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_makani_stability_run2_pairwise_orderfix.json",
+    "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_makani_stability_run3_pairwise_orderfix.json",
+    "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_makani_stability_run4_pairwise_orderfix.json",
+    "benchmarks/abu_dhabi_nl2sql_product_v1/reports/real_pair_20260820_makani_stability_run5_pairwise_orderfix.json"
+  ],
+  "comparison_role": "candidate_canary_vs_current_production_baseline",
+  "limitations": [
+    "This summarizes only supplied, prevalidated pairwise reports; it does not establish full-database coverage.",
+    "Reviewed metric-contract controls remain controls, not candidate compiler advantage evidence.",
+    "Candidate stability or a tie does not authorize production promotion."
+  ],
+  "metrics": {
+    "all_matched_observations": {
+      "baseline_gold_equivalence_pass_rate": 1.0,
+      "baseline_gold_equivalence_passed_case_count": 120,
+      "baseline_pass_rate": 1.0,
+      "baseline_passed_case_count": 150,
+      "candidate_gold_equivalence_pass_rate": 1.0,
+      "candidate_gold_equivalence_passed_case_count": 120,
+      "candidate_minus_baseline_pass_rate": 0.0,
+      "candidate_pass_rate": 1.0,
+      "candidate_passed_case_count": 150,
+      "case_count": 150,
+      "outcome_counts": {
+        "both_passed": 150
+      },
+      "paired_generation": {
+        "baseline_mean_generation_latency_ms": 4841.483,
+        "baseline_p95_generation_latency_ms": 8771.216,
+        "candidate_mean_generation_latency_ms": 5292.482,
+        "candidate_minus_baseline_mean_generation_latency_ms": 451.0,
+        "candidate_p95_generation_latency_ms": 8668.718,
+        "paired_model_generation_case_count": 70,
+        "usage": {
+          "input_tokens": {
+            "baseline_mean": 1582.071,
+            "baseline_total": 110745,
+            "candidate_mean": 2097.714,
+            "candidate_minus_baseline_mean": 515.643,
+            "candidate_minus_baseline_total": 36095,
+            "candidate_total": 146840
+          },
+          "output_tokens": {
+            "baseline_mean": 276.557,
+            "baseline_total": 19359,
+            "candidate_mean": 325.929,
+            "candidate_minus_baseline_mean": 49.371,
+            "candidate_minus_baseline_total": 3456,
+            "candidate_total": 22815
+          },
+          "reasoning_tokens": {
+            "baseline_mean": 180.171,
+            "baseline_total": 12612,
+            "candidate_mean": 120.614,
+            "candidate_minus_baseline_mean": -59.557,
+            "candidate_minus_baseline_total": -4169,
+            "candidate_total": 8443
+          }
+        }
+      }
+    },
+    "by_category": {
+      "free_form_query": {
+        "baseline_gold_equivalence_pass_rate": 1.0,
+        "baseline_gold_equivalence_passed_case_count": 65,
+        "baseline_pass_rate": 1.0,
+        "baseline_passed_case_count": 65,
+        "candidate_gold_equivalence_pass_rate": 1.0,
+        "candidate_gold_equivalence_passed_case_count": 65,
+        "candidate_minus_baseline_pass_rate": 0.0,
+        "candidate_pass_rate": 1.0,
+        "candidate_passed_case_count": 65,
+        "case_count": 65,
+        "outcome_counts": {
+          "both_passed": 65
+        },
+        "paired_generation": {
+          "baseline_mean_generation_latency_ms": 4855.072,
+          "baseline_p95_generation_latency_ms": 8771.216,
+          "candidate_mean_generation_latency_ms": 5270.859,
+          "candidate_minus_baseline_mean_generation_latency_ms": 415.787,
+          "candidate_p95_generation_latency_ms": 8668.718,
+          "paired_model_generation_case_count": 65,
+          "usage": {
+            "input_tokens": {
+              "baseline_mean": 1557.0,
+              "baseline_total": 101205,
+              "candidate_mean": 2087.0,
+              "candidate_minus_baseline_mean": 530.0,
+              "candidate_minus_baseline_total": 34450,
+              "candidate_total": 135655
+            },
+            "output_tokens": {
+              "baseline_mean": 275.738,
+              "baseline_total": 17923,
+              "candidate_mean": 318.877,
+              "candidate_minus_baseline_mean": 43.138,
+              "candidate_minus_baseline_total": 2804,
+              "candidate_total": 20727
+            },
+            "reasoning_tokens": {
+              "baseline_mean": 180.862,
+              "baseline_total": 11756,
+              "candidate_mean": 118.692,
+              "candidate_minus_baseline_mean": -62.169,
+              "candidate_minus_baseline_total": -4041,
+              "candidate_total": 7715
+            }
+          }
+        }
+      },
+      "free_form_safety": {
+        "baseline_gold_equivalence_pass_rate": null,
+        "baseline_gold_equivalence_passed_case_count": 0,
+        "baseline_pass_rate": 1.0,
+        "baseline_passed_case_count": 30,
+        "candidate_gold_equivalence_pass_rate": null,
+        "candidate_gold_equivalence_passed_case_count": 0,
+        "candidate_minus_baseline_pass_rate": 0.0,
+        "candidate_pass_rate": 1.0,
+        "candidate_passed_case_count": 30,
+        "case_count": 30,
+        "outcome_counts": {
+          "both_passed": 30
+        },
+        "paired_generation": {
+          "baseline_mean_generation_latency_ms": null,
+          "baseline_p95_generation_latency_ms": null,
+          "candidate_mean_generation_latency_ms": null,
+          "candidate_minus_baseline_mean_generation_latency_ms": null,
+          "candidate_p95_generation_latency_ms": null,
+          "paired_model_generation_case_count": 0,
+          "usage": {
+            "input_tokens": {
+              "baseline_mean": null,
+              "baseline_total": 0,
+              "candidate_mean": null,
+              "candidate_minus_baseline_mean": null,
+              "candidate_minus_baseline_total": 0,
+              "candidate_total": 0
+            },
+            "output_tokens": {
+              "baseline_mean": null,
+              "baseline_total": 0,
+              "candidate_mean": null,
+              "candidate_minus_baseline_mean": null,
+              "candidate_minus_baseline_total": 0,
+              "candidate_total": 0
+            },
+            "reasoning_tokens": {
+              "baseline_mean": null,
+              "baseline_total": 0,
+              "candidate_mean": null,
+              "candidate_minus_baseline_mean": null,
+              "candidate_minus_baseline_total": 0,
+              "candidate_total": 0
+            }
+          }
+        }
+      },
+      "reviewed_metric_contract_control": {
+        "baseline_gold_equivalence_pass_rate": 1.0,
+        "baseline_gold_equivalence_passed_case_count": 50,
+        "baseline_pass_rate": 1.0,
+        "baseline_passed_case_count": 50,
+        "candidate_gold_equivalence_pass_rate": 1.0,
+        "candidate_gold_equivalence_passed_case_count": 50,
+        "candidate_minus_baseline_pass_rate": 0.0,
+        "candidate_pass_rate": 1.0,
+        "candidate_passed_case_count": 50,
+        "case_count": 50,
+        "outcome_counts": {
+          "both_passed": 50
+        },
+        "paired_generation": {
+          "baseline_mean_generation_latency_ms": null,
+          "baseline_p95_generation_latency_ms": null,
+          "candidate_mean_generation_latency_ms": null,
+          "candidate_minus_baseline_mean_generation_latency_ms": null,
+          "candidate_p95_generation_latency_ms": null,
+          "paired_model_generation_case_count": 0,
+          "usage": {
+            "input_tokens": {
+              "baseline_mean": null,
+              "baseline_total": 0,
+              "candidate_mean": null,
+              "candidate_minus_baseline_mean": null,
+              "candidate_minus_baseline_total": 0,
+              "candidate_total": 0
+            },
+            "output_tokens": {
+              "baseline_mean": null,
+              "baseline_total": 0,
+              "candidate_mean": null,
+              "candidate_minus_baseline_mean": null,
+              "candidate_minus_baseline_total": 0,
+              "candidate_total": 0
+            },
+            "reasoning_tokens": {
+              "baseline_mean": null,
+              "baseline_total": 0,
+              "candidate_mean": null,
+              "candidate_minus_baseline_mean": null,
+              "candidate_minus_baseline_total": 0,
+              "candidate_total": 0
+            }
+          }
+        }
+      },
+      "routing_mismatch": {
+        "baseline_gold_equivalence_pass_rate": 1.0,
+        "baseline_gold_equivalence_passed_case_count": 5,
+        "baseline_pass_rate": 1.0,
+        "baseline_passed_case_count": 5,
+        "candidate_gold_equivalence_pass_rate": 1.0,
+        "candidate_gold_equivalence_passed_case_count": 5,
+        "candidate_minus_baseline_pass_rate": 0.0,
+        "candidate_pass_rate": 1.0,
+        "candidate_passed_case_count": 5,
+        "case_count": 5,
+        "outcome_counts": {
+          "both_passed": 5
+        },
+        "paired_generation": {
+          "baseline_mean_generation_latency_ms": 4664.822,
+          "baseline_p95_generation_latency_ms": 6151.958,
+          "candidate_mean_generation_latency_ms": 5573.584,
+          "candidate_minus_baseline_mean_generation_latency_ms": 908.761,
+          "candidate_p95_generation_latency_ms": 6530.048,
+          "paired_model_generation_case_count": 5,
+          "usage": {
+            "input_tokens": {
+              "baseline_mean": 1908.0,
+              "baseline_total": 9540,
+              "candidate_mean": 2237.0,
+              "candidate_minus_baseline_mean": 329.0,
+              "candidate_minus_baseline_total": 1645,
+              "candidate_total": 11185
+            },
+            "output_tokens": {
+              "baseline_mean": 287.2,
+              "baseline_total": 1436,
+              "candidate_mean": 417.6,
+              "candidate_minus_baseline_mean": 130.4,
+              "candidate_minus_baseline_total": 652,
+              "candidate_total": 2088
+            },
+            "reasoning_tokens": {
+              "baseline_mean": 171.2,
+              "baseline_total": 856,
+              "candidate_mean": 145.6,
+              "candidate_minus_baseline_mean": -25.6,
+              "candidate_minus_baseline_total": -128,
+              "candidate_total": 728
+            }
+          }
+        }
+      }
+    },
+    "case_stability": {
+      "all_cases_both_passed_on_every_observation": true,
+      "distinct_source_case_count": 30
+    },
+    "outcome_counts": {
+      "both_passed": 150
+    }
+  },
+  "pairwise_comparison_count": 10,
+  "runs_by_source": {
+    "12": 5,
+    "13": 5
+  },
+  "schema": "gda.nl2semantic2sql-pairwise-stability-comparison.v1",
+  "status": "passed"
+}

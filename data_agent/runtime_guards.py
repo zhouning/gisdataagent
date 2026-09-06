@@ -59,6 +59,7 @@ def detect_give_up_sql(sql: str) -> bool:
 # These substrings, if they appear in a FROM/JOIN target, indicate the model
 # tried to use a file path or cache key as a table name.
 _HALLUCINATED_TOKENS = ("/", "\\", ".csv", "query_result_", "uploads")
+_GOVERNED_TABLE_FUNCTIONS = {"jsonb_array_elements"}
 
 
 def _extract_cte_names(sql: str) -> set[str]:
@@ -136,6 +137,13 @@ def detect_hallucinated_table_name(
         if lo == "lateral":
             continue
         if tok in cte_names or lo in {name.lower() for name in cte_names}:
+            continue
+        # PostgreSQL table-valued functions are not physical tables. They are
+        # admitted only by the semantic SQL validator; this guard merely must
+        # not misclassify the compiler/model's governed JSONB array function
+        # as a hallucinated table name.
+        function_name = lo.split("(", 1)[0]
+        if function_name in _GOVERNED_TABLE_FUNCTIONS:
             continue
         if any(bad in lo for bad in _HALLUCINATED_TOKENS):
             return tok

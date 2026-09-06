@@ -1,0 +1,137 @@
+{
+  "schema": "gda.abu-dhabi-nl2semantic2sql-v2-report.v1",
+  "status": "failed",
+  "generated_at": "2026-08-21T09:24:05.346962+00:00",
+  "evaluation_scope": "private_gold_governed_product_evaluation",
+  "execution_profile": "semantic_ir_experimental",
+  "public_benchmark": {
+    "path": "benchmarks/abu_dhabi_nl2semantic2sql_v2/abu_dhabi_nl2semantic2sql_benchmark_v2.json",
+    "sha256": "087cebf726a8f92a74e06152c8ad79ebce98a3847bfc4123786e288d0a22372c",
+    "benchmark_id": "abu-dhabi-nl2semantic2sql-v2-public",
+    "version": "2.0.0",
+    "selected_case_ids": [
+      "L2_L08",
+      "L2_L10"
+    ]
+  },
+  "private_gold": {
+    "contract_id": "abu-dhabi-nl2semantic2sql-v2-private-gold-20260821",
+    "sha256": "5a74f911dd7aa72b6e3cf399ade829917d34ecfb49859736864a109f71d73c04",
+    "runtime_accessible": false
+  },
+  "runtime_isolation": {
+    "runtime_module_scan_passed": true,
+    "questions_loaded_only_by_evaluator": true,
+    "gold_loaded_only_by_evaluator": true,
+    "source_rows_persisted": false
+  },
+  "metrics": {
+    "case_count": 2,
+    "passed_case_count": 0,
+    "case_pass_rate": 0.0,
+    "execute_case_count": 2,
+    "execute_passed_case_count": 0,
+    "execute_pass_rate": 0.0,
+    "clarify_case_count": 0,
+    "clarify_passed_case_count": 0,
+    "refuse_case_count": 0,
+    "refuse_passed_case_count": 0,
+    "result_contract_case_count": 2,
+    "result_contract_passed_case_count": 0,
+    "mean_generation_latency_ms": null,
+    "planner_route_counts": {
+      "evaluation_runtime_exception": 2
+    },
+    "failure_class_counts": {
+      "outcome_match": 2,
+      "result_equivalent": 2
+    }
+  },
+  "cases": [
+    {
+      "case_id": "L2_L08",
+      "scope": "liveability",
+      "language": "en",
+      "split": "validation",
+      "family": "ranking_and_join",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    },
+    {
+      "case_id": "L2_L10",
+      "scope": "liveability",
+      "language": "zh",
+      "split": "adversarial",
+      "family": "metric_ambiguity",
+      "expected_outcome": "execute",
+      "status": "failed",
+      "checks": {
+        "outcome_match": false,
+        "source_rows_not_persisted": true,
+        "result_equivalent": false
+      },
+      "observed": {
+        "status": "error",
+        "outcome": "error",
+        "reason": "evaluation_runtime_exception",
+        "planner_route": "evaluation_runtime_exception",
+        "llm_invoked": false,
+        "semantic_plan": null,
+        "semantic_metric_contract": null,
+        "result": {
+          "row_count": null,
+          "result_fingerprint": null,
+          "equivalence_fingerprints": {},
+          "bundle_fingerprint": null
+        },
+        "generation": {
+          "latency_ms": null,
+          "usage": {},
+          "observed_model_versions": []
+        },
+        "source_rows_persisted": false,
+        "error": "MigrationStateError"
+      },
+      "failure_reasons": [
+        "outcome_match",
+        "result_equivalent"
+      ]
+    }
+  ],
+  "limitations": [
+    "A report is valid only for the selected frozen public benchmark and matching private Gold checksum.",
+    "Federated cases test independent source aggregates and application-level presentation; they do not authorize cross-database SQL or joins.",
+    "The SemanticQueryIR profile is an isolated candidate route and cannot become production solely from this report."
+  ]
+}
