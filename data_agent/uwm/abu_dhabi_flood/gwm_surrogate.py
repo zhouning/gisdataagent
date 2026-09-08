@@ -403,6 +403,7 @@ class AbuDhabiGwmSurrogate:
         node_array = np.asarray(node_frames, dtype=np.float32)
         edge_array = np.asarray(edge_frames, dtype=np.float32)
         run_id = f"gwm-{uuid.uuid4().hex[:12]}"
+        map_view = self._map_view_for_model(model)
         result = {
             "schema": SCHEMA,
             "run_id": run_id,
@@ -417,6 +418,7 @@ class AbuDhabiGwmSurrogate:
                 "period_count": steps,
                 "step_seconds": step_seconds,
                 "sample_count": training.get("sample_count", 0),
+                "map_view": map_view,
                 "timeline": {
                     "available": True,
                     "run_id": run_id,
@@ -510,6 +512,36 @@ class AbuDhabiGwmSurrogate:
         if model.node_indices is None or position >= len(model.node_indices):
             return None
         return self._load_geometry_index().get(int(model.node_indices[position]))
+
+    def _map_view_for_model(self, model: _PilotModel) -> dict[str, Any]:
+        """Return the in-memory pilot extent needed to position result nodes."""
+        coordinates: list[tuple[float, float]] = []
+        for position in range(model.node_count):
+            geometry = self._geometry_for_node(model, position)
+            point = geometry.get("coordinates") if geometry else None
+            if not isinstance(point, list) or len(point) < 2:
+                continue
+            try:
+                longitude = float(point[0])
+                latitude = float(point[1])
+            except (TypeError, ValueError):
+                continue
+            if np.isfinite(longitude) and np.isfinite(latitude):
+                coordinates.append((longitude, latitude))
+        if not coordinates:
+            return {"available": False, "node_feature_count": 0}
+
+        longitudes = [point[0] for point in coordinates]
+        latitudes = [point[1] for point in coordinates]
+        span = max(max(longitudes) - min(longitudes), max(latitudes) - min(latitudes), 0.001)
+        zoom = int(np.clip(round(12.0 - np.log2(span / 0.05)), 11, 16))
+        return {
+            "available": True,
+            "center": [float((min(latitudes) + max(latitudes)) / 2.0), float((min(longitudes) + max(longitudes)) / 2.0)],
+            "bounds": [[float(min(latitudes)), float(min(longitudes))], [float(max(latitudes)), float(max(longitudes))]],
+            "zoom": zoom,
+            "node_feature_count": len(coordinates),
+        }
 
     def _features_for_frame(self, result: dict[str, Any], time_index: int) -> dict[str, Any]:
         node = result["_node_array"][time_index]

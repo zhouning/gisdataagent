@@ -93,6 +93,13 @@ def test_train_rollout_and_node_timeline_are_private_tensor_backed(tmp_path, mon
     assert stressed["run_id"] != baseline["run_id"]
     assert stressed["metadata"]["timeline"]["period_count"] == 5
     assert stressed["metadata"]["timeline"]["endpoint"].endswith("/timeseries")
+    assert stressed["metadata"]["map_view"] == {
+        "available": True,
+        "center": [24.405, 54.405],
+        "bounds": [[24.4, 54.4], [24.41, 54.41]],
+        "zoom": 14,
+        "node_feature_count": 2,
+    }
     assert stressed["summary"]["peak_capacity_fraction"] != baseline["summary"]["peak_capacity_fraction"]
 
     frame = surrogate.timeseries(stressed["run_id"], 1)

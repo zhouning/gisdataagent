@@ -1269,6 +1269,17 @@ function buildScenarioResultMapUpdate(payload: any) {
 
 function buildGwmResultMapUpdate(payload: any) {
   const runId = String(payload?.run_id || 'unknown');
+  const peakDepth = Math.max(0, Number(payload?.summary?.peak_water_depth_m || 0));
+  const displayScale = Math.max(peakDepth, 0.000001);
+  const depthBreaks = [0.05, 0.15, 0.30, 0.50, 0.70, 0.90, 1.00]
+    .map((fraction) => Number((displayScale * fraction).toPrecision(4)));
+  const mapView = payload?.metadata?.map_view;
+  const mapCenter = Array.isArray(mapView?.center) && mapView.center.length === 2
+    ? [Number(mapView.center[0]), Number(mapView.center[1])]
+    : [24.46, 54.45];
+  const mapZoom = Number.isFinite(Number(mapView?.zoom))
+    ? Math.max(2, Math.min(20, Number(mapView.zoom)))
+    : 10;
   const timeline = payload?.metadata?.timeline?.available ? {
     runId,
     endpoint: `/api/abu-dhabi/flood/gwm/runs/${encodeURIComponent(runId)}/timeseries`,
@@ -1291,18 +1302,18 @@ function buildGwmResultMapUpdate(payload: any) {
       solver: 'GWM surrogate',
       claim_boundary: payload?.metadata?.claim_boundary || 'GWM prototype rollout derived from private SWMM pilot tensors',
     },
-    center: [24.46, 54.45],
-    zoom: 10,
+    center: mapCenter,
+    zoom: mapZoom,
     layers: [{
       name: `GWM 快速推演 · 节点水深 · ${runId}`,
       type: 'bubble',
       geojsonData: { type: 'FeatureCollection', features: [] },
       scenarioTimeline: timeline,
       value_column: 'gwm_water_depth_m',
-      breaks: [0.01, 0.05, 0.1, 0.2, 0.5, 1, 3],
+      breaks: depthBreaks,
       color_scheme: 'YlOrRd',
       legend_title: 'GWM 节点水深（m）',
-      style: { min_radius: 2, max_radius: 13, color: '#7f1d1d', opacity: 0.9, fillOpacity: 0.72 },
+      style: { min_radius: 7, max_radius: 22, color: '#7f1d1d', opacity: 0.96, fillOpacity: 0.84 },
       tooltip_fields: ['node_index', 'time_index', 'gwm_water_depth_m', 'gwm_hydraulic_head_m', 'gwm_overflow_or_flooding_m3s'],
       tooltip_labels: { node_index: '节点索引', time_index: '时间片', gwm_water_depth_m: 'GWM 水深（m）', gwm_hydraulic_head_m: 'GWM 液压水头（m）', gwm_overflow_or_flooding_m3s: 'GWM 溢流/积水（m³/s）' },
     }],
@@ -2187,7 +2198,7 @@ export default function AbuDhabiFloodWorldModelTab() {
               <label>{localizeAbuText('泵站能力倍率')}<input type="number" min="0" max="3" step="0.05" value={gwmInputs.pumpCapacityMultiplier} onChange={event => updateGwmInput('pumpCapacityMultiplier', Number(event.target.value))} /></label>
               <label>{localizeAbuText('出水口水位（m）')}<input type="number" min="-20" max="20" step="0.1" value={gwmInputs.outfallLevelM} onChange={event => updateGwmInput('outfallLevelM', Number(event.target.value))} /></label>
             </div>
-            <div className="abu-flood-scenario-actions"><button className="abu-flood-map-action" type="button" onClick={runGwm} disabled={gwmBusy}><Play size={15} />{gwmBusy ? localizeAbuText('运行中…') : localizeAbuText('运行 GWM 推演')}</button>{gwmRollout?.summary && <span className="abu-flood-muted">{localizeAbuText('峰值水深')} {Number(gwmRollout.summary.peak_water_depth_m || 0).toFixed(3)} m · {localizeAbuText('峰值流量')} {Number(gwmRollout.summary.peak_link_flow_m3s || 0).toFixed(3)} m³/s</span>}</div>
+            <div className="abu-flood-scenario-actions"><button className="abu-flood-map-action" type="button" onClick={runGwm} disabled={gwmBusy}><Play size={15} />{gwmBusy ? localizeAbuText('运行中…') : localizeAbuText('运行 GWM 推演')}</button>{gwmRollout?.summary && <span className="abu-flood-muted">{localizeAbuText('峰值水深')} {Number(gwmRollout.summary.peak_water_depth_m || 0).toFixed(4)} m · {localizeAbuText('峰值流量')} {Number(gwmRollout.summary.peak_link_flow_m3s || 0).toFixed(4)} m³/s</span>}</div>
           </div>
         </div>
         {gwmError && <div className="abu-flood-form-error"><AlertTriangle size={14} />{localizeAbuText(gwmError)}</div>}

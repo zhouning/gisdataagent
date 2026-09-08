@@ -81,6 +81,8 @@ def test_gwm_http_contract_serves_train_rollout_and_node_frames(tmp_path, monkey
             json={"pilot_id": "pilot_01", "steps": 4, "rainfall_multiplier": 1.4},
         )
         assert rollout.status_code == 200
+        assert rollout.json()["metadata"]["map_view"]["available"] is True
+        assert rollout.json()["metadata"]["map_view"]["node_feature_count"] == 2
         run_id = rollout.json()["run_id"]
 
         bootstrap = client.get(f"/api/abu-dhabi/flood/gwm/runs/{run_id}/map/bootstrap")

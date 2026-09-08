@@ -460,14 +460,25 @@ export default function Map3DView({
       // Point / Scatterplot layer
       if (layer.type === 'point' || layer.type === 'bubble') {
         const features = data.features || [];
+        const valueColumn = layer.value_column;
+        const values = valueColumn
+          ? features
+            .map((feature: any) => Number(feature?.properties?.[valueColumn] ?? 0))
+            .filter((value: number) => Number.isFinite(value) && value >= 0)
+          : [];
+        const maximumValue = Math.max(0, ...values);
+        const minRadius = Math.max(1, Number(layer.style?.min_radius ?? 3));
+        const maxRadius = Math.max(minRadius, Number(layer.style?.max_radius ?? 30));
         return new ScatterplotLayer({
           id: `layer-${idx}-${layer.name}`,
           data: features,
           pickable: true,
           getPosition: (f: any) => f.geometry?.coordinates || [0, 0],
           getRadius: (f: any) => {
-            if (layer.value_column && f.properties) {
-              return Math.sqrt(Number(f.properties[layer.value_column]) || 1) * 10;
+            if (valueColumn && f.properties) {
+              const value = Math.max(0, Number(f.properties[valueColumn]) || 0);
+              const normalizedValue = maximumValue > 0 ? value / maximumValue : 0;
+              return minRadius + (normalizedValue * (maxRadius - minRadius));
             }
             return 50;
           },
@@ -484,8 +495,8 @@ export default function Map3DView({
             }
             return fillColor;
           },
-          radiusMinPixels: 3,
-          radiusMaxPixels: 30,
+          radiusMinPixels: minRadius,
+          radiusMaxPixels: maxRadius,
           onHover: (info: any) => onLayerHover(info, layer),
         });
       }

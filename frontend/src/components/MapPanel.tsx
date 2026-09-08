@@ -937,9 +937,17 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
   // Auto-detect 3D layers and switch to 3D mode
   useEffect(() => {
-    // SWMM result frames can contain thousands of customer nodes. Keep the
-    // high-volume renderer active while the shared native timeline updates.
-    if (layers.some((layer) => Boolean(layer.scenarioTimeline))) {
+    // GWM pilots can be compact diagnostic networks. Keep them in the 2D
+    // renderer so individual nodes remain inspectable; high-volume timelines
+    // continue to use the WebGL renderer.
+    const timeline = layers.find((layer) => Boolean(layer.scenarioTimeline))?.scenarioTimeline;
+    if (timeline?.kind === 'gwm-node' && Number(timeline.totalNodeCount || 0) <= 2000) {
+      setViewMode('2d');
+      return;
+    }
+    // SWMM and surface-water frames can contain thousands of features. Keep
+    // the high-volume renderer active while the shared timeline updates.
+    if (timeline) {
       setViewMode('3d');
       return;
     }
@@ -1627,11 +1635,12 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
           const val = feature?.properties?.[value_column || ''] ?? 1;
           const minR = style.min_radius || 4;
           const maxR = style.max_radius || 30;
-          const allVals = geojsonData.features.map(
-            (f: any) => f.properties?.[value_column || ''] ?? 0
-          );
-          const maxVal = Math.max(...allVals, 1);
-          const radius = minR + ((val / maxVal) * (maxR - minR));
+          const allVals = geojsonData.features
+            .map((f: any) => Number(f.properties?.[value_column || ''] ?? 0))
+            .filter((value: number) => Number.isFinite(value) && value >= 0);
+          const maxVal = Math.max(0, ...allVals);
+          const normalizedValue = maxVal > 0 ? Math.max(0, Number(val) || 0) / maxVal : 0;
+          const radius = minR + (normalizedValue * (maxR - minR));
           const breakIndex = breaks?.findIndex((breakValue) => val <= breakValue) ?? -1;
           const colorIndex = breakIndex >= 0 ? breakIndex : (breaks?.length ?? 0) - 1;
           const categoryRaw = config.category_column ? String(feature?.properties?.[config.category_column] ?? '') : '';
