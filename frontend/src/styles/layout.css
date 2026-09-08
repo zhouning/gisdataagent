@@ -500,6 +500,8 @@ body {
 .abu-flood-scenario-disclaimer { display: flex; align-items: flex-start; gap: 7px; margin: -2px 0 12px; padding: 8px 9px; border-left: 3px solid var(--warning); background: rgba(245,158,11,.08); color: #fcd34d; font-size: 9px; line-height: 1.45; }
 .abu-flood-scenario-disclaimer svg { flex: 0 0 auto; margin-top: 1px; }
 .abu-flood-scenario-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(275px, .9fr); gap: 12px; }
+.abu-flood-gwm-section { padding: 14px; border: 1px solid rgba(20,184,166,.42); border-radius: 7px; background: var(--surface); }
+.abu-flood-gwm-grid { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.35fr); gap: 12px; }
 .abu-flood-scenario-form { min-width: 0; }
 .abu-flood-form-group { padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
 .abu-flood-form-group + .abu-flood-form-group { margin-top: 8px; }
@@ -708,7 +710,8 @@ body {
   .abu-flood-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .abu-flood-map-section,
   .abu-flood-detail-grid,
-  .abu-flood-scenario-grid { grid-template-columns: 1fr; }
+  .abu-flood-scenario-grid,
+  .abu-flood-gwm-grid { grid-template-columns: 1fr; }
   .abu-flood-map-layers { border-top: 1px solid var(--border); border-left: 0; }
   .abu-flood-scenario-result { border-top: 1px solid var(--border); border-left: 0; }
   .abu-flood-stage-track { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }

@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import DeckGL from '@deck.gl/react';
 import { GeoJsonLayer, ScatterplotLayer, ArcLayer, ColumnLayer } from '@deck.gl/layers';
 import { MVTLayer } from '@deck.gl/geo-layers';
 import { Map } from 'react-map-gl/maplibre';
+import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 interface MapLayer {
@@ -31,19 +33,18 @@ interface MapLayer {
   // MVT tile properties
   tile_url?: string;
   metadata_url?: string;
+  feature_url_template?: string;
   source_layer?: string;
   layer_id?: string;
+  min_zoom?: number;
+  max_zoom?: number;
+  bounds?: [number, number, number, number] | null;
+  center?: [number, number] | null;
+  zoom?: number;
   // FlatGeobuf properties
   fgb?: string;
   geom_type?: string;
-  scenarioTimeline?: {
-    runId: string;
-    endpoint: string;
-    timeValues: string[];
-    elapsedMinutes: number[];
-    periodCount: number;
-    totalNodeCount?: number;
-  };
+  scenarioTimeline?: { runId: string; endpoint: string; timeValues: string[]; elapsedMinutes: number[]; periodCount: number; totalNodeCount?: number; kind?: 'swmm-node' | 'gwm-node' | 'surface-cell' };
 }
 
 interface Map3DViewProps {
@@ -51,6 +52,8 @@ interface Map3DViewProps {
   center: [number, number];
   zoom: number;
   basemap?: string;
+  basemaps?: Record<string, string>;
+  basemapMetadata?: Record<string, { min_zoom?: number; max_zoom?: number }>;
   scenarioData?: Record<string, any>;
 }
 
@@ -60,11 +63,128 @@ interface TooltipInfo {
   text: string;
 }
 
+const SWMM_VALUE_COLUMN_INDEX: Record<string, number> = {
+  scenario_water_depth_m: 0,
+  scenario_hydraulic_head_m: 1,
+  scenario_stored_volume_m3: 2,
+  scenario_lateral_inflow_m3s: 3,
+  scenario_total_inflow_m3s: 4,
+  scenario_overflow_or_flooding_m3s: 5,
+};
+
+function isColumnarSwmmFrame(value: any): boolean {
+  return value?.format === 'swmm-node-columns-v1'
+    && Array.isArray(value.node_ids)
+    && Array.isArray(value.coordinates)
+    && Array.isArray(value.values);
+}
+
+function columnarSwmmValue(frame: any, rowIndex: number, field: string): number {
+  const columnIndex = SWMM_VALUE_COLUMN_INDEX[field];
+  return columnIndex == null ? 0 : Number(frame.values[rowIndex * 6 + columnIndex] || 0);
+}
+
+function columnarSwmmProperties(frame: any, rowIndex: number): Record<string, unknown> {
+  const overflow = columnarSwmmValue(frame, rowIndex, 'scenario_overflow_or_flooding_m3s');
+  const partitionIndex = Number(frame.partition_indexes?.[rowIndex] || 0);
+  return {
+    node_id: frame.node_ids[rowIndex],
+    partition_label: frame.partition_labels?.[partitionIndex] || '全市连续网络',
+    scenario_timestamp: frame.metadata?.timestamp,
+    scenario_elapsed_minutes: frame.metadata?.elapsed_minutes,
+    scenario_water_depth_m: columnarSwmmValue(frame, rowIndex, 'scenario_water_depth_m'),
+    scenario_hydraulic_head_m: columnarSwmmValue(frame, rowIndex, 'scenario_hydraulic_head_m'),
+    scenario_stored_volume_m3: columnarSwmmValue(frame, rowIndex, 'scenario_stored_volume_m3'),
+    scenario_lateral_inflow_m3s: columnarSwmmValue(frame, rowIndex, 'scenario_lateral_inflow_m3s'),
+    scenario_total_inflow_m3s: columnarSwmmValue(frame, rowIndex, 'scenario_total_inflow_m3s'),
+    scenario_overflow_or_flooding_m3s: overflow,
+    scenario_node_flooding_detected: overflow > 0,
+  };
+}
+
+function map3dDisplayName(value: string, locale: string): string {
+  if (locale !== 'en-US' || !/[\u3400-\u9fff]/.test(value)) return value;
+  const replacements: Array<[RegExp, string]> = [
+    [/阿布扎比暴雨内涝世界模型/g, 'Abu Dhabi Stormwater Flood World Model'],
+    [/SWMM 全市连续网络/g, 'SWMM citywide continuous network'],
+    [/全市连续网络/g, 'citywide continuous network'],
+    [/全量节点级时序/g, 'complete node-level time series'],
+    [/节点最大水深/g, 'maximum node water depth'],
+    [/节点溢流\/积水/g, 'node overflow/flooding'],
+    [/管段最大容量率/g, 'maximum link capacity fraction'],
+    [/全市陆域二维最大积水深度（m）· 公共 DEM 原型/g, 'citywide land-surface 2D maximum flood depth (m) · public DEM prototype'],
+    [/全市陆域二维动态积水深度（m）· 公共 DEM 原型/g, 'citywide dynamic land-surface 2D flood depth (m) · public DEM prototype'],
+    [/全市陆域最大积水深度/g, 'citywide land-surface maximum flood depth'],
+    [/全市陆域动态积水深度/g, 'citywide dynamic land-surface flood depth'],
+    [/永久水体比例/g, 'permanent-water fraction'],
+    [/陆地比例/g, 'land fraction'],
+    [/公共原型/g, 'public prototype'],
+    [/全市公共原型/g, 'full-city public prototype'],
+    [/二维结果/g, '2D result'],
+    [/最大积水深度/g, 'maximum flood depth'],
+    [/动态地表水深/g, 'dynamic surface-water depth'],
+    [/全市二维/g, 'citywide 2D'],
+    [/二维最大积水深度/g, 'maximum 2D flood depth'],
+    [/二维动态积水深度/g, 'dynamic 2D flood depth'],
+    [/全市二维最大积水深度（m）· 公共 DEM 原型/g, 'citywide 2D maximum flood depth (m) · public DEM prototype'],
+    [/全市二维动态积水深度（m）· 公共 DEM 原型/g, 'citywide 2D dynamic flood depth (m) · public DEM prototype'],
+    [/公共 DEM 原型/g, 'public DEM prototype'],
+    [/来源标签/g, 'data source'],
+    [/来源/g, 'source'],
+    [/客户节点/g, 'customer nodes'],
+    [/运行状态/g, 'runtime status'],
+    [/计算分块/g, 'compute partition'],
+    [/分区/g, 'partition'],
+    [/雨水管线/g, 'stormwater pipes'],
+    [/雨水节点/g, 'stormwater nodes'],
+    [/节点/g, 'nodes'],
+    [/管段/g, 'links'],
+    [/管线/g, 'pipes'],
+    [/客户/g, 'customer'],
+    [/结果/g, 'results'],
+    [/原始输入/g, 'raw input'],
+    [/全市/g, 'citywide'],
+    [/已接入/g, 'connected'],
+    [/官方/g, 'official'],
+    [/年一遇/g, '-year return period'],
+    [/分钟/g, 'minutes'],
+    [/小时/g, 'hours'],
+    [/百万升/g, 'million litres'],
+  ];
+  let translated = value;
+  for (const [source, target] of replacements.sort((left, right) => right[0].source.length - left[0].source.length)) {
+    translated = translated.replace(source, target);
+  }
+  return translated
+    .replace(/[\u3400-\u9fff]+/g, 'model metadata')
+    .replace(/：/g, ': ')
+    .replace(/，/g, ', ')
+    .replace(/；/g, '; ')
+    .replace(/。/g, '.')
+    .replace(/（/g, ' (')
+    .replace(/）/g, ')')
+    .replace(/、/g, ', ');
+}
+
 const BASEMAP_STYLES: Record<string, any> = {
   'ESRI Satellite': {
     version: 8, name: 'Esri',
     sources: { esri: { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256 } },
     layers: [{ id: 'esri', type: 'raster', source: 'esri' }],
+  },
+  'DMT Abu Dhabi': {
+    version: 8, name: 'DMT Abu Dhabi',
+    sources: {
+      dmt: {
+        type: 'raster',
+        tiles: ['https://geosmart.dmt.gov.ae/arcgis/rest/services/BaseMaps/DMT_Basemap_WM/MapServer/tile/{z}/{y}/{x}'],
+        tileSize: 256,
+        minzoom: 7,
+        maxzoom: 19,
+        attribution: 'Abu Dhabi Department of Municipalities and Transport',
+      },
+    },
+    layers: [{ id: 'dmt', type: 'raster', source: 'dmt' }],
   },
   'CartoDB Positron': 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
   'CartoDB Dark': 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
@@ -99,7 +219,37 @@ function isChoroplethLegendLayer(layer: MapLayer) {
     && Boolean(layer.breaks && layer.color_scheme);
 }
 
-export default function Map3DView({ layers, center, zoom, basemap, scenarioData }: Map3DViewProps) {
+function rasterBasemapStyle(
+  name: string,
+  tileUrl: string,
+  metadata?: { min_zoom?: number; max_zoom?: number },
+) {
+  const normalizedUrl = tileUrl.replace('{s}', 'a').replace('{r}', '');
+  return {
+    version: 8 as const,
+    name,
+    sources: {
+      basemap: {
+        type: 'raster' as const,
+        tiles: [normalizedUrl],
+        tileSize: 256,
+        minzoom: metadata?.min_zoom,
+        maxzoom: metadata?.max_zoom,
+      },
+    },
+    layers: [
+      { id: 'background', type: 'background' as const, paint: { 'background-color': '#eef0ed' } },
+      { id: 'basemap', type: 'raster' as const, source: 'basemap' },
+    ],
+  };
+}
+
+export default function Map3DView({
+  layers, center, zoom, basemap, basemaps, basemapMetadata, scenarioData,
+}: Map3DViewProps) {
+  const { t, i18n } = useTranslation('common');
+  const locale = i18n.resolvedLanguage || i18n.language;
+  const displayName = useCallback((value: string) => map3dDisplayName(value, locale), [locale]);
   const [layerData, setLayerData] = useState<Record<string, any>>({});
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
@@ -144,6 +294,13 @@ export default function Map3DView({ layers, center, zoom, basemap, scenarioData 
     maxZoom: 20,
   }), [center, zoom, pitch, bearing]);
 
+  const mapStyle = useMemo(() => {
+    const selected = basemap || 'ESRI Satellite';
+    const configuredUrl = basemaps?.[selected];
+    if (configuredUrl) return rasterBasemapStyle(selected, configuredUrl, basemapMetadata?.[selected]);
+    return BASEMAP_STYLES[selected] || BASEMAP_STYLES['ESRI Satellite'];
+  }, [basemap, basemapMetadata, basemaps]);
+
   // Fetch GeoJSON / FlatGeobuf data for layers that need it
   useEffect(() => {
     const fetchLayers = async () => {
@@ -183,6 +340,9 @@ export default function Map3DView({ layers, center, zoom, basemap, scenarioData 
           }
         } else if (layer.geojson) {
           try {
+            // Several diagnostic layers intentionally share one result file.
+            // Fetch and parse each private GeoJSON only once, then reuse the
+            // parsed FeatureCollection for the alternate renderer/metric.
             if (fetchedGeojson[layer.geojson]) {
               newData[layer.name] = fetchedGeojson[layer.geojson];
               continue;
@@ -209,12 +369,12 @@ export default function Map3DView({ layers, center, zoom, basemap, scenarioData 
       const entries = Object.entries(props)
         .filter(([k]) => k !== 'geometry' && !k.startsWith('_'))
         .slice(0, 6);
-      const text = entries.map(([k, v]) => `${k}: ${v}`).join('\n');
+      const text = entries.map(([k, v]) => `${displayName(k)}: ${v}`).join('\n');
       setTooltip({ x: info.x, y: info.y, text });
     } else {
       setTooltip(null);
     }
-  }, []);
+  }, [displayName]);
 
   const onLayerHover = useCallback((info: any, layer: MapLayer) => {
     if (!info.object) {
@@ -234,14 +394,14 @@ export default function Map3DView({ layers, center, zoom, basemap, scenarioData 
           const value = field === layer.category_column
             ? (categoryLabels[raw] || categoryLabels[normalized] || raw)
             : raw;
-          return `${labels[field] || field}: ${value}`;
+          return `${displayName(labels[field] || field)}: ${value}`;
         })
         .filter(Boolean) as string[];
       setTooltip({ x: info.x, y: info.y, text: lines.join('\n') });
       return;
     }
     onHover(info);
-  }, [onHover]);
+  }, [onHover, displayName]);
 
   // Build deck.gl layers from MapLayer configs
   const deckLayers = useMemo(() => {
@@ -249,10 +409,7 @@ export default function Map3DView({ layers, center, zoom, basemap, scenarioData 
       if (layerVisibility[layer.name] === false) return null;
 
       const fillColor = hexToRgba(layer.style?.fillColor || '#4682B4', Math.round((layer.style?.fillOpacity ?? 0.7) * 255));
-      const lineColor = hexToRgba(
-        layer.style?.color || '#333333',
-        Math.round((layer.style?.opacity ?? 0.8) * 255),
-      );
+      const lineColor = hexToRgba(layer.style?.color || '#333333', Math.round((layer.style?.opacity ?? 0.8) * 255));
 
       // MVT vector tile layer — no pre-fetched data needed
       if (layer.type === 'mvt' && layer.tile_url) {
@@ -262,8 +419,13 @@ export default function Map3DView({ layers, center, zoom, basemap, scenarioData 
           getFillColor: fillColor,
           getLineColor: lineColor,
           lineWidthMinPixels: 1,
+          minZoom: layer.min_zoom,
+          maxZoom: layer.max_zoom,
+          loadOptions: {
+            fetch: { credentials: 'include' },
+          },
           pickable: true,
-          onHover,
+          onHover: (info: any) => onLayerHover(info, layer),
         });
       }
 
@@ -328,24 +490,7 @@ export default function Map3DView({ layers, center, zoom, basemap, scenarioData 
             }
             return 100;
           },
-          getFillColor: (f: any) => {
-            if (layer.category_column && layer.category_colors && f.properties) {
-              const raw = String(f.properties[layer.category_column] ?? '');
-              const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
-              const categoryColor = layer.category_colors[raw] || layer.category_colors[intForm];
-              if (categoryColor) {
-                return hexToRgba(
-                  categoryColor,
-                  Math.round((layer.style?.fillOpacity ?? 0.85) * 255),
-                );
-              }
-            }
-            if (layer.value_column && layer.breaks && f.properties) {
-              const val = Number(f.properties[layer.value_column]) || 0;
-              return getBreakColor(val, layer.breaks, layer.color_scheme);
-            }
-            return fillColor;
-          },
+          getFillColor: fillColor,
           onHover,
         });
       }
@@ -376,6 +521,44 @@ export default function Map3DView({ layers, center, zoom, basemap, scenarioData 
 
       // Point / Scatterplot layer
       if (layer.type === 'point' || layer.type === 'bubble') {
+        if (isColumnarSwmmFrame(data)) {
+          const rowIndexes = layer.value_column === 'scenario_overflow_or_flooding_m3s'
+            ? data.overflow_node_indexes || []
+            : data.node_ids.map((_: string, rowIndex: number) => rowIndex);
+          return new ScatterplotLayer({
+            id: `layer-${idx}-${layer.name}`,
+            data: rowIndexes,
+            pickable: true,
+            getPosition: (rowIndex: number) => [
+              Number(data.coordinates[rowIndex * 2]),
+              Number(data.coordinates[rowIndex * 2 + 1]),
+            ],
+            getRadius: (rowIndex: number) => {
+              const value = layer.value_column
+                ? columnarSwmmValue(data, rowIndex, layer.value_column)
+                : 0;
+              return Math.sqrt(Math.max(0, value)) * 10;
+            },
+            getFillColor: (rowIndex: number) => {
+              if (layer.value_column && layer.breaks) {
+                return getBreakColor(
+                  columnarSwmmValue(data, rowIndex, layer.value_column),
+                  layer.breaks,
+                  layer.color_scheme,
+                );
+              }
+              return fillColor;
+            },
+            radiusMinPixels: Number(layer.style?.min_radius || 2),
+            radiusMaxPixels: Number(layer.style?.max_radius || 30),
+            onHover: (info: any) => onLayerHover({
+              ...info,
+              object: info.object == null
+                ? null
+                : { properties: columnarSwmmProperties(data, Number(info.object)) },
+            }, layer),
+          });
+        }
         const features = data.features || [];
         return new ScatterplotLayer({
           id: `layer-${idx}-${layer.name}`,
@@ -388,10 +571,22 @@ export default function Map3DView({ layers, center, zoom, basemap, scenarioData 
             }
             return 50;
           },
-          getFillColor: fillColor,
+          getFillColor: (f: any) => {
+            if (layer.category_column && layer.category_colors && f.properties) {
+              const raw = String(f.properties[layer.category_column] ?? '');
+              const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
+              const categoryColor = layer.category_colors[raw] || layer.category_colors[intForm];
+              if (categoryColor) return hexToRgba(categoryColor, Math.round((layer.style?.fillOpacity ?? 0.85) * 255));
+            }
+            if (layer.value_column && layer.breaks && f.properties) {
+              const val = Number(f.properties[layer.value_column]) || 0;
+              return getBreakColor(val, layer.breaks, layer.color_scheme);
+            }
+            return fillColor;
+          },
           radiusMinPixels: 3,
           radiusMaxPixels: 30,
-          onHover,
+          onHover: (info: any) => onLayerHover(info, layer),
         });
       }
 
@@ -496,8 +691,18 @@ export default function Map3DView({ layers, center, zoom, basemap, scenarioData 
           }
           return lineColor;
         },
+        // GeoJsonLayer defaults point radii to metres. At a citywide zoom that
+        // made valid FGB point features sub-pixel and appear missing. Map
+        // layer radius values are UI pixels, matching the 2D renderer.
+        pointType: 'circle',
+        getPointRadius: Number(layer.style?.radius ?? 3),
+        pointRadiusUnits: 'pixels',
+        pointRadiusMinPixels: Math.max(1, Number(layer.style?.radius ?? 3)),
+        pointRadiusMaxPixels: Math.max(1, Number(layer.style?.radius ?? 3)),
+        getLineWidth: Number(layer.style?.weight ?? 1),
+        lineWidthUnits: 'pixels',
         lineWidthMinPixels: 1,
-        onHover,
+        onHover: (info: any) => onLayerHover(info, layer),
       });
     }).filter(Boolean);
   }, [layers, layerData, onHover, onLayerHover, layerVisibility, scenarioData]);
@@ -512,7 +717,8 @@ export default function Map3DView({ layers, center, zoom, basemap, scenarioData 
         style={{ position: 'absolute', top: '0', left: '0', width: '100%', height: '100%' }}
       >
         <Map
-          mapStyle={BASEMAP_STYLES[basemap || 'ESRI Satellite'] || BASEMAP_STYLES['ESRI Satellite']}
+          mapLib={maplibregl}
+          mapStyle={mapStyle}
           style={{ width: '100%', height: '100%' }}
         />
       </DeckGL>
@@ -529,14 +735,14 @@ export default function Map3DView({ layers, center, zoom, basemap, scenarioData 
 
       {/* 3D Layer Control Panel (v14.0) */}
       {layers.length > 0 && (
-        <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 1000 }}>
+        <div style={{ position: 'absolute', top: 54, right: 12, zIndex: 1000 }}>
           <button onClick={() => setShowLayerPanel(!showLayerPanel)}
             style={{
               background: showLayerPanel ? '#1e3a5f' : 'rgba(0,0,0,0.6)',
               color: '#e0e0e0', border: '1px solid #444', borderRadius: 4,
               padding: '4px 8px', cursor: 'pointer', fontSize: 12,
             }}>
-            图层
+            {t('map.layers', { defaultValue: 'Layers' })}
           </button>
           {showLayerPanel && (
             <div style={{
@@ -554,7 +760,7 @@ export default function Map3DView({ layers, center, zoom, basemap, scenarioData 
                       ...prev, [l.name]: prev[l.name] === false ? true : false
                     }))}
                   />
-                  {l.name}
+                  {displayName(l.name)}
                   <span style={{ marginLeft: 'auto', fontSize: 10, color: '#888' }}>{l.type}</span>
                 </label>
               ))}
@@ -582,7 +788,7 @@ export default function Map3DView({ layers, center, zoom, basemap, scenarioData 
               return (
                 <div key={layer.name} style={{ marginBottom: 6 }}>
                   <div style={{ color: '#e0e0e0', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
-                    {layer.legend_title || layer.name}
+                    {displayName(layer.legend_title || layer.name)}
                   </div>
                   {entries.map(([val, color]) => (
                     <div key={val} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '1px 0' }}>
@@ -591,7 +797,7 @@ export default function Map3DView({ layers, center, zoom, basemap, scenarioData 
                         background: color as string, border: '1px solid rgba(255,255,255,0.2)',
                         flexShrink: 0,
                       }} />
-                      <span style={{ color: '#ccc', fontSize: 11 }}>{labels[val] || val}</span>
+                      <span style={{ color: '#ccc', fontSize: 11 }}>{displayName(labels[val] || val)}</span>
                     </div>
                   ))}
                 </div>
@@ -614,7 +820,7 @@ export default function Map3DView({ layers, center, zoom, basemap, scenarioData 
               return (
                 <div key={layer.name} style={{ marginBottom: 6 }}>
                   <div style={{ color: '#e0e0e0', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
-                    {layer.legend_title || layer.value_column || layer.name}
+                    {displayName(layer.legend_title || layer.value_column || layer.name)}
                   </div>
                   {(layer.breaks || []).map((b, i) => (
                     <div key={`${layer.name}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '1px 0' }}>

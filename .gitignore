@@ -27,6 +27,7 @@ __pycache__/
 /data_agent/*.docx
 
 # Geospatial data files �?NEVER commit data to the repository
+*.gdb/
 *.shp
 *.dbf
 *.shx
@@ -41,6 +42,8 @@ __pycache__/
 *.gpkg
 *.kml
 *.kmz
+*.private.*
+**/customer_swmm_gwm_dynamic_diagnostic_manifest.json
 !demos/**/*.geojson
 !data_agent/test_data/arcpy_mcp_smoke.geojson
 !data_agent/scca_samples/
