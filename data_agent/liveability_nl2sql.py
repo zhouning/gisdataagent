@@ -173,6 +173,61 @@ def _localized_error(language: str) -> str:
     }[language]
 
 
+def _localized_source_unavailable(language: str) -> str:
+    """Return a useful, infrastructure-safe source availability message."""
+
+    return {
+        "zh": (
+            "已通过语义与安全校验，但已登记的 Liveability 数据源当前不可达，"
+            "未返回数据结果。请恢复业务数据源网络或数据库服务后重试。"
+        ),
+        "en": (
+            "Semantic and safety validation passed, but the registered Liveability "
+            "data source is currently unavailable. No data result was returned; "
+            "restore the source network or database service and try again."
+        ),
+        "ar": (
+            "اجتاز الاستعلام التحقق الدلالي والأمني، لكن مصدر بيانات جودة الحياة "
+            "المسجل غير متاح حالياً. لم يتم إرجاع نتيجة بيانات؛ أعد تشغيل شبكة المصدر "
+            "أو خدمة قاعدة البيانات ثم حاول مرة أخرى."
+        ),
+    }[language]
+
+
+def _is_registered_source_unavailable(report: dict[str, Any]) -> bool:
+    """Classify controlled connector failures without exposing their details.
+
+    The executor keeps a redacted diagnostic in ``error`` for operators. The
+    conversational response must distinguish a source outage from a semantic
+    rejection, while never rendering endpoints, driver messages, or credentials.
+    """
+
+    if report.get("failure_category") == "registered_source_unavailable":
+        return True
+    error = str(report.get("error") or "").casefold()
+    if "governed_virtual_query_failed:" not in error:
+        return False
+    return any(
+        marker in error
+        for marker in (
+            "connection refused",
+            "connection reset",
+            "connection aborted",
+            "connection timed out",
+            "connect timeout",
+            "host is down",
+            "host unreachable",
+            "no route to host",
+            "network is unreachable",
+            "could not translate host",
+            "name or service not known",
+            "getaddrinfo",
+            "server closed the connection",
+            "temporarily unavailable",
+        )
+    )
+
+
 def _localized_empty(language: str) -> str:
     return {
         "zh": "请输入要查询的 Liveability 数据问题。",
@@ -232,6 +287,8 @@ def format_liveability_nl2sql_response(
         reason_label = {"zh": "治理原因", "en": "Governance reason", "ar": "سبب الحوكمة"}[language]
         return prefix + (f"\n\n{reason_label}: `{reason}`" if reason else "")
     if status != "ok":
+        if _is_registered_source_unavailable(report):
+            return _localized_source_unavailable(language)
         return _localized_error(language)
 
     result = report.get("result") or {}
@@ -327,6 +384,7 @@ def describe_liveability_nl2sql_request(
         "applied_metric_contract_id": metric_contract.get("contract_id"),
         "metric_contract_application_type": metric_contract.get("application"),
         "status": report.get("status"),
+        "failure_category": report.get("failure_category"),
         "question": request.question,
         "clarification": report.get("clarification"),
         "sql_sha256": query.get("sql_sha256"),

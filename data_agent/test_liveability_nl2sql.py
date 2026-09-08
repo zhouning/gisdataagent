@@ -13,6 +13,7 @@ from data_agent.liveability_nl2sql import (
     run_liveability_nl2sql_request,
 )
 from data_agent.abu_dhabi_artifact_registry import current_artifact_path
+from data_agent.governed_virtual_nl2sql import resolve_direct_metric_contract
 
 
 @pytest.mark.parametrize(
@@ -100,6 +101,86 @@ def test_rejected_response_exposes_structured_table_options():
     assert "Available tables" in response
     assert "public.poi_a" in response
     assert "public.poi_b" in response
+
+
+@pytest.mark.parametrize("language", ["zh", "en", "ar"])
+def test_source_connectivity_failure_is_distinct_from_semantic_rejection(language):
+    questions = {
+        "zh": "在地图上按行政区展示宜居设施数量",
+        "en": "Show facility counts by district on a map",
+        "ar": "اعرض عدد المرافق حسب المنطقة على الخريطة",
+    }
+    request = resolve_liveability_nl2sql_request(f"@Liveability {questions[language]}")
+    assert request is not None and request.accepted
+
+    response = format_liveability_nl2sql_response(
+        request,
+        {
+            "status": "error",
+            "failure_category": "registered_source_unavailable",
+            "error": (
+                "governed_virtual_query_failed: connection refused "
+                "at postgresql://operator:secret@192.0.2.10:5444/liveability"
+            ),
+        },
+    )
+
+    expected = {
+        "zh": "已通过语义与安全校验",
+        "en": "Semantic and safety validation passed",
+        "ar": "اجتاز الاستعلام التحقق الدلالي والأمني",
+    }[language]
+    assert expected in response
+    assert "192.0.2.10" not in response
+    assert "5444" not in response
+    assert "secret" not in response
+    assert "未通过语义或执行校验" not in response
+
+
+def test_source_connectivity_failure_legacy_report_uses_sanitized_fallback():
+    request = resolve_liveability_nl2sql_request("@Liveability 统计设施数量")
+    assert request is not None and request.accepted
+
+    response = format_liveability_nl2sql_response(
+        request,
+        {
+            "status": "error",
+            "error": "governed_virtual_query_failed: connection reset by peer",
+        },
+    )
+
+    assert "已通过语义与安全校验" in response
+
+
+def test_event_metadata_exposes_non_sensitive_failure_category():
+    request = resolve_liveability_nl2sql_request("@Liveability 统计设施数量")
+    assert request is not None and request.accepted
+
+    metadata = describe_liveability_nl2sql_request(
+        request,
+        {
+            "status": "error",
+            "failure_category": "registered_source_unavailable",
+            "error": "governed_virtual_query_failed: connection refused at 192.0.2.10",
+        },
+    )
+
+    assert metadata["failure_category"] == "registered_source_unavailable"
+    assert metadata["error"] is None
+    assert "192.0.2.10" not in str(metadata)
+
+
+def test_published_liveability_semantics_selects_district_facility_metric_directly():
+    semantic = json.loads(current_artifact_path("liveability", "semantic").read_text(encoding="utf-8"))
+
+    resolution = resolve_direct_metric_contract(
+        "在地图上按行政区展示宜居设施数量，并按数量分级设色",
+        "zh",
+        semantic,
+    )
+
+    assert resolution["status"] == "matched"
+    assert resolution["contract_id"] == "LIVEABILITY_FACILITY_COUNT_BY_DISTRICT_V5"
 
 
 def test_event_metadata_exposes_non_sensitive_contract_audit_fields():

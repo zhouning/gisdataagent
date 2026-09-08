@@ -3915,6 +3915,38 @@ async def _handle_liveability_demo_message(
                 "static_validation": report.get("static_validation"),
             },
         }
+        from data_agent.abu_dhabi_nl2sql_map_presentation import (
+            build_governed_nl2sql_map_update,
+        )
+
+        map_update, map_presentation = await build_governed_nl2sql_map_update(
+            report=report,
+            question=request.question,
+            semantic_layer_path=current_artifact_path("liveability", "semantic"),
+            source_id=source_id,
+            owner=owner,
+            language=request.language,
+        )
+        routing_metadata["map_presentation"] = map_presentation
+        if map_update is not None:
+            # Keep the full GeoJSON payload out of the Chainlit message
+            # metadata.  A 99-feature layer is ~1 MB and can prevent
+            # ``Message.update`` from reaching the browser, leaving the
+            # progress message stuck forever.  The frontend consumes the
+            # authoritative payload through /api/map/pending instead.
+            routing_metadata["map_update_queued"] = True
+            routing_metadata["map_update_summary"] = map_update.get("summary") or {}
+            # Queue the governed payload for clients that poll after stream
+            # completion; no benchmark or answer-specific data is involved.
+            from data_agent.frontend_api import _pending_lock, pending_map_updates
+
+            with _pending_lock:
+                pending_map_updates[user_id] = map_update
+            response += {
+                "zh": "\n\n已按本次受治理结果在地图中加载行政区数量分级设色图层。",
+                "en": "\n\nA governed choropleth layer for this result has been loaded on the map.",
+                "ar": "\n\nتم تحميل طبقة تدرج لوني محكومة لهذه النتيجة على الخريطة.",
+            }[request.language]
         if request_audit.get("clarification"):
             routing_metadata["nl2sql_clarification"] = request_audit["clarification"] | {
                 "question": request_audit.get("question") or request.question,
@@ -3922,9 +3954,31 @@ async def _handle_liveability_demo_message(
             }
         if presentation is not None:
             routing_metadata["nl2sql_presentation"] = presentation
+        # The map payload is deliberately kept off the Chainlit message, so
+        # the original progress message can now be updated in place.  Keeping
+        # one message identity is important: some Chainlit clients can drop a
+        # newly-created assistant message immediately after a step update,
+        # which leaves the progress text visible forever.
         progress.content = response
         progress.metadata = routing_metadata
-        await progress.update()
+        logger.info(
+            "[LiveabilityNL2SQL] before_final_message_update user=%s response_len=%d map_queued=%s",
+            user_id,
+            len(response),
+            bool(routing_metadata.get("map_update_queued")),
+        )
+        try:
+            await progress.update()
+            logger.info("[LiveabilityNL2SQL] after_final_message_update user=%s", user_id)
+        except Exception:
+            # Preserve a response even if a particular Chainlit transport
+            # rejects an in-place update.  The fallback message is intentionally
+            # lightweight and never includes the full GeoJSON payload.
+            logger.exception(
+                "[LiveabilityNL2SQL] final_message_update_failed user=%s; sending fallback",
+                user_id,
+            )
+            await cl.Message(content=response, metadata=routing_metadata).send()
         cl.user_session.set("last_response_text", response)
         cl.user_session.set(
             "last_context",
@@ -3953,15 +4007,22 @@ async def _handle_liveability_demo_message(
             )
         except Exception:
             pass
-    except Exception:
-        # Keep database/provider diagnostics out of application logs and UI.
+    except Exception as exc:
+        # Keep endpoint/provider details out of the UI, but retain a typed
+        # server-side diagnostic so an execution regression is actionable.
         logger.warning(
-            "[LiveabilityNL2SQL] governed virtual execution failed for user=%s",
+            "[LiveabilityNL2SQL] governed virtual execution failed for user=%s "
+            "type=%s detail=%s",
             user_id,
+            type(exc).__name__,
+            str(exc)[:240],
         )
         progress.content = format_liveability_nl2sql_response(
             request,
-            {"status": "error"},
+            {
+                "status": "error",
+                "failure_category": "runtime_execution_error",
+            },
         )
         await progress.update()
     return True

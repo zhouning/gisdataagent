@@ -8769,6 +8769,14 @@ def apply_metric_projection_contract(
             semantic_layer,
         ):
             return sql, None
+        canonical_template, canonical_row_scope_corrections = (
+            apply_reviewed_row_scope_policies_sql(
+                question=question,
+                language=language,
+                sql=canonical_template,
+                semantic_layer=semantic_layer,
+            )
+        )
         # A reviewed derived metric is a semantic product definition, not a
         # benchmark answer.  Validate the template against the same field and
         # relationship contract before it reaches the SQL safety guard.
@@ -8784,6 +8792,7 @@ def apply_metric_projection_contract(
             "filters": [],
             "tables": list(contract.get("tables") or []),
             "preserved_clauses": ["reviewed_template"],
+            "row_scope_corrections": canonical_row_scope_corrections,
             "model_sql_sha256": hashlib.sha256(sql.encode("utf-8")).hexdigest(),
             "canonical_sql_sha256": hashlib.sha256(canonical_template.encode("utf-8")).hexdigest(),
         }
@@ -9737,6 +9746,125 @@ def _normalize_table_name(value: str) -> str:
     if "." not in normalized:
         normalized = f"public.{normalized}"
     return normalized.casefold()
+
+
+def apply_reviewed_row_scope_policies_sql(
+    *,
+    question: str,
+    language: str,
+    sql: str,
+    semantic_layer: dict[str, Any],
+) -> tuple[str, list[str]]:
+    """Apply reviewed default row scopes that the model omitted.
+
+    A row scope is semantic configuration, not a model preference. The
+    validator remains the final authority, but this finalizer makes a
+    published default effective when a model selected the governed tables and
+    simply omitted the required predicate. Explicit source-scope overrides
+    remain untouched and are still recorded by ``validate_semantic_sql``.
+    """
+
+    policies = semantic_layer.get("row_scope_policies") or []
+    if not policies:
+        return sql, []
+    _validate_row_scope_policies(semantic_layer)
+
+    from sqlglot import exp, parse_one
+
+    try:
+        expression = parse_one(sql.rstrip(";").strip(), read="postgres")
+    except Exception as exc:
+        raise GovernedVirtualNL2SQLError("row_scope_sql_parse_failed") from exc
+
+    def nearest_select(node: Any) -> Any | None:
+        current = node
+        while current is not None:
+            if isinstance(current, exp.Select):
+                return current
+            current = current.parent
+        return None
+
+    def table_name(node: Any) -> str:
+        name = str(node.name or "")
+        schema = str(node.db or "")
+        return _normalize_table_name(f"{schema}.{name}" if schema else name)
+
+    def has_true_predicate(select: Any, qualifier: str, field: str) -> bool:
+        where = select.args.get("where")
+        if where is None:
+            return False
+        for comparison in where.find_all((exp.Is, exp.EQ)):
+            for column, value in (
+                (comparison.left, comparison.right),
+                (comparison.right, comparison.left),
+            ):
+                if not isinstance(column, exp.Column):
+                    continue
+                if str(column.name or "").casefold() != field.casefold():
+                    continue
+                if str(column.table or "").casefold() != qualifier.casefold():
+                    continue
+                if isinstance(value, exp.Boolean) and bool(value.this) is True:
+                    return True
+                if isinstance(value, exp.Literal) and str(value.this or "").casefold() == "true":
+                    return True
+        return False
+
+    table_occurrences: dict[str, list[tuple[Any, Any]]] = {}
+    for table in expression.find_all(exp.Table):
+        physical_table = table_name(table)
+        if not physical_table or not str(table.db or ""):
+            continue
+        select = nearest_select(table)
+        if select is not None:
+            table_occurrences.setdefault(physical_table, []).append((table, select))
+
+    actual_tables = set(table_occurrences)
+    corrections: list[str] = []
+    for policy in policies:
+        applies_to = {
+            _normalize_table_name(value)
+            for value in policy.get("applies_to_tables") or []
+        }
+        if not (actual_tables & applies_to):
+            continue
+        override_terms = (policy.get("explicit_override_terms") or {}).get(language) or []
+        if any(_contains_match_term(question, str(term)) for term in override_terms):
+            continue
+
+        predicate = policy.get("required_predicate") or {}
+        predicate_table = _normalize_table_name(predicate.get("table") or "")
+        predicate_field = str(predicate.get("field") or "").strip()
+        policy_id = str(policy.get("policy_id") or "unknown")
+        if not predicate_table or not predicate_field:
+            raise GovernedVirtualNL2SQLError(f"row_scope_policy_predicate_invalid:{policy_id}")
+
+        applied = False
+        for table, select in table_occurrences.get(predicate_table, []):
+            local_tables = {
+                table_name(candidate)
+                for candidate in select.find_all(exp.Table)
+                if nearest_select(candidate) is select and str(candidate.db or "")
+            }
+            if not (local_tables & applies_to):
+                continue
+            qualifier = str(table.alias_or_name or table.name or "")
+            if not qualifier or has_true_predicate(select, qualifier, predicate_field):
+                continue
+            required = exp.Is(
+                this=exp.column(predicate_field, table=qualifier),
+                expression=exp.Boolean(this=True),
+            )
+            where = select.args.get("where")
+            if where is None:
+                select.set("where", exp.Where(this=required))
+            else:
+                select.set("where", exp.Where(this=exp.and_(where.this.copy(), required)))
+            applied = True
+        if applied:
+            corrections.append("semantic_row_scope:" + policy_id)
+
+    return expression.sql(dialect="postgres"), corrections
 
 
 def _bind_reviewed_explicit_table(
@@ -11127,6 +11255,33 @@ def _redacted_error(value: Any) -> str:
     return message[:300]
 
 
+def _registered_source_is_unavailable(value: Any) -> bool:
+    """Identify connector availability failures without returning diagnostics."""
+
+    message = str(value or "").casefold()
+    if "governed_virtual_query_failed:" not in message:
+        return False
+    return any(
+        marker in message
+        for marker in (
+            "connection refused",
+            "connection reset",
+            "connection aborted",
+            "connection timed out",
+            "connect timeout",
+            "host is down",
+            "host unreachable",
+            "no route to host",
+            "network is unreachable",
+            "could not translate host",
+            "name or service not known",
+            "getaddrinfo",
+            "server closed the connection",
+            "temporarily unavailable",
+        )
+    )
+
+
 def _is_non_retryable_model_error(value: Any) -> bool:
     """Return true for provider auth/quota failures that retries cannot fix."""
 
@@ -11540,7 +11695,10 @@ async def run_governed_metric_contract(
         )
         return report
     except Exception as exc:
-        report["error"] = _redacted_error(exc)
+        diagnostic = _redacted_error(exc)
+        report["error"] = diagnostic
+        if _registered_source_is_unavailable(diagnostic):
+            report["failure_category"] = "registered_source_unavailable"
         return report
 
 
@@ -12133,6 +12291,15 @@ async def run_governed_virtual_nl2sql(
                     f"sql_postprocessor_rejected:{postprocessed.reject_reason}"
                 )
             sql = postprocessed.sql
+            # Apply configured default row scopes before a canonical metric
+            # contract validates its template. This keeps the contract path
+            # and free-form path subject to the same reviewed scope policy.
+            sql, row_scope_corrections = apply_reviewed_row_scope_policies_sql(
+                question=question,
+                language=language,
+                sql=sql,
+                semantic_layer=semantic_layer,
+            )
             # A canonical reviewed template is the product definition for a
             # recognized business metric. Apply it before validating the
             # model's SQL so an equivalent but unreviewed spatial predicate
@@ -12195,6 +12362,12 @@ async def run_governed_virtual_nl2sql(
                     sql=sql,
                     semantic_layer=semantic_layer,
                 )
+            )
+            sql, row_scope_corrections = apply_reviewed_row_scope_policies_sql(
+                question=question,
+                language=language,
+                sql=sql,
+                semantic_layer=semantic_layer,
             )
             # Trim ordinary entity-list predicate columns before applying a
             # reviewed complete-field collection.  Otherwise a request such
@@ -12264,6 +12437,13 @@ async def run_governed_virtual_nl2sql(
                     entity_list_projection_corrections.extend(
                         additional_entity_list_projection_corrections
                     )
+                    sql, additional_row_scope_corrections = apply_reviewed_row_scope_policies_sql(
+                        question=question,
+                        language=language,
+                        sql=sql,
+                        semantic_layer=semantic_layer,
+                    )
+                    row_scope_corrections.extend(additional_row_scope_corrections)
                     sql, additional_projection_completeness_corrections = (
                         apply_reviewed_projection_completeness_policies_sql(
                             question=question,
@@ -12307,6 +12487,12 @@ async def run_governed_virtual_nl2sql(
                     *list(dict.fromkeys(display_projection_corrections)),
                     *list(dict.fromkeys(projection_completeness_corrections)),
                     *list(dict.fromkeys(entity_list_projection_corrections)),
+                    *list(dict.fromkeys(row_scope_corrections)),
+                    *list(
+                        dict.fromkeys(
+                            (metric_contract_evidence or {}).get("row_scope_corrections") or []
+                        )
+                    ),
                     *(
                         [
                             "semantic_metric_projection:"
@@ -12405,6 +12591,8 @@ async def run_governed_virtual_nl2sql(
             if attempt < generation_attempts - 1:
                 continue
             report["error"] = retry_feedback
+            if _registered_source_is_unavailable(retry_feedback):
+                report["failure_category"] = "registered_source_unavailable"
             return report
 
 
@@ -12420,6 +12608,7 @@ __all__ = [
     "apply_reviewed_display_projection_policies_sql",
     "apply_reviewed_entity_list_projection_policies_sql",
     "apply_reviewed_projection_completeness_policies_sql",
+    "apply_reviewed_row_scope_policies_sql",
     "validate_ranked_measure_projection_sql",
     "classify_read_only_request",
     "classify_sensitive_data_request",

@@ -20,6 +20,7 @@ from data_agent.governed_virtual_nl2sql import (
     _generate_proposal,
     _ground_semantic_layer_for_prompt,
     _is_non_retryable_model_error,
+    _registered_source_is_unavailable,
     _match_metric_contract,
     _named_entity_phrases,
     _native_gemini_provider_schema,
@@ -40,6 +41,7 @@ from data_agent.governed_virtual_nl2sql import (
     apply_llm_proxy_policy,
     apply_metric_projection_contract,
     apply_reviewed_display_projection_policies_sql,
+    apply_reviewed_row_scope_policies_sql,
     classify_read_only_request,
     classify_sensitive_data_request,
     normalize_governed_json_array_sql,
@@ -53,6 +55,19 @@ from data_agent.governed_virtual_nl2sql import (
     validate_semantic_sql,
     validate_ranked_measure_projection_sql,
 )
+
+
+@pytest.mark.parametrize(
+    ("diagnostic", "expected"),
+    [
+        ("governed_virtual_query_failed: connection refused", True),
+        ("governed_virtual_query_failed: Host is down", True),
+        ("governed_virtual_query_failed: statement timeout", False),
+        ("runtime_guard:statement_timeout", False),
+    ],
+)
+def test_registered_source_unavailability_classification(diagnostic, expected):
+    assert _registered_source_is_unavailable(diagnostic) is expected
 
 
 @pytest.mark.parametrize(
@@ -1376,6 +1391,55 @@ def test_semantic_sql_allows_explicit_row_scope_override():
     assert evidence["row_scope_policies"]["explicitly_bypassed"] == [
         "ACTIVE_DISTRICTS_V1"
     ]
+
+
+def test_reviewed_row_scope_finalizer_injects_configured_predicate():
+    rewritten, corrections = apply_reviewed_row_scope_policies_sql(
+        question="What is the average district score?",
+        language="en",
+        sql=(
+            "SELECT AVG(s.score) AS average_score FROM public.fact_scores AS s "
+            "JOIN public.dim_districts AS d ON s.district_id = d.district_id"
+        ),
+        semantic_layer=_row_scope_semantic(),
+    )
+
+    assert "d.is_activated IS TRUE" in rewritten
+    assert corrections == ["semantic_row_scope:ACTIVE_DISTRICTS_V1"]
+    evidence = validate_semantic_sql(
+        rewritten,
+        ["public.fact_scores", "public.dim_districts"],
+        _row_scope_semantic(),
+        question="What is the average district score?",
+    )
+    assert evidence["row_scope_policies"]["applied"] == ["ACTIVE_DISTRICTS_V1"]
+
+
+def test_reviewed_row_scope_finalizer_preserves_existing_filter_and_override():
+    semantic = _row_scope_semantic()
+    sql = (
+        "SELECT AVG(s.score) AS average_score FROM public.fact_scores AS s "
+        "JOIN public.dim_districts AS d ON s.district_id = d.district_id "
+        "WHERE s.score > 0"
+    )
+    rewritten, corrections = apply_reviewed_row_scope_policies_sql(
+        question="What is the average district score?",
+        language="en",
+        sql=sql,
+        semantic_layer=semantic,
+    )
+    assert "s.score > 0" in rewritten
+    assert "d.is_activated IS TRUE" in rewritten
+    assert corrections == ["semantic_row_scope:ACTIVE_DISTRICTS_V1"]
+
+    overridden, override_corrections = apply_reviewed_row_scope_policies_sql(
+        question="What is the average score? Include inactive districts.",
+        language="en",
+        sql=sql,
+        semantic_layer=semantic,
+    )
+    assert overridden == sql
+    assert override_corrections == []
 
 
 def test_compiled_ir_contract_evidence_matches_structure_without_alias_lock_in():
@@ -6374,6 +6438,52 @@ async def test_reviewed_metric_contract_executes_without_llm_generation():
     generate.assert_not_called()
     query.assert_awaited_once()
     assert query.await_args.kwargs["register_result"] is False
+
+
+@pytest.mark.asyncio
+async def test_reviewed_metric_contract_classifies_unavailable_registered_source(monkeypatch):
+    semantic_path = SEMANTIC_PATH.with_name(
+        "liveability_data_20260730_semantic_layer_v3.json"
+    )
+    semantic = json.loads(semantic_path.read_text(encoding="utf-8"))
+    source = {
+        "source_name": "abu-dhabi-liveability-dev-v3",
+        "source_type": "database",
+        "enabled": True,
+        "query_config": {
+            "allowed_schemas": ["public"],
+            "statement_timeout_ms": 15000,
+            "lock_timeout_ms": 2000,
+            "max_rows": 1000,
+        },
+    }
+    query = AsyncMock(
+        return_value={"status": "error", "message": "connection refused"}
+    )
+    monkeypatch.setenv("GDA_VIRTUAL_QUERY_RETRIES", "0")
+
+    with (
+        patch("data_agent.migration_runner.verify_runtime_schema_state"),
+        patch("data_agent.virtual_sources.get_virtual_source", return_value=source),
+        patch(
+            "data_agent.virtual_sources.get_virtual_source_discovery",
+            return_value=_discovery(semantic),
+        ),
+        patch("data_agent.virtual_sources.query_virtual_source", query),
+    ):
+        report = await run_governed_metric_contract(
+            contract_id="LIVEABILITY_FACILITY_COUNT_BY_STAGE_TYPE_V4",
+            question_context="Show the governed facility summary.",
+            language="en",
+            semantic_layer_path=semantic_path,
+            source_id=12,
+            owner="abu-dhabi-site-operator",
+        )
+
+    assert report["status"] == "error"
+    assert report["failure_category"] == "registered_source_unavailable"
+    assert report["planner"]["llm_invoked"] is False
+    query.assert_awaited_once()
 
 
 @pytest.mark.asyncio

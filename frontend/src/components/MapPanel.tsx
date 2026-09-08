@@ -97,7 +97,10 @@ const BASEMAP_LABEL_KEYS: Record<string, string> = {
 function mapDisplayName(name: string, t: (key: string, options?: any) => string): string {
   const key = BASEMAP_LABEL_KEYS[name];
   if (key) return t(key, { defaultValue: name });
-  if (!/[\u3400-\u9fff]/.test(name)) return name;
+  // Business labels supplied by governed map results are already localized
+  // for the request. Only apply the legacy Chinese-to-English display map
+  // when the active interface is English.
+  if (getLocale() !== 'en-US' || !/[\u3400-\u9fff]/.test(name)) return name;
   const replacements: Array<[RegExp, string]> = [
     [/本次真实 SWMM 情景/g, 'Current real SWMM scenario'],
     [/原生 OUT 时间轴/g, 'native OUT timeline'],
@@ -179,7 +182,7 @@ function mapDisplayName(name: string, t: (key: string, options?: any) => string)
   ];
   let translated = name;
   for (const [source, target] of replacements) translated = translated.replace(source, target);
-  return translated.replace(/[\u3400-\u9fff]+/g, 'additional detail');
+  return translated;
 }
 
 function mapPopupLabel(value: string): string {
