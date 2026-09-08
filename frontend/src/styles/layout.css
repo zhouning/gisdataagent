@@ -985,6 +985,8 @@ html[lang^='ar'] {
 .abu-flood-status-footer strong { color: var(--text); font-size: 10px; }
 .abu-flood-status-footer span { color: var(--text-secondary); font-size: 9px; }
 .abu-flood-footer-note { color: var(--warning) !important; text-align: right; }
+.abu-flood-gwm-section { padding: 14px; border: 1px solid rgba(20,184,166,.42); border-radius: 7px; background: var(--surface); }
+.abu-flood-gwm-grid { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.35fr); gap: 12px; }
 
 @container (max-width: 760px) {
   .abu-flood-hero { grid-template-columns: 1fr; }
@@ -993,6 +995,7 @@ html[lang^='ar'] {
   .abu-flood-map-section,
   .abu-flood-detail-grid,
   .abu-flood-scenario-grid,
+  .abu-flood-gwm-grid,
   .abu-flood-event-grid { grid-template-columns: 1fr; }
   .abu-flood-event-facts { grid-template-columns: 1fr; }
   .abu-flood-event-gap-grid { grid-template-columns: 1fr; }

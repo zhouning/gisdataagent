@@ -6,6 +6,9 @@ export default defineConfig(({ mode }) => {
   const ontologyTarget = process.env.VITE_ONTOLOGY_PROXY_TARGET
     || loadEnv(mode, '.', '').VITE_ONTOLOGY_PROXY_TARGET
     || backendTarget;
+  const gwmApiProxyTarget = process.env.VITE_GWM_API_PROXY_TARGET
+    || loadEnv(mode, '.', '').VITE_GWM_API_PROXY_TARGET
+    || backendTarget;
   const websocketTarget = backendTarget.replace(/^http/, 'ws');
   return {
     plugins: [react()],
@@ -13,6 +16,7 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       proxy: {
         '/api/ontology': ontologyTarget,
+        '/api/abu-dhabi/flood/gwm': gwmApiProxyTarget,
         '/ws/socket.io': {
           target: websocketTarget,
           ws: true,

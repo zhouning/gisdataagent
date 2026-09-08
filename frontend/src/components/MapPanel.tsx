@@ -55,6 +55,7 @@ interface MapLayer {
     elapsedMinutes: number[];
     periodCount: number;
     totalNodeCount?: number;
+    kind?: 'swmm-node' | 'gwm-node' | 'surface-cell';
   };
 }
 
@@ -1189,11 +1190,19 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
               {scenarioTimelinePlaying ? <Pause size={14} /> : <Play size={14} />}
             </button>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#334155', whiteSpace: 'nowrap' }}>
-              {t('map.swmmTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })}
+              {scenarioTimeline.kind === 'surface-cell'
+                ? t('map.anugaSurfaceTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })
+                : scenarioTimeline.kind === 'gwm-node'
+                  ? t('map.gwmTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })
+                  : t('map.swmmTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })}
             </span>
             <input
               type="range"
-              aria-label={t('map.swmmNodeTimeline')}
+              aria-label={scenarioTimeline.kind === 'surface-cell'
+                ? t('map.anugaSurfaceTimelineControl')
+                : scenarioTimeline.kind === 'gwm-node'
+                  ? t('map.gwmTimelineControl')
+                  : t('map.swmmNodeTimeline')}
               min={0}
               max={Math.max(0, scenarioTimeline.periodCount - 1)}
               value={Math.min(scenarioTimeIndex, Math.max(0, scenarioTimeline.periodCount - 1))}
@@ -1209,7 +1218,11 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 5 }}>
             <span style={{ fontSize: 11, color: '#64748b' }}>
-              {t('map.nativeOut', { time: scenarioTimeline.timeValues[scenarioTimeIndex] || t('map.loading') })}
+              {scenarioTimeline.kind === 'surface-cell'
+                ? t('map.simulationTime', { time: scenarioTimeline.timeValues[scenarioTimeIndex] || t('map.loading') })
+                : scenarioTimeline.kind === 'gwm-node'
+                  ? t('map.gwmTime', { time: scenarioTimeline.timeValues[scenarioTimeIndex] || t('map.loading') })
+                  : t('map.nativeOut', { time: scenarioTimeline.timeValues[scenarioTimeIndex] || t('map.loading') })}
             </span>
             <span style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', whiteSpace: 'nowrap' }}>
               {t('map.elapsedMinutes', { value: Number(scenarioTimeline.elapsedMinutes[scenarioTimeIndex] || 0).toFixed(0) })}
@@ -1460,10 +1473,20 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
             >
               {scenarioTimelinePlaying ? <Pause size={14} /> : <Play size={14} />}
             </button>
-            <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{t('map.swmmTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+              {scenarioTimeline.kind === 'surface-cell'
+                ? t('map.anugaSurfaceTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })
+                : scenarioTimeline.kind === 'gwm-node'
+                  ? t('map.gwmTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })
+                  : t('map.swmmTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })}
+            </span>
             <input
               type="range"
-              aria-label={t('map.swmmNodeTimeline3d')}
+              aria-label={scenarioTimeline.kind === 'surface-cell'
+                ? t('map.anugaSurfaceTimelineControl3d')
+                : scenarioTimeline.kind === 'gwm-node'
+                  ? t('map.gwmTimelineControl3d')
+                  : t('map.swmmNodeTimeline3d')}
               min={0}
               max={Math.max(0, scenarioTimeline.periodCount - 1)}
               value={Math.min(scenarioTimeIndex, Math.max(0, scenarioTimeline.periodCount - 1))}
@@ -1479,7 +1502,11 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 5 }}>
             <span style={{ fontSize: 11, color: '#cbd5e1' }}>
-              {t('map.nativeOut', { time: scenarioTimeline.timeValues[scenarioTimeIndex] || t('map.loading') })}
+              {scenarioTimeline.kind === 'surface-cell'
+                ? t('map.simulationTime', { time: scenarioTimeline.timeValues[scenarioTimeIndex] || t('map.loading') })
+                : scenarioTimeline.kind === 'gwm-node'
+                  ? t('map.gwmTime', { time: scenarioTimeline.timeValues[scenarioTimeIndex] || t('map.loading') })
+                  : t('map.nativeOut', { time: scenarioTimeline.timeValues[scenarioTimeIndex] || t('map.loading') })}
             </span>
             <span style={{ fontSize: 12, fontWeight: 700, color: '#7dd3fc', whiteSpace: 'nowrap' }}>
               {t('map.elapsedMinutes', { value: Number(scenarioTimeline.elapsedMinutes[scenarioTimeIndex] || 0).toFixed(0) })}

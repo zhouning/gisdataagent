@@ -33,6 +33,7 @@ deploy/windows-standalone/out/
 /data_agent/*.docx
 
 # Geospatial data files �?NEVER commit data to the repository
+*.gdb/
 *.shp
 *.dbf
 *.shx
@@ -48,6 +49,8 @@ benchmarks/abu_dhabi_land_use_v1/runtime_runs/
 *.gpkg
 *.kml
 *.kmz
+*.private.*
+**/customer_swmm_gwm_dynamic_diagnostic_manifest.json
 !demos/**/*.geojson
 !data_agent/scca_samples/
 !data_agent/scca_samples/**

@@ -43,7 +43,15 @@ interface MapLayer {
   // FlatGeobuf properties
   fgb?: string;
   geom_type?: string;
-  scenarioTimeline?: { runId: string; endpoint: string; timeValues: string[]; elapsedMinutes: number[]; periodCount: number; totalNodeCount?: number };
+  scenarioTimeline?: {
+    runId: string;
+    endpoint: string;
+    timeValues: string[];
+    elapsedMinutes: number[];
+    periodCount: number;
+    totalNodeCount?: number;
+    kind?: 'swmm-node' | 'gwm-node' | 'surface-cell';
+  };
 }
 
 interface Map3DViewProps {

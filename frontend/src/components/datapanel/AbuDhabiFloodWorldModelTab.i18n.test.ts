@@ -19,6 +19,7 @@ describe('Abu Dhabi flood world-model English presentation', () => {
     expect(text).toContain('native OUT timeline');
     expect(text).toContain('238,350');
     expect(text).toContain('all nodes');
+    expect(text).not.toContain('model metadata');
     expect(text).not.toMatch(/[\u3400-\u9fff]/u);
   });
 
@@ -32,5 +33,19 @@ describe('Abu Dhabi flood world-model English presentation', () => {
   it('labels SWMM execution as a simulation rather than a real-world result', () => {
     expect(translateAbuEnglishText('运行真实 SWMM 情景')).toBe('Run SWMM Simulation');
     expect(translateAbuEnglishText('正在执行真实 SWMM…')).toBe('Running SWMM Simulation...');
+  });
+
+  it('does not expose the legacy placeholder or Han characters for unmapped receipt fragments', () => {
+    const text = translateAbuEnglishText('遗留诊断字段：未知状态');
+    expect(text).toBe('model metadata: UnknownStatus');
+    expect(text).not.toContain('additional detail');
+    expect(text).not.toMatch(/[\u3400-\u9fff]/u);
+  });
+
+  it('translates dynamic map labels without generic fallback words', () => {
+    const text = translateAbuEnglishText('全市二维最大积水深度（m）· 公共 DEM 原型');
+    expect(text).toBe('Citywide 2D maximum flood depth (m) · public DEM prototype');
+    expect(text).not.toContain('source label');
+    expect(text).not.toMatch(/[\u3400-\u9fff]/u);
   });
 });
