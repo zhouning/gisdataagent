@@ -7,14 +7,36 @@ from dataclasses import replace
 import pytest
 
 from data_agent.uwm.abu_dhabi_flood import (
+    HeadExchangeParameters,
     SolverWindowBalance,
     SwmmAnugaCouplingInterface,
     SwmmAnugaCouplingQualityPolicy,
     SwmmAnugaCouplingWindow,
     SwmmAnugaTransfer,
     build_swmm_anuga_coupling_receipt,
+    compute_head_difference_exchange_rate,
     evaluate_swmm_anuga_coupling,
 )
+
+
+def test_head_exchange_is_signed_capped_and_bidirectional():
+    parameters = HeadExchangeParameters(
+        opening_area_m2=0.5,
+        discharge_coefficient=0.6,
+        maximum_exchange_rate_m3s=1.0,
+    )
+    assert compute_head_difference_exchange_rate(2.0, 1.0, parameters) == 1.0
+    assert compute_head_difference_exchange_rate(1.0, 2.0, parameters) == -1.0
+    assert compute_head_difference_exchange_rate(1.0, 1.0, parameters) == 0.0
+
+
+def test_head_exchange_can_disable_surface_return():
+    parameters = HeadExchangeParameters(
+        opening_area_m2=0.2,
+        allow_reverse_flow=False,
+    )
+    assert compute_head_difference_exchange_rate(0.5, 1.0, parameters) == 0.0
+    assert compute_head_difference_exchange_rate(1.0, 0.5, parameters) > 0.0
 
 
 def _interface(*, maximum_exchange_rate_m3s: float = 0.1):

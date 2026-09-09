@@ -20,11 +20,13 @@ from typing import Any
 SWMM_ANUGA_COUPLING_WINDOW_SCHEMA = "gwm.abu_dhabi_flood.swmm_anuga_coupling_window.v1"
 SWMM_ANUGA_COUPLING_POLICY_SCHEMA = "gwm.abu_dhabi_flood.swmm_anuga_coupling_policy.v1"
 SWMM_ANUGA_COUPLING_RECEIPT_SCHEMA = "gwm.abu_dhabi_flood.swmm_anuga_coupling_receipt.v1"
+SWMM_ANUGA_HEAD_EXCHANGE_SCHEMA = "gwm.abu_dhabi_flood.swmm_anuga_head_exchange.v1"
 
 _IDENTIFIER_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
 _SOLVERS = frozenset({"epa_swmm", "anuga_2d"})
 _DIRECTIONS = frozenset({"swmm_to_anuga", "anuga_to_swmm"})
 _EVIDENCE_CLASSES = frozenset({"synthetic_fixture", "public_proxy"})
+GRAVITY_M_S2 = 9.80665
 
 
 def _finite_nonnegative(value: float, field: str) -> float:
@@ -49,6 +51,81 @@ def _identifier(value: str, field: str) -> str:
     if not isinstance(value, str) or _IDENTIFIER_PATTERN.fullmatch(value) is None:
         raise ValueError(f"swmm_anuga_{field}_invalid")
     return value
+
+
+@dataclass(frozen=True)
+class HeadExchangeParameters:
+    """Hydraulic parameters for one SWMM-node/ANUGA-cell exchange.
+
+    Positive exchange is from SWMM to the surface. Negative exchange is
+    surface capture back into the node. The function is independent of either
+    solver and can be called between synchronized time steps.
+    """
+
+    opening_area_m2: float
+    discharge_coefficient: float = 0.61
+    maximum_exchange_rate_m3s: float = 10.0
+    minimum_head_difference_m: float = 1.0e-4
+    allow_reverse_flow: bool = True
+
+    def __post_init__(self) -> None:
+        _finite_nonnegative(self.opening_area_m2, "head_exchange_opening_area_m2")
+        coefficient = _finite_nonnegative(
+            self.discharge_coefficient, "head_exchange_discharge_coefficient"
+        )
+        maximum = _finite_nonnegative(
+            self.maximum_exchange_rate_m3s,
+            "head_exchange_maximum_exchange_rate_m3s",
+        )
+        _finite_nonnegative(
+            self.minimum_head_difference_m,
+            "head_exchange_minimum_head_difference_m",
+        )
+        if coefficient > 1.0:
+            raise ValueError("swmm_anuga_head_exchange_discharge_coefficient_invalid")
+        if maximum <= 0.0:
+            raise ValueError("swmm_anuga_head_exchange_maximum_rate_invalid")
+        if not isinstance(self.allow_reverse_flow, bool):
+            raise ValueError("swmm_anuga_head_exchange_reverse_flow_flag_invalid")
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "schema": SWMM_ANUGA_HEAD_EXCHANGE_SCHEMA,
+            "opening_area_m2": float(self.opening_area_m2),
+            "discharge_coefficient": float(self.discharge_coefficient),
+            "maximum_exchange_rate_m3s": float(self.maximum_exchange_rate_m3s),
+            "minimum_head_difference_m": float(self.minimum_head_difference_m),
+            "allow_reverse_flow": self.allow_reverse_flow,
+            "positive_direction": "epa_swmm_to_anuga_surface",
+            "equation": "sign(delta_head) * Cd * A * sqrt(2*g*abs(delta_head)), capped",
+        }
+
+
+def compute_head_difference_exchange_rate(
+    swmm_head_m: float,
+    anuga_surface_stage_m: float,
+    parameters: HeadExchangeParameters,
+) -> float:
+    """Compute a signed instantaneous exchange rate from the head difference."""
+
+    if not isinstance(parameters, HeadExchangeParameters):
+        raise ValueError("swmm_anuga_head_exchange_parameters_required")
+    swmm_head = _finite(swmm_head_m, "head_exchange_swmm_head_m")
+    surface_stage = _finite(
+        anuga_surface_stage_m, "head_exchange_anuga_surface_stage_m"
+    )
+    delta_head = swmm_head - surface_stage
+    if abs(delta_head) < parameters.minimum_head_difference_m:
+        return 0.0
+    if delta_head < 0.0 and not parameters.allow_reverse_flow:
+        return 0.0
+    rate = (
+        parameters.discharge_coefficient
+        * parameters.opening_area_m2
+        * math.sqrt(2.0 * GRAVITY_M_S2 * abs(delta_head))
+    )
+    rate = min(rate, parameters.maximum_exchange_rate_m3s)
+    return float(math.copysign(rate, delta_head))
 
 
 @dataclass(frozen=True)

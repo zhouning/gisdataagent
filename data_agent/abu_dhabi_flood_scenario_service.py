@@ -57,6 +57,8 @@ DEFAULT_EXECUTABLE = Path(__file__).resolve().parents[1] / (
 DEFAULT_NODE_GEOMETRY = DEFAULT_PRIVATE_ROOT / "customer_city_swmm_spatial_results_20260824" / "abu_dhabi_city_swmm_node_results.geojson"
 DEFAULT_DTM_DIAGNOSTIC_ROOT = DEFAULT_PRIVATE_ROOT / "customer_dtm_2d_diagnostic"
 DEFAULT_PUBLIC_CITYWIDE_2D_ROOT = DEFAULT_PUBLIC_ROOT / "copernicus_citywide_2d"
+DEFAULT_COUPLED_CITYWIDE_2D_ROOT = Path.home() / "Downloads/阿布扎比/二维水动力诊断_客户DTM_z40_全市_SWMM二维单向耦合_250m_20260909_v2"
+DEFAULT_COUPLED_CITYWIDE_2D_ROOT_100M = Path.home() / "Downloads/阿布扎比/二维水动力诊断_客户DTM_z40_全市_SWMM二维单向耦合_100m_20260909"
 DEFAULT_PUBLIC_NCEI_ROOT = DEFAULT_PUBLIC_ROOT / "ncei_2024_station_constraint"
 DEFAULT_HISTORICAL_EVENT_ROOT = Path.home() / "Downloads/阿布扎比/nabd_flood_devpack_v1.5.zip"
 DEFAULT_PIPELINE_UPLOAD_ROOT = Path(__file__).resolve().parent / "uploads/admin"
@@ -120,7 +122,15 @@ def _public_citywide_2d_root() -> Path:
     return (
         Path(configured).expanduser().resolve()
         if configured
-        else DEFAULT_PUBLIC_CITYWIDE_2D_ROOT.resolve()
+        else (
+            DEFAULT_COUPLED_CITYWIDE_2D_ROOT_100M.resolve()
+            if DEFAULT_COUPLED_CITYWIDE_2D_ROOT_100M.is_dir()
+            else (
+            DEFAULT_COUPLED_CITYWIDE_2D_ROOT.resolve()
+            if DEFAULT_COUPLED_CITYWIDE_2D_ROOT.is_dir()
+            else DEFAULT_PUBLIC_CITYWIDE_2D_ROOT.resolve()
+            )
+        )
     )
 
 
@@ -1786,6 +1796,7 @@ def public_citywide_2d_bootstrap_payload() -> dict[str, Any]:
             "surface_product": surface.get("product"),
             "surface_evidence_class": surface_evidence_class,
             "customer_surface": customer_surface,
+            "coupling": summary.get("coupling"),
             "source_resolution_m": surface.get("source_resolution_m"),
             "model_cell_size_m": domain.get("cell_size_m"),
             "domain_bounds_epsg32640": domain.get("bounds_epsg32640"),
@@ -1899,6 +1910,7 @@ def public_citywide_2d_timeseries_payload(time_index: int) -> dict[str, Any]:
         "surface_product": surface.get("product"),
         "surface_evidence_class": evidence_class,
         "customer_surface": customer_surface,
+        "coupling": summary.get("coupling"),
         "permanent_water_cells_excluded": True,
         "land_water_mask_source_coverage_protection": (
             "cells outside the land-cover source coverage are excluded"

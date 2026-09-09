@@ -66,15 +66,18 @@ from .simulator import (
 )
 from .swmm_adapter import evaluate_swmm_quality, execute_swmm, parse_swmm_report
 from .swmm_anuga_coupling import (
+    HeadExchangeParameters,
     SolverWindowBalance,
     SwmmAnugaCouplingInterface,
     SwmmAnugaCouplingQualityPolicy,
     SwmmAnugaCouplingWindow,
     SwmmAnugaTransfer,
     build_swmm_anuga_coupling_receipt,
+    compute_head_difference_exchange_rate,
     evaluate_swmm_anuga_coupling,
 )
 from .swmm_dynamic_export import export_customer_swmm_dynamic_diagnostic
+from .swmm_dynamic_toolkit import SwmmDynamicSession, SwmmDynamicToolkitError
 from .traditional_solver import (
     TraditionalSolverExecutionError,
     TraditionalSolverQualityPolicy,
@@ -101,6 +104,7 @@ __all__ = [
     "build_data_request_readiness",
     "RainfallForcing",
     "RegisteredAnugaDiagnosticPolicy",
+    "HeadExchangeParameters",
     "SolverWindowBalance",
     "SurfacePatch",
     "SwmmAnugaCouplingInterface",
@@ -110,10 +114,13 @@ __all__ = [
     "TraditionalSolverExecutionError",
     "TraditionalSolverQualityPolicy",
     "TraditionalSolverRunRequest",
+    "SwmmDynamicSession",
+    "SwmmDynamicToolkitError",
     "evaluate_swmm_quality",
     "evaluate_anuga_quality",
     "evaluate_lisflood_quality",
     "evaluate_swmm_anuga_coupling",
+    "compute_head_difference_exchange_rate",
     "build_swmm_anuga_coupling_receipt",
     "build_flood_impact_receipt",
     "build_k0_data_request_receipt",
