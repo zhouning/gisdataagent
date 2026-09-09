@@ -9,6 +9,7 @@ from pathlib import Path
 SWMM_NODE = 2
 SWMM_NODE_DEPTH = 303
 SWMM_NODE_HEAD = 304
+SWMM_NODE_VOLUME = 305
 SWMM_NODE_LATFLOW = 306
 SWMM_NODE_INFLOW = 307
 SWMM_NODE_OVERFLOW = 308
@@ -134,6 +135,7 @@ class SwmmDynamicSession:
         return {
             "depth_m": float(self._library.swmm_getValue(SWMM_NODE_DEPTH, index)),
             "head_m": float(self._library.swmm_getValue(SWMM_NODE_HEAD, index)),
+            "volume_m3": float(self._library.swmm_getValue(SWMM_NODE_VOLUME, index)),
             "lateral_inflow_m3s": float(
                 self._library.swmm_getValue(SWMM_NODE_LATFLOW, index)
             ),
@@ -144,6 +146,23 @@ class SwmmDynamicSession:
                 self._library.swmm_getValue(SWMM_NODE_OVERFLOW, index)
             ),
         }
+
+    def node_storage_m3(self) -> float:
+        """Return the current sum of SWMM node storage volumes.
+
+        This is an explicit node-storage scope, not a substitute for the
+        complete SWMM system storage ledger (which also includes link and
+        other routing terms).  Coupling receipts label the scope accordingly.
+        """
+
+        if not self._opened:
+            raise SwmmDynamicToolkitError("swmm_dynamic_session_not_open")
+        return float(
+            sum(
+                float(self._library.swmm_getValue(SWMM_NODE_VOLUME, index))
+                for index in range(self.node_count)
+            )
+        )
 
     def set_node_surface_exchange_flow(self, index: int, rate_m3s: float) -> None:
         """Set signed ANUGA/SWMM exchange as a SWMM external lateral flow.

@@ -78,6 +78,16 @@ from .swmm_anuga_coupling import (
 )
 from .swmm_dynamic_export import export_customer_swmm_dynamic_diagnostic
 from .swmm_dynamic_toolkit import SwmmDynamicSession, SwmmDynamicToolkitError
+from .swmm_anuga_coupled_runner import (
+    CoupledRunResult,
+    CoupledWindowRecord,
+    CouplingInterfaceBinding,
+    AnugaSurfaceAdapter,
+    SurfaceAdapter,
+    SurfaceState,
+    run_synchronous_coupling,
+    write_coupled_run_receipt,
+)
 from .traditional_solver import (
     TraditionalSolverExecutionError,
     TraditionalSolverQualityPolicy,
@@ -116,6 +126,14 @@ __all__ = [
     "TraditionalSolverRunRequest",
     "SwmmDynamicSession",
     "SwmmDynamicToolkitError",
+    "CoupledRunResult",
+    "CoupledWindowRecord",
+    "CouplingInterfaceBinding",
+    "AnugaSurfaceAdapter",
+    "SurfaceAdapter",
+    "SurfaceState",
+    "run_synchronous_coupling",
+    "write_coupled_run_receipt",
     "evaluate_swmm_quality",
     "evaluate_anuga_quality",
     "evaluate_lisflood_quality",
