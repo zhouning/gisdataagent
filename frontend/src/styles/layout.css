@@ -713,6 +713,8 @@ html[lang^='ar'] {
 }
 .abu-flood-readiness-ring strong { font-size: 18px; line-height: 1; }
 .abu-flood-readiness-ring span { margin-top: 4px; color: var(--text-secondary); font-size: 9px; }
+.abu-flood-readiness-ring.complete { border-color: var(--success); background: rgba(22,163,74,.08); }
+.abu-flood-readiness-ring.complete strong { color: var(--success); }
 .abu-flood-hero-note { min-width: 136px; color: var(--text-secondary); font-size: 10px; line-height: 1.55; }
 .abu-flood-metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .abu-flood-metrics > div {
@@ -790,6 +792,7 @@ html[lang^='ar'] {
 .abu-flood-scenario-result-metrics span,
 .abu-flood-scenario-result-metrics small { display: block; color: var(--text-tertiary); font-size: 8px; line-height: 1.25; }
 .abu-flood-scenario-result-metrics strong { display: block; margin: 3px 0 2px; color: var(--text); font-family: var(--font-mono); font-size: 13px; }
+.abu-flood-delivery-metrics { margin-top: 11px; padding-top: 10px; border-top: 1px solid var(--border); }
 .abu-flood-hyetograph { margin-top: 9px; padding: 8px; border: 1px solid rgba(148,163,184,.18); border-radius: 4px; background: rgba(15,23,42,.32); }
 .abu-flood-hyetograph > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .abu-flood-hyetograph > div:first-child span { color: var(--text-secondary); font-size: 9px; font-weight: 600; }
@@ -910,9 +913,13 @@ html[lang^='ar'] {
 .abu-flood-gate { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); }
 .abu-flood-gate:last-child { border-bottom: 0; }
 .abu-flood-gate-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); }
+.abu-flood-gate-dot.ready { background: var(--success); }
+.abu-flood-gate-dot.partial { background: var(--warning); }
 .abu-flood-gate strong { display: block; color: var(--text); font-size: 10px; }
 .abu-flood-gate small { display: block; margin-top: 2px; color: var(--text-tertiary); font-size: 9px; }
 .abu-flood-gate > svg { color: var(--danger); }
+.abu-flood-checks-panel .abu-flood-section-heading svg,
+.abu-flood-checks-panel .abu-flood-gate > svg { color: var(--success); }
 .abu-flood-gate-note { display: flex; align-items: flex-start; gap: 6px; margin-top: 10px; color: var(--warning); font-size: 9px; line-height: 1.4; }
 .abu-flood-gate-note svg { flex: 0 0 auto; }
 .abu-flood-view-tabs { display: flex; gap: 3px; margin-bottom: 10px; }

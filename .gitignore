@@ -346,6 +346,12 @@ data_agent/cookies.txt
 test_huawei.sde
 data_agent/.chainlit/
 
+# Local Chainlit/plugin-generated translations and packaging metadata.
+# These files are environment artifacts and are not part of the application
+# source or the customer-data delivery contract.
+/.chainlit/translations/*.json
+/gis_data_agent.egg-info/
+
 # Top-level exploration / debug scripts (one-off)
 /_a_*.py
 /_check_*.py

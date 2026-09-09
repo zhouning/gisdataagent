@@ -93,3 +93,41 @@ def test_gwm_http_contract_serves_train_rollout_and_node_frames(tmp_path, monkey
         assert frame.status_code == 200
         assert frame.json()["metadata"]["time_index"] == 2
         assert len(frame.json()["features"]) == 2
+
+
+def test_pipeline_status_http_contract_is_authenticated_and_returns_five_stages(monkeypatch):
+    monkeypatch.setattr(
+        flood_routes,
+        "_get_user_from_request",
+        lambda request: SimpleNamespace(identifier="test-analyst", metadata={"role": "analyst"}),
+    )
+    monkeypatch.setattr(flood_routes, "_set_user_context", lambda user: None)
+    monkeypatch.setattr(
+        flood_routes,
+        "pipeline_status_payload",
+        lambda: {
+            "schema": "gwm.abu_dhabi_flood.pipeline_status.v1",
+            "status": "ready",
+            "ready_stage_count": 5,
+            "stage_count": 5,
+            "stages": [{"key": key, "status": "ready"} for key in ("data", "swmm", "surface", "gwm", "validation")],
+        },
+        raising=False,
+    )
+    # The route imports the service function lazily; patching the module keeps
+    # the test independent from local customer files.
+    import data_agent.abu_dhabi_flood_scenario_service as scenario_service
+    monkeypatch.setattr(scenario_service, "pipeline_status_payload", lambda: {
+        "schema": "gwm.abu_dhabi_flood.pipeline_status.v1",
+        "status": "ready",
+        "ready_stage_count": 5,
+        "stage_count": 5,
+        "stages": [{"key": key, "status": "ready"} for key in ("data", "swmm", "surface", "gwm", "validation")],
+    })
+    app = Starlette(routes=flood_routes.get_abu_dhabi_flood_routes())
+    with TestClient(app) as client:
+        response = client.get("/api/abu-dhabi/flood/pipeline-status")
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["ready_stage_count"] == 5
+        assert len(payload["stages"]) == 5

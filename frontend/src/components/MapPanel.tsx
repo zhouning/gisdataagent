@@ -103,6 +103,10 @@ function mapDisplayName(name: string, t: (key: string, options?: any) => string)
   // when the active interface is English.
   if (getLocale() !== 'en-US' || !/[\u3400-\u9fff]/.test(name)) return name;
   const replacements: Array<[RegExp, string]> = [
+    [/全市陆域二维最大积水深度（m）· 客户 DTM/g, 'Citywide land-surface 2D maximum flood depth (m) · customer DTM'],
+    [/全市陆域二维动态积水深度（m）· 客户 DTM/g, 'Citywide dynamic land-surface 2D flood depth (m) · customer DTM'],
+    [/二维结果 · 客户 AUH_DTM_5m_Z40 真实 5 m DTM 全市陆域最大积水深度/g, '2D result · Customer AUH_DTM_5m_Z40 actual 5 m DTM citywide land-surface maximum flood depth'],
+    [/二维结果 · 客户 AUH_DTM_5m_Z40 真实 5 m DTM 全市陆域动态积水深度/g, '2D result · Customer AUH_DTM_5m_Z40 actual 5 m DTM citywide dynamic land-surface flood depth'],
     [/本次真实 SWMM 情景/g, 'Current real SWMM scenario'],
     [/原生 OUT 时间轴/g, 'native OUT timeline'],
     [/全量节点级时序结果/g, 'complete node-level time-series results'],

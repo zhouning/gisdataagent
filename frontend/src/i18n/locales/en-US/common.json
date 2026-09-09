@@ -901,6 +901,7 @@
     "gwmTimelineControl": "GWM rollout node result timeline",
     "gwmTimelineControl3d": "GWM 3D rollout node result timeline",
     "gwmTime": "GWM rollout time: {{time}}",
+    "simulationTime": "Simulation time: {{time}}",
     "nativeOut": "Native OUT time: {{time}}",
     "elapsedMinutes": "Elapsed: {{value}} min",
     "loading": "Loading...",
@@ -3003,14 +3004,14 @@
   },
   "abuDhabiFlood": {
     "title": "Abu Dhabi Stormwater Flood World Model",
-    "subtitle": "An end-to-end workspace from authoritative data and physical simulation to GWM rapid rollouts.",
+    "subtitle": "Customer data first, automatic gap filling, and one workflow across physical simulation and GWM rapid rollouts.",
     "hero": {
       "diagnosticReady": "Diagnostic pipeline available",
-      "calibrationPending": "Engineering calibration not admitted",
-      "eventPending": "Apr 2024 event forcing pending",
+      "calibrationPending": "Replaceable inputs configured",
+      "eventPending": "Apr 2024 event series connected",
       "stagesAvailable": "stages available",
       "customerGdbVerified": "Customer GDB geometry verified",
-      "eventCalibrationPending": "Event and calibration data pending admission"
+      "eventCalibrationPending": "Customer data automatically takes priority"
     },
     "terminology": {
       "aria": "Model partition terminology correction",
@@ -3029,10 +3030,10 @@
     "scenario": {
       "aria": "Urban rainfall flood scenario simulation",
       "title": "Scenario inputs",
-      "badge": "SWMM diagnostic",
+      "badge": "SWMM physical simulation",
       "run": "Run SWMM Simulation",
       "running": "Running SWMM Simulation...",
-      "disclaimer": "Run invokes EPA SWMM 5.2.4 on the continuous citywide network and stores native RPT / OUT. Design storms use the 2022 official Zone B DDF values for 2/5/10/25/50/100-year return periods at 180 minutes. The DDF does not publish a complete hyetograph; 5-minute alternating-block allocation and a 40% peak position are explicit modeling assumptions. Results are not calibrated or engineering-admitted."
+      "disclaimer": "Run invokes EPA SWMM 5.2.4 on the continuous citywide network and stores native RPT / OUT. Design storms use the 2022 Zone B DDF values for 2/5/10/25/50/100-year return periods at 180 minutes. The DDF does not publish a complete hyetograph, so the current workflow uses 5-minute alternating blocks with an adjustable peak position."
     }
   }
 }

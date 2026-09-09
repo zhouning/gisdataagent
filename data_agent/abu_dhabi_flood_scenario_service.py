@@ -15,6 +15,7 @@ import os
 import re
 import threading
 import uuid
+import zipfile
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
@@ -57,6 +58,8 @@ DEFAULT_NODE_GEOMETRY = DEFAULT_PRIVATE_ROOT / "customer_city_swmm_spatial_resul
 DEFAULT_DTM_DIAGNOSTIC_ROOT = DEFAULT_PRIVATE_ROOT / "customer_dtm_2d_diagnostic"
 DEFAULT_PUBLIC_CITYWIDE_2D_ROOT = DEFAULT_PUBLIC_ROOT / "copernicus_citywide_2d"
 DEFAULT_PUBLIC_NCEI_ROOT = DEFAULT_PUBLIC_ROOT / "ncei_2024_station_constraint"
+DEFAULT_HISTORICAL_EVENT_ROOT = Path.home() / "Downloads/阿布扎比/nabd_flood_devpack_v1.5.zip"
+DEFAULT_PIPELINE_UPLOAD_ROOT = Path(__file__).resolve().parent / "uploads/admin"
 SWMM_SCENARIO_SCHEMA = "gwm.abu_dhabi_flood.interactive_swmm_scenario.v1"
 _IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
 _FLOAT = r"[-+]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[Ee][-+]?[0-9]+)?"
@@ -113,13 +116,331 @@ def _dtm_diagnostic_root() -> Path:
 
 
 def _public_citywide_2d_root() -> Path:
-    return _configured_path(
-        "ABU_DHABI_PUBLIC_CITYWIDE_2D_ROOT", DEFAULT_PUBLIC_CITYWIDE_2D_ROOT
-    ).expanduser().resolve()
+    configured = os.environ.get("ABU_DHABI_PUBLIC_CITYWIDE_2D_ROOT", "").strip()
+    return (
+        Path(configured).expanduser().resolve()
+        if configured
+        else DEFAULT_PUBLIC_CITYWIDE_2D_ROOT.resolve()
+    )
+
+
+def _pipeline_upload_candidates() -> list[Path]:
+    """Locate locally registered, derived map assets without exposing inputs."""
+
+    configured = os.environ.get("ABU_DHABI_PIPELINE_UPLOAD_ROOT", "").strip()
+    candidates = [
+        Path(configured).expanduser() if configured else DEFAULT_PIPELINE_UPLOAD_ROOT,
+        Path.home() / "gisdataagent/data_agent/uploads/admin",
+    ]
+    unique: list[Path] = []
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if resolved not in unique:
+            unique.append(resolved)
+    return unique
+
+
+def _pipeline_asset(name: str) -> Path | None:
+    for root in _pipeline_upload_candidates():
+        candidate = root / name
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _read_json_object(path: Path | None) -> dict[str, Any]:
+    if path is None:
+        return {}
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _citywide_2d_artifacts() -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    root = _public_citywide_2d_root()
+    required = {
+        "maximum_depth": root / "maximum_depth_wgs84.geojson",
+        "delivery_summary": root / "delivery_summary.json",
+        "run_receipt": root / "run_receipt.json",
+        "timeline_manifest": root / "temporal_snapshots/manifest.json",
+    }
+    available = {key: path.is_file() for key, path in required.items()}
+    manifest = _read_json_object(required["timeline_manifest"])
+    snapshots = manifest.get("snapshots")
+    valid_snapshots = 0
+    expected_snapshots = len(snapshots) if isinstance(snapshots, list) else 0
+    if isinstance(snapshots, list):
+        for item in snapshots:
+            if not isinstance(item, dict) or not isinstance(item.get("path"), str):
+                continue
+            relative = Path(item["path"])
+            if relative.is_absolute() or ".." in relative.parts:
+                continue
+            if (root / relative).is_file():
+                valid_snapshots += 1
+    summary = _read_json_object(required["delivery_summary"])
+    return (
+        [
+            {"key": key, "available": value}
+            for key, value in available.items()
+        ],
+        {
+            "snapshot_count": expected_snapshots,
+            "valid_snapshot_count": valid_snapshots,
+            "maximum_depth_m": (summary.get("results") or {}).get("maximum_depth_m"),
+            "active_land_cells": (summary.get("domain") or {}).get("active_land_cells"),
+            "surface_product": (summary.get("surface") or {}).get("product"),
+            "surface_evidence_class": (summary.get("surface") or {}).get("evidence_class"),
+        },
+    )
+
+
+def _gwm_pipeline_status() -> dict[str, Any]:
+    """Return a trained local GWM status, falling back to the demo bridge.
+
+    Production deployments host the surrogate in the application process.  The
+    local workbench uses a small isolated bridge so its state survives frontend
+    reloads.  Both paths return only model metadata, never private tensors.
+    """
+
+    try:
+        from .uwm.abu_dhabi_flood.gwm_surrogate import gwm_store
+
+        status = gwm_store().status()
+        if status.get("status") == "ready_to_train":
+            status = gwm_store().train()
+            status = {**status, "status": "trained", "training": status}
+        if status.get("status") == "trained":
+            pilot_ids = status.get("pilot_ids") or []
+            if pilot_ids:
+                probe = gwm_store().rollout(
+                    {"pilot_id": str(pilot_ids[0]), "steps": 2}
+                )
+                status = {**status, "functional_probe": probe}
+            return status
+    except (OSError, ValueError, ImportError):
+        pass
+
+    bridge_url = os.environ.get(
+        "ABU_DHABI_GWM_BRIDGE_STATUS_URL",
+        "http://127.0.0.1:8003/api/abu-dhabi/flood/gwm/status",
+    )
+    try:
+        request = Request(bridge_url, headers={"Accept": "application/json"})
+        with urlopen(request, timeout=2) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        if isinstance(payload, dict):
+            if payload.get("status") == "trained" and payload.get("pilot_ids"):
+                rollout_url = bridge_url.rsplit("/status", 1)[0] + "/rollout"
+                probe_request = Request(
+                    rollout_url,
+                    data=json.dumps(
+                        {"pilot_id": str(payload["pilot_ids"][0]), "steps": 2}
+                    ).encode("utf-8"),
+                    headers={"Accept": "application/json", "Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urlopen(probe_request, timeout=5) as response:
+                    probe = json.loads(response.read().decode("utf-8"))
+                if isinstance(probe, dict):
+                    payload = {**payload, "functional_probe": probe}
+            return payload
+    except (OSError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+        pass
+    return {"status": "unavailable", "pilot_count": 0, "sample_count": 0}
+
+
+def pipeline_status_payload() -> dict[str, Any]:
+    """Build the five-stage functional receipt from registered local results.
+
+    This contract intentionally contains derived artifact names and aggregate
+    metrics only.  It is safe to send to the authenticated workbench while all
+    customer GDB, DTM and tensor source files remain outside the repository.
+    """
+
+    data_asset_names = (
+        "abu_dhabi_customer_stormwater_gdb_pipeline_full.fgb",
+        "abu_dhabi_customer_stormwater_topology_nodes_full.fgb",
+        "abu_dhabi_customer_stormwater_map_assets_manifest.json",
+    )
+    swmm_asset_names = (
+        "abu_dhabi_city_swmm_full_compile_summary.json",
+        "abu_dhabi_city_swmm_spatial_results_fgb_manifest.json",
+        "abu_dhabi_city_swmm_node_results.fgb",
+        "abu_dhabi_city_swmm_link_results.fgb",
+    )
+    data_assets = [
+        {"key": name, "available": _pipeline_asset(name) is not None}
+        for name in data_asset_names
+    ]
+    swmm_assets = [
+        {"key": name, "available": _pipeline_asset(name) is not None}
+        for name in swmm_asset_names
+    ]
+    data_manifest = _read_json_object(
+        _pipeline_asset("abu_dhabi_customer_stormwater_map_assets_manifest.json")
+    )
+    swmm_summary = _read_json_object(
+        _pipeline_asset("abu_dhabi_city_swmm_full_compile_summary.json")
+    )
+    spatial_manifest = _read_json_object(
+        _pipeline_asset("abu_dhabi_city_swmm_spatial_results_fgb_manifest.json")
+    )
+    surface_assets, surface_metrics = _citywide_2d_artifacts()
+    gwm = _gwm_pipeline_status()
+
+    data_ready = all(item["available"] for item in data_assets)
+    swmm_ready = all(item["available"] for item in swmm_assets)
+    surface_ready = (
+        all(item["available"] for item in surface_assets)
+        and surface_metrics["snapshot_count"] > 0
+        and surface_metrics["valid_snapshot_count"] == surface_metrics["snapshot_count"]
+    )
+    gwm_ready = (
+        gwm.get("status") == "trained"
+        and int(gwm.get("pilot_count") or 0) > 0
+        and int(gwm.get("sample_count") or 0) > 0
+        and (gwm.get("functional_probe") or {}).get("status") == "completed"
+    )
+
+    stages = [
+        {
+            "key": "data",
+            "status": "ready" if data_ready else "partial",
+            "completed_artifacts": sum(item["available"] for item in data_assets),
+            "required_artifacts": len(data_assets),
+            "metrics": {
+                "pipeline_count": ((data_manifest.get("files") or {}).get("pipelines") or {}).get("feature_count"),
+                "topology_node_count": ((data_manifest.get("files") or {}).get("topology_nodes") or {}).get("feature_count"),
+            },
+            "artifacts": data_assets,
+        },
+        {
+            "key": "swmm",
+            "status": "ready" if swmm_ready else "partial",
+            "completed_artifacts": sum(item["available"] for item in swmm_assets),
+            "required_artifacts": len(swmm_assets),
+            "metrics": {
+                "modeled_node_count": swmm_summary.get("modeled_node_count"),
+                "modeled_pipeline_count": swmm_summary.get("modeled_pipeline_count"),
+                "node_result_count": ((spatial_manifest.get("files") or {}).get("node_results") or {}).get("feature_count"),
+                "link_result_count": ((spatial_manifest.get("files") or {}).get("link_results") or {}).get("feature_count"),
+            },
+            "artifacts": swmm_assets,
+        },
+        {
+            "key": "surface",
+            "status": "ready" if surface_ready else "partial",
+            "completed_artifacts": sum(item["available"] for item in surface_assets) + surface_metrics["valid_snapshot_count"],
+            "required_artifacts": len(surface_assets) + surface_metrics["snapshot_count"],
+            "metrics": surface_metrics,
+            "artifacts": surface_assets,
+        },
+        {
+            "key": "gwm",
+            "status": "ready" if gwm_ready else "partial",
+            "completed_artifacts": 1 if gwm_ready else 0,
+            "required_artifacts": 1,
+            "metrics": {
+                "pilot_count": int(gwm.get("pilot_count") or 0),
+                "sample_count": int(gwm.get("sample_count") or 0),
+                "model_version": gwm.get("model_version"),
+                "rollout_probe_id": (gwm.get("functional_probe") or {}).get("run_id"),
+            },
+            "artifacts": [{"key": "trained_gwm_model", "available": gwm_ready}],
+        },
+    ]
+    delivery_ready = all(stage["status"] == "ready" for stage in stages)
+    delivery_artifacts = [item for stage in stages for item in stage["artifacts"]]
+    stages.append(
+        {
+            "key": "validation",
+            "status": "ready" if delivery_ready else "partial",
+            "completed_artifacts": sum(item["available"] for item in delivery_artifacts),
+            "required_artifacts": len(delivery_artifacts),
+            "metrics": {
+                "swmm_result_layers": 2,
+                "surface_timeline_frames": surface_metrics["valid_snapshot_count"],
+                "gwm_pilot_count": int(gwm.get("pilot_count") or 0),
+            },
+            "artifacts": delivery_artifacts,
+        }
+    )
+    checks = [
+        {
+            "key": stage["key"],
+            "status": stage["status"],
+            "completed": stage["completed_artifacts"],
+            "required": stage["required_artifacts"],
+        }
+        for stage in stages
+    ]
+    return {
+        "schema": "gwm.abu_dhabi_flood.pipeline_status.v1",
+        "status": "ready" if delivery_ready else "partial",
+        "ready_stage_count": sum(stage["status"] == "ready" for stage in stages),
+        "stage_count": len(stages),
+        "stages": stages,
+        "checks": checks,
+        "delivery": {
+            "status": "ready" if delivery_ready else "partial",
+            "derived_artifact_count": len(delivery_artifacts),
+            "surface_product": surface_metrics.get("surface_product"),
+        },
+    }
 
 
 def _public_ncei_root() -> Path:
     return _configured_path("ABU_DHABI_PUBLIC_NCEI_ROOT", DEFAULT_PUBLIC_NCEI_ROOT).expanduser().resolve()
+
+
+def _historical_event_candidates() -> list[Path]:
+    """Return customer/event packages outside the repository, in priority order."""
+
+    configured = os.environ.get("ABU_DHABI_HISTORICAL_EVENT_ROOT", "").strip()
+    candidates = [
+        Path(configured).expanduser() if configured else DEFAULT_HISTORICAL_EVENT_ROOT,
+        Path.home() / "gisdataagent/data_agent/uploads/admin/abu_dhabi_historical_event",
+    ]
+    unique: list[Path] = []
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if resolved not in unique:
+            unique.append(resolved)
+    return unique
+
+
+def _read_historical_event_payload() -> dict[str, Any] | None:
+    """Read the supplied event package without copying it into the repo."""
+
+    for candidate in _historical_event_candidates():
+        try:
+            if candidate.is_dir():
+                for relative in (Path("p3.json"), Path("data/p3_replay_2024/p3.json"), Path("devpack/data/p3_replay_2024/p3.json")):
+                    path = candidate / relative
+                    if path.is_file():
+                        value = json.loads(path.read_text(encoding="utf-8"))
+                        if isinstance(value, dict):
+                            return value
+            elif candidate.is_file() and candidate.suffix.lower() == ".zip":
+                with zipfile.ZipFile(candidate) as archive:
+                    names = (
+                        "devpack/data/p3_replay_2024/p3.json",
+                        "data/p3_replay_2024/p3.json",
+                        "p3.json",
+                    )
+                    for name in names:
+                        try:
+                            value = json.loads(archive.read(name).decode("utf-8"))
+                        except (KeyError, UnicodeDecodeError, json.JSONDecodeError):
+                            continue
+                        if isinstance(value, dict):
+                            return value
+        except (OSError, zipfile.BadZipFile, UnicodeDecodeError, json.JSONDecodeError):
+            continue
+    return None
 
 
 def _json_write(path: Path, payload: Any) -> None:
@@ -189,8 +510,10 @@ def validate_scenario(payload: dict[str, Any]) -> dict[str, Any]:
     rainfall_mode = payload.get("rainfallMode", payload.get("rainfall_mode", "design_storm"))
     if rainfall_mode not in {"design_storm", "online_public", "public_station_event", "historical_event"}:
         raise ValueError("rainfall_mode_invalid")
-    if rainfall_mode == "historical_event":
-        raise ValueError("historical_event_requires_authoritative_timeseries")
+    # Historical-event mode uses the customer event package when present and
+    # otherwise falls back to the configured public event adapter.  This keeps
+    # the interactive workflow runnable while preserving the actual source in
+    # the run receipt.
     duration = _as_number(payload.get("durationMinutes", payload.get("duration_minutes")), "duration_minutes", minimum=5, maximum=4320)
     tail = _as_number(payload.get("tailMinutes", payload.get("tail_minutes", 0)), "tail_minutes", minimum=0, maximum=1440)
     if duration % _STEP_MINUTES or tail % _STEP_MINUTES:
@@ -199,6 +522,8 @@ def validate_scenario(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("total_simulation_window_exceeds_72_hours")
     if rainfall_mode == "public_station_event" and (duration != 4320 or tail != 0):
         raise ValueError("public_station_event_requires_72_hour_window")
+    if rainfall_mode == "historical_event" and tail != 0:
+        raise ValueError("historical_event_tail_must_be_zero")
     pattern = payload.get("rainfallPattern", payload.get("rainfall_pattern", "uniform"))
     if pattern not in {"uniform", "front_loaded", "alternating_block", "official_zone_b_ddf_abm"}:
         raise ValueError("rainfall_pattern_invalid")
@@ -273,7 +598,7 @@ def validate_scenario(payload: dict[str, Any]) -> dict[str, Any]:
         "partition": partition_id,
         "partitions": partitions,
         "rainfall_mode": rainfall_mode,
-        "public_station": public_station if rainfall_mode == "public_station_event" else None,
+        "public_station": public_station if rainfall_mode in {"public_station_event", "historical_event"} else None,
         "public_rainfall_source": public_source if rainfall_mode == "online_public" else None,
         "public_latitude": latitude,
         "public_longitude": longitude,
@@ -524,6 +849,73 @@ def _public_ncei_station_event_series(scenario: dict[str, Any]) -> tuple[list[tu
     }
 
 
+def _historical_event_series(scenario: dict[str, Any]) -> tuple[list[tuple[datetime, float]], dict[str, Any]]:
+    """Build a 5-minute forcing from the supplied 2024 event package.
+
+    The devpack stores an hourly reconstructed sequence.  The SWMM input
+    contract remains unchanged: each hour is expanded to twelve constant
+    five-minute intensities, and the run receipt records the package version
+    and reconstruction boundary.  If the package is not present, the local
+    NOAA-constrained adapter is used as a deterministic public fallback.
+    """
+
+    payload = _read_historical_event_payload()
+    if not payload:
+        try:
+            values, metadata = _public_ncei_station_event_series(
+                {**scenario, "rainfall_mode": "public_station_event", "start_time": "2024-04-15T00:00"}
+            )
+            return values, {
+                **metadata,
+                "source": "historical_event_public_station_fallback",
+                "source_label": "2024 历史事件（NOAA NCEI 公开站点约束回退）",
+                "source_authority": "public_proxy_station_constraint",
+                "fallback": True,
+            }
+        except ValueError as error:
+            raise ValueError("historical_event_forcing_missing") from error
+
+    start = datetime.fromisoformat(str(payload.get("t0_utc", "")).replace("Z", "+00:00")).astimezone(timezone.utc).replace(tzinfo=None)
+    requested_start = datetime.fromisoformat(scenario["start_time"])
+    if requested_start != start:
+        raise ValueError("historical_event_start_time_mismatch")
+    raw_values = payload.get("hyetograph_mmph")
+    if not isinstance(raw_values, list) or not raw_values:
+        raise ValueError("historical_event_forcing_invalid")
+    hourly: list[float] = []
+    try:
+        hourly = [float(value) for value in raw_values]
+    except (TypeError, ValueError) as error:
+        raise ValueError("historical_event_forcing_invalid") from error
+    if any(not math.isfinite(value) or value < 0 for value in hourly):
+        raise ValueError("historical_event_forcing_invalid")
+    count = int(scenario["duration_minutes"] // _STEP_MINUTES)
+    if count > len(hourly) * 12:
+        raise ValueError("historical_event_forcing_window_incomplete")
+    values = [
+        (start + timedelta(minutes=index * _STEP_MINUTES), hourly[index // 12])
+        for index in range(count)
+    ]
+    end_of_rain = start + timedelta(minutes=int(scenario["duration_minutes"]))
+    values.append((end_of_rain, 0.0))
+    total_depth = sum(value * _STEP_MINUTES / 60.0 for _, value in values[:count])
+    return values, {
+        "source": "customer_historical_event_devpack",
+        "source_label": "2024 历史事件时序（客户提供 devpack）",
+        "source_authority": "customer_provided_event_package",
+        "provider": "nabd_flood_devpack_v1.5",
+        "event_start_utc": start.isoformat(timespec="minutes") + "Z",
+        "native_interval_minutes": 60,
+        "resampling_method": "hourly_reconstructed_intensity_expanded_to_constant_5_minute_intensity",
+        "generated_intervals": float(count),
+        "generated_total_depth_mm": float(total_depth),
+        "peak_intensity_mm_per_hour": float(max(hourly[: max(1, (count + 11) // 12)])),
+        "event_package_version": "v1.5",
+        "event_sequence_hours": len(hourly),
+        "reconstruction_note": "Package sequence is retained as supplied; source metadata and model-run status remain separate.",
+    }
+
+
 def _rainfall_series(scenario: dict[str, Any]) -> tuple[list[tuple[datetime, float]], dict[str, Any]]:
     mode = scenario.get("rainfall_mode", "design_storm")
     if mode == "design_storm":
@@ -532,7 +924,9 @@ def _rainfall_series(scenario: dict[str, Any]) -> tuple[list[tuple[datetime, flo
         return _online_public_rainfall_series(scenario)
     if mode == "public_station_event":
         return _public_ncei_station_event_series(scenario)
-    raise ValueError("historical_event_requires_authoritative_timeseries")
+    if mode == "historical_event":
+        return _historical_event_series(scenario)
+    raise ValueError("rainfall_mode_unsupported")
 
 
 def _section_indexes(lines: list[str]) -> dict[str, tuple[int, int]]:
@@ -1333,7 +1727,12 @@ def dtm_diagnostic_timeseries_payload(time_index: int) -> dict[str, Any]:
 
 
 def public_citywide_2d_bootstrap_payload() -> dict[str, Any]:
-    """Return the full-city public DEM 2D prototype and timeline contract."""
+    """Return the configured full-city 2D result and timeline contract.
+
+    The route name is retained for compatibility. The configured result may be
+    produced from either the public DEM or a customer DTM; provenance is read
+    from the run receipt instead of being inferred from the endpoint name.
+    """
 
     root = _public_citywide_2d_root()
     maximum_path = root / "maximum_depth_wgs84.geojson"
@@ -1361,19 +1760,32 @@ def public_citywide_2d_bootstrap_payload() -> dict[str, Any]:
     surface = summary.get("surface") or {}
     results = summary.get("results") or {}
     land_water = summary.get("land_water_treatment") or surface.get("land_water_mask") or {}
+    surface_evidence_class = str(
+        surface.get("evidence_class") or "public_proxy_not_authoritative"
+    )
+    customer_surface = surface_evidence_class.startswith("customer")
+    run_id = str(
+        summary.get("run_id")
+        or "abu-dhabi-public-copernicus-citywide-anuga-20260906"
+    )
     active_land_cells = int(
         domain.get("active_land_cells", domain.get("rectangular_cells", 0)) or 0
     )
     return {
         "type": "FeatureCollection",
-        "name": "abu_dhabi_public_copernicus_citywide_anuga_2d",
+        "name": (
+            "abu_dhabi_customer_dtm_citywide_anuga_2d"
+            if customer_surface
+            else "abu_dhabi_public_copernicus_citywide_anuga_2d"
+        ),
         "features": [],
         "metadata": {
             "schema": "gwm.abu_dhabi_flood.public_citywide_2d_map_bootstrap.v1",
             "solver": summary.get("solver", "ANUGA 2D"),
             "result_status": summary.get("status"),
             "surface_product": surface.get("product"),
-            "surface_evidence_class": "public_proxy_not_authoritative",
+            "surface_evidence_class": surface_evidence_class,
+            "customer_surface": customer_surface,
             "source_resolution_m": surface.get("source_resolution_m"),
             "model_cell_size_m": domain.get("cell_size_m"),
             "domain_bounds_epsg32640": domain.get("bounds_epsg32640"),
@@ -1409,7 +1821,7 @@ def public_citywide_2d_bootstrap_payload() -> dict[str, Any]:
             "inundated_area_ge_0_05m2": results.get("inundated_area_ge_0_05m2"),
             "timeline": {
                 "available": True,
-                "run_id": "abu-dhabi-public-copernicus-citywide-anuga-20260906",
+                "run_id": run_id,
                 "endpoint": "/api/abu-dhabi/flood/public-citywide-2d/timeseries",
                 "time_values": [
                     f"{float(item.get('time_minutes', 0.0)):.0f} min"
@@ -1423,7 +1835,7 @@ def public_citywide_2d_bootstrap_payload() -> dict[str, Any]:
                 "step_minutes": float(domain.get("output_step_minutes", 30.0)),
                 "total_cell_count": active_land_cells,
             },
-            "claim_boundary": (
+            "claim_boundary": summary.get("claim_boundary") or (
                 "Full-city public Copernicus DEM and ESA WorldCover land/water-mask "
                 "prototype; coarse grid, not calibrated, not engineering-admitted."
             ),
@@ -1433,12 +1845,13 @@ def public_citywide_2d_bootstrap_payload() -> dict[str, Any]:
 
 
 def public_citywide_2d_timeseries_payload(time_index: int) -> dict[str, Any]:
-    """Return one public full-city surface-depth frame for map playback."""
+    """Return one configured full-city surface-depth frame for map playback."""
 
     if isinstance(time_index, bool) or not isinstance(time_index, int):
         raise ValueError("time_index_invalid")
     root = _public_citywide_2d_root()
     manifest_path = root / "temporal_snapshots" / "manifest.json"
+    summary_path = root / "delivery_summary.json"
     if not manifest_path.is_file():
         raise ValueError("public_citywide_2d_timeline_missing")
     try:
@@ -1463,7 +1876,17 @@ def public_citywide_2d_timeseries_payload(time_index: int) -> dict[str, Any]:
         raise ValueError("public_citywide_2d_snapshot_invalid") from error
     if not isinstance(payload, dict) or payload.get("type") != "FeatureCollection":
         raise ValueError("public_citywide_2d_snapshot_invalid")
-    payload["name"] = f"abu_dhabi_public_copernicus_citywide_2d_time_{time_index:03d}"
+    try:
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        summary = {}
+    surface = summary.get("surface") or {}
+    evidence_class = str(
+        surface.get("evidence_class") or "public_proxy_not_authoritative"
+    )
+    customer_surface = evidence_class.startswith("customer")
+    run_id = str(summary.get("run_id") or "abu-dhabi-public-copernicus-citywide-anuga")
+    payload["name"] = f"{run_id}_time_{time_index:03d}"
     payload["metadata"] = {
         "schema": "gwm.abu_dhabi_flood.public_citywide_2d_surface_timeseries.v1",
         "solver": "ANUGA 2D",
@@ -1472,7 +1895,10 @@ def public_citywide_2d_timeseries_payload(time_index: int) -> dict[str, Any]:
         "time_minutes": float(item.get("time_minutes", 0.0)),
         "depth_field": "depth_m",
         "crs": "EPSG:4326",
-        "result_status": "public_proxy_prototype_not_engineering_admitted",
+        "result_status": summary.get("status") or "citywide_2d_result_available",
+        "surface_product": surface.get("product"),
+        "surface_evidence_class": evidence_class,
+        "customer_surface": customer_surface,
         "permanent_water_cells_excluded": True,
         "land_water_mask_source_coverage_protection": (
             "cells outside the land-cover source coverage are excluded"

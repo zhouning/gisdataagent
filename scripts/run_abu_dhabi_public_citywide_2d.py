@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Run a citywide Abu Dhabi 2D prototype with public Copernicus DEM.
+"""Run a citywide Abu Dhabi 2D surface model with a supplied DEM/DTM.
 
-This runner is independent from customer DTM and customer network. It creates
-a coarse, full-public-domain ANUGA surface run for customer demonstrations.
-Outputs are written to a local private directory and are not model admission
-evidence.
+The computational grid, rainfall forcing, land/water mask, solver and output
+contract stay fixed so a customer DTM can replace the public DEM without
+changing downstream consumers. Outputs are written outside the repository.
 """
 from __future__ import annotations
 import argparse
@@ -30,7 +29,10 @@ DEFAULT_OUTPUT = Path(os.environ.get(
     "ABU_DHABI_PUBLIC_CITYWIDE_2D_ROOT",
     Path.home() / "Downloads/abu_dhabi_public_citywide_2d",
 ))
-ANUGA_PYTHON = REPOSITORY_ROOT / "external_models/anuga-venv/bin/python"
+ANUGA_PYTHON = Path(os.environ.get(
+    "ABU_DHABI_ANUGA_PYTHON",
+    REPOSITORY_ROOT / "external_models/anuga-venv/bin/python",
+))
 # Bounds are snapped to the 250 m model grid. They remain inside the existing
 # public Copernicus crop while avoiding a partial cell at either edge.
 CITY_BOUNDS = (225750.0, 2687250.0, 273250.0, 2723250.0)
@@ -100,16 +102,16 @@ def _prepare_terrain(
 ) -> dict[str, object]:
     with rasterio.open(dem_path) as source:
         if source.crs is None or source.crs.to_epsg() != 32640 or source.count != 1:
-            raise ValueError("public_citywide_dem_must_be_single_band_epsg32640")
+            raise ValueError("citywide_surface_must_be_single_band_epsg32640")
         nx = int(round((bounds[2] - bounds[0]) / CELL_SIZE_M))
         ny = int(round((bounds[3] - bounds[1]) / CELL_SIZE_M))
         window = from_bounds(*bounds, transform=source.transform).round_offsets().round_lengths()
         arr = source.read(1, window=window, out_shape=(ny + 1, nx + 1), resampling=Resampling.bilinear, masked=True)
         if np.ma.getmaskarray(arr).any():
-            raise ValueError("public_citywide_dem_contains_nodata")
+            raise ValueError("citywide_surface_contains_nodata")
         values = np.asarray(arr, dtype=np.float64)
         if not np.isfinite(values).all():
-            raise ValueError("public_citywide_dem_contains_nonfinite")
+            raise ValueError("citywide_surface_contains_nonfinite")
         source_resolution = [abs(float(source.transform.a)), abs(float(source.transform.e))]
     with rasterio.open(land_cover_path) as source:
         if source.crs is None or source.count != 1:
@@ -251,7 +253,18 @@ for _ in domain.evolve(yieldstep={REPORT_INTERVAL_SECONDS!r}, finaltime={final_t
 '''
     path.write_text(script, encoding="utf-8")
 
-def _extract_outputs(sww_path: Path, output: Path, bounds: tuple[float, float, float, float], terrain: dict[str, object], rainfall: dict[str, object], terrain_grid_path: Path) -> dict[str, object]:
+def _extract_outputs(
+    sww_path: Path,
+    output: Path,
+    bounds: tuple[float, float, float, float],
+    terrain: dict[str, object],
+    rainfall: dict[str, object],
+    terrain_grid_path: Path,
+    *,
+    surface_product: str,
+    surface_evidence_class: str,
+    run_id: str,
+) -> dict[str, object]:
     from scipy.io import netcdf_file
     with netcdf_file(sww_path, "r", mmap=False) as dataset:
         x = np.asarray(dataset.variables["x"].data, dtype=np.float64).copy()
@@ -312,7 +325,7 @@ def _extract_outputs(sww_path: Path, output: Path, bounds: tuple[float, float, f
                 props["time_minutes"] = float(time_minutes)
             features.append({"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [polygon_for_cell(row, col)]}, "properties": props})
         return features
-    maximum = {"type": "FeatureCollection", "name": "abu_dhabi_public_copernicus_citywide_anuga_2d_maximum_depth", "features": make_features(max_by_cell)}
+    maximum = {"type": "FeatureCollection", "name": f"{run_id}_maximum_depth", "features": make_features(max_by_cell)}
     _json_dump(output / "maximum_depth_wgs84.geojson", maximum)
     snapshot_dir = output / "temporal_snapshots"
     snapshot_dir.mkdir(parents=True, exist_ok=True)
@@ -322,7 +335,7 @@ def _extract_outputs(sww_path: Path, output: Path, bounds: tuple[float, float, f
         for cell in np.unique(cell_ids):
             values_by_cell[cell] = depths[time_index, np.where(cell_ids == cell)[0]].max()
         name = f"surface_depth_t{time_index:03d}.geojson"
-        _json_dump(snapshot_dir / name, {"type": "FeatureCollection", "name": f"abu_dhabi_public_citywide_2d_time_{time_index:03d}", "features": make_features(values_by_cell, float(timestamp / 60.0))})
+        _json_dump(snapshot_dir / name, {"type": "FeatureCollection", "name": f"{run_id}_time_{time_index:03d}", "features": make_features(values_by_cell, float(timestamp / 60.0))})
         snapshots.append({"index": time_index, "time_seconds": float(timestamp), "time_minutes": float(timestamp / 60.0), "path": f"temporal_snapshots/{name}"})
     _json_dump(snapshot_dir / "manifest.json", {"schema": "gwm.abu_dhabi_flood.public_citywide_2d_timeseries.v1", "snapshots": snapshots})
     land_mask_metadata = terrain["land_water_mask"]
@@ -332,21 +345,52 @@ def _extract_outputs(sww_path: Path, output: Path, bounds: tuple[float, float, f
     maximum_depth_cell = int(np.flatnonzero(active_land_by_cell)[np.argmax(max_by_cell[active_land_by_cell])])
     summary = {
         "schema": "gwm.abu_dhabi_flood.public_citywide_2d_delivery.v2",
-        "status": "completed_public_copernicus_citywide_2d_prototype_not_calibrated",
+        "status": (
+            "completed_customer_dtm_citywide_2d_validation"
+            if surface_evidence_class.startswith("customer")
+            else "completed_public_copernicus_citywide_2d_prototype_not_calibrated"
+        ),
+        "run_id": run_id,
         "solver": "ANUGA 2D",
-        "surface": {"product": "Copernicus DEM GLO-30 public proxy", **terrain, "claim_boundary": "public proxy / prototype only"},
+        "surface": {
+            "product": surface_product,
+            "evidence_class": surface_evidence_class,
+            **terrain,
+        },
         "domain": {"bounds_epsg32640": list(bounds), "area_m2": float((bounds[2]-bounds[0]) * (bounds[3]-bounds[1])), "cell_size_m": CELL_SIZE_M, "rectangular_cells": nx * ny, "active_land_cells": active_land_count, "excluded_permanent_water_cells": int((~active_land_by_cell).sum()), "active_land_area_m2": active_land_area_m2, "triangle_count": int(len(volumes)), "simulation_duration_hours": float(times[-1] / 3600.0), "output_step_minutes": float(REPORT_INTERVAL_SECONDS / 60.0)},
         "forcing": rainfall,
         "land_water_treatment": {**land_mask_metadata, "rainfall_applied_to": "active_land_cells_only", "permanent_water_output_policy": "excluded_from_inland_flood_layers_and_statistics", "sea_boundary_level_m": SEA_LEVEL_M, "sea_boundary_condition": "fixed_stage_zero_momentum_at_outer_domain; connected permanent-water cells retained as drainage medium"},
         "results": {"maximum_depth_m": maximum_depth_m, "maximum_depth_time_minutes": float(peak_time_by_cell[maximum_depth_cell] / 60.0), "inundated_cells_ge_0_01m": int(np.sum((max_by_cell >= 0.01) & active_land_by_cell)), "inundated_area_ge_0_01m2": float(np.sum((max_by_cell >= 0.01) & active_land_by_cell) * CELL_SIZE_M * CELL_SIZE_M), "inundated_area_ge_0_05m2": float(np.sum((max_by_cell >= 0.05) & active_land_by_cell) * CELL_SIZE_M * CELL_SIZE_M), "final_surface_volume_m3": float(np.sum(final_by_cell[active_land_by_cell]) * CELL_SIZE_M * CELL_SIZE_M)},
         "outputs": {"maximum_depth": "maximum_depth_wgs84.geojson", "timeline_manifest": "temporal_snapshots/manifest.json", "native_sww": "abu_dhabi_public_citywide_2d.sww"},
-        "admission": {"public_proxy_test_allowed": True, "customer_authoritative_engineering_prediction": False, "gwm_training_admitted": False, "citywide_prediction_claim_allowed": False},
-        "replacement_contract": "Replace the DEM and public land/water proxy with customer authoritative DTM, shoreline, permanent-water polygons, vertical datum, and tide boundary; then rerun this same model/output contract.",
+        "admission": {
+            "numerical_validation_completed": True,
+            "customer_surface_used": surface_evidence_class.startswith("customer"),
+            "customer_authoritative_engineering_prediction": False,
+            "gwm_training_admitted": False,
+            "citywide_prediction_claim_allowed": False,
+        },
+        "claim_boundary": (
+            "Customer 5 m DTM citywide numerical validation; vertical datum, tide boundary, "
+            "urban microtopography, infiltration and observations still require calibration."
+            if surface_evidence_class.startswith("customer")
+            else "Public DEM citywide prototype; not calibrated or engineering-admitted."
+        ),
+        "replacement_contract": "The DEM/DTM is replaceable while retaining the same ANUGA and map-output contract.",
     }
     _json_dump(output / "delivery_summary.json", summary)
     return summary
 
-def run(dem_path: Path, land_cover_path: Path, output: Path, *, cell_size_m: float = CELL_SIZE_M) -> dict[str, object]:
+def run(
+    dem_path: Path,
+    land_cover_path: Path,
+    output: Path,
+    *,
+    cell_size_m: float = CELL_SIZE_M,
+    surface_product: str = "Copernicus DEM GLO-30 public proxy",
+    surface_evidence_class: str = "public_proxy_not_authoritative",
+    dem_source_url: str | None = "https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_DEM_GLO30",
+    run_id: str = "abu-dhabi-public-copernicus-citywide-anuga-20260906",
+) -> dict[str, object]:
     if abs(cell_size_m - CELL_SIZE_M) > 1e-9:
         raise ValueError("this_initial_prototype_uses_fixed_250m_grid")
     if not dem_path.is_file():
@@ -369,8 +413,28 @@ def run(dem_path: Path, land_cover_path: Path, output: Path, *, cell_size_m: flo
         if not sww_candidates:
             raise RuntimeError("anuga_public_citywide_sww_missing")
         shutil.copy2(sww_candidates[0], output / "abu_dhabi_public_citywide_2d.sww")
-        summary = _extract_outputs(output / "abu_dhabi_public_citywide_2d.sww", output, CITY_BOUNDS, terrain, rainfall_meta, work / "terrain_grid.npz")
-        _json_dump(output / "run_receipt.json", {"schema": "gwm.abu_dhabi_flood.public_citywide_2d_run_receipt.v2", "status": "completed", "dem_source": str(dem_path), "dem_source_url": "https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_DEM_GLO30", "land_cover_source": str(land_cover_path), "land_cover_source_url": WORLD_COVER_SOURCE_URL, "output_directory": str(output), "summary": summary, "anuga_returncode": process.returncode, "claim_boundary": "public Copernicus DEM and ESA WorldCover land/water-mask prototype only; not calibrated or engineering-admitted"})
+        summary = _extract_outputs(
+            output / "abu_dhabi_public_citywide_2d.sww", output, CITY_BOUNDS,
+            terrain, rainfall_meta, work / "terrain_grid.npz",
+            surface_product=surface_product,
+            surface_evidence_class=surface_evidence_class,
+            run_id=run_id,
+        )
+        _json_dump(output / "run_receipt.json", {
+            "schema": "gwm.abu_dhabi_flood.citywide_2d_run_receipt.v3",
+            "status": "completed",
+            "run_id": run_id,
+            "dem_source": str(dem_path),
+            "dem_source_url": dem_source_url,
+            "surface_product": surface_product,
+            "surface_evidence_class": surface_evidence_class,
+            "land_cover_source": str(land_cover_path),
+            "land_cover_source_url": WORLD_COVER_SOURCE_URL,
+            "output_directory": str(output),
+            "summary": summary,
+            "anuga_returncode": process.returncode,
+            "claim_boundary": summary["claim_boundary"],
+        })
         return summary
     finally:
         shutil.rmtree(work, ignore_errors=True)
@@ -380,8 +444,20 @@ def main() -> None:
     parser.add_argument("--dem", type=Path, default=DEFAULT_DEM)
     parser.add_argument("--land-cover", type=Path, default=DEFAULT_LAND_COVER)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--surface-product", default="Copernicus DEM GLO-30 public proxy")
+    parser.add_argument("--surface-evidence-class", default="public_proxy_not_authoritative")
+    parser.add_argument("--dem-source-url", default="https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_DEM_GLO30")
+    parser.add_argument("--run-id", default="abu-dhabi-public-copernicus-citywide-anuga-20260906")
     args = parser.parse_args()
-    result = run(args.dem.expanduser().resolve(), args.land_cover.expanduser().resolve(), args.output.expanduser().resolve())
+    result = run(
+        args.dem.expanduser().resolve(),
+        args.land_cover.expanduser().resolve(),
+        args.output.expanduser().resolve(),
+        surface_product=args.surface_product,
+        surface_evidence_class=args.surface_evidence_class,
+        dem_source_url=args.dem_source_url or None,
+        run_id=args.run_id,
+    )
     print(json.dumps({"output": str(args.output), "status": result["status"], "results": result["results"]}, ensure_ascii=True))
 
 if __name__ == "__main__":

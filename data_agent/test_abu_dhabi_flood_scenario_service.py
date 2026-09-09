@@ -10,6 +10,7 @@ import data_agent.abu_dhabi_flood_scenario_service as scenario_service
 from data_agent.abu_dhabi_flood_scenario_service import (
     _rainfall_series,
     _parse_node_hydraulic_results,
+    pipeline_status_payload,
     render_scenario_input,
     validate_scenario,
 )
@@ -47,6 +48,31 @@ def test_design_storm_depth_is_conserved():
     assert abs(depth_mm - 12.0) < 1e-8
     assert stats["generated_intervals"] == 6
     assert scenario["partitions"] == [0]
+
+
+def test_historical_event_uses_supplied_event_package_and_expands_to_swmm_step(monkeypatch):
+    monkeypatch.setattr(
+        scenario_service,
+        "_read_historical_event_payload",
+        lambda: {
+            "t0_utc": "2024-04-15T16:00:00.000Z",
+            "n_hours": 3,
+            "hyetograph_mmph": [0.0, 12.0, 24.0],
+        },
+    )
+    scenario = validate_scenario(
+        _scenario(
+            rainfallMode="historical_event",
+            startTime="2024-04-15T16:00",
+            durationMinutes=180,
+            tailMinutes=0,
+        )
+    )
+    series, stats = _rainfall_series(scenario)
+    assert len(series) == 37
+    assert sum(intensity * 5.0 / 60.0 for _, intensity in series[:36]) == pytest.approx(36.0)
+    assert stats["source"] == "customer_historical_event_devpack"
+    assert stats["event_sequence_hours"] == 3
 
 
 @pytest.mark.parametrize(
@@ -165,9 +191,16 @@ def test_full_city_input_accepts_explicit_file_override(monkeypatch, tmp_path):
     assert scenario_service._full_city_input(tmp_path / "ignored-root") == configured_input
 
 
-def test_historical_event_requires_authoritative_timeseries():
-    with pytest.raises(ValueError, match="historical_event_requires_authoritative_timeseries"):
-        validate_scenario(_scenario(rainfallMode="historical_event"))
+def test_historical_event_mode_accepts_event_package_window():
+    scenario = validate_scenario(
+        _scenario(
+            rainfallMode="historical_event",
+            startTime="2024-04-15T16:00",
+            durationMinutes=4320,
+            tailMinutes=0,
+        )
+    )
+    assert scenario["rainfall_mode"] == "historical_event"
 
 
 def test_online_public_mode_is_distinct_from_design_storm(monkeypatch):
@@ -559,3 +592,113 @@ def test_public_citywide_2d_exposes_land_water_mask_and_land_cell_timeline(
     result_frame = scenario_service.public_citywide_2d_timeseries_payload(0)
     assert result_frame["metadata"]["permanent_water_cells_excluded"] is True
     assert result_frame["features"][0]["properties"]["land_fraction"] == 0.95
+
+
+def test_pipeline_status_reports_five_functional_stages_from_derived_artifacts(monkeypatch):
+    monkeypatch.setattr(
+        scenario_service,
+        "_pipeline_asset",
+        lambda name: scenario_service.Path("/tmp") / name,
+    )
+    monkeypatch.setattr(
+        scenario_service,
+        "_read_json_object",
+        lambda path: {
+            "files": {
+                "pipelines": {"feature_count": 238287},
+                "topology_nodes": {"feature_count": 238350},
+                "node_results": {"feature_count": 138852},
+                "link_results": {"feature_count": 83340},
+            },
+            "modeled_node_count": 146823,
+            "modeled_pipeline_count": 93669,
+        },
+    )
+    monkeypatch.setattr(
+        scenario_service.Path,
+        "is_file",
+        lambda self: True,
+    )
+    monkeypatch.setattr(
+        scenario_service,
+        "_citywide_2d_artifacts",
+        lambda: (
+            [{"key": "maximum_depth", "available": True}],
+            {
+                "snapshot_count": 11,
+                "valid_snapshot_count": 11,
+                "maximum_depth_m": 3.65,
+                "active_land_cells": 16714,
+                "surface_product": "customer DTM",
+                "surface_evidence_class": "customer_provided_dtm",
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        scenario_service,
+        "_gwm_pipeline_status",
+        lambda: {
+            "status": "trained",
+            "pilot_count": 5,
+            "sample_count": 1555,
+            "model_version": "test-gwm",
+            "functional_probe": {"status": "completed", "run_id": "gwm-test"},
+        },
+    )
+
+    payload = pipeline_status_payload()
+    assert payload["status"] == "ready"
+    assert payload["ready_stage_count"] == 5
+    assert [stage["key"] for stage in payload["stages"]] == [
+        "data", "swmm", "surface", "gwm", "validation"
+    ]
+
+
+def test_gwm_status_bridge_adds_functional_probe(monkeypatch):
+    class _Response:
+        def __init__(self, payload):
+            self.payload = payload
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return __import__("json").dumps(self.payload).encode("utf-8")
+
+    class _UnavailableStore:
+        def status(self):
+            return {"status": "data_unavailable"}
+
+    calls = []
+
+    def fake_urlopen(request, timeout):
+        calls.append((request.full_url, request.data))
+        if request.data is None:
+            return _Response(
+                {
+                    "schema": "gwm.abu_dhabi_flood.gwm_surrogate.v1",
+                    "status": "trained",
+                    "pilot_count": 5,
+                    "pilot_ids": ["pilot_01"],
+                    "sample_count": 10,
+                }
+            )
+        return _Response({"status": "completed", "run_id": "gwm-probe"})
+
+    import data_agent.uwm.abu_dhabi_flood.gwm_surrogate as gwm_surrogate
+
+    monkeypatch.setattr(gwm_surrogate, "gwm_store", lambda: _UnavailableStore())
+    monkeypatch.setattr(scenario_service, "urlopen", fake_urlopen)
+    monkeypatch.setenv(
+        "ABU_DHABI_GWM_BRIDGE_STATUS_URL",
+        "http://127.0.0.1:8003/api/abu-dhabi/flood/gwm/status",
+    )
+
+    payload = scenario_service._gwm_pipeline_status()
+
+    assert payload["functional_probe"]["status"] == "completed"
+    assert payload["functional_probe"]["run_id"] == "gwm-probe"
+    assert calls[1][0].endswith("/gwm/rollout")

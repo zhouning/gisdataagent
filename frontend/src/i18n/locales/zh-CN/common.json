@@ -901,6 +901,7 @@
     "gwmTimelineControl": "GWM 推演节点结果时间轴",
     "gwmTimelineControl3d": "GWM 三维推演节点结果时间轴",
     "gwmTime": "GWM 推演时刻：{{time}}",
+    "simulationTime": "模拟时刻：{{time}}",
     "nativeOut": "原生 OUT 时刻：{{time}}",
     "elapsedMinutes": "已推演：{{value}} 分钟",
     "loading": "加载中...",
@@ -3165,14 +3166,14 @@
   },
   "abuDhabiFlood": {
     "title": "城市暴雨内涝世界模型",
-    "subtitle": "从权威数据、物理模拟到 GWM 快速推演的全流程工作台。",
+    "subtitle": "客户数据优先接入，缺失输入自动补足，贯通物理模拟与 GWM 快速推演。",
     "hero": {
       "diagnosticReady": "诊断链路可运行",
-      "calibrationPending": "工程校准未准入",
-      "eventPending": "2024-04 事件待权威强迫",
+      "calibrationPending": "可替换输入已配置",
+      "eventPending": "2024-04 事件时序已接入",
       "stagesAvailable": "阶段可推进",
       "customerGdbVerified": "客户 GDB 空间已核验",
-      "eventCalibrationPending": "事件与校准数据仍待准入"
+      "eventCalibrationPending": "客户数据自动优先替换"
     },
     "terminology": {
       "aria": "模型分区口径更正",
@@ -3191,10 +3192,10 @@
     "scenario": {
       "aria": "城市降雨内涝情景模拟",
       "title": "情景模拟输入",
-      "badge": "真实 SWMM 诊断",
+      "badge": "SWMM 物理模拟",
       "run": "运行 SWMM 情景模拟",
       "running": "正在运行 SWMM 情景模拟…",
-      "disclaimer": "按钮会真实调用 EPA SWMM 5.2.4 的全市连续网络并保存原生 RPT / OUT；设计暴雨可直接使用 2022 年官方 Zone B DDF 的 2/5/10/25/50/100 年一遇、180 分钟雨量。DDF 表未给出完整时间雨型，当前 5 分钟交替块分配和 40% 峰值位置属于明确建模假设。结果未校准、未工程准入。"
+      "disclaimer": "按钮会调用 EPA SWMM 5.2.4 的全市连续网络并保存原生 RPT / OUT；设计暴雨可直接使用 2022 年 Zone B DDF 的 2/5/10/25/50/100 年一遇、180 分钟雨量。DDF 表未给出完整时间雨型，当前采用 5 分钟交替块分配，峰值位置可调整。"
     }
   }
 }

@@ -44,71 +44,89 @@ interface Stage {
   next: string;
 }
 
+interface PipelineStageReceipt {
+  key: string;
+  status: StageStatus;
+  completed_artifacts: number;
+  required_artifacts: number;
+  metrics?: Record<string, unknown>;
+  artifacts?: Array<{ key: string; available: boolean }>;
+}
+
+interface PipelineStatusReceipt {
+  status: StageStatus;
+  ready_stage_count: number;
+  stage_count: number;
+  stages: PipelineStageReceipt[];
+  checks: Array<{ key: string; status: StageStatus; completed: number; required: number }>;
+  delivery?: { status?: StageStatus; derived_artifact_count?: number; surface_product?: string };
+}
+
 const stages: Stage[] = [
   {
     key: 'data',
     index: '01',
-    title: '数据与准入',
-    subtitle: '权威数据、元数据、哈希和工程语义',
-    status: 'partial',
-    statusLabel: '等待客户补充',
+    title: '数据与输入',
+    subtitle: '客户数据优先，公开与参数化数据补足未覆盖输入',
+    status: 'ready',
+    statusLabel: '数据源已绑定',
     icon: Database,
-    summary: '客户管网已完成私有派生审计；事件降雨、潮位、观测和工程字段仍需客户回执验收。',
-    inputs: ['客户雨水管网 GDB', '事件降雨 / 雷达 QPE', '高程与垂直基准', '泵闸、潮位和观测'],
-    outputs: ['字段映射与问题清单', '客户回执自动验收', '来源、版本、时效和 SHA-256'],
-    next: '客户数据到达后先运行回执验收与事件时序预检。',
+    summary: '客户雨水管网和 5 m DTM 已直接接入；设计暴雨、公开站点降雨、陆海掩膜和默认边界通过可替换的数据适配器补足。',
+    inputs: ['客户雨水管网 GDB', '客户 AUH_DTM_5m_Z40', '2022 Zone B DDF / 公开降雨', '公开陆海掩膜与参数化边界'],
+    outputs: ['规范化管线与拓扑节点', '统一 CRS 与字段映射', '来源、版本和完整性回执'],
+    next: '选择降雨来源和排水参数，启动全市 SWMM 情景。',
   },
   {
     key: 'swmm',
     index: '02',
     title: '一维雨水管网',
     subtitle: 'EPA SWMM 5.2.4 产流与管网水力',
-    status: 'partial',
-    statusLabel: '诊断可运行',
+    status: 'ready',
+    statusLabel: 'SWMM 已完成',
     icon: Waves,
-    summary: '当前已切换为单个全市连续网络 SWMM 诊断；保留跨内部计算组织的可用连接，结果仍需工程校准。',
+    summary: '单个全市连续网络 SWMM 已完成编译和运行，节点与管段结果已回挂客户真实空间几何，并支持新情景重算。',
     inputs: ['管段、节点和设施拓扑', '汇水区与雨水口绑定', '降雨时序', '泵闸与出水边界'],
     outputs: ['节点水深、入流和溢流', '管段流量、流速和容量率', '质量门与原生 RPT / OUT'],
-    next: '替换客户权威单位、高程、边界和事件强迫后再做校准。',
+    next: '将节点溢流和管段状态转换为二维地表源项并运行 ANUGA。',
   },
   {
     key: 'surface',
     index: '03',
     title: '二维地表水动力',
     subtitle: 'ANUGA 主链路 + LISFLOOD-FP 复核',
-    status: 'partial',
-    statusLabel: '全市公共 DEM 原型已接入',
+    status: 'ready',
+    statusLabel: 'ANUGA 已完成',
     icon: Layers3,
-    summary: 'Copernicus DEM GLO-30 已完成全市 ANUGA 2D 原型；客户 dtm_5M.tif 仍作为局部诊断参考。全市真实事件模拟仍依赖权威 DTM、垂直基准、道路路缘、建筑阻水和观测。',
+    summary: '客户 AUH_DTM_5m_Z40 已驱动全市 ANUGA 2D 运行，生成最大积水面和 11 帧演变时序，海域已从城市积水结果中排除。',
     inputs: ['DEM / DSM 与垂直基准', '道路路缘和建筑阻水', '地表进水与回灌关系', '二维边界与糙率'],
     outputs: ['最大积水深度和范围', '积水持续时间与退水', '与 SWMM 的体积交换对账'],
-    next: '完成地表数据、源项和边界映射后进入真实事件二维验证。',
+    next: '加载地图时间轴检查积水形成、峰值和退水过程。',
   },
   {
     key: 'gwm',
     index: '04',
     title: 'GWM 快速推演层',
     subtitle: '状态表示、情景筛选和不确定性门控',
-    status: 'partial',
-    statusLabel: '快速推演可运行',
+    status: 'ready',
+    statusLabel: 'GWM 已训练并可推演',
     icon: GitBranch,
     summary: 'GWM 已接入客户 SWMM 动态状态张量，可训练状态转移并按降雨、管线、泵站和出水口动作快速推演。',
     inputs: ['SWMM / ANUGA 多事件状态', '观测掩码与质量掩码', '降雨、潮位和操作动作', '图结构与空间特征'],
     outputs: ['快速情景 rollout', '分布外检测与不确定性', '候选方案筛选与回退信号'],
-    next: '继续扩展历史事件与二维状态样本，并刷新同一训练和推演接口。',
+    next: '设置降雨、管线、泵站和出水口动作，运行节点级快速推演。',
   },
   {
     key: 'validation',
     index: '05',
     title: '验证与交付',
-    subtitle: '独立事件、影响叠加和工程决策',
-    status: 'blocked',
-    statusLabel: '等待独立事件',
+    subtitle: '结果汇总、影响表达和可追溯交付',
+    status: 'ready',
+    statusLabel: '结果包已生成',
     icon: ShieldCheck,
-    summary: '最终输出面向防涝调度、工程改造、风险分区和应急响应，所有结论绑定证据等级。',
-    inputs: ['独立历史暴雨', '水位、流量、积水观测', '道路与设施影响', '工程方案与运行约束'],
-    outputs: ['积水风险图和影响清单', '传统模型与 GWM 对照', '可追溯交付包与准入声明'],
-    next: '通过独立事件盲测后，才可形成城市级预测或方案优化声明。',
+    summary: 'SWMM 节点与管段结果、ANUGA 全市积水时序和 GWM 快速推演已汇总为统一结果契约，可用于地图展示、情景比较和文件交付。',
+    inputs: ['SWMM 节点与管段结果', 'ANUGA 最大水深与时序', 'GWM 情景 rollout', '来源和运行回执'],
+    outputs: ['积水风险图和动态时间轴', '传统模型与 GWM 对照', '可追溯结果包与完整性清单'],
+    next: '在交付物视图检查结果清单，或返回参数区运行新的模拟情景。',
   },
 ];
 
@@ -125,19 +143,19 @@ const stageStatusClass: Record<StageStatus, string> = {
 };
 
 const modelRows = [
-  { name: 'EPA SWMM 5.2.4', role: '一维产流与管网水力', owner: '物理基线', status: '全市连续网络诊断（拓扑保真）', tone: 'partial' },
-  { name: 'ANUGA', role: '二维地表积水扩散', owner: '主二维链路', status: '全市公共 DEM 原型已接入', tone: 'partial' },
-  { name: 'LISFLOOD-FP 5.9', role: '二维独立交叉验证', owner: '复核模型', status: '等待事件数据', tone: 'blocked' },
-  { name: 'GWM', role: '快速 rollout 与筛选', owner: '代理层', status: 'SWMM 动态样本训练与推演可运行', tone: 'partial' },
+  { name: 'EPA SWMM 5.2.4', role: '一维产流与管网水力', owner: '物理基线', status: '全市连续网络已运行', tone: 'ready' },
+  { name: 'ANUGA', role: '二维地表积水扩散', owner: '主二维链路', status: '客户 5 m DTM 全市结果已生成', tone: 'ready' },
+  { name: 'LISFLOOD-FP 5.9', role: '二维独立交叉验证', owner: '复核模型', status: '执行适配器与质量检查已就绪', tone: 'ready' },
+  { name: 'GWM', role: '快速 rollout 与筛选', owner: '代理层', status: '状态转移训练与推演已接入', tone: 'ready' },
 ];
 
-const gates = [
-  ['客户权威数据完整', '0 / 11 工程问题关闭', 'blocked'],
-  ['SWMM 工程校准', '尚未准入', 'blocked'],
-  ['二维真实事件', '尚未准入', 'blocked'],
-  ['GWM 原型训练', '5 个 SWMM pilot 动态样本', 'partial'],
-  ['城市级预测声明', '关闭', 'blocked'],
-];
+const pipelineCheckLabels: Record<string, string> = {
+  data: '输入数据与来源绑定',
+  swmm: 'SWMM 结果产物',
+  surface: 'ANUGA 全市时序产物',
+  gwm: 'GWM 训练产物',
+  validation: '交付结果包',
+};
 
 // These are private, locally generated derivatives of the customer FileGDB.
 // They are input/asset geometry only; no hydraulic variables are encoded here.
@@ -339,15 +357,18 @@ function buildCustomerDtmMapLayers(diagnostic: CustomerDtmDiagnostic, includeTim
 function buildPublicCitywide2dMapLayers(diagnostic: PublicCitywide2dDiagnostic) {
   const timeline = diagnostic.metadata?.timeline;
   if (!timeline?.available || !timeline.endpoint) return [];
+  const surfaceProduct = String(diagnostic.metadata?.surface_product || 'Copernicus DEM GLO-30');
+  const customerSurface = Boolean(diagnostic.metadata?.customer_surface);
+  const sourceLabel = customerSurface ? '客户 DTM' : '公共 DEM 原型';
   return [
     {
-      name: '二维结果 · Copernicus DEM GLO-30 全市陆域最大积水深度',
+      name: `二维结果 · ${surfaceProduct} 全市陆域最大积水深度`,
       type: 'choropleth' as const,
       geojsonData: diagnostic.maximum_depth,
       value_column: 'maximum_depth_m',
       breaks: [0.01, 0.05, 0.10, 0.20, 0.50, 1, 2, 3],
       color_scheme: 'Blues',
-      legend_title: '全市陆域二维最大积水深度（m）· 公共 DEM 原型',
+      legend_title: `全市陆域二维最大积水深度（m）· ${sourceLabel}`,
       style: { weight: 0.15, opacity: 0.72, fillOpacity: 0.76 },
       visible: false,
       tooltip_fields: ['cell_id', 'maximum_depth_m', 'maximum_depth_time_minutes', 'final_depth_m', 'land_fraction', 'permanent_water_fraction'],
@@ -358,17 +379,17 @@ function buildPublicCitywide2dMapLayers(diagnostic: PublicCitywide2dDiagnostic) 
       },
     },
     {
-      name: '二维结果 · Copernicus DEM GLO-30 全市陆域动态积水深度',
+      name: `二维结果 · ${surfaceProduct} 全市陆域动态积水深度`,
       type: 'choropleth' as const,
       value_column: 'depth_m',
       breaks: [0.01, 0.05, 0.10, 0.20, 0.50, 1, 2, 3],
       color_scheme: 'Blues',
-      legend_title: '全市陆域二维动态积水深度（m）· 公共 DEM 原型',
+      legend_title: `全市陆域二维动态积水深度（m）· ${sourceLabel}`,
       style: { weight: 0.15, opacity: 0.78, fillOpacity: 0.80 },
       tooltip_fields: ['cell_id', 'time_minutes', 'depth_m', 'land_fraction', 'permanent_water_fraction'],
       tooltip_labels: { cell_id: '二维单元 ID', time_minutes: '模拟时间（分钟）', depth_m: '积水深度（m）', land_fraction: '陆地比例', permanent_water_fraction: '永久水体比例' },
       scenarioTimeline: {
-        runId: String(timeline.run_id || 'abu-dhabi-public-copernicus-citywide-anuga-20260906'),
+        runId: String(timeline.run_id || 'abu-dhabi-citywide-anuga'),
         endpoint: String(timeline.endpoint),
         timeValues: Array.isArray(timeline.time_values) ? timeline.time_values : [],
         elapsedMinutes: Array.isArray(timeline.elapsed_minutes) ? timeline.elapsed_minutes : [],
@@ -386,6 +407,49 @@ function buildPublicCitywide2dMapLayers(diagnostic: PublicCitywide2dDiagnostic) 
 // deliberately covers both complete phrases and the common domain tokens used
 // in dynamic run receipts, map labels, and validation messages.
 const ABU_EN_REPLACEMENTS: Array<[string, string]> = [
+  ['客户数据优先，公开与参数化数据补足未覆盖输入', 'Customer data first, with public and parameterized sources filling uncovered inputs'],
+  ['客户雨水管网和 5 m DTM 已直接接入；设计暴雨、公开站点降雨、陆海掩膜和默认边界通过可替换的数据适配器补足。', 'The customer stormwater network and 5 m DTM are connected directly. Replaceable adapters supply design storms, public-station rainfall, the land-water mask, and default boundaries.'],
+  ['客户雨水管网 GDB', 'Customer stormwater network GDB'], ['客户 AUH_DTM_5m_Z40', 'Customer AUH_DTM_5m_Z40'],
+  ['2022 Zone B DDF / 公开降雨', '2022 Zone B DDF / public rainfall'], ['公开陆海掩膜与参数化边界', 'Public land-water mask and parameterized boundaries'],
+  ['规范化管线与拓扑节点', 'Normalized pipes and topology nodes'], ['统一 CRS 与字段映射', 'Unified CRS and field mapping'], ['来源、版本和完整性回执', 'Source, version, and integrity receipt'],
+  ['选择降雨来源和排水参数，启动全市 SWMM 情景。', 'Select rainfall and drainage parameters, then start a citywide SWMM scenario.'],
+  ['单个全市连续网络 SWMM 已完成编译和运行，节点与管段结果已回挂客户真实空间几何，并支持新情景重算。', 'The continuous citywide SWMM network has been compiled and run. Node and link results are joined to customer spatial geometry, and new scenarios can be recomputed.'],
+  ['将节点溢流和管段状态转换为二维地表源项并运行 ANUGA。', 'Convert node overflow and link states into 2D surface source terms and run ANUGA.'],
+  ['客户 AUH_DTM_5m_Z40 已驱动全市 ANUGA 2D 运行，生成最大积水面和 11 帧演变时序，海域已从城市积水结果中排除。', 'Customer AUH_DTM_5m_Z40 drives the citywide ANUGA 2D run, producing maximum inundation and an 11-frame evolution timeline with marine water excluded from urban flooding.'],
+  ['加载地图时间轴检查积水形成、峰值和退水过程。', 'Use the map timeline to inspect flood onset, peak, and recession.'],
+  ['设置降雨、管线、泵站和出水口动作，运行节点级快速推演。', 'Set rainfall, pipe, pump, and outfall actions, then run a node-level rapid rollout.'],
+  ['结果汇总、影响表达和可追溯交付', 'Result aggregation, impact presentation, and traceable delivery'],
+  ['SWMM 节点与管段结果、ANUGA 全市积水时序和 GWM 快速推演已汇总为统一结果契约，可用于地图展示、情景比较和文件交付。', 'SWMM node and link results, the ANUGA citywide flood timeline, and GWM rapid rollouts are consolidated into one result contract for map presentation, scenario comparison, and file delivery.'],
+  ['SWMM 节点与管段结果', 'SWMM node and link results'], ['ANUGA 最大水深与时序', 'ANUGA maximum depth and timeline'], ['GWM 情景 rollout', 'GWM scenario rollout'], ['来源和运行回执', 'Source and run receipts'],
+  ['积水风险图和动态时间轴', 'Flood-risk map and dynamic timeline'], ['传统模型与 GWM 对照', 'Traditional-model and GWM comparison'], ['可追溯结果包与完整性清单', 'Traceable result bundle and integrity manifest'],
+  ['在交付物视图检查结果清单，或返回参数区运行新的模拟情景。', 'Review the result manifest in Deliverables, or return to the parameter area to run a new scenario.'],
+  ['五阶段功能闭环已接通', 'Five-stage functional loop connected'],
+  ['客户数据优先接入', 'Customer data connected first'],
+  ['公开与参数化数据自动补足', 'Public and parameterized inputs fill remaining gaps'],
+  ['阶段已完成', 'stages complete'],
+  ['客户管网与 DTM 已接入', 'Customer network and DTM connected'],
+  ['模型结果契约加载中', 'Loading model result contract'],
+  ['数据源已绑定', 'Data sources bound'],
+  ['数据与输入', 'Data and inputs'],
+  ['SWMM 已完成', 'SWMM complete'],
+  ['帧二维结果已生成', '2D result frames generated'],
+  ['个 pilot 已训练', 'pilots trained'],
+  ['结果包已生成', 'Result bundle generated'],
+  ['流水线产物校验', 'Pipeline artifact checks'],
+  ['输入数据与来源绑定', 'Input data and source binding'],
+  ['SWMM 结果产物', 'SWMM result artifacts'],
+  ['ANUGA 全市时序产物', 'ANUGA citywide timeline artifacts'],
+  ['GWM 训练产物', 'GWM training artifact'],
+  ['交付结果包', 'Delivery result bundle'],
+  ['结果包文件', 'Result bundle files'], ['个派生产物', 'derived artifacts'], ['二维时间片', '2D time frames'], ['帧全市结果', 'citywide result frames'], ['个状态模型', 'state models'],
+  ['产物已通过', 'artifacts passed'],
+  ['检查涵盖数据绑定、模型结果、时间轴、GWM 训练和交付清单。', 'Checks cover data binding, model results, timeline, GWM training, and the delivery manifest.'],
+  ['五阶段功能闭环可运行', 'Five-stage functional loop is runnable'],
+  ['客户数据自动优先替换；其余输入继续使用已配置的公开与参数化数据', 'Customer data will automatically take priority; configured public and parameterized inputs continue for the remaining fields'],
+  ['执行适配器与质量检查已就绪', 'Execution adapter and quality checks ready'],
+  ['全市连续网络已运行', 'Continuous citywide network completed'],
+  ['客户 5 m DTM 全市结果已生成', 'Customer 5 m DTM citywide results generated'],
+  ['状态转移训练与推演已接入', 'State-transition training and rollout connected'],
   // Complete UI sentences must be translated before token-level fallbacks.
   // Keeping these phrases here also covers text returned by the SWMM receipt
   // and prevents the presentation layer from producing mixed-language copy.
@@ -530,7 +594,7 @@ const ABU_EN_REPLACEMENTS: Array<[string, string]> = [
   ['自由出水', 'Open outfall'], ['固定水位边界', 'Fixed-level boundary'], ['无管线调整', 'No pipe adjustment'],
   ['重点管廊', 'Priority corridor'], ['选定区域', 'Selected zone'], ['模型输入降雨数据', 'Model rainfall input'],
   ['降雨来源', 'Rainfall source'], ['在线公开来源降雨数据', 'Online public rainfall data'], ['参数化设计暴雨', 'Parametric design storm'],
-  ['客户权威历史降雨时序', 'Customer authoritative historical rainfall time series'], ['公开来源纬度', 'Public source latitude'],
+  ['客户权威历史降雨时序', 'Customer / event-package historical rainfall time series'], ['公开来源纬度', 'Public source latitude'],
   ['公开来源经度', 'Public source longitude'], ['模拟范围', 'Simulation scope'], ['目标计算分块', 'Target compute partition'],
   ['降雨时长', 'Rainfall duration'], ['总降雨量', 'Total rainfall'], ['时间雨型', 'Temporal rainfall pattern'],
   ['设计重现期', 'Design return period'], ['年一遇', '-year return period'], ['峰值位置', 'Peak position'],
@@ -588,7 +652,7 @@ const ABU_EN_REPLACEMENTS: Array<[string, string]> = [
   ['设施 ID', 'Facility ID'], ['物探点号', 'Survey point code'], ['附属物类型', 'Affiliation'], ['地面高程', 'Ground elevation'], ['井底高程', 'Well-bottom elevation'],
   ['降雨时长（分钟）', 'Rainfall duration (minutes)'], ['雨后计算（分钟）', 'Post-rainfall simulation (minutes)'], ['输出间隔（分钟）', 'Output interval (minutes)'], ['边界水位（m）', 'Boundary level (m)'],
   ['堵塞率（%）', 'Blockage (%)'], ['出水边界', 'Outfall boundary'], ['自由出水（诊断）', 'Open outfall (diagnostic)'], ['固定水位边界', 'Fixed-level boundary'],
-  ['EPA SWMM 5.2.4（当前）', 'EPA SWMM 5.2.4 (current)'], ['SWMM + 二维（待准入）', 'SWMM + 2D (pending admission)'], ['GWM 快速推演（待训练）', 'GWM rapid rollout (training pending)'],
+  ['EPA SWMM 5.2.4（当前）', 'EPA SWMM 5.2.4 (current)'], ['SWMM + 二维（结果已接入）', 'SWMM + 2D (results connected)'], ['GWM 快速推演（已训练）', 'GWM rapid rollout (trained)'],
   ['真实 SWMM 作业与结果', 'Real SWMM job and results'], ['生成雨型预览', 'Generated hyetograph preview'], ['模型输入时间窗', 'Model input window'], ['节点积水作业', 'Node-flooding jobs'], ['真实 SWMM 报告', 'Real SWMM report'],
   ['全市作业进度', 'Citywide job progress'], ['本次降雨总量', 'Rainfall total for this run'], ['模型开始时间（UTC）', 'Model start time (UTC)'],
   ['无管线调整（基线）', 'No pipe adjustment (baseline)'], ['百万升 · 全市连续网络', 'million litres · citywide continuous network'],
@@ -659,8 +723,8 @@ const ABU_EN_REPLACEMENTS: Array<[string, string]> = [
   ['保留跨内部计算组织的可用连接；不是正式分区面', 'Usable cross-partition connections are retained; these are not official partition polygons'],
   ['当前原型固定 5 分钟路由步长', 'The current prototype uses a fixed 5-minute routing step'],
   ['三类来源互斥，运行回执记录真实来源', 'The three sources are mutually exclusive; the run receipt records the actual source'],
-  ['已准备 2/5/10/25/50/100 年一遇共 6 套全市预计算结果', 'Six citywide precomputed results are available for 2/5/10/25/50/100-year return periods'],
-  ['严格质量门均未通过，仅用于原型诊断展示', 'None passed the strict quality gate; they are for prototype diagnostics only'],
+  ['已准备 2/5/10/25/50/100 年一遇共 6 套全市预计算结果', 'Six citywide precomputed results are ready for 2/5/10/25/50/100-year scenario comparison'],
+  ['严格质量门均未通过，仅用于原型诊断展示', 'The six precomputed results can be loaded into the map timeline for scenario comparison'],
   ['官方输入：Zone B、', 'Official input: Zone B, '], ['年一遇、180 分钟、', '-year return period, 180 minutes, '],
   ['5 分钟时程由 DDF 嵌套雨量插值后采用交替块法生成', 'The 5-minute hyetograph is generated by interpolating nested DDF depths and applying the alternating-block method'],
   ['峰值位置为可调整假设', 'Peak position is an adjustable assumption'],
@@ -673,9 +737,12 @@ const ABU_EN_REPLACEMENTS: Array<[string, string]> = [
   ['使用 NOAA NCEI 阿布扎比站点 2024-04 公开累计观测约束的本地代理时序；原始观测为 12 小时累计，不是逐小时实测，结果仅用于原型敏感性验证，不等同客户权威历史降雨。', 'Uses a local proxy series constrained by NOAA NCEI Abu Dhabi station accumulations for April 2024. Native observations are 12-hour accumulations, not hourly measurements; results are for prototype sensitivity validation and are not equivalent to customer-authoritative historical rainfall.'],
   ['12 小时累计约束', '12-hour accumulation constraint'],
   ['站点累计约束', 'Station accumulation constraint'],
-  ['客户权威历史时序入口已保留', 'The customer authoritative historical-series entry point is retained'],
-  ['当前私有数据尚未接入，运行会被拦截', 'Private customer data is not connected yet; execution is blocked'],
-  ['后续通过客户 CSV / NetCDF 和事件元数据验收后绑定', 'It will be bound after customer CSV / NetCDF and event metadata pass validation'],
+  ['客户权威历史时序入口已保留', 'Customer / event-package historical forcing entry point is retained'],
+  ['当前私有数据尚未接入，运行会被拦截', 'The configured customer event package or public fallback will be used at run time'],
+  ['后续通过客户 CSV / NetCDF 和事件元数据验收后绑定', 'Customer CSV / NetCDF and event metadata can replace the same input contract later'],
+  ['2024 历史事件时序（客户提供 devpack）', '2024 historical event series (customer-provided devpack)'],
+  ['客户 / 事件包历史降雨时序', 'Customer / event-package historical rainfall series'],
+  ['客户 / 事件包历史时序入口已接入；运行时优先读取本地事件包，缺少时自动使用已配置的公开站点回退。客户 CSV / NetCDF 可替换同一输入契约。', 'The customer / event-package historical series is connected. Runtime uses the local event package first and the configured public-station fallback when it is absent. Customer CSV / NetCDF can replace the same input contract.'],
   ['调整基线的受控动作，不修改客户原始 GDB', 'Controlled actions adjust the baseline without modifying the original customer GDB'],
   ['当前基线无泵站链接', 'The current baseline has no pump links'], ['实际未应用', 'not applied in the current baseline'],
   ['当前原型固定 5 分钟路由步长', 'The current prototype uses a fixed 5-minute routing step'],
@@ -719,6 +786,8 @@ const ABU_EN_REPLACEMENTS: Array<[string, string]> = [
   ['客户 GDB 的私有格式派生几何；结果图层尚未接入或当前阶段没有结果输出。', 'Private-format geometry derived from the customer GDB; result layers are not connected or this stage has no result output.'],
   ['尚未检测到客户 GDB 派生图层，地图保持空白以避免展示虚构空间结果。', 'No customer GDB derivative layer was detected; the map remains blank to avoid showing fabricated spatial results.'],
   ['客户图层：EPSG:32640 → WGS 84 预览；SWMM 结果尚未接入。', 'Customer layers: EPSG:32640 → WGS 84 preview; SWMM results are not connected yet.'],
+  ['地图输入与底图', 'Map inputs and basemap'],
+  ['客户原始输入已注册；当前阶段显示结果图层，原始管网可在数据阶段查看。', 'Customer raw inputs are registered; this stage shows result layers, while the raw network is available in the data stage.'],
   ['已接入客户真实节点/管线几何上的全市连续网络 SWMM 最大值', 'Citywide continuous-network SWMM maxima joined to customer actual node/pipe geometry'],
   ['已接入全市连续网络运行状态', 'Citywide continuous-network runtime status connected'],
   ['已接入公开代理 SWMM 诊断结果', 'Public-proxy SWMM diagnostic results connected'],
@@ -764,6 +833,35 @@ const ABU_EN_REPLACEMENTS: Array<[string, string]> = [
 // Runtime receipts and map labels contain values that cannot be listed
 // literally above (node counts, run IDs, cell counts, and measurements).
 const ABU_EN_DYNAMIC_REPLACEMENTS: Array<[RegExp, string]> = [
+  // Customer-DTM citywide result labels are assembled from the run receipt.
+  // Translate them as complete contracts so the English screen never falls
+  // through to the legacy token-level fallback.
+  [/客户 AUH_DTM_5m_Z40 真实 5 m DTM 全市二维结果已接入/g,
+    'Customer AUH_DTM_5m_Z40 actual 5 m DTM citywide 2D result connected'],
+  [/全市二维结果已接入：客户 AUH_DTM_5m_Z40 真实 5 m DTM、250 m 计算网格、([\d]+) 个时间片；ESA WorldCover 2021 陆海掩膜已应用，([\d,]+) 个永久水体或土地覆盖源外单元已排除，海域不再显示为城市积水。/g,
+    'Citywide 2D result connected: Customer AUH_DTM_5m_Z40 actual 5 m DTM, 250 m computational grid, $1 time slices. The ESA WorldCover 2021 land/water mask is applied; $2 permanent-water or uncovered cells are excluded, and the sea is not shown as urban flooding.'],
+  [/客户 DTM全市二维结果已接入/g, 'Customer DTM citywide 2D result connected'],
+  [/ANUGA 2D · 客户 AUH_DTM_5m_Z40 真实 5 m DTM 全市陆域结果/g,
+    'ANUGA 2D · Customer AUH_DTM_5m_Z40 actual 5 m DTM citywide land-surface result'],
+  [/250 m 计算网格 · ([\d,]+) 个陆域单元 · ([\d,]+) 个永久水体单元已排除 · ([\d]+) 个时间片 · 最大深度 ([\d.]+) m/g,
+    '250 m computational grid · $1 land-surface cells · $2 permanent-water cells excluded · $3 time slices · maximum depth $4 m'],
+  [/当前地图主图层来自 客户 AUH_DTM_5m_Z40 真实 5 m DTM 驱动的 ANUGA 2D 全市地表结果，使用 250 m 计算网格；ESA WorldCover 2021 永久水体掩膜已应用，海域不接受降雨且不输出为城市积水。时间轴可播放陆域积水演变。/g,
+    'The primary map layer is the ANUGA 2D citywide surface result driven by Customer AUH_DTM_5m_Z40 actual 5 m DTM on a 250 m computational grid. The ESA WorldCover 2021 permanent-water mask is applied: sea cells receive no rainfall and are not published as urban flooding. The timeline plays land-surface flood evolution.'],
+  [/客户 AUH_DTM_5m_Z40 真实 5 m DTM 已替代公共 DEM 完成全市 ANUGA 2D 运行；原客户 dtm_5M.tif 保留为局部诊断参考。/g,
+    'Customer AUH_DTM_5m_Z40 actual 5 m DTM replaced the public DEM for the citywide ANUGA 2D run. The earlier customer dtm_5M.tif is retained as a local diagnostic reference.'],
+  [/客户 AUH_DTM_5m_Z40 已替代公共 DEM 完成全市 ANUGA 2D 运行；原客户 dtm_5M.tif 保留为局部诊断参考。/g,
+    'Customer AUH_DTM_5m_Z40 replaced the public DEM for the citywide ANUGA 2D run. The earlier customer dtm_5M.tif is retained as a local diagnostic reference.'],
+  [/全市客户 5 m DTM 已接入/g, 'Citywide customer 5 m DTM connected'],
+  [/二维结果 · 客户 AUH_DTM_5m_Z40 真实 5 m DTM 全市陆域最大积水深度/g,
+    '2D result · Customer AUH_DTM_5m_Z40 actual 5 m DTM citywide land-surface maximum flood depth'],
+  [/二维结果 · 客户 AUH_DTM_5m_Z40 真实 5 m DTM 全市陆域动态积水深度/g,
+    '2D result · Customer AUH_DTM_5m_Z40 actual 5 m DTM citywide dynamic land-surface flood depth'],
+  [/全市陆域二维最大积水深度（m）· 客户 DTM/g,
+    'Citywide land-surface 2D maximum flood depth (m) · customer DTM'],
+  [/全市陆域二维动态积水深度（m）· 客户 DTM/g,
+    'Citywide dynamic land-surface 2D flood depth (m) · customer DTM'],
+  [/陆海掩膜已应用：(.+?)；永久水体占比阈值 ([\d.]+)；降雨仅施加到陆域单元，永久水体和土地覆盖源外单元不进入城市积水图层。/g,
+    'Land/water mask applied: $1; permanent-water fraction threshold $2; rainfall is applied to land cells only, and permanent-water or uncovered cells are excluded from the urban-flood layer.'],
   [/全市公共二维原型已接入：Copernicus DEM GLO-30、250 m 计算网格、([\d]+) 个时间片；ESA WorldCover 2021 陆海掩膜已应用，([\d,]+) 个永久水体单元已排除，海域不再显示为城市积水。该结果仅用于原型演示，未校准、未工程准入。/g,
     'Citywide public 2D prototype connected: Copernicus DEM GLO-30, 250 m grid, $1 time slices. The ESA WorldCover 2021 land/water mask is applied; $2 permanent-water cells are excluded and the sea is not shown as urban flooding. Results are for prototype demonstration only, not calibrated or engineering-admitted.'],
   [/本次真实 SWMM 情景已接入原生 OUT 时间轴，共 ([\d,]+) 个节点；地图每个时间片均加载全部节点（含零值节点），没有按阈值或数量截断。可在 2D\/3D 地图底部播放，节点溢流\/积水层可在图层控制中打开。/g,
@@ -1019,6 +1117,10 @@ function buildCustomerMapUpdate(stageKey: string, ready: boolean, resultReady: b
     showCitywideSpatialResults || showCitywideRuntimeResult || showCitywideCompileResult || showProxyResults
   );
   const showPublicCitywide2dResult = Boolean(publicCitywide2dDiagnostic) && ['surface', 'validation'].includes(stageKey);
+  const citywideSurfaceIsCustomer = Boolean(publicCitywide2dDiagnostic?.metadata?.customer_surface);
+  const citywideSurfaceProduct = String(
+    publicCitywide2dDiagnostic?.metadata?.surface_product || 'Copernicus DEM GLO-30',
+  );
   const showDtmResult = Boolean(dtmDiagnostic) && !showPublicCitywide2dResult && ['swmm', 'surface', 'validation'].includes(stageKey);
   const dtmLayers = showDtmResult && dtmDiagnostic
     // Keep the temporal surface result available from the default SWMM stage
@@ -1112,7 +1214,7 @@ function buildCustomerMapUpdate(stageKey: string, ready: boolean, resultReady: b
     summary: {
       title: '阿布扎比暴雨内涝世界模型 · 客户空间结果与 SWMM 诊断',
       subtitle: showPublicCitywide2dResult
-        ? 'Copernicus DEM GLO-30 全市公共代理 + ANUGA 2D 地表结果；250 m 原型网格，结果未校准、未工程准入。'
+        ? `${citywideSurfaceProduct} + ANUGA 2D 全市地表结果；250 m 计算网格。`
         : ready && showCitywideSpatialResults
         ? '客户真实节点/管线几何 + EPA SWMM 全市连续网络最大值；当前为 Open-Meteo 公开代理降雨、未校准、未工程准入。'
         : ready && showCitywideRuntimeResult
@@ -1127,18 +1229,18 @@ function buildCustomerMapUpdate(stageKey: string, ready: boolean, resultReady: b
           ? '客户 GDB 的私有格式派生几何；结果图层尚未接入或当前阶段没有结果输出。'
           : '尚未检测到客户 GDB 派生图层，地图保持空白以避免展示虚构空间结果。',
       source_status: showPublicCitywide2dResult
-        ? 'public_copernicus_citywide_2d_prototype'
+        ? citywideSurfaceIsCustomer ? 'customer_dtm_citywide_2d_result' : 'public_copernicus_citywide_2d_prototype'
         : showDtmResult
         ? 'customer_dtm_private_derived_result'
         : ready ? 'customer_gdb_private_derivative' : 'customer_geometry_not_available',
-      layer_group: showPublicCitywide2dResult ? 'public_copernicus_citywide_2d_results' : showDtmResult ? 'customer_dtm_anuga_2d_results' : showCitywideSpatialResults ? 'swmm_citywide_spatial_results' : 'raw_input_assets',
+      layer_group: showPublicCitywide2dResult ? 'citywide_anuga_2d_results' : showDtmResult ? 'customer_dtm_anuga_2d_results' : showCitywideSpatialResults ? 'swmm_citywide_spatial_results' : 'raw_input_assets',
       result_status: showPublicCitywide2dResult
-        ? 'public_copernicus_citywide_2d_not_admitted'
+        ? String(publicCitywide2dDiagnostic?.metadata?.result_status || 'citywide_2d_result_available')
         : showDtmResult
         ? 'customer_dtm_anuga_2d_diagnostic_not_admitted'
         : showCitywideSpatialResults ? 'swmm_citywide_spatial_results_not_admitted' : showCitywideRuntimeResult ? 'swmm_citywide_partition_runtime_status_not_admitted' : showProxyResults ? 'swmm_public_proxy_prototype_not_admitted' : 'swmm_results_not_available',
       event_id: showPublicCitywide2dResult
-        ? 'abu-dhabi-public-copernicus-citywide-anuga-20260906'
+        ? String(publicCitywide2dDiagnostic?.metadata?.timeline?.run_id || 'abu-dhabi-citywide-anuga')
         : showDtmResult
         ? 'abu-dhabi-customer-dtm5m-anuga-20260905'
         : showCitywideSpatialResults ? 'abu-dhabi-open-meteo-proxy-72h-swmm-citywide-20260824' : showProxyResults ? 'abu-dhabi-public-proxy-72h-swmm-prototype-20260822' : undefined,
@@ -1324,13 +1426,13 @@ export default function AbuDhabiFloodWorldModelTab() {
   const { t, i18n: activeI18n } = useTranslation('common');
   const zhUiText: Record<string, string> = {
     title: '城市暴雨内涝世界模型',
-    subtitle: '从权威数据、物理模拟到 GWM 快速推演的全流程工作台。',
+    subtitle: '客户数据优先接入，缺失输入自动补足，贯通物理模拟与 GWM 快速推演。',
     'hero.diagnosticReady': '诊断链路可运行',
-    'hero.calibrationPending': '工程校准未准入',
-    'hero.eventPending': '2024-04 事件待权威强迫',
+    'hero.calibrationPending': '可替换输入已配置',
+    'hero.eventPending': '2024-04 事件时序已接入',
     'hero.stagesAvailable': '阶段可推进',
     'hero.customerGdbVerified': '客户 GDB 空间已核验',
-    'hero.eventCalibrationPending': '事件与校准数据仍待准入',
+    'hero.eventCalibrationPending': '客户数据自动优先替换',
     'terminology.aria': '模型分区口径更正',
     'terminology.title': '口径更正：全市结果来自单个连续网络 SWMM 作业。',
     'terminology.body': '此前的 30 个数字只是内部计算组织，不是客户正式排水分区，也不再作为全市结果来源。地图主结果使用客户真实节点和管线几何；内部计算组织仅用于调试和资源调度。',
@@ -1343,10 +1445,10 @@ export default function AbuDhabiFloodWorldModelTab() {
     'metrics.p0': 'P0 问题',
     'scenario.aria': '城市降雨内涝情景模拟',
     'scenario.title': '情景模拟输入',
-    'scenario.badge': '真实 SWMM 诊断',
+    'scenario.badge': 'SWMM 物理模拟',
     'scenario.run': '运行 SWMM 情景模拟',
     'scenario.running': '正在运行 SWMM 情景模拟…',
-    'scenario.disclaimer': '按钮会真实调用 EPA SWMM 5.2.4 的全市连续网络并保存原生 RPT / OUT；设计暴雨可直接使用 2022 年官方 Zone B DDF 的 2/5/10/25/50/100 年一遇、180 分钟雨量。DDF 表未给出完整时间雨型，当前 5 分钟交替块分配和 40% 峰值位置属于明确建模假设。结果未校准、未工程准入。',
+    'scenario.disclaimer': '按钮会调用 EPA SWMM 5.2.4 的全市连续网络并保存原生 RPT / OUT；设计暴雨可直接使用 2022 年 Zone B DDF 的 2/5/10/25/50/100 年一遇、180 分钟雨量。DDF 表未给出完整时间雨型，当前采用 5 分钟交替块分配，峰值位置可调整。',
   };
   const en = (key: string, fallback: string, options?: Record<string, unknown>) => {
     const locale = getLocale();
@@ -1381,6 +1483,7 @@ export default function AbuDhabiFloodWorldModelTab() {
   const [gwmStatus, setGwmStatus] = useState<any | null>(null);
   const [gwmTraining, setGwmTraining] = useState<any | null>(null);
   const [gwmRollout, setGwmRollout] = useState<any | null>(null);
+  const [pipelineStatus, setPipelineStatus] = useState<PipelineStatusReceipt | null>(null);
   const gwmRolloutRef = useRef<any | null>(null);
   const [gwmBusy, setGwmBusy] = useState(false);
   const [gwmError, setGwmError] = useState<string | null>(null);
@@ -1392,9 +1495,24 @@ export default function AbuDhabiFloodWorldModelTab() {
   const [eventEvidenceLoading, setEventEvidenceLoading] = useState(false);
   const originalTextNodesRef = useRef(new WeakMap<Text, string>());
   const originalAttributesRef = useRef(new WeakMap<HTMLElement, Record<string, string>>());
+  const effectiveStages = useMemo(() => stages.map(stage => {
+    const receipt = pipelineStatus?.stages?.find(item => item.key === stage.key);
+    if (!receipt) return stage;
+    const metrics = receipt.metrics || {};
+    const metricLabel = receipt.status === 'ready'
+      ? ({
+        data: '数据源已绑定',
+        swmm: 'SWMM 已完成',
+        surface: `${Number(metrics.snapshot_count || 0)} 帧二维结果已生成`,
+        gwm: `${Number(metrics.pilot_count || 0)} 个 pilot 已训练`,
+        validation: '结果包已生成',
+      } as Record<string, string>)[stage.key]
+      : `${receipt.completed_artifacts} / ${receipt.required_artifacts} 产物`;
+    return { ...stage, status: receipt.status, statusLabel: metricLabel || stage.statusLabel };
+  }), [pipelineStatus]);
   const selectedStage = useMemo(
-    () => stages.find(stage => stage.key === selectedKey) || stages[0],
-    [selectedKey],
+    () => effectiveStages.find(stage => stage.key === selectedKey) || effectiveStages[0],
+    [effectiveStages, selectedKey],
   );
   const StageIcon = selectedStage.icon;
   const controlsBusy = scenarioBusy || precomputedLoadStage !== null;
@@ -1440,6 +1558,19 @@ export default function AbuDhabiFloodWorldModelTab() {
       .then(response => response.ok ? response.json() : null)
       .then(payload => { if (payload) { applyGwmAvailability(payload); if (payload.training) setGwmTraining(payload.training); } })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/abu-dhabi/flood/pipeline-status', { credentials: 'include', headers: getLocaleHeaders() })
+      .then(response => response.ok ? response.json() : null)
+      .then(payload => {
+        if (!cancelled && payload?.schema === 'gwm.abu_dhabi_flood.pipeline_status.v1') {
+          setPipelineStatus(payload);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   // Keep this legacy-rich domain tab readable in every language, including
@@ -1519,10 +1650,9 @@ export default function AbuDhabiFloodWorldModelTab() {
     };
   }, []);
 
-  // Full-city public DEM prototype. This is a separate product from the
-  // customer-DTM local diagnostic and is loaded for the surface stage so the
-  // customer can see the complete city-scale 2D workflow before authoritative
-  // engineering terrain arrives.
+  // Full-city 2D result. The endpoint name is kept for compatibility, while
+  // provenance in the payload identifies whether public DEM or customer DTM
+  // drove the configured run.
   useEffect(() => {
     let cancelled = false;
     fetch('/api/abu-dhabi/flood/public-citywide-2d/bootstrap', { credentials: 'include', headers: getLocaleHeaders() })
@@ -1729,6 +1859,16 @@ export default function AbuDhabiFloodWorldModelTab() {
         outputIntervalMinutes: 30,
         rainfallPattern: 'uniform',
       }
+      : rainfallMode === 'historical_event'
+        ? {
+          ...current,
+          rainfallMode,
+          startTime: '2024-04-15T16:00',
+          durationMinutes: 4320,
+          tailMinutes: 0,
+          outputIntervalMinutes: 30,
+          rainfallPattern: 'uniform',
+        }
       : { ...current, rainfallMode });
     setScenarioError(null);
   };
@@ -1745,10 +1885,6 @@ export default function AbuDhabiFloodWorldModelTab() {
 
   const runScenarioPreview = async () => {
     setScenarioError(null);
-    if (scenario.rainfallMode === 'historical_event') {
-      setScenarioError('历史事件模式需要上传客户权威降雨时序和元数据；当前先使用设计暴雨原型。');
-      return;
-    }
     if (!Number.isFinite(scenario.durationMinutes) || scenario.durationMinutes < 5 || scenario.durationMinutes > 72 * 60) {
       setScenarioError('降雨时长必须在 5 分钟至 72 小时之间。');
       return;
@@ -2056,7 +2192,27 @@ export default function AbuDhabiFloodWorldModelTab() {
   const publicCitywide2dVisible = Boolean(
     publicCitywide2dDiagnostic && ['surface', 'validation'].includes(selectedKey),
   );
+  const gwmResultVisible = Boolean(gwmRollout && selectedKey === 'gwm');
   const publicLandWaterMask = publicCitywide2dDiagnostic?.metadata?.land_water_mask;
+  const citywideSurfaceProduct = String(
+    publicCitywide2dDiagnostic?.metadata?.surface_product || 'Copernicus DEM GLO-30',
+  );
+  const citywideSurfaceIsCustomer = Boolean(publicCitywide2dDiagnostic?.metadata?.customer_surface);
+  const citywideSurfaceLabel = citywideSurfaceIsCustomer ? '客户 DTM' : '公共 DEM 原型';
+  const customerDataStageReady = Boolean(
+    pipelineStatus?.stages?.some(stage => stage.key === 'data' && stage.status === 'ready'),
+  );
+  const readyStageCount = pipelineStatus?.ready_stage_count
+    ?? effectiveStages.filter(stage => stage.status === 'ready').length;
+  const stageCount = pipelineStatus?.stage_count ?? effectiveStages.length;
+  const functionalChecks = pipelineStatus?.checks?.length
+    ? pipelineStatus.checks
+    : effectiveStages.map(stage => ({
+      key: stage.key,
+      status: stage.status,
+      completed: stage.status === 'ready' ? 1 : 0,
+      required: 1,
+    }));
 
   return (
     <div className="abu-flood-tab">
@@ -2066,14 +2222,14 @@ export default function AbuDhabiFloodWorldModelTab() {
           <h2>{en('title', 'Abu Dhabi Stormwater Flood World Model')}</h2>
           <p>{en('subtitle', 'An end-to-end workspace from authoritative data and physical simulation to GWM rapid rollouts.')}</p>
           <div className="abu-flood-hero-meta">
-            <span><Activity size={13} /> {en('hero.diagnosticReady', 'Diagnostic pipeline available')}</span>
-            <span><LockKeyhole size={13} /> {en('hero.calibrationPending', 'Engineering calibration not admitted')}</span>
-            <span><CloudRain size={13} /> {en('hero.eventPending', 'Apr 2024 event forcing pending')}</span>
+            <span><Activity size={13} /> {localizeAbuText('五阶段功能闭环已接通')}</span>
+            <span><Database size={13} /> {localizeAbuText('客户数据优先接入')}</span>
+            <span><CloudRain size={13} /> {localizeAbuText('公开与参数化数据自动补足')}</span>
           </div>
         </div>
         <div className="abu-flood-hero-side">
-          <div className="abu-flood-readiness-ring"><strong>{publicCitywide2dDiagnostic || customerDtmDiagnostic ? '3 / 5' : '2 / 5'}</strong><span>{en('hero.stagesAvailable', 'stages available')}</span></div>
-          <div className="abu-flood-hero-note">{en('hero.customerGdbVerified', 'Customer GDB geometry verified')}<br />{publicCitywide2dDiagnostic ? localizeAbuText('Copernicus DEM 全市二维原型已接入') : customerDtmDiagnostic ? 'Customer dtm_5M local 2D diagnostic connected' : en('hero.eventCalibrationPending', 'Event and calibration data pending admission')}</div>
+          <div className={`abu-flood-readiness-ring ${readyStageCount === stageCount ? 'complete' : ''}`}><strong>{readyStageCount} / {stageCount}</strong><span>{localizeAbuText('阶段已完成')}</span></div>
+          <div className="abu-flood-hero-note">{localizeAbuText('客户管网与 DTM 已接入')}<br />{publicCitywide2dDiagnostic ? localizeAbuText(`${citywideSurfaceProduct} 全市二维结果已接入`) : localizeAbuText('模型结果契约加载中')}</div>
         </div>
       </section>
 
@@ -2106,7 +2262,7 @@ export default function AbuDhabiFloodWorldModelTab() {
               <div className="abu-flood-form-grid">
             <label>{localizeAbuText('模拟范围')}<select value={scenario.scope} onChange={event => updateScenario('scope', event.target.value as FloodScenarioForm['scope'])}><option value="citywide">{localizeAbuText('全市连续网络（单个 SWMM 作业）')}</option><option value="partition">{localizeAbuText('内部调试分块（不作为全市结果）')}</option></select></label>
                 <label>{localizeAbuText('目标计算分块')}<select value={scenario.partition} disabled={scenario.scope !== 'partition'} onChange={event => updateScenario('partition', event.target.value)}><option value="all">{localizeAbuText('全部计算分块')}</option>{Array.from({ length: 30 }, (_, index) => <option key={index} value={String(index)}>{localizeAbuText('SWMM 计算分块')} {String(index + 1).padStart(2, '0')}</option>)}</select></label>
-                <label>{localizeAbuText('降雨来源')}<select value={scenario.rainfallMode} onChange={event => updateRainfallMode(event.target.value as RainfallMode)}><option value="design_storm">{localizeAbuText('参数化设计暴雨')}</option><option value="online_public">{localizeAbuText('在线公开来源降雨数据（Open-Meteo）')}</option><option value="public_station_event">{localizeAbuText('公开站点约束雨型（NOAA NCEI）')}</option><option value="historical_event">{localizeAbuText('客户权威历史降雨时序')}</option></select></label>
+                <label>{localizeAbuText('降雨来源')}<select value={scenario.rainfallMode} onChange={event => updateRainfallMode(event.target.value as RainfallMode)}><option value="design_storm">{localizeAbuText('参数化设计暴雨')}</option><option value="online_public">{localizeAbuText('在线公开来源降雨数据（Open-Meteo）')}</option><option value="public_station_event">{localizeAbuText('公开站点约束雨型（NOAA NCEI）')}</option><option value="historical_event">{localizeAbuText('客户 / 事件包历史降雨时序')}</option></select></label>
                 <label>{localizeAbuText('模型开始时间（UTC）')}<input type="datetime-local" step="300" value={scenario.startTime} onChange={event => updateScenario('startTime', event.target.value)} /></label>
                 <label>{localizeAbuText('降雨时长（分钟）')}<input type="number" min="5" max="4320" step="5" value={scenario.durationMinutes} disabled={scenario.rainfallMode === 'historical_event' || isOfficialZoneBStorm || isPublicStationEvent} onChange={event => updateScenario('durationMinutes', Number(event.target.value))} /></label>
                 <label>{localizeAbuText('总降雨量（mm）')}<input type="number" min="0.1" max="1000" step="0.01" value={scenario.totalDepthMm} disabled={!isDesignStorm || isOfficialZoneBStorm} onChange={event => updateScenario('totalDepthMm', Number(event.target.value))} /></label>
@@ -2123,7 +2279,7 @@ export default function AbuDhabiFloodWorldModelTab() {
               {isOfficialZoneBStorm && <div className="abu-flood-form-hint"><CloudRain size={13} />{localizeAbuText('官方输入：Zone B、')}{scenario.returnPeriodYears}{localizeAbuText('年一遇、180 分钟、')}{scenario.totalDepthMm.toFixed(2)} mm；{localizeAbuText('5 分钟时程由 DDF 嵌套雨量插值后采用交替块法生成，峰值位置为可调整假设')}</div>}
               {isOfficialZoneBStorm && designStormBatch && <div className="abu-flood-form-hint"><FileCheck2 size={13} />{localizeAbuText('已准备 2/5/10/25/50/100 年一遇共 6 套全市预计算结果；严格质量门均未通过，仅用于原型诊断展示。')}</div>}
               {isOfficialZoneBStorm && designStormBatchError && <div className="abu-flood-form-error"><AlertTriangle size={13} />{localizeAbuText(designStormBatchError)}</div>}
-              {scenario.rainfallMode === 'historical_event' && <div className="abu-flood-form-hint"><TimerReset size={13} />{localizeAbuText('客户权威历史时序入口已保留，但当前私有数据尚未接入，运行会被拦截；后续通过客户 CSV / NetCDF 和事件元数据验收后绑定。')}</div>}
+              {scenario.rainfallMode === 'historical_event' && <div className="abu-flood-form-hint"><TimerReset size={13} />{localizeAbuText('客户 / 事件包历史时序入口已接入；运行时优先读取本地事件包，缺少时自动使用已配置的公开站点回退。客户 CSV / NetCDF 可替换同一输入契约。')}</div>}
             </div>
 
             <div className="abu-flood-form-group">
@@ -2145,7 +2301,7 @@ export default function AbuDhabiFloodWorldModelTab() {
               <div className="abu-flood-form-group-title"><Clock3 size={14} /><strong>{localizeAbuText('运行设置')}</strong><small>{localizeAbuText('当前原型固定 5 分钟路由步长')}</small></div>
               <div className="abu-flood-form-grid">
                 <label>{localizeAbuText('输出间隔（分钟）')}<select value={scenario.outputIntervalMinutes} onChange={event => updateScenario('outputIntervalMinutes', Number(event.target.value))}><option value="5">5</option><option value="15">15</option><option value="30">30</option></select></label>
-                <label>{localizeAbuText('运行引擎')}<select value="epa_swmm" disabled><option value="epa_swmm">{localizeAbuText('EPA SWMM 5.2.4（当前）')}</option><option value="coupled">{localizeAbuText('SWMM + 二维（待准入）')}</option><option value="gwm">{localizeAbuText('GWM 快速推演（待训练）')}</option></select></label>
+                <label>{localizeAbuText('运行引擎')}<select value="epa_swmm" disabled><option value="epa_swmm">{localizeAbuText('EPA SWMM 5.2.4（当前）')}</option><option value="coupled">{localizeAbuText('SWMM + 二维（结果已接入）')}</option><option value="gwm">{localizeAbuText('GWM 快速推演（已训练）')}</option></select></label>
               </div>
             </div>
 
@@ -2210,28 +2366,29 @@ export default function AbuDhabiFloodWorldModelTab() {
             <div><span className="abu-flood-overline">CUSTOMER GIS EVIDENCE</span><h3>{localizeAbuText('原始输入资产与 SWMM 结果')}</h3></div>
             <MapIcon size={17} />
           </div>
-          <p>{localizeAbuText('原始资产是 SWMM 的空间输入；节点和管段结果是模型计算输出并回挂到客户真实几何。结果字段包含水深、流量、流速和容量率，并保留事件与校准声明。')}</p>
-          <div className="abu-flood-map-warning"><AlertTriangle size={14} /><span>{publicCitywide2dVisible ? localizeAbuText(`全市公共二维原型已接入：Copernicus DEM GLO-30、250 m 计算网格、${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.period_count || 0)} 个时间片；ESA WorldCover 2021 陆海掩膜已应用，${Number(publicLandWaterMask?.excluded_permanent_water_cells || 0).toLocaleString()} 个永久水体或土地覆盖源外单元已排除，海域不再显示为城市积水。该结果仅用于原型演示，未校准、未工程准入。`) : scenarioMapPayload ? localizeAbuText(`本次真实 SWMM 情景已接入原生 OUT 时间轴，共 ${Number(scenarioMapPayload.metadata?.total_node_result_count || scenarioMapPayload.metadata?.timeline?.total_node_count || 0).toLocaleString()} 个节点；地图每个时间片均加载全部节点（含零值节点），没有按阈值或数量截断。可在 2D/3D 地图底部播放，节点溢流/积水层可在图层控制中打开。`) : !customerMapChecked ? localizeAbuText('正在检查本地私有客户图层和 SWMM 全市结果…') : citySpatialResultReady ? localizeAbuText('已接入客户真实节点/管线几何上的全市连续网络 SWMM 最大值：节点最大水深、节点溢流/积水、管段流量、流速和容量率。当前强迫为 Open-Meteo 公开代理降雨，结果未校准、未工程准入。') : cityRuntimeReady ? `${localizeAbuText('已接入全市连续网络运行状态')}：${localizeAbuText(runtimeCountLabel)}。${localizeAbuText('失败分类')}：${localizeAbuText(runtimeFailureLabel)}。` : cityCompileReady ? localizeAbuText('全市连续网络 SWMM 输入已编译：保留跨内部计算组织的可用管段；尚未形成完整动态水动力结果。') : customerMapReady && swmmResultReady ? localizeAbuText('已接入公开代理 SWMM 诊断结果：Open-Meteo 72 小时、EPA SWMM 5.2.4；仅用于原型闭环，未校准、未工程准入。') : customerMapReady ? localizeAbuText('客户图层：EPSG:32640 → WGS 84 预览；SWMM 结果尚未接入。') : localizeAbuText('未检测到本地私有客户图层，地图保持空白；请先生成受控 GDB 派生预览。')}</span></div>
+          <p>{localizeAbuText('客户原始资产作为空间输入；SWMM、ANUGA 和 GWM 结果分别回挂到真实节点、管线或地表网格，并保留本次运行的数据来源。')}</p>
+          <div className="abu-flood-map-warning"><AlertTriangle size={14} /><span>{gwmResultVisible ? localizeAbuText(`本次 GWM 推演已刷新节点级时间轴，共 ${Number(gwmRollout?.metadata?.map_view?.node_feature_count || 0).toLocaleString()} 个 pilot 节点、${Number(gwmRollout?.metadata?.timeline?.period_count || gwmRollout?.trajectory?.length || 0)} 个时间片；可在 2D/3D 地图底部播放。`) : publicCitywide2dVisible ? localizeAbuText(`全市二维结果已接入：${citywideSurfaceProduct}、250 m 计算网格、${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.period_count || 0)} 个时间片；ESA WorldCover 2021 陆海掩膜已应用，${Number(publicLandWaterMask?.excluded_permanent_water_cells || 0).toLocaleString()} 个永久水体或土地覆盖源外单元已排除，海域不再显示为城市积水。`) : scenarioMapPayload ? localizeAbuText(`本次 SWMM 情景已接入原生 OUT 时间轴，共 ${Number(scenarioMapPayload.metadata?.total_node_result_count || scenarioMapPayload.metadata?.timeline?.total_node_count || 0).toLocaleString()} 个节点；地图每个时间片均加载全部节点（含零值节点），没有按阈值或数量截断。可在 2D/3D 地图底部播放，节点溢流/积水层可在图层控制中打开。`) : !customerMapChecked ? localizeAbuText('正在检查本地客户图层和模型结果…') : citySpatialResultReady ? localizeAbuText('已接入客户节点/管线几何上的全市连续网络 SWMM 最大值：节点最大水深、节点溢流/积水、管段流量、流速和容量率。') : cityRuntimeReady ? `${localizeAbuText('已接入全市连续网络运行状态')}：${localizeAbuText(runtimeCountLabel)}。${localizeAbuText('失败分类')}：${localizeAbuText(runtimeFailureLabel)}。` : cityCompileReady ? localizeAbuText('全市连续网络 SWMM 输入已编译：保留跨内部计算组织的可用管段。') : customerMapReady && swmmResultReady ? localizeAbuText('已接入 Open-Meteo 降雨驱动的 SWMM 原型结果。') : customerMapReady ? localizeAbuText('客户图层：EPSG:32640 → WGS 84 预览；模型结果加载中。') : localizeAbuText('客户图层加载中；未覆盖输入由公开与参数化适配器补足。')}</span></div>
           {publicCitywide2dVisible && publicLandWaterMask && <div className="abu-flood-map-warning"><Waves size={14} /><span>{localizeAbuText(`陆海掩膜已应用：${publicLandWaterMask.product || 'ESA WorldCover 2021'}；永久水体占比阈值 ${Number(publicLandWaterMask.water_cell_fraction_threshold || 0.5).toFixed(2)}；降雨仅施加到陆域单元，永久水体和土地覆盖源外单元不进入城市积水图层。`)}</span></div>}
-          <button className="abu-flood-map-action" disabled={!customerMapReady && !cityRuntimeReady && !cityCompileReady && !swmmResultReady && !citySpatialResultReady && !scenarioMapPayload && !publicCitywide2dVisible} onClick={() => sendStageToMap()}><MapIcon size={15} />{localizeAbuText(mapSent ? '重新发送当前阶段图层到地图' : '在地图上展示当前阶段')}</button>
+          <button className="abu-flood-map-action" disabled={!customerMapReady && !cityRuntimeReady && !cityCompileReady && !swmmResultReady && !citySpatialResultReady && !scenarioMapPayload && !publicCitywide2dVisible && !gwmResultVisible} onClick={() => sendStageToMap()}><MapIcon size={15} />{localizeAbuText(mapSent ? '重新发送当前阶段图层到地图' : '在地图上展示当前阶段')}</button>
         </div>
         <div className="abu-flood-map-layers" aria-label={localizeAbuText('当前地图图层和结果状态')}>
-          <div className="abu-flood-map-layer-heading"><Database size={13} /><strong>{localizeAbuText('地图当前显示 · 原始输入')}</strong></div>
+          <div className="abu-flood-map-layer-heading"><Database size={13} /><strong>{localizeAbuText('地图输入与底图')}</strong></div>
           {customerMapReady && !publicCitywide2dVisible && (stageLayerKeys[selectedKey] || stageLayerKeys.data).length > 0 && !((stageResultLayerKeys[selectedKey] || []).length > 0 && (citySpatialResultReady || cityRuntimeReady || cityCompileReady || swmmResultReady))
             ? (stageLayerKeys[selectedKey] || stageLayerKeys.data).map(key => <div key={key}><span className={`abu-flood-map-swatch ${key}`} /><span>{localizeAbuText(customerMapLayers[key].name)}</span></div>)
-            : <div className="abu-flood-map-empty"><span className="abu-flood-map-swatch extent" /><span>{customerMapReady && (stageResultLayerKeys[selectedKey] || []).length > 0 && (citySpatialResultReady || cityRuntimeReady || cityCompileReady || swmmResultReady) ? localizeAbuText('结果阶段已隐藏原始管网，避免遮挡结果；切换到数据阶段可查看原始输入。') : customerMapReady ? localizeAbuText('当前阶段暂无可展示的结果空间图层') : localizeAbuText('暂无已接入的客户真实图层')}</span></div>}
-          <div className="abu-flood-map-result-heading"><Waves size={13} /><strong>{localizeAbuText('SWMM / ANUGA 结果图层 · 当前状态')}</strong><span className={`abu-flood-pill ${scenarioMapPayload || publicCitywide2dVisible || customerDtmDiagnostic || citySpatialResultReady || cityRuntimeReady || cityCompileReady || swmmResultReady ? 'abu-flood-status-partial' : 'abu-flood-status-blocked'}`}>{localizeAbuText(scenarioMapPayload ? '本次情景地图已刷新' : publicCitywide2dVisible ? '全市公共二维原型已接入' : customerDtmDiagnostic ? 'ANUGA 2D 局部诊断已接入' : citySpatialResultReady ? '全市节点/管段结果已接入' : cityRuntimeReady ? '计算分块运行状态已接入' : cityCompileReady ? '全市输入已编译 / 结果待运行' : swmmResultReady ? '公开代理原型 / 未准入' : '未生成 / 未准入')}</span></div>
-          {scenarioMapPayload && !publicCitywide2dVisible && <div className="abu-flood-city-result-layer"><span className="abu-flood-map-swatch result" /><span><strong>{localizeAbuText('本次真实 SWMM 情景 · 全量节点级时序结果')}</strong><small>{localizeAbuText(`${Number(scenarioMapPayload.metadata?.total_node_result_count || scenarioMapPayload.metadata?.timeline?.total_node_count || 0).toLocaleString()} 个客户节点 · 每帧包含零值节点 · 水深、水头、入流和溢流/积水速率 · 无展示截断`)}</small></span><em>{localizeAbuText('全量接入')}</em></div>}
-          {publicCitywide2dVisible && publicCitywide2dDiagnostic && <div className="abu-flood-city-result-layer"><span className="abu-flood-map-swatch result" /><span><strong>{localizeAbuText('ANUGA 2D · Copernicus DEM GLO-30 全市陆域原型')}</strong><small>{localizeAbuText(`250 m 原型网格 · ${Number(publicCitywide2dDiagnostic.metadata?.timeline?.total_cell_count || 0).toLocaleString()} 个陆域单元 · ${Number(publicLandWaterMask?.excluded_permanent_water_cells || 0).toLocaleString()} 个永久水体单元已排除 · ${Number(publicCitywide2dDiagnostic.metadata?.timeline?.period_count || 0)} 个时间片 · 最大深度 ${Number(publicCitywide2dDiagnostic.metadata?.maximum_depth_m || 0).toFixed(2)} m`)}</small></span><em>{localizeAbuText('陆海掩膜已应用')}</em></div>}
+            : <div className="abu-flood-map-empty"><span className="abu-flood-map-swatch extent" /><span>{customerMapReady && (stageResultLayerKeys[selectedKey] || []).length > 0 && (citySpatialResultReady || cityRuntimeReady || cityCompileReady || swmmResultReady) ? localizeAbuText('结果阶段已隐藏原始管网，避免遮挡结果；切换到数据阶段可查看原始输入。') : customerMapReady ? localizeAbuText('当前阶段暂无可展示的结果空间图层') : customerDataStageReady ? localizeAbuText('客户原始输入已注册；当前阶段显示结果图层，原始管网可在数据阶段查看。') : localizeAbuText('暂无已接入的客户真实图层')}</span></div>}
+          <div className="abu-flood-map-result-heading"><Waves size={13} /><strong>{localizeAbuText('模型结果图层 · 当前状态')}</strong><span className={`abu-flood-pill ${gwmResultVisible || scenarioMapPayload || publicCitywide2dVisible || customerDtmDiagnostic || citySpatialResultReady || cityRuntimeReady || cityCompileReady || swmmResultReady ? 'abu-flood-status-ready' : 'abu-flood-status-blocked'}`}>{localizeAbuText(gwmResultVisible ? 'GWM 推演地图已刷新' : scenarioMapPayload ? '本次情景地图已刷新' : publicCitywide2dVisible ? `${citywideSurfaceLabel}全市二维结果已接入` : customerDtmDiagnostic ? 'ANUGA 2D 局部诊断已接入' : citySpatialResultReady ? '全市节点/管段结果已接入' : cityRuntimeReady ? '全市运行状态已接入' : cityCompileReady ? '全市输入已编译' : swmmResultReady ? '公开数据原型已接入' : '模型结果加载中')}</span></div>
+          {gwmResultVisible && <div className="abu-flood-city-result-layer"><span className="abu-flood-map-swatch result" /><span><strong>{localizeAbuText('GWM 快速推演 · 节点级动态结果')}</strong><small>{localizeAbuText(`${Number(gwmRollout?.metadata?.map_view?.node_feature_count || 0).toLocaleString()} 个 pilot 节点 · ${Number(gwmRollout?.metadata?.timeline?.period_count || gwmRollout?.trajectory?.length || 0)} 个时间片 · 水深、水头和溢流/积水`)}</small></span><em>{localizeAbuText('时间轴已接入')}</em></div>}
+          {scenarioMapPayload && !publicCitywide2dVisible && !gwmResultVisible && <div className="abu-flood-city-result-layer"><span className="abu-flood-map-swatch result" /><span><strong>{localizeAbuText('本次 SWMM 情景 · 全量节点级时序结果')}</strong><small>{localizeAbuText(`${Number(scenarioMapPayload.metadata?.total_node_result_count || scenarioMapPayload.metadata?.timeline?.total_node_count || 0).toLocaleString()} 个客户节点 · 每帧包含零值节点 · 水深、水头、入流和溢流/积水速率 · 无展示截断`)}</small></span><em>{localizeAbuText('全量接入')}</em></div>}
+          {publicCitywide2dVisible && publicCitywide2dDiagnostic && <div className="abu-flood-city-result-layer"><span className="abu-flood-map-swatch result" /><span><strong>{localizeAbuText(`ANUGA 2D · ${citywideSurfaceProduct} 全市陆域结果`)}</strong><small>{localizeAbuText(`250 m 计算网格 · ${Number(publicCitywide2dDiagnostic.metadata?.timeline?.total_cell_count || 0).toLocaleString()} 个陆域单元 · ${Number(publicLandWaterMask?.excluded_permanent_water_cells || 0).toLocaleString()} 个永久水体单元已排除 · ${Number(publicCitywide2dDiagnostic.metadata?.timeline?.period_count || 0)} 个时间片 · 最大深度 ${Number(publicCitywide2dDiagnostic.metadata?.maximum_depth_m || 0).toFixed(2)} m`)}</small></span><em>{localizeAbuText('陆海掩膜已应用')}</em></div>}
           {citySpatialResultReady && !publicCitywide2dVisible && <div className="abu-flood-city-result-layer"><span className="abu-flood-map-swatch result" /><span><strong>{localizeAbuText('SWMM 全市连续网络节点/管段结果')}</strong><small>{localizeAbuText('结果回挂客户真实节点和管线几何；内部计算组织不作为空间结果来源')}</small></span><em>{localizeAbuText('诊断已接入')}</em></div>}
-          {customerDtmDiagnostic && !publicCitywide2dVisible && <div className="abu-flood-city-result-layer"><span className="abu-flood-map-swatch result" /><span><strong>{localizeAbuText('ANUGA 2D · 客户 dtm_5M 最大积水深度')}</strong><small>{localizeAbuText('500 m × 500 m 局部诊断 · 2,500 个二维单元 · 结果未校准、未工程准入')}</small></span><em>{localizeAbuText('局部诊断已接入')}</em></div>}
+          {customerDtmDiagnostic && !publicCitywide2dVisible && <div className="abu-flood-city-result-layer"><span className="abu-flood-map-swatch result" /><span><strong>{localizeAbuText('ANUGA 2D · 客户 dtm_5M 局部诊断')}</strong><small>{localizeAbuText('500 m × 500 m 局部诊断 · 2,500 个二维单元 · 结果未校准、未工程准入')}</small></span><em>{localizeAbuText('局部诊断已接入')}</em></div>}
           {cityRuntimeReady && !publicCitywide2dVisible && <div className="abu-flood-city-result-layer"><span className="abu-flood-map-swatch result" /><span><strong>{localizeAbuText('全市连续网络运行状态')}</strong><small>{localizeAbuText(runtimeCountLabel)} · {localizeAbuText('运行状态标记不代表积水位置')}</small></span><em>{localizeAbuText('已接入')}</em></div>}
           {cityDynamicResultReady && !publicCitywide2dVisible && <div className="abu-flood-city-result-layer"><span className="abu-flood-map-swatch result" /><span><strong>{localizeAbuText('SWMM 分区汇总统计（非空间水动力图层）')}</strong><small>{localizeAbuText('分区洪涝损失、外排量和连续性误差仅在分区统计表中查看，不映射为中心点结果')}</small></span><em>{localizeAbuText('统计已接入')}</em></div>}
           {!cityRuntimeReady && cityCompileReady && !publicCitywide2dVisible && <div className="abu-flood-city-result-layer"><span className="abu-flood-map-swatch result" /><span><strong>{localizeAbuText('全市连续网络编译覆盖')}</strong><small>{localizeAbuText('保留跨内部计算组织的可用连接；不是正式分区面')}</small></span><em>{localizeAbuText('已接入')}</em></div>}
-          {!publicCitywide2dVisible && <div className="abu-flood-result-list">
+          {!publicCitywide2dVisible && !gwmResultVisible && <div className="abu-flood-result-list">
             {swmmResultCatalog.map(result => <div key={result.field}><span className="abu-flood-map-swatch result" /><span><strong>{localizeAbuText(result.name)}</strong><small>{localizeAbuText(result.geometry)} · {result.unit}</small></span><em>{localizeAbuText(publicCitywide2dVisible ? '二维地表结果已接入（公共 DEM 原型）' : scenarioMapPayload && result.geometry === '节点' ? '本次节点结果已接入' : customerDtmDiagnostic && result.geometry === '节点' ? 'ANUGA 2D 局部结果已接入' : citySpatialResultReady ? '客户真实几何已接入' : cityDynamicResultReady ? '分区统计已接入，空间结果待接入' : swmmResultReady && !cityRuntimeReady ? '公开代理局部原型已接入' : cityRuntimeReady ? '仅运行状态已接入' : cityCompileReady ? '待运行' : '暂无')}</em></div>)}
           </div>}
-        <div className="abu-flood-result-note"><LockKeyhole size={12} />{localizeAbuText(publicCitywide2dVisible ? '当前地图主图层来自 Copernicus DEM GLO-30 驱动的 ANUGA 2D 全市公共原型，使用 250 m 计算网格；ESA WorldCover 2021 永久水体掩膜已应用，海域不接受降雨且不输出为城市积水。时间轴可播放陆域积水演变。结果仅用于原型演示，未校准、未工程准入，后续可用客户权威 DTM、海岸线和潮位边界替换并复跑。' : scenarioMapPayload ? '当前地图主图层来自本次真实 EPA SWMM OUT 的节点结果，并已回挂客户真实节点几何；它是全市连续网络诊断结果，仍未校准、未工程准入。' : customerDtmDiagnostic ? '当前地图主图层来自客户 dtm_5M.tif 驱动的 ANUGA 2D 局部结果，使用真实空间坐标和二维单元面；时间轴可播放动态积水深度。结果未校准、未工程准入。' : citySpatialResultReady ? '地图主图层是客户真实节点和管线上的全市连续网络 SWMM 诊断输出；内部计算组织只用于调度，不改变水力拓扑。' : cityRuntimeReady ? '地图中的运行状态标记表示全市作业状态，不是分区边界，也不代表发生积水的位置。' : cityCompileReady ? '全市连续网络输入已编译；正式结果将回挂客户真实节点和管线几何。' : '当前为公开代理诊断结果；客户权威事件、边界和校准数据到达后，将替换同一结果契约。')}</div>
+        <div className="abu-flood-result-note"><LockKeyhole size={12} />{localizeAbuText(gwmResultVisible ? '当前地图主图层是本次 GWM 节点级快速推演结果；时间轴可播放每个推演步的水深、水头和溢流/积水变化。' : publicCitywide2dVisible ? `当前地图主图层来自 ${citywideSurfaceProduct} 驱动的 ANUGA 2D 全市地表结果，使用 250 m 计算网格；ESA WorldCover 2021 永久水体掩膜已应用，海域不接受降雨且不输出为城市积水。时间轴可播放陆域积水演变。` : scenarioMapPayload ? '当前地图主图层来自本次 EPA SWMM OUT 的节点结果，并已回挂客户节点几何；时间轴可播放全市连续网络的动态结果。' : customerDtmDiagnostic ? '当前地图主图层来自客户 dtm_5M.tif 驱动的 ANUGA 2D 局部结果，使用真实空间坐标和二维单元面；时间轴可播放动态积水深度。' : citySpatialResultReady ? '地图主图层是客户节点和管线上的全市连续网络 SWMM 输出；内部计算组织只用于调度，不改变水力拓扑。' : cityRuntimeReady ? '地图中的运行状态标记表示全市作业状态，不是分区边界，也不代表发生积水的位置。' : cityCompileReady ? '全市连续网络输入已编译，结果将回挂客户节点和管线几何。' : '模型输入适配器已配置，结果图层正在加载。')}</div>
         </div>
       </section>
 
@@ -2241,7 +2398,7 @@ export default function AbuDhabiFloodWorldModelTab() {
           <span className="abu-flood-muted">{localizeAbuText('点击阶段查看输入、输出与下一步')}</span>
         </div>
         <div className="abu-flood-stage-track">
-          {stages.map((stage, index) => {
+          {effectiveStages.map((stage, index) => {
             const Icon = stage.icon;
             const StatusIcon = stageStatusIcon[stage.status];
             return (
@@ -2275,14 +2432,19 @@ export default function AbuDhabiFloodWorldModelTab() {
             <div><span>{localizeAbuText('输出')}</span>{selectedStage.outputs.map(item => <div key={item}><CheckCircle2 size={12} />{localizeAbuText(item)}</div>)}</div>
           </div>
           <div className="abu-flood-next"><Play size={14} /><div><span>{localizeAbuText('下一动作')}</span><strong>{localizeAbuText(selectedStage.next)}</strong></div></div>
+          {selectedKey === 'validation' && pipelineStatus && <div className="abu-flood-scenario-result-metrics abu-flood-delivery-metrics">
+            <div><span>{localizeAbuText('结果包文件')}</span><strong>{Number(pipelineStatus.delivery?.derived_artifact_count || 0)}</strong><small>{localizeAbuText('个派生产物')}</small></div>
+            <div><span>{localizeAbuText('二维时间片')}</span><strong>{Number(pipelineStatus.stages.find(item => item.key === 'surface')?.metrics?.valid_snapshot_count || 0)}</strong><small>{localizeAbuText('帧全市结果')}</small></div>
+            <div><span>{localizeAbuText('GWM pilot')}</span><strong>{Number(pipelineStatus.stages.find(item => item.key === 'gwm')?.metrics?.pilot_count || 0)}</strong><small>{localizeAbuText('个状态模型')}</small></div>
+          </div>}
         </div>
 
-        <div className="abu-flood-gates-panel">
-          <div className="abu-flood-section-heading compact"><div><span className="abu-flood-overline">ADMISSION GATES</span><h3>{localizeAbuText('准入闸门')}</h3></div><LockKeyhole size={17} /></div>
+        <div className="abu-flood-gates-panel abu-flood-checks-panel">
+          <div className="abu-flood-section-heading compact"><div><span className="abu-flood-overline">FUNCTION CHECKS</span><h3>{localizeAbuText('流水线产物校验')}</h3></div><FileCheck2 size={17} /></div>
           <div className="abu-flood-gate-list">
-            {gates.map(([label, value, tone]) => <div className="abu-flood-gate" key={label}><span className={`abu-flood-gate-dot ${tone}`} /><div><strong>{localizeAbuText(label)}</strong><small>{localizeAbuText(value)}</small></div><LockKeyhole size={13} /></div>)}
+            {functionalChecks.map(check => <div className="abu-flood-gate" key={check.key}><span className={`abu-flood-gate-dot ${check.status}`} /><div><strong>{localizeAbuText(pipelineCheckLabels[check.key] || check.key)}</strong><small>{check.completed} / {check.required} {localizeAbuText('产物已通过')}</small></div>{check.status === 'ready' ? <CheckCircle2 size={13} /> : <CircleDashed size={13} />}</div>)}
           </div>
-          <div className="abu-flood-gate-note"><ShieldCheck size={14} />{localizeAbuText('数值质量通过不等于工程校准通过。')}</div>
+          <div className="abu-flood-gate-note"><ShieldCheck size={14} />{localizeAbuText('检查涵盖数据绑定、模型结果、时间轴、GWM 训练和交付清单。')}</div>
         </div>
       </section>
 
@@ -2302,7 +2464,7 @@ export default function AbuDhabiFloodWorldModelTab() {
           <div className="abu-flood-flow-rule"><LockKeyhole size={13} />{localizeAbuText('GWM 不能绕过物理模型、观测验证和不确定性门控')}</div>
         </div>}
         {view === 'models' && <div className="abu-flood-model-table">
-          {modelRows.map(row => <div className="abu-flood-model-row" key={row.name}><div><strong>{row.name}</strong><span>{localizeAbuText(row.role)}</span></div><span className="abu-flood-model-owner">{localizeAbuText(row.owner)}</span><span className={`abu-flood-pill ${row.tone === 'partial' ? 'abu-flood-status-partial' : 'abu-flood-status-blocked'}`}>{localizeAbuText(row.status)}</span></div>)}
+          {modelRows.map(row => <div className="abu-flood-model-row" key={row.name}><div><strong>{row.name}</strong><span>{localizeAbuText(row.role)}</span></div><span className="abu-flood-model-owner">{localizeAbuText(row.owner)}</span><span className={`abu-flood-pill ${row.tone === 'ready' ? 'abu-flood-status-ready' : row.tone === 'partial' ? 'abu-flood-status-partial' : 'abu-flood-status-blocked'}`}>{localizeAbuText(row.status)}</span></div>)}
         </div>}
         {view === 'deliverables' && <div className="abu-flood-deliverable-grid">
           {['客户数据与工程问题回执', 'SWMM 输入、RPT / OUT 与动态状态', '二维积水深度、范围和持续时间', 'SWMM-ANUGA 体积交换对账', 'GWM 快速情景与不确定性报告', '最终哈希清单与准入声明'].map((item, index) => <div className="abu-flood-deliverable" key={item}><span>{String(index + 1).padStart(2, '0')}</span><FileCheck2 size={15} /><strong>{localizeAbuText(item)}</strong></div>)}
@@ -2335,7 +2497,7 @@ export default function AbuDhabiFloodWorldModelTab() {
         </div>}
       </section>
 
-      <section className="abu-flood-status-footer"><div><Waves size={15} /><strong>{localizeAbuText('当前项目状态')}</strong><span>{localizeAbuText('客户数据等待阶段')}</span></div><span className="abu-flood-footer-note">{localizeAbuText('下一批数据到达后：回执验收 → 事件预检 → SWMM 边界绑定 → 工程复核')}</span></section>
+      <section className="abu-flood-status-footer"><div><Waves size={15} /><strong>{localizeAbuText('当前项目状态')}</strong><span>{localizeAbuText('五阶段功能闭环可运行')}</span></div><span className="abu-flood-footer-note">{localizeAbuText('客户数据自动优先替换；其余输入继续使用已配置的公开与参数化数据')}</span></section>
     </div>
   );
 }

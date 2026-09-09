@@ -901,6 +901,7 @@
     "gwmTimelineControl": "التسلسل الزمني لنتائج عقد محاكاة GWM",
     "gwmTimelineControl3d": "التسلسل الزمني ثلاثي الأبعاد لنتائج عقد محاكاة GWM",
     "gwmTime": "وقت محاكاة GWM: {{time}}",
+    "simulationTime": "وقت المحاكاة: {{time}}",
     "nativeOut": "وقت OUT الأصلي: {{time}}",
     "elapsedMinutes": "الوقت المنقضي: {{value}} دقيقة",
     "loading": "جارٍ التحميل...",

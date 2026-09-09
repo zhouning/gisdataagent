@@ -73,6 +73,10 @@ interface TooltipInfo {
 function map3dDisplayName(value: string, locale: string): string {
   if (locale !== 'en-US' || !/[\u3400-\u9fff]/.test(value)) return value;
   const replacements: Array<[RegExp, string]> = [
+    [/全市陆域二维最大积水深度（m）· 客户 DTM/g, 'Citywide land-surface 2D maximum flood depth (m) · customer DTM'],
+    [/全市陆域二维动态积水深度（m）· 客户 DTM/g, 'Citywide dynamic land-surface 2D flood depth (m) · customer DTM'],
+    [/二维结果 · 客户 AUH_DTM_5m_Z40 真实 5 m DTM 全市陆域最大积水深度/g, '2D result · Customer AUH_DTM_5m_Z40 actual 5 m DTM citywide land-surface maximum flood depth'],
+    [/二维结果 · 客户 AUH_DTM_5m_Z40 真实 5 m DTM 全市陆域动态积水深度/g, '2D result · Customer AUH_DTM_5m_Z40 actual 5 m DTM citywide dynamic land-surface flood depth'],
     [/阿布扎比暴雨内涝世界模型/g, 'Abu Dhabi Stormwater Flood World Model'],
     [/SWMM 全市连续网络/g, 'SWMM citywide continuous network'],
     [/全市连续网络/g, 'citywide continuous network'],
