@@ -81,7 +81,7 @@ def parse_coordinates(path: Path) -> dict[str, tuple[float, float]]:
     return result
 
 
-def build_surface(grid_path: Path, runner):
+def build_surface(grid_path: Path, runner, output_dir: Path):
     import anuga
 
     grid = np.load(grid_path)
@@ -112,6 +112,7 @@ def build_surface(grid_path: Path, runner):
         origin=(float(x[0]), float(y[-1])),
     )
     domain.set_name("abu_dhabi_swmm_anuga_bidirectional_pilot")
+    domain.set_datadir(str(output_dir))
     domain.set_quantity("elevation", topography)
     domain.set_quantity("friction", 0.035)
     domain.set_quantity("stage", topography)
@@ -138,9 +139,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     grid = np.load(args.grid)
     metadata = json.loads((args.grid.parent / "grid_metadata.json").read_text(encoding="utf-8"))
     coordinates = parse_coordinates(args.swmm_inp)
-    domain, source_operator, triangle_to_cell, cell_areas, surface, geometry = build_surface(args.grid, runner)
+    domain, source_operator, triangle_to_cell, cell_areas, surface, geometry = build_surface(args.grid, runner, args.output)
     x, y, dx = geometry
     selected = [node_id for node_id in metadata["selected_node_ids"] if node_id in coordinates]
+    if args.binding_limit is not None:
+        selected = selected[: args.binding_limit]
     bindings = []
     for node_id in selected:
         px, py = coordinates[node_id]
@@ -180,6 +183,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             duration_seconds=args.duration_seconds,
             window_seconds=args.window_seconds,
             fail_on_mass_balance=False,
+            interface_detail_limit=args.interface_detail_limit,
         )
     runner.write_coupled_run_receipt(result, args.output / "bidirectional_coupling_receipt.json")
     return result.as_dict()
@@ -196,6 +200,8 @@ def main() -> None:
     parser.add_argument("--opening-area-m2", type=float, default=0.5)
     parser.add_argument("--discharge-coefficient", type=float, default=0.61)
     parser.add_argument("--maximum-exchange-rate-m3s", type=float, default=5.0)
+    parser.add_argument("--interface-detail-limit", type=int, default=None)
+    parser.add_argument("--binding-limit", type=int, default=None)
     parser.add_argument("--run-id", default="abu-dhabi-customer-dtm-swmm-anuga-bidirectional-pilot-20260909")
     args = parser.parse_args()
     print(json.dumps(run(args), indent=2, ensure_ascii=True))
@@ -203,4 +209,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

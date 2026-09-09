@@ -315,6 +315,7 @@ class CoupledWindowRecord:
     anuga_applied_signed_source_m3: float
     exchange_application_difference_m3: float
     interfaces: tuple[dict[str, object], ...]
+    interfaces_truncated: bool = False
 
     @property
     def quality_passed(self) -> bool:
@@ -357,6 +358,7 @@ class CoupledWindowRecord:
             ),
             "quality_passed": self.quality_passed,
             "interfaces": list(self.interfaces),
+            "interfaces_truncated": self.interfaces_truncated,
         }
 
 
@@ -457,6 +459,7 @@ def run_synchronous_coupling(
     window_seconds: int = 300,
     rainfall_rate_by_cell_m3s: Sequence[float] | None = None,
     fail_on_mass_balance: bool = False,
+    interface_detail_limit: int | None = None,
 ) -> CoupledRunResult:
     """Run explicit SWMM/ANUGA windows and return a quality receipt.
 
@@ -475,6 +478,12 @@ def run_synchronous_coupling(
         raise ValueError("coupled_runner_duration_seconds_invalid")
     if isinstance(window_seconds, bool) or not isinstance(window_seconds, int) or window_seconds <= 0:
         raise ValueError("coupled_runner_window_seconds_invalid")
+    if interface_detail_limit is not None and (
+        isinstance(interface_detail_limit, bool)
+        or not isinstance(interface_detail_limit, int)
+        or interface_detail_limit < 0
+    ):
+        raise ValueError("coupled_runner_interface_detail_limit_invalid")
     if duration_seconds % window_seconds:
         raise ValueError("coupled_runner_duration_must_align_window")
     cell_count = int(surface.cell_count)
@@ -492,7 +501,7 @@ def run_synchronous_coupling(
     if len(current_surface.stage_by_cell_m) < cell_count:
         raise ValueError("coupled_runner_surface_snapshot_shape_invalid")
     records: list[CoupledWindowRecord] = []
-    pending_exchange: dict[int, float] = {}
+    pending_exchange_rates: list[float] = []
     # Seed the first window with the exchange implied by the initial surface
     # stage.  Without this seed the first ANUGA source would be created from a
     # transfer that had not yet been removed from SWMM, producing a visible
@@ -501,7 +510,7 @@ def run_synchronous_coupling(
         assert binding.swmm_node_index is not None
         initial_swmm_state = swmm.node_state(binding.swmm_node_index)
         initial_rate = _bounded_head_rate(binding, initial_swmm_state, current_surface, window_seconds)
-        pending_exchange[binding.swmm_node_index] = -initial_rate
+        pending_exchange_rates.append(-initial_rate)
 
     try:
         for window_index in range(duration_seconds // window_seconds):
@@ -511,35 +520,38 @@ def run_synchronous_coupling(
 
             # The exchange calculated from the previous surface state is
             # written before the matching SWMM stride.
-            for binding in resolved:
+            for binding_index, binding in enumerate(resolved):
                 assert binding.swmm_node_index is not None
                 swmm.set_node_surface_exchange_flow(
                     binding.swmm_node_index,
-                    pending_exchange[binding.swmm_node_index],
+                    pending_exchange_rates[binding_index],
                 )
             elapsed = _finite(swmm.stride(window_seconds), "swmm_elapsed_seconds")
             if abs(elapsed - end_seconds) > 1.0e-3:
                 raise RuntimeError("coupled_runner_swmm_elapsed_window_mismatch")
 
-            swmm_states = {
-                binding.interface_id: swmm.node_state(binding.swmm_node_index or 0)
-                for binding in resolved
-            }
+            # Keep only scalar state vectors rather than one Python dict per
+            # citywide node; this is important for the 146k-node network.
+            swmm_heads: list[float] = []
+            overflow_rates: list[float] = []
+            for binding in resolved:
+                state = swmm.node_state(binding.swmm_node_index or 0)
+                swmm_heads.append(float(state.get("head_m", 0.0)))
+                overflow_rates.append(max(0.0, float(state.get("overflow_or_flooding_m3s", 0.0))))
             source_rate = list(rainfall)
             interface_rows: list[dict[str, object]] = []
             swmm_overflow_volume = 0.0
             head_to_surface_volume = 0.0
             surface_to_swmm_volume = 0.0
-            for binding in resolved:
-                state = swmm_states[binding.interface_id]
-                overflow_rate = max(0.0, float(state.get("overflow_or_flooding_m3s", 0.0)))
-                swmm_head = float(state.get("head_m", 0.0))
+            for binding_index, binding in enumerate(resolved):
+                overflow_rate = overflow_rates[binding_index]
+                swmm_head = swmm_heads[binding_index]
                 previous_stage = float(current_surface.stage_by_cell_m[binding.anuga_cell_index])
                 # Use the same rate that was applied to SWMM at the start of
                 # this window.  Recomputing from the post-SWMM head would make
                 # the two solver ledgers refer to different transfers.
                 assert binding.swmm_node_index is not None
-                head_rate = -pending_exchange[binding.swmm_node_index]
+                head_rate = -pending_exchange_rates[binding_index]
                 positive_head_rate = max(0.0, head_rate)
                 reverse_rate = max(0.0, -head_rate)
                 # A negative head rate is a surface sink.  Passing the signed
@@ -549,20 +561,21 @@ def run_synchronous_coupling(
                 swmm_overflow_volume += overflow_rate * window_seconds
                 head_to_surface_volume += positive_head_rate * window_seconds
                 surface_to_swmm_volume += reverse_rate * window_seconds
-                interface_rows.append(
-                    {
-                        "interface_id": binding.interface_id,
-                        "swmm_node_id": binding.swmm_node_id,
-                        "anuga_cell_index": binding.anuga_cell_index,
-                        "swmm_head_m": swmm_head,
-                        "surface_stage_m": previous_stage,
-                        "overflow_rate_m3s": overflow_rate,
-                        "head_exchange_rate_m3s": head_rate,
-                        "swmm_to_anuga_volume_m3": (overflow_rate + positive_head_rate) * window_seconds,
-                        "anuga_to_swmm_volume_m3": reverse_rate * window_seconds,
-                        "provenance": binding.provenance,
-                    }
-                )
+                if interface_detail_limit is None or len(interface_rows) < interface_detail_limit:
+                    interface_rows.append(
+                        {
+                            "interface_id": binding.interface_id,
+                            "swmm_node_id": binding.swmm_node_id,
+                            "anuga_cell_index": binding.anuga_cell_index,
+                            "swmm_head_m": swmm_head,
+                            "surface_stage_m": previous_stage,
+                            "overflow_rate_m3s": overflow_rate,
+                            "head_exchange_rate_m3s": head_rate,
+                            "swmm_to_anuga_volume_m3": (overflow_rate + positive_head_rate) * window_seconds,
+                            "anuga_to_swmm_volume_m3": reverse_rate * window_seconds,
+                            "provenance": binding.provenance,
+                        }
+                    )
 
             surface_state = surface.advance(window_seconds, source_rate)
             if len(surface_state.stage_by_cell_m) < cell_count:
@@ -573,8 +586,8 @@ def run_synchronous_coupling(
             # positive signed rate means SWMM -> surface and is therefore a
             # negative lateral flow when written to SWMM; a negative signed
             # rate means surface -> SWMM and is a positive lateral flow.
-            for binding in resolved:
-                state = swmm_states[binding.interface_id]
+            next_pending_exchange_rates: list[float] = []
+            for binding_index, binding in enumerate(resolved):
                 next_stage = float(surface_state.stage_by_cell_m[binding.anuga_cell_index])
                 next_surface = SurfaceState(
                     stage_by_cell_m=surface_state.stage_by_cell_m,
@@ -582,9 +595,15 @@ def run_synchronous_coupling(
                     storage_end_m3=surface_state.storage_end_m3,
                     available_volume_by_cell_m3=surface_state.available_volume_by_cell_m3,
                 )
-                next_head_rate = _bounded_head_rate(binding, state, next_surface, window_seconds)
+                next_head_rate = _bounded_head_rate(
+                    binding,
+                    {"head_m": swmm_heads[binding_index]},
+                    next_surface,
+                    window_seconds,
+                )
                 assert binding.swmm_node_index is not None
-                pending_exchange[binding.swmm_node_index] = -next_head_rate
+                next_pending_exchange_rates.append(-next_head_rate)
+            pending_exchange_rates = next_pending_exchange_rates
 
             # Check the complete surface ledger.  SWMM overflow and head
             # exchange are internal transfers; signed ANUGA source equals
@@ -640,6 +659,10 @@ def run_synchronous_coupling(
                     applied_signed_source_volume - requested_signed_source_volume
                 ),
                 interfaces=tuple(interface_rows),
+                interfaces_truncated=(
+                    interface_detail_limit is not None
+                    and len(resolved) > interface_detail_limit
+                ),
             )
             records.append(record)
             current_surface = surface_state

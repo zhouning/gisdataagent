@@ -62,7 +62,11 @@ scripts/run_abu_dhabi_swmm_anuga_bidirectional_pilot.py
 
 回执中 `status=completed`、`quality_passed=true`，并且既有 SWMM→ANUGA，也有 ANUGA→SWMM 的非零交换量。
 
-## 5. 从试点扩展到全市前还要完成的工程工作
+## 5. 全市规模试点进展与扩展工作
+
+已进一步用全市客户 SWMM 输入和客户 DTM 运行 250 m 单窗口压力试点：5,000 个节点绑定、300 秒同步窗口、200 条接口明细保留（其余接口仍参与计算但回执按上限截取）。该试点 `status=completed`、`quality_passed=true`，用于验证全市节点循环、内存和回执截断策略。它不是最终 146,823 节点×180 分钟生产运行，后者还需要完整接口属性和性能验收。
+
+## 6. 从全市压力试点扩展到生产全流程还要完成的工程工作
 
 1. 从客户全市 SWMM 节点和雨水口数据生成完整的 `CouplingInterfaceBinding`；
 2. 将井口高程、开口面积、堵塞系数、最大交换流量等客户字段接入，而不是使用试点默认参数；
@@ -71,4 +75,3 @@ scripts/run_abu_dhabi_swmm_anuga_bidirectional_pilot.py
 5. 运行 100 m 全市短时双向试验，确认内存、运行时和回执大小；
 6. 再扩展到 180 分钟、300 分钟和 2/5/10/25/50/100 年一遇及历史暴雨场景；
 7. 将每个时间帧和质量回执接入 GIS Data Agent 的地图与时间轴。
-
