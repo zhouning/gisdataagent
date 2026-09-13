@@ -10052,6 +10052,30 @@ html[lang^='ar'] {
 .semantic-abu-admin-heading { margin-bottom: 8px; }
 .semantic-abu-admin-heading span { color: var(--text-tertiary); font-size: 10px; }
 
+.abu-governance-overview { background: var(--surface-elevated); border: 1px solid var(--border); margin: 8px 0; padding: 9px 10px; }
+.abu-governance-overview-heading { align-items: center; display: flex; justify-content: space-between; gap: 8px; }
+.abu-governance-overview-heading h4 { color: var(--text); font-size: 12px; margin: 2px 0 0; }
+.abu-governance-version-row { align-items: center; border-bottom: 1px solid var(--border); color: var(--text-tertiary); display: flex; flex-wrap: wrap; font-size: 10px; gap: 5px 14px; margin-top: 7px; padding-bottom: 7px; }
+.abu-governance-version-row b { color: var(--text-secondary); font-family: var(--font-mono); font-weight: 500; }
+.abu-governance-status { border: 1px solid var(--border); padding: 3px 5px; }
+.abu-governance-status.ok { border-color: rgba(34,197,94,.35); color: var(--success); }
+.abu-governance-status.warn { border-color: rgba(245,158,11,.35); color: var(--warning); }
+.abu-governance-kpis { display: grid; gap: 1px; grid-template-columns: repeat(6, minmax(0, 1fr)); margin-top: 7px; }
+.abu-governance-kpis > div { background: var(--surface); min-width: 0; padding: 6px; }
+.abu-governance-kpis span, .abu-governance-detail-grid span { color: var(--text-tertiary); display: block; font-size: 9px; }
+.abu-governance-kpis strong { color: var(--text); display: block; font-family: var(--font-mono); font-size: 13px; margin-top: 3px; overflow-wrap: anywhere; }
+.abu-governance-detail-grid { display: grid; gap: 6px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 7px; }
+.abu-governance-detail-grid > div { border-top: 1px solid var(--border); min-width: 0; padding: 6px 0 0; }
+.abu-governance-detail-grid b { color: var(--text-secondary); display: block; font-size: 10px; margin-top: 3px; }
+.abu-governance-detail-grid b.ok { color: var(--success); }
+.abu-governance-detail-grid b.warn { color: var(--warning); }
+.abu-governance-detail-grid small { color: var(--text-tertiary); display: block; font-size: 9px; line-height: 1.35; margin-top: 3px; overflow-wrap: anywhere; }
+.abu-governance-empty { color: var(--text-tertiary); font-size: 10px; padding: 8px 0 2px; }
+@media (max-width: 760px) {
+  .abu-governance-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .abu-governance-detail-grid { grid-template-columns: 1fr; }
+}
+
 .semantic-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 4px; border-bottom: 1px solid var(--border); }
 .semantic-toolbar-info { font-size: 12px; color: var(--text-secondary); margin-right: 8px; }
 .semantic-search { flex: 1; min-width: 150px; font-size: 12px; padding: 4px 8px; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 4px; }

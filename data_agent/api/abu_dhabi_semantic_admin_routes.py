@@ -461,6 +461,145 @@ def _published_review_status(payload: dict[str, Any]) -> bool:
     }
 
 
+def _metric_observation_status(scope: str) -> dict[str, Any]:
+    """Return honest observation-store health without inventing measurements."""
+
+    engine = _engine()
+    if engine is None:
+        return {
+            "status": "not_connected",
+            "observation_count": None,
+            "latest_observed_at": None,
+            "scope_binding": "not_mapped_to_semantic_contract_ids",
+        }
+    try:
+        with engine.connect() as conn:
+            row = (
+                conn.execute(
+                    text(
+                        "SELECT COUNT(*) AS observation_count, "
+                        "MAX(observed_at) AS latest_observed_at "
+                        "FROM gda_control.metric_observation"
+                    )
+                )
+                .mappings()
+                .one()
+            )
+        return {
+            "status": "connected",
+            "observation_count": int(row.get("observation_count") or 0),
+            "latest_observed_at": _jsonable(row.get("latest_observed_at")),
+            "scope": scope,
+            # metric_observation.metric_version_ref is an immutable platform
+            # URN. No published crosswalk to Abu Dhabi contract_id exists yet.
+            "scope_binding": "not_mapped_to_semantic_contract_ids",
+        }
+    except Exception:
+        logger.exception("metric observation overview read failed")
+        return {
+            "status": "unavailable",
+            "observation_count": None,
+            "latest_observed_at": None,
+            "scope": scope,
+            "scope_binding": "not_mapped_to_semantic_contract_ids",
+        }
+
+
+def _metric_contract_overview(scope: str) -> dict[str, Any]:
+    """Build a read-only governance overview from the current artifact bundle."""
+
+    try:
+        from .abu_dhabi_nl2sql_product_routes import _load_source_artifacts, _source_spec
+
+        artifacts = _load_source_artifacts(_source_spec(scope))
+    except (KeyError, FileNotFoundError, ValueError, OSError):
+        artifacts = {}
+    semantic = artifacts.get("semantic") or {}
+    ontology = artifacts.get("ontology") or {}
+    catalog = artifacts.get("catalog") or {}
+    report = artifacts.get("report") or {}
+    contracts = [item for item in semantic.get("metric_contracts") or [] if isinstance(item, dict)]
+    status_counts = {"reviewed": 0, "draft": 0, "disabled": 0, "other": 0}
+    direct_execution_count = 0
+    result_shape_counts: dict[str, int] = {}
+    for contract in contracts:
+        status = str(contract.get("review_status") or "other").casefold()
+        if status in {"reviewed", "reviewed_candidate", "approved", "published", "active"}:
+            status_counts["reviewed"] += 1
+        elif status in {"draft", "candidate", "candidate_review"}:
+            status_counts["draft"] += 1
+        elif status in {"disabled", "deprecated", "inactive"}:
+            status_counts["disabled"] += 1
+        else:
+            status_counts["other"] += 1
+        direct = contract.get("direct_execution") or {}
+        if direct.get("enabled") is True:
+            direct_execution_count += 1
+        shapes = [
+            str(value).casefold()
+            for value in direct.get("allowed_result_shapes") or []
+            if str(value).strip()
+        ]
+        if not shapes:
+            result_shape_counts["unspecified"] = result_shape_counts.get("unspecified", 0) + 1
+        else:
+            for shape in shapes:
+                result_shape_counts[shape] = result_shape_counts.get(shape, 0) + 1
+    report_metrics = report.get("metrics") or {}
+    latency_values = {
+        "mean_generation_latency_ms": report_metrics.get("mean_generation_latency_ms"),
+        "p95_generation_latency_ms": report_metrics.get("p95_generation_latency_ms"),
+    }
+    latency_status = (
+        "observed"
+        if any(isinstance(value, (int, float)) for value in latency_values.values())
+        else "not_available"
+    )
+    return {
+        "schema": "gda.semantic-governance.metric-contract-overview.v1",
+        "scope": scope,
+        "artifact_status": "available" if semantic else "unavailable",
+        "versions": {
+            "semantic": semantic.get("semantic_version"),
+            "ontology": ontology.get("ontology_enrichment_version"),
+            "metric_contract": semantic.get("metric_contract_version"),
+        },
+        "contracts": {
+            "total": len(contracts),
+            "status_counts": status_counts,
+            "direct_execution_count": direct_execution_count,
+            "result_shape_counts": result_shape_counts,
+        },
+        "ontology": {
+            "concept_count": len(ontology.get("concepts") or []),
+            "relation_count": len(ontology.get("relations") or []),
+        },
+        "semantic": {
+            "relationship_count": len(semantic.get("relationships") or []),
+            "asset_count": len(semantic.get("semantic_assets") or []),
+            "catalog_resource_count": (catalog.get("coverage") or {}).get("resource_count"),
+        },
+        "observation": _metric_observation_status(scope),
+        "latency": {"status": latency_status, **latency_values},
+        "claim_boundary": {
+            "read_only": True,
+            "source_rows_persisted": False,
+            "observation_scope_mapping": "not_mapped_to_semantic_contract_ids",
+            "latency_is_current_artifact_report_evidence": latency_status == "observed",
+        },
+    }
+
+
+async def semantic_metric_contracts_overview(request: Request) -> JSONResponse:
+    username, _role, error = _auth(request)
+    if error:
+        return error
+    scope = str(request.query_params.get("scope") or "").strip()
+    if not _valid_scope(scope):
+        return JSONResponse({"error": "unsupported scope"}, status_code=400)
+    return JSONResponse(_metric_contract_overview(scope))
+
+
 def _validate_version(scope: str, version_id: int) -> dict[str, Any]:
     engine = _engine()
     if not engine:
@@ -1684,6 +1823,16 @@ def get_abu_dhabi_semantic_admin_routes() -> list[Route]:
     # ``review-queue`` would be interpreted as an entry type.
     routes.extend(
         [
+            Route(
+                "/api/abu-dhabi/nl2semantic2sql/semantic-admin/metric-contracts/overview",
+                semantic_metric_contracts_overview,
+                methods=["GET"],
+            ),
+            Route(
+                "/api/semantic/governance/metric-contracts/overview",
+                semantic_metric_contracts_overview,
+                methods=["GET"],
+            ),
             Route(
                 "/api/abu-dhabi/nl2semantic2sql/semantic-admin/benchmark-review-queue",
                 semantic_benchmark_review_queue,
