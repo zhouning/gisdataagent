@@ -1255,7 +1255,7 @@ def build_product_evidence(username: str) -> dict[str, Any]:
                 or {},
             }
         current_readiness_sources[source_key] = merged
-    return {
+    evidence = {
         "schema": "gda.abu-dhabi-nl2semantic2sql-product-evidence.v1",
         "product": {
             "name": "Abu Dhabi NL2Semantic2SQL",
@@ -1322,6 +1322,10 @@ def build_product_evidence(username: str) -> dict[str, Any]:
         "benchmark_evaluation": _published_evaluation_summary(),
         "federated": _federated_benchmark_evidence(),
     }
+    # A few legacy evidence cards retain absolute workstation paths.  Keep
+    # those paths useful as stable artifact labels while ensuring the public
+    # product surface never discloses the serving machine's filesystem.
+    return _public_artifact_value(evidence)
 
 
 def _compact_plan(value: Any) -> dict[str, Any] | None:
