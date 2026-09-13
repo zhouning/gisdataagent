@@ -144,6 +144,37 @@ async def test_generic_registered_source_scope_is_supported(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_metric_contract_hyphen_alias_normalizes_to_canonical_entry_type(monkeypatch):
+    user = SimpleNamespace(identifier="analyst", metadata={"role": "analyst"})
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda request: user)
+    monkeypatch.setattr(routes, "_set_user_context", lambda value: ("analyst", "analyst"))
+    monkeypatch.setattr(routes, "_engine", lambda: None)
+
+    response = await routes.semantic_admin_entries(
+        _request(query="scope=liveability", path_params={"entry_type": "metric-contracts"})
+    )
+    payload = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert payload["entry_type"] == "metric_contracts"
+    assert payload["total"] == len(routes._baseline_entries("liveability", "metric_contracts"))
+
+
+@pytest.mark.asyncio
+async def test_metric_contract_alias_does_not_bypass_scope_validation(monkeypatch):
+    user = SimpleNamespace(identifier="analyst", metadata={"role": "analyst"})
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda request: user)
+    monkeypatch.setattr(routes, "_set_user_context", lambda value: ("analyst", "analyst"))
+
+    response = await routes.semantic_admin_entries(
+        _request(query="scope=not a scope", path_params={"entry_type": "metric-contracts"})
+    )
+
+    assert response.status_code == 400
+    assert json.loads(response.body)["error"] == "unsupported scope or entry_type"
+
+
+@pytest.mark.asyncio
 async def test_review_queue_is_paged_redacted_and_projects_nonapproved_drafts(monkeypatch):
     user = SimpleNamespace(identifier="analyst", metadata={"role": "analyst"})
     monkeypatch.setattr(routes, "_get_user_from_request", lambda request: user)
@@ -514,6 +545,10 @@ def test_admin_routes_include_crud_version_and_virtual_lake_endpoints():
     ) in paths
     assert (
         "/api/semantic/governance/metric-contracts/overview",
+        ("GET", "HEAD"),
+    ) in paths
+    assert (
+        "/api/semantic/governance/metric-contracts",
         ("GET", "HEAD"),
     ) in paths
     assert (

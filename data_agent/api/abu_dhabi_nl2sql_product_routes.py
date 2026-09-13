@@ -1803,6 +1803,56 @@ def _execution_admission(scope: str, question: str) -> dict[str, Any]:
                 },
             }
 
+    # A unique published metric contract is a stronger, data-driven admission
+    # signal than the broad asset candidate resolver. Check it before
+    # candidate ambiguity can reject a question whose dimensions are already
+    # represented by the reviewed contract.
+    if scope in {"liveability", "makani"}:
+        from ..governed_virtual_nl2sql import resolve_direct_metric_contract
+
+        direct_resolution = resolve_direct_metric_contract(
+            question,
+            detect_question_language(question),
+            technical_semantic,
+        )
+        if direct_resolution.get("status") == "matched":
+            candidate_payload = resolve_semantic_candidates(scope, question)
+            candidate_resolution = candidate_payload.get("resolution") or {}
+            candidate_items = list(candidate_resolution.get("candidates") or [])
+            # A direct contract may disambiguate a broad query that also
+            # retrieves unreviewed dictionary candidates. It must not override
+            # ambiguity among multiple already-reviewed assets.
+            unreviewed_ambiguity = (
+                candidate_resolution.get("status") == "ambiguous_candidates"
+                and any(not item.get("published_runtime_asset") for item in candidate_items)
+            )
+            if unreviewed_ambiguity:
+                contract = direct_resolution.get("contract") or {}
+                return {
+                    "schema": "gda.abu-dhabi-execution-admission.v1",
+                    "scope": scope,
+                    "status": "admitted",
+                    "decision": "reviewed_metric_contract_admitted",
+                    "disposition": "execute",
+                    "runtime_admitted": True,
+                    "required_capabilities": [],
+                    "reviewed_candidate_capabilities": [],
+                    "candidate_resolution": {
+                        "status": "reviewed_metric_contract",
+                        "decision": "unique_reviewed_canonical_metric",
+                        "contract_id": str(direct_resolution.get("contract_id") or ""),
+                        "candidate_contract_ids": list(
+                            direct_resolution.get("candidate_contract_ids") or []
+                        ),
+                        "tables": list(contract.get("tables") or []),
+                        "dimensions": [
+                            str(item.get("alias") or item.get("field") or "")
+                            for item in contract.get("dimensions") or []
+                            if isinstance(item, dict)
+                        ],
+                    },
+                }
+
     if scope == "federated":
         from ..abu_dhabi_federated_nl2sql import (
             FEDERATED_SEMANTIC_PATH,

@@ -26,6 +26,13 @@ logger = logging.getLogger("data_agent.api.abu_dhabi_semantic_admin")
 
 _SCOPE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,31}$")
 _ENTRY_TYPES = {"assets", "fields", "relationships", "metric_contracts"}
+_ENTRY_TYPE_ALIASES = {
+    "assets": "assets",
+    "fields": "fields",
+    "relationships": "relationships",
+    "metric_contracts": "metric_contracts",
+    "metric-contracts": "metric_contracts",
+}
 _EDIT_ROLES = {"analyst", "standard_editor", "admin"}
 _REVIEW_ROLES = {"standard_reviewer", "admin"}
 _MAX_LIMIT = 200
@@ -37,6 +44,12 @@ _BENCHMARK_REVIEW_DECISIONS = {"approved_for_gold", "rejected", "needs_changes"}
 _SEMANTIC_REVIEW_DECISIONS = {"approved_for_draft", "rejected", "needs_changes"}
 _MAX_REVIEW_NOTES = 4_000
 _MAX_QUESTION_TEMPLATE_BYTES = 24_000
+
+
+def _normalize_entry_type(value: Any) -> str:
+    """Accept historical path aliases while keeping one canonical key."""
+
+    return _ENTRY_TYPE_ALIASES.get(str(value or "").strip().casefold(), "")
 
 
 def _jsonable(value: Any) -> Any:
@@ -757,8 +770,8 @@ async def semantic_admin_entries(request: Request) -> JSONResponse:
     if error:
         return error
     scope = str(request.query_params.get("scope") or "").strip()
-    entry_type = str(request.path_params.get("entry_type") or "").strip()
-    if not _valid_scope(scope) or entry_type not in _ENTRY_TYPES:
+    entry_type = _normalize_entry_type(request.path_params.get("entry_type"))
+    if not _valid_scope(scope) or not entry_type:
         return JSONResponse({"error": "unsupported scope or entry_type"}, status_code=400)
     try:
         offset = _query_int(request, "offset", 0, 1_000_000)
@@ -1298,8 +1311,8 @@ async def semantic_admin_create(request: Request) -> JSONResponse:
     if error:
         return error
     scope = str(request.query_params.get("scope") or "").strip()
-    entry_type = str(request.path_params.get("entry_type") or "").strip()
-    if not _valid_scope(scope) or entry_type not in _ENTRY_TYPES:
+    entry_type = _normalize_entry_type(request.path_params.get("entry_type"))
+    if not _valid_scope(scope) or not entry_type:
         return JSONResponse({"error": "unsupported scope or entry_type"}, status_code=400)
     try:
         body = await request.json()
@@ -1374,9 +1387,9 @@ async def semantic_admin_update(request: Request) -> JSONResponse:
     if error:
         return error
     entry_id = str(request.path_params.get("entry_id") or "")
-    entry_type = str(request.path_params.get("entry_type") or "")
+    entry_type = _normalize_entry_type(request.path_params.get("entry_type"))
     scope = str(request.query_params.get("scope") or "")
-    if not _valid_scope(scope) or entry_type not in _ENTRY_TYPES or not entry_id:
+    if not _valid_scope(scope) or not entry_type or not entry_id:
         return JSONResponse(
             {"error": "unsupported scope, entry_type, or entry_id"}, status_code=400
         )
@@ -1480,9 +1493,9 @@ async def semantic_admin_delete(request: Request) -> JSONResponse:
     if error:
         return error
     scope = str(request.query_params.get("scope") or "")
-    entry_type = str(request.path_params.get("entry_type") or "")
+    entry_type = _normalize_entry_type(request.path_params.get("entry_type"))
     entry_id = str(request.path_params.get("entry_id") or "")
-    if not _valid_scope(scope) or entry_type not in _ENTRY_TYPES or not entry_id:
+    if not _valid_scope(scope) or not entry_type or not entry_id:
         return JSONResponse(
             {"error": "unsupported scope, entry_type, or entry_id"}, status_code=400
         )
@@ -1922,6 +1935,53 @@ def get_abu_dhabi_semantic_admin_routes() -> list[Route]:
                 ),
             ]
         )
+    # Compatibility alias for clients released with the hyphenated metric
+    # contract path. Handlers normalize it to ``metric_contracts``.
+    metric_alias = "metric-contracts"
+    routes.extend(
+        [
+            Route(
+                f"/api/abu-dhabi/nl2semantic2sql/semantic-admin/{metric_alias}",
+                semantic_admin_entries,
+                methods=["GET"],
+            ),
+            Route(
+                f"/api/abu-dhabi/nl2semantic2sql/semantic-admin/{metric_alias}",
+                semantic_admin_create,
+                methods=["POST"],
+            ),
+            Route(
+                f"/api/abu-dhabi/nl2semantic2sql/semantic-admin/{metric_alias}/{{entry_id}}",
+                semantic_admin_update,
+                methods=["PATCH"],
+            ),
+            Route(
+                f"/api/abu-dhabi/nl2semantic2sql/semantic-admin/{metric_alias}/{{entry_id}}",
+                semantic_admin_delete,
+                methods=["DELETE"],
+            ),
+            Route(
+                f"/api/semantic/governance/{metric_alias}",
+                semantic_admin_entries,
+                methods=["GET"],
+            ),
+            Route(
+                f"/api/semantic/governance/{metric_alias}",
+                semantic_admin_create,
+                methods=["POST"],
+            ),
+            Route(
+                f"/api/semantic/governance/{metric_alias}/{{entry_id}}",
+                semantic_admin_update,
+                methods=["PATCH"],
+            ),
+            Route(
+                f"/api/semantic/governance/{metric_alias}/{{entry_id}}",
+                semantic_admin_delete,
+                methods=["DELETE"],
+            ),
+        ]
+    )
     return routes + [
         Route(
             "/api/abu-dhabi/nl2semantic2sql/semantic-admin/versions/{version_id}/{action}",
