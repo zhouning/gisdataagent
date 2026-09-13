@@ -1,0 +1,71 @@
+{
+  "schema": "gwm_bench.runtime_r2_contract.v1",
+  "contract_id": "gwm-bench-v3-runtime-r2-draft1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "status": "specified_for_freeze",
+  "lifecycle": [
+    "prepare",
+    "predict",
+    "writeback",
+    "audit"
+  ],
+  "prepare": {
+    "required_inputs": [
+      "phase_a_bundle_manifest",
+      "observed_inputs",
+      "observed_state_history",
+      "observed_edges",
+      "submission_keys"
+    ],
+    "target_labels_visible": false,
+    "adapter_may_change_submission_keys": false
+  },
+  "predict": {
+    "forecast_origin_year": 2022,
+    "target_years": [2023, 2024, 2025],
+    "rollout_mode": "three_step_open_loop",
+    "observed_state_writeback_after_origin": false,
+    "required_model_groups": [
+      "twm_dam_gk_candidate",
+      "geosos_flus_three_seed_ensemble",
+      "state_persistence",
+      "nonspatial_history_only",
+      "fixed_adjacency_spatial"
+    ]
+  },
+  "writeback": {
+    "state_representation": "nine_class_probability_vector",
+    "next_step_uses_previous_predicted_state": true,
+    "target_label_writeback_allowed": false
+  },
+  "audit": {
+    "required_hashes": [
+      "protocol",
+      "phase_a_bundle",
+      "runtime_environment",
+      "adapter_source",
+      "model_or_binary",
+      "random_seed_or_seed_set",
+      "prediction"
+    ],
+    "deterministic_candidate_replay_required": true,
+    "stochastic_candidate_member_replay_required": true,
+    "resource_fields": [
+      "wall_time_seconds",
+      "peak_memory_bytes",
+      "temporary_bytes",
+      "exit_status"
+    ],
+    "failure_results_retained": true
+  },
+  "adapter_boundaries": {
+    "twm_dam_gk": "May use state history, drivers and directed graph; may not read lockbox targets.",
+    "flus": "Must run on the complete 100 m input-valid grid before mapping probabilities to fixed nodes.",
+    "internal_baselines": "Must use the same Phase A bundle and exact submission keys."
+  },
+  "claim_boundary": {
+    "shared_cross_domain_runtime_product_complete": false,
+    "real_action_effect_supported": false,
+    "operational_forecast_supported": false
+  }
+}

@@ -1,0 +1,511 @@
+{
+  "schema": "gwm_bench.foundation_v5_rc1_bundle.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V5.0-DRAFT1",
+  "created_at": "2026-07-23T15:34:17.164469+00:00",
+  "status": "V5_RC1_DATA_MATERIALIZED",
+  "protocol_sha256": "1802ec61ec229f11f95e541c219aa83b8c7af6cfd692d897c1f15ddfbf4d7e79",
+  "preflight_sha256": "40915523dd0a594956f79eb0a7fc97c56d72916b9a56089d627b765bb59e0511",
+  "source_assets": {
+    "event_panels": [
+      {
+        "path": "paper-output/regimeworld-nyc-v4-compositional-uwm/results/heldout_2015_event_panel.parquet",
+        "bytes": 4127495,
+        "sha256": "9687da26e86fcbe6dd37959702060a434a0ae2419cfa3f4d24882fb35123bcbc"
+      },
+      {
+        "path": "paper-output/regimeworld-nyc-v4-compositional-uwm/results/development_event_panel.parquet",
+        "bytes": 18388927,
+        "sha256": "1032d96bbf910169a77b21eac20d5c8221d7dfd16e1ce1442f1890719225d468"
+      }
+    ],
+    "od_panels": [
+      {
+        "path": "paper-output/regimeworld-nyc-v4-compositional-uwm/results/heldout_2015_daily_od_state.parquet",
+        "bytes": 12310172,
+        "sha256": "14019d4c430fa0986628573bbea6c9a41990e9c09141c417bc9263841d3eb281"
+      },
+      {
+        "path": "paper-output/regimeworld-nyc-v3-multi-intervention/results/daily_od_state.parquet",
+        "bytes": 42765003,
+        "sha256": "9802785aae8cf498a65742eb347e87fa6b2388102e5cf7066d566a1ed7fad045"
+      }
+    ],
+    "zone_metadata": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/graph/zone_metadata.parquet",
+    "v4_spatial_edges": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/graph/spatial_edges.parquet",
+    "new_download_required": false
+  },
+  "counts": {
+    "event_count": 4,
+    "outer_fold_count": 4,
+    "total_event_week_rows": 67328,
+    "total_outer_test_keys": 12624,
+    "zone_metadata_rows": 263
+  },
+  "event_audits": [
+    {
+      "event_id": "event_2015_improvement_surcharge",
+      "source_event": "heldout_2015_improvement_surcharge",
+      "effective_date": "2015-01-01",
+      "source_date_min": "2014-01-02",
+      "source_date_max": "2015-03-25",
+      "source_zone_day_rows": 117824,
+      "weekly_rows": 16832,
+      "pre_week_count": 52,
+      "post_week_count": 12,
+      "zone_count": 263,
+      "graph": {
+        "event_id": "event_2015_improvement_surcharge",
+        "od_source_path": "paper-output/regimeworld-nyc-v4-compositional-uwm/results/heldout_2015_daily_od_state.parquet",
+        "od_source_pre_rows": 4379381,
+        "relation_counts": {
+          "action_exposure": 263,
+          "geographic_adjacency": 692,
+          "origin_destination_flow": 2092
+        },
+        "od_origin_count": 263,
+        "od_edge_count": 2092,
+        "action_exposure_nonzero_zones": 263
+      }
+    },
+    {
+      "event_id": "event_2019_nys_congestion_surcharge",
+      "source_event": "development_2019_congestion_surcharge",
+      "effective_date": "2019-02-02",
+      "source_date_min": "2018-02-03",
+      "source_date_max": "2019-04-26",
+      "source_zone_day_rows": 117824,
+      "weekly_rows": 16832,
+      "pre_week_count": 52,
+      "post_week_count": 12,
+      "zone_count": 263,
+      "graph": {
+        "event_id": "event_2019_nys_congestion_surcharge",
+        "od_source_path": "paper-output/regimeworld-nyc-v3-multi-intervention/results/daily_od_state.parquet",
+        "od_source_pre_rows": 3694453,
+        "relation_counts": {
+          "action_exposure": 263,
+          "geographic_adjacency": 692,
+          "origin_destination_flow": 2082
+        },
+        "od_origin_count": 262,
+        "od_edge_count": 2082,
+        "action_exposure_nonzero_zones": 261
+      }
+    },
+    {
+      "event_id": "event_2022_tlc_taximeter_adjustment",
+      "source_event": "development_2022_taximeter_adjustment",
+      "effective_date": "2022-12-19",
+      "source_date_min": "2021-12-20",
+      "source_date_max": "2023-03-12",
+      "source_zone_day_rows": 117824,
+      "weekly_rows": 16832,
+      "pre_week_count": 52,
+      "post_week_count": 12,
+      "zone_count": 263,
+      "graph": {
+        "event_id": "event_2022_tlc_taximeter_adjustment",
+        "od_source_path": "paper-output/regimeworld-nyc-v3-multi-intervention/results/daily_od_state.parquet",
+        "od_source_pre_rows": 2485574,
+        "relation_counts": {
+          "action_exposure": 263,
+          "geographic_adjacency": 692,
+          "origin_destination_flow": 2076
+        },
+        "od_origin_count": 260,
+        "od_edge_count": 2076,
+        "action_exposure_nonzero_zones": 249
+      }
+    },
+    {
+      "event_id": "event_2025_mta_crz",
+      "source_event": "development_2025_crz",
+      "effective_date": "2025-01-05",
+      "source_date_min": "2024-01-07",
+      "source_date_max": "2025-03-29",
+      "source_zone_day_rows": 117824,
+      "weekly_rows": 16832,
+      "pre_week_count": 52,
+      "post_week_count": 12,
+      "zone_count": 263,
+      "graph": {
+        "event_id": "event_2025_mta_crz",
+        "od_source_path": "paper-output/regimeworld-nyc-v3-multi-intervention/results/daily_od_state.parquet",
+        "od_source_pre_rows": 2793849,
+        "relation_counts": {
+          "action_exposure": 263,
+          "geographic_adjacency": 692,
+          "origin_destination_flow": 2059
+        },
+        "od_origin_count": 261,
+        "od_edge_count": 2059,
+        "action_exposure_nonzero_zones": 256
+      }
+    }
+  ],
+  "fold_audits": [
+    {
+      "fold_id": "holdout_2015",
+      "test_event": "event_2015_improvement_surcharge",
+      "training_events": [
+        "event_2019_nys_congestion_surcharge",
+        "event_2022_tlc_taximeter_adjustment",
+        "event_2025_mta_crz"
+      ],
+      "development_rows": 50496,
+      "test_history_rows": 13676,
+      "test_action_rows": 3156,
+      "test_target_rows": 3156,
+      "test_graph_relation_counts": {
+        "action_exposure": 263,
+        "geographic_adjacency": 692,
+        "origin_destination_flow": 2092
+      }
+    },
+    {
+      "fold_id": "holdout_2019",
+      "test_event": "event_2019_nys_congestion_surcharge",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2022_tlc_taximeter_adjustment",
+        "event_2025_mta_crz"
+      ],
+      "development_rows": 50496,
+      "test_history_rows": 13676,
+      "test_action_rows": 3156,
+      "test_target_rows": 3156,
+      "test_graph_relation_counts": {
+        "action_exposure": 263,
+        "geographic_adjacency": 692,
+        "origin_destination_flow": 2082
+      }
+    },
+    {
+      "fold_id": "holdout_2022",
+      "test_event": "event_2022_tlc_taximeter_adjustment",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2019_nys_congestion_surcharge",
+        "event_2025_mta_crz"
+      ],
+      "development_rows": 50496,
+      "test_history_rows": 13676,
+      "test_action_rows": 3156,
+      "test_target_rows": 3156,
+      "test_graph_relation_counts": {
+        "action_exposure": 263,
+        "geographic_adjacency": 692,
+        "origin_destination_flow": 2076
+      }
+    },
+    {
+      "fold_id": "holdout_2025",
+      "test_event": "event_2025_mta_crz",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2019_nys_congestion_surcharge",
+        "event_2022_tlc_taximeter_adjustment"
+      ],
+      "development_rows": 50496,
+      "test_history_rows": 13676,
+      "test_action_rows": 3156,
+      "test_target_rows": 3156,
+      "test_graph_relation_counts": {
+        "action_exposure": 263,
+        "geographic_adjacency": 692,
+        "origin_destination_flow": 2059
+      }
+    }
+  ],
+  "artifacts": {
+    "zone_metadata": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/graph/zone_metadata.parquet",
+      "bytes": 8489,
+      "sha256": "8cae554be9ab0fc12b99106eda2e47159c7036eb3d7c44d74bca11be5ffeca37",
+      "row_count": 263
+    },
+    "events": {
+      "event_2015_improvement_surcharge": {
+        "weekly_state_action": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2015_improvement_surcharge/weekly_state_action.parquet",
+          "bytes": 263764,
+          "sha256": "6828065b45c766fdb2a279d88d8363384228fc4a2c701efb850c34315f9a189a",
+          "row_count": 16832
+        },
+        "spatial_edges": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2015_improvement_surcharge/spatial_edges.parquet",
+          "bytes": 28218,
+          "sha256": "432a312781e9856e9a49966fca4c9fc49a56e01993aadf7f12df2a51a08ab52c",
+          "row_count": 3047
+        }
+      },
+      "event_2019_nys_congestion_surcharge": {
+        "weekly_state_action": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2019_nys_congestion_surcharge/weekly_state_action.parquet",
+          "bytes": 253883,
+          "sha256": "0e2f11ff4911a5e0313de327890d8a9f92e61712846476b898eb23d39d3e6ed4",
+          "row_count": 16832
+        },
+        "spatial_edges": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2019_nys_congestion_surcharge/spatial_edges.parquet",
+          "bytes": 31159,
+          "sha256": "51429bee2978345b1c3ecae72c080b70bd0e8df9aa6dbfbe5c82028ed1d91e45",
+          "row_count": 3037
+        }
+      },
+      "event_2022_tlc_taximeter_adjustment": {
+        "weekly_state_action": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2022_tlc_taximeter_adjustment/weekly_state_action.parquet",
+          "bytes": 255469,
+          "sha256": "399896ac961534201d2135e3f10af4513028a2559392007222cdcbd194a507ce",
+          "row_count": 16832
+        },
+        "spatial_edges": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2022_tlc_taximeter_adjustment/spatial_edges.parquet",
+          "bytes": 29403,
+          "sha256": "59558e70f19adc8eb7f4ea8615bd28b720d5151d6de868efdacab350ea150dfe",
+          "row_count": 3031
+        }
+      },
+      "event_2025_mta_crz": {
+        "weekly_state_action": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2025_mta_crz/weekly_state_action.parquet",
+          "bytes": 230770,
+          "sha256": "815361e325ad4eff919cb13449ad976e3ae46110588539a31f4714345c15ccf8",
+          "row_count": 16832
+        },
+        "spatial_edges": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2025_mta_crz/spatial_edges.parquet",
+          "bytes": 30398,
+          "sha256": "e6b2873ef6be59376107c014b47fc2fc952621a238fda6a676256401aa786469",
+          "row_count": 3014
+        }
+      }
+    },
+    "folds": {
+      "holdout_2015": {
+        "development": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/development/weekly_state_action.parquet",
+          "bytes": 659326,
+          "sha256": "737a881fc78dca43a6ed8bb5016bf5b489d2a71278f66818cf6f701aab6694df",
+          "row_count": 50496
+        },
+        "training_manifest": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/development/training_row_manifest.json",
+          "bytes": 1042,
+          "sha256": "ba9c61d190c5ca78a25a96df433b8719e7e35bbb4abdbf71a2b3a63bebca9b9a"
+        },
+        "test_history": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/test_input/weekly_state_history.parquet",
+          "bytes": 221860,
+          "sha256": "43ab6bf7af282d282c6c5198499a659ddaf967458239d60d61b42ef400ede5af",
+          "row_count": 13676
+        },
+        "test_action": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/test_input/future_action_spec.parquet",
+          "bytes": 18267,
+          "sha256": "548b4942c0fbc8eee3e87f9cf23ec798ff7c241f253545d8b4290bb3ad92beca",
+          "row_count": 3156
+        },
+        "submission_keys": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/test_input/submission_keys.parquet",
+          "bytes": 5391,
+          "sha256": "255570eb116bebc5f76a2c76b54abb8a842fb307049d3bfc19ac6df59ebeaba4",
+          "row_count": 3156
+        },
+        "test_targets": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/test_targets/weekly_targets.parquet",
+          "bytes": 55986,
+          "sha256": "eb8e47acc6f6da36c5607618876f2e68ffad512cfa9371db363c3365c305f4ac",
+          "row_count": 3156
+        },
+        "zone_metadata": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/graph/zone_metadata.parquet",
+          "bytes": 8489,
+          "sha256": "8cae554be9ab0fc12b99106eda2e47159c7036eb3d7c44d74bca11be5ffeca37",
+          "row_count": 263
+        },
+        "test_spatial_edges": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/graph/test_spatial_edges.parquet",
+          "bytes": 28218,
+          "sha256": "432a312781e9856e9a49966fca4c9fc49a56e01993aadf7f12df2a51a08ab52c",
+          "row_count": 3047
+        },
+        "training_graph_index": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/graph/training_graph_index.json",
+          "bytes": 1205,
+          "sha256": "c5adb19f0ecd7bdb81e3866389d1a1d5db4e36d2bccdf00769892ddd6d1a7ce8"
+        }
+      },
+      "holdout_2019": {
+        "development": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/development/weekly_state_action.parquet",
+          "bytes": 664465,
+          "sha256": "5fd0ddf3ce69cdec7b3488a7bfa7e04d6fed515ea40f6f6f012e57108ce80b8b",
+          "row_count": 50496
+        },
+        "training_manifest": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/development/training_row_manifest.json",
+          "bytes": 1042,
+          "sha256": "8ec74e0be3084e15e2b1af920f793beb700e2b76eca0c5c592dc5db9e0558fd5"
+        },
+        "test_history": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/test_input/weekly_state_history.parquet",
+          "bytes": 208811,
+          "sha256": "d27d469a550757f099b66f4ab2eb3234c06f19d3a0c9ba42e5f7839397993d20",
+          "row_count": 13676
+        },
+        "test_action": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/test_input/future_action_spec.parquet",
+          "bytes": 27288,
+          "sha256": "14c0a3af690bb776a7db21d8993ed60a11423bbdfc0dd4c8d9c1240f373942da",
+          "row_count": 3156
+        },
+        "submission_keys": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/test_input/submission_keys.parquet",
+          "bytes": 5391,
+          "sha256": "255570eb116bebc5f76a2c76b54abb8a842fb307049d3bfc19ac6df59ebeaba4",
+          "row_count": 3156
+        },
+        "test_targets": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/test_targets/weekly_targets.parquet",
+          "bytes": 52420,
+          "sha256": "a9ab835e8c64a01a129faf25ffaba1025e54124876b01b43eb55566f686f3c1c",
+          "row_count": 3156
+        },
+        "zone_metadata": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/graph/zone_metadata.parquet",
+          "bytes": 8489,
+          "sha256": "8cae554be9ab0fc12b99106eda2e47159c7036eb3d7c44d74bca11be5ffeca37",
+          "row_count": 263
+        },
+        "test_spatial_edges": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/graph/test_spatial_edges.parquet",
+          "bytes": 31159,
+          "sha256": "51429bee2978345b1c3ecae72c080b70bd0e8df9aa6dbfbe5c82028ed1d91e45",
+          "row_count": 3037
+        },
+        "training_graph_index": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/graph/training_graph_index.json",
+          "bytes": 1202,
+          "sha256": "12315b3a9b77d27a7ba169a956f91590580585fd8f7aa1502e21ca4411a9d7b8"
+        }
+      },
+      "holdout_2022": {
+        "development": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2022/development/weekly_state_action.parquet",
+          "bytes": 667169,
+          "sha256": "fc28c65d7efcd8794a125d7779237077da7bb82272dddf6b52cbcc0f9d7cdeff",
+          "row_count": 50496
+        },
+        "training_manifest": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2022/development/training_row_manifest.json",
+          "bytes": 1042,
+          "sha256": "bfa442a6cdc0141169d4116c614aa33ab5c96b523cfed24aff115090bbb1c455"
+        },
+        "test_history": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2022/test_input/weekly_state_history.parquet",
+          "bytes": 182404,
+          "sha256": "f42fbc90ab04782b1bb2e8172a658c6d0410ad66874411ad6490aa3e256293d5",
+          "row_count": 13676
+        },
+        "test_action": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2022/test_input/future_action_spec.parquet",
+          "bytes": 58767,
+          "sha256": "ea79789067aeaf8cfcbb5372ffb116334a1a86b53fa93ac18a661d928554a217",
+          "row_count": 3156
+        },
+        "submission_keys": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2022/test_input/submission_keys.parquet",
+          "bytes": 5391,
+          "sha256": "255570eb116bebc5f76a2c76b54abb8a842fb307049d3bfc19ac6df59ebeaba4",
+          "row_count": 3156
+        },
+        "test_targets": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2022/test_targets/weekly_targets.parquet",
+          "bytes": 45666,
+          "sha256": "bc1c3fa4911e68932f8bfb65699fbf59a927d401aa73dc1f35d58f343b2edccc",
+          "row_count": 3156
+        },
+        "zone_metadata": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2022/graph/zone_metadata.parquet",
+          "bytes": 8489,
+          "sha256": "8cae554be9ab0fc12b99106eda2e47159c7036eb3d7c44d74bca11be5ffeca37",
+          "row_count": 263
+        },
+        "test_spatial_edges": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2022/graph/test_spatial_edges.parquet",
+          "bytes": 29403,
+          "sha256": "59558e70f19adc8eb7f4ea8615bd28b720d5151d6de868efdacab350ea150dfe",
+          "row_count": 3031
+        },
+        "training_graph_index": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2022/graph/training_graph_index.json",
+          "bytes": 1202,
+          "sha256": "13bff0da97bc7a1c2295a4bfe2dba13a974900f03e66fedfc1bd06b748afe95f"
+        }
+      },
+      "holdout_2025": {
+        "development": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2025/development/weekly_state_action.parquet",
+          "bytes": 686228,
+          "sha256": "af5760bd93b0785d4c294c93399bae09efa8e7cf20fe22447d210687a6bf56c2",
+          "row_count": 50496
+        },
+        "training_manifest": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2025/development/training_row_manifest.json",
+          "bytes": 1042,
+          "sha256": "9fccd68e1cb5fb82ff359fa52e911b515203e0aeba8a66d6064ebee839092960"
+        },
+        "test_history": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2025/test_input/weekly_state_history.parquet",
+          "bytes": 185145,
+          "sha256": "f6939513da1e8f8c10fcb391174d2a484b6433ff83ef4ab15d472a2150d0a512",
+          "row_count": 13676
+        },
+        "test_action": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2025/test_input/future_action_spec.parquet",
+          "bytes": 27093,
+          "sha256": "408fe9ec73624707eb6a1f5dd75e9807199f7b5e86200bb5bdf6b325da08d3b4",
+          "row_count": 3156
+        },
+        "submission_keys": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2025/test_input/submission_keys.parquet",
+          "bytes": 5391,
+          "sha256": "255570eb116bebc5f76a2c76b54abb8a842fb307049d3bfc19ac6df59ebeaba4",
+          "row_count": 3156
+        },
+        "test_targets": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2025/test_targets/weekly_targets.parquet",
+          "bytes": 49412,
+          "sha256": "4e3913cff5f5ee923d547653b2362342895129d82aeaeac31ccf9b3f3ee16876",
+          "row_count": 3156
+        },
+        "zone_metadata": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2025/graph/zone_metadata.parquet",
+          "bytes": 8489,
+          "sha256": "8cae554be9ab0fc12b99106eda2e47159c7036eb3d7c44d74bca11be5ffeca37",
+          "row_count": 263
+        },
+        "test_spatial_edges": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2025/graph/test_spatial_edges.parquet",
+          "bytes": 30398,
+          "sha256": "e6b2873ef6be59376107c014b47fc2fc952621a238fda6a676256401aa786469",
+          "row_count": 3014
+        },
+        "training_graph_index": {
+          "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2025/graph/training_graph_index.json",
+          "bytes": 1219,
+          "sha256": "e10f32db6aadf61d06ef3e75de408c0a271694cddb8d351b27e4e761588fbc6c"
+        }
+      }
+    }
+  },
+  "firewall": {
+    "fold_targets_written_to_separate_directories": true,
+    "current_fold_target_path_permitted_for_model_runtime": false,
+    "heldout_event_pre_action_graph_permitted": true,
+    "heldout_event_post_action_graph_update_permitted": false,
+    "analyst_blindness_claimed": false
+  }
+}

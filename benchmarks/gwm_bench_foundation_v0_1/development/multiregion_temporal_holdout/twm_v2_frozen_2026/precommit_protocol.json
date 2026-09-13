@@ -1,0 +1,547 @@
+{
+  "schema": "gwm_bench.twm_v2_2026_candidate_precommit.v1",
+  "protocol_id": "TWM-V2-TEMPORAL-2026-PRECOMMIT-v1",
+  "status": "candidate_and_predictions_sealed_before_2026_labels",
+  "candidate_fingerprint": "a822146464624aa8a78e1844472b1841b4f10d084ac79d1f8a3ae1b71dc72242",
+  "forecast_origin_year": 2020,
+  "prediction_years": [
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+  ],
+  "scored_year": 2026,
+  "scored_regions": [
+    "上海市_浦东新区_祝桥镇",
+    "东莞市_东莞市_虎门镇",
+    "佛山市_高明区_杨和镇",
+    "北京市_密云县_石城镇",
+    "南京市_六合区_马鞍街道",
+    "厦门市_同安区_莲花镇",
+    "合肥市_巢湖市_散兵镇",
+    "天津市_滨海新区_临港工业区",
+    "宁波市_余姚市_小曹娥镇",
+    "广州市_增城区_正果镇",
+    "成都市_桂阳县_舂陵江镇",
+    "杭州市_淳安县_界首乡",
+    "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+    "深圳市_龙岗区_南澳街道",
+    "福州市_永泰县_嵩口镇",
+    "苏州市_吴江区_黎里镇",
+    "西安市_周至县_陈河镇",
+    "郑州市_荥阳市_广武镇",
+    "重庆市_云阳县_江口镇",
+    "长沙市_浏阳市_高坪镇"
+  ],
+  "candidate": {
+    "name": "TWM V2 unified one-year recursive model",
+    "seeds": [
+      31,
+      47,
+      73
+    ],
+    "epochs": 80,
+    "training_windows": [
+      [
+        2017,
+        2018
+      ],
+      [
+        2018,
+        2019
+      ],
+      [
+        2019,
+        2020
+      ]
+    ],
+    "model_selection_data": "2017-2020 validation-region annual windows only",
+    "recursive_context": "recompute predicted change history, neighborhood distribution, built share, entropy, and same-class share every year",
+    "annual_change_control": "validation-selected cap from training-period regional change-rate statistics",
+    "post_2020_observed_land_or_viirs_used": false,
+    "labels_2021_2025_used_for_training_or_selection": false,
+    "weights_retrained_for_2026": false,
+    "parameters_reselected_for_2026": false,
+    "member_count": 3,
+    "fold_count": 5
+  },
+  "members": [
+    {
+      "seed": 31,
+      "folds": [
+        {
+          "fold_index": 0,
+          "weights": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_0_weights.pt",
+            "path_scope": "benchmark_relative",
+            "sha256": "21e40a5b29eb647a0b431276ddfcddf79c0b2cfb65350401eede52822031d58d",
+            "size_bytes": 484454
+          },
+          "selection_trials": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_0_selection_trials.json",
+            "path_scope": "benchmark_relative",
+            "sha256": "a9d988805ac83a39a50579f2e08f5e87a4ed0025358e844d5abd773569abea68",
+            "size_bytes": 22008
+          },
+          "selected_logit_offset": -0.5,
+          "selected_cap_rate": 0.03485
+        },
+        {
+          "fold_index": 1,
+          "weights": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_1_weights.pt",
+            "path_scope": "benchmark_relative",
+            "sha256": "d16a5297d34adb87615c119729ed82aa8e33e0c9d3339fa5ad6fb3cc7c9bb537",
+            "size_bytes": 484454
+          },
+          "selection_trials": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_1_selection_trials.json",
+            "path_scope": "benchmark_relative",
+            "sha256": "aede75167ad890f8454ac9a34e412b8dd4ff327942433ddbac15f01a2be1fe65",
+            "size_bytes": 21497
+          },
+          "selected_logit_offset": -0.5,
+          "selected_cap_rate": 0.148148
+        },
+        {
+          "fold_index": 2,
+          "weights": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_2_weights.pt",
+            "path_scope": "benchmark_relative",
+            "sha256": "7b7147370af2356ff5086dc5b882543824ccc56fe8f58b7f9fe3ff57fe222f81",
+            "size_bytes": 484454
+          },
+          "selection_trials": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_2_selection_trials.json",
+            "path_scope": "benchmark_relative",
+            "sha256": "8d7784a075dbf366671624666a8f560eb311cbb10c6567e72ac0b2901af442b7",
+            "size_bytes": 22315
+          },
+          "selected_logit_offset": -1.0,
+          "selected_cap_rate": 0.107143
+        },
+        {
+          "fold_index": 3,
+          "weights": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_3_weights.pt",
+            "path_scope": "benchmark_relative",
+            "sha256": "fb5afa43615c339428add10d5d6c11281f3cdc4b030e2c5ef4ff62be26e2b7aa",
+            "size_bytes": 484454
+          },
+          "selection_trials": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_3_selection_trials.json",
+            "path_scope": "benchmark_relative",
+            "sha256": "4659815a319b26a94f5ad3825949aa214110dd954d0be9ce99959a2232f5d3b9",
+            "size_bytes": 22140
+          },
+          "selected_logit_offset": 0.5,
+          "selected_cap_rate": 0.035088
+        },
+        {
+          "fold_index": 4,
+          "weights": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_4_weights.pt",
+            "path_scope": "benchmark_relative",
+            "sha256": "030a470a09f93ca780bf5877a0a6181c9705059cb3d10b7fb2109ba9e99dd0e8",
+            "size_bytes": 484454
+          },
+          "selection_trials": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_4_selection_trials.json",
+            "path_scope": "benchmark_relative",
+            "sha256": "6e14b4eca47aa169b7b9cca0c556c4a362904ce29e926a5eb4d8718069d468cc",
+            "size_bytes": 22416
+          },
+          "selected_logit_offset": 0.0,
+          "selected_cap_rate": 0.110035
+        }
+      ],
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/seed_31_prediction_2021_2026.parquet",
+        "role": "precommitted_2021_2026_member_prediction",
+        "size_bytes": 42684,
+        "sha256": "26d939b5d905b2f1b47188a3784268804d6040bfc8f692983d32cc39279cb8c9"
+      }
+    },
+    {
+      "seed": 47,
+      "folds": [
+        {
+          "fold_index": 0,
+          "weights": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_0_weights.pt",
+            "path_scope": "benchmark_relative",
+            "sha256": "64bc743f8336479a4f3dbd51a8d1c76fd6867a70b9fadee312a677989923274d",
+            "size_bytes": 484454
+          },
+          "selection_trials": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_0_selection_trials.json",
+            "path_scope": "benchmark_relative",
+            "sha256": "9dc15a2ceaab07ceb4cc9a587cee5ffda0adb1f76a0b53d7a9f60ae860dfaadb",
+            "size_bytes": 21835
+          },
+          "selected_logit_offset": -0.5,
+          "selected_cap_rate": 0.03485
+        },
+        {
+          "fold_index": 1,
+          "weights": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_1_weights.pt",
+            "path_scope": "benchmark_relative",
+            "sha256": "8c8d97fedae39f753b97a5f04a936040426225c1a3d208dcdd395f80c33596a0",
+            "size_bytes": 484454
+          },
+          "selection_trials": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_1_selection_trials.json",
+            "path_scope": "benchmark_relative",
+            "sha256": "f25011736a94f1ab974a26ea154adb58eddeab3af68c9c0761218785dbee43c2",
+            "size_bytes": 21474
+          },
+          "selected_logit_offset": -0.5,
+          "selected_cap_rate": 0.119685
+        },
+        {
+          "fold_index": 2,
+          "weights": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_2_weights.pt",
+            "path_scope": "benchmark_relative",
+            "sha256": "dcad57c67d6f3ff3fe1e47b7f7de80123dc298a29d47ab753757f599282fa6da",
+            "size_bytes": 484454
+          },
+          "selection_trials": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_2_selection_trials.json",
+            "path_scope": "benchmark_relative",
+            "sha256": "c5111b493c5e8765f88a68712b86d6191ba2c74693255db5e1e85ff12ede3aa5",
+            "size_bytes": 22320
+          },
+          "selected_logit_offset": -1.0,
+          "selected_cap_rate": 0.107143
+        },
+        {
+          "fold_index": 3,
+          "weights": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_3_weights.pt",
+            "path_scope": "benchmark_relative",
+            "sha256": "c87d2fe11e0cecf43271f9ae0e3709e9dce08788a511fc7405e7c715aafc1df8",
+            "size_bytes": 484454
+          },
+          "selection_trials": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_3_selection_trials.json",
+            "path_scope": "benchmark_relative",
+            "sha256": "6249e5db43b46a86b562cf6b0bf00bae19f5acc242aee7f623a35ef92c1ec69d",
+            "size_bytes": 22029
+          },
+          "selected_logit_offset": 0.0,
+          "selected_cap_rate": 0.168864
+        },
+        {
+          "fold_index": 4,
+          "weights": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_4_weights.pt",
+            "path_scope": "benchmark_relative",
+            "sha256": "0a0057f09be91ae2f954f8df9ca05b63dfbc01df4196ef3087b3b42aec5e7574",
+            "size_bytes": 484454
+          },
+          "selection_trials": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_4_selection_trials.json",
+            "path_scope": "benchmark_relative",
+            "sha256": "6a92d78e6b0c1eb2cb02b0f7130610fc63c4a6552b803115b4c8fb2b452ca774",
+            "size_bytes": 22319
+          },
+          "selected_logit_offset": 0.0,
+          "selected_cap_rate": 0.148148
+        }
+      ],
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/seed_47_prediction_2021_2026.parquet",
+        "role": "precommitted_2021_2026_member_prediction",
+        "size_bytes": 52370,
+        "sha256": "a6773654354cb0d928c33dddb814db62bd9cda9594fae4c6cea272b55de28a6c"
+      }
+    },
+    {
+      "seed": 73,
+      "folds": [
+        {
+          "fold_index": 0,
+          "weights": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_0_weights.pt",
+            "path_scope": "benchmark_relative",
+            "sha256": "65bea9ab10a5c453b5db86d4e781279ca3bd47e1ef6d68a1c505778ead975d0a",
+            "size_bytes": 484454
+          },
+          "selection_trials": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_0_selection_trials.json",
+            "path_scope": "benchmark_relative",
+            "sha256": "eb8eb2ae2f6a63cf205f525eb2980297e05c54b1420164543fc7b7d4edc60751",
+            "size_bytes": 22189
+          },
+          "selected_logit_offset": 0.0,
+          "selected_cap_rate": 0.083398
+        },
+        {
+          "fold_index": 1,
+          "weights": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_1_weights.pt",
+            "path_scope": "benchmark_relative",
+            "sha256": "110dc42b7f3aab724fea1e3c692fd455ff51bddaa3d940a5e914d8944f343cac",
+            "size_bytes": 484454
+          },
+          "selection_trials": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_1_selection_trials.json",
+            "path_scope": "benchmark_relative",
+            "sha256": "1e4cb52293aad369e07213be07fe702cc99ab2da43c7a3b16ed1611ea5f525dc",
+            "size_bytes": 21506
+          },
+          "selected_logit_offset": -1.0,
+          "selected_cap_rate": 0.074168
+        },
+        {
+          "fold_index": 2,
+          "weights": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_2_weights.pt",
+            "path_scope": "benchmark_relative",
+            "sha256": "bf67d9342afaf735682e94e01874e6ffdc92e1453c73d587f093114c221e4c3c",
+            "size_bytes": 484454
+          },
+          "selection_trials": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_2_selection_trials.json",
+            "path_scope": "benchmark_relative",
+            "sha256": "96164ff5c7937e68593a5adfc0ce6abac2b4f1177e3032a8ced0a606e1f81a87",
+            "size_bytes": 22425
+          },
+          "selected_logit_offset": -0.5,
+          "selected_cap_rate": 0.107143
+        },
+        {
+          "fold_index": 3,
+          "weights": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_3_weights.pt",
+            "path_scope": "benchmark_relative",
+            "sha256": "ef2b94f9c694f2a1320c7e8b81ea709bde85a179f34c9c28350e28ecfe988dc2",
+            "size_bytes": 484454
+          },
+          "selection_trials": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_3_selection_trials.json",
+            "path_scope": "benchmark_relative",
+            "sha256": "c86128817352e1e8a2b9c6124cbd8ff2203e254a2100208fc18b3f1476f962f3",
+            "size_bytes": 22149
+          },
+          "selected_logit_offset": 0.5,
+          "selected_cap_rate": 0.110639
+        },
+        {
+          "fold_index": 4,
+          "weights": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_4_weights.pt",
+            "path_scope": "benchmark_relative",
+            "sha256": "ce87bee44f660217755e2a82b400e08c5b7e47e87443490bbde173807b7708b8",
+            "size_bytes": 484454
+          },
+          "selection_trials": {
+            "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_4_selection_trials.json",
+            "path_scope": "benchmark_relative",
+            "sha256": "c691f6ce2928c90872c78a3cc1f4f5446f7871a01b2d5d814398560c9aaa0b96",
+            "size_bytes": 22263
+          },
+          "selected_logit_offset": 0.5,
+          "selected_cap_rate": 0.110035
+        }
+      ],
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/seed_73_prediction_2021_2026.parquet",
+        "role": "precommitted_2021_2026_member_prediction",
+        "size_bytes": 46511,
+        "sha256": "b091ad1a701b51333b22ceaccdbef57b48bdbfb21c8bf68f333484e4b2a9d8cd"
+      }
+    }
+  ],
+  "artifacts": {
+    "prediction": {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/twm_v2_prediction_2021_2026.parquet",
+      "role": "precommitted_2021_2026_ensemble_prediction",
+      "size_bytes": 73078,
+      "sha256": "2a4987cb75a1d43f04e85b765633af1e185415a0143edf79da3bb9eb683b1312"
+    },
+    "baselines": {
+      "persistence": {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/persistence_prediction_2021_2026.parquet",
+        "role": "precommitted_2026_persistence_baseline",
+        "size_bytes": 11812,
+        "sha256": "f731761da7239067b69dd2653b38577b1d627bed5bd2ad2f9a6dd20a07d18d44"
+      },
+      "fixed_adjacency": {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/fixed_adjacency_prediction_2021_2026.parquet",
+        "role": "precommitted_2026_fixed_adjacency_baseline",
+        "size_bytes": 454682,
+        "sha256": "9f965eff1d42b0818686287afab48937b0044b3dd1736367d2da9bbdd10ff543"
+      }
+    },
+    "source": [
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/commit_twm_v2_2026_forecast.py",
+        "role": "2026_precommit_program",
+        "size_bytes": 21261,
+        "sha256": "f76f0228dc4c79b13498d1f25c59d1e0882424891b2c207a3cc1c375514748ba"
+      },
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/build_baselines_and_controls.py",
+        "role": "frozen_prediction_dependency",
+        "size_bytes": 19892,
+        "sha256": "361fd142760fe8e6d0fd1216815e0c870a40cef91079cd39c45e6adf5edaf347"
+      },
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/observed_evaluator.py",
+        "role": "frozen_prediction_dependency",
+        "size_bytes": 9779,
+        "sha256": "fe487c54c880bf24a413bb4798d70c6c7f20ae778dc9c8a822df86e5dd9d3746"
+      },
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/run_twm_multiregion_posthoc_v2.py",
+        "role": "frozen_prediction_dependency",
+        "size_bytes": 27824,
+        "sha256": "a56f0ad6af19eb23d19d55994ee20e193e0f1be14ddc74201d2825466341c66d"
+      },
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/run_twm_observed_scenario.py",
+        "role": "frozen_prediction_dependency",
+        "size_bytes": 50242,
+        "sha256": "a96a837a1922a70c02186919fa55e897a472f55642d7cdc73b4b5eeae6595485"
+      },
+      {
+        "path": "data_agent/uwm/dam_geospatial_kernel/twm_adapter.py",
+        "role": "frozen_prediction_dependency",
+        "size_bytes": 16758,
+        "sha256": "cfe0c35c983d23f77e84b7dc43516fb127deeaade91987261045b24b436e6db2"
+      },
+      {
+        "path": "data_agent/uwm/dam_geospatial_kernel/twm_sequence_adapter.py",
+        "role": "frozen_prediction_dependency",
+        "size_bytes": 19314,
+        "sha256": "a9e3d99d1af7e95a2313d7eaff179ecafad21129fdb41407c9da0c87928b5841"
+      },
+      {
+        "path": "data_agent/uwm/dam_geospatial_kernel/model.py",
+        "role": "frozen_prediction_dependency",
+        "size_bytes": 16463,
+        "sha256": "bbe35d52aa755a67e3e1fe6e5c44c39f7c63da201714fdc367566c0b3d72e769"
+      },
+      {
+        "path": "data_agent/uwm/dam_geospatial_kernel/contracts.py",
+        "role": "frozen_prediction_dependency",
+        "size_bytes": 6397,
+        "sha256": "2ef476ae30ae1ccd5829115f04de214dc42815188a4d2058b618ef71cef7f26e"
+      },
+      {
+        "path": "data_agent/uwm/dam_geospatial_kernel/twm_transition_head.py",
+        "role": "frozen_prediction_dependency",
+        "size_bytes": 2838,
+        "sha256": "58219107edb6160b1a1e8991d37e55478c972cfcefc43a5c8dc86d3a9eb25610"
+      },
+      {
+        "path": "data_agent/uwm/dam_geospatial_kernel/twm_sequence_benchmark.py",
+        "role": "frozen_prediction_dependency",
+        "size_bytes": 33399,
+        "sha256": "79813ddf37300796a13ed6637847b5b870ebfb960097692c7dabbb0660d137e9"
+      }
+    ],
+    "inputs": [
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/prediction_report.json",
+        "role": "frozen_v2_development_report",
+        "size_bytes": 25211,
+        "sha256": "b9db8c8591a699b6f6f1711a8ff8e9d857c4ce4a2a2b04b1030f8ce149651d44"
+      },
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/bundle_manifest.json",
+        "role": "frozen_model_input",
+        "size_bytes": 100435,
+        "sha256": "1310e534c31bee5948b445d65149a19de310304490c4893bd18332395de2c8cb"
+      },
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/region_folds.json",
+        "role": "frozen_model_input",
+        "size_bytes": 5237,
+        "sha256": "d30751b5e5b455e674f72fa29a39a61aa5060288fe2c5857077d0d5d329a4222"
+      },
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/observed_train.parquet",
+        "role": "frozen_model_input",
+        "size_bytes": 71012,
+        "sha256": "05e8de613f1ca58184dfe1917e4e4ce07630bd9b9f386db1950bec6dafb16ab2"
+      },
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/observed_inputs.parquet",
+        "role": "frozen_model_input",
+        "size_bytes": 58539,
+        "sha256": "6f1323959276e53e467d2abf66d8cc00b861cf616fec34a41f76a0aa7be2015e"
+      },
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/observed_edges.parquet",
+        "role": "frozen_model_input",
+        "size_bytes": 15448,
+        "sha256": "70f63a5b217624c28d90f4cbf1c25d7e9aa621c138bce50a63f443ba2fce96aa"
+      }
+    ]
+  },
+  "hidden_label_registration": {
+    "status": "not_yet_available",
+    "required_source": "GOOGLE/DYNAMICWORLD/V1 annual mode label",
+    "required_observation_window_utc": [
+      "2026-01-01T00:00:00Z",
+      "2027-01-01T00:00:00Z"
+    ],
+    "earliest_valid_export_date": "2027-01-01",
+    "required_years": [
+      2025,
+      2026
+    ],
+    "required_region_count": 20,
+    "required_grid": "exact match to each frozen 2020 reference raster",
+    "pixel_values_opened_during_precommit": false
+  },
+  "evaluation_protocol": {
+    "primary_metric": "unweighted_mean_of_20_region_2026_change_f1",
+    "secondary_metrics": [
+      "overall_change_f1",
+      "changed_destination_macro_f1",
+      "overall_class_macro_f1",
+      "multiclass_brier_score",
+      "predicted_to_observed_change_ratio"
+    ],
+    "predicted_change": "committed_2026_argmax_differs_from_committed_2025_argmax",
+    "observed_change": "hidden_2026_class_differs_from_registered_2025_class",
+    "zero_denominator_change_f1": 1.0,
+    "no_single_composite_score": true,
+    "data_sufficiency": {
+      "minimum_total_observed_changes": 20,
+      "minimum_regions_with_at_least_one_observed_change": 10,
+      "failure_effect": "inconclusive_not_pass_or_fail"
+    },
+    "acceptance_gates_all_required": [
+      "primary_metric_strictly_exceeds_both_precommitted_baselines",
+      "overall_change_f1_strictly_exceeds_both_precommitted_baselines",
+      "overall_change_f1_at_least_0.15",
+      "overall_class_macro_f1_at_least_persistence",
+      "multiclass_brier_score_no_greater_than_persistence",
+      "predicted_to_observed_change_ratio_between_0.5_and_1.75"
+    ]
+  },
+  "integrity": {
+    "v2_source_hash_verified": true,
+    "all_15_weight_hashes_verified": true,
+    "all_15_selection_trial_hashes_verified": true,
+    "2026_label_manifest_accessed": false,
+    "2026_label_pixels_accessed": false,
+    "prediction_hash_committed_before_labels": true,
+    "post_commit_model_or_threshold_changes_allowed": false
+  },
+  "claim_boundary": {
+    "on_pass": "bounded_2026_temporal_generalization_on_20_existing_regions",
+    "new_geography_generalization": false,
+    "operational_forecast_validation": false,
+    "general_twm_supported": false,
+    "general_gwm_supported": false
+  }
+}

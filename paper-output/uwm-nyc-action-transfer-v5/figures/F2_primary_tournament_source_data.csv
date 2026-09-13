@@ -1,0 +1,20 @@
+model_id,model_label,model_type,primary_error,rank,panel,gate,passed
+wrong_spatial_scope,Wrong spatial scope,negative_control,0.3814956386854111,11.0,a,,
+dam_gk_residual_no_action,DAM-GK residual without action,matched_no_action,0.3724083676061702,10.0,a,,
+cross_event_action_swap,Cross-event action swap,negative_control,0.3711788010272445,9.0,a,,
+effective_date_minus_4w,Action date -4 weeks,negative_control,0.3703077429712191,8.0,a,,
+uwm_dam_gk_action_residual,DAM-GK correct action residual,candidate,0.3683892390054192,7.0,a,,
+action_component_permutation,Action component permutation,negative_control,0.3648470197799787,6.0,a,,
+zone_exposure_shuffle_seed_20260723,Zone exposure shuffle,negative_control,0.3640116597376684,5.0,a,,
+history_ar_backbone,History AR backbone,baseline,0.3626162626409588,3.0,a,,
+action_deleted,Action deleted,negative_control,0.3626162626409588,4.0,a,,
+fixed_adjacency_spatial_ar,Fixed-adjacency spatial AR,baseline,0.3614161216976079,2.0,a,,
+effective_date_plus_4w,Action date +4 weeks,negative_control,0.3589183344673512,1.0,a,,
+,,,,,b,mean_fold_skill_at_least_one_percent,False
+,,,,,b,paired_bootstrap_interval_entirely_below_zero,False
+,,,,,b,at_least_three_of_four_events_improve,False
+,,,,,b,no_fold_degrades_more_than_two_percent,False
+,,,,,b,at_least_twelve_of_sixteen_event_target_pairs_improve,False
+,,,,,b,at_least_four_of_five_reported_horizons_improve,False
+,,,,,b,correct_action_beats_every_frozen_control_equal_event,False
+,,,,,b,correct_action_beats_every_control_in_three_of_four_folds,False

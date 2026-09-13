@@ -1,0 +1,17 @@
+{
+  "schema": "gwm_bench.v3_internal_baseline_model.v1",
+  "model_id": "state_persistence",
+  "forecast_origin_year": 2022,
+  "target_years": [
+    2023,
+    2024,
+    2025
+  ],
+  "rollout": "three_step_open_loop_without_observed_writeback",
+  "class_count": 9,
+  "target_labels_used": false,
+  "post_2022_lockbox_pixels_read": false,
+  "algorithm": "repeat the 2022 class as a one-hot distribution",
+  "learned_parameters": false,
+  "development_source_fingerprint": null
+}

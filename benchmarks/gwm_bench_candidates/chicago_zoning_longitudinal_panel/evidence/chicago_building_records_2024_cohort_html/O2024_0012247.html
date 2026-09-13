@@ -1,0 +1,1895 @@
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Q7XJP1T5WP"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-Q7XJP1T5WP');
+</script>
+
+    <title>Building Permit and Inspection Records</title>
+
+    <!-- CSS -->
+	<link href="https://webapps1.cityofchicago.org/cdn/Bootstrap-4.0.0-beta.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/jQuery-UI-1.12.1/jquery-ui.min.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/DataTables-1.10.16/css/dataTables.jqueryui.min.css" rel="stylesheet">
+	<link href="https://webapps1.cityofchicago.org/cdn/Responsive-2.2.1/css/responsive.jqueryui.min.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/Bootstrap-ComboBox-1.1.8/bootstrap-combobox.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/TypeAhead-0.11.1/typeahead.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/City-1.0/city.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/MegaNavbar-2.2.0/skins/city.css" rel="stylesheet">
+    <link href="/buildingrecords/resources/FontAwesome-5.0.6/css/fontawesome-all.min.css" rel="stylesheet">
+    <link href="/buildingrecords/resources/City-1.0/application.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet" type="text/css">
+	
+	<!-- JavaScript -->
+	<script src="https://webapps1.cityofchicago.org/cdn/jQuery-3.2.1/jquery-3.2.1.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/jQuery-UI-1.12.1/jquery-ui.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/Moment-2.18.1/moment.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/DataTables-1.10.16/js/jquery.dataTables.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/DataTables-1.10.16/js/dataTables.jqueryui.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/Responsive-2.2.1/js/dataTables.responsive.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/Responsive-2.2.1/js/responsive.jqueryui.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/Bootstrap-ComboBox-1.1.8/bootstrap-combobox.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/TypeAhead-0.11.1/typeahead.bundle.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/TypeAhead-0.11.1/typeahead.jquery.js"></script>
+		
+	<link rel="Shortcut Icon" type="image/ico" href="/buildingrecords/resources/City-1.0/favicon-32x32.png">
+</head>
+
+<body>
+
+<div  class="page-wrapper">
+
+	<!-- Header -->
+	<div class="container-fluid" style="margin-bottom:0px;margin-top:0px;padding-bottom:10px;padding-top:10px;padding-right:20px;padding-left:20px;background-color: #0198DD">
+		<img class="img-fluid" src="/buildingrecords/resources/City-1.0/city-logo.png" alt="City of Chicago"/>
+	</div>
+	<!-- End Header -->
+	
+	<!--Narrow Header-->
+	<div class="container-fluid app-header" style="padding-left:0px;padding-right:0px;"> 
+		<a href='/buildingrecords/home' title="The City of Chicago's Official Site">
+			<img class="img-responsive" src="/buildingrecords/resources/City-1.0/banner.jpg" alt="Building Permit and Inspection Records" style="width:100%;"/>
+		</a>
+	</div>
+	<!--End Narrow Header -->
+		
+	<!--Start Navigation-->
+	
+
+
+
+<div class="container-fluid" style="padding-left:0px;padding-right:0px" id="noprint">
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light city-top-nav">
+
+	<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+		<span class="navbar-toggler-icon"></span>
+	</button>
+	
+	<div class="collapse navbar-collapse" id="navbarSupportedContent">
+		<ul class="navbar-nav mr-auto dropdown-onhover navbar-nav-city">	
+		
+			
+			
+					
+				
+					<li class="nav-item nav-item-city">
+						<li class="nav-item nav-item-city">
+	            		<a class="nav-link" href='/buildingrecords/search'>
+	            			Search
+	            		</a>
+	            	</li>
+	            	
+	            		
+	            	
+						<li class="nav-item nav-item-city">
+	            			<a class="nav-link" style="background-color:#013248; color:#FFFFFF;" href="#">
+	            				Results
+	            			</a>
+	            	</li>		     
+					
+						  
+					
+						
+	            	
+						       
+				
+								
+				
+				
+			
+						
+					
+		</ul>
+		
+		<ul class="navbar-nav dropdown-onhover navbar-nav-city" style="float: right; margin-right:0;">			
+			<li class="nav-item nav-item-city">
+				<a class="nav-link" href="/buildingrecords/buildingpermit" target="_blank">
+					Building Permit Application Status 
+				</a>
+			</li>
+			<li class="nav-item nav-item-city">
+				<a class="nav-link" href="http://www.cookcountyclerkofcourt.org/CourtCaseSearch/DocketSearch.aspx" target="_blank">
+					Circuit Court Case Status 
+				</a>
+			</li>
+			<li class="nav-item nav-item-city">
+				<a class="nav-link" href="https://data.cityofchicago.org/Administration-Finance/Ordinance-Violations-Buildings-/awqx-tuwv" target="_blank">
+					Administrative Hearing Case Status
+				</a>
+			</li>
+		</ul>
+	</div>
+</nav>
+</div>
+	<!--End Navigation-->
+	
+	
+	<!-- Body of the Site -->
+	<div class="container-fluid page-body">
+		
+
+
+
+
+<div class="city-row city-row-title">
+	<h3>Building Permit and Inspection Records</h3>
+</div>
+
+<div class="city-row" style="background-color:#e9ecef;border: 1px solid #ddd;">
+	<div class="city-row city-row-title">
+	<h6><b>Disclaimer</b></h6>
+	<p style="text-align: justify;">The information presented on this website is informational only and does not necessarily reflect the current condition of the building or property. The fact that a permit was issued does not confirm that work was performed, or that work was performed in accordance with that permit and the requirements of the Municipal Code.</p>
+	<p style="text-align: justify;">Information on inspections and alleged violations reflect conditions found by the inspector at the time of the inspection and not necessarily the current status of those alleged violations or the current condition of the property. The absence of alleged violations on this website does not mean a building or property is in compliance with the requirements of the Municipal Code.</p>
+	<p style="text-align: justify;">The Department of Buildings may refer certain alleged violations to the City's Department of Law for enforcement proceedings in the Department of Administrative Hearings or the Circuit Court of Cook County. Please contact the <a href="https://data.cityofchicago.org/Administration-Finance/Ordinance-Violations-Buildings-/awqx-tuwv" target="_blank">Department of Administrative Hearings</a> or the <a href="http://www.cookcountyclerkofcourt.org/CourtCaseSearch/DocketSearch.aspx" target="_blank">Clerk of the Circuit Court</a>, respectively to obtain records of these proceedings.</p>
+	</div>
+</div>
+
+
+<!-- INPUT ADDRESS --> 
+<div class="city-row city-row-title">
+	<h6 style="text-transform:uppercase;"><b>Input Address</b> </h6>
+	<p style="margin-bottom:0;">1228  W  RACE  AVE</p>	
+</div>
+
+
+<!-- RANGE ADDRESS SEARCH RESULTS --> 
+
+
+<div class="city-row city-row-title">
+	<h6 style="text-transform:uppercase;"><b>Range address</b></h6>
+	
+	<p style="margin-bottom:0;">1228-1228 W RACE AVE CHICAGO IL 60642</p>	
+	
+</div>
+
+
+
+<!-- BUILDING ATTRIBUTES SEARCH RESULTS --> 
+
+    
+    	<div id="scrolltoerror"></div>
+		<div class="city-row city-row-title">
+			<h6 style="margin-bottom:0px; text-transform:uppercase;"><b>Building Attributes</b></h6>
+		</div>
+	    <div  class="city-row" style="margin-bottom:30px;">
+		<table id=resultstable_attributes class="table-bordered table-striped display nowrap" style="width: 100%;" data-pagination="true">	
+			<thead>  
+			<tr>  
+				<th>BLDG ID</th>
+				<th>STORIES</th>
+				<th>BASEMENT</th>
+				<th>LENGTH</th>
+				<th>WIDTH</th>
+				<th>HEIGHT</th>
+				<th>FLR AREA</th>
+				<th>CONSTR TYPE</th>
+				<th>PORCH</th>
+				<th>LOT WIDTH</th>
+				<th>LOT LENGTH</th>
+				<th>DU</th>
+			</tr>  
+			</thead>
+			<tbody>
+			
+			<tr>
+				<td>347068</td>
+				<td>2</td>
+				<td>N</td>			
+				<td>60</td>
+				<td>20</td>
+				<td>0</td>
+				<td>1200</td>
+				<td>3B</td>
+				<td></td>
+				<td>25</td>
+				<td>100</td>
+				<td>3</td>
+			</tr>				
+			
+			</tbody>
+		</table>
+		</div>
+	
+
+
+<!-- PERMITS SEARCH RESULTS -->  
+
+
+	<div class="city-row city-row-title">
+		<h6 style="margin-bottom:0px; text-transform:uppercase;"><b>Building Permits</b></h6>
+	</div>	
+	<div class="city-row">
+		<table id=resultstable_permits class="table table-bordered table-striped compact display tdisplay dt-responsive dataTables_scrollBody" data-pagination="true" data-height="200" style="width:100%;">	
+			<thead>  
+				<tr>  
+					<th style="width:75px;">PERMIT #</th>
+					<th style="width:95px;">DATE ISSUED</th>
+					<th>DESCRIPTION OF WORK</th>
+				</tr>  
+			</thead>
+			<tbody>
+			
+				<tr>
+					<td>101063756</td>
+					<td>
+						<span style="display:none;">20250513</span>
+						05/13/2025
+					</td>
+					<td>SPR 2019 CBRC: REVISION TO PERMIT #101004830 TO RECONFIGURE THE 1ST FLOOR & BASEMENT TO A RESIDENTIAL UNIT TO A 3-DU BUILDING AND REMOVE SPRINKLER SYSTEM AS PER PLANS. (OCCUPANCY GROUP R5; TYPE 3A CONSTRUCTION)</td>
+				</tr>				
+			
+				<tr>
+					<td>100283877</td>
+					<td>
+						<span style="display:none;">20090325</span>
+						03/25/2009
+					</td>
+					<td>TUCKPOINT AND PATCH STUCCO.</td>
+				</tr>				
+			
+				<tr>
+					<td>100261021</td>
+					<td>
+						<span style="display:none;">20081015</span>
+						10/15/2008
+					</td>
+					<td>GARAGE</td>
+				</tr>				
+			
+			</tbody>
+		</table>
+	</div>	
+
+
+
+<!-- CASE ACTIVITY SEARCH RESULTS --> 
+
+	
+	<div class="city-row city-row-title">
+		<h6 style="margin-bottom:0px; text-transform:uppercase;"><b>Building Code Enforcement Case Activity</b></h6>
+	</div>
+	<div class="city-row">
+		<table id=resultstable_caseactivity class="table table-bordered table-striped compact display tdisplay dt-responsive dataTables_scrollBody" data-pagination="true" data-height="200" style="width:100%;">	
+			<thead>  
+				<tr>  
+					<th style="width:50%;">CASE NUMBER</th>
+					<th style="width:50%;">CASE TYPE</th>					
+				</tr>  
+			</thead>
+			<tbody>
+			
+				<tr>
+					<td>INFO NOT AVAILABLE</td>					
+					<td>CIRCUIT COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>21M1400968</td>					
+					<td>CIRCUIT COURT</td>
+				</tr>				
+			
+			</tbody>
+		</table>
+	</div>
+
+
+
+<!-- INSPECTIONS SEARCH RESULTS --> 
+
+
+	<div class="city-row city-row-title">
+		<h6 style="margin-bottom:0px; text-transform:uppercase;"><b>Department of Buildings Inspections</b></h6>
+	</div>	
+	<div class="city-row">
+		<table id=resultstable_inspections class="table table-bordered table-striped compact display tdisplay dt-responsive dataTables_scrollBody" data-pagination="true" data-height="200" style="width:100%;">	
+			<thead>  
+				<tr>  
+					<th style="width:75px;">INSP #</th>
+					<th style="width:120px;">INSPECTION DATE</th>
+					<th style="width:100px;">STATUS</th>
+					<th>TYPE DESCRIPTION</th>				
+				</tr>  
+			</thead>
+			<tbody>
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=14909713" target="_blank">14909713</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20260601</span>
+						06/01/2026				
+					</td>
+					<td>FAILED</td>
+					<td>DOB VENT/FURNACE INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=14658613" target="_blank">14658613</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20260529</span>
+						05/29/2026				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB VENT/FURNACE INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=14716154" target="_blank">14716154</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20260514</span>
+						05/14/2026				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB REFRIGERATION INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=14658614" target="_blank">14658614</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20260403</span>
+						04/03/2026				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB NEW CONSTRUCTION INSP</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=14715087" target="_blank">14715087</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20251118</span>
+						11/18/2025				
+					</td>
+					<td>CLOSED</td>
+					<td>DEMO COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=14697064" target="_blank">14697064</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20250911</span>
+						09/11/2025				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB PLUMBING INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=14661195" target="_blank">14661195</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20250716</span>
+						07/16/2025				
+					</td>
+					<td>CLOSED</td>
+					<td>DEMO COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=14632424" target="_blank">14632424</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20250311</span>
+						03/11/2025				
+					</td>
+					<td>CLOSED</td>
+					<td>DEMO COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=14440813" target="_blank">14440813</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20241104</span>
+						11/04/2024				
+					</td>
+					<td>CLOSED</td>
+					<td>DEMO COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=14422974" target="_blank">14422974</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20240730</span>
+						07/30/2024				
+					</td>
+					<td>CLOSED</td>
+					<td>DEMO COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=14320208" target="_blank">14320208</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20240603</span>
+						06/03/2024				
+					</td>
+					<td>CLOSED</td>
+					<td>DEMO COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=14259340" target="_blank">14259340</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20240326</span>
+						03/26/2024				
+					</td>
+					<td>CLOSED</td>
+					<td>DEMO COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=14184035" target="_blank">14184035</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20240123</span>
+						01/23/2024				
+					</td>
+					<td>CLOSED</td>
+					<td>DEMO COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=14156591" target="_blank">14156591</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20231026</span>
+						10/26/2023				
+					</td>
+					<td>CLOSED</td>
+					<td>DEMO COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=14127857" target="_blank">14127857</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20230809</span>
+						08/09/2023				
+					</td>
+					<td>CLOSED</td>
+					<td>DEMO COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=14090139" target="_blank">14090139</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20230505</span>
+						05/05/2023				
+					</td>
+					<td>CLOSED</td>
+					<td>DEMO COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=13902147" target="_blank">13902147</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20230214</span>
+						02/14/2023				
+					</td>
+					<td>CLOSED</td>
+					<td>DEMO COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=13894262" target="_blank">13894262</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20221207</span>
+						12/07/2022				
+					</td>
+					<td>CLOSED</td>
+					<td>DEMO COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=13868848" target="_blank">13868848</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20220923</span>
+						09/23/2022				
+					</td>
+					<td>CLOSED</td>
+					<td>DEMO COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=13849298" target="_blank">13849298</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20220801</span>
+						08/01/2022				
+					</td>
+					<td>CLOSED</td>
+					<td>DEMO COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=13358577" target="_blank">13358577</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20220627</span>
+						06/27/2022				
+					</td>
+					<td>CLOSED</td>
+					<td>DEMO COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=13546914" target="_blank">13546914</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20210424</span>
+						04/24/2021				
+					</td>
+					<td>FAILED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=13356522" target="_blank">13356522</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20210106</span>
+						01/06/2021				
+					</td>
+					<td>CLOSED</td>
+					<td>CHECKLIST INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=13354267" target="_blank">13354267</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20201224</span>
+						12/24/2020				
+					</td>
+					<td>FAILED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=13342513" target="_blank">13342513</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20201116</span>
+						11/16/2020				
+					</td>
+					<td>FAILED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=10373022" target="_blank">10373022</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20111125</span>
+						11/25/2011				
+					</td>
+					<td>FAILED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=74057&amp;insp=2370436" target="_blank">2370436</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20081201</span>
+						12/01/2008				
+					</td>
+					<td>PASSED</td>
+					<td>DOB NEW CONSTRUCTION INSP</td>
+				</tr>				
+			
+			</tbody>
+		</table>
+	</div>	
+
+
+
+<!-- ALLEGED CODE VIOLATIONS SEARCH RESULTS -->
+
+
+	<div class="city-row city-row-title">
+		<h6 style="margin-bottom:0px; text-transform:uppercase;"><b>Alleged Code Violations</b></h6>
+	</div>	
+	<div class="city-row">
+		<table id=resultstable_violations class="table table-bordered table-striped compact display tdisplay dt-responsive dataTables_scrollBody" data-pagination="true" data-height="200" style="width:100%;">	
+			<thead>  
+				<tr>
+					<th style="width:5%; min-width:100px;"></th>
+					<th style="width:50%;"></th>
+					<th style="width:45%;"></th>			
+				</tr>
+			</thead>
+			<tbody>			
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">14909713</span></th>
+					<th>
+						DOB VENT/FURNACE INSPECTION # 14909713
+						&nbsp&nbspINSPECTION DATE: 06/01/2026						
+					</th>	
+					<th>				
+						Number of Violations: 1														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>VT2010</td>
+					<td>Submit plans and obtain ventilating system permits. (13-32-010, 13-32-020, 13-32-040, 13-32-130, 13-176-240)</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">14715087</span></th>
+					<th>
+						DEMO COURT # 14715087
+						&nbsp&nbspINSPECTION DATE: 11/18/2025						
+					</th>	
+					<th>				
+						Number of Violations: 5														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193039</td>
+					<td>Post conspicuously name, address, and telephone of owner and manager of vacant residential premises. (13-12-125).</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">14661195</span></th>
+					<th>
+						DEMO COURT # 14661195
+						&nbsp&nbspINSPECTION DATE: 07/16/2025						
+					</th>	
+					<th>				
+						Number of Violations: 5														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193039</td>
+					<td>Post conspicuously name, address, and telephone of owner and manager of vacant residential premises. (13-12-125).</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">14632424</span></th>
+					<th>
+						DEMO COURT # 14632424
+						&nbsp&nbspINSPECTION DATE: 03/11/2025						
+					</th>	
+					<th>				
+						Number of Violations: 5														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193039</td>
+					<td>Post conspicuously name, address, and telephone of owner and manager of vacant residential premises. (13-12-125).</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">14440813</span></th>
+					<th>
+						DEMO COURT # 14440813
+						&nbsp&nbspINSPECTION DATE: 11/04/2024						
+					</th>	
+					<th>				
+						Number of Violations: 5														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193039</td>
+					<td>Post conspicuously name, address, and telephone of owner and manager of vacant residential premises. (13-12-125).</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">14422974</span></th>
+					<th>
+						DEMO COURT # 14422974
+						&nbsp&nbspINSPECTION DATE: 07/30/2024						
+					</th>	
+					<th>				
+						Number of Violations: 5														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193039</td>
+					<td>Post conspicuously name, address, and telephone of owner and manager of vacant residential premises. (13-12-125).</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">14320208</span></th>
+					<th>
+						DEMO COURT # 14320208
+						&nbsp&nbspINSPECTION DATE: 06/03/2024						
+					</th>	
+					<th>				
+						Number of Violations: 5														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193039</td>
+					<td>Post conspicuously name, address, and telephone of owner and manager of vacant residential premises. (13-12-125).</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">14259340</span></th>
+					<th>
+						DEMO COURT # 14259340
+						&nbsp&nbspINSPECTION DATE: 03/26/2024						
+					</th>	
+					<th>				
+						Number of Violations: 5														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193039</td>
+					<td>Post conspicuously name, address, and telephone of owner and manager of vacant residential premises. (13-12-125).</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">14184035</span></th>
+					<th>
+						DEMO COURT # 14184035
+						&nbsp&nbspINSPECTION DATE: 01/23/2024						
+					</th>	
+					<th>				
+						Number of Violations: 5														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193039</td>
+					<td>Post conspicuously name, address, and telephone of owner and manager of vacant residential premises. (13-12-125).</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">14156591</span></th>
+					<th>
+						DEMO COURT # 14156591
+						&nbsp&nbspINSPECTION DATE: 10/26/2023						
+					</th>	
+					<th>				
+						Number of Violations: 5														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193039</td>
+					<td>Post conspicuously name, address, and telephone of owner and manager of vacant residential premises. (13-12-125).</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">14127857</span></th>
+					<th>
+						DEMO COURT # 14127857
+						&nbsp&nbspINSPECTION DATE: 08/09/2023						
+					</th>	
+					<th>				
+						Number of Violations: 5														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193039</td>
+					<td>Post conspicuously name, address, and telephone of owner and manager of vacant residential premises. (13-12-125).</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">14090139</span></th>
+					<th>
+						DEMO COURT # 14090139
+						&nbsp&nbspINSPECTION DATE: 05/05/2023						
+					</th>	
+					<th>				
+						Number of Violations: 5														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193039</td>
+					<td>Post conspicuously name, address, and telephone of owner and manager of vacant residential premises. (13-12-125).</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">13902147</span></th>
+					<th>
+						DEMO COURT # 13902147
+						&nbsp&nbspINSPECTION DATE: 02/14/2023						
+					</th>	
+					<th>				
+						Number of Violations: 5														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193039</td>
+					<td>Post conspicuously name, address, and telephone of owner and manager of vacant residential premises. (13-12-125).</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">13894262</span></th>
+					<th>
+						DEMO COURT # 13894262
+						&nbsp&nbspINSPECTION DATE: 12/07/2022						
+					</th>	
+					<th>				
+						Number of Violations: 5														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193039</td>
+					<td>Post conspicuously name, address, and telephone of owner and manager of vacant residential premises. (13-12-125).</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">13868848</span></th>
+					<th>
+						DEMO COURT # 13868848
+						&nbsp&nbspINSPECTION DATE: 09/23/2022						
+					</th>	
+					<th>				
+						Number of Violations: 5														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193039</td>
+					<td>Post conspicuously name, address, and telephone of owner and manager of vacant residential premises. (13-12-125).</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">13849298</span></th>
+					<th>
+						DEMO COURT # 13849298
+						&nbsp&nbspINSPECTION DATE: 08/01/2022						
+					</th>	
+					<th>				
+						Number of Violations: 5														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193039</td>
+					<td>Post conspicuously name, address, and telephone of owner and manager of vacant residential premises. (13-12-125).</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">13358577</span></th>
+					<th>
+						DEMO COURT # 13358577
+						&nbsp&nbspINSPECTION DATE: 06/27/2022						
+					</th>	
+					<th>				
+						Number of Violations: 5														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193039</td>
+					<td>Post conspicuously name, address, and telephone of owner and manager of vacant residential premises. (13-12-125).</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">13546914</span></th>
+					<th>
+						CONSERVATION COMPLAINT INSPECT # 13546914
+						&nbsp&nbspINSPECTION DATE: 04/24/2021						
+					</th>	
+					<th>				
+						Number of Violations: 4														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN015012</td>
+					<td>Failed to equip exit door with door lock hardware which allows door to open without key or special knowledge from side of egress.  (13-160-260(a), 15-4-370)</td>
+					<td>South elevation / double key lock .</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN061014</td>
+					<td>Failed to maintain the exterior walls of a building or structure free from holes, breaks, loose or rotting boards or timbers and any other conditions which might admit rain or dampness to the walls.  (13-196-530(b), 13-196-641)</td>
+					<td>East and West elvation/ exterior wall -  2 story of expose plywood.Wall lean out 2 ft plans and permit required to repair exterior walls.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN138106</td>
+					<td>Remove and stop nuisance. (7-28-060)</td>
+					<td>East and West elevation /nuisance -  trash through outon the floor .</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN190019</td>
+					<td>Arrange for inspection of premises. (13-12-100)</td>
+					<td>No entry to insp interior condiations and detectors.</td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">13356522</span></th>
+					<th>
+						CHECKLIST INSPECTION # 13356522
+						&nbsp&nbspINSPECTION DATE: 01/06/2021						
+					</th>	
+					<th>				
+						Number of Violations: 6														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN002081</td>
+					<td>Submit for approval plans prepared, signed, and sealed by licensed architect or licensed engineer and obtain permit for all but emergency repairs. (13-32-010, 13-40-010, 13-40-020)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193000</td>
+					<td>Maintain building in safe condition so it does not constitute actual and imminent danger to public. (13-12-130, 13-8-100, 13-12-120, 13-12-125, 65 ILCS 5/11-31-1) Maintain building windows and doors in safe condition. (13-196-550) Maintain stairway and porch in safe condition. (13-196-570) Maintain floors, walls, and ceilings in safe condition. (13-196-540) Maintain building in safe condition. Premises now dangerous as vacant and open, uncompleted and abandoned, or vacant and boarded. (13-12-130, 13-12-125) Maintain watchman at vacant or open premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193019</td>
+					<td>Repair or wreck dangerous and vacant residential premises. (13-8-100, 13-12-125, 13-12-130)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193029</td>
+					<td>Maintain watchman from 4:00 PM to 8:00 AM for vacant and dangerous residential premises. (13-12-140)</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN193110</td>
+					<td>Register vacant building within 30 days of it becoming vacant, or within 30 days after assuming ownership of an existing vacant building. (13-12-125(a)). Building must be kept in compliance with all vacant building requirements pursuant to 13-12-135. See Vacant Building Ordinance and registration form at https://ipiweb.cityofchicago.org/VBR</td>
+					<td></td>
+				</tr>
+				 	
+				<tr>
+					<td>CN196039</td>
+					<td>Post, on abandoned building, name, address and telephone of owner and owner's agent for managing, controlling or collecting rents on building so legible from nearest public street or sidewalk. (13-12-125)</td>
+					<td></td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">13354267</span></th>
+					<th>
+						CONSERVATION COMPLAINT INSPECT # 13354267
+						&nbsp&nbspINSPECTION DATE: 12/24/2020						
+					</th>	
+					<th>				
+						Number of Violations: 8														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN061014</td>
+					<td>Failed to maintain the exterior walls of a building or structure free from holes, breaks, loose or rotting boards or timbers and any other conditions which might admit rain or dampness to the walls.  (13-196-530(b), 13-196-641)</td>
+					<td>EAST EXTERIOR WALL; WALL STUCCO BUCKLING OUT, CRACKED AND LOOSE.
+SOUTH EXTERIOR WALL; SIDING LOOSE.
+SOUTH-WEST CORNER, EXTERIOR WALL; PULLING AWAY.
+WEST EXTERIOR WALL; SECTION OF STUCCO WALL COLLASPED ON NEIGHBOR ROOF, STUCCO WALL LOOSE BROKEN AND MISSING.
+WEST EXTERIOR WALL; HOLE IN WALL, PLYWOOD ROTTED AND BROKEN.[SUBMIT PLANS AND PERMITS FOR REPAIRS ON EXTERIOR WALLS].</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN070024</td>
+					<td>Failed to repair or replace defective or missing members of porch system.  (13-196-570, 13-196-641)</td>
+					<td>EAST PORCH; TREAD BROKEN.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN073024</td>
+					<td>Failed to maintain exterior door frames to exclude rain and wind from entering building and otherwise in sound condition and repair.  (13-196-550, 13-196-550(f), 13-196-641)</td>
+					<td>SOUTH EXTERIOR DOOR FRAME; ROTTED AND BROKEN.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN074014</td>
+					<td>Failed to maintain exterior service walks, passage and areaways in clean, sanitary and safe condition.  (13-196-630, 13-196-641)</td>
+					<td>EAST SERVICE WALK; BROKEN CONCRETE.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN104015</td>
+					<td>Replace broken, missing or defective window panes. (13-196-550 A)</td>
+					<td>EAST WINDOW PANE; BROKEN.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN104035</td>
+					<td>Failed to maintain windows in sound condition and good repair.  (13-196-550(b) and (f))</td>
+					<td>EAST ELEVATION WINDOW FRAMES; LOOSE.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN138056</td>
+					<td>Remove accumulation of refuse and debris and keep premises clean. (13-196-580, 13-196-630)</td>
+					<td>EAST AND WEST BUILDING AREA; EXCESSIVE JUNK AND DEBRIS.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN190029</td>
+					<td>pending notice reinspection</td>
+					<td>NO ENTRY TO INTERIOR POSSIBLE INTERIOR REHABING].</td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">13342513</span></th>
+					<th>
+						CONSERVATION COMPLAINT INSPECT # 13342513
+						&nbsp&nbspINSPECTION DATE: 11/16/2020						
+					</th>	
+					<th>				
+						Number of Violations: 7														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN015012</td>
+					<td>Failed to equip exit door with door lock hardware which allows door to open without key or special knowledge from side of egress.  (13-160-260(a), 15-4-370)</td>
+					<td>Front of building / double key lock - storm door double key lock.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN015062</td>
+					<td>Failed to remove obstruction from exitway that hampers travel and evacuation.  (13-160-070, 13-196-080)</td>
+					<td>East elevation / obstruction  - Rear porch Iron gate lock at 1st fl egress.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN061014</td>
+					<td>Failed to maintain the exterior walls of a building or structure free from holes, breaks, loose or rotting boards or timbers and any other conditions which might admit rain or dampness to the walls.  (13-196-530(b), 13-196-641)</td>
+					<td>East and West elevations / exterior wall bulging out . 
+East and West elevations / large sections of loose plaster.Permit required for repairs to exterior wall.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN070014</td>
+					<td>Failed to maintain exterior stairways in safe condition and in sound repair.  (13-196-570, 13-196-641)</td>
+					<td>East elevation / exterior stair .
+4x4 columns erected on service walk.
+Ledger board nailed. 
+Guard rail and stringer nailed only to columns headers and wall.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN070024</td>
+					<td>Failed to repair or replace defective or missing members of porch system.  (13-196-570, 13-196-641)</td>
+					<td>North elevation /Porch - 
+Footing cracked.
+Columns erected on deck board. 
+2x8 joist span 14 ft
+Columns half step 4 bolts.
+Guard rails and stringers nailed onty columns,headers and wall .
+Guard rails under sized. 
+Plans and permits required for repairs to rear porch</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN138056</td>
+					<td>Remove accumulation of refuse and debris and keep premises clean. (13-196-580, 13-196-630)</td>
+					<td>West elevation / excessive debris - large section of plaser on the flor and on West building roof.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN190019</td>
+					<td>Arrange for inspection of premises. (13-12-100)</td>
+					<td>Interior of building ¿ 1st fl tenant refused entry to check detector and  conditions. or occaupancy and conditions</td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">10373022</span></th>
+					<th>
+						CONSERVATION COMPLAINT INSPECT # 10373022
+						&nbsp&nbspINSPECTION DATE: 11/25/2011						
+					</th>	
+					<th>				
+						Number of Violations: 2														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN061014</td>
+					<td>Failed to maintain the exterior walls of a building or structure free from holes, breaks, loose or rotting boards or timbers and any other conditions which might admit rain or dampness to the walls.  (13-196-530(b), 13-196-641)</td>
+					<td>Stucco flaking paint.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN063014</td>
+					<td>Failed to maintain chimney in safe and sound working condition.  (13-196-590, 13-196-530(b) and (c), 13-196-641)</td>
+					<td>Chimney leaning,  minor. Open joints.</td>
+				</tr>
+									
+			
+			</tbody>			
+		</table>
+	</div>	
+
+
+
+<div class="city-row city-row-title">
+	<div id="noprint" style="margin-top:0;padding-top:0; text-align:right;">
+		<a class="btn btn-primary" href="javascript:window.print();" style="margin-top:0;">
+			Print
+		</a>					
+	</div>		
+</div>
+
+	
+<script>
+$(document).ready(function() {
+	var myWorker = new Worker("https://webapps1.cityofchicago.org/cdn/DataTables-1.10.16/js/jquery.dataTables.min.js");
+	myWorker.addEventListener("message", function (oEvent) {
+	  console.log("Called back by the worker!\n");
+	}, false);
+
+	myWorker.postMessage(""); // start the worker.
+						   
+	$('#resultstable_attributes').DataTable({
+        order: [[ 0, 'asc' ]],
+		responsive: true,
+		"paging":   false,
+		"bInfo" : false,	
+		"bSort" : false,  
+		searching: false
+	} );
+
+	$('#resultstable_permits').DataTable({
+        order: [[ 1, 'desc' ]],
+		responsive: true,
+		"paging":   false,
+		"bInfo" : false,	
+		"bSort" : true, 
+		 searching: false
+     } );
+
+	$('#resultstable_caseactivity').DataTable({
+		order: [[ 1, 'desc' ]],
+		responsive: true,
+		"paging":   false,
+		"bInfo" : false,	
+		"bSort" : true, 
+		 searching: false
+	 } );
+
+
+	$('#resultstable_inspections').DataTable({
+		order: [[ 1, 'desc' ]],
+		responsive: true,
+		"paging":   false,
+		"bInfo" : false,	
+		"bSort" : true, 
+		 searching: false
+	 } );   
+
+
+	$('#resultstable_violations').DataTable({
+		 responsive: true,
+		"paging":   false,
+		"bInfo" : false,	
+		"bSort" : false,  
+		searching: false
+    } );
+
+	myWorker.terminate();
+	myWorker=undefined;
+	
+});
+</script>
+	</div>
+	
+	<!-- Footer -->
+	<div class="container-fluid page-footer-container">
+		<div class="page-footer">
+
+
+
+
+
+<!-- Secondary footer-->
+<!--
+<div class="container-fluid footer secondary-footer">
+	<div class="page-footer-container">
+		<div class="footer-column">
+			<h3 class="footer-title">Contact Us</h3>
+			<div class="title-divider"></div>
+			<p><strong>Address:&nbsp;</strong><br>333 S. State Street, Suite LL30<br>Chicago, IL 60604</p>
+			<p><strong>Phone:&nbsp;</strong>312.744.5844</p>
+		</div>
+		<div class="footer-column">
+			<h3 class="footer-title">Quick Links</h3>
+			<div class="title-divider"></div>
+			<p><a href="http://www.cityofchicago.org/city/en/depts/doit.html">Department of Innovation and Technology</a></p>
+		</div>
+		<div class="footer-column">
+			<h3 class="footer-title">Connect With Us</h3>
+			<div class="title-divider"></div>
+			<ul class="footer-social social">
+                <li><a href="https://www.facebook.com/ChicagoMayorsOffice" title="Follow us on Facebook" target="blank"><i class="fa fa-facebook" aria-hidden="true"></i></a> </li>
+                <li><a href="https://twitter.com/ChicagosMayor" title="Follow us on Twitter" target="blank"><i class="fa fa-twitter" aria-hidden="true"></i></a> </li>
+				<li><a href="https://www.youtube.com/user/cityofchicagotv" title="Follow us on YouTube" target="blank"><i class="fa fa-youtube" aria-hidden="true"></i></a> </li>
+            </ul>
+		</div>
+	</div>
+</div>
+ -->
+<!-- End Secondary footer-->
+
+<!-- Primary Footer -->
+<div class="container-fluid footer primary-footer">
+<div class="col-xs-12 page-footer">					
+<div id="footer">
+	<div class="footer-navigation">
+        <ul>
+            <li><a href="http://www.cityofchicago.org" title="The City of Chicago's Official Site">Home</a> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/disclaimer.html">Disclaimer</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/privacy.html">Privacy Policy</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/standards.html">Web Standards</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/credits.html">Site Credits</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/sitemap.html">Site Map</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/contact.html">Contact Us</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/press_room.html">Press Room</a><!--googleon: anchor--></li>
+        </ul>
+	    
+	
+		
+		
+		
+			
+			Copyright © 2018 - 2026 City of Chicago	
+		
+		
+		
+		
+	</div>
+</div>
+</div>
+</div>								
+<!-- End Primary Footer --></div>
+	</div>
+	
+</div>
+
+<!-- JavaScript -->
+<script src="https://webapps1.cityofchicago.org/cdn/Bootstrap-4.0.0-beta.2/assets/js/vendor/popper.min.js"></script>
+<script src="https://webapps1.cityofchicago.org/cdn/Bootstrap-4.0.0-beta.2/js/bootstrap.min.js"></script>
+
+</body>

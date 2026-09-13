@@ -1,0 +1,88 @@
+{
+  "schema": "gwm_bench.runtime_r2_replay_aggregate.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "status": "PASS_ALL_FIVE_MODELS_REPLAYED_LABEL_FIREWALL_INTACT",
+  "created_at": "2026-07-23T12:42:44.577707+00:00",
+  "protocol_sha256": "f4bcad2ef8cf18dc383272ea6ecb44513d1b0895d7beef5d1afa306c7beaacff",
+  "phase_a_bundle_fingerprint": "652a009fd38f79308ee7ddd71549db5c71760e8cc884217cb29e85bcf184a7e3",
+  "runtime_r2_evaluator_seal_fingerprint": "2891389d25f199301a58209cd5e6dc20e8f1dde68026dfcefd284f114891bd4b",
+  "model_prediction_sha256": {
+    "twm_dam_gk_candidate": "66caa44290722668ec848109fd901d9eb1582f2096c4c2d52e122528b4d3b00a",
+    "geosos_flus_three_seed_ensemble": "283c7ef0c491c8391c6429d804ab07d089c1ccd25ca543446b444381362a2f07",
+    "state_persistence": "2502653e9871c6d6585904832f73359d0f1f77180bf69300bf485bf1447be2ff",
+    "nonspatial_history_only": "483d8b23eff55ed3f9f39ca9c4cf489ef115d0778207f4e080e0ca035e3977d0",
+    "fixed_adjacency_spatial": "775a82427919ecafb155a02fbae7b0484e72c8fc58d1b8ed4cbce7c9da9b8195"
+  },
+  "replay_evidence": {
+    "internal_baselines": {
+      "status": "PASS_DETERMINISTIC_REPLAY_LABEL_FIREWALL_INTACT",
+      "artifact": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/internal_baseline_replay_report.json",
+        "role": "runtime_r2_replay_evidence",
+        "size_bytes": 2587,
+        "sha256": "7047e015b1ca4bb92d4bc3c1ecaffa032105538ff8c0333832bd3eaf9b9743ba"
+      }
+    },
+    "twm_dam_gk_candidate": {
+      "status": "PASS_SEED_COMPLETE_REPLAY_LABEL_FIREWALL_INTACT",
+      "artifact": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/twm_dam_gk_candidate/replay_report.json",
+        "role": "runtime_r2_replay_evidence",
+        "size_bytes": 2962,
+        "sha256": "68fa70ff4e2162a3a1f81bf3efd0ebf40c0237f5ee310b5c304ea9b7a0162906"
+      }
+    },
+    "geosos_flus_three_seed_ensemble": {
+      "status": "PASS_SEED_COMPLETE_REPLAY_LABEL_FIREWALL_INTACT",
+      "artifact": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/replay_report.json",
+        "role": "runtime_r2_replay_evidence",
+        "size_bytes": 2981,
+        "sha256": "48f19a471f784b8e51dbbe5efbba67e4eec0455a5bb50980e655e487135688bc"
+      }
+    }
+  },
+  "checks": {
+    "all_five_required_models_present": true,
+    "all_prediction_row_counts_equal_3681": true,
+    "three_deterministic_baselines_replayed": true,
+    "all_three_twm_seed_members_replayed": true,
+    "all_three_flus_seed_members_replayed": true,
+    "target_file_count_before_commitment": 0,
+    "target_pixels_read": false,
+    "label_firewall_passed": true
+  },
+  "resource_usage_from_committed_runs": {
+    "twm_dam_gk_candidate": {
+      "wall_time_seconds": 2.8612939999438822,
+      "peak_memory_bytes": 451559424,
+      "temporary_bytes": 175590,
+      "exit_status": 0
+    },
+    "geosos_flus_three_seed_ensemble": {
+      "wall_time_seconds": 371.1213047080673,
+      "peak_memory_bytes": 703725568,
+      "temporary_bytes": 411230347,
+      "exit_status": 0
+    },
+    "state_persistence": {
+      "wall_time_seconds": 0.03262200008612126,
+      "peak_memory_bytes": 208093184,
+      "temporary_bytes": 10919,
+      "exit_status": 0
+    },
+    "nonspatial_history_only": {
+      "wall_time_seconds": 0.03153533407021314,
+      "peak_memory_bytes": 208486400,
+      "temporary_bytes": 20134,
+      "exit_status": 0
+    },
+    "fixed_adjacency_spatial": {
+      "wall_time_seconds": 0.0322008749935776,
+      "peak_memory_bytes": 209518592,
+      "temporary_bytes": 195715,
+      "exit_status": 0
+    }
+  },
+  "runtime_replay_fingerprint": "5caaa089cf30fa8cb4bb21dc9a35fe00f2ee614e602b02c50f43bf2a971efd04"
+}

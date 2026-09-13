@@ -1,0 +1,348 @@
+{
+  "schema": "gwm_bench.v3_prediction_commitment.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "status": "ALL_FIVE_PREDICTIONS_COMMITTED_TARGET_ACQUISITION_ALLOWED",
+  "created_at": "2026-07-23T12:42:44.578256+00:00",
+  "commitment_identity": {
+    "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+    "protocol_sha256": "f4bcad2ef8cf18dc383272ea6ecb44513d1b0895d7beef5d1afa306c7beaacff",
+    "submission_contract_sha256": "0afab3fcf576198a311f3f7aa75937bf712b8eb79b4948942807dc2ae6a3f7bf",
+    "phase_a_bundle_fingerprint": "652a009fd38f79308ee7ddd71549db5c71760e8cc884217cb29e85bcf184a7e3",
+    "runtime_r2_evaluator_seal_fingerprint": "2891389d25f199301a58209cd5e6dc20e8f1dde68026dfcefd284f114891bd4b",
+    "runtime_replay_report_sha256": "125b800f69de0f72757ae2e015547414b3fd329d2b8e4f03dbcfa046b31404fd",
+    "models": {
+      "twm_dam_gk_candidate": {
+        "prediction_sha256": "66caa44290722668ec848109fd901d9eb1582f2096c4c2d52e122528b4d3b00a",
+        "model_spec_sha256": "a30e0e506ba796372d7fe92008ba2104941a97df1ad9b2f1409808907ff379bc",
+        "run_report_sha256": "4e92974afaef61a6cbebd9f974e9d344b78ef08bca10940e9c1b3a96d1b94884",
+        "member_prediction_sha256": [
+          "d6fbfdeb05e92e672b828c240a145890004ffcd7ab17280d3493957ef8292462",
+          "41af4be70fa0d29328ae5531555395620ad63eac9538108222108eabe8108c59",
+          "ca18c5d90809f3bcf6964fb60d7b8dbba5632d53e2cdf3ae4c320ec8f4d00d89"
+        ]
+      },
+      "geosos_flus_three_seed_ensemble": {
+        "prediction_sha256": "283c7ef0c491c8391c6429d804ab07d089c1ccd25ca543446b444381362a2f07",
+        "model_spec_sha256": "1b3031da2e210c09c4cde98f3a7206d4aaab991918dd4c078c8e71e04b6f4c58",
+        "run_report_sha256": "c9587d30151e2fb10aa508547a8bf8652009f442bc725fde22f224c5dfb9ab1a",
+        "member_prediction_sha256": [
+          "94046f796477bf31707d3bddf810a5dfd7a549ddbb3b1a8aaf55e2ea4c3ea02e",
+          "f478c558fe652b1628798b11b93e4377cfc983eb390632a42517c448a3b81ac6",
+          "cb2705f37613f4b46debf180946efbb02013f66fc7b1a8efcef629b69c13589b"
+        ]
+      },
+      "state_persistence": {
+        "prediction_sha256": "2502653e9871c6d6585904832f73359d0f1f77180bf69300bf485bf1447be2ff",
+        "model_spec_sha256": "b1bd48f8b7dd2deb1e21fcb326e074c9be28062a53b6c3edcb0ef3cfaebd51b5",
+        "run_report_sha256": "5b4ae8214b2fe0a43b2d445b9bf0b40b346d074177285f92df37a4232757c524",
+        "member_prediction_sha256": []
+      },
+      "nonspatial_history_only": {
+        "prediction_sha256": "483d8b23eff55ed3f9f39ca9c4cf489ef115d0778207f4e080e0ca035e3977d0",
+        "model_spec_sha256": "316346f193d2493bcf52449a99d460882d2d4373df8d628d3dfce773b377f022",
+        "run_report_sha256": "a0527c31477e200c621a16aba0dd41f8acc91bb4b46a14dcb2872754054ff7a8",
+        "member_prediction_sha256": []
+      },
+      "fixed_adjacency_spatial": {
+        "prediction_sha256": "775a82427919ecafb155a02fbae7b0484e72c8fc58d1b8ed4cbce7c9da9b8195",
+        "model_spec_sha256": "84c5f0e0da4960f0705127fcb131094afb9a54b5f8ecc7467c8087504159fc0f",
+        "run_report_sha256": "554e8158477c477a530d661c640e17932247b40db3ff0a2f92c96ff7735fcb65",
+        "member_prediction_sha256": []
+      }
+    }
+  },
+  "commitment_fingerprint": "fcce6679f251b85d350f7ac41cab68164be383e6bbc5685df91542cbeb1b93c1",
+  "models": {
+    "twm_dam_gk_candidate": {
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/twm_dam_gk_candidate/prediction.parquet",
+        "role": "committed_v3_probability_prediction",
+        "size_bytes": 76673,
+        "sha256": "66caa44290722668ec848109fd901d9eb1582f2096c4c2d52e122528b4d3b00a"
+      },
+      "model_spec": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/twm_dam_gk_candidate/model_spec.json",
+        "role": "committed_v3_model_and_adapter_spec",
+        "size_bytes": 16089,
+        "sha256": "a30e0e506ba796372d7fe92008ba2104941a97df1ad9b2f1409808907ff379bc"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/twm_dam_gk_candidate/run_report.json",
+        "role": "runtime_r2_prediction_run_report",
+        "size_bytes": 5906,
+        "sha256": "4e92974afaef61a6cbebd9f974e9d344b78ef08bca10940e9c1b3a96d1b94884"
+      },
+      "row_count": 3681,
+      "member_predictions": [
+        {
+          "seed": 31,
+          "prediction": {
+            "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/twm_dam_gk_candidate/members/seed_31/prediction.parquet",
+            "role": "twm_seed_equal_fold_ensemble_prediction",
+            "size_bytes": 55510,
+            "sha256": "d6fbfdeb05e92e672b828c240a145890004ffcd7ab17280d3493957ef8292462"
+          }
+        },
+        {
+          "seed": 47,
+          "prediction": {
+            "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/twm_dam_gk_candidate/members/seed_47/prediction.parquet",
+            "role": "twm_seed_equal_fold_ensemble_prediction",
+            "size_bytes": 66672,
+            "sha256": "41af4be70fa0d29328ae5531555395620ad63eac9538108222108eabe8108c59"
+          }
+        },
+        {
+          "seed": 73,
+          "prediction": {
+            "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/twm_dam_gk_candidate/members/seed_73/prediction.parquet",
+            "role": "twm_seed_equal_fold_ensemble_prediction",
+            "size_bytes": 53408,
+            "sha256": "ca18c5d90809f3bcf6964fb60d7b8dbba5632d53e2cdf3ae4c320ec8f4d00d89"
+          }
+        }
+      ],
+      "runtime_hashes": {
+        "protocol": "f4bcad2ef8cf18dc383272ea6ecb44513d1b0895d7beef5d1afa306c7beaacff",
+        "phase_a_bundle": "652a009fd38f79308ee7ddd71549db5c71760e8cc884217cb29e85bcf184a7e3",
+        "runtime_environment": "ad338533aec418c0849106783b62f554a5d0bd979662baf982478a20e9556622",
+        "adapter_source": "13c5f29b59cc23304b39f4b638ccea926477f3bc7280b340c33db4740035f3f5",
+        "model_or_binary": "a30e0e506ba796372d7fe92008ba2104941a97df1ad9b2f1409808907ff379bc",
+        "random_seed_or_seed_set": "b8b38cf7f1fbe978cfbdb23a1ccd94061ebea1e798ed43788d7e2625b3703267",
+        "prediction": "66caa44290722668ec848109fd901d9eb1582f2096c4c2d52e122528b4d3b00a"
+      },
+      "resource_usage": {
+        "wall_time_seconds": 2.8612939999438822,
+        "peak_memory_bytes": 451559424,
+        "temporary_bytes": 175590,
+        "exit_status": 0
+      }
+    },
+    "geosos_flus_three_seed_ensemble": {
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/prediction.parquet",
+        "role": "committed_v3_probability_prediction",
+        "size_bytes": 12179,
+        "sha256": "283c7ef0c491c8391c6429d804ab07d089c1ccd25ca543446b444381362a2f07"
+      },
+      "model_spec": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/model_spec.json",
+        "role": "committed_v3_model_and_adapter_spec",
+        "size_bytes": 6884,
+        "sha256": "1b3031da2e210c09c4cde98f3a7206d4aaab991918dd4c078c8e71e04b6f4c58"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/run_report.json",
+        "role": "runtime_r2_prediction_run_report",
+        "size_bytes": 7712,
+        "sha256": "c9587d30151e2fb10aa508547a8bf8652009f442bc725fde22f224c5dfb9ab1a"
+      },
+      "row_count": 3681,
+      "member_predictions": [
+        {
+          "seed": 31,
+          "prediction": {
+            "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/members/seed_31/prediction.parquet",
+            "role": "flus_full_grid_seed_member_prediction",
+            "size_bytes": 11182,
+            "sha256": "94046f796477bf31707d3bddf810a5dfd7a549ddbb3b1a8aaf55e2ea4c3ea02e"
+          },
+          "run_report": {
+            "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/members/seed_31/run_report.json",
+            "role": "flus_seed_runtime_report",
+            "size_bytes": 52445,
+            "sha256": "f055f4130c080c38ccfa946bbb697a198b895007edbbd58bad388b8e20f6f85f"
+          }
+        },
+        {
+          "seed": 47,
+          "prediction": {
+            "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/members/seed_47/prediction.parquet",
+            "role": "flus_full_grid_seed_member_prediction",
+            "size_bytes": 11184,
+            "sha256": "f478c558fe652b1628798b11b93e4377cfc983eb390632a42517c448a3b81ac6"
+          },
+          "run_report": {
+            "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/members/seed_47/run_report.json",
+            "role": "flus_seed_runtime_report",
+            "size_bytes": 52508,
+            "sha256": "defa755e14d3127b4f4b3e9f5c3fc6cf1450ad1ab2f8a1f919747626a4004ccb"
+          }
+        },
+        {
+          "seed": 73,
+          "prediction": {
+            "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/members/seed_73/prediction.parquet",
+            "role": "flus_full_grid_seed_member_prediction",
+            "size_bytes": 11201,
+            "sha256": "cb2705f37613f4b46debf180946efbb02013f66fc7b1a8efcef629b69c13589b"
+          },
+          "run_report": {
+            "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/members/seed_73/run_report.json",
+            "role": "flus_seed_runtime_report",
+            "size_bytes": 52470,
+            "sha256": "2d7011625a8eadea9144d94327d55ad3522a8fa4e55d6d59b4cdd7e6d3b84ef0"
+          }
+        }
+      ],
+      "runtime_hashes": {
+        "protocol": "f4bcad2ef8cf18dc383272ea6ecb44513d1b0895d7beef5d1afa306c7beaacff",
+        "phase_a_bundle": "652a009fd38f79308ee7ddd71549db5c71760e8cc884217cb29e85bcf184a7e3",
+        "runtime_environment": "ad338533aec418c0849106783b62f554a5d0bd979662baf982478a20e9556622",
+        "adapter_source": "db7f1c6ffcc69580f8bfbf1ae13ed104af30929dee149eff7ce0945f87256a1c",
+        "model_or_binary": "9839ce50950442d4ef49e4d2129a1ba27735e1955c2d4975ae51067c1c3c9964",
+        "random_seed_or_seed_set": "ae2522c4f64deda635bb9331f5d5211c4edbc119e6be7ca8ed64ac75c0286765",
+        "prediction": "283c7ef0c491c8391c6429d804ab07d089c1ccd25ca543446b444381362a2f07"
+      },
+      "resource_usage": {
+        "wall_time_seconds": 371.1213047080673,
+        "peak_memory_bytes": 703725568,
+        "temporary_bytes": 411230347,
+        "exit_status": 0
+      }
+    },
+    "state_persistence": {
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/state_persistence/prediction.parquet",
+        "role": "committed_v3_probability_prediction",
+        "size_bytes": 10919,
+        "sha256": "2502653e9871c6d6585904832f73359d0f1f77180bf69300bf485bf1447be2ff"
+      },
+      "model_spec": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/state_persistence/model_spec.json",
+        "role": "committed_v3_model_and_adapter_spec",
+        "size_bytes": 475,
+        "sha256": "b1bd48f8b7dd2deb1e21fcb326e074c9be28062a53b6c3edcb0ef3cfaebd51b5"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/state_persistence/run_report.json",
+        "role": "runtime_r2_prediction_run_report",
+        "size_bytes": 4332,
+        "sha256": "5b4ae8214b2fe0a43b2d445b9bf0b40b346d074177285f92df37a4232757c524"
+      },
+      "row_count": 3681,
+      "member_predictions": [],
+      "runtime_hashes": {
+        "protocol": "f4bcad2ef8cf18dc383272ea6ecb44513d1b0895d7beef5d1afa306c7beaacff",
+        "phase_a_bundle": "652a009fd38f79308ee7ddd71549db5c71760e8cc884217cb29e85bcf184a7e3",
+        "runtime_environment": "ad338533aec418c0849106783b62f554a5d0bd979662baf982478a20e9556622",
+        "adapter_source": "29d1b6716b805c2e56099141048b9ca3f1d109133819b7e290603a9d8507a8af",
+        "model_or_binary": "b1bd48f8b7dd2deb1e21fcb326e074c9be28062a53b6c3edcb0ef3cfaebd51b5",
+        "random_seed_or_seed_set": "7892d45ee4e7dc88e011570688f9b80c831e0d00c7712bc755d981f24541ddea",
+        "prediction": "2502653e9871c6d6585904832f73359d0f1f77180bf69300bf485bf1447be2ff"
+      },
+      "resource_usage": {
+        "wall_time_seconds": 0.03262200008612126,
+        "peak_memory_bytes": 208093184,
+        "temporary_bytes": 10919,
+        "exit_status": 0
+      }
+    },
+    "nonspatial_history_only": {
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/nonspatial_history_only/prediction.parquet",
+        "role": "committed_v3_probability_prediction",
+        "size_bytes": 20134,
+        "sha256": "483d8b23eff55ed3f9f39ca9c4cf489ef115d0778207f4e080e0ca035e3977d0"
+      },
+      "model_spec": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/nonspatial_history_only/model_spec.json",
+        "role": "committed_v3_model_and_adapter_spec",
+        "size_bytes": 4568,
+        "sha256": "316346f193d2493bcf52449a99d460882d2d4373df8d628d3dfce773b377f022"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/nonspatial_history_only/run_report.json",
+        "role": "runtime_r2_prediction_run_report",
+        "size_bytes": 4637,
+        "sha256": "a0527c31477e200c621a16aba0dd41f8acc91bb4b46a14dcb2872754054ff7a8"
+      },
+      "row_count": 3681,
+      "member_predictions": [],
+      "runtime_hashes": {
+        "protocol": "f4bcad2ef8cf18dc383272ea6ecb44513d1b0895d7beef5d1afa306c7beaacff",
+        "phase_a_bundle": "652a009fd38f79308ee7ddd71549db5c71760e8cc884217cb29e85bcf184a7e3",
+        "runtime_environment": "ad338533aec418c0849106783b62f554a5d0bd979662baf982478a20e9556622",
+        "adapter_source": "29d1b6716b805c2e56099141048b9ca3f1d109133819b7e290603a9d8507a8af",
+        "model_or_binary": "316346f193d2493bcf52449a99d460882d2d4373df8d628d3dfce773b377f022",
+        "random_seed_or_seed_set": "7892d45ee4e7dc88e011570688f9b80c831e0d00c7712bc755d981f24541ddea",
+        "prediction": "483d8b23eff55ed3f9f39ca9c4cf489ef115d0778207f4e080e0ca035e3977d0"
+      },
+      "resource_usage": {
+        "wall_time_seconds": 0.03153533407021314,
+        "peak_memory_bytes": 208486400,
+        "temporary_bytes": 20134,
+        "exit_status": 0
+      }
+    },
+    "fixed_adjacency_spatial": {
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/fixed_adjacency_spatial/prediction.parquet",
+        "role": "committed_v3_probability_prediction",
+        "size_bytes": 195715,
+        "sha256": "775a82427919ecafb155a02fbae7b0484e72c8fc58d1b8ed4cbce7c9da9b8195"
+      },
+      "model_spec": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/fixed_adjacency_spatial/model_spec.json",
+        "role": "committed_v3_model_and_adapter_spec",
+        "size_bytes": 4880,
+        "sha256": "84c5f0e0da4960f0705127fcb131094afb9a54b5f8ecc7467c8087504159fc0f"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/fixed_adjacency_spatial/run_report.json",
+        "role": "runtime_r2_prediction_run_report",
+        "size_bytes": 4642,
+        "sha256": "554e8158477c477a530d661c640e17932247b40db3ff0a2f92c96ff7735fcb65"
+      },
+      "row_count": 3681,
+      "member_predictions": [],
+      "runtime_hashes": {
+        "protocol": "f4bcad2ef8cf18dc383272ea6ecb44513d1b0895d7beef5d1afa306c7beaacff",
+        "phase_a_bundle": "652a009fd38f79308ee7ddd71549db5c71760e8cc884217cb29e85bcf184a7e3",
+        "runtime_environment": "ad338533aec418c0849106783b62f554a5d0bd979662baf982478a20e9556622",
+        "adapter_source": "29d1b6716b805c2e56099141048b9ca3f1d109133819b7e290603a9d8507a8af",
+        "model_or_binary": "84c5f0e0da4960f0705127fcb131094afb9a54b5f8ecc7467c8087504159fc0f",
+        "random_seed_or_seed_set": "7892d45ee4e7dc88e011570688f9b80c831e0d00c7712bc755d981f24541ddea",
+        "prediction": "775a82427919ecafb155a02fbae7b0484e72c8fc58d1b8ed4cbce7c9da9b8195"
+      },
+      "resource_usage": {
+        "wall_time_seconds": 0.0322008749935776,
+        "peak_memory_bytes": 209518592,
+        "temporary_bytes": 195715,
+        "exit_status": 0
+      }
+    }
+  },
+  "runtime_replay": {
+    "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/runtime_replay_report.json",
+    "role": "aggregate_runtime_r2_replay_report",
+    "size_bytes": 3747,
+    "sha256": "125b800f69de0f72757ae2e015547414b3fd329d2b8e4f03dbcfa046b31404fd"
+  },
+  "label_firewall_at_commitment": {
+    "target_root": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025",
+    "target_root_exists": false,
+    "target_file_count": 0,
+    "target_pixels_read": false,
+    "target_labels_visible_to_adapter": false,
+    "passed": true
+  },
+  "integrity": {
+    "prediction_count": 5,
+    "all_submission_keys_equal": true,
+    "all_probabilities_valid": true,
+    "target_file_count": 0,
+    "target_pixels_read": false,
+    "post_commit_prediction_changes_allowed": false,
+    "post_commit_model_or_threshold_changes_allowed": false
+  },
+  "next_permitted_action": "Acquire and register the frozen 2023-2025 V3 target rasters, then run the sealed evaluator once and publish every model result.",
+  "retained_failures": [
+    {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/failed_runs/attempt_001.json",
+      "role": "retained_failed_runtime_attempt",
+      "size_bytes": 764,
+      "sha256": "bf73a30a4a042e9219db0bcdd5a8d215575de1a43fb38c15d482fb148fbfef39"
+    }
+  ]
+}

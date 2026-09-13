@@ -1,0 +1,2 @@
+evidence_id,unit_id,intervention_id,outcome_id,evidence_type,capture_time,source_system,quality_score,uri_or_reference,export_policy,synthetic,not_for_production
+EVD-001,SH-U-001,INT-001,OUT-001,sensor_observation,2025-10-01T10:00:00,inner_network_sensor_catalog,0.92,inner-network-reference-only,metadata_only_for_cross_environment,false,false

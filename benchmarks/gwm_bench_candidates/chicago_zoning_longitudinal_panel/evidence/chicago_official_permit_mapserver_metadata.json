@@ -1,0 +1,383 @@
+{
+ "currentVersion": 11.4,
+ "cimVersion": "3.4.0",
+ "serviceDescription": "",
+ "mapName": "Permit_Map",
+ "description": "",
+ "copyrightText": "",
+ "supportsDynamicLayers": true,
+ "layers": [
+  {
+   "id": 0,
+   "name": "Map Layers",
+   "parentLayerId": -1,
+   "defaultVisibility": false,
+   "subLayerIds": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Group Layer",
+   "supportsDynamicLegends": false
+  },
+  {
+   "id": 1,
+   "name": "Point Layer",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": [],
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Group Layer",
+   "supportsDynamicLegends": false
+  },
+  {
+   "id": 2,
+   "name": "Point Layer",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": [],
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Group Layer",
+   "supportsDynamicLegends": false
+  },
+  {
+   "id": 3,
+   "name": "Point Layer",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": [],
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Group Layer",
+   "supportsDynamicLegends": false
+  },
+  {
+   "id": 4,
+   "name": "Point Layer",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": [],
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Group Layer",
+   "supportsDynamicLegends": false
+  },
+  {
+   "id": 5,
+   "name": "Point Layer",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": [],
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Group Layer",
+   "supportsDynamicLegends": false
+  },
+  {
+   "id": 6,
+   "name": "Point Layer",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": [],
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Group Layer",
+   "supportsDynamicLegends": false
+  },
+  {
+   "id": 7,
+   "name": "Point Layer",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": [],
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Group Layer",
+   "supportsDynamicLegends": false
+  },
+  {
+   "id": 8,
+   "name": "Point Layer",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": [],
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Group Layer",
+   "supportsDynamicLegends": false
+  },
+  {
+   "id": 9,
+   "name": "Point Layer",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": [],
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Group Layer",
+   "supportsDynamicLegends": false
+  },
+  {
+   "id": 10,
+   "name": "Point Layer",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": [],
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Group Layer",
+   "supportsDynamicLegends": false
+  },
+  {
+   "id": 11,
+   "name": "Point Layer",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": [],
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Group Layer",
+   "supportsDynamicLegends": false
+  },
+  {
+   "id": 12,
+   "name": "SPADE.PWU_PERMITS",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": null,
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Feature Layer",
+   "geometryType": "esriGeometryPoint",
+   "supportsDynamicLegends": true
+  },
+  {
+   "id": 13,
+   "name": "SPADE.IPI_LINES",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": null,
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Feature Layer",
+   "geometryType": "esriGeometryPolyline",
+   "supportsDynamicLegends": true
+  },
+  {
+   "id": 14,
+   "name": "SPADE.STREET_MORATORIUMS_1",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": null,
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Feature Layer",
+   "geometryType": "esriGeometryPolyline",
+   "supportsDynamicLegends": true
+  },
+  {
+   "id": 15,
+   "name": "SPADE.STREET_MORATORIUMS_2",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": null,
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Feature Layer",
+   "geometryType": "esriGeometryPolyline",
+   "supportsDynamicLegends": true
+  },
+  {
+   "id": 16,
+   "name": "SPADE.STREET_MORATORIUMS_3",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": null,
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Feature Layer",
+   "geometryType": "esriGeometryPolyline",
+   "supportsDynamicLegends": true
+  },
+  {
+   "id": 17,
+   "name": "SPADE.STREET_MORATORIUMS_4",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": null,
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Feature Layer",
+   "geometryType": "esriGeometryPolyline",
+   "supportsDynamicLegends": true
+  },
+  {
+   "id": 18,
+   "name": "SPADE.STREET_MORATORIUMS_5",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": null,
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Feature Layer",
+   "geometryType": "esriGeometryPolyline",
+   "supportsDynamicLegends": true
+  },
+  {
+   "id": 19,
+   "name": "SPADE.STREET_MORATORIUMS_9",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": null,
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Feature Layer",
+   "geometryType": "esriGeometryPolyline",
+   "supportsDynamicLegends": true
+  },
+  {
+   "id": 20,
+   "name": "SPADE.STREET_MORATORIUMS_ALL",
+   "parentLayerId": 0,
+   "defaultVisibility": false,
+   "subLayerIds": null,
+   "minScale": 0,
+   "maxScale": 0,
+   "type": "Feature Layer",
+   "geometryType": "esriGeometryPolyline",
+   "supportsDynamicLegends": true
+  }
+ ],
+ "tables": [],
+ "spatialReference": {
+  "wkid": 102671,
+  "latestWkid": 3435,
+  "xyTolerance": 2.0E-4,
+  "zTolerance": 2,
+  "mTolerance": 0.001,
+  "falseX": -17463800,
+  "falseY": -46132600,
+  "xyUnits": 1.3724482207846552E8,
+  "falseZ": 0,
+  "zUnits": 1,
+  "falseM": -100000,
+  "mUnits": 10000
+ },
+ "singleFusedMapCache": false,
+ "initialExtent": {
+  "xmin": 811046.985130867,
+  "ymin": 1637180.445377435,
+  "xmax": 1500187.6466691326,
+  "ymax": 2294832.956584318,
+  "spatialReference": {
+   "wkid": 102671,
+   "latestWkid": 3435,
+   "xyTolerance": 2.0E-4,
+   "zTolerance": 2,
+   "mTolerance": 0.001,
+   "falseX": -17463800,
+   "falseY": -46132600,
+   "xyUnits": 1.3724482207846552E8,
+   "falseZ": 0,
+   "zUnits": 1,
+   "falseM": -100000,
+   "mUnits": 10000
+  }
+ },
+ "fullExtent": {
+  "xmin": 1091192.4026,
+  "ymin": 1813891.89291369,
+  "xmax": 1205138.63416092,
+  "ymax": 1952348.39421536,
+  "spatialReference": {
+   "wkid": 102671,
+   "latestWkid": 3435,
+   "xyTolerance": 2.0E-4,
+   "zTolerance": 2,
+   "mTolerance": 0.001,
+   "falseX": -17463800,
+   "falseY": -46132600,
+   "xyUnits": 1.3724482207846552E8,
+   "falseZ": 0,
+   "zUnits": 1,
+   "falseM": -100000,
+   "mUnits": 10000
+  }
+ },
+ "datesInUnknownTimezone": false,
+ "minScale": 0,
+ "maxScale": 0,
+ "units": "esriFeet",
+ "supportedImageFormatTypes": "PNG32,PNG24,PNG,JPG,DIB,TIFF,EMF,PS,PDF,GIF,SVG,SVGZ,BMP",
+ "documentInfo": {
+  "Title": "MyProject11.aprx",
+  "Author": "",
+  "Comments": "",
+  "Subject": "",
+  "Category": "",
+  "Version": "3.4.0",
+  "AntialiasingMode": "Fast",
+  "TextAntialiasingMode": "Force",
+  "Keywords": ""
+ },
+ "supportsQueryDomains": true,
+ "capabilities": "Map,Query,Data",
+ "supportedQueryFormats": "JSON, geoJSON, PBF",
+ "exportTilesAllowed": false,
+ "referenceScale": 0.0,
+ "datumTransformations": [
+  {
+   "geoTransforms": [
+    {
+     "wkid": 108001,
+     "latestWkid": 1241,
+     "transformForward": true,
+     "name": "NAD_1927_To_NAD_1983_NADCON"
+    }
+   ]
+  },
+  {
+   "geoTransforms": [
+    {
+     "wkid": 108001,
+     "latestWkid": 1241,
+     "transformForward": false,
+     "name": "NAD_1927_To_NAD_1983_NADCON"
+    }
+   ]
+  }
+ ],
+ "supportsDatumTransformation": true,
+ "archivingInfo": {"supportsHistoricMoment": false},
+ "supportsClipping": true,
+ "supportsSpatialFilter": true,
+ "supportsTimeRelation": true,
+ "supportsQueryDataElements": true,
+ "mapUnits": {"uwkid": 9003},
+ "maxSelectionCount": 2000,
+ "maxRecordCount": 2000,
+ "maxImageHeight": 4096,
+ "maxImageWidth": 4096,
+ "supportedExtensions": ""
+}

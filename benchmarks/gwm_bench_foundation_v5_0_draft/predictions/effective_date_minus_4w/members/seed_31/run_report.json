@@ -1,0 +1,13 @@
+{
+  "schema": "gwm_bench.foundation_v5_seed_multifold_run.v1",
+  "model_id": "effective_date_minus_4w",
+  "seed": 31,
+  "outer_fold_count": 4,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_minus_4w/members/seed_31/prediction.parquet",
+    "bytes": 397591,
+    "sha256": "aa7b7aab7c0c0f099b96dd1339323b8ac9a69a27a46e9278979303999f777b3b"
+  },
+  "test_target_rows_loaded": false,
+  "exit_status": "success"
+}

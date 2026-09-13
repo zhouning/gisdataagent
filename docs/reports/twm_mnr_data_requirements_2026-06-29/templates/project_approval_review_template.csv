@@ -1,0 +1,2 @@
+﻿unit_id,project_id,approval_id,project_type,application_date,decision_date,approval_status,approved_area_m2,review_task_id,review_status,review_result,supplement_required,rule_hit_count,evidence_item_count,admin_code,source_system,synthetic,not_for_production
+UNIT-001,PRJ-001,APR-001,construction_land_review,2025-04-01,2025-06-15,approved_with_conditions,1200,REV-001,completed,conditions_required,false,3,5,500000,approval_review_system,false,false

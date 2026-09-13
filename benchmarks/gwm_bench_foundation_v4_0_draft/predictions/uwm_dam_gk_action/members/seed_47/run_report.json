@@ -1,0 +1,22 @@
+{
+  "schema": "gwm_bench.foundation_v4_seed_run.v1",
+  "model_id": "uwm_dam_gk_action",
+  "seed": 47,
+  "started_at_monotonic": 919314.389996125,
+  "finished_at": "2026-07-23T14:47:30.604561+00:00",
+  "wall_seconds": 2.063167457934469,
+  "ru_maxrss_raw": 730955776,
+  "exit_status": "success",
+  "failure_state": null,
+  "checkpoint": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/uwm_dam_gk_action/members/seed_47/model.pt",
+    "bytes": 106158,
+    "sha256": "ad53fd86551ee2eb0e552966d3f3f7d5c202d1e20fb1997badf69cf93230fde6"
+  },
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/uwm_dam_gk_action/members/seed_47/prediction.parquet",
+    "bytes": 100445,
+    "sha256": "25bc44cfa8f10f7a6b3857da4b55115ef37218068505d60fc888c8ae6eebfc43"
+  },
+  "training_final_loss": 0.4456488788127899
+}

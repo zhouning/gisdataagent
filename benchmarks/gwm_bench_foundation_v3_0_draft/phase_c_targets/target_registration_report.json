@@ -1,0 +1,56 @@
+{
+  "schema": "gwm_bench.v3_phase_c_target_registration_report.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "status": "PASS_PHASE_C_TARGETS_REGISTERED_SCORING_ALLOWED",
+  "created_at": "2026-07-23T12:48:44.986646+00:00",
+  "checks": {
+    "prediction_commitment_precedes_target_registration": true,
+    "download_status_passed": true,
+    "target_manifest_has_exact_years": true,
+    "target_manifest_has_exact_regions": true,
+    "phase_a_regions_match_targets": true,
+    "all_target_files_exist": true,
+    "all_target_grids_match_phase_a": true,
+    "all_target_pixels_are_valid_classes_at_fixed_nodes": true,
+    "label_keys_match_submission_keys": true,
+    "all_target_files_created_after_commitment": true
+  },
+  "prediction_commitment_fingerprint": "fcce6679f251b85d350f7ac41cab68164be383e6bbc5685df91542cbeb1b93c1",
+  "target_dataset_fingerprint": "182333a179764d111750fe2430fb6a8ab7c163ce2ba2b43ce6553978bd7e7c71",
+  "counts": {
+    "region_count": 20,
+    "target_raster_count": 60,
+    "label_row_count": 3681,
+    "class_counts": {
+      "0": 392,
+      "1": 460,
+      "2": 4,
+      "3": 1,
+      "4": 129,
+      "5": 115,
+      "6": 2487,
+      "7": 72,
+      "8": 21
+    },
+    "step_change_counts": {
+      "2023": 77,
+      "2024": 76,
+      "2025": 78
+    },
+    "total_step_change_count": 231,
+    "regions_with_at_least_one_change": 20
+  },
+  "registry": {
+    "path": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_c_targets/target_registry.json",
+    "role": "phase_c_target_registry",
+    "size_bytes": 52646,
+    "sha256": "75ba60d81b75b652c8e5ae6eb33bdc796940666cb22f04adf40d8ff8e2387633"
+  },
+  "labels": {
+    "path": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_c_targets/observed_targets.parquet",
+    "role": "registered_v3_observed_targets",
+    "size_bytes": 5553,
+    "sha256": "98a2ffc6c6ef7a7f63fc468bd4c53033ed2547247ce8ecf8835821d665fc7920"
+  },
+  "scoring_allowed": true
+}

@@ -8,6 +8,7 @@ import subprocess
 SCRIPT = Path("scripts/validate_twm_data_foundation.py")
 RUNNER_SCRIPT = Path("scripts/run_twm_synthetic_experiment.py")
 VALIDATION_BUNDLE_SCRIPT = Path("scripts/run_twm_validation_bundle.py")
+TXPOINT10M_SCRIPT = Path("scripts/txpoint10m_lakehouse_analysis.py")
 
 
 def _load_script_module():
@@ -28,6 +29,14 @@ def _load_runner_module():
 
 def _load_validation_bundle_module():
     spec = importlib.util.spec_from_file_location("run_twm_validation_bundle", VALIDATION_BUNDLE_SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_txpoint10m_module():
+    spec = importlib.util.spec_from_file_location("txpoint10m_lakehouse_analysis", TXPOINT10M_SCRIPT)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(module)
@@ -446,6 +455,72 @@ def test_normalize_production_observed_history_export_keeps_incomplete_exports_r
     assert report["status"] == "review"
     assert "spatial_support" in report["audit"]["missing_data_gates"]
     assert "temporal_holdout_support" in report["audit"]["missing_data_gates"]
+
+
+def test_audit_observed_history_schema_reports_gate_diagnostics_for_incomplete_export(tmp_path):
+    module = _load_script_module()
+    path = tmp_path / "production_missing_spatial_temporal.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "unit_id,approval_status,outcome,area_m2,synthetic,not_for_production",
+                "P-1,approved,0.31,1000,False,False",
+                "P-2,in_review,0.08,1200,False,False",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    audit = module.audit_observed_history_schema(path)
+    diagnostics = {(item["gate"], item["phase"]): item for item in audit["gate_diagnostics"]}
+    spatial_schema = diagnostics[("spatial_support", "observed_history_schema")]
+    temporal_holdout_data = diagnostics[("temporal_holdout_support", "observed_history_data")]
+    production_flags_data = diagnostics[("explicit_production_flags", "observed_history_data")]
+    production_usable_data = diagnostics[("production_usable_rows", "observed_history_data")]
+
+    assert audit["status"] == "review"
+    assert "production_usable_rows" in audit["missing_data_gates"]
+    assert audit["row_quality"]["production_usable_row_count"] == 2
+    assert audit["row_quality"]["production_candidate_row_count"] == 0
+    assert audit["row_quality"]["production_treated_count"] == 0
+    assert audit["row_quality"]["production_control_count"] == 0
+    assert spatial_schema["status"] == "missing"
+    assert "cluster" in spatial_schema["accepted_fields"]
+    assert "Provide at least one spatial support field" in spatial_schema["remediation"]
+    assert temporal_holdout_data["status"] == "missing"
+    assert temporal_holdout_data["observed"]["period_count"] == 0
+    assert "Provide explicit train and holdout/test splits" in temporal_holdout_data["remediation"]
+    assert production_flags_data["status"] == "pass"
+    assert production_flags_data["observed"] == 2
+    assert production_usable_data["status"] == "missing"
+    assert production_usable_data["observed"] == 2
+    assert production_usable_data["remediation"].startswith("Set synthetic=false")
+
+
+def test_audit_observed_history_schema_reports_synthetic_rows_as_non_production(tmp_path):
+    module = _load_script_module()
+    path = tmp_path / "synthetic_rows.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "unit_id,approval_status,outcome,cluster,area_m2,period,split,policy_version,synthetic,not_for_production",
+                "P-1,approved,0.31,R01,1000,2026Q1,train,V1,True,True",
+                "P-2,in_review,0.08,R02,1200,2026Q2,holdout,V1,True,True",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    audit = module.audit_observed_history_schema(path)
+    diagnostics = {(item["gate"], item["phase"]): item for item in audit["gate_diagnostics"]}
+    production_usable_data = diagnostics[("production_usable_rows", "observed_history_data")]
+
+    assert audit["status"] == "review"
+    assert production_usable_data["status"] == "missing"
+    assert production_usable_data["observed"] == 0
+    assert production_usable_data["remediation"].startswith("Set synthetic=false")
 
 
 def test_write_twm_structural_validation_observed_history_generates_balanced_fixture(tmp_path):
@@ -2834,6 +2909,136 @@ def test_twm_validation_bundle_production_scale_readiness_passes_national_profil
     assert report["observed"]["max_layer_row_count"] == 120000000
     assert report["observed"]["requires_distributed_compute"] is True
     assert report["missing"] == []
+
+
+def test_txpoint10m_lakehouse_summary_exports_twm_production_scale_profile(tmp_path):
+    runner = _load_validation_bundle_module()
+    txpoint10m = _load_txpoint10m_module()
+    summary = {
+        "status": "ok",
+        "generated_at": "2026-06-29T06:25:38.120749+00:00",
+        "spark_version": "3.5.0",
+        "raw_uri": "s3a://gis-agent-lakehouse/raw/txpoint10m/TxPoint10M.shp",
+        "warehouse_uri": "s3a://gis-agent-lakehouse/warehouse/iceberg",
+        "tables": {
+            "transactions": "mmfe.txpoint10m.transactions",
+            "grid_025deg": "mmfe.txpoint10m.grid_025deg",
+            "daily_summary": "mmfe.txpoint10m.daily_summary",
+            "hourly_summary": "mmfe.txpoint10m.hourly_summary",
+        },
+        "transaction_stats": {
+            "row_count": 10000000,
+            "min_ts": "2016-01-01 05:05:05",
+            "max_ts": "2016-12-31 17:59:59",
+            "min_lon": -166.5508,
+            "max_lon": -66.9849,
+            "min_lat": 19.0608,
+            "max_lat": 71.3013,
+        },
+        "grid_stats": {
+            "grid_cell_count": 6578,
+            "covered_txn_count": 10000000,
+        },
+        "daily_stats": {"active_day_count": 366},
+        "artifacts": {
+            "summary_json": "/workspace/outputs/txpoint10m_lakehouse/txpoint10m_summary.json",
+            "grid_geojson": "/workspace/outputs/txpoint10m_lakehouse/txpoint10m_grid_025deg_top.geojson",
+            "leaflet_map_html": "/workspace/outputs/txpoint10m_lakehouse/txpoint10m_leaflet_map.html",
+        },
+        "elapsed_seconds": 36.31,
+    }
+
+    profile = txpoint10m.build_twm_production_scale_profile(summary)
+
+    assert profile["schema"] == "territory_world_model.production_scale_profile.v1"
+    assert profile["example_only"] is False
+    assert profile["not_for_production"] is False
+    transactions = next(layer for layer in profile["layers"] if layer["name"] == "txpoint10m_transactions")
+    assert transactions["row_count"] == 10000000
+    assert transactions["storage_format"] == "iceberg"
+    assert transactions["lakehouse_table"] is True
+    assert transactions["partition_columns"] == ["transaction_month"]
+    assert transactions["spatial_index"] == "grid_025deg"
+    assert profile["storage"]["table_format"] == "iceberg"
+    assert profile["storage"]["object_store"] == "minio"
+    assert profile["compute"]["engine"] == "spark"
+    assert profile["compute"]["spatial_engine"] == "sedona"
+    assert profile["validation"]["benchmark_elapsed_seconds"] == 36.31
+    assert "full TWM production accuracy" in profile["claim_boundary"]
+
+    profile_path = tmp_path / "txpoint10m_twm_production_scale_profile.json"
+    txpoint10m.write_twm_production_scale_profile(summary, profile_path)
+    report = runner.build_production_scale_readiness(production_scale_profile=profile_path)
+
+    assert report["status"] == "pass"
+    assert report["scale_tier"] == "ten_million_scale"
+    assert report["observed"]["max_layer_row_count"] == 10000000
+    assert report["missing"] == []
+
+
+def test_twm_validation_bundle_prepares_scale_profile_from_txpoint10m_summary(tmp_path):
+    runner = _load_validation_bundle_module()
+    summary_path = tmp_path / "txpoint10m_summary.json"
+    summary_path.write_text(
+        json.dumps(
+            {
+                "status": "ok",
+                "generated_at": "2026-06-29T06:25:38.120749+00:00",
+                "spark_version": "3.5.0",
+                "raw_uri": "s3a://gis-agent-lakehouse/raw/txpoint10m/TxPoint10M.shp",
+                "warehouse_uri": "s3a://gis-agent-lakehouse/warehouse/iceberg",
+                "tables": {
+                    "transactions": "mmfe.txpoint10m.transactions",
+                    "grid_025deg": "mmfe.txpoint10m.grid_025deg",
+                },
+                "transaction_stats": {
+                    "row_count": 10000000,
+                    "min_ts": "2016-01-01 05:05:05",
+                    "max_ts": "2016-12-31 17:59:59",
+                    "min_lon": -166.5508,
+                    "max_lon": -66.9849,
+                    "min_lat": 19.0608,
+                    "max_lat": 71.3013,
+                },
+                "grid_stats": {
+                    "grid_cell_count": 6578,
+                    "covered_txn_count": 10000000,
+                },
+                "daily_stats": {"active_day_count": 366},
+                "artifacts": {
+                    "summary_json": "/workspace/outputs/txpoint10m_lakehouse/txpoint10m_summary.json",
+                    "grid_geojson": "/workspace/outputs/txpoint10m_lakehouse/txpoint10m_grid_025deg_top.geojson",
+                    "leaflet_map_html": "/workspace/outputs/txpoint10m_lakehouse/txpoint10m_leaflet_map.html",
+                },
+                "elapsed_seconds": 36.31,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    profile_path = runner.prepare_txpoint10m_scale_profile(txpoint10m_lakehouse_summary=summary_path)
+    profile = json.loads(profile_path.read_text(encoding="utf-8"))
+    readiness = runner.build_production_scale_readiness(production_scale_profile=profile_path)
+
+    assert profile_path == summary_path.with_name("txpoint10m_twm_production_scale_profile.json")
+    assert profile["schema"] == "territory_world_model.production_scale_profile.v1"
+    assert readiness["status"] == "pass"
+    assert readiness["scale_tier"] == "ten_million_scale"
+    assert readiness["observed"]["max_layer_row_count"] == 10000000
+    assert readiness["missing"] == []
+
+
+def test_twm_validation_bundle_txpoint10m_generated_profile_path_respects_explicit_override():
+    runner = _load_validation_bundle_module()
+
+    generated = runner.txpoint10m_generated_scale_profile_output(
+        production_scale_profile=Path("explicit_scale_profile.json"),
+        txpoint10m_lakehouse_summary=Path("txpoint10m_summary.json"),
+        txpoint10m_scale_profile_output=Path("txpoint10m_twm_production_scale_profile.json"),
+    )
+
+    assert generated is None
 
 
 def test_twm_validation_bundle_production_scale_readiness_reviews_missing_distributed_gates(tmp_path):

@@ -1,0 +1,884 @@
+{
+  "schema": "gwm_bench.foundation_v5_outer_fold_run.v1",
+  "outer_fold_id": "holdout_2015",
+  "test_event": "event_2015_improvement_surcharge",
+  "training_events": [
+    "event_2019_nys_congestion_surcharge",
+    "event_2022_tlc_taximeter_adjustment",
+    "event_2025_mta_crz"
+  ],
+  "mode": "formal",
+  "selected_config": "regularized",
+  "selection_receipt": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2015/nested_selection_receipt.json",
+    "bytes": 3710,
+    "sha256": "84057df72ee332e6e4581e73777fce2bc9853f94e62811848e74956563c0f532"
+  },
+  "training_manifest": {
+    "schema": "gwm_bench.foundation_v5_fold_training_manifest.v1",
+    "created_at": "2026-07-23T15:34:17.066932+00:00",
+    "fold_id": "holdout_2015",
+    "test_event": "event_2015_improvement_surcharge",
+    "permitted_training_events": [
+      "event_2019_nys_congestion_surcharge",
+      "event_2022_tlc_taximeter_adjustment",
+      "event_2025_mta_crz"
+    ],
+    "weekly_rows": 50496,
+    "heldout_event_rows": 0,
+    "heldout_post_action_target_rows_loaded": 0,
+    "chronologically_later_training_events_permitted": true,
+    "analyst_blindness_claimed": false,
+    "test_target_path_permitted_for_model_runtime": false,
+    "normalization_may_read_current_fold_targets": false,
+    "selection_may_read_current_fold_targets": false,
+    "graph_may_read_current_fold_post_action_rows": false,
+    "artifact": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/development/weekly_state_action.parquet",
+      "bytes": 659326,
+      "sha256": "737a881fc78dca43a6ed8bb5016bf5b489d2a71278f66818cf6f701aab6694df",
+      "row_count": 50496
+    }
+  },
+  "test_graph": {
+    "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/graph/test_spatial_edges.parquet",
+    "sha256": "432a312781e9856e9a49966fca4c9fc49a56e01993aadf7f12df2a51a08ab52c",
+    "relation_counts": {
+      "geographic_adjacency": 692,
+      "origin_destination_flow": 2092,
+      "action_exposure": 263
+    },
+    "relation_digests": [
+      "ef7ebd578d91766090d96b7c67759fbc0aad7f8011f0871addf8d6eee54b1769",
+      "19d8fcb9dbbb0c794cf037351916d4fc0f4821ac5b15c2f32e58bee28ff9683e",
+      "e34927057127782566a8943078e293570e10ce256a5330205a7c5948f098eb84"
+    ]
+  },
+  "training_graphs": {
+    "event_2019_nys_congestion_surcharge": {
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2019_nys_congestion_surcharge/spatial_edges.parquet",
+      "sha256": "51429bee2978345b1c3ecae72c080b70bd0e8df9aa6dbfbe5c82028ed1d91e45",
+      "relation_counts": {
+        "geographic_adjacency": 692,
+        "origin_destination_flow": 2082,
+        "action_exposure": 263
+      },
+      "relation_digests": [
+        "ef7ebd578d91766090d96b7c67759fbc0aad7f8011f0871addf8d6eee54b1769",
+        "71d7b55bd23bdde419652c107018f51957ca57254fe20e39ec866629e515ce49",
+        "31bcf9be005e692b2e857f32b49c8538fec1cabddcd048b1caaa6b14dadff4dd"
+      ]
+    },
+    "event_2022_tlc_taximeter_adjustment": {
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2022_tlc_taximeter_adjustment/spatial_edges.parquet",
+      "sha256": "59558e70f19adc8eb7f4ea8615bd28b720d5151d6de868efdacab350ea150dfe",
+      "relation_counts": {
+        "geographic_adjacency": 692,
+        "origin_destination_flow": 2076,
+        "action_exposure": 263
+      },
+      "relation_digests": [
+        "ef7ebd578d91766090d96b7c67759fbc0aad7f8011f0871addf8d6eee54b1769",
+        "21adf62931117f663e17a22c2b59da7eaa5a4696f9a84a08abbbd65a0154133f",
+        "1cc511a3b1e9cad3570a613eb577fcdb102949cf9108cd80e29a1cb7f88ad81b"
+      ]
+    },
+    "event_2025_mta_crz": {
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2025_mta_crz/spatial_edges.parquet",
+      "sha256": "e6b2873ef6be59376107c014b47fc2fc952621a238fda6a676256401aa786469",
+      "relation_counts": {
+        "geographic_adjacency": 692,
+        "origin_destination_flow": 2059,
+        "action_exposure": 263
+      },
+      "relation_digests": [
+        "ef7ebd578d91766090d96b7c67759fbc0aad7f8011f0871addf8d6eee54b1769",
+        "34a045d70e5381c2222d152502de62f59547f54410327e4c5c9f686451d20b28",
+        "1303fd36ac8b9837183e566f22eeae3cfb95e11431ede5aca892590167bbecd1"
+      ]
+    }
+  },
+  "model_read_artifacts": [
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/development/weekly_state_action.parquet",
+      "bytes": 659326,
+      "sha256": "737a881fc78dca43a6ed8bb5016bf5b489d2a71278f66818cf6f701aab6694df"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/test_input/weekly_state_history.parquet",
+      "bytes": 221860,
+      "sha256": "43ab6bf7af282d282c6c5198499a659ddaf967458239d60d61b42ef400ede5af"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/test_input/future_action_spec.parquet",
+      "bytes": 18267,
+      "sha256": "548b4942c0fbc8eee3e87f9cf23ec798ff7c241f253545d8b4290bb3ad92beca"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/test_input/submission_keys.parquet",
+      "bytes": 5391,
+      "sha256": "255570eb116bebc5f76a2c76b54abb8a842fb307049d3bfc19ac6df59ebeaba4"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/graph/zone_metadata.parquet",
+      "bytes": 8489,
+      "sha256": "8cae554be9ab0fc12b99106eda2e47159c7036eb3d7c44d74bca11be5ffeca37"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/graph/test_spatial_edges.parquet",
+      "bytes": 28218,
+      "sha256": "432a312781e9856e9a49966fca4c9fc49a56e01993aadf7f12df2a51a08ab52c"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/graph/training_graph_index.json",
+      "bytes": 1205,
+      "sha256": "c5adb19f0ecd7bdb81e3866389d1a1d5db4e36d2bccdf00769892ddd6d1a7ce8"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/development/training_row_manifest.json",
+      "bytes": 1042,
+      "sha256": "ba9c61d190c5ca78a25a96df433b8719e7e35bbb4abdbf71a2b3a63bebca9b9a"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2019_nys_congestion_surcharge/spatial_edges.parquet",
+      "bytes": 31159,
+      "sha256": "51429bee2978345b1c3ecae72c080b70bd0e8df9aa6dbfbe5c82028ed1d91e45"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2022_tlc_taximeter_adjustment/spatial_edges.parquet",
+      "bytes": 29403,
+      "sha256": "59558e70f19adc8eb7f4ea8615bd28b720d5151d6de868efdacab350ea150dfe"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2025_mta_crz/spatial_edges.parquet",
+      "bytes": 30398,
+      "sha256": "e6b2873ef6be59376107c014b47fc2fc952621a238fda6a676256401aa786469"
+    }
+  ],
+  "model_read_path_count": 11,
+  "model_read_paths_contain_answer_directory": false,
+  "test_target_rows_loaded": false,
+  "fold_prediction_reports": {
+    "history_ar_backbone": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "history_ar_backbone",
+      "outer_fold_id": "holdout_2015",
+      "seed": null,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/history_ar_backbone/folds/holdout_2015/prediction.parquet",
+        "bytes": 102874,
+        "sha256": "337971568570233bf82b96b44896ac4af0bd2130c4a1793748f72708276110d3"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": null,
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "fixed_adjacency_spatial_ar": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "fixed_adjacency_spatial_ar",
+      "outer_fold_id": "holdout_2015",
+      "seed": null,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/fixed_adjacency_spatial_ar/folds/holdout_2015/prediction.parquet",
+        "bytes": 102947,
+        "sha256": "cc98e373ca5eb5a33d486a6f1a88510cc87558bc66789dd446a72755829e5d23"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": null,
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "uwm_dam_gk_action_residual/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "uwm_dam_gk_action_residual",
+      "outer_fold_id": "holdout_2015",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_31/folds/holdout_2015/prediction.parquet",
+        "bytes": 102971,
+        "sha256": "4d76495183d7f965beb8bcab064b5cd26a5ce60b73ebd112a5ace76577abbef9"
+      },
+      "checkpoint": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_31/folds/holdout_2015/model.pt",
+        "bytes": 48790,
+        "sha256": "bedfe66480467c846e6cbf756c6e1967ef2eee2a60ad8defe722f6ea1976a01e"
+      },
+      "training_final_loss": 0.2582632253567378,
+      "control_audit": null,
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null,
+      "wall_seconds": 0.44095404096879065,
+      "raw_action_residual": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_31/folds/holdout_2015/raw_action_residual.parquet",
+        "bytes": 105935,
+        "sha256": "38eb461aae4506a3cbd98ac50223e25eee72b6c6490661459498af384a540200"
+      }
+    },
+    "action_deleted/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "action_deleted",
+      "outer_fold_id": "holdout_2015",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/members/seed_31/folds/holdout_2015/prediction.parquet",
+        "bytes": 102874,
+        "sha256": "337971568570233bf82b96b44896ac4af0bd2130c4a1793748f72708276110d3"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "action_deleted",
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "effective_date_minus_4w/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "effective_date_minus_4w",
+      "outer_fold_id": "holdout_2015",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_minus_4w/members/seed_31/folds/holdout_2015/prediction.parquet",
+        "bytes": 103029,
+        "sha256": "26cf3bde29d87071e04f73255a58eb31455631959e8e83bca97a623c4fc37f17"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "effective_date_minus_4w",
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "effective_date_plus_4w/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "effective_date_plus_4w",
+      "outer_fold_id": "holdout_2015",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_plus_4w/members/seed_31/folds/holdout_2015/prediction.parquet",
+        "bytes": 103280,
+        "sha256": "4032ae7f610723c47db7af5233839ebc355b6a42697e4307f03585b444d705c0"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "effective_date_plus_4w",
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "action_component_permutation/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "action_component_permutation",
+      "outer_fold_id": "holdout_2015",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_component_permutation/members/seed_31/folds/holdout_2015/prediction.parquet",
+        "bytes": 103025,
+        "sha256": "49907c41230393ed3b28b9b73764add4cdd2daae27b0c7bcd887ac428ed4f951"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "action_component_permutation",
+        "component_permutation": [
+          9,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "permutation_has_fixed_points": false,
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "wrong_spatial_scope/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "wrong_spatial_scope",
+      "outer_fold_id": "holdout_2015",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/wrong_spatial_scope/members/seed_31/folds/holdout_2015/prediction.parquet",
+        "bytes": 103298,
+        "sha256": "a6b887ac2d46c476f5025d1c734d80a9fff979298bf7c9828c7e70431dcc71d3"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "wrong_spatial_scope",
+        "wrong_scope": "CBD-only for every held-out action",
+        "nonzero_zone_count": 38,
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "cross_event_action_swap/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "cross_event_action_swap",
+      "outer_fold_id": "holdout_2015",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/cross_event_action_swap/members/seed_31/folds/holdout_2015/prediction.parquet",
+        "bytes": 103218,
+        "sha256": "baace2b6cceb799a8d4d91b790c60035f056f29760a9311b3a7b141fd7e7e089"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "cross_event_action_swap",
+        "swap_action_sha256": "f8bbb65bb0474116f33d47dce3b42e93caf7d53824f4dc8a4ba87ee40eb465d7",
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": "event_2019_nys_congestion_surcharge"
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "zone_exposure_shuffle_seed_20260723/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "zone_exposure_shuffle_seed_20260723",
+      "outer_fold_id": "holdout_2015",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/members/seed_31/folds/holdout_2015/prediction.parquet",
+        "bytes": 102971,
+        "sha256": "4d76495183d7f965beb8bcab064b5cd26a5ce60b73ebd112a5ace76577abbef9"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "zone_exposure_shuffle_seed_20260723",
+        "zone_permutation_sha256": "e135bdbc26f1b5ffabc9707d95944be431300a1c5e4167bf5a7cc911d8fcbadf",
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "dam_gk_residual_no_action/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "dam_gk_residual_no_action",
+      "outer_fold_id": "holdout_2015",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_31/folds/holdout_2015/prediction.parquet",
+        "bytes": 102985,
+        "sha256": "0b93a3a4171fa1fa1fecda0a078aedccb1fd4ec35a9e1a0a80e5940e90a5c8ba"
+      },
+      "checkpoint": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_31/folds/holdout_2015/model.pt",
+        "bytes": 48790,
+        "sha256": "a2e0e1fbc6cbf19eaba0f5e0200fcf693fb53d111c29ba62f121c6db88fbf82f"
+      },
+      "training_final_loss": 0.26396696269512177,
+      "control_audit": null,
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null,
+      "wall_seconds": 0.41589391592424363,
+      "raw_action_residual": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_31/folds/holdout_2015/raw_action_residual.parquet",
+        "bytes": 105979,
+        "sha256": "16cfb3dbf66b97a7148c857c17040a56dc915c112298ada5beb23d749f30083b"
+      }
+    },
+    "uwm_dam_gk_action_residual/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "uwm_dam_gk_action_residual",
+      "outer_fold_id": "holdout_2015",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_47/folds/holdout_2015/prediction.parquet",
+        "bytes": 103234,
+        "sha256": "311a5bf230a73efd5fe882295e694cf80553cca3663595dba15e63b0c5605180"
+      },
+      "checkpoint": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_47/folds/holdout_2015/model.pt",
+        "bytes": 48790,
+        "sha256": "dea3d0b024ce5eee091ead067c4f9de5bfcf7b8157adf47f8cd4ecf7b3c85982"
+      },
+      "training_final_loss": 0.2547338902950287,
+      "control_audit": null,
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null,
+      "wall_seconds": 0.48133079102262855,
+      "raw_action_residual": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_47/folds/holdout_2015/raw_action_residual.parquet",
+        "bytes": 105928,
+        "sha256": "01b158b785c41a3d871c9e23d506242dd52d33d7d2df7a2d41a5232ab07d1e9e"
+      }
+    },
+    "action_deleted/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "action_deleted",
+      "outer_fold_id": "holdout_2015",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/members/seed_47/folds/holdout_2015/prediction.parquet",
+        "bytes": 102874,
+        "sha256": "337971568570233bf82b96b44896ac4af0bd2130c4a1793748f72708276110d3"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "action_deleted",
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "effective_date_minus_4w/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "effective_date_minus_4w",
+      "outer_fold_id": "holdout_2015",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_minus_4w/members/seed_47/folds/holdout_2015/prediction.parquet",
+        "bytes": 103160,
+        "sha256": "bed05ebcacf5313df1315b7b4ecb140afdaf3b8c297790b6b4e00e11c9503402"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "effective_date_minus_4w",
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "effective_date_plus_4w/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "effective_date_plus_4w",
+      "outer_fold_id": "holdout_2015",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_plus_4w/members/seed_47/folds/holdout_2015/prediction.parquet",
+        "bytes": 103420,
+        "sha256": "9a1361c5fc4657d6c866c619e5b4e528a40d5a6821c0e58cffa4d988e85a367a"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "effective_date_plus_4w",
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "action_component_permutation/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "action_component_permutation",
+      "outer_fold_id": "holdout_2015",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_component_permutation/members/seed_47/folds/holdout_2015/prediction.parquet",
+        "bytes": 103159,
+        "sha256": "5230a583f41e0da6d5faebc0e18cce6988d7b9afc68f3e2afa639a1cacdaebc8"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "action_component_permutation",
+        "component_permutation": [
+          9,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "permutation_has_fixed_points": false,
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "wrong_spatial_scope/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "wrong_spatial_scope",
+      "outer_fold_id": "holdout_2015",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/wrong_spatial_scope/members/seed_47/folds/holdout_2015/prediction.parquet",
+        "bytes": 103418,
+        "sha256": "0842775638c364756e99bd85f3f023ed391f3193aad16ea5a0ffe60625f16c05"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "wrong_spatial_scope",
+        "wrong_scope": "CBD-only for every held-out action",
+        "nonzero_zone_count": 38,
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "cross_event_action_swap/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "cross_event_action_swap",
+      "outer_fold_id": "holdout_2015",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/cross_event_action_swap/members/seed_47/folds/holdout_2015/prediction.parquet",
+        "bytes": 103255,
+        "sha256": "b710777b7d38048a66968fde4f6b07abf2dc8c6b4d2795c5ce69ad72c00aca20"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "cross_event_action_swap",
+        "swap_action_sha256": "f8bbb65bb0474116f33d47dce3b42e93caf7d53824f4dc8a4ba87ee40eb465d7",
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": "event_2019_nys_congestion_surcharge"
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "zone_exposure_shuffle_seed_20260723/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "zone_exposure_shuffle_seed_20260723",
+      "outer_fold_id": "holdout_2015",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/members/seed_47/folds/holdout_2015/prediction.parquet",
+        "bytes": 103234,
+        "sha256": "311a5bf230a73efd5fe882295e694cf80553cca3663595dba15e63b0c5605180"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "zone_exposure_shuffle_seed_20260723",
+        "zone_permutation_sha256": "e135bdbc26f1b5ffabc9707d95944be431300a1c5e4167bf5a7cc911d8fcbadf",
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "dam_gk_residual_no_action/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "dam_gk_residual_no_action",
+      "outer_fold_id": "holdout_2015",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_47/folds/holdout_2015/prediction.parquet",
+        "bytes": 103135,
+        "sha256": "ca387ffee8dc1cfca70669375acd5fc136b9778f20df6cb4e63e0bb4822df5c7"
+      },
+      "checkpoint": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_47/folds/holdout_2015/model.pt",
+        "bytes": 48790,
+        "sha256": "888792cb52f9c790e7c3ac73089a5380cb87007b87c6c94e6efa1d7aa18f1e79"
+      },
+      "training_final_loss": 0.2608139564593633,
+      "control_audit": null,
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null,
+      "wall_seconds": 0.43242391594685614,
+      "raw_action_residual": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_47/folds/holdout_2015/raw_action_residual.parquet",
+        "bytes": 105834,
+        "sha256": "9c5f94a80dcfa6e2586984d66306a5f696368c624a84e8297a59f695b8f411a6"
+      }
+    },
+    "uwm_dam_gk_action_residual/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "uwm_dam_gk_action_residual",
+      "outer_fold_id": "holdout_2015",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_73/folds/holdout_2015/prediction.parquet",
+        "bytes": 103130,
+        "sha256": "91200112b9df628474959ab390e9eb79d24f508bbca965e5252cc6802379241b"
+      },
+      "checkpoint": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_73/folds/holdout_2015/model.pt",
+        "bytes": 48790,
+        "sha256": "4955e6f9dc1fa99cbd66973e315b1b23927c83161cf7eb6026807f6167e220fc"
+      },
+      "training_final_loss": 0.255561704436938,
+      "control_audit": null,
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null,
+      "wall_seconds": 0.441757666063495,
+      "raw_action_residual": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_73/folds/holdout_2015/raw_action_residual.parquet",
+        "bytes": 105876,
+        "sha256": "17b640de3ef77961929ec30a5fc4ba6ccc3bf234cc32eaefabab166c3b562548"
+      }
+    },
+    "action_deleted/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "action_deleted",
+      "outer_fold_id": "holdout_2015",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/members/seed_73/folds/holdout_2015/prediction.parquet",
+        "bytes": 102874,
+        "sha256": "337971568570233bf82b96b44896ac4af0bd2130c4a1793748f72708276110d3"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "action_deleted",
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "effective_date_minus_4w/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "effective_date_minus_4w",
+      "outer_fold_id": "holdout_2015",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_minus_4w/members/seed_73/folds/holdout_2015/prediction.parquet",
+        "bytes": 103213,
+        "sha256": "a74b6af77eee800087d3b8845c819cd92f3ab9c99d389d486c9500bc07f62dbc"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "effective_date_minus_4w",
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "effective_date_plus_4w/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "effective_date_plus_4w",
+      "outer_fold_id": "holdout_2015",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_plus_4w/members/seed_73/folds/holdout_2015/prediction.parquet",
+        "bytes": 103406,
+        "sha256": "5ecb5986cc8ac58f7f97ceed47b12cb05070f551a09072f626586de41fbd684d"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "effective_date_plus_4w",
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "action_component_permutation/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "action_component_permutation",
+      "outer_fold_id": "holdout_2015",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_component_permutation/members/seed_73/folds/holdout_2015/prediction.parquet",
+        "bytes": 103130,
+        "sha256": "b43d2796dd5a9ea72238b0f14e69653183576cbdc072180222a8aa9908f4a83e"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "action_component_permutation",
+        "component_permutation": [
+          9,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "permutation_has_fixed_points": false,
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "wrong_spatial_scope/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "wrong_spatial_scope",
+      "outer_fold_id": "holdout_2015",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/wrong_spatial_scope/members/seed_73/folds/holdout_2015/prediction.parquet",
+        "bytes": 103428,
+        "sha256": "6f5196c1b67fe5a53997782ca7a77541f892c68670616e8b5dfa23be0224afdc"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "wrong_spatial_scope",
+        "wrong_scope": "CBD-only for every held-out action",
+        "nonzero_zone_count": 38,
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "cross_event_action_swap/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "cross_event_action_swap",
+      "outer_fold_id": "holdout_2015",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/cross_event_action_swap/members/seed_73/folds/holdout_2015/prediction.parquet",
+        "bytes": 103349,
+        "sha256": "ddfdb3fc19c41ddbdb40f6f9f528a7ba66230c8ba92bdcd1b733913ece934a3f"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "cross_event_action_swap",
+        "swap_action_sha256": "f8bbb65bb0474116f33d47dce3b42e93caf7d53824f4dc8a4ba87ee40eb465d7",
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": "event_2019_nys_congestion_surcharge"
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "zone_exposure_shuffle_seed_20260723/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "zone_exposure_shuffle_seed_20260723",
+      "outer_fold_id": "holdout_2015",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/members/seed_73/folds/holdout_2015/prediction.parquet",
+        "bytes": 103130,
+        "sha256": "91200112b9df628474959ab390e9eb79d24f508bbca965e5252cc6802379241b"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "zone_exposure_shuffle_seed_20260723",
+        "zone_permutation_sha256": "e135bdbc26f1b5ffabc9707d95944be431300a1c5e4167bf5a7cc911d8fcbadf",
+        "outer_fold_id": "holdout_2015",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "dam_gk_residual_no_action/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "dam_gk_residual_no_action",
+      "outer_fold_id": "holdout_2015",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_73/folds/holdout_2015/prediction.parquet",
+        "bytes": 102992,
+        "sha256": "eb0c7aac8a3255f7939f617eff877b57b4b8a69ef2a4728e5f95aa91f9d33e81"
+      },
+      "checkpoint": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_73/folds/holdout_2015/model.pt",
+        "bytes": 48790,
+        "sha256": "2766a9031e0f5b201b24570f57283b3aec6c52888deed36a7bcfff34c7820ce1"
+      },
+      "training_final_loss": 0.2590319315592448,
+      "control_audit": null,
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null,
+      "wall_seconds": 0.4131503750104457,
+      "raw_action_residual": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_73/folds/holdout_2015/raw_action_residual.parquet",
+        "bytes": 105933,
+        "sha256": "38a5f9cd72a23c42cae9074319ca06125d833f8388f7c8d27518e2fb4adea269"
+      }
+    }
+  },
+  "wall_seconds": 6.89079712505918,
+  "ru_maxrss_raw": 636715008,
+  "exit_status": "success",
+  "failure_state": null
+}

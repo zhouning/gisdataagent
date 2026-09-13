@@ -1,0 +1,753 @@
+{
+  "address_manifest": [
+    {
+      "address": "10000 N BESSIE COLEMAN DR",
+      "object_id": 1,
+      "permit_ids": [
+        "3279276",
+        "3286065",
+        "3290703",
+        "3297759",
+        "3299740",
+        "3305638",
+        "3307150",
+        "3310322",
+        "3315602",
+        "3322975",
+        "3327088",
+        "3327448",
+        "3332581",
+        "3338113",
+        "3342677",
+        "3349005",
+        "3352648",
+        "3354192",
+        "3357057",
+        "3362937",
+        "3364211",
+        "3368274",
+        "3372857",
+        "3380303",
+        "3385713",
+        "3389265"
+      ],
+      "permit_numbers": [
+        "B100987137",
+        "B100991804",
+        "B100995016",
+        "B100999859",
+        "B101001094",
+        "B101004789",
+        "B101005705",
+        "B101007820",
+        "B101011307",
+        "B101016477",
+        "B101019373",
+        "101019617",
+        "B101023269",
+        "B101027215",
+        "B101030369",
+        "B101034720",
+        "B101037191",
+        "B101038204",
+        "B101039844",
+        "B101042908",
+        "B101043577",
+        "B101045861",
+        "B101048292",
+        "B101052655",
+        "B101055886",
+        "B101057941"
+      ],
+      "row_count": 26
+    },
+    {
+      "address": "1041 N AVERS AVE",
+      "object_id": 2,
+      "permit_ids": [
+        "N2852565"
+      ],
+      "permit_numbers": [
+        "B200461415"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "1105 N MONTICELLO AVE",
+      "object_id": 3,
+      "permit_ids": [
+        "N2913510"
+      ],
+      "permit_numbers": [
+        "B200476673"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "11211 S CORLISS AVE",
+      "object_id": 4,
+      "permit_ids": [
+        "N2863868",
+        "N2868594",
+        "N2897475"
+      ],
+      "permit_numbers": [
+        "B200464324",
+        "B200465541",
+        "B200472699"
+      ],
+      "row_count": 3
+    },
+    {
+      "address": "1221 W BELMONT AVE",
+      "object_id": 5,
+      "permit_ids": [
+        "N2840008"
+      ],
+      "permit_numbers": [
+        "B200458465"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "1223 W CHESTNUT ST",
+      "object_id": 6,
+      "permit_ids": [
+        "3355544"
+      ],
+      "permit_numbers": [
+        "101038984"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "132 E VAN BUREN ST",
+      "object_id": 7,
+      "permit_ids": [
+        "3414142"
+      ],
+      "permit_numbers": [
+        "101068745"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "1331 S WELLS ST",
+      "object_id": 8,
+      "permit_ids": [
+        "N2851357",
+        "N2858307"
+      ],
+      "permit_numbers": [
+        "B200461112",
+        "B200462916"
+      ],
+      "row_count": 2
+    },
+    {
+      "address": "1442 E 66TH PL",
+      "object_id": 9,
+      "permit_ids": [
+        "N2860631"
+      ],
+      "permit_numbers": [
+        "B200463493"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "150 N RIVERSIDE PLZ",
+      "object_id": 10,
+      "permit_ids": [
+        "3294624",
+        "3295766",
+        "3302845",
+        "3334467",
+        "3364699",
+        "3366200",
+        "3369158",
+        "3382349",
+        "3382542",
+        "3391518",
+        "3392286",
+        "3393133",
+        "3400393",
+        "3400955",
+        "3403515",
+        "3408500",
+        "3409814",
+        "3410743",
+        "3411121",
+        "3414282",
+        "3418217",
+        "3423388",
+        "3424497",
+        "3429348",
+        "3447315",
+        "3450511"
+      ],
+      "permit_numbers": [
+        "100997722",
+        "100998508",
+        "101003019",
+        "101024650",
+        "101043829",
+        "101044661",
+        "101046337",
+        "101053913",
+        "101054013",
+        "101059204",
+        "101059625",
+        "101060007",
+        "101063014",
+        "101063257",
+        "101064224",
+        "101066371",
+        "101066980",
+        "101067447",
+        "101067608",
+        "101068797",
+        "101070481",
+        "101072804",
+        "101073244",
+        "101075318",
+        "101082580",
+        "101083934"
+      ],
+      "row_count": 26
+    },
+    {
+      "address": "1525 W HOMER ST",
+      "object_id": 11,
+      "permit_ids": [
+        "3392670"
+      ],
+      "permit_numbers": [
+        "101059821"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "1612 N MOBILE AVE",
+      "object_id": 12,
+      "permit_ids": [
+        "N2792377",
+        "N2907442"
+      ],
+      "permit_numbers": [
+        "B200446661",
+        "B200475183"
+      ],
+      "row_count": 2
+    },
+    {
+      "address": "1657 W FOSTER AVE",
+      "object_id": 13,
+      "permit_ids": [
+        "N2846854"
+      ],
+      "permit_numbers": [
+        "B200459981"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "1942 W PETERSON AVE",
+      "object_id": 14,
+      "permit_ids": [
+        "N2845861"
+      ],
+      "permit_numbers": [
+        "B200459770"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "2014 W CHURCHILL ST",
+      "object_id": 15,
+      "permit_ids": [
+        "N2827007"
+      ],
+      "permit_numbers": [
+        "B200455590"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "2028 N RICHMOND ST",
+      "object_id": 16,
+      "permit_ids": [
+        "N2809998"
+      ],
+      "permit_numbers": [
+        "B200451220"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "205 N SANGAMON ST",
+      "object_id": 17,
+      "permit_ids": [
+        "N2905291",
+        "N2907946"
+      ],
+      "permit_numbers": [
+        "B200474672",
+        "B200475341"
+      ],
+      "row_count": 2
+    },
+    {
+      "address": "2222 W MORSE AVE",
+      "object_id": 18,
+      "permit_ids": [
+        "N2866994"
+      ],
+      "permit_numbers": [
+        "B200465116"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "2323 W WINNEMAC AVE",
+      "object_id": 19,
+      "permit_ids": [
+        "N2779269"
+      ],
+      "permit_numbers": [
+        "B200443103"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "2324 N FREMONT ST",
+      "object_id": 20,
+      "permit_ids": [
+        "3312735",
+        "3325737",
+        "3349721",
+        "3363602",
+        "3371109",
+        "3379923",
+        "N2624376",
+        "N2857544"
+      ],
+      "permit_numbers": [
+        "B101009396",
+        "B101018398",
+        "B101035225",
+        "B101043268",
+        "B101047324",
+        "B101052410",
+        "B200414239",
+        "B200462698"
+      ],
+      "row_count": 8
+    },
+    {
+      "address": "2425 E 71ST ST",
+      "object_id": 21,
+      "permit_ids": [
+        "3346607"
+      ],
+      "permit_numbers": [
+        "101033052"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "2705 W PRINDIVILLE ST",
+      "object_id": 22,
+      "permit_ids": [
+        "N2843389"
+      ],
+      "permit_numbers": [
+        "B200459224"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "2825 S STEWART AVE",
+      "object_id": 23,
+      "permit_ids": [
+        "N2870045"
+      ],
+      "permit_numbers": [
+        "B200465901"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "2829 S STEWART AVE",
+      "object_id": 24,
+      "permit_ids": [
+        "N2868487"
+      ],
+      "permit_numbers": [
+        "B200465506"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "2966 S THROOP ST",
+      "object_id": 25,
+      "permit_ids": [
+        "N2882560"
+      ],
+      "permit_numbers": [
+        "B200469078"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "3118 N OAKLEY AVE",
+      "object_id": 26,
+      "permit_ids": [
+        "N2839638"
+      ],
+      "permit_numbers": [
+        "B200458399"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "3200 E 96TH ST",
+      "object_id": 27,
+      "permit_ids": [
+        "3302954",
+        "3302958",
+        "3302961",
+        "3302965"
+      ],
+      "permit_numbers": [
+        "101003098",
+        "101003101",
+        "101003103",
+        "101003107"
+      ],
+      "row_count": 4
+    },
+    {
+      "address": "3348 N CAMPBELL AVE",
+      "object_id": 28,
+      "permit_ids": [
+        "N2896126"
+      ],
+      "permit_numbers": [
+        "B200472377"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "3857 S CALUMET AVE",
+      "object_id": 29,
+      "permit_ids": [
+        "N2774568"
+      ],
+      "permit_numbers": [
+        "B200441880"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "4021 S STATE ST",
+      "object_id": 30,
+      "permit_ids": [
+        "3440426"
+      ],
+      "permit_numbers": [
+        "101079694"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "4125 S STATE ST",
+      "object_id": 31,
+      "permit_ids": [
+        "3316224",
+        "3316291"
+      ],
+      "permit_numbers": [
+        "101011748",
+        "101011799"
+      ],
+      "row_count": 2
+    },
+    {
+      "address": "4322 W POTOMAC AVE",
+      "object_id": 32,
+      "permit_ids": [
+        "N2838493"
+      ],
+      "permit_numbers": [
+        "B200458145"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "4332 W SCHOOL ST",
+      "object_id": 33,
+      "permit_ids": [
+        "N2883756"
+      ],
+      "permit_numbers": [
+        "B200469375"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "4523 N DELPHIA AVE",
+      "object_id": 34,
+      "permit_ids": [
+        "N2866448"
+      ],
+      "permit_numbers": [
+        "B200465000"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "5020 W WINNEMAC AVE",
+      "object_id": 35,
+      "permit_ids": [
+        "N2868221"
+      ],
+      "permit_numbers": [
+        "B200465454"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "5217 S BISHOP ST",
+      "object_id": 36,
+      "permit_ids": [
+        "N2883612"
+      ],
+      "permit_numbers": [
+        "B200469344"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "5234 W STRONG ST",
+      "object_id": 37,
+      "permit_ids": [
+        "N2886110"
+      ],
+      "permit_numbers": [
+        "B200470002"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "5300 S LOREL AVE",
+      "object_id": 38,
+      "permit_ids": [
+        "N2857933"
+      ],
+      "permit_numbers": [
+        "B200462820"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "5333 S FAIRFIELD AVE",
+      "object_id": 39,
+      "permit_ids": [
+        "N2893252"
+      ],
+      "permit_numbers": [
+        "B200471723"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "5835 W TOUHY AVE",
+      "object_id": 40,
+      "permit_ids": [
+        "3351813"
+      ],
+      "permit_numbers": [
+        "101036617"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "6114 S DREXEL AVE",
+      "object_id": 41,
+      "permit_ids": [
+        "N2819588"
+      ],
+      "permit_numbers": [
+        "B200453802"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "6450 S KIMBARK AVE",
+      "object_id": 42,
+      "permit_ids": [
+        "N2773728",
+        "N2786026"
+      ],
+      "permit_numbers": [
+        "B200441669",
+        "B200444953"
+      ],
+      "row_count": 2
+    },
+    {
+      "address": "6533 W PALMER ST",
+      "object_id": 43,
+      "permit_ids": [
+        "3422545"
+      ],
+      "permit_numbers": [
+        "101072433"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "6541 S MARYLAND AVE",
+      "object_id": 44,
+      "permit_ids": [
+        "N2822948",
+        "N2823148"
+      ],
+      "permit_numbers": [
+        "B200454712",
+        "B200454743"
+      ],
+      "row_count": 2
+    },
+    {
+      "address": "7 W ELM ST",
+      "object_id": 45,
+      "permit_ids": [
+        "N2852216"
+      ],
+      "permit_numbers": [
+        "B200461353"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "7901 S FARRAGUT DR",
+      "object_id": 46,
+      "permit_ids": [
+        "3450744"
+      ],
+      "permit_numbers": [
+        "101084045"
+      ],
+      "row_count": 1
+    },
+    {
+      "address": "800 S LEAMINGTON AVE",
+      "object_id": 47,
+      "permit_ids": [
+        "3331844",
+        "3439518"
+      ],
+      "permit_numbers": [
+        "101022761",
+        "101079283"
+      ],
+      "row_count": 2
+    }
+  ],
+  "artifacts": {
+    "missing_coordinate_supplement": {
+      "bytes": 587127,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_missing_coordinates_address_browser.json",
+      "sha256": "bafe1a4f7a473d9c2abfe98c0a441f5837f072e5d9d1277c3eea00c29ae0818a"
+    },
+    "missing_coordinate_supplement_capture": {
+      "bytes": 1745,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_missing_coordinates_address_browser.json.capture.json",
+      "sha256": "11f2af3f2b837798c2fbf1ba47dfe656e9335dfd69214897b9588526039ebfd2"
+    }
+  },
+  "claim_boundary": {
+    "address_string_not_spatial_assignment": true,
+    "geocoder_request_not_geocoder_result": true,
+    "gwm_k0_validated": false,
+    "legacy_tract_code_not_2020_geometry": true,
+    "missingness_not_assumed_random": true,
+    "spatial_recovery_not_causal_identification": true
+  },
+  "diagnostic_digest": "6d1085f5994566c8aef934210620418800ca2017873f23f257d66ae4b9305374",
+  "geocoder_contract": {
+    "admission_rule": "unique score-100 PointAddress result with finite point that uniquely intersects one official TIGER 2020 tract",
+    "endpoint": "https://gisapps.chicago.gov/arcgis/rest/services/AddressPoints/GeocodeServer/geocodeAddresses",
+    "input_field": "Address",
+    "output_crs": "EPSG:4326",
+    "publisher": "City of Chicago",
+    "request_digest": "a15b20e97e82935d58f55dd97bfb5a5bf63c7bd9065598369d7328fce86c80c2",
+    "request_record_count": 47,
+    "service": "AddressPoints GeocodeServer"
+  },
+  "missingness_structure": {
+    "express_program_missingness_concentrated": true,
+    "initial_unresolved_permit_type_counts": {
+      "PERMIT - EASY PERMIT PROCESS": 1,
+      "PERMIT - ELEVATOR EQUIPMENT": 2,
+      "PERMIT - NEW CONSTRUCTION": 2,
+      "PERMIT - REINSTATE REVOKED PMT": 1,
+      "PERMIT - RENOVATION/ALTERATION": 28,
+      "PERMIT - SCAFFOLDING": 1,
+      "PERMIT - SIGNS": 5,
+      "PERMIT - WRECKING/DEMOLITION": 5,
+      "PERMIT \u2013 EXPRESS PERMIT PROGRAM": 1613
+    },
+    "missingness_assumed_random": false,
+    "remaining_unresolved_permit_type_counts": {
+      "PERMIT - EASY PERMIT PROCESS": 1,
+      "PERMIT - ELEVATOR EQUIPMENT": 2,
+      "PERMIT - NEW CONSTRUCTION": 2,
+      "PERMIT - REINSTATE REVOKED PMT": 1,
+      "PERMIT - RENOVATION/ALTERATION": 26,
+      "PERMIT - SCAFFOLDING": 1,
+      "PERMIT - SIGNS": 5,
+      "PERMIT - WRECKING/DEMOLITION": 5,
+      "PERMIT \u2013 EXPRESS PERMIT PROGRAM": 73
+    },
+    "remaining_unresolved_work_type_counts": {
+      "Administrative Change": 21,
+      "Construction Trailer": 1,
+      "Electrical Work": 7,
+      "Fire Alarm System": 2,
+      "Masonry Work": 1,
+      "Monthly Maintenance Permit": 32,
+      "None": 43,
+      "Other Work": 3,
+      "Small-Scale Solar PV System": 1,
+      "Storm Water Management Plan": 5
+    }
+  },
+  "observed_on": "2026-07-24",
+  "readiness": {
+    "address_geocoder_response_ready": false,
+    "bounded_address_geocoder_request_ready": true,
+    "causal_estimation_ready": false,
+    "complete_spatial_assignment_ready": false,
+    "state_plane_recovery_ready": true
+  },
+  "recovery_ladder": {
+    "initial_unresolved_without_valid_wgs84_or_2020_tract": 1658,
+    "missing_wgs84_supplement_row_count": 1856,
+    "raw_row_count": 114896,
+    "remaining_rows_with_pin_count": 46,
+    "remaining_unique_public_project_address_count": 47,
+    "remaining_unresolved_row_count": 116,
+    "state_plane_candidate_count": 1629,
+    "state_plane_recovered_initially_unresolved_count": 1542
+  },
+  "schema": "gwm.chicago_permit_spatial_missingness_diagnostic.v1",
+  "source": {
+    "dataset_id": "ydr8-5enu",
+    "publisher": "City of Chicago Department of Buildings",
+    "window_end_exclusive": "2026-07-01",
+    "window_start_inclusive": "2023-01-01"
+  }
+}

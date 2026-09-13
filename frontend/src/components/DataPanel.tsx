@@ -28,9 +28,30 @@ import VirtualSourcesTab from './datapanel/VirtualSourcesTab';
 import MarketplaceTab from './datapanel/MarketplaceTab';
 import GeoJsonEditorTab from './datapanel/GeoJsonEditorTab';
 import WorldModelTab from './datapanel/WorldModelTab';
+import WorldModelV11Tab from './datapanel/WorldModelV11Tab';
 import WorldModelV2Tab from './datapanel/WorldModelV2Tab';
 import WorldModelV21Tab from './datapanel/WorldModelV21Tab';
 import TerritoryWorldModelTab from './datapanel/TerritoryWorldModelTab';
+import TraditionalLivabilityTab from './datapanel/TraditionalLivabilityTab';
+import TraditionalCulturalHeritageTab from './datapanel/TraditionalCulturalHeritageTab';
+import CrossDomainImpactTab from './datapanel/CrossDomainImpactTab';
+import ImplementationRoadmapTab from './datapanel/ImplementationRoadmapTab';
+import ResilienceWorldModelTab from './datapanel/ResilienceWorldModelTab';
+import DigitalReadinessTab from './datapanel/DigitalReadinessTab';
+import OperationsQualityTab from './datapanel/OperationsQualityTab';
+import BusinessLicenceTab from './datapanel/BusinessLicenceTab';
+import DevelopmentControlTab from './datapanel/DevelopmentControlTab';
+import FinancialReadinessTab from './datapanel/FinancialReadinessTab';
+import PublicFeedbackReadinessTab from './datapanel/PublicFeedbackReadinessTab';
+import SpatialScopeRegistryTab from './datapanel/SpatialScopeRegistryTab';
+import PlanningVersionRegistryTab from './datapanel/PlanningVersionRegistryTab';
+import ParcelStateReadinessTab from './datapanel/ParcelStateReadinessTab';
+import InfrastructureNetworkReadinessTab from './datapanel/InfrastructureNetworkReadinessTab';
+import AssetLifecycleReadinessTab from './datapanel/AssetLifecycleReadinessTab';
+import PopulationDemographicReadinessTab from './datapanel/PopulationDemographicReadinessTab';
+import LivabilityWorldModelTab from './datapanel/LivabilityWorldModelTab';
+import UwmMultistageInterventionTab from './datapanel/UwmMultistageInterventionTab';
+import AiDemandReadinessTab from './datapanel/AiDemandReadinessTab';
 import CausalReasoningTab from './datapanel/CausalReasoningTab';
 import OptimizationTab from './datapanel/OptimizationTab';
 import QcMonitorTab from './datapanel/QcMonitorTab';
@@ -52,9 +73,10 @@ interface DataPanelProps {
   dataFile: string | null;
   userRole?: string;
   username?: string;
+  onRequestWidth?: (width: number) => void;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
+type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'traditional_livability' | 'cultural_heritage' | 'cross_domain_impact' | 'implementation_roadmap' | 'resilience_kernel' | 'digital_readiness' | 'operations_quality' | 'business_licence' | 'development_control' | 'financial_readiness' | 'public_feedback_readiness' | 'spatial_scope_registry' | 'planning_version_registry' | 'parcel_state_readiness' | 'infrastructure_network_readiness' | 'asset_lifecycle_readiness' | 'population_demographic_readiness' | 'uwm_livability' | 'uwm_multistage' | 'ai_demand_readiness' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 
@@ -90,7 +112,28 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'suggestions', label: '建议', icon: <Lightbulb size={ICON_SIZE} /> },
       { key: 'memory', label: '记忆', icon: <Brain size={ICON_SIZE} /> },
       { key: 'market', label: '市场', icon: <Store size={ICON_SIZE} /> },
+      { key: 'traditional_livability', label: '城市宜居性分析（传统方法）', icon: <BarChart3 size={ICON_SIZE} /> },
+      { key: 'cultural_heritage', label: '文化遗产与场所', icon: <MapPin size={ICON_SIZE} /> },
+      { key: 'cross_domain_impact', label: '跨领域影响与优先级', icon: <GitBranch size={ICON_SIZE} /> },
+      { key: 'implementation_roadmap', label: '建议与实施路线图', icon: <ListTodo size={ICON_SIZE} /> },
+      { key: 'resilience_kernel', label: '韧性世界模型', icon: <Shield size={ICON_SIZE} /> },
+      { key: 'digital_readiness', label: '数字资产与智慧片区', icon: <Database size={ICON_SIZE} /> },
+      { key: 'operations_quality', label: '运维与服务质量', icon: <Activity size={ICON_SIZE} /> },
+      { key: 'business_licence', label: '企业执照与经济活动', icon: <Store size={ICON_SIZE} /> },
+      { key: 'development_control', label: '开发控制规则', icon: <Shield size={ICON_SIZE} /> },
+      { key: 'financial_readiness', label: '财务与投资证据', icon: <BarChart3 size={ICON_SIZE} /> },
+      { key: 'public_feedback_readiness', label: '公众反馈证据', icon: <ThumbsUp size={ICON_SIZE} /> },
+      { key: 'spatial_scope_registry', label: '空间范围注册', icon: <MapPin size={ICON_SIZE} /> },
+      { key: 'planning_version_registry', label: '规划与地块版本', icon: <FileText size={ICON_SIZE} /> },
+      { key: 'parcel_state_readiness', label: '用地与地块状态', icon: <MapPin size={ICON_SIZE} /> },
+      { key: 'infrastructure_network_readiness', label: '基础设施与市政管网', icon: <Network size={ICON_SIZE} /> },
+      { key: 'asset_lifecycle_readiness', label: '资产生命周期', icon: <Wrench size={ICON_SIZE} /> },
+      { key: 'population_demographic_readiness', label: '人口与人口结构', icon: <PieChart size={ICON_SIZE} /> },
+      { key: 'uwm_livability', label: '城市宜居性分析（UWM）', icon: <Brain size={ICON_SIZE} /> },
+      { key: 'uwm_multistage', label: 'UWM多阶段城市干预规划', icon: <GitBranch size={ICON_SIZE} /> },
+      { key: 'ai_demand_readiness', label: 'AI应用需求矩阵', icon: <ClipboardCheck size={ICON_SIZE} /> },
       { key: 'worldmodel', label: '世界模型', icon: <Globe size={ICON_SIZE} /> },
+      { key: 'worldmodel_v11', label: '世界模型v1.1', icon: <Globe size={ICON_SIZE} /> },
       { key: 'worldmodel_v2', label: '世界模型v2', icon: <Globe size={ICON_SIZE} /> },
       { key: 'worldmodel_v21', label: '世界模型v2.1', icon: <Globe size={ICON_SIZE} /> },
       { key: 'twm', label: 'TWM', icon: <Shield size={ICON_SIZE} /> },
@@ -128,7 +171,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
 const TAB_TO_GROUP: Record<TabKey, GroupKey> = {} as any;
 TAB_GROUPS.forEach(g => g.tabs.forEach(t => { TAB_TO_GROUP[t.key] = g.key; }));
 
-export default function DataPanel({ dataFile, userRole, username }: DataPanelProps) {
+export default function DataPanel({ dataFile, userRole, username, onRequestWidth }: DataPanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('files');
   const [activeGroup, setActiveGroup] = useState<GroupKey>('data');
   const [tableData, setTableData] = useState<any[]>([]);
@@ -160,6 +203,7 @@ export default function DataPanel({ dataFile, userRole, username }: DataPanelPro
   const handleTabClick = (tab: TabKey) => {
     setActiveTab(tab);
     setActiveGroup(TAB_TO_GROUP[tab]);
+    if (tab === 'uwm_livability' || tab === 'uwm_multistage') onRequestWidth?.(680);
   };
 
   const handleGroupClick = (groupKey: GroupKey) => {
@@ -232,7 +276,28 @@ export default function DataPanel({ dataFile, userRole, username }: DataPanelPro
         {activeTab === 'market' && <MarketplaceTab />}
         {activeTab === 'geojson' && <GeoJsonEditorTab />}
         {activeTab === 'charts' && <ChartsTab />}
+        {activeTab === 'traditional_livability' && <TraditionalLivabilityTab />}
+        {activeTab === 'cultural_heritage' && <TraditionalCulturalHeritageTab />}
+        {activeTab === 'cross_domain_impact' && <CrossDomainImpactTab />}
+        {activeTab === 'implementation_roadmap' && <ImplementationRoadmapTab />}
+        {activeTab === 'resilience_kernel' && <ResilienceWorldModelTab />}
+        {activeTab === 'digital_readiness' && <DigitalReadinessTab />}
+        {activeTab === 'operations_quality' && <OperationsQualityTab />}
+        {activeTab === 'business_licence' && <BusinessLicenceTab />}
+        {activeTab === 'development_control' && <DevelopmentControlTab />}
+        {activeTab === 'financial_readiness' && <FinancialReadinessTab />}
+        {activeTab === 'public_feedback_readiness' && <PublicFeedbackReadinessTab />}
+        {activeTab === 'spatial_scope_registry' && <SpatialScopeRegistryTab />}
+        {activeTab === 'planning_version_registry' && <PlanningVersionRegistryTab />}
+        {activeTab === 'parcel_state_readiness' && <ParcelStateReadinessTab />}
+        {activeTab === 'infrastructure_network_readiness' && <InfrastructureNetworkReadinessTab />}
+        {activeTab === 'asset_lifecycle_readiness' && <AssetLifecycleReadinessTab />}
+        {activeTab === 'population_demographic_readiness' && <PopulationDemographicReadinessTab />}
+        {activeTab === 'uwm_livability' && <LivabilityWorldModelTab />}
+        {activeTab === 'uwm_multistage' && <UwmMultistageInterventionTab />}
+        {activeTab === 'ai_demand_readiness' && <AiDemandReadinessTab />}
         {activeTab === 'worldmodel' && <WorldModelTab />}
+        {activeTab === 'worldmodel_v11' && <WorldModelV11Tab />}
         {activeTab === 'worldmodel_v2' && <WorldModelV2Tab />}
         {activeTab === 'worldmodel_v21' && <WorldModelV21Tab />}
         {activeTab === 'twm' && <TerritoryWorldModelTab />}

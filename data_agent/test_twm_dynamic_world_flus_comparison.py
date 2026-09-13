@@ -142,6 +142,28 @@ def _synthetic_region(module, tmp_path: Path, region_id: str):
     )
 
 
+def _synthetic_region_with_holdout_nodata(module, tmp_path: Path, region_id: str):
+    arrays = {
+        2019: np.array([[0, 1], [1, 0]], dtype=np.int16),
+        2020: np.array([[0, 1], [0, 1]], dtype=np.int16),
+        2021: np.array([[-32768, 1], [1, 1]], dtype=np.int16),
+    }
+    frames = []
+    for year, arr in arrays.items():
+        path = tmp_path / f"{region_id}_{year}.tif"
+        _write_raster(path, arr, nodata=-32768)
+        frames.append(module.LandcoverFrame(year=year, array=arr, path=str(path), nodata=-32768))
+    return module.BenchmarkRegion(
+        region_id=region_id,
+        frames=tuple(frames),
+        classes=(0, 1),
+        class_labels={0: "water", 1: "trees"},
+        cell_area_ha=1.0,
+        drivers={},
+        source={},
+    )
+
+
 def test_dynamic_world_to_flus_class_mapping_round_trips_nodata():
     module = _load_module()
     arr = np.array([[0, 1, 8], [-32768, 4, 99]], dtype=np.int16)
@@ -667,6 +689,278 @@ def test_target_transition_neighborhood_boosts_target_specific_recent_expansion(
     assert rows[1]["train_transition_to_target_count"] == 1
 
 
+def test_topology_stability_guard_penalizes_stable_interiors_but_preserves_frontiers():
+    from scripts import build_twm_public_landcover_benchmark as benchmark
+
+    classes = [0, 1]
+    train_start = np.array(
+        [
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 1],
+            [0, 0, 0, 1, 1],
+        ],
+        dtype=np.int16,
+    )
+    train_end = train_start.copy()
+    train_end[2, 3] = 1
+    initial = train_end.copy()
+    valid = np.ones(initial.shape, dtype=bool)
+    invalid_cell = (4, 4)
+    valid[invalid_cell] = False
+    base_score = np.zeros((len(classes), *initial.shape), dtype=np.float32)
+
+    adjusted, diagnostics = benchmark.apply_train_topology_stability_to_score(
+        {
+            "train_start": train_start,
+            "train_end": train_end,
+            "initial": initial,
+            "valid": valid,
+            "classes": classes,
+        },
+        base_score,
+        stable_interior_density_floor=0.65,
+        stable_interior_penalty=0.20,
+        frontier_support_weight=0.10,
+        target_neighborhood_support_weight=0.08,
+    )
+
+    target_one = classes.index(1)
+    stable_interior_cell = (1, 1)
+    frontier_supported_cell = (2, 2)
+
+    assert adjusted.dtype == np.float32
+    assert np.all(adjusted[:, invalid_cell[0], invalid_cell[1]] == -1e9)
+    assert adjusted[target_one, stable_interior_cell[0], stable_interior_cell[1]] < base_score[
+        target_one, stable_interior_cell[0], stable_interior_cell[1]
+    ]
+    assert adjusted[target_one, frontier_supported_cell[0], frontier_supported_cell[1]] > adjusted[
+        target_one, stable_interior_cell[0], stable_interior_cell[1]
+    ]
+    assert adjusted[classes.index(0), stable_interior_cell[0], stable_interior_cell[1]] == base_score[
+        classes.index(0), stable_interior_cell[0], stable_interior_cell[1]
+    ]
+    assert diagnostics["schema"] == "territory_world_model.train_topology_stability_score_guard.v1"
+    assert diagnostics["selection_metric"] == "train_stable_interior_frontier_target_neighborhood_support"
+    assert diagnostics["uses_holdout_labels_for_training"] is False
+    assert diagnostics["stable_interior_cell_count"] > 0
+    assert diagnostics["frontier_cell_count"] > 0
+
+
+def test_unsupported_transition_pressure_penalizes_unsupported_non_persistence():
+    from scripts import build_twm_public_landcover_benchmark as benchmark
+
+    classes = [0, 1]
+    train_start = np.array(
+        [
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 1],
+            [0, 0, 0, 1, 1],
+        ],
+        dtype=np.int16,
+    )
+    train_end = train_start.copy()
+    train_end[2, 3] = 1
+    initial = train_end.copy()
+    valid = np.ones(initial.shape, dtype=bool)
+    invalid_cell = (4, 4)
+    valid[invalid_cell] = False
+    base_score = np.zeros((len(classes), *initial.shape), dtype=np.float32)
+
+    adjusted, diagnostics = benchmark.apply_train_unsupported_transition_pressure_to_score(
+        {
+            "train_start": train_start,
+            "train_end": train_end,
+            "initial": initial,
+            "valid": valid,
+            "classes": classes,
+        },
+        base_score,
+        support_floor=0.20,
+        unsupported_penalty=0.15,
+    )
+
+    target_one = classes.index(1)
+    unsupported_cell = (0, 0)
+    supported_cell = (2, 2)
+
+    assert adjusted.dtype == np.float32
+    assert np.all(adjusted[:, invalid_cell[0], invalid_cell[1]] == -1e9)
+    assert adjusted[target_one, unsupported_cell[0], unsupported_cell[1]] < base_score[
+        target_one, unsupported_cell[0], unsupported_cell[1]
+    ]
+    assert adjusted[target_one, supported_cell[0], supported_cell[1]] > adjusted[
+        target_one, unsupported_cell[0], unsupported_cell[1]
+    ]
+    assert adjusted[classes.index(0), unsupported_cell[0], unsupported_cell[1]] == base_score[
+        classes.index(0), unsupported_cell[0], unsupported_cell[1]
+    ]
+    assert diagnostics["schema"] == "territory_world_model.train_unsupported_transition_pressure_score_guard.v1"
+    assert diagnostics["uses_holdout_labels_for_training"] is False
+    assert diagnostics["unsupported_cell_count"] > 0
+    assert diagnostics["support_floor"] == 0.2
+
+
+def test_pair_unsupported_transition_pressure_targets_high_false_alarm_pairs():
+    from scripts import build_twm_public_landcover_benchmark as benchmark
+
+    classes = [0, 1]
+    train_start = np.array(
+        [
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 1],
+            [0, 0, 0, 1, 1],
+        ],
+        dtype=np.int16,
+    )
+    train_end = train_start.copy()
+    train_end[2, 3] = 1
+    initial = train_end.copy()
+    valid = np.ones(initial.shape, dtype=bool)
+    base_score = np.zeros((len(classes), *initial.shape), dtype=np.float32)
+    transition_pair_metrics = [
+        {
+            "source_class": 0,
+            "target_class": 1,
+            "predicted_count": 10,
+            "hit_count": 2,
+            "false_alarm_count": 8,
+            "precision": 0.2,
+        },
+        {
+            "source_class": 1,
+            "target_class": 0,
+            "predicted_count": 10,
+            "hit_count": 8,
+            "false_alarm_count": 2,
+            "precision": 0.8,
+        },
+    ]
+
+    adjusted, diagnostics = benchmark.apply_train_pair_unsupported_transition_pressure_to_score(
+        {
+            "train_start": train_start,
+            "train_end": train_end,
+            "initial": initial,
+            "valid": valid,
+            "classes": classes,
+        },
+        base_score,
+        transition_pair_metrics,
+        support_floor=0.20,
+        false_alarm_rate_floor=0.50,
+        precision_floor=0.35,
+        penalty_weight=0.12,
+        min_predicted_count=5,
+    )
+
+    target_one = classes.index(1)
+    target_zero = classes.index(0)
+    unsupported_zero_to_one = (0, 0)
+    supported_zero_to_one = (2, 2)
+    one_to_zero_cell = (3, 3)
+
+    assert adjusted[target_one, unsupported_zero_to_one[0], unsupported_zero_to_one[1]] < base_score[
+        target_one, unsupported_zero_to_one[0], unsupported_zero_to_one[1]
+    ]
+    assert adjusted[target_one, supported_zero_to_one[0], supported_zero_to_one[1]] > adjusted[
+        target_one, unsupported_zero_to_one[0], unsupported_zero_to_one[1]
+    ]
+    assert adjusted[target_zero, one_to_zero_cell[0], one_to_zero_cell[1]] == base_score[
+        target_zero, one_to_zero_cell[0], one_to_zero_cell[1]
+    ]
+    assert diagnostics["schema"] == "territory_world_model.train_pair_unsupported_transition_pressure_score_guard.v1"
+    assert diagnostics["uses_holdout_labels_for_training"] is False
+    assert diagnostics["penalized_transition_count"] == 1
+    assert diagnostics["transition_rows"][0]["source_class"] == 0
+    assert diagnostics["transition_rows"][0]["target_class"] == 1
+
+
+def test_pair_topology_support_contrast_boosts_supported_high_false_alarm_pairs():
+    from scripts import build_twm_public_landcover_benchmark as benchmark
+
+    classes = [0, 1]
+    train_start = np.array(
+        [
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 1],
+            [0, 0, 0, 1, 1],
+        ],
+        dtype=np.int16,
+    )
+    train_end = train_start.copy()
+    train_end[2, 3] = 1
+    initial = train_end.copy()
+    valid = np.ones(initial.shape, dtype=bool)
+    base_score = np.zeros((len(classes), *initial.shape), dtype=np.float32)
+    transition_pair_metrics = [
+        {
+            "source_class": 0,
+            "target_class": 1,
+            "predicted_count": 10,
+            "hit_count": 2,
+            "false_alarm_count": 8,
+            "precision": 0.2,
+        },
+        {
+            "source_class": 1,
+            "target_class": 0,
+            "predicted_count": 10,
+            "hit_count": 8,
+            "false_alarm_count": 2,
+            "precision": 0.8,
+        },
+    ]
+
+    adjusted, diagnostics = benchmark.apply_train_pair_topology_support_contrast_to_score(
+        {
+            "train_start": train_start,
+            "train_end": train_end,
+            "initial": initial,
+            "valid": valid,
+            "classes": classes,
+        },
+        base_score,
+        transition_pair_metrics,
+        support_floor=0.20,
+        false_alarm_rate_floor=0.50,
+        precision_floor=0.35,
+        penalty_weight=0.12,
+        bonus_weight=0.10,
+        min_predicted_count=5,
+    )
+
+    target_one = classes.index(1)
+    target_zero = classes.index(0)
+    unsupported_zero_to_one = (0, 0)
+    supported_zero_to_one = (2, 2)
+    one_to_zero_cell = (3, 3)
+
+    assert adjusted[target_one, unsupported_zero_to_one[0], unsupported_zero_to_one[1]] < base_score[
+        target_one, unsupported_zero_to_one[0], unsupported_zero_to_one[1]
+    ]
+    assert adjusted[target_one, supported_zero_to_one[0], supported_zero_to_one[1]] > base_score[
+        target_one, supported_zero_to_one[0], supported_zero_to_one[1]
+    ]
+    assert adjusted[target_zero, one_to_zero_cell[0], one_to_zero_cell[1]] == base_score[
+        target_zero, one_to_zero_cell[0], one_to_zero_cell[1]
+    ]
+    assert diagnostics["schema"] == "territory_world_model.train_pair_topology_support_contrast_score_guard.v1"
+    assert diagnostics["uses_holdout_labels_for_training"] is False
+    assert diagnostics["penalized_transition_count"] == 1
+    assert diagnostics["boosted_transition_count"] == 1
+    assert diagnostics["transition_rows"][0]["source_class"] == 0
+    assert diagnostics["transition_rows"][0]["target_class"] == 1
+    assert diagnostics["transition_rows"][0]["boosted_cell_count"] > 0
+
+
 def test_markov_demand_projection_is_train_only_and_count_conserving():
     from scripts import build_twm_public_landcover_benchmark as benchmark
 
@@ -950,6 +1244,178 @@ def test_transition_reliability_change_budget_candidate_is_train_only(tmp_path):
         list(case.classes),
     )
     assert metrics[pair_guard_candidate]["target_total_demand_abs_error"] == 0
+    topology_candidate = "twm_topology_stability_guarded_persistence_forecast_demand"
+    assert topology_candidate in metrics
+    assert metadata[topology_candidate]["backend"] == "train_topology_stability_guarded_persistence_demand_score_allocation"
+    assert metadata[topology_candidate]["demand_mode"] == "forecast_demand"
+    assert metadata[topology_candidate]["uses_holdout_labels_for_training"] is False
+    assert metadata[topology_candidate]["component_flags"]["topology_stability_guard"] is True
+    assert metadata[topology_candidate]["component_flags"]["train_replay_transition_false_alarm_guard"] is True
+    assert metadata[topology_candidate]["component_flags"]["persistence_demand_projection"] is True
+    assert (
+        metadata[topology_candidate]["training_topology_stability"]["schema"]
+        == "territory_world_model.train_topology_stability_score_guard.v1"
+    )
+    assert metadata[topology_candidate]["training_topology_stability"]["uses_holdout_labels_for_training"] is False
+    assert metadata[topology_candidate]["target_counts"] == module.class_counts(
+        case.train_end.array,
+        case.valid,
+        list(case.classes),
+    )
+    assert metrics[topology_candidate]["target_total_demand_abs_error"] == 0
+    topology_churn_guard_candidate = "twm_topology_stability_false_alarm_churn_guarded_persistence_forecast_demand"
+    assert topology_churn_guard_candidate in metrics
+    assert (
+        metadata[topology_churn_guard_candidate]["backend"]
+        == "train_topology_stability_false_alarm_churn_guarded_persistence_demand_score_allocation"
+    )
+    assert metadata[topology_churn_guard_candidate]["uses_holdout_labels_for_training"] is False
+    assert metadata[topology_churn_guard_candidate]["component_flags"]["topology_stability_guard"] is True
+    assert metadata[topology_churn_guard_candidate]["component_flags"]["train_replay_false_alarm_churn_guard"] is True
+    assert (
+        metadata[topology_churn_guard_candidate]["training_churn_guard"]["schema"]
+        == "territory_world_model.train_replay_false_alarm_guard.v1"
+    )
+    assert metadata[topology_churn_guard_candidate]["training_churn_guard"]["uses_holdout_labels_for_training"] is False
+    assert 0.5 <= metadata[topology_churn_guard_candidate]["training_churn_guard"]["churn_fraction"] <= 0.9
+    assert metadata[topology_churn_guard_candidate]["target_counts"] == module.class_counts(
+        case.train_end.array,
+        case.valid,
+        list(case.classes),
+    )
+    assert metrics[topology_churn_guard_candidate]["target_total_demand_abs_error"] == 0
+    topology_strict_churn_guard_candidate = (
+        "twm_topology_stability_strict_false_alarm_churn_guarded_persistence_forecast_demand"
+    )
+    assert topology_strict_churn_guard_candidate in metrics
+    assert (
+        metadata[topology_strict_churn_guard_candidate]["backend"]
+        == "train_topology_stability_strict_false_alarm_churn_guarded_persistence_demand_score_allocation"
+    )
+    assert metadata[topology_strict_churn_guard_candidate]["uses_holdout_labels_for_training"] is False
+    assert metadata[topology_strict_churn_guard_candidate]["component_flags"]["topology_stability_guard"] is True
+    assert metadata[topology_strict_churn_guard_candidate]["component_flags"]["strict_train_replay_false_alarm_churn_guard"] is True
+    assert metadata[topology_strict_churn_guard_candidate]["training_churn_guard"]["precision_target"] == 0.6
+    assert metadata[topology_strict_churn_guard_candidate]["training_churn_guard"]["precision_floor"] == 0.3
+    assert metadata[topology_strict_churn_guard_candidate]["training_churn_guard"]["min_churn_fraction"] == 0.45
+    assert metadata[topology_strict_churn_guard_candidate]["training_churn_guard"]["uses_holdout_labels_for_training"] is False
+    assert metadata[topology_strict_churn_guard_candidate]["target_counts"] == module.class_counts(
+        case.train_end.array,
+        case.valid,
+        list(case.classes),
+    )
+    assert metrics[topology_strict_churn_guard_candidate]["target_total_demand_abs_error"] == 0
+    topology_support_strict_churn_guard_candidate = (
+        "twm_topology_support_strict_false_alarm_churn_guarded_persistence_forecast_demand"
+    )
+    assert topology_support_strict_churn_guard_candidate in metrics
+    assert (
+        metadata[topology_support_strict_churn_guard_candidate]["backend"]
+        == "train_topology_support_strict_false_alarm_churn_guarded_persistence_demand_score_allocation"
+    )
+    assert metadata[topology_support_strict_churn_guard_candidate]["uses_holdout_labels_for_training"] is False
+    assert metadata[topology_support_strict_churn_guard_candidate]["component_flags"]["topology_stability_guard"] is True
+    assert metadata[topology_support_strict_churn_guard_candidate]["component_flags"]["unsupported_transition_pressure_guard"] is True
+    assert metadata[topology_support_strict_churn_guard_candidate]["component_flags"][
+        "strict_train_replay_false_alarm_churn_guard"
+    ] is True
+    assert (
+        metadata[topology_support_strict_churn_guard_candidate]["training_unsupported_transition_pressure"]["schema"]
+        == "territory_world_model.train_unsupported_transition_pressure_score_guard.v1"
+    )
+    assert (
+        metadata[topology_support_strict_churn_guard_candidate]["training_unsupported_transition_pressure"][
+            "uses_holdout_labels_for_training"
+        ]
+        is False
+    )
+    assert metadata[topology_support_strict_churn_guard_candidate]["training_churn_guard"]["precision_target"] == 0.6
+    assert metadata[topology_support_strict_churn_guard_candidate]["target_counts"] == module.class_counts(
+        case.train_end.array,
+        case.valid,
+        list(case.classes),
+    )
+    assert metrics[topology_support_strict_churn_guard_candidate]["target_total_demand_abs_error"] == 0
+    pair_topology_support_strict_churn_guard_candidate = (
+        "twm_pair_topology_support_strict_false_alarm_churn_guarded_persistence_forecast_demand"
+    )
+    assert pair_topology_support_strict_churn_guard_candidate in metrics
+    assert (
+        metadata[pair_topology_support_strict_churn_guard_candidate]["backend"]
+        == "train_pair_topology_support_strict_false_alarm_churn_guarded_persistence_demand_score_allocation"
+    )
+    assert metadata[pair_topology_support_strict_churn_guard_candidate]["uses_holdout_labels_for_training"] is False
+    assert metadata[pair_topology_support_strict_churn_guard_candidate]["component_flags"]["topology_stability_guard"] is True
+    assert metadata[pair_topology_support_strict_churn_guard_candidate]["component_flags"][
+        "pair_unsupported_transition_pressure_guard"
+    ] is True
+    assert metadata[pair_topology_support_strict_churn_guard_candidate]["component_flags"][
+        "strict_train_replay_false_alarm_churn_guard"
+    ] is True
+    assert (
+        metadata[pair_topology_support_strict_churn_guard_candidate]["training_pair_unsupported_transition_pressure"][
+            "schema"
+        ]
+        == "territory_world_model.train_pair_unsupported_transition_pressure_score_guard.v1"
+    )
+    assert (
+        metadata[pair_topology_support_strict_churn_guard_candidate]["training_pair_unsupported_transition_pressure"][
+            "uses_holdout_labels_for_training"
+        ]
+        is False
+    )
+    assert metadata[pair_topology_support_strict_churn_guard_candidate]["training_churn_guard"]["precision_target"] == 0.6
+    assert metadata[pair_topology_support_strict_churn_guard_candidate]["target_counts"] == module.class_counts(
+        case.train_end.array,
+        case.valid,
+        list(case.classes),
+    )
+    assert metrics[pair_topology_support_strict_churn_guard_candidate]["target_total_demand_abs_error"] == 0
+    pair_topology_support_contrast_strict_churn_guard_candidate = (
+        "twm_pair_topology_support_contrast_strict_false_alarm_churn_guarded_persistence_forecast_demand"
+    )
+    assert pair_topology_support_contrast_strict_churn_guard_candidate in metrics
+    assert (
+        metadata[pair_topology_support_contrast_strict_churn_guard_candidate]["backend"]
+        == "train_pair_topology_support_contrast_strict_false_alarm_churn_guarded_persistence_demand_score_allocation"
+    )
+    assert metadata[pair_topology_support_contrast_strict_churn_guard_candidate]["uses_holdout_labels_for_training"] is False
+    assert (
+        metadata[pair_topology_support_contrast_strict_churn_guard_candidate]["component_flags"][
+            "pair_topology_support_contrast_guard"
+        ]
+        is True
+    )
+    assert (
+        metadata[pair_topology_support_contrast_strict_churn_guard_candidate]["component_flags"][
+            "strict_train_replay_false_alarm_churn_guard"
+        ]
+        is True
+    )
+    assert (
+        metadata[pair_topology_support_contrast_strict_churn_guard_candidate]["training_pair_topology_support_contrast"][
+            "schema"
+        ]
+        == "territory_world_model.train_pair_topology_support_contrast_score_guard.v1"
+    )
+    assert (
+        metadata[pair_topology_support_contrast_strict_churn_guard_candidate][
+            "training_pair_topology_support_contrast"
+        ]["uses_holdout_labels_for_training"]
+        is False
+    )
+    assert (
+        metadata[pair_topology_support_contrast_strict_churn_guard_candidate]["training_churn_guard"][
+            "precision_target"
+        ]
+        == 0.6
+    )
+    assert metadata[pair_topology_support_contrast_strict_churn_guard_candidate]["target_counts"] == module.class_counts(
+        case.train_end.array,
+        case.valid,
+        list(case.classes),
+    )
+    assert metrics[pair_topology_support_contrast_strict_churn_guard_candidate]["target_total_demand_abs_error"] == 0
 
 
 def test_false_alarm_guarded_churn_fraction_uses_train_replay_precision_only():
@@ -1140,6 +1606,40 @@ def test_select_cases_can_limit_cases_per_region_for_balanced_pilot(tmp_path):
     assert [case.region_id for case in cases] == ["region_0", "region_1", "region_2"]
 
 
+def test_select_cases_separates_prediction_and_evaluation_masks(tmp_path):
+    module = _load_module()
+    region = _synthetic_region_with_holdout_nodata(module, tmp_path, "mask_split")
+
+    case = module.select_cases([region], case_limit=None, case_limit_per_region=None)[0]
+
+    assert int(case.valid.sum()) == 4
+    assert int(module.case_evaluation_valid(case).sum()) == 3
+    assert sum(case.target_counts.values()) == 4
+    assert sum(case.evaluation_target_counts.values()) == 3
+
+    packaged = module.write_flus_case_package(case, tmp_path / "flus_mask_split")
+    experiment = module.build_case_experiment(case, packaged, None)
+
+    assert packaged["valid_cell_count"] == 4
+    assert experiment["prediction_valid_cell_count"] == 4
+    assert experiment["evaluation_valid_cell_count"] == 3
+    assert experiment["valid_cell_count"] == 3
+    assert experiment["metrics"]["persistence"]["valid_cell_count"] == 3
+
+
+def test_public_benchmark_reports_prediction_and_evaluation_valid_masks(tmp_path):
+    from scripts import build_twm_public_landcover_benchmark as benchmark
+
+    region = _synthetic_region_with_holdout_nodata(benchmark, tmp_path, "public_mask_split")
+
+    experiment = benchmark.run_region_cases(region)[0]
+
+    assert experiment["prediction_valid_cell_count"] == 4
+    assert experiment["evaluation_valid_cell_count"] == 3
+    assert experiment["valid_cell_count"] == 3
+    assert experiment["metrics"]["persistence"]["valid_cell_count"] == 3
+
+
 def test_formal_forecast_summary_excludes_oracle_and_no_demand_diagnostics(tmp_path):
     module = _load_module()
     case = _synthetic_case(module, tmp_path)
@@ -1160,6 +1660,7 @@ def test_formal_forecast_summary_excludes_oracle_and_no_demand_diagnostics(tmp_p
     candidate_ids = [row["candidate_id"] for row in summary["ranking_by_mean_change_fom"]]
     assert "flus_console_direct" in candidate_ids
     assert "twm_independent_transition_forecast_demand" in candidate_ids
+    assert "twm_topology_stability_guarded_persistence_forecast_demand" in candidate_ids
     assert "twm_independent_transition_oracle_demand" not in candidate_ids
     assert "twm_ablation_no_demand_projection" not in candidate_ids
     paired = summary["paired_deltas_vs_flus"]["twm_independent_transition_forecast_demand"]

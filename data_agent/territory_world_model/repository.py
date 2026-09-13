@@ -14,6 +14,7 @@ from .models import (
     TerritoryWorldModelAction,
     TerritoryWorldModelForecast,
     TwmAuditReport,
+    TwmDynamicsModelRegistryEntry,
     TwmEvidenceItem,
     TwmLayerBinding,
     TwmPolicyRule,
@@ -84,6 +85,7 @@ class TwmRepository:
         self._review_tasks: dict[str, TwmReviewTask] = {}
         self._scenarios: dict[str, TwmScenario] = {}
         self._scenario_metrics: dict[str, TwmScenarioMetric] = {}
+        self._dynamics_model_registry_entries: dict[str, TwmDynamicsModelRegistryEntry] = {}
         self._seeded_defaults = False
         self.ensure_schema()
 
@@ -296,6 +298,26 @@ class TwmRepository:
                     explanation TEXT NOT NULL DEFAULT ''
                 )
                 """,
+                """
+                CREATE TABLE IF NOT EXISTS twm_dynamics_model_registry (
+                    id TEXT PRIMARY KEY,
+                    state_version_id TEXT NOT NULL DEFAULT '',
+                    project_id TEXT NOT NULL DEFAULT '',
+                    registry_key TEXT NOT NULL DEFAULT '',
+                    model_name TEXT NOT NULL DEFAULT '',
+                    model_version TEXT NOT NULL DEFAULT '',
+                    model_family TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL DEFAULT 'candidate',
+                    promotion_decision TEXT NOT NULL DEFAULT 'review_only_not_promoted',
+                    registry_report JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    lineage JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    previous_active_registry_key TEXT NOT NULL DEFAULT '',
+                    activated_at TIMESTAMPTZ,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                )
+                """,
             ]
             with self.engine.connect() as conn:
                 for statement in ddl:
@@ -321,6 +343,7 @@ class TwmRepository:
                 "review_task_count": len(self._review_tasks),
                 "scenario_count": len(self._scenarios),
                 "scenario_metric_count": len(self._scenario_metrics),
+                "dynamics_model_registry_entry_count": len(self._dynamics_model_registry_entries),
             }
 
     # ------------------------------------------------------------------
@@ -665,6 +688,41 @@ class TwmRepository:
             if scenario_id:
                 rows = [item for item in rows if item.scenario_id == scenario_id]
             return [deepcopy(item) for item in sorted(rows, key=lambda item: item.metric_code)]
+
+    # ------------------------------------------------------------------
+    # Dynamics model registry
+    # ------------------------------------------------------------------
+
+    def save_dynamics_model_registry_entry(self, entry: TwmDynamicsModelRegistryEntry) -> TwmDynamicsModelRegistryEntry:
+        with self._lock:
+            stored = deepcopy(entry)
+            stored.updated_at = now_utc_iso()
+            self._dynamics_model_registry_entries[stored.id] = stored
+            self._persist_dynamics_model_registry_entry(stored)
+            return deepcopy(stored)
+
+    def get_dynamics_model_registry_entry(self, entry_id: str) -> TwmDynamicsModelRegistryEntry | None:
+        with self._lock:
+            row = self._dynamics_model_registry_entries.get(str(entry_id))
+            return deepcopy(row) if row else None
+
+    def list_dynamics_model_registry_entries(
+        self,
+        state_version_id: str | None = None,
+        *,
+        status: str | None = None,
+    ) -> list[TwmDynamicsModelRegistryEntry]:
+        with self._lock:
+            rows = list(self._dynamics_model_registry_entries.values())
+            if state_version_id:
+                rows = [item for item in rows if item.state_version_id == state_version_id]
+            if status:
+                rows = [item for item in rows if item.status == status]
+            return [deepcopy(item) for item in sorted(rows, key=lambda item: item.updated_at, reverse=True)]
+
+    def get_active_dynamics_model_registry_entry(self, state_version_id: str) -> TwmDynamicsModelRegistryEntry | None:
+        entries = self.list_dynamics_model_registry_entries(state_version_id, status="active")
+        return entries[0] if entries else None
 
     # ------------------------------------------------------------------
     # Persistence helpers
@@ -1153,6 +1211,56 @@ class TwmRepository:
                 "benchmark_value": metric.benchmark_value,
                 "direction": metric.direction,
                 "explanation": metric.explanation,
+            },
+        )
+
+    def _persist_dynamics_model_registry_entry(self, entry: TwmDynamicsModelRegistryEntry) -> None:
+        self._persist(
+            """
+            INSERT INTO twm_dynamics_model_registry
+                (id, state_version_id, project_id, registry_key, model_name,
+                 model_version, model_family, status, promotion_decision,
+                 registry_report, lineage, metadata, previous_active_registry_key,
+                 activated_at, created_at, updated_at)
+            VALUES
+                (:id, :state_version_id, :project_id, :registry_key, :model_name,
+                 :model_version, :model_family, :status, :promotion_decision,
+                 CAST(:registry_report AS JSONB), CAST(:lineage AS JSONB),
+                 CAST(:metadata AS JSONB), :previous_active_registry_key,
+                 :activated_at, :created_at, :updated_at)
+            ON CONFLICT (id) DO UPDATE SET
+                state_version_id = EXCLUDED.state_version_id,
+                project_id = EXCLUDED.project_id,
+                registry_key = EXCLUDED.registry_key,
+                model_name = EXCLUDED.model_name,
+                model_version = EXCLUDED.model_version,
+                model_family = EXCLUDED.model_family,
+                status = EXCLUDED.status,
+                promotion_decision = EXCLUDED.promotion_decision,
+                registry_report = EXCLUDED.registry_report,
+                lineage = EXCLUDED.lineage,
+                metadata = EXCLUDED.metadata,
+                previous_active_registry_key = EXCLUDED.previous_active_registry_key,
+                activated_at = EXCLUDED.activated_at,
+                updated_at = EXCLUDED.updated_at
+            """,
+            {
+                "id": entry.id,
+                "state_version_id": entry.state_version_id,
+                "project_id": entry.project_id,
+                "registry_key": entry.registry_key,
+                "model_name": entry.model_name,
+                "model_version": entry.model_version,
+                "model_family": entry.model_family,
+                "status": entry.status,
+                "promotion_decision": entry.promotion_decision,
+                "registry_report": _json(entry.registry_report),
+                "lineage": _json(entry.lineage),
+                "metadata": _json(entry.metadata),
+                "previous_active_registry_key": entry.previous_active_registry_key,
+                "activated_at": entry.activated_at or None,
+                "created_at": entry.created_at,
+                "updated_at": entry.updated_at,
             },
         )
 

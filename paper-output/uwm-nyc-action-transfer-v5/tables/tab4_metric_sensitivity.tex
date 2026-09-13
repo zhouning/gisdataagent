@@ -1,0 +1,18 @@
+\begin{table}[H]
+\caption{Non-retuned metric and horizon sensitivity.}
+\label{tab:tab4_metric_sensitivity}
+\scriptsize
+\begin{tabular}{llrrrrrl}
+\toprule
+Specification & Metric & Correct & History & Spatial & $\Delta$Hist. & $\Delta$Spatial & Outcome \\
+\midrule
+Reported weeks, all zones & Normalized MAE & 0.3684 & 0.3626 & 0.3614 & 0.0058 & 0.0070 & Loses both \\
+All weeks 1--12 & Normalized MAE & 0.3793 & 0.3837 & 0.3831 & -0.0045 & -0.0038 & Wins both \\
+Reported weeks, all zones & Log1p MAE & 0.2931 & 0.2829 & 0.2820 & 0.0102 & 0.0111 & Loses both \\
+Reported weeks, all zones & Median normalized AE & 0.2179 & 0.1932 & 0.1929 & 0.0247 & 0.0250 & Loses both \\
+Reported weeks, all zones & WAPE & 0.2105 & 0.1248 & 0.1253 & 0.0857 & 0.0852 & Loses both \\
+Reported weeks, scale $\geq$ 10 & Normalized MAE & 0.2815 & 0.2760 & 0.2754 & 0.0055 & 0.0061 & Loses both \\
+Reported weeks, scale $\geq$ 100 & Normalized MAE & 0.2218 & 0.2024 & 0.2025 & 0.0194 & 0.0194 & Loses both \\
+\bottomrule
+\end{tabular}
+\end{table}

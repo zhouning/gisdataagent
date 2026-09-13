@@ -1,0 +1,12 @@
+model_id,model_label,model_type,primary_error,rank
+effective_date_plus_4w,Action date +4 weeks,negative_control,0.3589183344673512,1
+fixed_adjacency_spatial_ar,Fixed-adjacency spatial AR,baseline,0.36141612169760795,2
+history_ar_backbone,History AR backbone,baseline,0.3626162626409588,3
+action_deleted,Action deleted,negative_control,0.3626162626409588,4
+zone_exposure_shuffle_seed_20260723,Zone exposure shuffle,negative_control,0.36401165973766847,5
+action_component_permutation,Action component permutation,negative_control,0.36484701977997874,6
+uwm_dam_gk_action_residual,DAM-GK correct action residual,candidate,0.36838923900541926,7
+effective_date_minus_4w,Action date -4 weeks,negative_control,0.37030774297121916,8
+cross_event_action_swap,Cross-event action swap,negative_control,0.37117880102724454,9
+dam_gk_residual_no_action,DAM-GK residual without action,matched_no_action,0.3724083676061702,10
+wrong_spatial_scope,Wrong spatial scope,negative_control,0.3814956386854111,11

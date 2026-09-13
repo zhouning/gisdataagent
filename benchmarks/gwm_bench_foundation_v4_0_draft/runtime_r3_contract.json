@@ -1,0 +1,92 @@
+{
+  "schema": "gwm_bench.foundation_v4_runtime_r3_contract.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V4.0-DRAFT1",
+  "created_at": "2026-07-23",
+  "status": "frozen_before_predictions",
+  "purpose": "Provide one model-neutral lifecycle for action-conditioned UWM rollout while enforcing the V4 training and target firewall.",
+  "lifecycle": [
+    "prepare",
+    "fit_or_load_frozen_model",
+    "freeze_model_and_training_manifest",
+    "predict_twelve_open_loop_weeks",
+    "validate_submission",
+    "commit_prediction_hash",
+    "replay",
+    "score_after_all_commitments",
+    "audit"
+  ],
+  "contracts": {
+    "ZoneWeekStateSnapshot": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/test_input/weekly_state_history.parquet",
+      "key": ["zone_id", "relative_week"],
+      "relative_weeks": [-52, -51, -50, -49, -48, -47, -46, -45, -44, -43, -42, -41, -40, -39, -38, -37, -36, -35, -34, -33, -32, -31, -30, -29, -28, -27, -26, -25, -24, -23, -22, -21, -20, -19, -18, -17, -16, -15, -14, -13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1]
+    },
+    "NumericActionSpec": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/test_input/future_action_spec.parquet",
+      "key": ["zone_id", "horizon_week"],
+      "horizon_weeks": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "opaque_event_id_permitted": false,
+      "policy_name_permitted": false
+    },
+    "MultiRelationSpatialGraph": {
+      "zone_metadata": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/graph/zone_metadata.parquet",
+      "edges": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/graph/spatial_edges.parquet",
+      "relations": ["geographic_adjacency", "origin_destination_flow", "action_exposure"]
+    },
+    "OpenLoopRolloutRequest": {
+      "origin_date": "2025-01-04",
+      "steps": 12,
+      "observed_state_writeback_permitted": false,
+      "test_post_action_graph_update_permitted": false
+    },
+    "MultiTargetPredictionBundle": {
+      "contract": "benchmarks/gwm_bench_foundation_v4_0_draft/submission_contract.json",
+      "expected_key_count": 3156
+    },
+    "RuntimeAuditReceipt": {
+      "required_hashes": ["protocol", "rc1_bundle", "training_rows", "code", "environment", "model", "prediction"],
+      "required_runtime_fields": ["model_id", "adapter_id", "seed", "started_at", "finished_at", "wall_seconds", "peak_rss_bytes", "exit_status", "failure_state"]
+    }
+  },
+  "read_routes": {
+    "model_runtime_allowed": [
+      "rc1_bundle/development",
+      "rc1_bundle/test_input",
+      "rc1_bundle/graph"
+    ],
+    "model_runtime_denied": [
+      "rc1_bundle/test_targets"
+    ],
+    "evaluator_allowed_after_commitment": [
+      "rc1_bundle/test_targets",
+      "committed_predictions"
+    ]
+  },
+  "required_models": [
+    "uwm_dam_gk_action",
+    "dam_gk_no_action",
+    "fixed_adjacency_spatial_ar",
+    "nonspatial_historical_ar",
+    "seasonal_persistence_52w"
+  ],
+  "required_controls": [
+    "action_deleted",
+    "effective_date_minus_4w",
+    "effective_date_plus_4w",
+    "action_component_permutation",
+    "cbd_scope_rewire",
+    "zone_exposure_shuffle_seed_20260723"
+  ],
+  "stochastic_seed_contract": {
+    "required_seeds": [31, 47, 73],
+    "ensemble_rule": "arithmetic mean in raw count space after each seed emits all 3,156 keys",
+    "missing_or_replaced_seed_permitted": false
+  },
+  "replay": {
+    "deterministic_models": "prediction hash must reproduce exactly in the frozen environment",
+    "stochastic_models": "each required seed must reproduce within absolute tolerance 1e-6 before ensemble",
+    "failed_runs": "retain and publish every failed attempt; reruns require a new attempt identifier"
+  },
+  "firewall_violation_rule": "Any model process that opens rc1_bundle/test_targets before its prediction commitment is invalid and must not be scored as a V4 submission.",
+  "claim_boundary": "Runtime-R3 completion proves benchmark execution and auditability, not causal policy identification or a universal runtime product."
+}

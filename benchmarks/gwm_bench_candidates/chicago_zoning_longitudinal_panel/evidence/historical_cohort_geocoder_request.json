@@ -1,0 +1,165 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "OBJECTID": 1,
+        "SingleLine": "1352 W Diversey Pkwy, Chicago, IL",
+        "record_number": "O2024-0008445"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 2,
+        "SingleLine": "455 N Carpenter St, Chicago, IL",
+        "record_number": "O2024-0008449"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 3,
+        "SingleLine": "1157 W Grand Ave, Chicago, IL",
+        "record_number": "O2024-0008450"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 4,
+        "SingleLine": "1806 N Monticello Ave, Chicago, IL",
+        "record_number": "O2024-0008454"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 5,
+        "SingleLine": "8719 S Houston Ave, Chicago, IL",
+        "record_number": "O2024-0008459"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 6,
+        "SingleLine": "2405 W Grand Ave, Chicago, IL",
+        "record_number": "O2024-0008868"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 7,
+        "SingleLine": "1857 W 16th St, Chicago, IL",
+        "record_number": "O2024-0008869"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 8,
+        "SingleLine": "1145 W 17th St, Chicago, IL",
+        "record_number": "O2024-0008974"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 9,
+        "SingleLine": "1227 W Jackson Blvd, Chicago, IL",
+        "record_number": "O2024-0009009"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 10,
+        "SingleLine": "2411 N Lincoln Ave, Chicago, IL",
+        "record_number": "O2024-0009011"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 11,
+        "SingleLine": "1055 W Diversey Pkwy, Chicago, IL",
+        "record_number": "O2024-0009013"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 12,
+        "SingleLine": "6411 N Newgard Ave, Chicago, IL",
+        "record_number": "O2024-0010948"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 13,
+        "SingleLine": "2219 S Oakley Ave, Chicago, IL",
+        "record_number": "O2024-0010950"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 14,
+        "SingleLine": "7015 N Sheridan Rd, Chicago, IL",
+        "record_number": "O2024-0011132"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 15,
+        "SingleLine": "1810 N Richmond St, Chicago, IL",
+        "record_number": "O2024-0011150"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 16,
+        "SingleLine": "4508 S Cottage Grove Ave, Chicago, IL",
+        "record_number": "O2024-0011139"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 17,
+        "SingleLine": "1228 W Race Ave, Chicago, IL",
+        "record_number": "O2024-0012247"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 18,
+        "SingleLine": "5824 N Lincoln Ave, Chicago, IL",
+        "record_number": "O2024-0012332"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 19,
+        "SingleLine": "2437 S Troy St, Chicago, IL",
+        "record_number": "O2024-0012334"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 20,
+        "SingleLine": "2113 N Kenmore Ave, Chicago, IL",
+        "record_number": "O2024-0012506"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 21,
+        "SingleLine": "912 N Richmond St, Chicago, IL",
+        "record_number": "O2024-0012520"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 22,
+        "SingleLine": "6453 N Bosworth Ave, Chicago, IL",
+        "record_number": "O2024-0012532"
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 23,
+        "SingleLine": "2658 W 21st Pl, Chicago, IL",
+        "record_number": "O2024-0013362"
+      }
+    }
+  ]
+}

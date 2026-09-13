@@ -1,0 +1,2489 @@
+{
+  "artifacts": {
+    "chicago_addresspoints_2024_preregistered_cohort_v2.json": {
+      "bytes": 27945,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_addresspoints_2024_preregistered_cohort_v2.json",
+      "sha256": "119ad5ab1a65b5e64f955acc57d04f0cc2e5f908db90ddd54f3a45d36d71e7b6"
+    },
+    "chicago_addresspoints_retry_O2024_0008445.json": {
+      "bytes": 68,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_addresspoints_retry_O2024_0008445.json",
+      "sha256": "acfae4870440c59a64af2343acab32331eeb8aad84a36e9b5b1b15ec1373f4db"
+    },
+    "chicago_addresspoints_retry_O2024_0008449.json": {
+      "bytes": 68,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_addresspoints_retry_O2024_0008449.json",
+      "sha256": "acfae4870440c59a64af2343acab32331eeb8aad84a36e9b5b1b15ec1373f4db"
+    },
+    "chicago_addresspoints_retry_O2024_0009011.json": {
+      "bytes": 1462,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_addresspoints_retry_O2024_0009011.json",
+      "sha256": "c4cc596fdcb7c71a2066a2258aa8d635cc9d845d88c582733cb1770a1d772b5c"
+    },
+    "chicago_addresspoints_retry_O2024_0009013.json": {
+      "bytes": 68,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_addresspoints_retry_O2024_0009013.json",
+      "sha256": "acfae4870440c59a64af2343acab32331eeb8aad84a36e9b5b1b15ec1373f4db"
+    },
+    "chicago_current_zoning_2024_preregistered_cohort.json": {
+      "bytes": 14930,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_current_zoning_2024_preregistered_cohort.json",
+      "sha256": "367a0b8d891fdfdc4dc56a63866deb8abcee0db9f21d6d779bb831bdfa727e95"
+    },
+    "chicago_current_zoning_point_context_O2024_0012332.json": {
+      "bytes": 19684,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_current_zoning_point_context_O2024_0012332.json",
+      "sha256": "9622e78f2dd7064561a942bca5b26f23681153d04c625352e6b648a516462515"
+    },
+    "chicago_official_parcel_addresses_19_crosswalk.json": {
+      "bytes": 13206,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_parcel_addresses_19_crosswalk.json",
+      "sha256": "9c8878b2ba7ebbdc77518f6a474761e0edc0b20620145028fde92135b6789b4d"
+    },
+    "chicago_official_parcel_addresses_layer1_metadata.json": {
+      "bytes": 8157,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_parcel_addresses_layer1_metadata.json",
+      "sha256": "4257c8f037c81af58343970c6b3a83b24b8259cc8d17d7a5d4c1cc3e17f106df"
+    },
+    "fcc_census_block_O2024_0008450.json": {
+      "bytes": 220,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0008450.json",
+      "sha256": "37cada17a1bf64efebb00a2a092b10d175b53311040baece4fa8fd8adfe28eb5"
+    },
+    "fcc_census_block_O2024_0008454.json": {
+      "bytes": 219,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0008454.json",
+      "sha256": "51a6f9d16d1e1918127c88ebcf67dc2f9938e9f7d931ad29197a55bf43d74ecc"
+    },
+    "fcc_census_block_O2024_0008459.json": {
+      "bytes": 220,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0008459.json",
+      "sha256": "98df347602efc1f8837cb984019f370785c98e014ada1881e7e2f4657bf953cf"
+    },
+    "fcc_census_block_O2024_0008868.json": {
+      "bytes": 220,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0008868.json",
+      "sha256": "52a2093022501e5fc1ab29eff748ad64210162b509ecdcd79531b130fbbe033e"
+    },
+    "fcc_census_block_O2024_0008869.json": {
+      "bytes": 220,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0008869.json",
+      "sha256": "01fa5489288413b127b03c441d62dc64d4beefc01e2180922958c2b9d1a21c30"
+    },
+    "fcc_census_block_O2024_0008974.json": {
+      "bytes": 220,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0008974.json",
+      "sha256": "2e2ed176a2709968db979a5db9cdc2084bb16fbd49d496de7ad33ec4121ce185"
+    },
+    "fcc_census_block_O2024_0009009.json": {
+      "bytes": 220,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0009009.json",
+      "sha256": "bc6ff32260b531b3d48e0687a8eca371ba40ae4556afbb1129a168b845b80721"
+    },
+    "fcc_census_block_O2024_0010948.json": {
+      "bytes": 220,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0010948.json",
+      "sha256": "88eab0bd914efe479d5c37034f3a4c9ec400b22b0938aa92dd38e7d89b639d8b"
+    },
+    "fcc_census_block_O2024_0010950.json": {
+      "bytes": 219,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0010950.json",
+      "sha256": "c7fe399df3ff36ba9a937f4f244e8fbe85ac0f431e1f3322f0fa80770eb0bd56"
+    },
+    "fcc_census_block_O2024_0011132.json": {
+      "bytes": 219,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0011132.json",
+      "sha256": "471d8bc09e0822c80ae5c960a1c71cc07c42514b64a575e60ed5ed9ebbdfe84f"
+    },
+    "fcc_census_block_O2024_0011139.json": {
+      "bytes": 219,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0011139.json",
+      "sha256": "f99216caf9397958450d778aee5adae481011093c1ce652369d48ecbf20b088a"
+    },
+    "fcc_census_block_O2024_0011150.json": {
+      "bytes": 220,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0011150.json",
+      "sha256": "6a7b4b4654500f3909e27a6a3c6fa5be7fa8ab4147634c1ed7388b919d3ecec7"
+    },
+    "fcc_census_block_O2024_0012247.json": {
+      "bytes": 216,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0012247.json",
+      "sha256": "086c5c1ac62e2998e79e1c4e3b58c61cab62bd74383c65b2bc4a88cd310dc259"
+    },
+    "fcc_census_block_O2024_0012332.json": {
+      "bytes": 220,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0012332.json",
+      "sha256": "c778e788c26fbde857a4994d0e98b868fa227ecc6480ce8b30681cc8826cba77"
+    },
+    "fcc_census_block_O2024_0012334.json": {
+      "bytes": 219,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0012334.json",
+      "sha256": "ed2c6dec68b15a51be9828db4c5d1595f27e2ef8bb06df570579f3a00f7e351c"
+    },
+    "fcc_census_block_O2024_0012506.json": {
+      "bytes": 220,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0012506.json",
+      "sha256": "7b411b755285457506b8990964bfb2be0fc1b0377efcab9dfff7de1f7eae7484"
+    },
+    "fcc_census_block_O2024_0012520.json": {
+      "bytes": 220,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0012520.json",
+      "sha256": "71330907a63f40193f67c93a31f1f6c0f3666d856fca28299dc8cc1a2ae475b9"
+    },
+    "fcc_census_block_O2024_0012532.json": {
+      "bytes": 219,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0012532.json",
+      "sha256": "f5d824a404ae7d2a8ffc555b97d4f9f180c7165b4b8e287119d57fb9439262d7"
+    },
+    "fcc_census_block_O2024_0013362.json": {
+      "bytes": 218,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0013362.json",
+      "sha256": "b0a63d403fea22303b8fd408a2355731324783d9c608c2b877dbefa6e736a1de"
+    },
+    "historical_cohort_geocoder_request_v2.json": {
+      "bytes": 3430,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/historical_cohort_geocoder_request_v2.json",
+      "sha256": "ea75bc7b8a0d0870bbb003e0616a52dd1bbc21ecf2eec0a80cfd6ef8507225c1"
+    },
+    "historical_cohort_preregistration.json": {
+      "bytes": 19459,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/historical_cohort_preregistration.json",
+      "sha256": "f34d07f290ac29ba0696778cf229113336e076cbf33dd33e9c7c916c0ac9d15b"
+    }
+  },
+  "claim_boundary": {
+    "cohort_size_not_positivity_evidence": true,
+    "crosswalk_not_longitudinal_outcome_panel": true,
+    "current_parcel_polygon_not_versioned_historical_geometry": true,
+    "independent_source_identity_not_spatial_coincidence": true,
+    "partial_crosswalk_not_complete_cohort_crosswalk": true,
+    "spatial_crosswalk_not_causal_identification": true,
+    "zoning_map_polygon_not_legal_parcel_polygon": true
+  },
+  "cohort_digest": "35f8d6d5e2523ca3400bc87ada22e539d5511550e1fffe77c71790c1490d622c",
+  "cohort_id": "chicago_single_address_t1_zoning_2023_2024_v1",
+  "crosswalk_digest": "95f2d7ed8422b4a44df6ffed06a913460915065cada7e6a64b2e87b9c3bc59e4",
+  "events": [
+    {
+      "address": "1352 W Diversey Pkwy",
+      "application_number": "22385T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": false,
+          "point_address_ready": false,
+          "point_inside_parcel": false,
+          "polygon_present": false,
+          "single_pin_feature": false
+        },
+        "feature_count": 0,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [],
+        "pin14": null,
+        "ready": false,
+        "shape_area_square_feet": null
+      },
+      "final_action_date": "2024-04-17T15:00:00+00:00",
+      "last_publication_date": "2024-07-06T00:22:46+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": false,
+          "matched_status": false,
+          "pin10_present": false,
+          "point_address_type": false,
+          "score_100": false,
+          "wgs84_location_present": false
+        },
+        "community": null,
+        "matched_address": null,
+        "pin10": null,
+        "point_epsg_3435": null,
+        "point_wgs84": null,
+        "ready": false,
+        "retry_observation": {
+          "artifact": "chicago_addresspoints_retry_O2024_0008445.json",
+          "candidate_count": 0,
+          "exact_candidate_count": 0,
+          "exact_point_address_recovered": false,
+          "top_candidate_address": null,
+          "top_candidate_score": null
+        },
+        "score": 0,
+        "ward": null
+      },
+      "record_number": "O2024-0008445",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": false,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": false,
+        "ready": false
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": null,
+        "checks": {
+          "block_fips_15_digits": false,
+          "fcc_status_ok": false,
+          "point_address_ready": false,
+          "tract_geoid_11_digits": false
+        },
+        "ready": false,
+        "tract_geoid": null
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1661315
+        ],
+        "ordinance_date_epoch_ms": [
+          1713312000000
+        ],
+        "ordinance_numbers": [
+          "22385T1"
+        ],
+        "point_address_inside_polygon": false,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 4689.122314453125,
+        "vertex_count": 9,
+        "zone_classes": [
+          "B2-2"
+        ]
+      }
+    },
+    {
+      "address": "455 N Carpenter St",
+      "application_number": "22386T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": false,
+          "point_address_ready": false,
+          "point_inside_parcel": false,
+          "polygon_present": false,
+          "single_pin_feature": false
+        },
+        "feature_count": 0,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [],
+        "pin14": null,
+        "ready": false,
+        "shape_area_square_feet": null
+      },
+      "final_action_date": "2024-04-17T15:00:00+00:00",
+      "last_publication_date": "2024-07-05T23:14:18+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": false,
+          "matched_status": false,
+          "pin10_present": false,
+          "point_address_type": false,
+          "score_100": false,
+          "wgs84_location_present": false
+        },
+        "community": null,
+        "matched_address": null,
+        "pin10": null,
+        "point_epsg_3435": null,
+        "point_wgs84": null,
+        "ready": false,
+        "retry_observation": {
+          "artifact": "chicago_addresspoints_retry_O2024_0008449.json",
+          "candidate_count": 0,
+          "exact_candidate_count": 0,
+          "exact_point_address_recovered": false,
+          "top_candidate_address": null,
+          "top_candidate_score": null
+        },
+        "score": 0,
+        "ward": null
+      },
+      "record_number": "O2024-0008449",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": false,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": false,
+        "ready": false
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": null,
+        "checks": {
+          "block_fips_15_digits": false,
+          "fcc_status_ok": false,
+          "point_address_ready": false,
+          "tract_geoid_11_digits": false
+        },
+        "ready": false,
+        "tract_geoid": null
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1661299
+        ],
+        "ordinance_date_epoch_ms": [
+          1713312000000
+        ],
+        "ordinance_numbers": [
+          "22386T1"
+        ],
+        "point_address_inside_polygon": false,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 29434.626220703125,
+        "vertex_count": 13,
+        "zone_classes": [
+          "B3-5"
+        ]
+      }
+    },
+    {
+      "address": "1157 W Grand Ave",
+      "application_number": "22387T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10334714
+        ],
+        "pin14": "17082460030000",
+        "ready": true,
+        "shape_area_square_feet": 4736.68763173948
+      },
+      "final_action_date": "2024-04-17T15:00:00+00:00",
+      "last_publication_date": "2024-07-05T23:14:23+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "WEST TOWN",
+        "matched_address": "1157 W GRAND AVE, 60642",
+        "pin10": "1708246003",
+        "point_epsg_3435": [
+          1168425.181688585,
+          1903532.9988954724
+        ],
+        "point_wgs84": [
+          -87.656908939,
+          41.890826353
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 27
+      },
+      "record_number": "O2024-0008450",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170312435001019",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031243500"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1661020
+        ],
+        "ordinance_date_epoch_ms": [
+          1713312000000
+        ],
+        "ordinance_numbers": [
+          "22387T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 7699.75146484375,
+        "vertex_count": 8,
+        "zone_classes": [
+          "B2-2"
+        ]
+      }
+    },
+    {
+      "address": "1806 N Monticello Ave",
+      "application_number": "22390T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10207669
+        ],
+        "pin14": "13353130410000",
+        "ready": true,
+        "shape_area_square_feet": 3132.08355352176
+      },
+      "final_action_date": "2024-04-17T15:00:00+00:00",
+      "last_publication_date": "2024-07-06T00:39:43+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "LOGAN SQUARE",
+        "matched_address": "1806 N MONTICELLO AVE, 60647",
+        "pin10": "1335313041",
+        "point_epsg_3435": [
+          1151665.6781173924,
+          1911826.313238248
+        ],
+        "point_wgs84": [
+          -87.718239974,
+          41.913930063
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 1
+      },
+      "record_number": "O2024-0008454",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170312229001017",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031222900"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1661297
+        ],
+        "ordinance_date_epoch_ms": [
+          1713312000000
+        ],
+        "ordinance_numbers": [
+          "22390T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 4179.75830078125,
+        "vertex_count": 9,
+        "zone_classes": [
+          "RM-5"
+        ]
+      }
+    },
+    {
+      "address": "8719 S Houston Ave",
+      "application_number": "22393T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10624682
+        ],
+        "pin14": "26062040080000",
+        "ready": true,
+        "shape_area_square_feet": 3526.9084272055
+      },
+      "final_action_date": "2024-04-17T15:00:00+00:00",
+      "last_publication_date": "2024-07-06T00:23:08+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "SOUTH CHICAGO",
+        "matched_address": "8719 S HOUSTON AVE, 60617",
+        "pin10": "2606204008",
+        "point_epsg_3435": [
+          1198146.9067026845,
+          1847637.7046851204
+        ],
+        "point_wgs84": [
+          -87.549630516,
+          41.736752618
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 10
+      },
+      "record_number": "O2024-0008459",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170314608002000",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031460800"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1661304
+        ],
+        "ordinance_date_epoch_ms": [
+          1713312000000
+        ],
+        "ordinance_numbers": [
+          "22393T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 4727.194580078125,
+        "vertex_count": 9,
+        "zone_classes": [
+          "RM-4.5"
+        ]
+      }
+    },
+    {
+      "address": "2405 W Grand Ave",
+      "application_number": "22403T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10271661
+        ],
+        "pin14": "16122200160000",
+        "ready": true,
+        "shape_area_square_feet": 4016.19835855076
+      },
+      "final_action_date": "2024-05-22T15:00:00+00:00",
+      "last_publication_date": "2024-07-05T22:57:06+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "WEST TOWN",
+        "matched_address": "2405 W GRAND AVE, 60612",
+        "pin10": "1612220016",
+        "point_epsg_3435": [
+          1160198.9840844441,
+          1903300.087130928
+        ],
+        "point_wgs84": [
+          -87.687126026,
+          41.890361201
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 27
+      },
+      "record_number": "O2024-0008868",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170312428001025",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031242800"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 2,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1660955,
+          1661021
+        ],
+        "ordinance_date_epoch_ms": [
+          1716336000000
+        ],
+        "ordinance_numbers": [
+          "22403T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 2,
+        "shape_area_square_feet": 23095.889404296875,
+        "vertex_count": 24,
+        "zone_classes": [
+          "C1-3",
+          "RM-4.5"
+        ]
+      }
+    },
+    {
+      "address": "1857 W 16th St",
+      "application_number": "22404T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10390679
+        ],
+        "pin14": "17194010020000",
+        "ready": true,
+        "shape_area_square_feet": 2999.35810323013
+      },
+      "final_action_date": "2024-05-22T15:00:00+00:00",
+      "last_publication_date": "2024-07-05T22:57:12+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "LOWER WEST SIDE",
+        "matched_address": "1857 W 16TH ST, 60608",
+        "pin10": "1719401002",
+        "point_epsg_3435": [
+          1164377.3747699165,
+          1892003.7453441254
+        ],
+        "point_wgs84": [
+          -87.672100634,
+          41.859275703
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 25
+      },
+      "record_number": "O2024-0008869",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170313109001000",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031310900"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1661029
+        ],
+        "ordinance_date_epoch_ms": [
+          1716336000000
+        ],
+        "ordinance_numbers": [
+          "22404T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 109065.26147460938,
+        "vertex_count": 24,
+        "zone_classes": [
+          "C3-2"
+        ]
+      }
+    },
+    {
+      "address": "1145 W 17th St",
+      "application_number": "22424T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10353289
+        ],
+        "pin14": "17204010170000",
+        "ready": true,
+        "shape_area_square_feet": 2975.43676399825
+      },
+      "final_action_date": "2024-05-22T15:00:00+00:00",
+      "last_publication_date": "2024-07-06T01:30:44+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "LOWER WEST SIDE",
+        "matched_address": "1145 W 17TH ST, 60608",
+        "pin10": "1720401017",
+        "point_epsg_3435": [
+          1168995.5864864676,
+          1891828.5468915578
+        ],
+        "point_wgs84": [
+          -87.655153772,
+          41.858696093
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 25
+      },
+      "record_number": "O2024-0008974",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170313106001017",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031310600"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1661141
+        ],
+        "ordinance_date_epoch_ms": [
+          1716336000000
+        ],
+        "ordinance_numbers": [
+          "22424T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 4026.59228515625,
+        "vertex_count": 9,
+        "zone_classes": [
+          "RM-4.5"
+        ]
+      }
+    },
+    {
+      "address": "1227 W Jackson Blvd",
+      "application_number": "22431T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10327487
+        ],
+        "pin14": "17171170100000",
+        "ready": true,
+        "shape_area_square_feet": 4451.83380801597
+      },
+      "final_action_date": "2024-05-22T15:00:00+00:00",
+      "last_publication_date": "2024-07-06T01:31:33+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "NEAR WEST SIDE",
+        "matched_address": "1227 W JACKSON BLVD, 60607",
+        "pin10": "1717117010",
+        "point_epsg_3435": [
+          1168128.2243468938,
+          1898697.2503240255
+        ],
+        "point_wgs84": [
+          -87.658139235,
+          41.877563125
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 28
+      },
+      "record_number": "O2024-0009009",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170318331001008",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031833100"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1661119
+        ],
+        "ordinance_date_epoch_ms": [
+          1716336000000
+        ],
+        "ordinance_numbers": [
+          "22431T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 6045.513427734375,
+        "vertex_count": 9,
+        "zone_classes": [
+          "DR-3"
+        ]
+      }
+    },
+    {
+      "address": "2411 N Lincoln Ave",
+      "application_number": "22433T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": false,
+          "point_address_ready": false,
+          "point_inside_parcel": false,
+          "polygon_present": false,
+          "single_pin_feature": false
+        },
+        "feature_count": 0,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [],
+        "pin14": null,
+        "ready": false,
+        "shape_area_square_feet": null
+      },
+      "final_action_date": "2024-05-22T15:00:00+00:00",
+      "last_publication_date": "2024-07-05T22:59:26+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": false,
+          "matched_status": false,
+          "pin10_present": false,
+          "point_address_type": false,
+          "score_100": false,
+          "wgs84_location_present": false
+        },
+        "community": null,
+        "matched_address": null,
+        "pin10": null,
+        "point_epsg_3435": null,
+        "point_wgs84": null,
+        "ready": false,
+        "retry_observation": {
+          "artifact": "chicago_addresspoints_retry_O2024_0009011.json",
+          "candidate_count": 1,
+          "exact_candidate_count": 0,
+          "exact_point_address_recovered": false,
+          "top_candidate_address": "2411 W CHICAGO AVE, 60622",
+          "top_candidate_score": 76.71
+        },
+        "score": 0,
+        "ward": null
+      },
+      "record_number": "O2024-0009011",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": false,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": false,
+        "ready": false
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": null,
+        "checks": {
+          "block_fips_15_digits": false,
+          "fcc_status_ok": false,
+          "point_address_ready": false,
+          "tract_geoid_11_digits": false
+        },
+        "ready": false,
+        "tract_geoid": null
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1660957
+        ],
+        "ordinance_date_epoch_ms": [
+          1716336000000
+        ],
+        "ordinance_numbers": [
+          "22433T1"
+        ],
+        "point_address_inside_polygon": false,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 32816.450927734375,
+        "vertex_count": 6,
+        "zone_classes": [
+          "B3-5"
+        ]
+      }
+    },
+    {
+      "address": "1055 W Diversey Pkwy",
+      "application_number": "22434T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": false,
+          "point_address_ready": false,
+          "point_inside_parcel": false,
+          "polygon_present": false,
+          "single_pin_feature": false
+        },
+        "feature_count": 0,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [],
+        "pin14": null,
+        "ready": false,
+        "shape_area_square_feet": null
+      },
+      "final_action_date": "2024-05-22T15:00:00+00:00",
+      "last_publication_date": "2024-07-05T22:59:34+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": false,
+          "matched_status": false,
+          "pin10_present": false,
+          "point_address_type": false,
+          "score_100": false,
+          "wgs84_location_present": false
+        },
+        "community": null,
+        "matched_address": null,
+        "pin10": null,
+        "point_epsg_3435": null,
+        "point_wgs84": null,
+        "ready": false,
+        "retry_observation": {
+          "artifact": "chicago_addresspoints_retry_O2024_0009013.json",
+          "candidate_count": 0,
+          "exact_candidate_count": 0,
+          "exact_point_address_recovered": false,
+          "top_candidate_address": null,
+          "top_candidate_score": null
+        },
+        "score": 0,
+        "ward": null
+      },
+      "record_number": "O2024-0009013",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": false,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": false,
+        "ready": false
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": null,
+        "checks": {
+          "block_fips_15_digits": false,
+          "fcc_status_ok": false,
+          "point_address_ready": false,
+          "tract_geoid_11_digits": false
+        },
+        "ready": false,
+        "tract_geoid": null
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1661080
+        ],
+        "ordinance_date_epoch_ms": [
+          1716336000000
+        ],
+        "ordinance_numbers": [
+          "22434T1"
+        ],
+        "point_address_inside_polygon": false,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 25891.67529296875,
+        "vertex_count": 11,
+        "zone_classes": [
+          "B2-3"
+        ]
+      }
+    },
+    {
+      "address": "6411 N Newgard Ave",
+      "application_number": "22509T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10080685
+        ],
+        "pin14": "11323270350000",
+        "ready": true,
+        "shape_area_square_feet": 3055.30600750771
+      },
+      "final_action_date": "2024-09-18T15:00:00+00:00",
+      "last_publication_date": "2024-10-04T19:55:41+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "ROGERS PARK",
+        "matched_address": "6411 N NEWGARD AVE, 60626",
+        "pin10": "1132327035",
+        "point_epsg_3435": [
+          1165534.4120336855,
+          1942759.0445248773
+        ],
+        "point_wgs84": [
+          -87.666404364,
+          41.998526583
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 49
+      },
+      "record_number": "O2024-0010948",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170310106003009",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031010600"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1660877
+        ],
+        "ordinance_date_epoch_ms": [
+          1726617600000
+        ],
+        "ordinance_numbers": [
+          "22509T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 4258.3779296875,
+        "vertex_count": 8,
+        "zone_classes": [
+          "B2-3"
+        ]
+      }
+    },
+    {
+      "address": "2219 S Oakley Ave",
+      "application_number": "22510T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10385304
+        ],
+        "pin14": "17301020150000",
+        "ready": true,
+        "shape_area_square_feet": 3123.15273628273
+      },
+      "final_action_date": "2024-09-18T15:00:00+00:00",
+      "last_publication_date": "2024-10-04T19:30:05+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "LOWER WEST SIDE",
+        "matched_address": "2219 S OAKLEY AVE, 60608",
+        "pin10": "1730102015",
+        "point_epsg_3435": [
+          1161463.526435574,
+          1889125.665394336
+        ],
+        "point_wgs84": [
+          -87.68287649,
+          41.851439044
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 25
+      },
+      "record_number": "O2024-0010950",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170318413001010",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031841300"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1660795
+        ],
+        "ordinance_date_epoch_ms": [
+          1726617600000
+        ],
+        "ordinance_numbers": [
+          "22510T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 4141.842529296875,
+        "vertex_count": 9,
+        "zone_classes": [
+          "RM-5"
+        ]
+      }
+    },
+    {
+      "address": "7015 N Sheridan Rd",
+      "application_number": "22511T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10077154
+        ],
+        "pin14": "11321110030000",
+        "ready": true,
+        "shape_area_square_feet": 7003.882862919811
+      },
+      "final_action_date": "2024-09-18T15:00:00+00:00",
+      "last_publication_date": "2024-10-04T19:55:01+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "ROGERS PARK",
+        "matched_address": "7015 N SHERIDAN RD, 60626",
+        "pin10": "1132111003",
+        "point_epsg_3435": [
+          1166745.6374783535,
+          1946856.677091281
+        ],
+        "point_wgs84": [
+          -87.661830444,
+          42.009744585
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 49
+      },
+      "record_number": "O2024-0011132",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170310104002005",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031010400"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1660880
+        ],
+        "ordinance_date_epoch_ms": [
+          1726617600000
+        ],
+        "ordinance_numbers": [
+          "22511T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 9829.062744140625,
+        "vertex_count": 9,
+        "zone_classes": [
+          "B2-3"
+        ]
+      }
+    },
+    {
+      "address": "1810 N Richmond St",
+      "application_number": "22525T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10208806
+        ],
+        "pin14": "13363120330000",
+        "ready": true,
+        "shape_area_square_feet": 2994.6664764380603
+      },
+      "final_action_date": "2024-09-18T15:00:00+00:00",
+      "last_publication_date": "2024-10-04T19:00:25+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "LOGAN SQUARE",
+        "matched_address": "1810 N RICHMOND ST, 60647",
+        "pin10": "1336312033",
+        "point_epsg_3435": [
+          1156457.1426862609,
+          1911991.2907749282
+        ],
+        "point_wgs84": [
+          -87.700632451,
+          41.914287131
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 1
+      },
+      "record_number": "O2024-0011150",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170312225001011",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031222500"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1660787
+        ],
+        "ordinance_date_epoch_ms": [
+          1726617600000
+        ],
+        "ordinance_numbers": [
+          "22525T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 3808.24560546875,
+        "vertex_count": 9,
+        "zone_classes": [
+          "RM-4.5"
+        ]
+      }
+    },
+    {
+      "address": "4508 S Cottage Grove Ave",
+      "application_number": "22516T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10494945
+        ],
+        "pin14": "20034200230000",
+        "ready": true,
+        "shape_area_square_feet": 4284.49570578659
+      },
+      "final_action_date": "2024-10-09T15:00:00+00:00",
+      "last_publication_date": "2024-10-25T20:50:16+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "GRAND BOULEVARD",
+        "matched_address": "4508 S COTTAGE GROVE AVE, 60653",
+        "pin10": "2003420023",
+        "point_epsg_3435": [
+          1182217.233273069,
+          1875229.5833657258
+        ],
+        "point_wgs84": [
+          -87.607137388,
+          41.812850608
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 4
+      },
+      "record_number": "O2024-0011139",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170318360003013",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031836000"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1661434
+        ],
+        "ordinance_date_epoch_ms": [
+          1728432000000
+        ],
+        "ordinance_numbers": [
+          "22516T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 5541.56103515625,
+        "vertex_count": 9,
+        "zone_classes": [
+          "B2-3"
+        ]
+      }
+    },
+    {
+      "address": "1228 W Race Ave",
+      "application_number": "22539T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": 1.000635,
+        "area_within_one_percent_of_legal_lot": true,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": 2088.0,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10333210
+        ],
+        "pin14": "17081260210000",
+        "ready": true,
+        "shape_area_square_feet": 2089.3268372963003
+      },
+      "final_action_date": "2024-10-30T15:00:00+00:00",
+      "last_publication_date": "2024-11-21T16:45:42+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "WEST TOWN",
+        "matched_address": "1228 W RACE AVE, 60642",
+        "pin10": "1708126021",
+        "point_epsg_3435": [
+          1167951.401312642,
+          1903946.2914013513
+        ],
+        "point_wgs84": [
+          -87.658636951,
+          41.891970693
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 1
+      },
+      "record_number": "O2024-0012247",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170312434002007",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031243400"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1661744
+        ],
+        "ordinance_date_epoch_ms": [
+          1730246400000
+        ],
+        "ordinance_numbers": [
+          "22539T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 2850.838134765625,
+        "vertex_count": 9,
+        "zone_classes": [
+          "B2-3"
+        ]
+      }
+    },
+    {
+      "address": "5824 N Lincoln Ave",
+      "application_number": "22543T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10719074
+        ],
+        "pin14": "13013190030000",
+        "ready": true,
+        "shape_area_square_feet": 2699.6217506953603
+      },
+      "final_action_date": "2024-10-30T15:00:00+00:00",
+      "last_publication_date": "2024-11-21T17:25:15+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "WEST RIDGE",
+        "matched_address": "5824 N LINCOLN AVE, 60659",
+        "pin10": "1301319003",
+        "point_epsg_3435": [
+          1155735.2041569622,
+          1938512.5190819195
+        ],
+        "point_wgs84": [
+          -87.702567657,
+          41.987077703
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 40
+      },
+      "record_number": "O2024-0012332",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": {
+          "artifact": "chicago_current_zoning_point_context_O2024_0012332.json",
+          "clerk_document_number": null,
+          "feature_count": 1,
+          "ordinance_number": null,
+          "zone_class": "B3-2"
+        },
+        "point_inside_event_zoning_polygon": false,
+        "ready": false
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170310207012000",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031020701"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1661739
+        ],
+        "ordinance_date_epoch_ms": [
+          1730246400000
+        ],
+        "ordinance_numbers": [
+          "22543T1"
+        ],
+        "point_address_inside_polygon": false,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 9419.3505859375,
+        "vertex_count": 9,
+        "zone_classes": [
+          "B2-3"
+        ]
+      }
+    },
+    {
+      "address": "2437 S Troy St",
+      "application_number": "22544T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10317162
+        ],
+        "pin14": "16251150150000",
+        "ready": true,
+        "shape_area_square_feet": 3073.74519908585
+      },
+      "final_action_date": "2024-10-30T15:00:00+00:00",
+      "last_publication_date": "2024-11-21T17:05:37+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "SOUTH LAWNDALE",
+        "matched_address": "2437 S TROY ST, 60623",
+        "pin10": "1625115015",
+        "point_epsg_3435": [
+          1155885.5240542549,
+          1887486.8033113407
+        ],
+        "point_wgs84": [
+          -87.703393288,
+          41.847055939
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 12
+      },
+      "record_number": "O2024-0012334",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170313009002011",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031300900"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1661758
+        ],
+        "ordinance_date_epoch_ms": [
+          1730246400000
+        ],
+        "ordinance_numbers": [
+          "22544T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 4031.9547119140625,
+        "vertex_count": 9,
+        "zone_classes": [
+          "RM-5"
+        ]
+      }
+    },
+    {
+      "address": "2113 N Kenmore Ave",
+      "application_number": "22551T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10266575
+        ],
+        "pin14": "14322160180000",
+        "ready": true,
+        "shape_area_square_feet": 3107.9919983126
+      },
+      "final_action_date": "2024-10-30T15:00:00+00:00",
+      "last_publication_date": "2024-11-21T17:00:01+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "LINCOLN PARK",
+        "matched_address": "2113 N KENMORE AVE, 60614",
+        "pin10": "1432216018",
+        "point_epsg_3435": [
+          1169025.203602822,
+          1914307.5857173444
+        ],
+        "point_wgs84": [
+          -87.654392186,
+          41.920379472
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 43
+      },
+      "record_number": "O2024-0012506",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170310710002000",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031071000"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1661755
+        ],
+        "ordinance_date_epoch_ms": [
+          1730246400000
+        ],
+        "ordinance_numbers": [
+          "22551T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 4180.404052734375,
+        "vertex_count": 9,
+        "zone_classes": [
+          "RM-5"
+        ]
+      }
+    },
+    {
+      "address": "912 N Richmond St",
+      "application_number": "22558T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10268965
+        ],
+        "pin14": "16013140170000",
+        "ready": true,
+        "shape_area_square_feet": 3123.0703540013205
+      },
+      "final_action_date": "2024-10-30T15:00:00+00:00",
+      "last_publication_date": "2024-11-21T16:55:20+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "WEST TOWN",
+        "matched_address": "912 N RICHMOND ST, 60622",
+        "pin10": "1601314017",
+        "point_epsg_3435": [
+          1156434.3953520583,
+          1906238.932268029
+        ],
+        "point_wgs84": [
+          -87.70087184,
+          41.898502627
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 26
+      },
+      "record_number": "O2024-0012520",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170312427001006",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031242700"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1661752
+        ],
+        "ordinance_date_epoch_ms": [
+          1730246400000
+        ],
+        "ordinance_numbers": [
+          "22558T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 4203.365966796875,
+        "vertex_count": 9,
+        "zone_classes": [
+          "RM-5"
+        ]
+      }
+    },
+    {
+      "address": "6453 N Bosworth Ave",
+      "application_number": "22570T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": 0.998304,
+        "area_within_one_percent_of_legal_lot": true,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": 3885.0,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10085366
+        ],
+        "pin14": "11323230020000",
+        "ready": true,
+        "shape_area_square_feet": 3878.40946282876
+      },
+      "final_action_date": "2024-10-30T15:00:00+00:00",
+      "last_publication_date": "2024-11-21T17:25:24+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "ROGERS PARK",
+        "matched_address": "6453 N BOSWORTH AVE, 60626",
+        "pin10": "1132323002",
+        "point_epsg_3435": [
+          1164847.9950355224,
+          1943160.291120241
+        ],
+        "point_wgs84": [
+          -87.668918012,
+          41.999642256
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 40
+      },
+      "record_number": "O2024-0012532",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": true,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": true,
+        "ready": true
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170318306001008",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031830600"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": true,
+          "feature_present": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_present": true,
+          "positive_shape_area": true
+        },
+        "feature_count": 1,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [
+          1661741
+        ],
+        "ordinance_date_epoch_ms": [
+          1730246400000
+        ],
+        "ordinance_numbers": [
+          "22570T1"
+        ],
+        "point_address_inside_polygon": true,
+        "ready": true,
+        "ring_count": 1,
+        "shape_area_square_feet": 5450.791259765625,
+        "vertex_count": 9,
+        "zone_classes": [
+          "RM-4.5"
+        ]
+      }
+    },
+    {
+      "address": "2658 W 21st Pl",
+      "application_number": "22595T1",
+      "current_parcel_crosswalk": {
+        "area_ratio_to_legal_lot": null,
+        "area_within_one_percent_of_legal_lot": null,
+        "checks": {
+          "pin10_matches": true,
+          "point_address_ready": true,
+          "point_inside_parcel": true,
+          "polygon_present": true,
+          "single_pin_feature": true
+        },
+        "feature_count": 1,
+        "historical_vintage_verified": false,
+        "legal_lot_area_square_feet": null,
+        "machine_legal_treatment_polygon_verified": false,
+        "object_ids": [
+          10306768
+        ],
+        "pin14": "16244230260000",
+        "ready": true,
+        "shape_area_square_feet": 2952.2930817301603
+      },
+      "final_action_date": "2024-12-11T16:00:00+00:00",
+      "last_publication_date": "2024-12-16T21:30:26+00:00",
+      "point_address": {
+        "checks": {
+          "exact_street_address": true,
+          "matched_status": true,
+          "pin10_present": true,
+          "point_address_type": true,
+          "score_100": true,
+          "wgs84_location_present": true
+        },
+        "community": "SOUTH LAWNDALE",
+        "matched_address": "2658 W 21ST PL, 60608",
+        "pin10": "1624423026",
+        "point_epsg_3435": [
+          1158736.8967791938,
+          1889713.5679830932
+        ],
+        "point_wgs84": [
+          -87.692867799,
+          41.853108552
+        ],
+        "ready": true,
+        "retry_observation": null,
+        "score": 100,
+        "ward": 24
+      },
+      "record_number": "O2024-0013362",
+      "spatial_consistency": {
+        "point_and_zoning_individually_ready": false,
+        "point_context_observation": null,
+        "point_inside_event_zoning_polygon": false,
+        "ready": false
+      },
+      "tract_crosswalk": {
+        "block_fips_2020": "170318407003014",
+        "checks": {
+          "block_fips_15_digits": true,
+          "fcc_status_ok": true,
+          "point_address_ready": true,
+          "tract_geoid_11_digits": true
+        },
+        "ready": true,
+        "tract_geoid": "17031840700"
+      },
+      "zoning_map": {
+        "checks": {
+          "clerk_document_matches": false,
+          "feature_present": false,
+          "ordinance_date_matches_final_action": false,
+          "polygon_present": false,
+          "positive_shape_area": false
+        },
+        "feature_count": 0,
+        "machine_legal_parcel_polygon_verified": false,
+        "object_ids": [],
+        "ordinance_date_epoch_ms": [],
+        "ordinance_numbers": [],
+        "point_address_inside_polygon": false,
+        "ready": false,
+        "ring_count": 0,
+        "shape_area_square_feet": 0,
+        "vertex_count": 0,
+        "zone_classes": []
+      }
+    }
+  ],
+  "observed_on": "2026-07-24",
+  "readiness": {
+    "causal_estimation_ready": false,
+    "current_parcel_crosswalk_complete": false,
+    "effective_onset_ready": false,
+    "joint_spatial_crosswalk_complete": false,
+    "legal_treatment_geometry_ready": false,
+    "metadata_cohort_preregistered": true,
+    "outcome_panel_ready": false,
+    "partial_current_parcel_crosswalk_available": true,
+    "partial_joint_spatial_crosswalk_available": true,
+    "partial_point_and_tract_crosswalk_available": true,
+    "partial_zoning_map_crosswalk_available": true,
+    "point_address_crosswalk_complete": false,
+    "positivity_diagnostics_ready": false,
+    "tract_crosswalk_complete": false,
+    "zoning_map_crosswalk_complete": false
+  },
+  "schema": "gwm.chicago_historical_zoning_spatial_crosswalk.v1",
+  "source_roles": {
+    "block_to_tract": "FCC Census Block API, 2020 vintage",
+    "event_metadata": "Chicago eLMS",
+    "point_addresses": "City of Chicago AddressPoints GeocodeServer",
+    "zoning_map": "City of Chicago Zoning FeatureServer"
+  },
+  "summary": {
+    "cohort_event_count": 23,
+    "current_parcel_crosswalk_ready_count": 19,
+    "distinct_ready_tract_count": 19,
+    "joint_spatial_crosswalk_ready_count": 17,
+    "missing_zoning_map_count": 1,
+    "missing_zoning_map_records": [
+      "O2024-0013362"
+    ],
+    "parcel_augmented_spatial_crosswalk_ready_count": 17,
+    "point_address_ready_count": 19,
+    "point_polygon_mismatch_count": 1,
+    "point_polygon_mismatch_records": [
+      "O2024-0012332"
+    ],
+    "ready_tract_geoids": [
+      "17031010400",
+      "17031010600",
+      "17031020701",
+      "17031071000",
+      "17031222500",
+      "17031222900",
+      "17031242700",
+      "17031242800",
+      "17031243400",
+      "17031243500",
+      "17031300900",
+      "17031310600",
+      "17031310900",
+      "17031460800",
+      "17031830600",
+      "17031833100",
+      "17031836000",
+      "17031840700",
+      "17031841300"
+    ],
+    "tract_crosswalk_ready_count": 19,
+    "unmatched_point_address_count": 4,
+    "unmatched_point_address_records": [
+      "O2024-0008445",
+      "O2024-0008449",
+      "O2024-0009011",
+      "O2024-0009013"
+    ],
+    "zoning_map_ready_count": 22
+  }
+}

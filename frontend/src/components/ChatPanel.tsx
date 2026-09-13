@@ -70,6 +70,12 @@ interface SessionInfo {
   updated_at: string | null;
 }
 
+interface S2MapSelection {
+  parcelId: string;
+  planningAreaId?: string;
+  sourceLandUseName?: string;
+}
+
 export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }: ChatPanelProps) {
   const { messages, threadId: currentThreadId } = useChatMessages();
   const chatInteract = useChatInteract() as ReturnType<typeof useChatInteract> & {
@@ -101,6 +107,8 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
   const processedMetaRef = useRef<Set<string>>(new Set());
   const recognitionRef = useRef<any>(null);
   const prevLoadingRef = useRef(false);
+  const s2SelectionTemplateRef = useRef('');
+  const [s2MapSelection, setS2MapSelection] = useState<S2MapSelection | null>(null);
 
   // Session management state
   const [showSessions, setShowSessions] = useState(false);
@@ -130,7 +138,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
 
   useEffect(() => {
     if (!messages || messages.length === 0) return;
-    for (const msg of messages) {
+    for (const msg of flattenMessages(messages)) {
       if (processedMetaRef.current.has(msg.id)) continue;
       const meta = msg.metadata as any;
       // Debug: log all messages with metadata
@@ -154,11 +162,35 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
       if (meta.memory_extract) {
         processedMetaRef.current.add(msg.id);
       }
+      if (meta.s2_parcel_selection) {
+        s2SelectionTemplateRef.current = String(meta.s2_parcel_selection.prompt_template || '');
+        setS2MapSelection(null);
+        processedMetaRef.current.add(msg.id);
+      }
       if (meta.subtask_progress) {
         processedMetaRef.current.add(msg.id);
       }
     }
   }, [messages, onMapUpdate, onDataUpdate, onLayerControl]);
+
+  useEffect(() => {
+    const handleS2ParcelSelection = (rawEvent: Event) => {
+      const detail = (rawEvent as CustomEvent).detail || {};
+      const parcelId = String(detail.parcelId || '');
+      if (!parcelId.startsWith('parcel_')) return;
+      const template = s2SelectionTemplateRef.current
+        || '@S2 帮我判断地块 {parcel_id} 改成公共服务用地并新增养老服务站是否同意。';
+      setInput(template.replace('{parcel_id}', parcelId));
+      setS2MapSelection({
+        parcelId,
+        planningAreaId: String(detail.planningAreaId || ''),
+        sourceLandUseName: String(detail.sourceLandUseName || ''),
+      });
+      window.setTimeout(() => textareaRef.current?.focus(), 0);
+    };
+    window.addEventListener('s2-map-parcel-selected', handleS2ParcelSelection);
+    return () => window.removeEventListener('s2-map-parcel-selected', handleS2ParcelSelection);
+  }, []);
 
   // Poll /api/map/pending when assistant response completes (loading: true → false)
   // This bypasses Chainlit's limitation of not delivering step-level metadata via WebSocket.
@@ -226,6 +258,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
       fileRefs.length > 0 ? fileRefs : undefined
     );
     setInput('');
+    setS2MapSelection(null);
     setPendingFiles([]);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
   }, [input, pendingFiles, sendMessage]);
@@ -272,13 +305,25 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
 
   const handleAction = useCallback((action: IAction) => {
     if (apiClient && sessionId) {
-      apiClient.callAction(action, sessionId).catch((err: any) =>
-        console.error('[ActionBtn] callAction failed:', err)
-      );
+      apiClient.callAction(action, sessionId)
+        .then(() => {
+          const fetchPending = () => {
+            fetch('/api/map/pending', { credentials: 'include' })
+              .then(r => r.json())
+              .then(data => {
+                if (data.map_update) onMapUpdate(data.map_update);
+                if (data.data_update) onDataUpdate(data.data_update.csv || data.data_update.file);
+              })
+              .catch(() => {});
+          };
+          window.setTimeout(fetchPending, 300);
+          window.setTimeout(fetchPending, 1800);
+        })
+        .catch((err: any) => console.error('[ActionBtn] callAction failed:', err));
     } else {
       console.warn('[ActionBtn] apiClient or sessionId unavailable');
     }
-  }, [apiClient, sessionId]);
+  }, [apiClient, sessionId, onMapUpdate, onDataUpdate]);
 
   const toggleVoiceRecording = useCallback(() => {
     if (!speechSupported) return;
@@ -403,7 +448,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
       setConnectMode(null);
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [connectMode, threadIdToResume, clear, disconnect, connect, resetVisibleChatState]);
+  }, [connectMode, threadIdToResume]);
 
   useEffect(() => {
     if (resumingSessionId && currentThreadId === resumingSessionId) {
@@ -509,7 +554,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
             <div key={msg.id} className={`chat-message ${isUser ? 'user' : 'assistant'}`}>
               {!isUser && <div className="assistant-avatar">AI</div>}
               <div className="message-content">
-                {routingInfo ? (
+                {routingInfo && (
                   <div className="routing-card">
                     <div className="routing-card-row">
                       <span className="routing-label">意图</span>
@@ -526,11 +571,12 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
                       </div>
                     )}
                   </div>
-                ) : isUser ? (
-                  <span>{displayOutput}</span>
-                ) : (
-                  <ReactMarkdown>{displayOutput}</ReactMarkdown>
                 )}
+                {isUser ? (
+                  <span>{displayOutput}</span>
+                ) : displayOutput ? (
+                  <ReactMarkdown>{displayOutput}</ReactMarkdown>
+                ) : null}
                 {msg.elements?.map((el: any) => (
                   <span key={el.id} className="file-chip" title={el.name}>
                     {getFileIcon(el.name)} {el.name}
@@ -618,6 +664,27 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
       </div>
 
       <div className="chat-input-area">
+        {s2MapSelection && (
+          <div className="s2-map-selection-banner" role="status">
+            <div>
+              <strong>已从地图选择地块</strong>
+              <span>{s2MapSelection.parcelId}</span>
+              {(s2MapSelection.planningAreaId || s2MapSelection.sourceLandUseName) && (
+                <small>
+                  {[s2MapSelection.planningAreaId, s2MapSelection.sourceLandUseName].filter(Boolean).join(' · ')}
+                </small>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setS2MapSelection(null);
+                setInput('');
+              }}
+              aria-label="清除地图选地"
+            >×</button>
+          </div>
+        )}
         {pendingFiles.length > 0 && (
           <div className="pending-files">
             {pendingFiles.map((pf, idx) => (

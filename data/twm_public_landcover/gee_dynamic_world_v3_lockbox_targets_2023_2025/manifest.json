@@ -1,0 +1,688 @@
+{
+  "schema": "territory_world_model.public_landcover_manifest.v1",
+  "dataset_id": "gee_dynamic_world_annual_100m_2023_2025",
+  "source": {
+    "provider": "Google Earth Engine",
+    "collection": "GOOGLE/DYNAMICWORLD/V1",
+    "label_band": "label",
+    "annual_reducer": "mode",
+    "project": "ee-zn19860115",
+    "scale_m": 100,
+    "crs": "EPSG:3857",
+    "include_drivers": false,
+    "driver_layers": [],
+    "driver_years": [],
+    "notes": [
+      "Dynamic World labels are annual mode composites over each region/year.",
+      "This compact benchmark exports at the configured scale for fast multi-region TWM validation.",
+      "Masked pixels outside the export geometry use nodata=-32768.",
+      "Driver layers are static or period-composite covariates clipped to the same administrative geometry when enabled."
+    ]
+  },
+  "cell_area_ha": 1.0,
+  "classes": [
+    {
+      "value": 0,
+      "label": "water"
+    },
+    {
+      "value": 1,
+      "label": "trees"
+    },
+    {
+      "value": 2,
+      "label": "grass"
+    },
+    {
+      "value": 3,
+      "label": "flooded_vegetation"
+    },
+    {
+      "value": 4,
+      "label": "crops"
+    },
+    {
+      "value": 5,
+      "label": "shrub_and_scrub"
+    },
+    {
+      "value": 6,
+      "label": "built"
+    },
+    {
+      "value": 7,
+      "label": "bare"
+    },
+    {
+      "value": 8,
+      "label": "snow_and_ice"
+    }
+  ],
+  "years": [
+    2023,
+    2024,
+    2025
+  ],
+  "regions": [
+    {
+      "region_id": "v3_shenyang_core",
+      "bbox": [
+        123.35,
+        41.72,
+        123.51,
+        41.88
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_shenyang_core/v3_shenyang_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_shenyang_core/v3_shenyang_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_shenyang_core/v3_shenyang_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_dalian_core",
+      "bbox": [
+        121.54,
+        38.84,
+        121.7,
+        39.0
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_dalian_core/v3_dalian_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_dalian_core/v3_dalian_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_dalian_core/v3_dalian_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_changchun_core",
+      "bbox": [
+        125.24,
+        43.8,
+        125.4,
+        43.96
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_changchun_core/v3_changchun_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_changchun_core/v3_changchun_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_changchun_core/v3_changchun_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_harbin_core",
+      "bbox": [
+        126.55,
+        45.68,
+        126.71,
+        45.84
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_harbin_core/v3_harbin_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_harbin_core/v3_harbin_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_harbin_core/v3_harbin_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_jinan_core",
+      "bbox": [
+        116.9,
+        36.58,
+        117.06,
+        36.74
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_jinan_core/v3_jinan_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_jinan_core/v3_jinan_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_jinan_core/v3_jinan_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_qingdao_core",
+      "bbox": [
+        120.3,
+        36.0,
+        120.46,
+        36.16
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_qingdao_core/v3_qingdao_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_qingdao_core/v3_qingdao_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_qingdao_core/v3_qingdao_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_shijiazhuang_core",
+      "bbox": [
+        114.43,
+        38.0,
+        114.59,
+        38.16
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_taiyuan_core",
+      "bbox": [
+        112.47,
+        37.78,
+        112.63,
+        37.94
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_wuxi_core",
+      "bbox": [
+        120.22,
+        31.49,
+        120.38,
+        31.65
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_wuxi_core/v3_wuxi_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_wuxi_core/v3_wuxi_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_wuxi_core/v3_wuxi_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_wenzhou_core",
+      "bbox": [
+        120.62,
+        27.92,
+        120.78,
+        28.08
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_nanchang_core",
+      "bbox": [
+        115.78,
+        28.6,
+        115.94,
+        28.76
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_nanchang_core/v3_nanchang_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_nanchang_core/v3_nanchang_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_nanchang_core/v3_nanchang_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_quanzhou_core",
+      "bbox": [
+        118.5,
+        24.82,
+        118.66,
+        24.98
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_kunming_core",
+      "bbox": [
+        102.64,
+        24.96,
+        102.8,
+        25.12
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_kunming_core/v3_kunming_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_kunming_core/v3_kunming_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_kunming_core/v3_kunming_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_guiyang_core",
+      "bbox": [
+        106.63,
+        26.5,
+        106.79,
+        26.66
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_guiyang_core/v3_guiyang_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_guiyang_core/v3_guiyang_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_guiyang_core/v3_guiyang_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_nanning_core",
+      "bbox": [
+        108.24,
+        22.72,
+        108.4,
+        22.88
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_nanning_core/v3_nanning_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_nanning_core/v3_nanning_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_nanning_core/v3_nanning_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_haikou_core",
+      "bbox": [
+        110.25,
+        19.97,
+        110.41,
+        20.13
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_haikou_core/v3_haikou_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_haikou_core/v3_haikou_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_haikou_core/v3_haikou_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_urumqi_core",
+      "bbox": [
+        87.54,
+        43.74,
+        87.7,
+        43.9
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_urumqi_core/v3_urumqi_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_urumqi_core/v3_urumqi_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_urumqi_core/v3_urumqi_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_lanzhou_core",
+      "bbox": [
+        103.74,
+        36.0,
+        103.9,
+        36.16
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_xining_core",
+      "bbox": [
+        101.7,
+        36.54,
+        101.86,
+        36.7
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_xining_core/v3_xining_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_xining_core/v3_xining_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_xining_core/v3_xining_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    },
+    {
+      "region_id": "v3_yinchuan_core",
+      "bbox": [
+        106.15,
+        38.4,
+        106.31,
+        38.56
+      ],
+      "geometry": null,
+      "admin": null,
+      "cell_area_ha": 1.0,
+      "nodata": -32768,
+      "raster_stack": [
+        {
+          "year": 2023,
+          "path": "v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2023_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2024,
+          "path": "v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2024_100m.tif",
+          "nodata": -32768
+        },
+        {
+          "year": 2025,
+          "path": "v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2025_100m.tif",
+          "nodata": -32768
+        }
+      ],
+      "driver_layers": []
+    }
+  ]
+}

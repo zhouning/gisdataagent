@@ -1,0 +1,22 @@
+{
+  "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+  "model_id": "effective_date_minus_4w",
+  "outer_fold_id": "holdout_2019",
+  "seed": 47,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_minus_4w/members/seed_47/folds/holdout_2019/prediction.parquet",
+    "bytes": 102909,
+    "sha256": "a6fdc5ce0820dbcf761b09bee26af8b445589901366ca95949b39803c376d69c"
+  },
+  "checkpoint": null,
+  "training_final_loss": null,
+  "control_audit": {
+    "control_id": "effective_date_minus_4w",
+    "outer_fold_id": "holdout_2019",
+    "swap_source_event": null
+  },
+  "model_process_target_access_permitted": false,
+  "test_target_rows_loaded": false,
+  "exit_status": "success",
+  "failure_state": null
+}

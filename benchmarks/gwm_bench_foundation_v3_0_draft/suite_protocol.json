@@ -1,0 +1,268 @@
+{
+  "schema": "gwm_bench.foundation_v3_draft_protocol.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "created_at": "2026-07-23",
+  "status": "draft_runtime_r2_evaluator_sealed_predictions_pending",
+  "definition": "A protocol-locked new-geography transfer evaluation for reproducible GWM spatial-state rollout, with a shared runtime contract and out-of-distribution DAM-GK mechanism checks.",
+  "relationship_to_prior_versions": {
+    "v1": "Historical development evidence that the data, models and scorecard can run.",
+    "v2": "Prospective temporal blind test on 20 existing regions, pending complete 2026 labels.",
+    "v3": "Historical but process-sealed geographic transfer test on 20 cities excluded from all model development and threshold selection.",
+    "twm_v3_historical_model_is_not_this_benchmark": true
+  },
+  "architecture_decision": {
+    "chosen": "new_geography_lockbox_plus_runtime_r2_and_controlled_c2",
+    "rationale": [
+      "V2 already tests future time on existing regions; the next missing falsifiable claim is transfer to new geography.",
+      "Dynamic World, VIIRS and SRTM are public and the repository already has a parameterized acquisition path.",
+      "Historical lockbox targets can be acquired after prediction commitment, so V3 does not wait for a future calendar year.",
+      "A shared benchmark runtime contract is testable now without claiming a complete cross-domain runtime product."
+    ],
+    "excluded_from_core": [
+      "reservoir operations",
+      "identified real-world intervention effects",
+      "cross-domain TWM-to-UWM transfer",
+      "operational forecasting"
+    ],
+    "tradeoff": "The target labels exist publicly in principle, so V3 is process-sealed rather than a prospective analyst-unseen test. V2 remains the stronger temporal-blindness test."
+  },
+  "dataset": {
+    "development_region_manifest": "data/twm_public_landcover/gee_dynamic_world/twm_dynamic_world_manifest.json",
+    "development_region_count": 20,
+    "lockbox_region_manifest": "benchmarks/gwm_bench_foundation_v3_0_draft/lockbox_regions.json",
+    "lockbox_region_count": 20,
+    "total_region_count": 40,
+    "source": {
+      "provider": "Google Earth Engine",
+      "earth_engine_project": "ee-zn19860115",
+      "collection": "GOOGLE/DYNAMICWORLD/V1",
+      "label_band": "label",
+      "annual_reducer": "mode",
+      "class_count": 9,
+      "source_resolution_m": 100,
+      "crs": "EPSG:3857",
+      "drivers": [
+        "SRTM elevation",
+        "SRTM slope",
+        "annual VIIRS nightlight mean"
+      ]
+    },
+    "forecast_origin_year": 2022,
+    "allowed_input_years": [2017, 2018, 2019, 2020, 2021, 2022],
+    "lockbox_target_years": [2023, 2024, 2025],
+    "rollout_mode": "three_step_open_loop_without_observed_state_writeback",
+    "node_sampling": {
+      "row_start": 0,
+      "column_start": 0,
+      "row_step_pixels": 24,
+      "column_step_pixels": 24,
+      "nominal_spacing_m": 2400,
+      "selection_may_use_post_2022_labels": false
+    },
+    "scoring_unit": "fixed_sampled_100m_source_cell",
+    "full_grid_execution_required_for": ["GeoSOS FLUS"],
+    "phase_a_input_root": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022",
+    "phase_b_commitment_root": "benchmarks/gwm_bench_foundation_v3_0_rc1/prediction_commitments",
+    "phase_c_target_root": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025"
+  },
+  "tracks": {
+    "RUNTIME-R2": {
+      "status": "contract_and_evaluator_sealed_adapters_pending",
+      "purpose": "Verify one model-independent execution lifecycle across TWM, FLUS adapters and internal baselines.",
+      "required_gates": [
+        "versioned StateSnapshot and spatial graph input",
+        "model-neutral prepare-predict-writeback-audit lifecycle",
+        "artifact, environment, model and prediction hashes",
+        "deterministic replay for deterministic candidates",
+        "seed-complete replay for stochastic candidates",
+        "label firewall enforced before prediction commitment",
+        "uncertainty and evidence-claim metadata retained",
+        "resource use and failure state recorded"
+      ],
+      "shared_cross_domain_runtime_product_claimed": false
+    },
+    "CONTROLLED-C2": {
+      "status": "specified_not_materialized",
+      "purpose": "Test whether DAM-GK mechanisms transfer beyond the graph shapes and mechanism combinations used for fitting.",
+      "minimum_sample_count": 512,
+      "required_seed_count": 10,
+      "required_stability_pass_count": 8,
+      "hidden_factors": [
+        "larger and irregular graphs",
+        "unseen relation mixtures",
+        "one-to-five-step propagation lags",
+        "soft-topology changes",
+        "action assignment changes"
+      ],
+      "required_controls": [
+        "no action conditioning",
+        "fixed topology",
+        "single relation",
+        "no lag structure",
+        "action shuffle",
+        "relation shuffle",
+        "spatial target rewire"
+      ],
+      "real_action_effect_claimed": false
+    },
+    "OBSERVED-O3": {
+      "status": "phase_a_bundle_and_evaluator_sealed_predictions_pending",
+      "purpose": "Measure three-step land-state rollout on 20 cities excluded from model development and selection.",
+      "models": [
+        "frozen TWM/DAM-GK candidate",
+        "GeoSOS FLUS full-grid three-seed ensemble",
+        "state persistence",
+        "nonspatial history-only",
+        "fixed-adjacency spatial"
+      ],
+      "primary_metric": "unweighted_mean_of_20_region_by_3_horizon_change_f1",
+      "secondary_metrics": [
+        "overall_change_f1",
+        "changed_destination_macro_f1",
+        "overall_class_macro_f1",
+        "multiclass_brier_score",
+        "predicted_to_observed_change_ratio",
+        "metric_by_region",
+        "metric_by_horizon",
+        "metric_by_geographic_stratum"
+      ],
+      "comparison": "paired region bootstrap of TWM minus FLUS change F1 with 20000 draws and seed 20260723",
+      "single_composite_score": false
+    }
+  },
+  "label_firewall": {
+    "kind": "process_sealed_historical_lockbox",
+    "externally_hidden_labels_claimed": false,
+    "target_labels_publicly_exist_in_principle": true,
+    "target_pixels_accessed_by_v3_pipeline": false,
+    "required_order": [
+      "freeze protocol, regions, inputs, models and evaluator",
+      "acquire only 2017-2022 lockbox inputs",
+      "commit all candidate and baseline predictions with hashes",
+      "verify prediction commitments and runtime replay",
+      "acquire and register 2023-2025 lockbox targets",
+      "run the frozen evaluator once and publish every result"
+    ],
+    "violation_rule": "Any 2023-2025 lockbox target acquisition or pixel read before all prediction commitments voids this protocol and requires a new benchmark version."
+  },
+  "submission_contract": {
+    "key_columns": ["region_id", "node_id", "target_year"],
+    "target_years": [2023, 2024, 2025],
+    "probability_columns": [
+      "probability_0",
+      "probability_1",
+      "probability_2",
+      "probability_3",
+      "probability_4",
+      "probability_5",
+      "probability_6",
+      "probability_7",
+      "probability_8"
+    ],
+    "probability_range": [0.0, 1.0],
+    "probability_row_sum": 1.0,
+    "absolute_tolerance": 1e-06,
+    "duplicate_missing_or_extra_keys_allowed": false,
+    "non_finite_values_allowed": false
+  },
+  "release_stages": [
+    {
+      "stage": "V3.0-draft1",
+      "exit_gate": "protocol, lockbox regions and label-safe preflight pass"
+    },
+    {
+      "stage": "V3.0-rc1-inputs",
+      "exit_gate": "2017-2022 inputs, fixed nodes, graphs and source hashes pass validation"
+    },
+    {
+      "stage": "V3.0-rc2-predictions",
+      "exit_gate": "TWM, FLUS and three internal baseline predictions plus evaluator are sealed"
+    },
+    {
+      "stage": "V3.0-final",
+      "exit_gate": "2023-2025 targets are registered after commitment and the frozen evaluator publishes all results"
+    }
+  ],
+  "completion_gates": [
+    "20 lockbox regions are unique and do not intersect the 20 development regions",
+    "lockbox region selection and node selection use no post-2022 labels",
+    "all source, grid, input, model, environment and prediction artifacts have hashes",
+    "all five required models produce exactly the same submission keys",
+    "Runtime-R2 replay and label-firewall checks pass",
+    "Controlled-C2 and all required controls are reported",
+    "the frozen evaluator passes constructed-answer conformance tests",
+    "all model results are published even when TWM loses",
+    "insufficient target change is reported as inconclusive rather than hidden"
+  ],
+  "benchmark_completion_rule": {
+    "model_win_required": false,
+    "negative_result_publishable": true,
+    "minimum_observed_change_count_for_model_comparison": 20,
+    "minimum_regions_with_observed_change_for_model_comparison": 10,
+    "insufficient_change_labels": "completed_but_model_comparison_inconclusive"
+  },
+  "resource_policy": {
+    "persistent_release_bundle_soft_cap_bytes": 2147483648,
+    "temporary_workspace_soft_cap_bytes": 21474836480,
+    "large_temporary_flus_rasters_committed": false
+  },
+  "extension_policy": {
+    "hydrocontrol_role": "optional_non_blocking_extension",
+    "real_intervention_role": "future_separately_admitted_track",
+    "cross_domain_runtime_role": "future_version_after_two_domain_adapters_pass",
+    "extension_failure_blocks_v3_core": false
+  },
+  "claim_boundary": {
+    "supports_on_finalization": [
+      "bounded process-sealed geographic transfer evidence in the Dynamic World land-state domain",
+      "three-step open-loop rollout evidence on 20 new cities",
+      "same-protocol TWM versus full-grid FLUS comparison",
+      "out-of-distribution controlled DAM-GK mechanism checks",
+      "benchmark-level Runtime-R2 reproducibility and auditability"
+    ],
+    "does_not_support": [
+      "prospective analyst-unseen temporal prediction",
+      "identified real-world policy or action effects",
+      "operational forecasting validation",
+      "cross-domain transfer",
+      "complete shared GWM Runtime Kernel product",
+      "general TWM, DAM-GK or GWM validity"
+    ]
+  },
+  "phase_artifacts": {
+    "phase_a_source_manifest": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/manifest.json",
+    "phase_a_download_status": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/download_status.json",
+    "phase_a_artifact_manifest": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_a_input_artifact_manifest.json",
+    "phase_a_validation_report": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_a_input_validation_report.json",
+    "phase_a_bundle_manifest": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_a_bundle/bundle_manifest.json",
+    "phase_a_bundle_verification": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_a_bundle_verification.json",
+    "runtime_r2_contract": "benchmarks/gwm_bench_foundation_v3_0_draft/runtime_r2_contract.json",
+    "submission_contract": "benchmarks/gwm_bench_foundation_v3_0_draft/submission_contract.json",
+    "observed_o3_evaluator": "benchmarks/gwm_bench_foundation_v3_0_draft/observed_o3_evaluator.py",
+    "evaluator_conformance_report": "benchmarks/gwm_bench_foundation_v3_0_draft/evaluator_conformance_report.json",
+    "runtime_r2_evaluator_seal": "benchmarks/gwm_bench_foundation_v3_0_draft/runtime_r2_evaluator_seal.json",
+    "validated_counts": {
+      "annual_land_state_raster_count": 120,
+      "driver_raster_count": 60,
+      "sampled_node_count": 1227,
+      "directed_edge_count": 4278,
+      "state_history_row_count": 7362,
+      "submission_key_count": 3681,
+      "target_file_count": 0
+    }
+  },
+  "current_state": {
+    "protocol_frozen": true,
+    "phase_a_inputs_acquired": true,
+    "phase_a_inputs_validated": true,
+    "phase_a_bundle_materialized": true,
+    "phase_a_bundle_verified": true,
+    "runtime_r2_contract_frozen": true,
+    "submission_contract_frozen": true,
+    "evaluator_conformance_passed": true,
+    "evaluator_sealed": true,
+    "predictions_committed": false,
+    "target_labels_acquired": false,
+    "scores_available": false
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "schema": "gwm_bench.foundation_v3_completion_verification.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "status": "PASS_V3_ALL_TRACKS_COMPLETION_VERIFIED",
+  "checks": {
+    "status_is_all_tracks_completed": true,
+    "completion_fingerprint_matches": true,
+    "completion_gate_names_match_frozen_protocol": true,
+    "all_nine_completion_gates_pass": true,
+    "all_completion_artifacts_match": true,
+    "runtime_track_matches": true,
+    "observed_track_matches": true,
+    "controlled_track_matches": true,
+    "controlled_stability_gate_matches": true,
+    "observed_formal_scoring_event_remains_one": true
+  },
+  "artifacts": {
+    "frozen_protocol": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/suite_protocol.json",
+      "passed": true
+    },
+    "runtime_replay": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/runtime_replay_report.json",
+      "passed": true
+    },
+    "prediction_commitment_verification": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/prediction_commitment_verification.json",
+      "passed": true
+    },
+    "target_registration": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_c_targets/target_registration_report.json",
+      "passed": true
+    },
+    "observed_o3_final": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/final_results.json",
+      "passed": true
+    },
+    "observed_o3_verification": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/final_verification.json",
+      "passed": true
+    },
+    "controlled_c2_results": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/controlled_c2_results.json",
+      "passed": true
+    },
+    "controlled_c2_verification": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/controlled_c2_verification.json",
+      "passed": true
+    }
+  },
+  "v3_completion_fingerprint": "b41834410944115e6a987818bb1ecc5b38db1812582a8dda5b8f2a1fd5cae38e",
+  "observed_o3_final_results_fingerprint": "22fa0c1682a98a5902acba121f622232eb9cba4d4df6a76c9240677e3525d0b7",
+  "controlled_c2_results_fingerprint": "6cd522355ba50ef00c83e329fd6124c9d34abb5e115b12e3f6351bdcf4b04f14",
+  "created_at": "2026-07-23T13:47:49.459647+00:00",
+  "verification_fingerprint": "158bf38ade1fa358fde994ea80b34e09579efcf95b4dca1c5901a291943386aa"
+}

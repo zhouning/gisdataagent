@@ -1,0 +1,10 @@
+{
+  "calibrated_prediction_interval_ready": false,
+  "candidate_beats_history_count": 1,
+  "candidate_beats_spatial_ar_count": 1,
+  "candidate_fails_to_beat_history_count": 6,
+  "candidate_fails_to_beat_spatial_ar_count": 6,
+  "formal_metric_reproduced": true,
+  "schema": "uwm.nyc_action_transfer_metric_sensitivity.v1",
+  "specification_count": 7
+}

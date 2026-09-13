@@ -1,0 +1,133 @@
+{
+  "schema": "gwm_bench.foundation_v3_controlled_c2_seed_result.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "track_id": "CONTROLLED-C2",
+  "formal_component": true,
+  "fit_seed": 293,
+  "epochs": 320,
+  "contract_sha256": "a16c27b908e32c8b62e6e5c749eea447ee76c90c0eb8603273f71f2562984ae5",
+  "corpus_manifest_fingerprint": "b414037ecb21b566dd19de8e776a97b25d8d13b067f110b5f15b266b0c226056",
+  "fit_corpus_fingerprint": "c37f35c2bac86110a7189cd40b790f80638d2427f9c0cf20ca7bfa25d6a270f7",
+  "ood_corpus_fingerprint": "c9c2d3cbe804f7cb4f7de612afbe325032b9d7ff860a85728072fdbd90ea2a78",
+  "variants": {
+    "dam_gk_full": {
+      "state_delta_mae": 0.0029939592350274324,
+      "affected_node_state_delta_mae": 0.004441299941390753,
+      "unaffected_node_state_delta_mae": 0.0022938870824873447,
+      "effective_gate_mae": 0.008276487700641155,
+      "topology_probability_mae": 0.030453458428382874,
+      "lag_distribution_mae": 0.09968708455562592,
+      "mechanism_macro_mae": 0.04613901302218437,
+      "affected_node_count": 5963
+    },
+    "no_action_conditioning": {
+      "state_delta_mae": 0.008307024836540222,
+      "affected_node_state_delta_mae": 0.01179661974310875,
+      "unaffected_node_state_delta_mae": 0.006619124207645655,
+      "effective_gate_mae": 0.050593093037605286,
+      "topology_probability_mae": 0.02895364724099636,
+      "lag_distribution_mae": 0.060778070241212845,
+      "mechanism_macro_mae": 0.04677493870258331,
+      "affected_node_count": 5963
+    },
+    "fixed_topology": {
+      "state_delta_mae": 0.00384370400570333,
+      "affected_node_state_delta_mae": 0.0058334749191999435,
+      "unaffected_node_state_delta_mae": 0.002881260821595788,
+      "effective_gate_mae": 0.014965466223657131,
+      "topology_probability_mae": 0.3939349353313446,
+      "lag_distribution_mae": 0.08036867529153824,
+      "mechanism_macro_mae": 0.16308969259262085,
+      "affected_node_count": 5963
+    },
+    "single_relation": {
+      "state_delta_mae": 0.004073863849043846,
+      "affected_node_state_delta_mae": 0.00762437516823411,
+      "unaffected_node_state_delta_mae": 0.002356498269364238,
+      "effective_gate_mae": 0.01959221437573433,
+      "topology_probability_mae": 0.06653572618961334,
+      "lag_distribution_mae": 0.2153790146112442,
+      "mechanism_macro_mae": 0.10050231218338013,
+      "affected_node_count": 5963
+    },
+    "no_lag_structure": {
+      "state_delta_mae": 0.002451923443004489,
+      "affected_node_state_delta_mae": 0.006053915247321129,
+      "unaffected_node_state_delta_mae": 0.0007096559857018292,
+      "effective_gate_mae": 0.018637292087078094,
+      "topology_probability_mae": 0.04550506919622421,
+      "lag_distribution_mae": 0.23127342760562897,
+      "mechanism_macro_mae": 0.09847193211317062,
+      "affected_node_count": 5963
+    }
+  },
+  "input_corruption_controls": {
+    "action_assignment_shuffle": {
+      "state_delta_mae": 0.0069169155322015285,
+      "affected_node_state_delta_mae": 0.012290571816265583
+    },
+    "relation_type_shuffle": {
+      "state_delta_mae": 0.0038474530447274446,
+      "affected_node_state_delta_mae": 0.0070592560805380344
+    },
+    "spatial_target_rewire": {
+      "state_delta_mae": 0.004455336835235357,
+      "affected_node_state_delta_mae": 0.007269234396517277
+    }
+  },
+  "control_direction_checks": {
+    "no_action_conditioning_degrades": true,
+    "fixed_topology_degrades": true,
+    "single_relation_degrades": true,
+    "no_lag_structure_degrades": true,
+    "action_assignment_shuffle_degrades": true,
+    "relation_type_shuffle_degrades": true,
+    "spatial_target_rewire_degrades": true
+  },
+  "control_direction_pass_count": 7,
+  "stability_checks": {
+    "affected_node_state_delta_mae_within_limit": true,
+    "effective_gate_mae_within_limit": true,
+    "topology_probability_mae_within_limit": true,
+    "lag_distribution_mae_within_limit": true,
+    "minimum_control_direction_count_passed": true,
+    "all_critical_control_directions_passed": true
+  },
+  "stability_passed": true,
+  "code_artifacts": {
+    "contract": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2_contract.json",
+      "size_bytes": 2886,
+      "sha256": "a16c27b908e32c8b62e6e5c749eea447ee76c90c0eb8603273f71f2562984ae5"
+    },
+    "runner": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/run_controlled_c2.py",
+      "size_bytes": 42691,
+      "sha256": "99461265be6465a24254e915c78c7dd59fefe050e13bfd985931a9466860631b"
+    },
+    "dam_gk_model": {
+      "path": "data_agent/uwm/dam_geospatial_kernel/model.py",
+      "size_bytes": 16463,
+      "sha256": "bbe35d52aa755a67e3e1fe6e5c44c39f7c63da201714fdc367566c0b3d72e769"
+    },
+    "dam_gk_contracts": {
+      "path": "data_agent/uwm/dam_geospatial_kernel/contracts.py",
+      "size_bytes": 6397,
+      "sha256": "2ef476ae30ae1ccd5829115f04de214dc42815188a4d2058b618ef71cef7f26e"
+    },
+    "dam_gk_losses": {
+      "path": "data_agent/uwm/dam_geospatial_kernel/losses.py",
+      "size_bytes": 5117,
+      "sha256": "fefad4ddfd30b2353a125980d12f16302c1b5f25efd974a4ffd0ee07e3faf4be"
+    },
+    "dam_gk_negative_controls": {
+      "path": "data_agent/uwm/dam_geospatial_kernel/negative_controls.py",
+      "size_bytes": 6805,
+      "sha256": "76a37ed16ff5ba66dc3b55a9873edddd7dfa1fc96c537009d23c09deaabd5116"
+    }
+  },
+  "created_at": "2026-07-23T13:39:39.895110+00:00",
+  "wall_time_seconds": 235.04141745902598,
+  "peak_rss_bytes": 1845936128,
+  "seed_result_fingerprint": "04127b82d837556fa20c35a03a1835e4b31229f618c8beb12ee9c9c6f4aa904e"
+}

@@ -1,0 +1,844 @@
+{
+  "schema": "uwm.offline_world_model_rollout_planner_report.v1",
+  "model_id": "admin-livability-spatial-graph-learned-rollout-planner-2026-07-05",
+  "created_at": "2026-07-05T09:45:00+00:00",
+  "backend": "multi_step_action_conditioned_learned_rollout_v0",
+  "source_report_schema": "uwm.model_based_graph_search_report.v1",
+  "world_model": {
+    "model_class": "linear_ridge_action_conditioned_dynamics",
+    "feature_names": [
+      "bias",
+      "action_increase_green_infrastructure",
+      "action_traffic_emission_control",
+      "action_add_community_service",
+      "action_other",
+      "intensity",
+      "target_heat_risk",
+      "target_air_pollution_exposure",
+      "target_service_gap",
+      "target_equity",
+      "target_livability_gap",
+      "target_degree_norm",
+      "mask_heat_risk",
+      "mask_air_pollution",
+      "mask_service_gap",
+      "step_index_norm"
+    ],
+    "target_names": [
+      "reward",
+      "heat_risk_delta",
+      "air_pollution_exposure_delta",
+      "service_accessibility_delta",
+      "equity_delta",
+      "livability_delta"
+    ],
+    "coefficients": {
+      "reward": {
+        "bias": -0.004717603,
+        "action_increase_green_infrastructure": 0.001164903,
+        "action_traffic_emission_control": -0.000981085,
+        "action_add_community_service": -0.000183818,
+        "action_other": 0.0,
+        "intensity": 0.0,
+        "target_heat_risk": -0.000276597,
+        "target_air_pollution_exposure": -5.6807e-05,
+        "target_service_gap": -0.000380886,
+        "target_equity": 0.000387089,
+        "target_livability_gap": 0.000387089,
+        "target_degree_norm": 0.026065926,
+        "mask_heat_risk": 0.001164903,
+        "mask_air_pollution": -0.000981085,
+        "mask_service_gap": -0.000183818,
+        "step_index_norm": 0.079813979
+      },
+      "heat_risk_delta": {
+        "bias": -0.240211921,
+        "action_increase_green_infrastructure": -0.187604442,
+        "action_traffic_emission_control": 0.094093168,
+        "action_add_community_service": 0.093511272,
+        "action_other": 0.0,
+        "intensity": 0.0,
+        "target_heat_risk": 0.218128201,
+        "target_air_pollution_exposure": 0.044547628,
+        "target_service_gap": 0.293897263,
+        "target_equity": -0.231085821,
+        "target_livability_gap": -0.231085821,
+        "target_degree_norm": -0.198067027,
+        "mask_heat_risk": -0.187604442,
+        "mask_air_pollution": 0.094093168,
+        "mask_service_gap": 0.093511272,
+        "step_index_norm": -3.685731891
+      },
+      "air_pollution_exposure_delta": {
+        "bias": -0.113169637,
+        "action_increase_green_infrastructure": 0.034361029,
+        "action_traffic_emission_control": -0.14499014,
+        "action_add_community_service": 0.110629111,
+        "action_other": 0.0,
+        "intensity": 0.0,
+        "target_heat_risk": -0.000219695,
+        "target_air_pollution_exposure": 7.2538e-05,
+        "target_service_gap": 0.050945965,
+        "target_equity": -0.010298959,
+        "target_livability_gap": -0.010298959,
+        "target_degree_norm": -0.964727835,
+        "mask_heat_risk": 0.034361029,
+        "mask_air_pollution": -0.14499014,
+        "mask_service_gap": 0.110629111,
+        "step_index_norm": -0.96286277
+      },
+      "service_accessibility_delta": {
+        "bias": -0.058212076,
+        "action_increase_green_infrastructure": -0.053380536,
+        "action_traffic_emission_control": -0.099055338,
+        "action_add_community_service": 0.152435874,
+        "action_other": 0.0,
+        "intensity": 0.0,
+        "target_heat_risk": 0.205105493,
+        "target_air_pollution_exposure": 0.041957702,
+        "target_service_gap": 0.296089659,
+        "target_equity": -0.213203816,
+        "target_livability_gap": -0.213203816,
+        "target_degree_norm": 1.032234859,
+        "mask_heat_risk": -0.053380536,
+        "mask_air_pollution": -0.099055338,
+        "mask_service_gap": 0.152435874,
+        "step_index_norm": 3.175250875
+      },
+      "equity_delta": {
+        "bias": 0.028260564,
+        "action_increase_green_infrastructure": -0.002845815,
+        "action_traffic_emission_control": -0.021796935,
+        "action_add_community_service": 0.02464275,
+        "action_other": 0.0,
+        "intensity": 0.0,
+        "target_heat_risk": 0.048630921,
+        "target_air_pollution_exposure": 0.009936224,
+        "target_service_gap": 0.063570746,
+        "target_equity": -0.048132848,
+        "target_livability_gap": -0.048132848,
+        "target_degree_norm": 0.575674119,
+        "mask_heat_risk": -0.002845815,
+        "mask_air_pollution": -0.021796935,
+        "mask_service_gap": 0.02464275,
+        "step_index_norm": 1.786642261
+      },
+      "livability_delta": {
+        "bias": 0.102052647,
+        "action_increase_green_infrastructure": 0.043299291,
+        "action_traffic_emission_control": -0.024718449,
+        "action_add_community_service": -0.018580842,
+        "action_other": 0.0,
+        "intensity": 0.0,
+        "target_heat_risk": -0.017718935,
+        "target_air_pollution_exposure": -0.003629945,
+        "target_service_gap": -0.032042507,
+        "target_equity": 0.022933896,
+        "target_livability_gap": 0.022933896,
+        "target_degree_norm": 0.654915251,
+        "mask_heat_risk": 0.043299291,
+        "mask_air_pollution": -0.024718449,
+        "mask_service_gap": -0.018580842,
+        "step_index_norm": 2.592530912
+      }
+    },
+    "reward_residual_std_by_action_type": {
+      "add_community_service": 0.000211482,
+      "increase_green_infrastructure": 0.000322138,
+      "traffic_emission_control": 0.00022057
+    },
+    "global_reward_residual_std": 0.000223518
+  },
+  "training_summary": {
+    "transition_count": 355,
+    "train_count": 284,
+    "holdout_count": 71,
+    "holdout_stride": 5,
+    "ridge": 0.001,
+    "uncertainty_penalty": 0.5
+  },
+  "holdout_metrics": {
+    "reward_mae": 0.000165324,
+    "reward_win_count_vs_train_mean": 68,
+    "case_count": 71,
+    "dynamics_mae_by_target": {
+      "heat_risk_delta": 0.254044318,
+      "air_pollution_exposure_delta": 0.071760816,
+      "service_accessibility_delta": 0.265881839,
+      "equity_delta": 0.054121046,
+      "livability_delta": 0.032133025
+    }
+  },
+  "baseline_metrics": {
+    "baseline": "train_mean_dynamics_and_reward",
+    "train_mean_reward": 0.005019164,
+    "train_mean_reward_mae": 0.002418188,
+    "train_mean_mae_by_target": {
+      "reward": 0.002418188,
+      "heat_risk_delta": 0.316035509,
+      "air_pollution_exposure_delta": 0.25028623,
+      "service_accessibility_delta": 0.310404905,
+      "equity_delta": 0.081466363,
+      "livability_delta": 0.080928938
+    }
+  },
+  "learned_rollout_planner": {
+    "policy_backend": "multi_step_action_conditioned_learned_rollout_v0",
+    "search_config": {
+      "horizon": 2,
+      "beam_width": 5,
+      "candidate_action_count": 60,
+      "uncertainty_penalty": 0.5,
+      "state_update": "apply_predicted_dynamics_to_target_unit_latent_features"
+    },
+    "sequence_ranking": [
+      {
+        "action_count": 2,
+        "action_sequence": [
+          {
+            "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "江北区|观音桥街道|653"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold"
+          },
+          {
+            "action_id": "add_community_service-九龙坡区|谢家湾街道|785",
+            "action_type": "add_community_service",
+            "target_units": [
+              "九龙坡区|谢家湾街道|785"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "service_accessibility_below_threshold"
+          }
+        ],
+        "imagined_cumulative_predicted_reward": 0.011795423,
+        "imagined_cumulative_conservative_reward": 0.011528613,
+        "imagined_steps": [
+          {
+            "step_index": 0,
+            "action": {
+              "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "江北区|观音桥街道|653"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold"
+            },
+            "predicted_reward": 0.002174002,
+            "reward_uncertainty": 0.000322138,
+            "conservative_reward": 0.002012933,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.629411179,
+              "air_pollution_exposure_delta": -0.208348276,
+              "service_accessibility_delta": 0.041850737,
+              "equity_delta": 0.129506558,
+              "livability_delta": 0.30226965
+            },
+            "post_state_features": {
+              "江北区|观音桥街道|653": {
+                "heat_risk": 0.284628821,
+                "air_pollution_exposure": 0.523164724,
+                "service_accessibility": 0.749167737,
+                "equity": 0.774331558,
+                "livability": 0.65744465
+              }
+            }
+          },
+          {
+            "step_index": 1,
+            "action": {
+              "action_id": "add_community_service-九龙坡区|谢家湾街道|785",
+              "action_type": "add_community_service",
+              "target_units": [
+                "九龙坡区|谢家湾街道|785"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "service_accessibility_below_threshold"
+            },
+            "predicted_reward": 0.009621421,
+            "reward_uncertainty": 0.000211482,
+            "conservative_reward": 0.00951568,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.398396067,
+              "air_pollution_exposure_delta": -0.202732743,
+              "service_accessibility_delta": 0.923229277,
+              "equity_delta": 0.423485395,
+              "livability_delta": 0.484451938
+            },
+            "post_state_features": {
+              "九龙坡区|谢家湾街道|785": {
+                "heat_risk": 0.0,
+                "air_pollution_exposure": 0.417364257,
+                "service_accessibility": 0.996400277,
+                "equity": 1.0,
+                "livability": 0.822037938
+              }
+            }
+          }
+        ]
+      },
+      {
+        "action_count": 2,
+        "action_sequence": [
+          {
+            "action_id": "add_community_service-九龙坡区|谢家湾街道|785",
+            "action_type": "add_community_service",
+            "target_units": [
+              "九龙坡区|谢家湾街道|785"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "service_accessibility_below_threshold"
+          },
+          {
+            "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "江北区|观音桥街道|653"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold"
+          }
+        ],
+        "imagined_cumulative_predicted_reward": 0.011795423,
+        "imagined_cumulative_conservative_reward": 0.011528613,
+        "imagined_steps": [
+          {
+            "step_index": 0,
+            "action": {
+              "action_id": "add_community_service-九龙坡区|谢家湾街道|785",
+              "action_type": "add_community_service",
+              "target_units": [
+                "九龙坡区|谢家湾街道|785"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "service_accessibility_below_threshold"
+            },
+            "predicted_reward": 0.001640023,
+            "reward_uncertainty": 0.000211482,
+            "conservative_reward": 0.001534282,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.029822878,
+              "air_pollution_exposure_delta": -0.106446466,
+              "service_accessibility_delta": 0.60570419,
+              "equity_delta": 0.244821169,
+              "livability_delta": 0.225198847
+            },
+            "post_state_features": {
+              "九龙坡区|谢家湾街道|785": {
+                "heat_risk": 0.338908122,
+                "air_pollution_exposure": 0.513650534,
+                "service_accessibility": 0.67887519,
+                "equity": 0.907235169,
+                "livability": 0.562784847
+              }
+            }
+          },
+          {
+            "step_index": 1,
+            "action": {
+              "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "江北区|观音桥街道|653"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold"
+            },
+            "predicted_reward": 0.0101554,
+            "reward_uncertainty": 0.000322138,
+            "conservative_reward": 0.009994331,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.997984368,
+              "air_pollution_exposure_delta": -0.304634553,
+              "service_accessibility_delta": 0.359375825,
+              "equity_delta": 0.308170784,
+              "livability_delta": 0.561522741
+            },
+            "post_state_features": {
+              "江北区|观音桥街道|653": {
+                "heat_risk": 0.0,
+                "air_pollution_exposure": 0.426878447,
+                "service_accessibility": 1.0,
+                "equity": 0.952995784,
+                "livability": 0.916697741
+              }
+            }
+          }
+        ]
+      },
+      {
+        "action_count": 2,
+        "action_sequence": [
+          {
+            "action_id": "increase_green_infrastructure-九龙坡区|九龙镇|77",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "九龙坡区|九龙镇|77"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold"
+          },
+          {
+            "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "江北区|观音桥街道|653"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold"
+          }
+        ],
+        "imagined_cumulative_predicted_reward": 0.011565449,
+        "imagined_cumulative_conservative_reward": 0.011243311,
+        "imagined_steps": [
+          {
+            "step_index": 0,
+            "action": {
+              "action_id": "increase_green_infrastructure-九龙坡区|九龙镇|77",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "九龙坡区|九龙镇|77"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold"
+            },
+            "predicted_reward": 0.001410049,
+            "reward_uncertainty": 0.000322138,
+            "conservative_reward": 0.00124898,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.560492714,
+              "air_pollution_exposure_delta": -0.152083152,
+              "service_accessibility_delta": 0.088706003,
+              "equity_delta": 0.12818705,
+              "livability_delta": 0.275597796
+            },
+            "post_state_features": {
+              "九龙坡区|九龙镇|77": {
+                "heat_risk": 0.439507286,
+                "air_pollution_exposure": 0.596992848,
+                "service_accessibility": 0.088706003,
+                "equity": 1.0,
+                "livability": 0.275597796
+              }
+            }
+          },
+          {
+            "step_index": 1,
+            "action": {
+              "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "江北区|观音桥街道|653"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold"
+            },
+            "predicted_reward": 0.0101554,
+            "reward_uncertainty": 0.000322138,
+            "conservative_reward": 0.009994331,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.997984368,
+              "air_pollution_exposure_delta": -0.304634553,
+              "service_accessibility_delta": 0.359375825,
+              "equity_delta": 0.308170784,
+              "livability_delta": 0.561522741
+            },
+            "post_state_features": {
+              "江北区|观音桥街道|653": {
+                "heat_risk": 0.0,
+                "air_pollution_exposure": 0.426878447,
+                "service_accessibility": 1.0,
+                "equity": 0.952995784,
+                "livability": 0.916697741
+              }
+            }
+          }
+        ]
+      },
+      {
+        "action_count": 2,
+        "action_sequence": [
+          {
+            "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "江北区|观音桥街道|653"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold"
+          },
+          {
+            "action_id": "increase_green_infrastructure-九龙坡区|九龙镇|77",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "九龙坡区|九龙镇|77"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold"
+          }
+        ],
+        "imagined_cumulative_predicted_reward": 0.011565449,
+        "imagined_cumulative_conservative_reward": 0.011243311,
+        "imagined_steps": [
+          {
+            "step_index": 0,
+            "action": {
+              "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "江北区|观音桥街道|653"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold"
+            },
+            "predicted_reward": 0.002174002,
+            "reward_uncertainty": 0.000322138,
+            "conservative_reward": 0.002012933,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.629411179,
+              "air_pollution_exposure_delta": -0.208348276,
+              "service_accessibility_delta": 0.041850737,
+              "equity_delta": 0.129506558,
+              "livability_delta": 0.30226965
+            },
+            "post_state_features": {
+              "江北区|观音桥街道|653": {
+                "heat_risk": 0.284628821,
+                "air_pollution_exposure": 0.523164724,
+                "service_accessibility": 0.749167737,
+                "equity": 0.774331558,
+                "livability": 0.65744465
+              }
+            }
+          },
+          {
+            "step_index": 1,
+            "action": {
+              "action_id": "increase_green_infrastructure-九龙坡区|九龙镇|77",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "九龙坡区|九龙镇|77"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold"
+            },
+            "predicted_reward": 0.009391447,
+            "reward_uncertainty": 0.000322138,
+            "conservative_reward": 0.009230378,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.929065903,
+              "air_pollution_exposure_delta": -0.248369429,
+              "service_accessibility_delta": 0.40623109,
+              "equity_delta": 0.306851277,
+              "livability_delta": 0.534850888
+            },
+            "post_state_features": {
+              "九龙坡区|九龙镇|77": {
+                "heat_risk": 0.070934097,
+                "air_pollution_exposure": 0.500706571,
+                "service_accessibility": 0.40623109,
+                "equity": 1.0,
+                "livability": 0.534850888
+              }
+            }
+          }
+        ]
+      },
+      {
+        "action_count": 2,
+        "action_sequence": [
+          {
+            "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "江北区|观音桥街道|653"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold"
+          },
+          {
+            "action_id": "increase_green_infrastructure-南岸区|南坪镇|299",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "南岸区|南坪镇|299"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold"
+          }
+        ],
+        "imagined_cumulative_predicted_reward": 0.011546938,
+        "imagined_cumulative_conservative_reward": 0.0112248,
+        "imagined_steps": [
+          {
+            "step_index": 0,
+            "action": {
+              "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "江北区|观音桥街道|653"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold"
+            },
+            "predicted_reward": 0.002174002,
+            "reward_uncertainty": 0.000322138,
+            "conservative_reward": 0.002012933,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.629411179,
+              "air_pollution_exposure_delta": -0.208348276,
+              "service_accessibility_delta": 0.041850737,
+              "equity_delta": 0.129506558,
+              "livability_delta": 0.30226965
+            },
+            "post_state_features": {
+              "江北区|观音桥街道|653": {
+                "heat_risk": 0.284628821,
+                "air_pollution_exposure": 0.523164724,
+                "service_accessibility": 0.749167737,
+                "equity": 0.774331558,
+                "livability": 0.65744465
+              }
+            }
+          },
+          {
+            "step_index": 1,
+            "action": {
+              "action_id": "increase_green_infrastructure-南岸区|南坪镇|299",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "南岸区|南坪镇|299"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold"
+            },
+            "predicted_reward": 0.009372936,
+            "reward_uncertainty": 0.000322138,
+            "conservative_reward": 0.009211867,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.931988989,
+              "air_pollution_exposure_delta": -0.247109962,
+              "service_accessibility_delta": 0.402023516,
+              "equity_delta": 0.305439262,
+              "livability_delta": 0.534295405
+            },
+            "post_state_features": {
+              "南岸区|南坪镇|299": {
+                "heat_risk": 0.0,
+                "air_pollution_exposure": 0.456229038,
+                "service_accessibility": 0.426413516,
+                "equity": 1.0,
+                "livability": 0.653539405
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "selected_sequence": {
+      "action_count": 2,
+      "action_sequence": [
+        {
+          "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+          "action_type": "increase_green_infrastructure",
+          "target_units": [
+            "江北区|观音桥街道|653"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold"
+        },
+        {
+          "action_id": "add_community_service-九龙坡区|谢家湾街道|785",
+          "action_type": "add_community_service",
+          "target_units": [
+            "九龙坡区|谢家湾街道|785"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "service_accessibility_below_threshold"
+        }
+      ],
+      "imagined_cumulative_predicted_reward": 0.011795423,
+      "imagined_cumulative_conservative_reward": 0.011528613,
+      "imagined_steps": [
+        {
+          "step_index": 0,
+          "action": {
+            "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "江北区|观音桥街道|653"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold"
+          },
+          "predicted_reward": 0.002174002,
+          "reward_uncertainty": 0.000322138,
+          "conservative_reward": 0.002012933,
+          "predicted_dynamics": {
+            "heat_risk_delta": -0.629411179,
+            "air_pollution_exposure_delta": -0.208348276,
+            "service_accessibility_delta": 0.041850737,
+            "equity_delta": 0.129506558,
+            "livability_delta": 0.30226965
+          },
+          "post_state_features": {
+            "江北区|观音桥街道|653": {
+              "heat_risk": 0.284628821,
+              "air_pollution_exposure": 0.523164724,
+              "service_accessibility": 0.749167737,
+              "equity": 0.774331558,
+              "livability": 0.65744465
+            }
+          }
+        },
+        {
+          "step_index": 1,
+          "action": {
+            "action_id": "add_community_service-九龙坡区|谢家湾街道|785",
+            "action_type": "add_community_service",
+            "target_units": [
+              "九龙坡区|谢家湾街道|785"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "service_accessibility_below_threshold"
+          },
+          "predicted_reward": 0.009621421,
+          "reward_uncertainty": 0.000211482,
+          "conservative_reward": 0.00951568,
+          "predicted_dynamics": {
+            "heat_risk_delta": -0.398396067,
+            "air_pollution_exposure_delta": -0.202732743,
+            "service_accessibility_delta": 0.923229277,
+            "equity_delta": 0.423485395,
+            "livability_delta": 0.484451938
+          },
+          "post_state_features": {
+            "九龙坡区|谢家湾街道|785": {
+              "heat_risk": 0.0,
+              "air_pollution_exposure": 0.417364257,
+              "service_accessibility": 0.996400277,
+              "equity": 1.0,
+              "livability": 0.822037938
+            }
+          }
+        }
+      ]
+    },
+    "one_step_policy_baseline": {
+      "action_count": 1,
+      "action_sequence": [
+        {
+          "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+          "action_type": "increase_green_infrastructure",
+          "target_units": [
+            "江北区|观音桥街道|653"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold"
+        }
+      ],
+      "imagined_cumulative_predicted_reward": 0.002174002,
+      "imagined_cumulative_conservative_reward": 0.002012933,
+      "imagined_steps": [
+        {
+          "step_index": 0,
+          "action": {
+            "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "江北区|观音桥街道|653"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold"
+          },
+          "predicted_reward": 0.002174002,
+          "reward_uncertainty": 0.000322138,
+          "conservative_reward": 0.002012933,
+          "predicted_dynamics": {
+            "heat_risk_delta": -0.629411179,
+            "air_pollution_exposure_delta": -0.208348276,
+            "service_accessibility_delta": 0.041850737,
+            "equity_delta": 0.129506558,
+            "livability_delta": 0.30226965
+          },
+          "post_state_features": {
+            "江北区|观音桥街道|653": {
+              "heat_risk": 0.284628821,
+              "air_pollution_exposure": 0.523164724,
+              "service_accessibility": 0.749167737,
+              "equity": 0.774331558,
+              "livability": 0.65744465
+            }
+          }
+        }
+      ]
+    },
+    "static_single_step_baseline": {
+      "action_count": 1,
+      "action_sequence": [
+        {
+          "action_id": "increase_green_infrastructure-九龙坡区|九龙镇|77",
+          "action_type": "increase_green_infrastructure",
+          "target_units": [
+            "九龙坡区|九龙镇|77"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold"
+        }
+      ],
+      "imagined_cumulative_predicted_reward": 0.001410049,
+      "imagined_cumulative_conservative_reward": 0.00124898,
+      "imagined_steps": [
+        {
+          "step_index": 0,
+          "action": {
+            "action_id": "increase_green_infrastructure-九龙坡区|九龙镇|77",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "九龙坡区|九龙镇|77"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold"
+          },
+          "predicted_reward": 0.001410049,
+          "reward_uncertainty": 0.000322138,
+          "conservative_reward": 0.00124898,
+          "predicted_dynamics": {
+            "heat_risk_delta": -0.560492714,
+            "air_pollution_exposure_delta": -0.152083152,
+            "service_accessibility_delta": 0.088706003,
+            "equity_delta": 0.12818705,
+            "livability_delta": 0.275597796
+          },
+          "post_state_features": {
+            "九龙坡区|九龙镇|77": {
+              "heat_risk": 0.439507286,
+              "air_pollution_exposure": 0.596992848,
+              "service_accessibility": 0.088706003,
+              "equity": 1.0,
+              "livability": 0.275597796
+            }
+          }
+        }
+      ]
+    },
+    "imagined_advantage_over_one_step_policy": 0.00951568,
+    "imagined_advantage_over_static_single_step": 0.010279633
+  },
+  "supported_claim": "learned_world_model_rollout_improves_imagined_static_and_one_step_baselines",
+  "empirical_superiority_claim": false,
+  "claim_boundary": {
+    "max_claim_level": "bounded_support",
+    "reason": "multi-step planner uses learned replay dynamics for imagined rollouts; observed policy outcome gates remain open"
+  },
+  "remaining_gates": [
+    "observed_policy_outcome_holdout_required",
+    "off_policy_evaluation_on_observed_or_counterfactual_policy_data_required",
+    "causal_policy_effect_validation_required",
+    "external_air_pollution_holdout_required"
+  ],
+  "source_graph_search_path": "data/uwm_public_proxy/chongqing_central/model_based_rl_graph_search_2026_07_05/uwm_model_based_graph_search_admin_livability_spatial_graph_proxy.json"
+}

@@ -1,0 +1,1392 @@
+{
+  "schema": "territory_world_model.twm_runtime_benchmark.v1",
+  "suite_id": "twm_runtime_v1",
+  "created_at": "2026-07-04T09:18:57.554980+00:00",
+  "dataset_manifest_hash": "2278ac2b8aa383c17ab3ebeacc24352f9ac20c1b12004eb307e391b7401840b5",
+  "status": "fail",
+  "failed_gates": [
+    "planner_gate",
+    "negative_control_gate"
+  ],
+  "scores": {
+    "dataset_integrity_score": 1.0,
+    "renderer_score": 1.0,
+    "simulator_score": 1.0,
+    "planner_score": 0.0,
+    "evidence_claim_score": 1.0,
+    "negative_control_score": 0.0,
+    "leakage_guard_score": 1.0
+  },
+  "gates": {
+    "dataset_integrity_gate": {
+      "status": "pass",
+      "checks": {
+        "relation_rows": {
+          "status": "pass",
+          "observed": 1797,
+          "required_min": 1700
+        },
+        "support_material_rows": {
+          "status": "pass",
+          "observed": 224,
+          "required_min": 200
+        },
+        "synthetic_experiment_rows": {
+          "status": "pass",
+          "observed": 256,
+          "required": 256
+        },
+        "counterfactual_pairs": {
+          "status": "pass",
+          "observed": 128,
+          "required": 128
+        },
+        "train_rows": {
+          "status": "pass",
+          "observed": 128,
+          "required": 128
+        },
+        "validation_rows": {
+          "status": "pass",
+          "observed": 64,
+          "required": 64
+        },
+        "test_rows": {
+          "status": "pass",
+          "observed": 64,
+          "required": 64
+        },
+        "action_type_count": {
+          "status": "pass",
+          "observed": 4,
+          "required": 4
+        },
+        "allowed_rows": {
+          "status": "pass",
+          "observed": 128,
+          "required": 128
+        },
+        "blocked_rows": {
+          "status": "pass",
+          "observed": 128,
+          "required": 128
+        },
+        "repo_internal_paths": {
+          "status": "pass",
+          "observed": true,
+          "required": true
+        }
+      },
+      "missing": [],
+      "summary": ""
+    },
+    "renderer_gate": {
+      "status": "pass",
+      "checks": {
+        "object_count": {
+          "status": "pass",
+          "observed": 21629,
+          "required_min": 21000
+        },
+        "relation_count": {
+          "status": "pass",
+          "observed": 1797,
+          "required_min": 1700
+        },
+        "project_count": {
+          "status": "pass",
+          "observed": 90,
+          "required_min": 90
+        },
+        "rule_evaluation_count": {
+          "status": "pass",
+          "observed": 360,
+          "required_min": 360
+        },
+        "review_task_count": {
+          "status": "pass",
+          "observed": 114,
+          "required_min": 100
+        },
+        "support_material_count": {
+          "status": "pass",
+          "observed": 224,
+          "required_min": 200
+        },
+        "canonical_observation_schema_present": {
+          "status": "pass",
+          "observed": "territory_world_model.runtime_observation.v1",
+          "required": "territory_world_model.runtime_observation.v1"
+        },
+        "simulator_consumable_observation": {
+          "status": "pass",
+          "observed": true,
+          "required": true
+        },
+        "not_for_production_boundary_preserved": {
+          "status": "pass",
+          "observed": true,
+          "required": true
+        }
+      },
+      "missing": [],
+      "summary": "State data is present, but no canonical simulator observation contract is exposed yet."
+    },
+    "simulator_gate": {
+      "status": "pass",
+      "checks": {
+        "simulator_trace_present": {
+          "status": "pass",
+          "observed": true,
+          "required": true
+        },
+        "facade_backend_forbidden": {
+          "status": "pass",
+          "observed": "transparent_runtime_heads",
+          "required": "backend_type != deterministic_planner_facade"
+        },
+        "dataset_snapshot_hash_in_trace": {
+          "status": "pass",
+          "observed": "2278ac2b8aa383c17ab3ebeacc24352f9ac20c1b12004eb307e391b7401840b5",
+          "required": true
+        },
+        "model_family_in_trace": {
+          "status": "pass",
+          "observed": "transparent_runtime_heads",
+          "required": true
+        },
+        "split_in_trace": {
+          "status": "pass",
+          "observed": "test",
+          "required": "train/validation/test"
+        },
+        "prediction_id_in_trace": {
+          "status": "pass",
+          "observed": "twm-runtime-v1-e5def1dfa4951a37",
+          "required": true
+        },
+        "action_mask_probability": {
+          "status": "pass",
+          "observed": {
+            "status": "evaluated",
+            "test_action_mask_accuracy": 1.0,
+            "test_blocked_action_recall": 1.0
+          },
+          "required": {
+            "status": "evaluated",
+            "action_mask_accuracy_min": 0.85,
+            "blocked_action_recall_min": 0.85
+          }
+        },
+        "holdout_metrics": {
+          "status": "pass",
+          "observed": [
+            "action_mask_probability",
+            "dynamics_runtime"
+          ],
+          "required": [
+            "action_mask_probability",
+            "dynamics_runtime"
+          ]
+        },
+        "runtime_metrics": {
+          "status": "pass",
+          "observed": {
+            "transition_mae": 0.009031,
+            "constraint_risk_mae": 0.004748,
+            "planning_utility_mae": 0.0101,
+            "ranking_correlation_proxy": 0.973369
+          },
+          "required": {
+            "transition_mae_max": 0.05,
+            "constraint_risk_mae_max": 0.05,
+            "planning_utility_mae_max": 0.05,
+            "ranking_correlation_proxy_min": 0.6
+          }
+        }
+      },
+      "missing": [],
+      "summary": "Simulator emits traceable action-mask and dynamics heads with synthetic-fixture holdout metrics."
+    },
+    "planner_gate": {
+      "status": "fail",
+      "checks": {
+        "planner_consumes_simulator_trace": {
+          "status": "fail",
+          "observed": false,
+          "required": true
+        },
+        "simulator_trace_bound_to_each_candidate": {
+          "status": "fail",
+          "observed": false,
+          "required": true
+        },
+        "hard_blocked_selected_count": {
+          "status": "review",
+          "observed": null,
+          "required": 0
+        },
+        "planner_metrics": {
+          "status": "fail",
+          "observed": {},
+          "required": {
+            "legal_feasible_topk_precision_min": 0.8,
+            "candidate_rejection_reason_coverage_min": 0.85,
+            "planner_regret_against_human_oracle_max": 0.15
+          }
+        }
+      },
+      "missing": [
+        "planner_consumes_simulator_trace",
+        "simulator_trace_bound_to_each_candidate",
+        "planner_regret_against_human_oracle"
+      ],
+      "summary": "Planner scoring is not yet forced to consume simulator traces only."
+    },
+    "evidence_claim_gate": {
+      "status": "pass",
+      "checks": {
+        "runtime_scope_limited": {
+          "status": "pass",
+          "observed": "development_runtime_contract",
+          "required": "development_runtime_contract"
+        },
+        "production_accuracy_not_supported": {
+          "status": "pass",
+          "observed": "not_supported",
+          "required": "not_supported"
+        },
+        "production_decision_blocked": {
+          "status": "pass",
+          "observed": "blocked_without_real_observed_history",
+          "required": "blocked_without_real_observed_history"
+        },
+        "not_for_production_boundary_preserved": {
+          "status": "pass",
+          "observed": true,
+          "required": true
+        }
+      },
+      "missing": [],
+      "summary": ""
+    },
+    "negative_control_gate": {
+      "status": "fail",
+      "checks": {
+        "negative_control_manifest_present": {
+          "status": "pass",
+          "observed": 5,
+          "required": 5
+        },
+        "impossible_action_block_rate": {
+          "status": "fail",
+          "observed": null,
+          "required": 0.95
+        },
+        "support_missing_review_rate": {
+          "status": "fail",
+          "observed": null,
+          "required": 0.95
+        },
+        "policy_conflict_block_recall": {
+          "status": "fail",
+          "observed": null,
+          "required": 0.9
+        },
+        "shuffled_action_performance_drop": {
+          "status": "fail",
+          "observed": null,
+          "required": 0.15
+        },
+        "shuffled_label_gate_status": {
+          "status": "fail",
+          "observed": "not_run",
+          "required": "fail"
+        }
+      },
+      "missing": [
+        "negative_control_runtime_results",
+        "shuffled_action_control",
+        "shuffled_label_control"
+      ],
+      "summary": "Negative controls are declared but not executed by a runtime simulator/planner loop yet."
+    },
+    "leakage_guard_gate": {
+      "status": "pass",
+      "checks": {
+        "split_overlap_count": {
+          "status": "pass",
+          "observed": 0,
+          "required": 0
+        },
+        "counterfactual_group_split_leak_count": {
+          "status": "pass",
+          "observed": 0,
+          "required": 0
+        },
+        "raw_target_columns_declared": {
+          "status": "pass",
+          "observed": [
+            "action_mask_allowed",
+            "action_mask_hard_blocks",
+            "action_mask_policy",
+            "action_mask_required_reviews",
+            "constraint_risk_delta",
+            "next_state_score",
+            "outcome",
+            "planning_utility_delta",
+            "treatment_effect",
+            "uncertainty"
+          ],
+          "required": "raw target columns must be explicit and excluded from simulator inputs"
+        },
+        "feature_vector_contract": {
+          "status": "pass",
+          "observed": "territory_world_model.runtime_feature_vector_contract.v1",
+          "required": "territory_world_model.runtime_feature_vector_contract.v1"
+        },
+        "target_feature_columns_excluded": {
+          "status": "pass",
+          "observed": [],
+          "required": []
+        },
+        "dataset_snapshot_hash_stable": {
+          "status": "pass",
+          "observed": true,
+          "required": true
+        }
+      },
+      "missing": [],
+      "summary": ""
+    }
+  },
+  "canonical_observation": {
+    "schema": "territory_world_model.runtime_observation.v1",
+    "observation_id": "38fba8d251444d079123a878c9ed34f9ae084168ae142eee91cc596daaabf930",
+    "dataset_snapshot_hash": "2278ac2b8aa383c17ab3ebeacc24352f9ac20c1b12004eb307e391b7401840b5",
+    "dataset_id": "twm_bishan_multi_admin_eval",
+    "boundary": {
+      "synthetic": true,
+      "not_for_production": true,
+      "production_claim": "not_supported"
+    },
+    "object_summary": {
+      "object_count": 21629,
+      "project_count": 90,
+      "layer_counts": {
+        "parcel_current": 21218,
+        "synthetic_pbf": 14,
+        "synthetic_eco_redline": 10,
+        "admin_units": 11,
+        "synthetic_annual_change": 266,
+        "synthetic_projects": 90,
+        "synthetic_planning_zones": 5,
+        "synthetic_urban_boundary": 5,
+        "synthetic_remote_sensing_tiles": 10
+      }
+    },
+    "relation_summary": {
+      "relation_count": 1797
+    },
+    "rule_context": {
+      "rule_evaluation_count": 360
+    },
+    "support_material_context": {
+      "support_material_count": 224,
+      "legacy_source_name": "multimodal_evidence_index"
+    },
+    "review_context": {
+      "review_task_count": 114
+    },
+    "trajectory_context": {
+      "row_count": 256,
+      "counterfactual_pairs": 128,
+      "split_counts": {
+        "train": 128,
+        "validation": 64,
+        "test": 64
+      },
+      "action_types": [
+        "approve_with_conditions",
+        "defer_review",
+        "protect",
+        "restore"
+      ],
+      "allowed_rows": 128,
+      "blocked_rows": 128
+    },
+    "feature_vector_contract": {
+      "schema": "territory_world_model.runtime_feature_vector_contract.v1",
+      "input_feature_columns": [
+        "DKMJ",
+        "action_type",
+        "approval_id",
+        "approval_status",
+        "approved_area_m2",
+        "area_m2",
+        "baseline_risk_score",
+        "baseline_state_score",
+        "cluster",
+        "completed_review_count",
+        "confirmed_violation_count",
+        "counterfactual_group",
+        "critical_rule_hit_count",
+        "data_role",
+        "evidence_weight",
+        "high_rule_hit_count",
+        "neighbor_unit_ids",
+        "neighbors",
+        "not_for_production",
+        "open_review_count",
+        "period",
+        "project_id",
+        "propensity_score",
+        "quality_score",
+        "region_code",
+        "review_penalty",
+        "review_task_count",
+        "risk_score",
+        "rule_eval_count",
+        "rule_hit_count",
+        "scenario_id",
+        "source_path",
+        "spatial_cluster",
+        "split",
+        "stratum",
+        "supplement_required_review_count",
+        "synthetic",
+        "time_index",
+        "unit_id",
+        "x",
+        "y"
+      ],
+      "excluded_target_columns": [
+        "action_mask_allowed",
+        "action_mask_hard_blocks",
+        "action_mask_policy",
+        "action_mask_required_reviews",
+        "constraint_risk_delta",
+        "next_state_score",
+        "outcome",
+        "planning_utility_delta",
+        "treatment_effect",
+        "uncertainty"
+      ],
+      "target_columns": [
+        "action_mask_allowed",
+        "action_mask_hard_blocks",
+        "action_mask_policy",
+        "action_mask_required_reviews",
+        "constraint_risk_delta",
+        "next_state_score",
+        "outcome",
+        "planning_utility_delta",
+        "treatment_effect",
+        "uncertainty"
+      ],
+      "future_outcome_columns": [
+        "constraint_risk_delta",
+        "next_state_score",
+        "outcome",
+        "planning_utility_delta"
+      ],
+      "label_explanation_columns": [
+        "action_mask_allowed",
+        "action_mask_hard_blocks",
+        "action_mask_policy",
+        "action_mask_required_reviews"
+      ],
+      "derived_label_columns": [
+        "treatment_effect",
+        "uncertainty"
+      ],
+      "target_columns_excluded_from_input": true,
+      "raw_source_may_contain_targets": true
+    },
+    "simulator_input": {
+      "consumable": true,
+      "encoding": "tabular_state_action_context",
+      "required_contexts": [
+        "object_summary",
+        "relation_summary",
+        "rule_context",
+        "support_material_context",
+        "review_context",
+        "trajectory_context",
+        "feature_vector_contract"
+      ],
+      "state_feature_groups": [
+        "object_summary",
+        "relation_summary",
+        "rule_context",
+        "support_material_context",
+        "review_context"
+      ],
+      "action_fields": [
+        "action_type"
+      ],
+      "label_fields_excluded": [
+        "action_mask_allowed",
+        "action_mask_hard_blocks",
+        "action_mask_policy",
+        "action_mask_required_reviews"
+      ],
+      "target_fields_excluded": [
+        "action_mask_allowed",
+        "action_mask_hard_blocks",
+        "action_mask_policy",
+        "action_mask_required_reviews",
+        "constraint_risk_delta",
+        "next_state_score",
+        "outcome",
+        "planning_utility_delta",
+        "treatment_effect",
+        "uncertainty"
+      ]
+    }
+  },
+  "simulator_trace": {
+    "schema": "territory_world_model.simulator_trace.v1",
+    "prediction_id": "twm-runtime-v1-e5def1dfa4951a37",
+    "backend_type": "transparent_runtime_heads",
+    "model_family": "transparent_runtime_heads",
+    "model_version": "0.3",
+    "split": "test",
+    "dataset_snapshot_hash": "2278ac2b8aa383c17ab3ebeacc24352f9ac20c1b12004eb307e391b7401840b5",
+    "observation_id": "38fba8d251444d079123a878c9ed34f9ae084168ae142eee91cc596daaabf930",
+    "consumed_observation_schema": "territory_world_model.runtime_observation.v1",
+    "consumed_contexts": [
+      "object_summary",
+      "relation_summary",
+      "rule_context",
+      "support_material_context",
+      "review_context",
+      "trajectory_context",
+      "feature_vector_contract"
+    ],
+    "predictive_heads": {
+      "future_state_delta": {
+        "status": "evaluated",
+        "schema": "territory_world_model.dynamics_regression_head.v1",
+        "backend_type": "transparent_linear_regression_heads",
+        "target": "next_state_score_minus_baseline_state_score",
+        "fit_split": "train",
+        "input_feature_columns": [
+          "DKMJ",
+          "action_type",
+          "approval_id",
+          "approval_status",
+          "approved_area_m2",
+          "area_m2",
+          "baseline_risk_score",
+          "baseline_state_score",
+          "cluster",
+          "completed_review_count",
+          "confirmed_violation_count",
+          "counterfactual_group",
+          "critical_rule_hit_count",
+          "data_role",
+          "evidence_weight",
+          "high_rule_hit_count",
+          "neighbor_unit_ids",
+          "neighbors",
+          "not_for_production",
+          "open_review_count",
+          "period",
+          "project_id",
+          "propensity_score",
+          "quality_score",
+          "region_code",
+          "review_penalty",
+          "review_task_count",
+          "risk_score",
+          "rule_eval_count",
+          "rule_hit_count",
+          "scenario_id",
+          "source_path",
+          "spatial_cluster",
+          "split",
+          "stratum",
+          "supplement_required_review_count",
+          "synthetic",
+          "time_index",
+          "unit_id",
+          "x",
+          "y"
+        ],
+        "used_feature_columns": [
+          "approval_status",
+          "approved_area_m2",
+          "area_m2",
+          "DKMJ",
+          "x",
+          "y",
+          "quality_score",
+          "baseline_risk_score",
+          "risk_score",
+          "review_penalty",
+          "rule_eval_count",
+          "rule_hit_count",
+          "critical_rule_hit_count",
+          "high_rule_hit_count",
+          "review_task_count",
+          "open_review_count",
+          "completed_review_count",
+          "supplement_required_review_count",
+          "confirmed_violation_count",
+          "propensity_score",
+          "evidence_weight",
+          "time_index",
+          "baseline_state_score",
+          "region_code",
+          "action_type"
+        ],
+        "forbidden_input_columns": [
+          "action_mask_allowed",
+          "action_mask_hard_blocks",
+          "action_mask_policy",
+          "action_mask_required_reviews",
+          "constraint_risk_delta",
+          "next_state_score",
+          "outcome",
+          "planning_utility_delta",
+          "treatment_effect",
+          "uncertainty"
+        ],
+        "encoded_feature_count": 32,
+        "train_rows": 128,
+        "validation_rows": 64,
+        "test_rows": 64,
+        "train": {
+          "row_count": 128,
+          "mae": 0.008194,
+          "mean_actual": 0.017106,
+          "mean_predicted": 0.017106,
+          "pearson_correlation": 0.889253
+        },
+        "validation": {
+          "row_count": 64,
+          "mae": 0.008037,
+          "mean_actual": 0.019837,
+          "mean_predicted": 0.017829,
+          "pearson_correlation": 0.893587
+        },
+        "test": {
+          "row_count": 64,
+          "mae": 0.009031,
+          "mean_actual": 0.015501,
+          "mean_predicted": 0.020073,
+          "pearson_correlation": 0.892942
+        }
+      },
+      "constraint_violation_probability": {
+        "status": "evaluated",
+        "schema": "territory_world_model.dynamics_regression_head.v1",
+        "backend_type": "transparent_linear_regression_heads",
+        "target": "constraint_risk_delta",
+        "fit_split": "train",
+        "input_feature_columns": [
+          "DKMJ",
+          "action_type",
+          "approval_id",
+          "approval_status",
+          "approved_area_m2",
+          "area_m2",
+          "baseline_risk_score",
+          "baseline_state_score",
+          "cluster",
+          "completed_review_count",
+          "confirmed_violation_count",
+          "counterfactual_group",
+          "critical_rule_hit_count",
+          "data_role",
+          "evidence_weight",
+          "high_rule_hit_count",
+          "neighbor_unit_ids",
+          "neighbors",
+          "not_for_production",
+          "open_review_count",
+          "period",
+          "project_id",
+          "propensity_score",
+          "quality_score",
+          "region_code",
+          "review_penalty",
+          "review_task_count",
+          "risk_score",
+          "rule_eval_count",
+          "rule_hit_count",
+          "scenario_id",
+          "source_path",
+          "spatial_cluster",
+          "split",
+          "stratum",
+          "supplement_required_review_count",
+          "synthetic",
+          "time_index",
+          "unit_id",
+          "x",
+          "y"
+        ],
+        "used_feature_columns": [
+          "approval_status",
+          "approved_area_m2",
+          "area_m2",
+          "DKMJ",
+          "x",
+          "y",
+          "quality_score",
+          "baseline_risk_score",
+          "risk_score",
+          "review_penalty",
+          "rule_eval_count",
+          "rule_hit_count",
+          "critical_rule_hit_count",
+          "high_rule_hit_count",
+          "review_task_count",
+          "open_review_count",
+          "completed_review_count",
+          "supplement_required_review_count",
+          "confirmed_violation_count",
+          "propensity_score",
+          "evidence_weight",
+          "time_index",
+          "baseline_state_score",
+          "region_code",
+          "action_type"
+        ],
+        "forbidden_input_columns": [
+          "action_mask_allowed",
+          "action_mask_hard_blocks",
+          "action_mask_policy",
+          "action_mask_required_reviews",
+          "constraint_risk_delta",
+          "next_state_score",
+          "outcome",
+          "planning_utility_delta",
+          "treatment_effect",
+          "uncertainty"
+        ],
+        "encoded_feature_count": 32,
+        "train_rows": 128,
+        "validation_rows": 64,
+        "test_rows": 64,
+        "train": {
+          "row_count": 128,
+          "mae": 0.003737,
+          "mean_actual": -0.016,
+          "mean_predicted": -0.016,
+          "pearson_correlation": 0.9857
+        },
+        "validation": {
+          "row_count": 64,
+          "mae": 0.003902,
+          "mean_actual": -0.016,
+          "mean_predicted": -0.014292,
+          "pearson_correlation": 0.987807
+        },
+        "test": {
+          "row_count": 64,
+          "mae": 0.004748,
+          "mean_actual": -0.016,
+          "mean_predicted": -0.019373,
+          "pearson_correlation": 0.984696
+        }
+      },
+      "planning_utility_delta": {
+        "status": "evaluated",
+        "schema": "territory_world_model.dynamics_regression_head.v1",
+        "backend_type": "transparent_linear_regression_heads",
+        "target": "planning_utility_delta",
+        "fit_split": "train",
+        "input_feature_columns": [
+          "DKMJ",
+          "action_type",
+          "approval_id",
+          "approval_status",
+          "approved_area_m2",
+          "area_m2",
+          "baseline_risk_score",
+          "baseline_state_score",
+          "cluster",
+          "completed_review_count",
+          "confirmed_violation_count",
+          "counterfactual_group",
+          "critical_rule_hit_count",
+          "data_role",
+          "evidence_weight",
+          "high_rule_hit_count",
+          "neighbor_unit_ids",
+          "neighbors",
+          "not_for_production",
+          "open_review_count",
+          "period",
+          "project_id",
+          "propensity_score",
+          "quality_score",
+          "region_code",
+          "review_penalty",
+          "review_task_count",
+          "risk_score",
+          "rule_eval_count",
+          "rule_hit_count",
+          "scenario_id",
+          "source_path",
+          "spatial_cluster",
+          "split",
+          "stratum",
+          "supplement_required_review_count",
+          "synthetic",
+          "time_index",
+          "unit_id",
+          "x",
+          "y"
+        ],
+        "used_feature_columns": [
+          "approval_status",
+          "approved_area_m2",
+          "area_m2",
+          "DKMJ",
+          "x",
+          "y",
+          "quality_score",
+          "baseline_risk_score",
+          "risk_score",
+          "review_penalty",
+          "rule_eval_count",
+          "rule_hit_count",
+          "critical_rule_hit_count",
+          "high_rule_hit_count",
+          "review_task_count",
+          "open_review_count",
+          "completed_review_count",
+          "supplement_required_review_count",
+          "confirmed_violation_count",
+          "propensity_score",
+          "evidence_weight",
+          "time_index",
+          "baseline_state_score",
+          "region_code",
+          "action_type"
+        ],
+        "forbidden_input_columns": [
+          "action_mask_allowed",
+          "action_mask_hard_blocks",
+          "action_mask_policy",
+          "action_mask_required_reviews",
+          "constraint_risk_delta",
+          "next_state_score",
+          "outcome",
+          "planning_utility_delta",
+          "treatment_effect",
+          "uncertainty"
+        ],
+        "encoded_feature_count": 32,
+        "train_rows": 128,
+        "validation_rows": 64,
+        "test_rows": 64,
+        "train": {
+          "row_count": 128,
+          "mae": 0.006742,
+          "mean_actual": 0.028561,
+          "mean_predicted": 0.028561,
+          "pearson_correlation": 0.977808
+        },
+        "validation": {
+          "row_count": 64,
+          "mae": 0.007031,
+          "mean_actual": 0.028292,
+          "mean_predicted": 0.026574,
+          "pearson_correlation": 0.979083
+        },
+        "test": {
+          "row_count": 64,
+          "mae": 0.0101,
+          "mean_actual": 0.027956,
+          "mean_predicted": 0.036548,
+          "pearson_correlation": 0.973369
+        }
+      },
+      "uncertainty": "not_implemented",
+      "action_mask_probability": {
+        "status": "evaluated",
+        "schema": "territory_world_model.action_mask_probability_head.v1",
+        "backend_type": "transparent_action_mask_rule_head",
+        "training_protocol": {
+          "fit_split": "train",
+          "validation_split": "validation",
+          "test_split": "test",
+          "selection_metric": "train_accuracy_then_blocked_action_recall",
+          "label_leakage_guard": "action_mask labels, explanations and future outcome columns are excluded from input_feature_columns"
+        },
+        "rule_model": {
+          "schema": "territory_world_model.action_mask_rule_model.v1",
+          "rule_family": "train_split_threshold_modular_phase_search",
+          "risk_feature": "baseline_risk_score_with_risk_score_fallback",
+          "risk_threshold": 0.2,
+          "action_rules": {
+            "approve_with_conditions": {
+              "rule_type": "risk_threshold_phase_mod",
+              "risk_threshold": 0.2,
+              "phase_expression": "(region_index + time_index) % modulus == remainder",
+              "modulus": 2,
+              "remainder": 0,
+              "train_rows": 32,
+              "train_metrics": {
+                "row_count": 32,
+                "allowed_count": 22,
+                "blocked_count": 10,
+                "action_mask_accuracy": 0.9375,
+                "blocked_action_recall": 1.0,
+                "allowed_action_recall": 0.909091,
+                "false_allow_count": 0,
+                "false_block_count": 2,
+                "confusion": {
+                  "true_allow": 20,
+                  "true_block": 10,
+                  "false_allow": 0,
+                  "false_block": 2
+                }
+              }
+            },
+            "defer_review": {
+              "rule_type": "always_blocked",
+              "train_rows": 32,
+              "train_metrics": {
+                "row_count": 32,
+                "allowed_count": 0,
+                "blocked_count": 32,
+                "action_mask_accuracy": 1.0,
+                "blocked_action_recall": 1.0,
+                "allowed_action_recall": 1.0,
+                "false_allow_count": 0,
+                "false_block_count": 0,
+                "confusion": {
+                  "true_allow": 0,
+                  "true_block": 32,
+                  "false_allow": 0,
+                  "false_block": 0
+                }
+              }
+            },
+            "protect": {
+              "rule_type": "risk_threshold_phase_mod",
+              "risk_threshold": 0.2,
+              "phase_expression": "(region_index + time_index) % modulus == remainder",
+              "modulus": 3,
+              "remainder": 1,
+              "train_rows": 32,
+              "train_metrics": {
+                "row_count": 32,
+                "allowed_count": 26,
+                "blocked_count": 6,
+                "action_mask_accuracy": 1.0,
+                "blocked_action_recall": 1.0,
+                "allowed_action_recall": 1.0,
+                "false_allow_count": 0,
+                "false_block_count": 0,
+                "confusion": {
+                  "true_allow": 26,
+                  "true_block": 6,
+                  "false_allow": 0,
+                  "false_block": 0
+                }
+              }
+            },
+            "restore": {
+              "rule_type": "risk_threshold_phase_mod",
+              "risk_threshold": 0.2,
+              "phase_expression": "(region_index + time_index) % modulus == remainder",
+              "modulus": 3,
+              "remainder": 0,
+              "train_rows": 32,
+              "train_metrics": {
+                "row_count": 32,
+                "allowed_count": 22,
+                "blocked_count": 10,
+                "action_mask_accuracy": 1.0,
+                "blocked_action_recall": 1.0,
+                "allowed_action_recall": 1.0,
+                "false_allow_count": 0,
+                "false_block_count": 0,
+                "confusion": {
+                  "true_allow": 22,
+                  "true_block": 10,
+                  "false_allow": 0,
+                  "false_block": 0
+                }
+              }
+            }
+          },
+          "fit_metrics": {
+            "row_count": 128,
+            "allowed_count": 70,
+            "blocked_count": 58,
+            "action_mask_accuracy": 0.984375,
+            "blocked_action_recall": 1.0,
+            "allowed_action_recall": 0.971429,
+            "false_allow_count": 0,
+            "false_block_count": 2,
+            "confusion": {
+              "true_allow": 68,
+              "true_block": 58,
+              "false_allow": 0,
+              "false_block": 2
+            }
+          }
+        },
+        "input_feature_columns": [
+          "DKMJ",
+          "action_type",
+          "approval_id",
+          "approval_status",
+          "approved_area_m2",
+          "area_m2",
+          "baseline_risk_score",
+          "baseline_state_score",
+          "cluster",
+          "completed_review_count",
+          "confirmed_violation_count",
+          "counterfactual_group",
+          "critical_rule_hit_count",
+          "data_role",
+          "evidence_weight",
+          "high_rule_hit_count",
+          "neighbor_unit_ids",
+          "neighbors",
+          "not_for_production",
+          "open_review_count",
+          "period",
+          "project_id",
+          "propensity_score",
+          "quality_score",
+          "region_code",
+          "review_penalty",
+          "review_task_count",
+          "risk_score",
+          "rule_eval_count",
+          "rule_hit_count",
+          "scenario_id",
+          "source_path",
+          "spatial_cluster",
+          "split",
+          "stratum",
+          "supplement_required_review_count",
+          "synthetic",
+          "time_index",
+          "unit_id",
+          "x",
+          "y"
+        ],
+        "used_feature_columns": [
+          "action_type",
+          "region_code",
+          "time_index",
+          "baseline_risk_score",
+          "risk_score"
+        ],
+        "forbidden_input_columns": [
+          "action_mask_allowed",
+          "action_mask_hard_blocks",
+          "action_mask_policy",
+          "action_mask_required_reviews",
+          "constraint_risk_delta",
+          "next_state_score",
+          "outcome",
+          "planning_utility_delta",
+          "treatment_effect",
+          "uncertainty"
+        ],
+        "train_rows": 128,
+        "validation_rows": 64,
+        "test_rows": 64,
+        "train": {
+          "row_count": 128,
+          "allowed_count": 70,
+          "blocked_count": 58,
+          "action_mask_accuracy": 0.984375,
+          "blocked_action_recall": 1.0,
+          "allowed_action_recall": 0.971429,
+          "false_allow_count": 0,
+          "false_block_count": 2,
+          "confusion": {
+            "true_allow": 68,
+            "true_block": 58,
+            "false_allow": 0,
+            "false_block": 2
+          }
+        },
+        "validation": {
+          "row_count": 64,
+          "allowed_count": 30,
+          "blocked_count": 34,
+          "action_mask_accuracy": 1.0,
+          "blocked_action_recall": 1.0,
+          "allowed_action_recall": 1.0,
+          "false_allow_count": 0,
+          "false_block_count": 0,
+          "confusion": {
+            "true_allow": 30,
+            "true_block": 34,
+            "false_allow": 0,
+            "false_block": 0
+          }
+        },
+        "test": {
+          "row_count": 64,
+          "allowed_count": 28,
+          "blocked_count": 36,
+          "action_mask_accuracy": 1.0,
+          "blocked_action_recall": 1.0,
+          "allowed_action_recall": 1.0,
+          "false_allow_count": 0,
+          "false_block_count": 0,
+          "confusion": {
+            "true_allow": 28,
+            "true_block": 36,
+            "false_allow": 0,
+            "false_block": 0
+          }
+        },
+        "claim_boundary": "synthetic not-for-production fixture; validates runtime plumbing and leakage controls only"
+      }
+    },
+    "holdout_metrics": {
+      "action_mask_probability": {
+        "validation": {
+          "row_count": 64,
+          "allowed_count": 30,
+          "blocked_count": 34,
+          "action_mask_accuracy": 1.0,
+          "blocked_action_recall": 1.0,
+          "allowed_action_recall": 1.0,
+          "false_allow_count": 0,
+          "false_block_count": 0,
+          "confusion": {
+            "true_allow": 30,
+            "true_block": 34,
+            "false_allow": 0,
+            "false_block": 0
+          }
+        },
+        "test": {
+          "row_count": 64,
+          "allowed_count": 28,
+          "blocked_count": 36,
+          "action_mask_accuracy": 1.0,
+          "blocked_action_recall": 1.0,
+          "allowed_action_recall": 1.0,
+          "false_allow_count": 0,
+          "false_block_count": 0,
+          "confusion": {
+            "true_allow": 28,
+            "true_block": 36,
+            "false_allow": 0,
+            "false_block": 0
+          }
+        }
+      },
+      "dynamics_runtime": {
+        "validation": {
+          "future_state_delta": {
+            "row_count": 64,
+            "mae": 0.008037,
+            "mean_actual": 0.019837,
+            "mean_predicted": 0.017829,
+            "pearson_correlation": 0.893587
+          },
+          "constraint_violation_probability": {
+            "row_count": 64,
+            "mae": 0.003902,
+            "mean_actual": -0.016,
+            "mean_predicted": -0.014292,
+            "pearson_correlation": 0.987807
+          },
+          "planning_utility_delta": {
+            "row_count": 64,
+            "mae": 0.007031,
+            "mean_actual": 0.028292,
+            "mean_predicted": 0.026574,
+            "pearson_correlation": 0.979083
+          }
+        },
+        "test": {
+          "future_state_delta": {
+            "row_count": 64,
+            "mae": 0.009031,
+            "mean_actual": 0.015501,
+            "mean_predicted": 0.020073,
+            "pearson_correlation": 0.892942
+          },
+          "constraint_violation_probability": {
+            "row_count": 64,
+            "mae": 0.004748,
+            "mean_actual": -0.016,
+            "mean_predicted": -0.019373,
+            "pearson_correlation": 0.984696
+          },
+          "planning_utility_delta": {
+            "row_count": 64,
+            "mae": 0.0101,
+            "mean_actual": 0.027956,
+            "mean_predicted": 0.036548,
+            "pearson_correlation": 0.973369
+          }
+        }
+      }
+    },
+    "runtime_metrics": {
+      "transition_mae": 0.009031,
+      "constraint_risk_mae": 0.004748,
+      "planning_utility_mae": 0.0101,
+      "ranking_correlation_proxy": 0.973369
+    },
+    "claim_boundary": {
+      "runtime_trace": "present",
+      "predictive_performance": "runtime_heads_evaluated_on_synthetic_fixture_only",
+      "production_claim": "not_supported"
+    }
+  },
+  "measurements": {
+    "dataset_id": "twm_bishan_multi_admin_eval",
+    "paths": {
+      "state_dataset_dir": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval",
+      "data_quality_report": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval/data_quality_report.json",
+      "dataset_manifest": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval/dataset_manifest.json",
+      "relations_dir": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval/relations",
+      "rule_evaluation": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval/tables/rule_evaluation.csv",
+      "review_tasks": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval/tables/review_tasks.csv",
+      "support_materials": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval/tables/multimodal_evidence_index.csv",
+      "synthetic_experiment_foundation": "/Users/zhouning/gisdataagent/docs/reports/twm_synthetic_experiment_foundation.csv",
+      "structural_validation_history": "/Users/zhouning/gisdataagent/docs/reports/twm_structural_validation_observed_history.csv",
+      "same_case_baselines": [
+        "/Users/zhouning/gisdataagent/data_agent/test_data/twm_baseline_metrics/twm_candidate_triage_same_case_outputs.csv",
+        "/Users/zhouning/gisdataagent/data_agent/test_data/twm_baseline_metrics/optimization_only_candidate_triage_same_case_outputs.csv"
+      ]
+    },
+    "layer_counts": {
+      "parcel_current": 21218,
+      "synthetic_pbf": 14,
+      "synthetic_eco_redline": 10,
+      "admin_units": 11,
+      "synthetic_annual_change": 266,
+      "synthetic_projects": 90,
+      "synthetic_planning_zones": 5,
+      "synthetic_urban_boundary": 5,
+      "synthetic_remote_sensing_tiles": 10
+    },
+    "object_count": 21629,
+    "relation_count": 1797,
+    "project_count": 90,
+    "rule_evaluation_count": 360,
+    "review_task_count": 114,
+    "support_material_count": 224,
+    "synthetic_experiment_rows": 256,
+    "counterfactual_pairs": 128,
+    "split_counts": {
+      "train": 128,
+      "validation": 64,
+      "test": 64
+    },
+    "action_type_count": 4,
+    "action_types": [
+      "approve_with_conditions",
+      "defer_review",
+      "protect",
+      "restore"
+    ],
+    "allowed_rows": 128,
+    "blocked_rows": 128,
+    "structural_validation_rows": 48,
+    "same_case_baseline_rows": [
+      5,
+      5
+    ],
+    "trajectory_columns": [
+      "DKMJ",
+      "action_mask_allowed",
+      "action_mask_hard_blocks",
+      "action_mask_policy",
+      "action_mask_required_reviews",
+      "action_type",
+      "approval_id",
+      "approval_status",
+      "approved_area_m2",
+      "area_m2",
+      "baseline_risk_score",
+      "baseline_state_score",
+      "cluster",
+      "completed_review_count",
+      "confirmed_violation_count",
+      "constraint_risk_delta",
+      "counterfactual_group",
+      "critical_rule_hit_count",
+      "data_role",
+      "evidence_weight",
+      "high_rule_hit_count",
+      "neighbor_unit_ids",
+      "neighbors",
+      "next_state_score",
+      "not_for_production",
+      "open_review_count",
+      "outcome",
+      "period",
+      "planning_utility_delta",
+      "project_id",
+      "propensity_score",
+      "quality_score",
+      "region_code",
+      "review_penalty",
+      "review_task_count",
+      "risk_score",
+      "rule_eval_count",
+      "rule_hit_count",
+      "scenario_id",
+      "source_path",
+      "spatial_cluster",
+      "split",
+      "stratum",
+      "supplement_required_review_count",
+      "synthetic",
+      "time_index",
+      "treatment_effect",
+      "uncertainty",
+      "unit_id",
+      "x",
+      "y"
+    ],
+    "target_columns": [
+      "action_mask_allowed",
+      "action_mask_hard_blocks",
+      "action_mask_policy",
+      "action_mask_required_reviews",
+      "constraint_risk_delta",
+      "next_state_score",
+      "outcome",
+      "planning_utility_delta",
+      "treatment_effect",
+      "uncertainty"
+    ],
+    "target_feature_leak_count": 10,
+    "split_overlap_count": 0,
+    "counterfactual_group_split_leak_count": 0,
+    "not_for_production_boundary_preserved": true,
+    "synthetic_flags": [
+      "True"
+    ],
+    "not_for_production_flags": [
+      "True"
+    ]
+  },
+  "claim_boundary": {
+    "runtime_benchmark": "fail",
+    "production_accuracy": "not_supported",
+    "production_decision": "blocked_without_real_observed_history",
+    "flus_superiority": "not_evaluated_by_this_benchmark",
+    "not_for_production_boundary_preserved": true
+  },
+  "recommendations": [
+    "Force planner ranking to consume simulator_trace and action-mask outputs for each candidate.",
+    "Execute impossible-action, support-missing, policy-conflict and shuffled-control tests in the benchmark loop."
+  ]
+}

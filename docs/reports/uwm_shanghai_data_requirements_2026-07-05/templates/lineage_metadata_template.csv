@@ -1,0 +1,2 @@
+dataset_id,dataset_name,source_system,source_version,extract_time,update_frequency,security_level,authorization_scope,desensitization_method,owner_department,contact_role,notes
+DATASET-001,urban_state_observed_history,authorized_city_data_system,2025-v1,2026-07-05T00:00:00,quarterly,internal,UWM pilot state validation only,ids_aliasing_and_geometry_retained_in_authorized_environment,city_data_owner,data_steward,no raw geometry exported outside authorized environment

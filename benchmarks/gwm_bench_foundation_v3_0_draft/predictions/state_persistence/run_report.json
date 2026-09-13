@@ -1,0 +1,122 @@
+{
+  "schema": "gwm_bench.runtime_r2_prediction_run.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "model_group": "state_persistence",
+  "status": "PREDICTION_COMPLETE_LABEL_FIREWALL_INTACT",
+  "created_at": "2026-07-23T07:17:53.578069+00:00",
+  "lifecycle": {
+    "prepare": "complete",
+    "predict": "complete",
+    "writeback": "predicted_probability_state_only",
+    "audit": "complete"
+  },
+  "label_firewall": {
+    "before": {
+      "target_root": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025",
+      "target_root_exists": false,
+      "target_file_count": 0,
+      "target_pixels_read": false,
+      "target_labels_visible_to_adapter": false,
+      "passed": true
+    },
+    "after": {
+      "target_root": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025",
+      "target_root_exists": false,
+      "target_file_count": 0,
+      "target_pixels_read": false,
+      "target_labels_visible_to_adapter": false,
+      "passed": true
+    },
+    "target_pixels_read": false
+  },
+  "contract": {
+    "submission_contract_sha256": "0afab3fcf576198a311f3f7aa75937bf712b8eb79b4948942807dc2ae6a3f7bf",
+    "protocol_sha256": "f4bcad2ef8cf18dc383272ea6ecb44513d1b0895d7beef5d1afa306c7beaacff",
+    "phase_a_bundle_fingerprint": "652a009fd38f79308ee7ddd71549db5c71760e8cc884217cb29e85bcf184a7e3",
+    "submission_keys_sha256": "8b89fa97a3a925fa8fc94ca6c336382d7271083f4dbf4bdab1d0411a66a52466"
+  },
+  "hashes": {
+    "protocol": "f4bcad2ef8cf18dc383272ea6ecb44513d1b0895d7beef5d1afa306c7beaacff",
+    "phase_a_bundle": "652a009fd38f79308ee7ddd71549db5c71760e8cc884217cb29e85bcf184a7e3",
+    "runtime_environment": "ad338533aec418c0849106783b62f554a5d0bd979662baf982478a20e9556622",
+    "adapter_source": "29d1b6716b805c2e56099141048b9ca3f1d109133819b7e290603a9d8507a8af",
+    "model_or_binary": "b1bd48f8b7dd2deb1e21fcb326e074c9be28062a53b6c3edcb0ef3cfaebd51b5",
+    "random_seed_or_seed_set": "7892d45ee4e7dc88e011570688f9b80c831e0d00c7712bc755d981f24541ddea",
+    "prediction": "2502653e9871c6d6585904832f73359d0f1f77180bf69300bf485bf1447be2ff"
+  },
+  "artifacts": {
+    "prediction": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/state_persistence/prediction.parquet",
+      "role": "sealed_v3_probability_prediction",
+      "size_bytes": 10919,
+      "sha256": "2502653e9871c6d6585904832f73359d0f1f77180bf69300bf485bf1447be2ff"
+    },
+    "model_spec": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/state_persistence/model_spec.json",
+      "role": "frozen_baseline_model_spec",
+      "size_bytes": 475,
+      "sha256": "b1bd48f8b7dd2deb1e21fcb326e074c9be28062a53b6c3edcb0ef3cfaebd51b5"
+    },
+    "adapter_source": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/run_internal_baselines.py",
+      "role": "runtime_r2_internal_baseline_adapter_source",
+      "size_bytes": 17430,
+      "sha256": "29d1b6716b805c2e56099141048b9ca3f1d109133819b7e290603a9d8507a8af"
+    },
+    "runtime_environment": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/runtime_environment.json",
+      "role": "runtime_environment_descriptor",
+      "size_bytes": 553,
+      "sha256": "ad338533aec418c0849106783b62f554a5d0bd979662baf982478a20e9556622"
+    },
+    "development_sources": null
+  },
+  "prediction_summary": {
+    "row_count": 3681,
+    "region_count": 20,
+    "node_count": 1227,
+    "target_years": [
+      2023,
+      2024,
+      2025
+    ],
+    "argmax_class_counts": {
+      "0": 393,
+      "1": 369,
+      "2": 6,
+      "3": 9,
+      "4": 165,
+      "5": 102,
+      "6": 2487,
+      "7": 129,
+      "8": 21
+    },
+    "argmax_change_from_2022_by_year": {
+      "2023": 0,
+      "2024": 0,
+      "2025": 0
+    },
+    "argmax_step_change_by_year": {
+      "2023": 0,
+      "2024": 0,
+      "2025": 0
+    }
+  },
+  "resource_usage": {
+    "wall_time_seconds": 0.03262200008612126,
+    "peak_memory_bytes": 208093184,
+    "temporary_bytes": 10919,
+    "exit_status": 0
+  },
+  "replay": {
+    "deterministic_candidate": true,
+    "required": true,
+    "verified": false,
+    "note": "verified is set only by the independent replay command"
+  },
+  "claim_boundary": {
+    "baseline_only": true,
+    "model_quality_claimed_before_labels": false,
+    "operational_forecast_supported": false
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "schema": "gwm_bench.foundation_v4_run_report.v1",
+  "model_id": "fixed_adjacency_spatial_ar",
+  "adapter_id": "runtime_r3_ridge",
+  "seed": null,
+  "wall_seconds": 0.14449962507933378,
+  "ru_maxrss_raw": 775290880,
+  "exit_status": "success",
+  "failure_state": null,
+  "test_target_rows_loaded": false,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/fixed_adjacency_spatial_ar/prediction.parquet",
+    "bytes": 100935,
+    "sha256": "640a1a08fab607c93d6efdc47be506f30e9f2191e543ddb3d5f145c43eb9a9ad"
+  },
+  "model_spec": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/fixed_adjacency_spatial_ar/model_spec.json",
+    "bytes": 326,
+    "sha256": "cc459b5d1443be4952fe6bed974759a6a497f5b1f9369b0361498405418c0616"
+  },
+  "training_manifest": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/fixed_adjacency_spatial_ar/training_row_manifest.json",
+    "bytes": 381,
+    "sha256": "4cc0e248a4799a884fd522123a8153b9a2ea48a21845af7c294fbffaa7b5ed93"
+  },
+  "runtime_environment": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/fixed_adjacency_spatial_ar/runtime_environment.json",
+    "bytes": 409,
+    "sha256": "e083ae1afad6261e76149202e892cc44bfd68033a9450e32614ce47205499499"
+  }
+}

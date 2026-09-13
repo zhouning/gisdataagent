@@ -1,0 +1,2 @@
+﻿layer_id,layer_name,layer_type,geometry_type,row_count,admin_scope,time_scope,crs,source_system,source_version,storage_format,lakehouse_table,partition_columns,spatial_index,sensitivity_level,raw_geometry_export_allowed,notes
+LAYER-001,parcel_current_alias,parcel_current,Polygon,120000000,national,2025,EPSG:4490,authoritative_inner_network_system,2025-v1,iceberg,true,"province_code,year",h3,internal,false,raw geometry stays in inner network

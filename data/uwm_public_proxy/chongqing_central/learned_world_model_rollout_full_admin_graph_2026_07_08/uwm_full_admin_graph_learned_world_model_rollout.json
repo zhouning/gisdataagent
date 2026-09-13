@@ -1,0 +1,1493 @@
+{
+  "schema": "uwm.offline_world_model_rollout_planner_report.v1",
+  "model_id": "uwm-full-admin-graph-learned-world-model-rollout-2026-07-08",
+  "created_at": "2026-07-08T13:20:00Z",
+  "backend": "multi_step_action_conditioned_learned_rollout_v0",
+  "source_report_schema": "uwm.model_based_graph_search_report.v1",
+  "world_model": {
+    "model_class": "linear_ridge_action_conditioned_dynamics",
+    "feature_names": [
+      "bias",
+      "action_increase_green_infrastructure",
+      "action_traffic_emission_control",
+      "action_add_community_service",
+      "action_other",
+      "intensity",
+      "target_heat_risk",
+      "target_air_pollution_exposure",
+      "target_service_gap",
+      "target_equity",
+      "target_livability_gap",
+      "target_degree_norm",
+      "target_travel_time_min_norm",
+      "target_road_segment_count_norm",
+      "target_road_length_km_norm",
+      "target_mean_road_speed_kmh_norm",
+      "target_capacity_norm",
+      "target_essential_norm",
+      "target_travel_time_inverse_norm",
+      "mask_heat_risk",
+      "mask_air_pollution",
+      "mask_service_gap",
+      "step_index_norm"
+    ],
+    "target_names": [
+      "reward",
+      "heat_risk_delta",
+      "air_pollution_exposure_delta",
+      "service_accessibility_delta",
+      "equity_delta",
+      "livability_delta"
+    ],
+    "coefficients": {
+      "reward": {
+        "bias": -0.007813417,
+        "action_increase_green_infrastructure": 9.7248e-05,
+        "action_traffic_emission_control": -6.7301e-05,
+        "action_add_community_service": -2.9946e-05,
+        "action_other": 0.0,
+        "intensity": 0.0,
+        "target_heat_risk": -0.000454697,
+        "target_air_pollution_exposure": -0.000374026,
+        "target_service_gap": -0.000776748,
+        "target_equity": 0.000750132,
+        "target_livability_gap": 0.000750132,
+        "target_degree_norm": 0.021372173,
+        "target_travel_time_min_norm": 1.8181e-05,
+        "target_road_segment_count_norm": -2.7715e-05,
+        "target_road_length_km_norm": 7.8378e-05,
+        "target_mean_road_speed_kmh_norm": 3.4434e-05,
+        "target_capacity_norm": 0.0,
+        "target_essential_norm": 0.0,
+        "target_travel_time_inverse_norm": -1.8178e-05,
+        "mask_heat_risk": 9.7248e-05,
+        "mask_air_pollution": -6.7301e-05,
+        "mask_service_gap": -2.9946e-05,
+        "step_index_norm": 0.079987504
+      },
+      "heat_risk_delta": {
+        "bias": -0.00037202,
+        "action_increase_green_infrastructure": -0.000444084,
+        "action_traffic_emission_control": 0.000218494,
+        "action_add_community_service": 0.000225591,
+        "action_other": 0.0,
+        "intensity": 0.0,
+        "target_heat_risk": 0.000310778,
+        "target_air_pollution_exposure": 0.000257773,
+        "target_service_gap": 0.000500459,
+        "target_equity": -0.000526031,
+        "target_livability_gap": -0.000526031,
+        "target_degree_norm": -0.002437022,
+        "target_travel_time_min_norm": -1.1353e-05,
+        "target_road_segment_count_norm": -2.7304e-05,
+        "target_road_length_km_norm": -9.484e-06,
+        "target_mean_road_speed_kmh_norm": 7.821e-06,
+        "target_capacity_norm": 0.0,
+        "target_essential_norm": 0.0,
+        "target_travel_time_inverse_norm": 1.1352e-05,
+        "mask_heat_risk": -0.000444084,
+        "mask_air_pollution": 0.000218494,
+        "mask_service_gap": 0.000225591,
+        "step_index_norm": -0.018149401
+      },
+      "air_pollution_exposure_delta": {
+        "bias": -0.000467343,
+        "action_increase_green_infrastructure": 7.2174e-05,
+        "action_traffic_emission_control": -0.000337775,
+        "action_add_community_service": 0.0002656,
+        "action_other": 0.0,
+        "intensity": 0.0,
+        "target_heat_risk": 0.000383358,
+        "target_air_pollution_exposure": 0.000316693,
+        "target_service_gap": 0.000657616,
+        "target_equity": -0.000652154,
+        "target_livability_gap": -0.000652154,
+        "target_degree_norm": -0.002759334,
+        "target_travel_time_min_norm": -2.1934e-05,
+        "target_road_segment_count_norm": -1.259e-06,
+        "target_road_length_km_norm": -1.7148e-05,
+        "target_mean_road_speed_kmh_norm": 2.146e-06,
+        "target_capacity_norm": 0.0,
+        "target_essential_norm": 0.0,
+        "target_travel_time_inverse_norm": 2.1933e-05,
+        "mask_heat_risk": 7.2174e-05,
+        "mask_air_pollution": -0.000337775,
+        "mask_service_gap": 0.0002656,
+        "step_index_norm": -0.005101298
+      },
+      "service_accessibility_delta": {
+        "bias": -0.000284664,
+        "action_increase_green_infrastructure": -0.000136839,
+        "action_traffic_emission_control": -0.000196673,
+        "action_add_community_service": 0.000333511,
+        "action_other": 0.0,
+        "intensity": 0.0,
+        "target_heat_risk": -0.00041428,
+        "target_air_pollution_exposure": -0.000338,
+        "target_service_gap": -0.000730962,
+        "target_equity": 0.000657214,
+        "target_livability_gap": 0.000657214,
+        "target_degree_norm": 0.040880807,
+        "target_travel_time_min_norm": 1.034e-05,
+        "target_road_segment_count_norm": -8.2288e-05,
+        "target_road_length_km_norm": 0.000143576,
+        "target_mean_road_speed_kmh_norm": 7.793e-05,
+        "target_capacity_norm": 0.0,
+        "target_essential_norm": 0.0,
+        "target_travel_time_inverse_norm": -1.034e-05,
+        "mask_heat_risk": -0.000136839,
+        "mask_air_pollution": -0.000196673,
+        "mask_service_gap": 0.000333511,
+        "step_index_norm": 0.001616703
+      },
+      "equity_delta": {
+        "bias": 1.4646e-05,
+        "action_increase_green_infrastructure": -9.286e-06,
+        "action_traffic_emission_control": -3.99e-05,
+        "action_add_community_service": 4.9187e-05,
+        "action_other": 0.0,
+        "intensity": 0.0,
+        "target_heat_risk": -0.000235442,
+        "target_air_pollution_exposure": -0.000193156,
+        "target_service_gap": -0.000407271,
+        "target_equity": 0.00038388,
+        "target_livability_gap": 0.00038388,
+        "target_degree_norm": 0.01475222,
+        "target_travel_time_min_norm": 8.167e-06,
+        "target_road_segment_count_norm": -2.5107e-05,
+        "target_road_length_km_norm": 5.3056e-05,
+        "target_mean_road_speed_kmh_norm": 2.5615e-05,
+        "target_capacity_norm": 0.0,
+        "target_essential_norm": 0.0,
+        "target_travel_time_inverse_norm": -8.167e-06,
+        "mask_heat_risk": -9.286e-06,
+        "mask_air_pollution": -3.99e-05,
+        "mask_service_gap": 4.9187e-05,
+        "step_index_norm": 0.003334284
+      },
+      "livability_delta": {
+        "bias": 0.000178073,
+        "action_increase_green_infrastructure": 0.000101783,
+        "action_traffic_emission_control": -4.7182e-05,
+        "action_add_community_service": -5.4601e-05,
+        "action_other": 0.0,
+        "intensity": 0.0,
+        "target_heat_risk": -0.000343498,
+        "target_air_pollution_exposure": -0.000282867,
+        "target_service_gap": -0.000583396,
+        "target_equity": 0.000569035,
+        "target_livability_gap": 0.000569035,
+        "target_degree_norm": 0.013975826,
+        "target_travel_time_min_norm": 1.3267e-05,
+        "target_road_segment_count_norm": -1.4467e-05,
+        "target_road_length_km_norm": 5.1459e-05,
+        "target_mean_road_speed_kmh_norm": 2.0051e-05,
+        "target_capacity_norm": 0.0,
+        "target_essential_norm": 0.0,
+        "target_travel_time_inverse_norm": -1.3267e-05,
+        "mask_heat_risk": 0.000101783,
+        "mask_air_pollution": -4.7182e-05,
+        "mask_service_gap": -5.4601e-05,
+        "step_index_norm": 0.008531934
+      }
+    },
+    "reward_residual_std_by_action_type": {
+      "add_community_service": 3.891e-05,
+      "increase_green_infrastructure": 6.5483e-05,
+      "traffic_emission_control": 3.9426e-05
+    },
+    "global_reward_residual_std": 4.138e-05
+  },
+  "training_summary": {
+    "transition_count": 6817,
+    "train_count": 5844,
+    "holdout_count": 973,
+    "holdout_stride": 7,
+    "ridge": 0.001,
+    "uncertainty_penalty": 0.5,
+    "source_graph_node_count": 1017,
+    "source_graph_edge_count": 7932,
+    "source_available_action_count": 1137
+  },
+  "holdout_metrics": {
+    "reward_mae": 3.2363e-05,
+    "reward_win_count_vs_train_mean": 973,
+    "case_count": 973,
+    "dynamics_mae_by_target": {
+      "heat_risk_delta": 4.7398e-05,
+      "air_pollution_exposure_delta": 2.3891e-05,
+      "service_accessibility_delta": 7.0409e-05,
+      "equity_delta": 2.3583e-05,
+      "livability_delta": 2.8648e-05
+    }
+  },
+  "baseline_metrics": {
+    "baseline": "train_mean_dynamics_and_reward",
+    "train_mean_reward": -0.000835556,
+    "train_mean_reward_mae": 0.00222562,
+    "train_mean_mae_by_target": {
+      "reward": 0.00222562,
+      "heat_risk_delta": 0.000515613,
+      "air_pollution_exposure_delta": 0.00019195,
+      "service_accessibility_delta": 0.000278574,
+      "equity_delta": 0.000112498,
+      "livability_delta": 0.000241026
+    }
+  },
+  "learned_rollout_planner": {
+    "policy_backend": "multi_step_action_conditioned_learned_rollout_v0",
+    "search_config": {
+      "horizon": 2,
+      "beam_width": 5,
+      "candidate_action_count": 1137,
+      "uncertainty_penalty": 0.5,
+      "state_update": "apply_predicted_dynamics_to_target_unit_latent_features"
+    },
+    "sequence_ranking": [
+      {
+        "action_count": 2,
+        "action_sequence": [
+          {
+            "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "沙坪坝区|石井坡街道|793"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "causal_question_id": "uwm-cq-green-heat-livability",
+            "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+            "primary_outcome": "heat_risk",
+            "identification_status": "underidentified_for_observed_policy_effect",
+            "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+            "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+            "required_authoritative_tables": [
+              "policy_project_history",
+              "action_constraint_cost_model",
+              "observed_outcome_validation_panel",
+              "causal_effect_calibration_panel",
+              "human_governance_review_log"
+            ],
+            "policy_outcome_claim_allowed": false,
+            "causal_claim_level": "conditional_simulation_contract",
+            "observed_policy_outcome_superiority_claim": false,
+            "empirical_superiority_claim": false
+          },
+          {
+            "action_id": "increase_green_infrastructure-九龙坡区|中梁山街道|91",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "九龙坡区|中梁山街道|91"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "causal_question_id": "uwm-cq-green-heat-livability",
+            "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+            "primary_outcome": "heat_risk",
+            "identification_status": "underidentified_for_observed_policy_effect",
+            "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+            "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+            "required_authoritative_tables": [
+              "policy_project_history",
+              "action_constraint_cost_model",
+              "observed_outcome_validation_panel",
+              "causal_effect_calibration_panel",
+              "human_governance_review_log"
+            ],
+            "policy_outcome_claim_allowed": false,
+            "causal_claim_level": "conditional_simulation_contract",
+            "observed_policy_outcome_superiority_claim": false,
+            "empirical_superiority_claim": false
+          }
+        ],
+        "imagined_cumulative_predicted_reward": -0.006123813,
+        "imagined_cumulative_conservative_reward": -0.006189296,
+        "imagined_steps": [
+          {
+            "step_index": 0,
+            "action": {
+              "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "沙坪坝区|石井坡街道|793"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold",
+              "causal_question_id": "uwm-cq-green-heat-livability",
+              "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+              "primary_outcome": "heat_risk",
+              "identification_status": "underidentified_for_observed_policy_effect",
+              "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+              "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+              "required_authoritative_tables": [
+                "policy_project_history",
+                "action_constraint_cost_model",
+                "observed_outcome_validation_panel",
+                "causal_effect_calibration_panel",
+                "human_governance_review_log"
+              ],
+              "policy_outcome_claim_allowed": false,
+              "causal_claim_level": "conditional_simulation_contract",
+              "observed_policy_outcome_superiority_claim": false,
+              "empirical_superiority_claim": false
+            },
+            "predicted_reward": -0.007054184,
+            "reward_uncertainty": 6.5483e-05,
+            "conservative_reward": -0.007086926,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.001360902,
+              "air_pollution_exposure_delta": -0.000411192,
+              "service_accessibility_delta": 0.000480193,
+              "equity_delta": 0.000377881,
+              "livability_delta": 0.000755844
+            },
+            "post_state_features": {
+              "沙坪坝区|石井坡街道|793": {
+                "heat_risk": 0.722258098,
+                "air_pollution_exposure": 0.613513808,
+                "service_accessibility": 0.247005193,
+                "service_gap": 0.752994807,
+                "equity": 0.771704881,
+                "livability": 0.229428844,
+                "travel_time_min_norm": 0.018209691,
+                "road_segment_count_norm": 0.061749571,
+                "road_length_km_norm": 0.063635162,
+                "mean_road_speed_kmh_norm": 0.545061775,
+                "capacity_norm": 0.0,
+                "essential_norm": 0.0,
+                "travel_time_inverse_norm": 0.981790309
+              }
+            }
+          },
+          {
+            "step_index": 1,
+            "action": {
+              "action_id": "increase_green_infrastructure-九龙坡区|中梁山街道|91",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "九龙坡区|中梁山街道|91"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold",
+              "causal_question_id": "uwm-cq-green-heat-livability",
+              "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+              "primary_outcome": "heat_risk",
+              "identification_status": "underidentified_for_observed_policy_effect",
+              "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+              "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+              "required_authoritative_tables": [
+                "policy_project_history",
+                "action_constraint_cost_model",
+                "observed_outcome_validation_panel",
+                "causal_effect_calibration_panel",
+                "human_governance_review_log"
+              ],
+              "policy_outcome_claim_allowed": false,
+              "causal_claim_level": "conditional_simulation_contract",
+              "observed_policy_outcome_superiority_claim": false,
+              "empirical_superiority_claim": false
+            },
+            "predicted_reward": 0.000930371,
+            "reward_uncertainty": 6.5483e-05,
+            "conservative_reward": 0.00089763,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.003155715,
+              "air_pollution_exposure_delta": -0.000899229,
+              "service_accessibility_delta": 0.000645152,
+              "equity_delta": 0.00070684,
+              "livability_delta": 0.001596622
+            },
+            "post_state_features": {
+              "九龙坡区|中梁山街道|91": {
+                "heat_risk": 0.813294285,
+                "air_pollution_exposure": 0.689556771,
+                "service_accessibility": 0.503111152,
+                "service_gap": 0.496888848,
+                "equity": 0.66790184,
+                "livability": 0.334401622,
+                "travel_time_min_norm": 0.007665058,
+                "road_segment_count_norm": 0.305317324,
+                "road_length_km_norm": 0.368521374,
+                "mean_road_speed_kmh_norm": 0.466678488,
+                "capacity_norm": 0.0,
+                "essential_norm": 0.0,
+                "travel_time_inverse_norm": 0.992334942
+              }
+            }
+          }
+        ]
+      },
+      {
+        "action_count": 2,
+        "action_sequence": [
+          {
+            "action_id": "increase_green_infrastructure-九龙坡区|中梁山街道|91",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "九龙坡区|中梁山街道|91"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "causal_question_id": "uwm-cq-green-heat-livability",
+            "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+            "primary_outcome": "heat_risk",
+            "identification_status": "underidentified_for_observed_policy_effect",
+            "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+            "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+            "required_authoritative_tables": [
+              "policy_project_history",
+              "action_constraint_cost_model",
+              "observed_outcome_validation_panel",
+              "causal_effect_calibration_panel",
+              "human_governance_review_log"
+            ],
+            "policy_outcome_claim_allowed": false,
+            "causal_claim_level": "conditional_simulation_contract",
+            "observed_policy_outcome_superiority_claim": false,
+            "empirical_superiority_claim": false
+          },
+          {
+            "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "沙坪坝区|石井坡街道|793"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "causal_question_id": "uwm-cq-green-heat-livability",
+            "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+            "primary_outcome": "heat_risk",
+            "identification_status": "underidentified_for_observed_policy_effect",
+            "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+            "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+            "required_authoritative_tables": [
+              "policy_project_history",
+              "action_constraint_cost_model",
+              "observed_outcome_validation_panel",
+              "causal_effect_calibration_panel",
+              "human_governance_review_log"
+            ],
+            "policy_outcome_claim_allowed": false,
+            "causal_claim_level": "conditional_simulation_contract",
+            "observed_policy_outcome_superiority_claim": false,
+            "empirical_superiority_claim": false
+          }
+        ],
+        "imagined_cumulative_predicted_reward": -0.006123813,
+        "imagined_cumulative_conservative_reward": -0.006189297,
+        "imagined_steps": [
+          {
+            "step_index": 0,
+            "action": {
+              "action_id": "increase_green_infrastructure-九龙坡区|中梁山街道|91",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "九龙坡区|中梁山街道|91"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold",
+              "causal_question_id": "uwm-cq-green-heat-livability",
+              "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+              "primary_outcome": "heat_risk",
+              "identification_status": "underidentified_for_observed_policy_effect",
+              "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+              "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+              "required_authoritative_tables": [
+                "policy_project_history",
+                "action_constraint_cost_model",
+                "observed_outcome_validation_panel",
+                "causal_effect_calibration_panel",
+                "human_governance_review_log"
+              ],
+              "policy_outcome_claim_allowed": false,
+              "causal_claim_level": "conditional_simulation_contract",
+              "observed_policy_outcome_superiority_claim": false,
+              "empirical_superiority_claim": false
+            },
+            "predicted_reward": -0.007068379,
+            "reward_uncertainty": 6.5483e-05,
+            "conservative_reward": -0.007101121,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.001340775,
+              "air_pollution_exposure_delta": -0.000389099,
+              "service_accessibility_delta": 0.000483482,
+              "equity_delta": 0.000373412,
+              "livability_delta": 0.000743428
+            },
+            "post_state_features": {
+              "九龙坡区|中梁山街道|91": {
+                "heat_risk": 0.815109225,
+                "air_pollution_exposure": 0.690066901,
+                "service_accessibility": 0.502949482,
+                "service_gap": 0.497050518,
+                "equity": 0.667568412,
+                "livability": 0.333548428,
+                "travel_time_min_norm": 0.007665058,
+                "road_segment_count_norm": 0.305317324,
+                "road_length_km_norm": 0.368521374,
+                "mean_road_speed_kmh_norm": 0.466678488,
+                "capacity_norm": 0.0,
+                "essential_norm": 0.0,
+                "travel_time_inverse_norm": 0.992334942
+              }
+            }
+          },
+          {
+            "step_index": 1,
+            "action": {
+              "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "沙坪坝区|石井坡街道|793"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold",
+              "causal_question_id": "uwm-cq-green-heat-livability",
+              "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+              "primary_outcome": "heat_risk",
+              "identification_status": "underidentified_for_observed_policy_effect",
+              "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+              "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+              "required_authoritative_tables": [
+                "policy_project_history",
+                "action_constraint_cost_model",
+                "observed_outcome_validation_panel",
+                "causal_effect_calibration_panel",
+                "human_governance_review_log"
+              ],
+              "policy_outcome_claim_allowed": false,
+              "causal_claim_level": "conditional_simulation_contract",
+              "observed_policy_outcome_superiority_claim": false,
+              "empirical_superiority_claim": false
+            },
+            "predicted_reward": 0.000944566,
+            "reward_uncertainty": 6.5483e-05,
+            "conservative_reward": 0.000911824,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.003175842,
+              "air_pollution_exposure_delta": -0.000921322,
+              "service_accessibility_delta": 0.000641864,
+              "equity_delta": 0.000711309,
+              "livability_delta": 0.001609038
+            },
+            "post_state_features": {
+              "沙坪坝区|石井坡街道|793": {
+                "heat_risk": 0.720443158,
+                "air_pollution_exposure": 0.613003678,
+                "service_accessibility": 0.247166864,
+                "service_gap": 0.752833136,
+                "equity": 0.772038309,
+                "livability": 0.230282038,
+                "travel_time_min_norm": 0.018209691,
+                "road_segment_count_norm": 0.061749571,
+                "road_length_km_norm": 0.063635162,
+                "mean_road_speed_kmh_norm": 0.545061775,
+                "capacity_norm": 0.0,
+                "essential_norm": 0.0,
+                "travel_time_inverse_norm": 0.981790309
+              }
+            }
+          }
+        ]
+      },
+      {
+        "action_count": 2,
+        "action_sequence": [
+          {
+            "action_id": "increase_green_infrastructure-巴南区|李家沱街道|583",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "巴南区|李家沱街道|583"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "causal_question_id": "uwm-cq-green-heat-livability",
+            "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+            "primary_outcome": "heat_risk",
+            "identification_status": "underidentified_for_observed_policy_effect",
+            "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+            "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+            "required_authoritative_tables": [
+              "policy_project_history",
+              "action_constraint_cost_model",
+              "observed_outcome_validation_panel",
+              "causal_effect_calibration_panel",
+              "human_governance_review_log"
+            ],
+            "policy_outcome_claim_allowed": false,
+            "causal_claim_level": "conditional_simulation_contract",
+            "observed_policy_outcome_superiority_claim": false,
+            "empirical_superiority_claim": false
+          },
+          {
+            "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "沙坪坝区|石井坡街道|793"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "causal_question_id": "uwm-cq-green-heat-livability",
+            "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+            "primary_outcome": "heat_risk",
+            "identification_status": "underidentified_for_observed_policy_effect",
+            "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+            "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+            "required_authoritative_tables": [
+              "policy_project_history",
+              "action_constraint_cost_model",
+              "observed_outcome_validation_panel",
+              "causal_effect_calibration_panel",
+              "human_governance_review_log"
+            ],
+            "policy_outcome_claim_allowed": false,
+            "causal_claim_level": "conditional_simulation_contract",
+            "observed_policy_outcome_superiority_claim": false,
+            "empirical_superiority_claim": false
+          }
+        ],
+        "imagined_cumulative_predicted_reward": -0.006143175,
+        "imagined_cumulative_conservative_reward": -0.006208658,
+        "imagined_steps": [
+          {
+            "step_index": 0,
+            "action": {
+              "action_id": "increase_green_infrastructure-巴南区|李家沱街道|583",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "巴南区|李家沱街道|583"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold",
+              "causal_question_id": "uwm-cq-green-heat-livability",
+              "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+              "primary_outcome": "heat_risk",
+              "identification_status": "underidentified_for_observed_policy_effect",
+              "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+              "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+              "required_authoritative_tables": [
+                "policy_project_history",
+                "action_constraint_cost_model",
+                "observed_outcome_validation_panel",
+                "causal_effect_calibration_panel",
+                "human_governance_review_log"
+              ],
+              "policy_outcome_claim_allowed": false,
+              "causal_claim_level": "conditional_simulation_contract",
+              "observed_policy_outcome_superiority_claim": false,
+              "empirical_superiority_claim": false
+            },
+            "predicted_reward": -0.007087741,
+            "reward_uncertainty": 6.5483e-05,
+            "conservative_reward": -0.007120482,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.001341676,
+              "air_pollution_exposure_delta": -0.000392311,
+              "service_accessibility_delta": 0.000439778,
+              "equity_delta": 0.000358971,
+              "livability_delta": 0.000731454
+            },
+            "post_state_features": {
+              "巴南区|李家沱街道|583": {
+                "heat_risk": 0.778340324,
+                "air_pollution_exposure": 0.659751689,
+                "service_accessibility": 0.480231778,
+                "service_gap": 0.519768222,
+                "equity": 0.667045971,
+                "livability": 0.334044454,
+                "travel_time_min_norm": 0.014252864,
+                "road_segment_count_norm": 0.195540309,
+                "road_length_km_norm": 0.230180929,
+                "mean_road_speed_kmh_norm": 0.453705925,
+                "capacity_norm": 0.0,
+                "essential_norm": 0.0,
+                "travel_time_inverse_norm": 0.985747136
+              }
+            }
+          },
+          {
+            "step_index": 1,
+            "action": {
+              "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "沙坪坝区|石井坡街道|793"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold",
+              "causal_question_id": "uwm-cq-green-heat-livability",
+              "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+              "primary_outcome": "heat_risk",
+              "identification_status": "underidentified_for_observed_policy_effect",
+              "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+              "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+              "required_authoritative_tables": [
+                "policy_project_history",
+                "action_constraint_cost_model",
+                "observed_outcome_validation_panel",
+                "causal_effect_calibration_panel",
+                "human_governance_review_log"
+              ],
+              "policy_outcome_claim_allowed": false,
+              "causal_claim_level": "conditional_simulation_contract",
+              "observed_policy_outcome_superiority_claim": false,
+              "empirical_superiority_claim": false
+            },
+            "predicted_reward": 0.000944566,
+            "reward_uncertainty": 6.5483e-05,
+            "conservative_reward": 0.000911824,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.003175842,
+              "air_pollution_exposure_delta": -0.000921322,
+              "service_accessibility_delta": 0.000641864,
+              "equity_delta": 0.000711309,
+              "livability_delta": 0.001609038
+            },
+            "post_state_features": {
+              "沙坪坝区|石井坡街道|793": {
+                "heat_risk": 0.720443158,
+                "air_pollution_exposure": 0.613003678,
+                "service_accessibility": 0.247166864,
+                "service_gap": 0.752833136,
+                "equity": 0.772038309,
+                "livability": 0.230282038,
+                "travel_time_min_norm": 0.018209691,
+                "road_segment_count_norm": 0.061749571,
+                "road_length_km_norm": 0.063635162,
+                "mean_road_speed_kmh_norm": 0.545061775,
+                "capacity_norm": 0.0,
+                "essential_norm": 0.0,
+                "travel_time_inverse_norm": 0.981790309
+              }
+            }
+          }
+        ]
+      },
+      {
+        "action_count": 2,
+        "action_sequence": [
+          {
+            "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "沙坪坝区|石井坡街道|793"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "causal_question_id": "uwm-cq-green-heat-livability",
+            "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+            "primary_outcome": "heat_risk",
+            "identification_status": "underidentified_for_observed_policy_effect",
+            "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+            "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+            "required_authoritative_tables": [
+              "policy_project_history",
+              "action_constraint_cost_model",
+              "observed_outcome_validation_panel",
+              "causal_effect_calibration_panel",
+              "human_governance_review_log"
+            ],
+            "policy_outcome_claim_allowed": false,
+            "causal_claim_level": "conditional_simulation_contract",
+            "observed_policy_outcome_superiority_claim": false,
+            "empirical_superiority_claim": false
+          },
+          {
+            "action_id": "increase_green_infrastructure-巴南区|李家沱街道|583",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "巴南区|李家沱街道|583"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "causal_question_id": "uwm-cq-green-heat-livability",
+            "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+            "primary_outcome": "heat_risk",
+            "identification_status": "underidentified_for_observed_policy_effect",
+            "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+            "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+            "required_authoritative_tables": [
+              "policy_project_history",
+              "action_constraint_cost_model",
+              "observed_outcome_validation_panel",
+              "causal_effect_calibration_panel",
+              "human_governance_review_log"
+            ],
+            "policy_outcome_claim_allowed": false,
+            "causal_claim_level": "conditional_simulation_contract",
+            "observed_policy_outcome_superiority_claim": false,
+            "empirical_superiority_claim": false
+          }
+        ],
+        "imagined_cumulative_predicted_reward": -0.006143174,
+        "imagined_cumulative_conservative_reward": -0.006208658,
+        "imagined_steps": [
+          {
+            "step_index": 0,
+            "action": {
+              "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "沙坪坝区|石井坡街道|793"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold",
+              "causal_question_id": "uwm-cq-green-heat-livability",
+              "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+              "primary_outcome": "heat_risk",
+              "identification_status": "underidentified_for_observed_policy_effect",
+              "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+              "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+              "required_authoritative_tables": [
+                "policy_project_history",
+                "action_constraint_cost_model",
+                "observed_outcome_validation_panel",
+                "causal_effect_calibration_panel",
+                "human_governance_review_log"
+              ],
+              "policy_outcome_claim_allowed": false,
+              "causal_claim_level": "conditional_simulation_contract",
+              "observed_policy_outcome_superiority_claim": false,
+              "empirical_superiority_claim": false
+            },
+            "predicted_reward": -0.007054184,
+            "reward_uncertainty": 6.5483e-05,
+            "conservative_reward": -0.007086926,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.001360902,
+              "air_pollution_exposure_delta": -0.000411192,
+              "service_accessibility_delta": 0.000480193,
+              "equity_delta": 0.000377881,
+              "livability_delta": 0.000755844
+            },
+            "post_state_features": {
+              "沙坪坝区|石井坡街道|793": {
+                "heat_risk": 0.722258098,
+                "air_pollution_exposure": 0.613513808,
+                "service_accessibility": 0.247005193,
+                "service_gap": 0.752994807,
+                "equity": 0.771704881,
+                "livability": 0.229428844,
+                "travel_time_min_norm": 0.018209691,
+                "road_segment_count_norm": 0.061749571,
+                "road_length_km_norm": 0.063635162,
+                "mean_road_speed_kmh_norm": 0.545061775,
+                "capacity_norm": 0.0,
+                "essential_norm": 0.0,
+                "travel_time_inverse_norm": 0.981790309
+              }
+            }
+          },
+          {
+            "step_index": 1,
+            "action": {
+              "action_id": "increase_green_infrastructure-巴南区|李家沱街道|583",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "巴南区|李家沱街道|583"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold",
+              "causal_question_id": "uwm-cq-green-heat-livability",
+              "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+              "primary_outcome": "heat_risk",
+              "identification_status": "underidentified_for_observed_policy_effect",
+              "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+              "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+              "required_authoritative_tables": [
+                "policy_project_history",
+                "action_constraint_cost_model",
+                "observed_outcome_validation_panel",
+                "causal_effect_calibration_panel",
+                "human_governance_review_log"
+              ],
+              "policy_outcome_claim_allowed": false,
+              "causal_claim_level": "conditional_simulation_contract",
+              "observed_policy_outcome_superiority_claim": false,
+              "empirical_superiority_claim": false
+            },
+            "predicted_reward": 0.00091101,
+            "reward_uncertainty": 6.5483e-05,
+            "conservative_reward": 0.000878268,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.003156617,
+              "air_pollution_exposure_delta": -0.000902441,
+              "service_accessibility_delta": 0.000601448,
+              "equity_delta": 0.000692399,
+              "livability_delta": 0.001584648
+            },
+            "post_state_features": {
+              "巴南区|李家沱街道|583": {
+                "heat_risk": 0.776525383,
+                "air_pollution_exposure": 0.659241559,
+                "service_accessibility": 0.480393448,
+                "service_gap": 0.519606552,
+                "equity": 0.667379399,
+                "livability": 0.334897648,
+                "travel_time_min_norm": 0.014252864,
+                "road_segment_count_norm": 0.195540309,
+                "road_length_km_norm": 0.230180929,
+                "mean_road_speed_kmh_norm": 0.453705925,
+                "capacity_norm": 0.0,
+                "essential_norm": 0.0,
+                "travel_time_inverse_norm": 0.985747136
+              }
+            }
+          }
+        ]
+      },
+      {
+        "action_count": 2,
+        "action_sequence": [
+          {
+            "action_id": "increase_green_infrastructure-巴南区|李家沱街道|583",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "巴南区|李家沱街道|583"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "causal_question_id": "uwm-cq-green-heat-livability",
+            "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+            "primary_outcome": "heat_risk",
+            "identification_status": "underidentified_for_observed_policy_effect",
+            "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+            "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+            "required_authoritative_tables": [
+              "policy_project_history",
+              "action_constraint_cost_model",
+              "observed_outcome_validation_panel",
+              "causal_effect_calibration_panel",
+              "human_governance_review_log"
+            ],
+            "policy_outcome_claim_allowed": false,
+            "causal_claim_level": "conditional_simulation_contract",
+            "observed_policy_outcome_superiority_claim": false,
+            "empirical_superiority_claim": false
+          },
+          {
+            "action_id": "increase_green_infrastructure-九龙坡区|中梁山街道|91",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "九龙坡区|中梁山街道|91"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "causal_question_id": "uwm-cq-green-heat-livability",
+            "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+            "primary_outcome": "heat_risk",
+            "identification_status": "underidentified_for_observed_policy_effect",
+            "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+            "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+            "required_authoritative_tables": [
+              "policy_project_history",
+              "action_constraint_cost_model",
+              "observed_outcome_validation_panel",
+              "causal_effect_calibration_panel",
+              "human_governance_review_log"
+            ],
+            "policy_outcome_claim_allowed": false,
+            "causal_claim_level": "conditional_simulation_contract",
+            "observed_policy_outcome_superiority_claim": false,
+            "empirical_superiority_claim": false
+          }
+        ],
+        "imagined_cumulative_predicted_reward": -0.00615737,
+        "imagined_cumulative_conservative_reward": -0.006222852,
+        "imagined_steps": [
+          {
+            "step_index": 0,
+            "action": {
+              "action_id": "increase_green_infrastructure-巴南区|李家沱街道|583",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "巴南区|李家沱街道|583"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold",
+              "causal_question_id": "uwm-cq-green-heat-livability",
+              "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+              "primary_outcome": "heat_risk",
+              "identification_status": "underidentified_for_observed_policy_effect",
+              "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+              "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+              "required_authoritative_tables": [
+                "policy_project_history",
+                "action_constraint_cost_model",
+                "observed_outcome_validation_panel",
+                "causal_effect_calibration_panel",
+                "human_governance_review_log"
+              ],
+              "policy_outcome_claim_allowed": false,
+              "causal_claim_level": "conditional_simulation_contract",
+              "observed_policy_outcome_superiority_claim": false,
+              "empirical_superiority_claim": false
+            },
+            "predicted_reward": -0.007087741,
+            "reward_uncertainty": 6.5483e-05,
+            "conservative_reward": -0.007120482,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.001341676,
+              "air_pollution_exposure_delta": -0.000392311,
+              "service_accessibility_delta": 0.000439778,
+              "equity_delta": 0.000358971,
+              "livability_delta": 0.000731454
+            },
+            "post_state_features": {
+              "巴南区|李家沱街道|583": {
+                "heat_risk": 0.778340324,
+                "air_pollution_exposure": 0.659751689,
+                "service_accessibility": 0.480231778,
+                "service_gap": 0.519768222,
+                "equity": 0.667045971,
+                "livability": 0.334044454,
+                "travel_time_min_norm": 0.014252864,
+                "road_segment_count_norm": 0.195540309,
+                "road_length_km_norm": 0.230180929,
+                "mean_road_speed_kmh_norm": 0.453705925,
+                "capacity_norm": 0.0,
+                "essential_norm": 0.0,
+                "travel_time_inverse_norm": 0.985747136
+              }
+            }
+          },
+          {
+            "step_index": 1,
+            "action": {
+              "action_id": "increase_green_infrastructure-九龙坡区|中梁山街道|91",
+              "action_type": "increase_green_infrastructure",
+              "target_units": [
+                "九龙坡区|中梁山街道|91"
+              ],
+              "intensity": 1.0,
+              "mask_reason": "heat_risk_above_threshold",
+              "causal_question_id": "uwm-cq-green-heat-livability",
+              "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+              "primary_outcome": "heat_risk",
+              "identification_status": "underidentified_for_observed_policy_effect",
+              "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+              "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+              "required_authoritative_tables": [
+                "policy_project_history",
+                "action_constraint_cost_model",
+                "observed_outcome_validation_panel",
+                "causal_effect_calibration_panel",
+                "human_governance_review_log"
+              ],
+              "policy_outcome_claim_allowed": false,
+              "causal_claim_level": "conditional_simulation_contract",
+              "observed_policy_outcome_superiority_claim": false,
+              "empirical_superiority_claim": false
+            },
+            "predicted_reward": 0.000930371,
+            "reward_uncertainty": 6.5483e-05,
+            "conservative_reward": 0.00089763,
+            "predicted_dynamics": {
+              "heat_risk_delta": -0.003155715,
+              "air_pollution_exposure_delta": -0.000899229,
+              "service_accessibility_delta": 0.000645152,
+              "equity_delta": 0.00070684,
+              "livability_delta": 0.001596622
+            },
+            "post_state_features": {
+              "九龙坡区|中梁山街道|91": {
+                "heat_risk": 0.813294285,
+                "air_pollution_exposure": 0.689556771,
+                "service_accessibility": 0.503111152,
+                "service_gap": 0.496888848,
+                "equity": 0.66790184,
+                "livability": 0.334401622,
+                "travel_time_min_norm": 0.007665058,
+                "road_segment_count_norm": 0.305317324,
+                "road_length_km_norm": 0.368521374,
+                "mean_road_speed_kmh_norm": 0.466678488,
+                "capacity_norm": 0.0,
+                "essential_norm": 0.0,
+                "travel_time_inverse_norm": 0.992334942
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "selected_sequence": {
+      "action_count": 2,
+      "action_sequence": [
+        {
+          "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+          "action_type": "increase_green_infrastructure",
+          "target_units": [
+            "沙坪坝区|石井坡街道|793"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold",
+          "causal_question_id": "uwm-cq-green-heat-livability",
+          "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+          "primary_outcome": "heat_risk",
+          "identification_status": "underidentified_for_observed_policy_effect",
+          "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+          "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+          "required_authoritative_tables": [
+            "policy_project_history",
+            "action_constraint_cost_model",
+            "observed_outcome_validation_panel",
+            "causal_effect_calibration_panel",
+            "human_governance_review_log"
+          ],
+          "policy_outcome_claim_allowed": false,
+          "causal_claim_level": "conditional_simulation_contract",
+          "observed_policy_outcome_superiority_claim": false,
+          "empirical_superiority_claim": false
+        },
+        {
+          "action_id": "increase_green_infrastructure-九龙坡区|中梁山街道|91",
+          "action_type": "increase_green_infrastructure",
+          "target_units": [
+            "九龙坡区|中梁山街道|91"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold",
+          "causal_question_id": "uwm-cq-green-heat-livability",
+          "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+          "primary_outcome": "heat_risk",
+          "identification_status": "underidentified_for_observed_policy_effect",
+          "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+          "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+          "required_authoritative_tables": [
+            "policy_project_history",
+            "action_constraint_cost_model",
+            "observed_outcome_validation_panel",
+            "causal_effect_calibration_panel",
+            "human_governance_review_log"
+          ],
+          "policy_outcome_claim_allowed": false,
+          "causal_claim_level": "conditional_simulation_contract",
+          "observed_policy_outcome_superiority_claim": false,
+          "empirical_superiority_claim": false
+        }
+      ],
+      "imagined_cumulative_predicted_reward": -0.006123813,
+      "imagined_cumulative_conservative_reward": -0.006189296,
+      "imagined_steps": [
+        {
+          "step_index": 0,
+          "action": {
+            "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "沙坪坝区|石井坡街道|793"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "causal_question_id": "uwm-cq-green-heat-livability",
+            "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+            "primary_outcome": "heat_risk",
+            "identification_status": "underidentified_for_observed_policy_effect",
+            "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+            "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+            "required_authoritative_tables": [
+              "policy_project_history",
+              "action_constraint_cost_model",
+              "observed_outcome_validation_panel",
+              "causal_effect_calibration_panel",
+              "human_governance_review_log"
+            ],
+            "policy_outcome_claim_allowed": false,
+            "causal_claim_level": "conditional_simulation_contract",
+            "observed_policy_outcome_superiority_claim": false,
+            "empirical_superiority_claim": false
+          },
+          "predicted_reward": -0.007054184,
+          "reward_uncertainty": 6.5483e-05,
+          "conservative_reward": -0.007086926,
+          "predicted_dynamics": {
+            "heat_risk_delta": -0.001360902,
+            "air_pollution_exposure_delta": -0.000411192,
+            "service_accessibility_delta": 0.000480193,
+            "equity_delta": 0.000377881,
+            "livability_delta": 0.000755844
+          },
+          "post_state_features": {
+            "沙坪坝区|石井坡街道|793": {
+              "heat_risk": 0.722258098,
+              "air_pollution_exposure": 0.613513808,
+              "service_accessibility": 0.247005193,
+              "service_gap": 0.752994807,
+              "equity": 0.771704881,
+              "livability": 0.229428844,
+              "travel_time_min_norm": 0.018209691,
+              "road_segment_count_norm": 0.061749571,
+              "road_length_km_norm": 0.063635162,
+              "mean_road_speed_kmh_norm": 0.545061775,
+              "capacity_norm": 0.0,
+              "essential_norm": 0.0,
+              "travel_time_inverse_norm": 0.981790309
+            }
+          }
+        },
+        {
+          "step_index": 1,
+          "action": {
+            "action_id": "increase_green_infrastructure-九龙坡区|中梁山街道|91",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "九龙坡区|中梁山街道|91"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "causal_question_id": "uwm-cq-green-heat-livability",
+            "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+            "primary_outcome": "heat_risk",
+            "identification_status": "underidentified_for_observed_policy_effect",
+            "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+            "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+            "required_authoritative_tables": [
+              "policy_project_history",
+              "action_constraint_cost_model",
+              "observed_outcome_validation_panel",
+              "causal_effect_calibration_panel",
+              "human_governance_review_log"
+            ],
+            "policy_outcome_claim_allowed": false,
+            "causal_claim_level": "conditional_simulation_contract",
+            "observed_policy_outcome_superiority_claim": false,
+            "empirical_superiority_claim": false
+          },
+          "predicted_reward": 0.000930371,
+          "reward_uncertainty": 6.5483e-05,
+          "conservative_reward": 0.00089763,
+          "predicted_dynamics": {
+            "heat_risk_delta": -0.003155715,
+            "air_pollution_exposure_delta": -0.000899229,
+            "service_accessibility_delta": 0.000645152,
+            "equity_delta": 0.00070684,
+            "livability_delta": 0.001596622
+          },
+          "post_state_features": {
+            "九龙坡区|中梁山街道|91": {
+              "heat_risk": 0.813294285,
+              "air_pollution_exposure": 0.689556771,
+              "service_accessibility": 0.503111152,
+              "service_gap": 0.496888848,
+              "equity": 0.66790184,
+              "livability": 0.334401622,
+              "travel_time_min_norm": 0.007665058,
+              "road_segment_count_norm": 0.305317324,
+              "road_length_km_norm": 0.368521374,
+              "mean_road_speed_kmh_norm": 0.466678488,
+              "capacity_norm": 0.0,
+              "essential_norm": 0.0,
+              "travel_time_inverse_norm": 0.992334942
+            }
+          }
+        }
+      ]
+    },
+    "one_step_policy_baseline": {
+      "action_count": 1,
+      "action_sequence": [
+        {
+          "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+          "action_type": "increase_green_infrastructure",
+          "target_units": [
+            "沙坪坝区|石井坡街道|793"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold",
+          "causal_question_id": "uwm-cq-green-heat-livability",
+          "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+          "primary_outcome": "heat_risk",
+          "identification_status": "underidentified_for_observed_policy_effect",
+          "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+          "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+          "required_authoritative_tables": [
+            "policy_project_history",
+            "action_constraint_cost_model",
+            "observed_outcome_validation_panel",
+            "causal_effect_calibration_panel",
+            "human_governance_review_log"
+          ],
+          "policy_outcome_claim_allowed": false,
+          "causal_claim_level": "conditional_simulation_contract",
+          "observed_policy_outcome_superiority_claim": false,
+          "empirical_superiority_claim": false
+        }
+      ],
+      "imagined_cumulative_predicted_reward": -0.007054184,
+      "imagined_cumulative_conservative_reward": -0.007086926,
+      "imagined_steps": [
+        {
+          "step_index": 0,
+          "action": {
+            "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "沙坪坝区|石井坡街道|793"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "causal_question_id": "uwm-cq-green-heat-livability",
+            "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+            "primary_outcome": "heat_risk",
+            "identification_status": "underidentified_for_observed_policy_effect",
+            "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+            "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+            "required_authoritative_tables": [
+              "policy_project_history",
+              "action_constraint_cost_model",
+              "observed_outcome_validation_panel",
+              "causal_effect_calibration_panel",
+              "human_governance_review_log"
+            ],
+            "policy_outcome_claim_allowed": false,
+            "causal_claim_level": "conditional_simulation_contract",
+            "observed_policy_outcome_superiority_claim": false,
+            "empirical_superiority_claim": false
+          },
+          "predicted_reward": -0.007054184,
+          "reward_uncertainty": 6.5483e-05,
+          "conservative_reward": -0.007086926,
+          "predicted_dynamics": {
+            "heat_risk_delta": -0.001360902,
+            "air_pollution_exposure_delta": -0.000411192,
+            "service_accessibility_delta": 0.000480193,
+            "equity_delta": 0.000377881,
+            "livability_delta": 0.000755844
+          },
+          "post_state_features": {
+            "沙坪坝区|石井坡街道|793": {
+              "heat_risk": 0.722258098,
+              "air_pollution_exposure": 0.613513808,
+              "service_accessibility": 0.247005193,
+              "service_gap": 0.752994807,
+              "equity": 0.771704881,
+              "livability": 0.229428844,
+              "travel_time_min_norm": 0.018209691,
+              "road_segment_count_norm": 0.061749571,
+              "road_length_km_norm": 0.063635162,
+              "mean_road_speed_kmh_norm": 0.545061775,
+              "capacity_norm": 0.0,
+              "essential_norm": 0.0,
+              "travel_time_inverse_norm": 0.981790309
+            }
+          }
+        }
+      ]
+    },
+    "static_single_step_baseline": {
+      "action_count": 1,
+      "action_sequence": [
+        {
+          "action_id": "increase_green_infrastructure-涪陵区|蔺市镇|498",
+          "action_type": "increase_green_infrastructure",
+          "target_units": [
+            "涪陵区|蔺市镇|498"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold",
+          "causal_question_id": "uwm-cq-green-heat-livability",
+          "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+          "primary_outcome": "heat_risk",
+          "identification_status": "underidentified_for_observed_policy_effect",
+          "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+          "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+          "required_authoritative_tables": [
+            "policy_project_history",
+            "action_constraint_cost_model",
+            "observed_outcome_validation_panel",
+            "causal_effect_calibration_panel",
+            "human_governance_review_log"
+          ],
+          "policy_outcome_claim_allowed": false,
+          "causal_claim_level": "conditional_simulation_contract",
+          "observed_policy_outcome_superiority_claim": false,
+          "empirical_superiority_claim": false
+        }
+      ],
+      "imagined_cumulative_predicted_reward": -0.007348657,
+      "imagined_cumulative_conservative_reward": -0.007381399,
+      "imagined_steps": [
+        {
+          "step_index": 0,
+          "action": {
+            "action_id": "increase_green_infrastructure-涪陵区|蔺市镇|498",
+            "action_type": "increase_green_infrastructure",
+            "target_units": [
+              "涪陵区|蔺市镇|498"
+            ],
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "causal_question_id": "uwm-cq-green-heat-livability",
+            "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+            "primary_outcome": "heat_risk",
+            "identification_status": "underidentified_for_observed_policy_effect",
+            "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+            "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+            "required_authoritative_tables": [
+              "policy_project_history",
+              "action_constraint_cost_model",
+              "observed_outcome_validation_panel",
+              "causal_effect_calibration_panel",
+              "human_governance_review_log"
+            ],
+            "policy_outcome_claim_allowed": false,
+            "causal_claim_level": "conditional_simulation_contract",
+            "observed_policy_outcome_superiority_claim": false,
+            "empirical_superiority_claim": false
+          },
+          "predicted_reward": -0.007348657,
+          "reward_uncertainty": 6.5483e-05,
+          "conservative_reward": -0.007381399,
+          "predicted_dynamics": {
+            "heat_risk_delta": -0.001335049,
+            "air_pollution_exposure_delta": -0.000382105,
+            "service_accessibility_delta": -9.6509e-05,
+            "equity_delta": 0.000172218,
+            "livability_delta": 0.000564499
+          },
+          "post_state_features": {
+            "涪陵区|蔺市镇|498": {
+              "heat_risk": 0.806088951,
+              "air_pollution_exposure": 0.682632895,
+              "service_accessibility": 0.221906491,
+              "service_gap": 0.778093509,
+              "equity": 0.832172218,
+              "livability": 0.168564499,
+              "travel_time_min_norm": 0.021669325,
+              "road_segment_count_norm": 0.116638079,
+              "road_length_km_norm": 0.21464529,
+              "mean_road_speed_kmh_norm": 0.620280788,
+              "capacity_norm": 0.0,
+              "essential_norm": 0.0,
+              "travel_time_inverse_norm": 0.978330675
+            }
+          }
+        }
+      ]
+    },
+    "imagined_advantage_over_one_step_policy": 0.00089763,
+    "imagined_advantage_over_static_single_step": 0.001192103
+  },
+  "supported_claim": "full_admin_graph_learned_world_model_rollout_improves_imagined_static_and_one_step_baselines",
+  "observed_policy_outcome_superiority_claim": false,
+  "empirical_superiority_claim": false,
+  "claim_boundary": {
+    "max_claim_level": "bounded_support",
+    "reason": "full-admin learned rollout uses compact simulator replay aggregate dynamics over the 1017-node admin graph; observed policy outcome gates remain open"
+  },
+  "remaining_gates": [
+    "observed_policy_outcome_holdout_required",
+    "off_policy_evaluation_on_observed_or_counterfactual_policy_data_required",
+    "causal_policy_effect_validation_required",
+    "external_air_pollution_holdout_required"
+  ],
+  "experiment_scope": "full_admin_graph",
+  "source_full_admin_graph_planner_replay_path": "data/uwm_public_proxy/chongqing_central/data_calibrated_planner_replay_full_admin_graph_2026_07_08/uwm_full_admin_graph_model_based_graph_search.json",
+  "full_data_guard": {
+    "required_scope": "full_admin_graph",
+    "required_graph_node_count": 1017,
+    "observed_graph_node_count": 1017,
+    "source_replay_full_data_guard_passed": true,
+    "passed": true
+  }
+}

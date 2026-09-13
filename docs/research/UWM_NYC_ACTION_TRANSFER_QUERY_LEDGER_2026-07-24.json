@@ -1,0 +1,80 @@
+{
+  "schema": "uwm.nyc_action_transfer_novelty_query_ledger.v1",
+  "audit_date": "2026-07-24",
+  "search_source": "OpenAlex Works API full-text search",
+  "source_endpoint": "https://api.openalex.org/works",
+  "screening_stages": [
+    "quoted-query retrieval",
+    "title screen",
+    "abstract screen",
+    "DOI normalization and deduplication",
+    "full-text or implementation check for closest neighbors",
+    "backward and forward citation-chain check"
+  ],
+  "doi_deduplicated_core_records": 13,
+  "queries": [
+    {"query": "\"traffic forecasting\" \"distribution shift\"", "result_count": 633, "representative_hits": ["When Spatio-Temporal Meet Wavelets", "LargeST", "XXLTraffic", "Open Spatio-Temporal Foundation Models for Traffic Prediction"]},
+    {"query": "\"continual learning\" \"traffic forecasting\"", "result_count": 253, "representative_hits": ["TrafficStream", "TEAM: Topological Evolution-Aware Framework for Traffic Forecasting"]},
+    {"query": "\"transfer learning\" \"traffic forecasting\"", "result_count": 1685, "representative_hits": ["Transferable Graph Structure Learning for Graph-based Traffic Forecasting Across Cities", "Transfer Learning in Traffic Prediction with Graph Neural Networks"]},
+    {"query": "\"policy intervention\" \"mobility forecasting\"", "result_count": 9, "representative_hits": []},
+    {"query": "\"intervention-conditioned\" \"mobility forecasting\"", "result_count": 0, "representative_hits": []},
+    {"query": "\"leave-one-event-out\" \"traffic forecasting\"", "result_count": 0, "representative_hits": []},
+    {"query": "\"semantic action\" \"traffic forecasting\"", "result_count": 2, "representative_hits": []},
+    {"query": "\"out-of-distribution\" \"traffic forecasting\"", "result_count": 325, "representative_hits": ["Robust Traffic Forecasting against Spatial Shift over Years", "STRAP: Spatio-Temporal Pattern Retrieval for Out-of-Distribution Generalization"]},
+    {"query": "\"domain generalization\" \"traffic forecasting\"", "result_count": 163, "representative_hits": ["Domain Generalization in Time Series Forecasting", "Robust Traffic Forecasting against Spatial Shift over Years"]},
+    {"query": "\"special event\" \"traffic forecasting\"", "result_count": 534, "representative_hits": ["A Special Event-Based K-Nearest Neighbor Model for Short-Term Traffic State Prediction"]},
+    {"query": "\"event-aware\" \"mobility forecasting\"", "result_count": 3, "representative_hits": ["SeMob: Semantic Synthesis for Dynamic Urban Mobility Prediction"]},
+    {"query": "\"policy-aware\" \"mobility prediction\"", "result_count": 8, "representative_hits": []},
+    {"query": "\"intervention\" \"traffic prediction\"", "result_count": 2536, "representative_hits": []},
+    {"query": "\"congestion pricing\" \"traffic forecasting\"", "result_count": 263, "representative_hits": []},
+    {"query": "\"fare change\" \"taxi demand forecasting\"", "result_count": 0, "representative_hits": []},
+    {"query": "\"urban mobility\" \"regime shift\" forecasting", "result_count": 146, "representative_hits": []},
+    {"query": "\"mobility forecasting\" \"COVID-19\" policy", "result_count": 90, "representative_hits": ["Predictability of human mobility during the COVID-19 pandemic in the United States"]},
+    {"query": "\"mobility prediction\" lockdown", "result_count": 73, "representative_hits": ["Nation-wide human mobility prediction based on graph neural networks"]},
+    {"query": "\"predicting mobility\" \"non-pharmaceutical interventions\"", "result_count": 40, "representative_hits": []},
+    {"query": "\"policy measures\" \"mobility prediction\"", "result_count": 18, "representative_hits": []},
+    {"query": "\"fare policy\" \"taxi demand\" prediction", "result_count": 1, "representative_hits": []},
+    {"query": "\"road pricing\" \"travel demand forecasting\"", "result_count": 173, "representative_hits": []},
+    {"query": "\"Event traffic forecasting with sparse multimodal data\"", "result_count": 12, "representative_hits": ["Event Traffic Forecasting with Sparse Multimodal Data", "FUSE-Traffic: Fusion of Unstructured and Structured data for Event-aware Traffic forecasting"]},
+    {"query": "\"Exploring large language models for human mobility prediction under public events\"", "result_count": 45, "representative_hits": ["Exploring large language models for human mobility prediction under public events"]}
+  ],
+  "closest_full_text_checks": [
+    {
+      "title": "SeMob: Semantic Synthesis for Dynamic Urban Mobility Prediction",
+      "doi": "10.18653/v1/2025.emnlp-main.775",
+      "source": "https://aclanthology.org/2025.emnlp-main.775/",
+      "checked": ["abstract", "dataset appendix", "split design", "ablation description", "backward references"],
+      "key_method_fact": "The 2019 dataset uses an 8:2 chronological or event-type split and keeps events from the same venue and day in one split."
+    },
+    {
+      "title": "Event Traffic Forecasting with Sparse Multimodal Data",
+      "doi": "10.1145/3664647.3680706",
+      "source": "OpenAlex abstract and public implementation repository",
+      "checked": ["abstract", "dataset configuration", "chronological train-validation-test boundaries"],
+      "key_method_fact": "The public configuration uses chronological blocks and multimodal event embeddings; no semantic policy-action corruption tournament was found."
+    },
+    {
+      "title": "Exploring large language models for human mobility prediction under public events",
+      "doi": "10.1016/j.compenvurbsys.2024.102153",
+      "source": "OpenAlex arXiv abstract record",
+      "checked": ["abstract", "study geography", "event construct"],
+      "key_method_fact": "The case study predicts event-day taxi demand around Barclays Center from public-event descriptions."
+    }
+  ],
+  "citation_chain": {
+    "backward_seed": "SeMob: Semantic Synthesis for Dynamic Urban Mobility Prediction",
+    "closest_backward_hits": [
+      "Event Traffic Forecasting with Sparse Multimodal Data",
+      "Exploring large language models for human mobility prediction under public events"
+    ],
+    "forward_seed": "Event Traffic Forecasting with Sparse Multimodal Data",
+    "forward_result_count": 6,
+    "closest_forward_hit": "A multi-timescale dynamic graph attention network for short-term traffic prediction under special events"
+  },
+  "limitations": [
+    "OpenAlex full-text search is noisy and incomplete.",
+    "Google Scholar, Scopus, and Web of Science were not available in this run.",
+    "Zero exact-query results are not treated as proof of absence.",
+    "The audit supports a scoped literature boundary, not an absolute first claim."
+  ]
+}

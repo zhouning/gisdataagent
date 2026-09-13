@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 # =============================================================================
 # GIS Data Agent — Dockerfile
 # Multi-stage: Node.js frontend build + GDAL/Python runtime
@@ -19,6 +20,8 @@ LABEL description="AI-powered geospatial analysis platform"
 
 # Prevent interactive prompts during package install
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PIP_NO_INPUT=1
 
 # ---- System packages --------------------------------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -48,10 +51,16 @@ ENV VIRTUAL_ENV="/app/.venv"
 #   docker build --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple .
 ARG PIP_INDEX_URL=https://pypi.org/simple
 COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir --upgrade pip \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip \
         --index-url "${PIP_INDEX_URL}" && \
-    pip install --no-cache-dir -r requirements.txt \
+    pip install -r requirements.txt \
         --index-url "${PIP_INDEX_URL}"
+
+# pyproj 3.7+ can lose the PROJ database context in worker threads unless the
+# data directory is explicit. TWM state builds run through FastAPI's threadpool.
+ENV PROJ_DATA=/app/.venv/lib/python3.12/site-packages/pyproj/proj_dir/share/proj
+ENV PROJ_LIB=/app/.venv/lib/python3.12/site-packages/pyproj/proj_dir/share/proj
 
 # ---- Rebuild matplotlib font cache (pick up CJK fonts) ---------------------
 RUN python -c "import matplotlib.font_manager; matplotlib.font_manager._load_fontmanager(try_read_cache=False)"
@@ -63,6 +72,7 @@ RUN apt-get purge -y build-essential python3-dev && \
 
 # ---- Copy application code --------------------------------------------------
 COPY data_agent/ /app/data_agent/
+COPY data/uwm_public_proxy/ /app/data/uwm_public_proxy/
 COPY geocausal/ /app/geocausal/
 COPY --from=frontend-builder /build/dist/ /app/frontend/dist/
 COPY .chainlit/ /app/.chainlit/

@@ -1,0 +1,99 @@
+{
+  "schema": "gwm_bench.foundation_v5_completion_verification.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V5.0-DRAFT1",
+  "generated_at": "2026-07-23T16:27:43.821681+00:00",
+  "status": "PASS_V5_BENCHMARK_COMPLETE_ACTION_TRANSFER_NOT_SUPPORTED",
+  "benchmark_complete": true,
+  "action_transfer_supported": false,
+  "check_count": 15,
+  "passed_check_count": 15,
+  "failed_checks": [],
+  "checks": {
+    "rc1_data_verified": true,
+    "runtime_and_evaluator_sealed_before_predictions": true,
+    "all_predictions_replayed_without_target_access": true,
+    "prediction_commitment_completed_before_evaluator_access": true,
+    "frozen_evaluator_hash_matches_commitment": true,
+    "formal_result_binds_prediction_commitment": true,
+    "formal_result_binds_protocol_runtime_and_submission_contracts": true,
+    "all_eleven_required_submissions_scored": true,
+    "scored_prediction_hashes_match_commitment": true,
+    "all_eight_frozen_gate_conditions_reported": true,
+    "formal_evaluator_completed_regardless_of_gate": true,
+    "result_status_matches_gate": true,
+    "failure_result_is_explicitly_published": true,
+    "claim_boundary_preserved": true,
+    "chronology_commitment_precedes_formal_result": true
+  },
+  "artifacts": {
+    "protocol": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/suite_protocol.json",
+      "bytes": 12695,
+      "sha256": "1802ec61ec229f11f95e541c219aa83b8c7af6cfd692d897c1f15ddfbf4d7e79"
+    },
+    "data_verification": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/bundle_verification.json",
+      "bytes": 16490,
+      "sha256": "17f28486584a0fa88f31bd1488982d80966118c2b0cac5488d6aaf3f139d9ab4"
+    },
+    "runtime_evaluator_seal": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/runtime_r4_evaluator_seal.json",
+      "bytes": 10665,
+      "sha256": "ea1a4dcfd4955088bf849f6bc2422db5b995d21ea8ac637d168530d62595d4c0"
+    },
+    "runtime_replay": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/runtime_replay_report.json",
+      "bytes": 11789,
+      "sha256": "1958a850a9992fb71465c9884ccf23ca5899bc0e4c4b726d30a5562817fa4ee6"
+    },
+    "prediction_commitment": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/prediction_commitment.json",
+      "bytes": 138777,
+      "sha256": "4737e75ee78b982dea767ba5c85b2eb0dd01a1c728de8d729a136103b859b941"
+    },
+    "frozen_evaluator": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/action_transfer_evaluator.py",
+      "bytes": 21098,
+      "sha256": "c44dd5159124a0258b26d1b4a73459b07f6646a38388d3c76176fd9a3c2e4de1"
+    },
+    "formal_result": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/final_results/action_transfer_results.json",
+      "bytes": 171309,
+      "sha256": "05c9d2aea055558fad64823ade773a5e0c39c3c79a972ab46ca1018d971a0628"
+    }
+  },
+  "action_transfer_gate": {
+    "conditions": {
+      "mean_fold_skill_at_least_one_percent": false,
+      "paired_bootstrap_interval_entirely_below_zero": false,
+      "at_least_three_of_four_events_improve": false,
+      "no_fold_degrades_more_than_two_percent": false,
+      "at_least_twelve_of_sixteen_event_target_pairs_improve": false,
+      "at_least_four_of_five_reported_horizons_improve": false,
+      "correct_action_beats_every_frozen_control_equal_event": false,
+      "correct_action_beats_every_control_in_three_of_four_folds": false
+    },
+    "all_required": true,
+    "passed": false,
+    "fold_skill": {
+      "holdout_2015": -0.15346525855099524,
+      "holdout_2019": -0.13911786170463647,
+      "holdout_2022": 0.10776477378515859,
+      "holdout_2025": 0.08386058039753364
+    },
+    "mean_fold_skill": -0.025239441518234873,
+    "fold_improvement_count": 2,
+    "event_target_improvement_count": 8,
+    "horizon_improvement_count": 3,
+    "control_fold_wins": {
+      "action_deleted": 2,
+      "effective_date_minus_4w": 3,
+      "effective_date_plus_4w": 2,
+      "action_component_permutation": 3,
+      "wrong_spatial_scope": 2,
+      "cross_event_action_swap": 3,
+      "zone_exposure_shuffle_seed_20260723": 1
+    }
+  },
+  "next_permitted_action": "Publish the complete V5 result, figures, data previews and failure analysis."
+}

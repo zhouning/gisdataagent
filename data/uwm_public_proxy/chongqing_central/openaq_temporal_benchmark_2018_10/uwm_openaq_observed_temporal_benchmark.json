@@ -1,0 +1,513 @@
+{
+  "schema": "uwm.openaq_observed_temporal_benchmark.v1",
+  "version": "0.1",
+  "benchmark_id": "uwm-openaq-observed-temporal-benchmark-chongqing-2018-10",
+  "created_at": "2026-07-05T15:45:00Z",
+  "source_dataset_ids": [
+    "openaq_air_quality_station_observation_proxy"
+  ],
+  "traditional_baseline_suite": [
+    "static_train_mean",
+    "static_last_train_observation"
+  ],
+  "pollutant_count": 6,
+  "observation_count": 600,
+  "holdout_count": 180,
+  "overall_holdout_win_rate": 0.833333,
+  "overall_holdout_win_count": 150,
+  "overall_sign_tests": {
+    "static_train_mean": {
+      "wins": 150,
+      "losses": 25,
+      "ties": 5,
+      "effective_n": 175,
+      "one_sided_p_value": 3.169461318928462e-23
+    },
+    "static_last_train_observation": {
+      "wins": 141,
+      "losses": 14,
+      "ties": 25,
+      "effective_n": 155,
+      "one_sided_p_value": 7.023485467083628e-28
+    }
+  },
+  "temporal_order_negative_control_summary": {
+    "pollutant_count": 6,
+    "ordered_advantage_count": 6,
+    "ordered_advantage_rate": 1.0,
+    "mean_ordered_mae_advantage": 2.572222,
+    "all_pollutants_ordered_temporal_state_advantage": true
+  },
+  "per_pollutant_results": [
+    {
+      "pollutant": "co",
+      "observation_count": 100,
+      "train_count": 70,
+      "holdout_count": 30,
+      "time_range": {
+        "start": "2018-10-17T11:00:00Z",
+        "end": "2018-10-23T21:00:00Z"
+      },
+      "static_mean_baseline_mae": 253.333333,
+      "uwm_dynamic_persistence_mae": 90.0,
+      "mae_reduction": 163.333333,
+      "mae_reduction_fraction": 0.644737,
+      "holdout_win_count": 24,
+      "holdout_win_rate": 0.8,
+      "dynamic_advantage_over_static_mean": true,
+      "traditional_static_baseline_suite": {
+        "static_train_mean": {
+          "method": "static_train_mean",
+          "mae": 253.333333,
+          "dynamic_mae_reduction": 163.333333,
+          "dynamic_win_count": 24,
+          "dynamic_win_rate": 0.8,
+          "dynamic_sign_test": {
+            "wins": 24,
+            "losses": 1,
+            "ties": 5,
+            "effective_n": 25,
+            "one_sided_p_value": 7.748603820800781e-07
+          }
+        },
+        "static_last_train_observation": {
+          "method": "static_last_train_observation",
+          "mae": 253.333333,
+          "dynamic_mae_reduction": 163.333333,
+          "dynamic_win_count": 24,
+          "dynamic_win_rate": 0.8,
+          "dynamic_sign_test": {
+            "wins": 24,
+            "losses": 1,
+            "ties": 5,
+            "effective_n": 25,
+            "one_sided_p_value": 7.748603820800781e-07
+          }
+        }
+      },
+      "best_traditional_static_baseline": {
+        "method": "static_train_mean",
+        "mae": 253.333333,
+        "dynamic_mae_reduction": 163.333333,
+        "dynamic_win_count": 24,
+        "dynamic_win_rate": 0.8,
+        "dynamic_sign_test": {
+          "wins": 24,
+          "losses": 1,
+          "ties": 5,
+          "effective_n": 25,
+          "one_sided_p_value": 7.748603820800781e-07
+        }
+      },
+      "uwm_dynamic_state_update": {
+        "method": "online_persistence_state_update",
+        "mae": 90.0,
+        "uses_prior_holdout_observations_online": true,
+        "uses_current_or_future_holdout_labels": false
+      },
+      "temporal_order_negative_control": {
+        "method": "deterministic_holdout_order_rotation",
+        "rotation": 15,
+        "shuffled_dynamic_mae": 103.333333,
+        "ordered_dynamic_mae": 90.0,
+        "ordered_mae_advantage": 13.333333,
+        "ordered_temporal_state_advantage": true
+      },
+      "beats_all_traditional_static_baselines": true
+    },
+    {
+      "pollutant": "no2",
+      "observation_count": 100,
+      "train_count": 70,
+      "holdout_count": 30,
+      "time_range": {
+        "start": "2018-10-17T11:00:00Z",
+        "end": "2018-10-23T21:00:00Z"
+      },
+      "static_mean_baseline_mae": 4.101905,
+      "uwm_dynamic_persistence_mae": 3.533333,
+      "mae_reduction": 0.568572,
+      "mae_reduction_fraction": 0.138612,
+      "holdout_win_count": 18,
+      "holdout_win_rate": 0.6,
+      "dynamic_advantage_over_static_mean": true,
+      "traditional_static_baseline_suite": {
+        "static_train_mean": {
+          "method": "static_train_mean",
+          "mae": 4.101905,
+          "dynamic_mae_reduction": 0.568572,
+          "dynamic_win_count": 18,
+          "dynamic_win_rate": 0.6,
+          "dynamic_sign_test": {
+            "wins": 18,
+            "losses": 12,
+            "ties": 0,
+            "effective_n": 30,
+            "one_sided_p_value": 0.1807973040267825
+          }
+        },
+        "static_last_train_observation": {
+          "method": "static_last_train_observation",
+          "mae": 7.633333,
+          "dynamic_mae_reduction": 4.1,
+          "dynamic_win_count": 24,
+          "dynamic_win_rate": 0.8,
+          "dynamic_sign_test": {
+            "wins": 24,
+            "losses": 5,
+            "ties": 1,
+            "effective_n": 29,
+            "one_sided_p_value": 0.0002730563282966614
+          }
+        }
+      },
+      "best_traditional_static_baseline": {
+        "method": "static_train_mean",
+        "mae": 4.101905,
+        "dynamic_mae_reduction": 0.568572,
+        "dynamic_win_count": 18,
+        "dynamic_win_rate": 0.6,
+        "dynamic_sign_test": {
+          "wins": 18,
+          "losses": 12,
+          "ties": 0,
+          "effective_n": 30,
+          "one_sided_p_value": 0.1807973040267825
+        }
+      },
+      "uwm_dynamic_state_update": {
+        "method": "online_persistence_state_update",
+        "mae": 3.533333,
+        "uses_prior_holdout_observations_online": true,
+        "uses_current_or_future_holdout_labels": false
+      },
+      "temporal_order_negative_control": {
+        "method": "deterministic_holdout_order_rotation",
+        "rotation": 15,
+        "shuffled_dynamic_mae": 3.6,
+        "ordered_dynamic_mae": 3.533333,
+        "ordered_mae_advantage": 0.066667,
+        "ordered_temporal_state_advantage": true
+      },
+      "beats_all_traditional_static_baselines": true
+    },
+    {
+      "pollutant": "o3",
+      "observation_count": 100,
+      "train_count": 70,
+      "holdout_count": 30,
+      "time_range": {
+        "start": "2018-10-17T11:00:00Z",
+        "end": "2018-10-23T21:00:00Z"
+      },
+      "static_mean_baseline_mae": 32.97619,
+      "uwm_dynamic_persistence_mae": 0.9,
+      "mae_reduction": 32.07619,
+      "mae_reduction_fraction": 0.972708,
+      "holdout_win_count": 30,
+      "holdout_win_rate": 1.0,
+      "dynamic_advantage_over_static_mean": true,
+      "traditional_static_baseline_suite": {
+        "static_train_mean": {
+          "method": "static_train_mean",
+          "mae": 32.97619,
+          "dynamic_mae_reduction": 32.07619,
+          "dynamic_win_count": 30,
+          "dynamic_win_rate": 1.0,
+          "dynamic_sign_test": {
+            "wins": 30,
+            "losses": 0,
+            "ties": 0,
+            "effective_n": 30,
+            "one_sided_p_value": 9.313225746154785e-10
+          }
+        },
+        "static_last_train_observation": {
+          "method": "static_last_train_observation",
+          "mae": 11.533333,
+          "dynamic_mae_reduction": 10.633333,
+          "dynamic_win_count": 22,
+          "dynamic_win_rate": 0.733333,
+          "dynamic_sign_test": {
+            "wins": 22,
+            "losses": 0,
+            "ties": 8,
+            "effective_n": 22,
+            "one_sided_p_value": 2.384185791015625e-07
+          }
+        }
+      },
+      "best_traditional_static_baseline": {
+        "method": "static_last_train_observation",
+        "mae": 11.533333,
+        "dynamic_mae_reduction": 10.633333,
+        "dynamic_win_count": 22,
+        "dynamic_win_rate": 0.733333,
+        "dynamic_sign_test": {
+          "wins": 22,
+          "losses": 0,
+          "ties": 8,
+          "effective_n": 22,
+          "one_sided_p_value": 2.384185791015625e-07
+        }
+      },
+      "uwm_dynamic_state_update": {
+        "method": "online_persistence_state_update",
+        "mae": 0.9,
+        "uses_prior_holdout_observations_online": true,
+        "uses_current_or_future_holdout_labels": false
+      },
+      "temporal_order_negative_control": {
+        "method": "deterministic_holdout_order_rotation",
+        "rotation": 15,
+        "shuffled_dynamic_mae": 1.866667,
+        "ordered_dynamic_mae": 0.9,
+        "ordered_mae_advantage": 0.966667,
+        "ordered_temporal_state_advantage": true
+      },
+      "beats_all_traditional_static_baselines": true
+    },
+    {
+      "pollutant": "pm10",
+      "observation_count": 100,
+      "train_count": 70,
+      "holdout_count": 30,
+      "time_range": {
+        "start": "2018-10-17T11:00:00Z",
+        "end": "2018-10-23T22:00:00Z"
+      },
+      "static_mean_baseline_mae": 19.128571,
+      "uwm_dynamic_persistence_mae": 7.733333,
+      "mae_reduction": 11.395238,
+      "mae_reduction_fraction": 0.595718,
+      "holdout_win_count": 27,
+      "holdout_win_rate": 0.9,
+      "dynamic_advantage_over_static_mean": true,
+      "traditional_static_baseline_suite": {
+        "static_train_mean": {
+          "method": "static_train_mean",
+          "mae": 19.128571,
+          "dynamic_mae_reduction": 11.395238,
+          "dynamic_win_count": 27,
+          "dynamic_win_rate": 0.9,
+          "dynamic_sign_test": {
+            "wins": 27,
+            "losses": 3,
+            "ties": 0,
+            "effective_n": 30,
+            "one_sided_p_value": 4.215165972709656e-06
+          }
+        },
+        "static_last_train_observation": {
+          "method": "static_last_train_observation",
+          "mae": 13.433333,
+          "dynamic_mae_reduction": 5.7,
+          "dynamic_win_count": 24,
+          "dynamic_win_rate": 0.8,
+          "dynamic_sign_test": {
+            "wins": 24,
+            "losses": 5,
+            "ties": 1,
+            "effective_n": 29,
+            "one_sided_p_value": 0.0002730563282966614
+          }
+        }
+      },
+      "best_traditional_static_baseline": {
+        "method": "static_last_train_observation",
+        "mae": 13.433333,
+        "dynamic_mae_reduction": 5.7,
+        "dynamic_win_count": 24,
+        "dynamic_win_rate": 0.8,
+        "dynamic_sign_test": {
+          "wins": 24,
+          "losses": 5,
+          "ties": 1,
+          "effective_n": 29,
+          "one_sided_p_value": 0.0002730563282966614
+        }
+      },
+      "uwm_dynamic_state_update": {
+        "method": "online_persistence_state_update",
+        "mae": 7.733333,
+        "uses_prior_holdout_observations_online": true,
+        "uses_current_or_future_holdout_labels": false
+      },
+      "temporal_order_negative_control": {
+        "method": "deterministic_holdout_order_rotation",
+        "rotation": 15,
+        "shuffled_dynamic_mae": 8.0,
+        "ordered_dynamic_mae": 7.733333,
+        "ordered_mae_advantage": 0.266667,
+        "ordered_temporal_state_advantage": true
+      },
+      "beats_all_traditional_static_baselines": true
+    },
+    {
+      "pollutant": "pm25",
+      "observation_count": 100,
+      "train_count": 70,
+      "holdout_count": 30,
+      "time_range": {
+        "start": "2018-10-17T11:00:00Z",
+        "end": "2018-10-23T21:00:00Z"
+      },
+      "static_mean_baseline_mae": 12.895238,
+      "uwm_dynamic_persistence_mae": 2.4,
+      "mae_reduction": 10.495238,
+      "mae_reduction_fraction": 0.813885,
+      "holdout_win_count": 29,
+      "holdout_win_rate": 0.966667,
+      "dynamic_advantage_over_static_mean": true,
+      "traditional_static_baseline_suite": {
+        "static_train_mean": {
+          "method": "static_train_mean",
+          "mae": 12.895238,
+          "dynamic_mae_reduction": 10.495238,
+          "dynamic_win_count": 29,
+          "dynamic_win_rate": 0.966667,
+          "dynamic_sign_test": {
+            "wins": 29,
+            "losses": 1,
+            "ties": 0,
+            "effective_n": 30,
+            "one_sided_p_value": 2.8870999813079834e-08
+          }
+        },
+        "static_last_train_observation": {
+          "method": "static_last_train_observation",
+          "mae": 9.466667,
+          "dynamic_mae_reduction": 7.066667,
+          "dynamic_win_count": 25,
+          "dynamic_win_rate": 0.833333,
+          "dynamic_sign_test": {
+            "wins": 25,
+            "losses": 2,
+            "ties": 3,
+            "effective_n": 27,
+            "one_sided_p_value": 2.823770046234131e-06
+          }
+        }
+      },
+      "best_traditional_static_baseline": {
+        "method": "static_last_train_observation",
+        "mae": 9.466667,
+        "dynamic_mae_reduction": 7.066667,
+        "dynamic_win_count": 25,
+        "dynamic_win_rate": 0.833333,
+        "dynamic_sign_test": {
+          "wins": 25,
+          "losses": 2,
+          "ties": 3,
+          "effective_n": 27,
+          "one_sided_p_value": 2.823770046234131e-06
+        }
+      },
+      "uwm_dynamic_state_update": {
+        "method": "online_persistence_state_update",
+        "mae": 2.4,
+        "uses_prior_holdout_observations_online": true,
+        "uses_current_or_future_holdout_labels": false
+      },
+      "temporal_order_negative_control": {
+        "method": "deterministic_holdout_order_rotation",
+        "rotation": 15,
+        "shuffled_dynamic_mae": 3.0,
+        "ordered_dynamic_mae": 2.4,
+        "ordered_mae_advantage": 0.6,
+        "ordered_temporal_state_advantage": true
+      },
+      "beats_all_traditional_static_baselines": true
+    },
+    {
+      "pollutant": "so2",
+      "observation_count": 100,
+      "train_count": 70,
+      "holdout_count": 30,
+      "time_range": {
+        "start": "2018-10-17T11:00:00Z",
+        "end": "2018-10-23T21:00:00Z"
+      },
+      "static_mean_baseline_mae": 1.469524,
+      "uwm_dynamic_persistence_mae": 0.733333,
+      "mae_reduction": 0.736191,
+      "mae_reduction_fraction": 0.500972,
+      "holdout_win_count": 22,
+      "holdout_win_rate": 0.733333,
+      "dynamic_advantage_over_static_mean": true,
+      "traditional_static_baseline_suite": {
+        "static_train_mean": {
+          "method": "static_train_mean",
+          "mae": 1.469524,
+          "dynamic_mae_reduction": 0.736191,
+          "dynamic_win_count": 22,
+          "dynamic_win_rate": 0.733333,
+          "dynamic_sign_test": {
+            "wins": 22,
+            "losses": 8,
+            "ties": 0,
+            "effective_n": 30,
+            "one_sided_p_value": 0.008062400855123997
+          }
+        },
+        "static_last_train_observation": {
+          "method": "static_last_train_observation",
+          "mae": 2.766667,
+          "dynamic_mae_reduction": 2.033334,
+          "dynamic_win_count": 22,
+          "dynamic_win_rate": 0.733333,
+          "dynamic_sign_test": {
+            "wins": 22,
+            "losses": 1,
+            "ties": 7,
+            "effective_n": 23,
+            "one_sided_p_value": 2.86102294921875e-06
+          }
+        }
+      },
+      "best_traditional_static_baseline": {
+        "method": "static_train_mean",
+        "mae": 1.469524,
+        "dynamic_mae_reduction": 0.736191,
+        "dynamic_win_count": 22,
+        "dynamic_win_rate": 0.733333,
+        "dynamic_sign_test": {
+          "wins": 22,
+          "losses": 8,
+          "ties": 0,
+          "effective_n": 30,
+          "one_sided_p_value": 0.008062400855123997
+        }
+      },
+      "uwm_dynamic_state_update": {
+        "method": "online_persistence_state_update",
+        "mae": 0.733333,
+        "uses_prior_holdout_observations_online": true,
+        "uses_current_or_future_holdout_labels": false
+      },
+      "temporal_order_negative_control": {
+        "method": "deterministic_holdout_order_rotation",
+        "rotation": 15,
+        "shuffled_dynamic_mae": 0.933333,
+        "ordered_dynamic_mae": 0.733333,
+        "ordered_mae_advantage": 0.2,
+        "ordered_temporal_state_advantage": true
+      },
+      "beats_all_traditional_static_baselines": true
+    }
+  ],
+  "observed_temporal_state_advantage_over_static_baseline": true,
+  "observed_temporal_state_advantage_over_static_baseline_suite": true,
+  "supported_claim": "observed_temporal_state_prediction_advantage_over_static_baseline_suite",
+  "claim_boundary": {
+    "max_claim_level": "bounded_support",
+    "reason": "OpenAQ observed holdout supports temporal state-prediction comparison only; it is not a policy intervention outcome benchmark."
+  },
+  "limitations": [
+    "not_policy_intervention_outcome",
+    "single_station_sensor_sample",
+    "short_historical_holdout_window",
+    "dynamic_persistence_is_baseline_world_model_state_update"
+  ],
+  "empirical_superiority_claim": false
+}

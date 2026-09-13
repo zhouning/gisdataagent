@@ -1,0 +1,169 @@
+{
+  "schema": "gwm_bench.foundation_v5_preflight.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V5.0-DRAFT1",
+  "generated_at": "2026-07-23T15:30:05.657763+00:00",
+  "status": "PASS_V5_DRAFT_READY_FOR_RC1",
+  "protocol_sha256": "1802ec61ec229f11f95e541c219aa83b8c7af6cfd692d897c1f15ddfbf4d7e79",
+  "check_count": 76,
+  "checks": {
+    "protocol_schema": true,
+    "protocol_frozen_before_bundle": true,
+    "four_events_defined": true,
+    "four_outer_folds_defined": true,
+    "new_download_not_required": true,
+    "claim_rejects_analyst_blindness": true,
+    "completion_does_not_require_model_win": true,
+    "source_exists::heldout_2015_event_panel.parquet": true,
+    "source_size::heldout_2015_event_panel.parquet": true,
+    "source_hash::heldout_2015_event_panel.parquet": true,
+    "source_exists::development_event_panel.parquet": true,
+    "source_size::development_event_panel.parquet": true,
+    "source_hash::development_event_panel.parquet": true,
+    "source_exists::heldout_2015_daily_od_state.parquet": true,
+    "source_size::heldout_2015_daily_od_state.parquet": true,
+    "source_hash::heldout_2015_daily_od_state.parquet": true,
+    "source_exists::daily_od_state.parquet": true,
+    "source_size::daily_od_state.parquet": true,
+    "source_hash::daily_od_state.parquet": true,
+    "v4_result_hash_bound": true,
+    "v4_action_transfer_not_supported": true,
+    "v4_best_baseline_confirmed": true,
+    "v4_scope_failure_confirmed": true,
+    "event_2015_improvement_surcharge::policy_date": true,
+    "event_2015_improvement_surcharge::window_is_contiguous": true,
+    "event_2015_improvement_surcharge::52_pre_weeks": true,
+    "event_2015_improvement_surcharge::12_post_weeks": true,
+    "event_2015_improvement_surcharge::263_zones": true,
+    "event_2015_improvement_surcharge::complete_window_rows": true,
+    "event_2015_improvement_surcharge::no_duplicate_date_zone": true,
+    "event_2015_improvement_surcharge::complete_daily_zone_grid": true,
+    "event_2015_improvement_surcharge::finite_nonnegative_targets": true,
+    "event_2015_improvement_surcharge::finite_actions": true,
+    "event_2015_improvement_surcharge::post_action_nonzero": true,
+    "event_2015_improvement_surcharge::pre_action_od_available": true,
+    "event_2019_nys_congestion_surcharge::policy_date": true,
+    "event_2019_nys_congestion_surcharge::window_is_contiguous": true,
+    "event_2019_nys_congestion_surcharge::52_pre_weeks": true,
+    "event_2019_nys_congestion_surcharge::12_post_weeks": true,
+    "event_2019_nys_congestion_surcharge::263_zones": true,
+    "event_2019_nys_congestion_surcharge::complete_window_rows": true,
+    "event_2019_nys_congestion_surcharge::no_duplicate_date_zone": true,
+    "event_2019_nys_congestion_surcharge::complete_daily_zone_grid": true,
+    "event_2019_nys_congestion_surcharge::finite_nonnegative_targets": true,
+    "event_2019_nys_congestion_surcharge::finite_actions": true,
+    "event_2019_nys_congestion_surcharge::post_action_nonzero": true,
+    "event_2019_nys_congestion_surcharge::pre_action_od_available": true,
+    "event_2022_tlc_taximeter_adjustment::policy_date": true,
+    "event_2022_tlc_taximeter_adjustment::window_is_contiguous": true,
+    "event_2022_tlc_taximeter_adjustment::52_pre_weeks": true,
+    "event_2022_tlc_taximeter_adjustment::12_post_weeks": true,
+    "event_2022_tlc_taximeter_adjustment::263_zones": true,
+    "event_2022_tlc_taximeter_adjustment::complete_window_rows": true,
+    "event_2022_tlc_taximeter_adjustment::no_duplicate_date_zone": true,
+    "event_2022_tlc_taximeter_adjustment::complete_daily_zone_grid": true,
+    "event_2022_tlc_taximeter_adjustment::finite_nonnegative_targets": true,
+    "event_2022_tlc_taximeter_adjustment::finite_actions": true,
+    "event_2022_tlc_taximeter_adjustment::post_action_nonzero": true,
+    "event_2022_tlc_taximeter_adjustment::pre_action_od_available": true,
+    "event_2025_mta_crz::policy_date": true,
+    "event_2025_mta_crz::window_is_contiguous": true,
+    "event_2025_mta_crz::52_pre_weeks": true,
+    "event_2025_mta_crz::12_post_weeks": true,
+    "event_2025_mta_crz::263_zones": true,
+    "event_2025_mta_crz::complete_window_rows": true,
+    "event_2025_mta_crz::no_duplicate_date_zone": true,
+    "event_2025_mta_crz::complete_daily_zone_grid": true,
+    "event_2025_mta_crz::finite_nonnegative_targets": true,
+    "event_2025_mta_crz::finite_actions": true,
+    "event_2025_mta_crz::post_action_nonzero": true,
+    "event_2025_mta_crz::pre_action_od_available": true,
+    "each_event_held_out_exactly_once": true,
+    "three_training_events_per_fold": true,
+    "frozen_expected_total_week_rows": true,
+    "frozen_expected_outer_test_keys": true,
+    "disk_has_one_gib_free": true
+  },
+  "source_audits": [
+    {
+      "path": "paper-output/regimeworld-nyc-v4-compositional-uwm/results/heldout_2015_event_panel.parquet",
+      "bytes": 4127495,
+      "sha256": "9687da26e86fcbe6dd37959702060a434a0ae2419cfa3f4d24882fb35123bcbc"
+    },
+    {
+      "path": "paper-output/regimeworld-nyc-v4-compositional-uwm/results/development_event_panel.parquet",
+      "bytes": 18388927,
+      "sha256": "1032d96bbf910169a77b21eac20d5c8221d7dfd16e1ce1442f1890719225d468"
+    },
+    {
+      "path": "paper-output/regimeworld-nyc-v4-compositional-uwm/results/heldout_2015_daily_od_state.parquet",
+      "bytes": 12310172,
+      "sha256": "14019d4c430fa0986628573bbea6c9a41990e9c09141c417bc9263841d3eb281"
+    },
+    {
+      "path": "paper-output/regimeworld-nyc-v3-multi-intervention/results/daily_od_state.parquet",
+      "bytes": 42765003,
+      "sha256": "9802785aae8cf498a65742eb347e87fa6b2388102e5cf7066d566a1ed7fad045"
+    }
+  ],
+  "event_audits": [
+    {
+      "event_id": "event_2015_improvement_surcharge",
+      "source_event": "heldout_2015_improvement_surcharge",
+      "effective_date": "2015-01-01",
+      "window_rows": 117824,
+      "pre_days": 364,
+      "post_days": 84,
+      "zones": 263,
+      "pre_action_od_rows": 4438073,
+      "post_expected_total_delta_range": [
+        0.3,
+        0.3
+      ]
+    },
+    {
+      "event_id": "event_2019_nys_congestion_surcharge",
+      "source_event": "development_2019_congestion_surcharge",
+      "effective_date": "2019-02-02",
+      "window_rows": 117824,
+      "pre_days": 364,
+      "post_days": 84,
+      "zones": 263,
+      "pre_action_od_rows": 3748285,
+      "post_expected_total_delta_range": [
+        0.0,
+        2.5
+      ]
+    },
+    {
+      "event_id": "event_2022_tlc_taximeter_adjustment",
+      "source_event": "development_2022_taximeter_adjustment",
+      "effective_date": "2022-12-19",
+      "window_rows": 117824,
+      "pre_days": 364,
+      "post_days": 84,
+      "zones": 263,
+      "pre_action_od_rows": 2523470,
+      "post_expected_total_delta_range": [
+        0.7,
+        17.66100441350282
+      ]
+    },
+    {
+      "event_id": "event_2025_mta_crz",
+      "source_event": "development_2025_crz",
+      "effective_date": "2025-01-05",
+      "window_rows": 117824,
+      "pre_days": 364,
+      "post_days": 84,
+      "zones": 263,
+      "pre_action_od_rows": 2838400,
+      "post_expected_total_delta_range": [
+        0.0,
+        0.75
+      ]
+    }
+  ],
+  "disk_free_bytes": 1197300473856,
+  "new_download_required": false,
+  "next_permitted_action": "Materialize four event-week bundles and four outer-fold firewalls."
+}

@@ -1,0 +1,19 @@
+\begin{table}[H]
+\caption{Semantic action-control comparisons.}
+\label{tab:tab3_action_controls}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrr}
+\toprule
+Corrupted action & Error & Correct $-$ control & CI low & CI high & Fold wins \\
+\midrule
+Action date +4 weeks & 0.3589 & 0.0095 & 0.0059 & 0.0131 & 2 \\
+Action deleted & 0.3626 & 0.0058 & -0.0003 & 0.0118 & 2 \\
+Zone exposure shuffle & 0.3640 & 0.0044 & 0.0020 & 0.0068 & 1 \\
+Action component permutation & 0.3648 & 0.0035 & 0.0007 & 0.0065 & 3 \\
+Action date -4 weeks & 0.3703 & -0.0019 & -0.0022 & -0.0016 & 3 \\
+Cross-event action swap & 0.3712 & -0.0028 & -0.0065 & 0.0010 & 3 \\
+Wrong spatial scope & 0.3815 & -0.0131 & -0.0168 & -0.0093 & 2 \\
+\bottomrule
+\end{tabular}
+\end{table}

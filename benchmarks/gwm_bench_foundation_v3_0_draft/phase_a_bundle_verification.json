@@ -1,0 +1,45 @@
+{
+  "schema": "gwm_bench.foundation_v3_phase_a_bundle_verification.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "generated_at": "2026-07-23T07:06:27.874637+00:00",
+  "status": "PASS_PHASE_A_BUNDLE_VERIFIED",
+  "check_count": 17,
+  "checks": {
+    "all_bundle_artifact_hashes_match": true,
+    "bundle_fingerprint_matches": true,
+    "source_commitments_match_current_phase_a": true,
+    "table_schemas_are_exact": true,
+    "table_counts_are_exact": true,
+    "table_keys_are_unique": true,
+    "region_ids_match_lockbox": true,
+    "node_ids_match_raster_positions": true,
+    "source_raster_values_match_bundle": true,
+    "source_coordinates_match_bundle": true,
+    "state_history_matches_wide_inputs": true,
+    "edges_equal_exact_reconstructed_graph": true,
+    "submission_keys_equal_node_year_cross_product": true,
+    "bundle_contains_no_target_label_columns": true,
+    "bundle_maximum_input_year_is_2022": true,
+    "target_directory_contains_no_files": true,
+    "target_pixels_read_by_verifier_is_false": true
+  },
+  "artifact_checks": {
+    "observed_inputs.parquet": true,
+    "observed_state_history.parquet": true,
+    "observed_edges.parquet": true,
+    "submission_keys.parquet": true,
+    "region_metadata.json": true
+  },
+  "value_comparison_count": 20859,
+  "counts": {
+    "region_count": 20,
+    "node_count": 1227,
+    "state_history_row_count": 7362,
+    "directed_edge_count": 4278,
+    "submission_key_count": 3681
+  },
+  "bundle_fingerprint": "652a009fd38f79308ee7ddd71549db5c71760e8cc884217cb29e85bcf184a7e3",
+  "target_file_count": 0,
+  "target_pixels_read_by_verifier": false,
+  "next_permitted_action": "Freeze Runtime-R2 submission and evaluator contracts; do not acquire targets."
+}

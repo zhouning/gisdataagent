@@ -1,0 +1,224 @@
+{
+  "schema": "gwm_bench.foundation_historical_release.v1",
+  "release_id": "gwm-bench-foundation-historical-v1.0",
+  "released_at": "2026-07-23T04:00:00Z",
+  "status": "historical_backtest_ready",
+  "distribution_class": "local_internal_release",
+  "source_layout": {
+    "benchmark_root": "benchmarks/gwm_bench_foundation_v0_1",
+    "note": "The v1.0 release freezes the existing canonical assets without duplicating the 1.5 GB development tree."
+  },
+  "dataset_summary": {
+    "region_count": 20,
+    "administrative_area_km2": 4603.1302,
+    "unique_node_count": 1055,
+    "directed_edge_count": 3338,
+    "source_geotiff_count": 340,
+    "lineage_geotiff_count": 280,
+    "quarantined_future_viirs_count": 60,
+    "historical_target_years": [2019, 2020],
+    "scored_row_count": 2110,
+    "value_comparison_count": 271698
+  },
+  "final_comparison": {
+    "primary_metric": "mean_region_year_change_f1",
+    "component_count": 40,
+    "twm": 0.2492117237337826,
+    "flus": 0.15343434343434342,
+    "absolute_difference": 0.09577738029943916,
+    "relative_improvement": 0.6242238742359763,
+    "bootstrap_95_percent_interval": [
+      0.001397214407324706,
+      0.18042076591708933
+    ],
+    "twm_prediction_sha256": "8b40d99e2192c9f9f976c79e121a6ae660ec1c6446771f278b542878aabe4364",
+    "flus_prediction_sha256": "44b5865c90ddabd7ce4d3e61e1b5ec8d0908b5701a4297c146c7efeba141d57a"
+  },
+  "prospective_track": {
+    "status": "pending_full_calendar_2026_labels",
+    "earliest_valid_export_date": "2027-01-01",
+    "part_of_historical_v1_acceptance": false
+  },
+  "dataset_resources": [
+    {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/controlled_nodes.parquet",
+      "row_count": 2048,
+      "sha256": "d7046585eb12cea36d81b8750796ce11fadaa439390ca759f004546e3c8f7a12"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/controlled_edges.parquet",
+      "row_count": 9216,
+      "sha256": "4dfcd239f89ab89aed2e4b1992b8b51f330f6929ba170524a459d29b817077b0"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/controlled_node_labels.parquet",
+      "row_count": 6144,
+      "sha256": "6cdc70cfd588f2777f3e43f473788aa7cbdc78346b60f189741dcb4afac7d704"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/controlled_edge_labels.parquet",
+      "row_count": 9216,
+      "sha256": "4cc29653fe976ad90674f9c075f250388f7b8380fb72a000f82704c5d10ca1bb"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/observed_train.parquet",
+      "row_count": 12660,
+      "sha256": "05e8de613f1ca58184dfe1917e4e4ce07630bd9b9f386db1950bec6dafb16ab2"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/observed_inputs.parquet",
+      "row_count": 2110,
+      "sha256": "6f1323959276e53e467d2abf66d8cc00b861cf616fec34a41f76a0aa7be2015e"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/observed_edges.parquet",
+      "row_count": 3338,
+      "sha256": "70f63a5b217624c28d90f4cbf1c25d7e9aa621c138bce50a63f443ba2fce96aa"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/observed_labels.parquet",
+      "row_count": 6330,
+      "sha256": "d0efd34be538586d7fd7b9788cb898d2824e4776ecfaa8c3d9f38d93982b69f7"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/region_folds.json",
+      "row_count": 5,
+      "sha256": "d30751b5e5b455e674f72fa29a39a61aa5060288fe2c5857077d0d5d329a4222"
+    }
+  ],
+  "artifacts": [
+    {
+      "role": "benchmark_contract",
+      "path": "benchmarks/gwm_bench_foundation_v0_1/benchmark_contract.json",
+      "size_bytes": 14306,
+      "sha256": "6b13ded8c7ac35b16589466a22182ed815d23c86743e25327e74ca4fba81caa3"
+    },
+    {
+      "role": "bundle_manifest",
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/bundle_manifest.json",
+      "size_bytes": 100435,
+      "sha256": "1310e534c31bee5948b445d65149a19de310304490c4893bd18332395de2c8cb"
+    },
+    {
+      "role": "data_validation_report",
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/data_validation_report.json",
+      "size_bytes": 2523,
+      "sha256": "791165a74c5d4b9645ca058d01cc0171449a866828de3678a2bfb16dd3650799"
+    },
+    {
+      "role": "readiness_report",
+      "path": "benchmarks/gwm_bench_foundation_v0_1/readiness_report.json",
+      "size_bytes": 62008,
+      "sha256": "ad215e3fd7ecabdd2ec149b6304dd8febcdc3314b0174ae53b32017ad8d3fb34"
+    },
+    {
+      "role": "license_review",
+      "path": "data/gwm_bench_foundation_v0_1/license_audit/license_review.json",
+      "size_bytes": 5861,
+      "sha256": "b24628b414c05093334c9d40bd0fd3b0c23f5457b16160aa88c7493dd41f0e00"
+    },
+    {
+      "role": "reference_evaluator",
+      "path": "benchmarks/gwm_bench_foundation_v0_1/observed_evaluator.py",
+      "size_bytes": 9779,
+      "sha256": "fe487c54c880bf24a413bb4798d70c6c7f20ae778dc9c8a822df86e5dd9d3746"
+    },
+    {
+      "role": "final_twm_prediction",
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/twm_v3_historical_backtest/twm_v3_prediction.parquet",
+      "size_bytes": 26316,
+      "sha256": "8b40d99e2192c9f9f976c79e121a6ae660ec1c6446771f278b542878aabe4364"
+    },
+    {
+      "role": "final_twm_prediction_report",
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/twm_v3_historical_backtest/prediction_report.json",
+      "size_bytes": 28195,
+      "sha256": "d5cee379a08056bcbfd21d0f11b2dc1f3baef2223637f45da6bb3ca019f95031"
+    },
+    {
+      "role": "final_twm_evaluation",
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/twm_v3_historical_backtest/evaluation.json",
+      "size_bytes": 91743,
+      "sha256": "cecc912aac6b12bbc75f96e0758df0ee3ff6fbe106853a3e5e57de45dd907cd5"
+    },
+    {
+      "role": "final_twm_rebuild_verification",
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/twm_v3_historical_backtest/prediction_verification.json",
+      "size_bytes": 1803,
+      "sha256": "4cafdc670c9a7f862d0d7456971a1843369939a6bc86809f0da1ddae1f39c799"
+    },
+    {
+      "role": "final_flus_prediction",
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/flus_full_grid_historical_backtest_ensemble/flus_full_grid_historical_ensemble_prediction.parquet",
+      "size_bytes": 12223,
+      "sha256": "44b5865c90ddabd7ce4d3e61e1b5ec8d0908b5701a4297c146c7efeba141d57a"
+    },
+    {
+      "role": "final_flus_prediction_report",
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/flus_full_grid_historical_backtest_ensemble/prediction_report.json",
+      "size_bytes": 113637,
+      "sha256": "02eb8777beb5dea42a60729c80ca583d24c856a27100352710e67b2351183b45"
+    },
+    {
+      "role": "final_flus_evaluation",
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/flus_full_grid_historical_backtest_ensemble/evaluation.json",
+      "size_bytes": 74046,
+      "sha256": "99f8bc3ef4cdde6430c975e20dda903ea5f95114de369109c50f82315db44971"
+    },
+    {
+      "role": "report_markdown",
+      "path": "docs/research/GWM_BENCHMARK_DATA_ARCHITECTURE_AND_TWM_FLUS_COMPARISON_2026-07-23.md",
+      "size_bytes": 22037,
+      "sha256": "691b2145949cd3c7aaf054b0099f63afedecda778f1545c22dcf2afe31c8ed3b"
+    },
+    {
+      "role": "report_word",
+      "path": "docs/research/GWM_BENCHMARK_DATA_ARCHITECTURE_AND_TWM_FLUS_COMPARISON_2026-07-23.docx",
+      "size_bytes": 1565888,
+      "sha256": "7e69faebdaf6e50ababb9bb2624bd53919fefaf5ed89453d1ae178a58fdb949a"
+    },
+    {
+      "role": "report_figure_data",
+      "path": "docs/research/assets/gwm_benchmark_data_architecture_comparison_2026-07-23/figure_data.json",
+      "size_bytes": 3337,
+      "sha256": "225e55142fad0ba69dc4b0dc47522d9a052866657e58362277df210cf21eebce"
+    },
+    {
+      "role": "report_figure_dataset",
+      "path": "docs/research/assets/gwm_benchmark_data_architecture_comparison_2026-07-23/01_dataset_coverage_and_nodes.png",
+      "size_bytes": 241007,
+      "sha256": "c92cea3f18b46acbeb000c39977afcb2a29eb5aa70d065ae5432a70fcb849f55"
+    },
+    {
+      "role": "report_figure_raw_preview",
+      "path": "docs/research/assets/gwm_benchmark_data_architecture_comparison_2026-07-23/02_raw_geotiff_preview_tianjin.png",
+      "size_bytes": 658802,
+      "sha256": "df859293088de6684763cb9acbc4afe62372860af346bac6e8f809f6c0594438"
+    },
+    {
+      "role": "report_figure_architecture",
+      "path": "docs/research/assets/gwm_benchmark_data_architecture_comparison_2026-07-23/03_gwm_runtime_dam_gk_twm_architecture.png",
+      "size_bytes": 301336,
+      "sha256": "82af056d7168981c96795d6f3c89c5e88446c7d0a64ba5d60329e9bfac3a1bf6"
+    },
+    {
+      "role": "report_figure_result_preview",
+      "path": "docs/research/assets/gwm_benchmark_data_architecture_comparison_2026-07-23/04_result_spatial_preview_tianjin_2020.png",
+      "size_bytes": 277180,
+      "sha256": "23b55ae86a4c61229b1781d559c127a3439c50e75e55447d4ea2223ab7c3e86a"
+    },
+    {
+      "role": "report_figure_final_comparison",
+      "path": "docs/research/assets/gwm_benchmark_data_architecture_comparison_2026-07-23/05_final_twm_vs_flus_comparison.png",
+      "size_bytes": 126226,
+      "sha256": "ac10204e2fcd5c09b1111e9486ac3daa5056590271c8021c7a7a2d8527d5d7a5"
+    }
+  ],
+  "claim_boundary": {
+    "historical_dataset_integrity_supported": true,
+    "historical_twm_flus_comparison_supported": true,
+    "prospective_2026_acceptance_supported": false,
+    "general_gwm_validity_supported": false,
+    "reason": "The final TWM was developed after historical labels existed; fresh 2026 labels remain pending."
+  }
+}

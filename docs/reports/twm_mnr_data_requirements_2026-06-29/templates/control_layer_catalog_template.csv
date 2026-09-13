@@ -1,0 +1,2 @@
+﻿control_id,control_type,control_name,rule_code,severity,effective_date,version,admin_code,source_system,source_path_or_reference,synthetic,not_for_production
+CTRL-001,ecological_redline,生态保护红线脱敏别名,RULE-ECO-001,hard_block,2025-01-01,ECO-2025-A,500000,authoritative_control_line_system,inner-network-reference,false,false

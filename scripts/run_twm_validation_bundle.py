@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -13,7 +14,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from data_agent.territory_world_model import TerritoryWorldModelService, TwmRepository, jsonable, now_utc_iso
 from data_agent.territory_world_model.deployment_punch_list import build_deployment_punch_list
-from data_agent.territory_world_model.utils import read_csv, read_json
+from data_agent.territory_world_model.utils import read_csv, read_json, safe_float, safe_int
 from scripts.validate_twm_data_foundation import (
     audit_observed_history_schema,
     normalize_production_observed_history_export,
@@ -45,11 +46,14 @@ def main() -> None:
     parser.add_argument("--scca-output-dir", default="", help="Optional SCCA output directory or manifest path.")
     parser.add_argument("--scca-result-json", default="", help="Optional SCCA result JSON payload path.")
     parser.add_argument("--require-scca-pass", action="store_true", help="Require passing SCCA evidence before spatial causal claim promotion.")
+    parser.add_argument("--paper58-benchmark-dir", default="", help="Optional sanitized Paper58 benchmark summary directory or manifest path.")
     parser.add_argument("--production-observed-history", default="", help="Optional real non-synthetic observed approval/review history CSV.")
     parser.add_argument("--normalize-production-observed-history-source", default="", help="Optional raw approval/review export CSV to normalize before production preflight.")
     parser.add_argument("--normalized-production-observed-history-output", default="", help="Optional normalized production observed-history CSV output path.")
     parser.add_argument("--synthetic-experiment-foundation", default=str(DEFAULT_SYNTHETIC_EXPERIMENT_FOUNDATION), help="Synthetic experiment CSV used only as a policy-coverage benchmark.")
     parser.add_argument("--production-scale-profile", default="", help="Optional JSON profile describing real layer/table scale and distributed lakehouse readiness.")
+    parser.add_argument("--txpoint10m-lakehouse-summary", default="", help="Optional TxPoint10M lakehouse summary JSON to convert into a TWM production scale profile.")
+    parser.add_argument("--txpoint10m-scale-profile-output", default="", help="Optional output path for the TxPoint10M-derived TWM production scale profile.")
     parser.add_argument("--scale-profile-template-output", default=str(DEFAULT_SCALE_PROFILE_TEMPLATE), help="JSON template output path for sanitized production scale profiles.")
     parser.add_argument("--require-production-readiness", action="store_true", help="Promote missing production evidence from review-only diagnostics to a blocked readiness gate.")
     parser.add_argument("--fail-on-blocked", action="store_true", help="Exit non-zero after writing outputs when the validation bundle status is blocked.")
@@ -67,11 +71,14 @@ def main() -> None:
         scca_output_dir=Path(args.scca_output_dir).expanduser() if args.scca_output_dir else None,
         scca_result_json=Path(args.scca_result_json).expanduser() if args.scca_result_json else None,
         require_scca_pass=bool(args.require_scca_pass),
+        paper58_benchmark_dir=Path(args.paper58_benchmark_dir).expanduser() if args.paper58_benchmark_dir else None,
         production_observed_history=Path(args.production_observed_history).expanduser() if args.production_observed_history else None,
         normalize_production_observed_history_source=Path(args.normalize_production_observed_history_source).expanduser() if args.normalize_production_observed_history_source else None,
         normalized_production_observed_history_output=Path(args.normalized_production_observed_history_output).expanduser() if args.normalized_production_observed_history_output else None,
         synthetic_experiment_foundation=Path(args.synthetic_experiment_foundation).expanduser() if args.synthetic_experiment_foundation else None,
         production_scale_profile=Path(args.production_scale_profile).expanduser() if args.production_scale_profile else None,
+        txpoint10m_lakehouse_summary=Path(args.txpoint10m_lakehouse_summary).expanduser() if args.txpoint10m_lakehouse_summary else None,
+        txpoint10m_scale_profile_output=Path(args.txpoint10m_scale_profile_output).expanduser() if args.txpoint10m_scale_profile_output else None,
         require_production_readiness=bool(args.require_production_readiness),
         include_auxiliary_tables=bool(args.include_auxiliary_tables),
     )
@@ -112,11 +119,14 @@ def run_validation_bundle(
     scca_output_dir: Path | str | None = None,
     scca_result_json: Path | str | None = None,
     require_scca_pass: bool = False,
+    paper58_benchmark_dir: Path | str | None = None,
     production_observed_history: Path | str | None = None,
     normalize_production_observed_history_source: Path | str | None = None,
     normalized_production_observed_history_output: Path | str | None = None,
     synthetic_experiment_foundation: Path | str | None = DEFAULT_SYNTHETIC_EXPERIMENT_FOUNDATION,
     production_scale_profile: Path | str | None = None,
+    txpoint10m_lakehouse_summary: Path | str | None = None,
+    txpoint10m_scale_profile_output: Path | str | None = None,
     require_production_readiness: bool = False,
     include_auxiliary_tables: bool = True,
     service: TerritoryWorldModelService | None = None,
@@ -125,13 +135,24 @@ def run_validation_bundle(
     optimization_path = Path(optimization_dir).expanduser() if optimization_dir else None
     scca_output_path = Path(scca_output_dir).expanduser() if scca_output_dir else None
     scca_json_path = Path(scca_result_json).expanduser() if scca_result_json else None
+    paper58_benchmark_path = Path(paper58_benchmark_dir).expanduser() if paper58_benchmark_dir else None
     production_history_path, production_normalization = prepare_production_observed_history_for_bundle(
         production_observed_history=production_observed_history,
         normalize_production_observed_history_source=normalize_production_observed_history_source,
         normalized_production_observed_history_output=normalized_production_observed_history_output,
     )
     synthetic_foundation_path = Path(synthetic_experiment_foundation).expanduser() if synthetic_experiment_foundation else None
-    scale_profile_path = Path(production_scale_profile).expanduser() if production_scale_profile else None
+    scale_profile_path = prepare_txpoint10m_scale_profile(
+        production_scale_profile=production_scale_profile,
+        txpoint10m_lakehouse_summary=txpoint10m_lakehouse_summary,
+        txpoint10m_scale_profile_output=txpoint10m_scale_profile_output,
+    )
+    txpoint10m_summary_path = Path(txpoint10m_lakehouse_summary).expanduser() if txpoint10m_lakehouse_summary else None
+    txpoint10m_generated_profile_path = txpoint10m_generated_scale_profile_output(
+        production_scale_profile=production_scale_profile,
+        txpoint10m_lakehouse_summary=txpoint10m_lakehouse_summary,
+        txpoint10m_scale_profile_output=txpoint10m_scale_profile_output,
+    )
 
     svc = service or build_offline_validation_service()
     project = svc.create_project(
@@ -182,6 +203,10 @@ def run_validation_bundle(
     if scca_report:
         selected_plan_payload["scca_causal_evidence_report"] = scca_report
 
+    paper58_external_benchmark = build_paper58_external_benchmark(paper58_benchmark_path)
+    pilot_readiness_matrix = svc.pilot_readiness_matrix_report()
+    rule_fixture_coverage_matrix = svc.rule_fixture_coverage_matrix_report()
+
     selected_bundle = svc.selected_plan_evaluation_bundle(state_id, selected_plan_payload)
     validation_report = selected_bundle.get("validation_report") or {}
     claim_ladder = ((validation_report.get("summary") or {}).get("claim_ladder") or {})
@@ -219,11 +244,14 @@ def run_validation_bundle(
             "optimization_dir": str(optimization_path) if optimization_path else None,
             "scca_output_dir": str(scca_output_path) if scca_output_path else None,
             "scca_result_json": str(scca_json_path) if scca_json_path else None,
+            "paper58_benchmark_dir": str(paper58_benchmark_path) if paper58_benchmark_path else None,
             "production_observed_history": str(production_history_path) if production_history_path else None,
             "normalize_production_observed_history_source": str(normalize_production_observed_history_source) if normalize_production_observed_history_source else None,
             "normalized_production_observed_history_output": production_normalization.get("output_path") if production_normalization.get("status") != "not_requested" else None,
             "synthetic_experiment_foundation": str(synthetic_foundation_path) if synthetic_foundation_path else None,
             "production_scale_profile": str(scale_profile_path) if scale_profile_path else None,
+            "txpoint10m_lakehouse_summary": str(txpoint10m_summary_path) if txpoint10m_summary_path else None,
+            "txpoint10m_scale_profile_output": str(txpoint10m_generated_profile_path) if txpoint10m_generated_profile_path else None,
             "require_scca_pass": bool(require_scca_pass),
             "require_production_readiness": bool(require_production_readiness),
             "include_auxiliary_tables": bool(include_auxiliary_tables),
@@ -239,6 +267,9 @@ def run_validation_bundle(
         "validation_summary": summarize_validation_report(validation_report),
         "claim_ladder": summarize_claim_ladder(claim_ladder),
         "scca_summary": summarize_scca_report(scca_report, require_scca_pass=require_scca_pass),
+        "paper58_external_benchmark": paper58_external_benchmark,
+        "pilot_readiness_matrix": pilot_readiness_matrix,
+        "rule_fixture_coverage_matrix": rule_fixture_coverage_matrix,
         "production_observed_history_normalization": production_normalization,
         "production_observed_history_preflight": production_preflight,
         "production_scale_profile_contract": production_scale_profile_contract(),
@@ -252,13 +283,14 @@ def run_validation_bundle(
             "raw_data_policy": "raw objects, geometries and row-level attributes are not exported by this report",
         },
         "recommendations": validation_bundle_recommendations(
-            selected_bundle,
-            validation_report,
-            scca_report,
-            require_scca_pass,
-            production_preflight,
-            scale_readiness,
-            readiness_gate,
+            selected_bundle=selected_bundle,
+            validation_report=validation_report,
+            scca_report=scca_report,
+            require_scca_pass=require_scca_pass,
+            production_preflight=production_preflight,
+            production_scale_readiness=scale_readiness,
+            production_readiness_gate=readiness_gate,
+            paper58_external_benchmark=paper58_external_benchmark,
         ),
     }
     return jsonable(report)
@@ -288,6 +320,42 @@ def prepare_production_observed_history_for_bundle(
     return normalize_output, normalization
 
 
+def prepare_txpoint10m_scale_profile(
+    *,
+    production_scale_profile: Path | str | None = None,
+    txpoint10m_lakehouse_summary: Path | str | None = None,
+    txpoint10m_scale_profile_output: Path | str | None = None,
+) -> Path | None:
+    if production_scale_profile:
+        return Path(production_scale_profile).expanduser()
+    output_path = txpoint10m_generated_scale_profile_output(
+        production_scale_profile=production_scale_profile,
+        txpoint10m_lakehouse_summary=txpoint10m_lakehouse_summary,
+        txpoint10m_scale_profile_output=txpoint10m_scale_profile_output,
+    )
+    if output_path is None or not txpoint10m_lakehouse_summary:
+        return None
+
+    summary_path = Path(txpoint10m_lakehouse_summary).expanduser()
+    from scripts.txpoint10m_lakehouse_analysis import write_twm_production_scale_profile
+
+    write_twm_production_scale_profile(read_json(summary_path), output_path)
+    return output_path
+
+
+def txpoint10m_generated_scale_profile_output(
+    *,
+    production_scale_profile: Path | str | None = None,
+    txpoint10m_lakehouse_summary: Path | str | None = None,
+    txpoint10m_scale_profile_output: Path | str | None = None,
+) -> Path | None:
+    if production_scale_profile or not txpoint10m_lakehouse_summary:
+        return None
+    if txpoint10m_scale_profile_output:
+        return Path(txpoint10m_scale_profile_output).expanduser()
+    return Path(txpoint10m_lakehouse_summary).expanduser().with_name("txpoint10m_twm_production_scale_profile.json")
+
+
 def build_offline_validation_service() -> TerritoryWorldModelService:
     return TerritoryWorldModelService(repository=TwmRepository(engine=None, persist_to_db=False))
 
@@ -307,6 +375,311 @@ def build_scca_report_if_requested(
     if scca_result_json is not None:
         payload["scca_result"] = read_json(scca_result_json)
     return svc.scca_causal_evidence_report(state_id, payload)
+
+
+PAPER58_EXTERNAL_BENCHMARK_SCHEMA = "territory_world_model.paper58_external_benchmark.v1"
+PAPER58_REQUIRED_METRIC_SUMMARY_COLUMNS = {
+    "method",
+    "n",
+    "mean_change_f1",
+    "mean_fom",
+    "mean_transition_accuracy",
+    "mean_allocation_disagreement",
+}
+PAPER58_REQUIRED_NUMERIC_METRIC_COLUMNS = {
+    "n",
+    "mean_change_f1",
+    "mean_fom",
+    "mean_transition_accuracy",
+    "mean_allocation_disagreement",
+}
+PAPER58_REQUIRED_PER_REGION_METRIC_COLUMNS = {
+    "method",
+    "area",
+    "change_f1",
+    "fom",
+    "transition_accuracy",
+    "allocation_disagreement",
+}
+PAPER58_REQUIRED_PER_REGION_NUMERIC_COLUMNS = {
+    "change_f1",
+    "fom",
+    "transition_accuracy",
+    "allocation_disagreement",
+}
+
+
+def build_paper58_external_benchmark(paper58_benchmark_dir: Path | str | None = None) -> dict[str, Any]:
+    boundary = {
+        "schema": PAPER58_EXTERNAL_BENCHMARK_SCHEMA,
+        "claim_scope": "external_benchmark_support_only",
+        "runtime_dependency": "none",
+        "geofm_runtime_allowed": False,
+        "twm_generator_role": "not_a_runtime_generator",
+        "primary_twm_route": "twm_native_generation_and_planning",
+        "blocks_validation": False,
+        "can_promote_claim_ladder": False,
+        "claim_boundary": (
+            "Paper58 is external benchmark support only. It does not make AlphaEarth/GeoFM a TWM runtime "
+            "dependency, does not replace TWM-native generation, and does not prove TWM production accuracy."
+        ),
+    }
+    if paper58_benchmark_dir is None:
+        return {
+            **boundary,
+            "status": "missing",
+            "provided": False,
+            "missing": ["paper58_benchmark_dir_not_provided"],
+            "source_files": {},
+            "metric_summary": {},
+            "manifest_summary": {},
+        }
+
+    path = Path(paper58_benchmark_dir).expanduser()
+    if not path.exists():
+        return {
+            **boundary,
+            "status": "blocked",
+            "provided": False,
+            "missing": ["paper58_benchmark_path_not_found"],
+            "source_files": {"paper58_benchmark_dir": str(path)},
+            "metric_summary": {},
+            "manifest_summary": {},
+        }
+
+    root = path.parent if path.is_file() else path
+    manifest_path = path if path.is_file() and path.suffix.lower() == ".json" else root / "manifest.json"
+    metric_summary_path = root / "metric_summary_by_method.csv"
+    per_region_path = root / "metrics_by_method.csv"
+    missing = []
+    read_errors = []
+    if not metric_summary_path.exists():
+        missing.append("metric_summary_by_method.csv")
+    metric_rows = safe_read_paper58_csv(metric_summary_path, missing, read_errors) if metric_summary_path.exists() else []
+    per_region_rows = safe_read_paper58_csv(per_region_path, missing, read_errors) if per_region_path.exists() else []
+    manifest_exists = manifest_path.exists()
+    manifest = safe_read_paper58_json(manifest_path, missing, read_errors) if manifest_exists else {}
+    if manifest_exists and not manifest:
+        manifest_missing = "manifest.json_unreadable" if any(item.get("path") == str(manifest_path) for item in read_errors) else "manifest.json"
+        if manifest_missing not in missing:
+            missing.append(manifest_missing)
+    elif manifest_exists and not is_paper58_manifest_method(manifest.get("method")):
+        missing.append("manifest_method_not_paper58")
+    has_required_metric_columns = paper58_metric_summary_has_required_columns(metric_rows) if metric_rows else False
+    if metric_rows and not has_required_metric_columns:
+        missing.append("metric_summary_required_columns_missing")
+    if has_required_metric_columns and paper58_metric_summary_has_invalid_numeric_values(metric_rows):
+        missing.append("metric_summary_invalid_numeric_values")
+    per_region_read_failed = any(item.get("path") == str(per_region_path) for item in read_errors)
+    if per_region_path.exists() and not per_region_read_failed:
+        has_required_per_region_columns = paper58_per_region_has_required_columns(per_region_rows) if per_region_rows else False
+        if not has_required_per_region_columns:
+            missing.append("metrics_by_method_required_columns_missing")
+        elif paper58_per_region_has_invalid_numeric_values(per_region_rows):
+            missing.append("metrics_by_method_invalid_numeric_values")
+
+    metric_summary = summarize_paper58_metric_rows(metric_rows, per_region_rows)
+    if metric_summary.get("best_paper58_method") and not metric_summary.get("baseline_method"):
+        missing.append("baseline_method_not_found")
+    status = (
+        "supporting_evidence"
+        if metric_summary.get("best_paper58_method") and metric_summary.get("baseline_method") and not missing
+        else "review"
+    )
+    return {
+        **boundary,
+        "status": status,
+        "provided": True,
+        "missing": missing,
+        "read_errors": read_errors,
+        "source_files": {
+            "paper58_benchmark_dir": str(root),
+            "metric_summary_by_method": str(metric_summary_path) if metric_summary_path.exists() else None,
+            "metrics_by_method": str(per_region_path) if per_region_path.exists() else None,
+            "manifest": str(manifest_path) if manifest_path.exists() else None,
+        },
+        "metric_summary": metric_summary,
+        "manifest_summary": summarize_paper58_manifest(manifest),
+    }
+
+
+def safe_read_paper58_csv(path: Path, missing: list[str], read_errors: list[dict[str, str]]) -> list[dict[str, Any]]:
+    try:
+        return read_csv(path)
+    except Exception as exc:
+        missing.append(f"{path.name}_unreadable")
+        read_errors.append({"path": str(path), "error": str(exc)})
+        return []
+
+
+def safe_read_paper58_json(path: Path, missing: list[str], read_errors: list[dict[str, str]]) -> dict[str, Any]:
+    try:
+        return read_json(path)
+    except Exception as exc:
+        missing.append(f"{path.name}_unreadable")
+        read_errors.append({"path": str(path), "error": str(exc)})
+        return {}
+
+
+def paper58_metric_summary_has_required_columns(metric_rows: list[dict[str, Any]]) -> bool:
+    columns: set[str] = set()
+    for row in metric_rows:
+        columns.update(str(key) for key in row.keys())
+    return PAPER58_REQUIRED_METRIC_SUMMARY_COLUMNS.issubset(columns)
+
+
+def paper58_metric_summary_has_invalid_numeric_values(metric_rows: list[dict[str, Any]]) -> bool:
+    candidates = [
+        row
+        for row in metric_rows
+        if is_paper58_baseline_method(row.get("method")) or is_paper58_method(row.get("method"))
+    ]
+    for row in candidates:
+        if safe_int(row.get("n"), None) is None:
+            return True
+        for key in PAPER58_REQUIRED_NUMERIC_METRIC_COLUMNS - {"n"}:
+            if paper58_finite_float(row.get(key), None) is None:
+                return True
+    return False
+
+
+def paper58_per_region_has_required_columns(per_region_rows: list[dict[str, Any]]) -> bool:
+    columns: set[str] = set()
+    for row in per_region_rows:
+        columns.update(str(key) for key in row.keys())
+    return PAPER58_REQUIRED_PER_REGION_METRIC_COLUMNS.issubset(columns)
+
+
+def paper58_per_region_has_invalid_numeric_values(per_region_rows: list[dict[str, Any]]) -> bool:
+    candidates = [
+        row
+        for row in per_region_rows
+        if is_paper58_baseline_method(row.get("method")) or is_paper58_method(row.get("method"))
+    ]
+    for row in candidates:
+        for key in PAPER58_REQUIRED_PER_REGION_NUMERIC_COLUMNS:
+            if paper58_finite_float(row.get(key), None) is None:
+                return True
+    return False
+
+
+def summarize_paper58_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
+    if not manifest:
+        return {}
+    summary = manifest.get("summary") if isinstance(manifest.get("summary"), dict) else {}
+    return {
+        "method": manifest.get("method"),
+        "selection_rule": manifest.get("selection_rule"),
+        "summary": {
+            "n": safe_int(summary.get("n"), 0),
+            "mean_change_f1": paper58_finite_float(summary.get("mean_change_f1"), None),
+            "mean_fom": paper58_finite_float(summary.get("mean_fom"), None),
+            "mean_transition_accuracy": paper58_finite_float(summary.get("mean_transition_accuracy"), None),
+            "mean_allocation_disagreement": paper58_finite_float(summary.get("mean_allocation_disagreement"), None),
+        },
+    }
+
+
+def summarize_paper58_metric_rows(
+    metric_rows: list[dict[str, Any]],
+    per_region_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if not metric_rows:
+        return {}
+    baseline_rows = [row for row in metric_rows if is_paper58_baseline_method(row.get("method"))]
+    baseline = select_paper58_best_metric_row(baseline_rows)
+    paper58_rows = [row for row in metric_rows if is_paper58_method(row.get("method"))]
+    best = select_paper58_best_metric_row(paper58_rows)
+    summary: dict[str, Any] = {
+        "method_count": len(metric_rows),
+        "per_region_row_count": len(per_region_rows),
+        "baseline_method": baseline.get("method") if baseline else None,
+        "best_paper58_method": best.get("method") if best else None,
+        "area_count": safe_int((best or baseline or {}).get("n"), 0),
+        "paper58_vs_baseline_wins": 0,
+        "deltas": {},
+        "best_paper58_metrics": sanitize_paper58_metrics(best or {}),
+        "baseline_metrics": sanitize_paper58_metrics(baseline or {}),
+    }
+    if baseline and best:
+        deltas = paper58_metric_deltas(best, baseline)
+        summary["deltas"] = deltas
+        summary["paper58_vs_baseline_wins"] = sum(
+            1
+            for key, value in deltas.items()
+            if value is not None
+            and ((key == "mean_allocation_disagreement" and value < 0) or (key != "mean_allocation_disagreement" and value > 0))
+        )
+    return summary
+
+
+def is_paper58_baseline_method(method: Any) -> bool:
+    text = str(method or "").lower()
+    return ("geosos" in text or "flus" in text) and "paper58" not in text
+
+
+def is_paper58_method(method: Any) -> bool:
+    return "paper58" in str(method or "").lower()
+
+
+def is_paper58_manifest_method(method: Any) -> bool:
+    text = str(method or "").strip().lower()
+    return bool(text) and "paper58" in text and not text.startswith("not_")
+
+
+def paper58_metric_score(row: dict[str, Any]) -> tuple[float, float, float, float]:
+    return (
+        paper58_finite_float(row.get("mean_change_f1"), 0.0) or 0.0,
+        paper58_finite_float(row.get("mean_fom"), 0.0) or 0.0,
+        paper58_finite_float(row.get("mean_transition_accuracy"), 0.0) or 0.0,
+        -(paper58_finite_float(row.get("mean_allocation_disagreement"), 999.0) or 999.0),
+    )
+
+
+def select_paper58_best_metric_row(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not rows:
+        return None
+    return sorted(rows, key=paper58_metric_rank_key)[0]
+
+
+def paper58_metric_rank_key(row: dict[str, Any]) -> tuple[float, float, float, float, str]:
+    score = paper58_metric_score(row)
+    return (-score[0], -score[1], -score[2], -score[3], str(row.get("method") or ""))
+
+
+def paper58_finite_float(value: Any, default: float | None = None) -> float | None:
+    parsed = safe_float(value, None)
+    if parsed is None or not math.isfinite(parsed):
+        return default
+    return parsed
+
+
+def sanitize_paper58_metrics(row: dict[str, Any]) -> dict[str, Any]:
+    if not row:
+        return {}
+    return {
+        "method": row.get("method"),
+        "n": safe_int(row.get("n"), 0),
+        "mean_change_f1": paper58_finite_float(row.get("mean_change_f1"), None),
+        "mean_fom": paper58_finite_float(row.get("mean_fom"), None),
+        "mean_transition_accuracy": paper58_finite_float(row.get("mean_transition_accuracy"), None),
+        "mean_allocation_disagreement": paper58_finite_float(row.get("mean_allocation_disagreement"), None),
+    }
+
+
+def paper58_metric_deltas(best: dict[str, Any], baseline: dict[str, Any]) -> dict[str, float | None]:
+    keys = [
+        "mean_change_f1",
+        "mean_fom",
+        "mean_transition_accuracy",
+        "mean_allocation_disagreement",
+    ]
+    deltas: dict[str, float | None] = {}
+    for key in keys:
+        left = paper58_finite_float(best.get(key), None)
+        right = paper58_finite_float(baseline.get(key), None)
+        deltas[key] = None if left is None or right is None else left - right
+    return deltas
 
 
 def validation_bundle_status(
@@ -402,6 +775,7 @@ def summarize_observed_history_schema_audit(audit: dict[str, Any]) -> dict[str, 
         "field_count": audit.get("field_count", 0),
         "missing_required_groups": list(audit.get("missing_required_groups") or []),
         "missing_data_gates": list(audit.get("missing_data_gates") or []),
+        "gate_diagnostics": list(audit.get("gate_diagnostics") or []),
         "row_quality": {
             "production_candidate_row_count": row_quality.get("production_candidate_row_count", 0),
             "production_treated_count": row_quality.get("production_treated_count", 0),
@@ -571,6 +945,48 @@ def build_production_readiness_gate(
     }
 
 
+PRODUCTION_SCALE_REMEDIATIONS: dict[str, str] = {
+    "production_scale_profile_provided": "Provide a sanitized production scale profile with row counts, storage formats, partitioning, spatial index, and compute metadata.",
+    "production_scale_profile_readable": "Correct the production scale profile path or place the sanitized profile where the runner can read it.",
+    "production_scale_profile_not_example": "Replace the example template values with sanitized production metadata and set example_only=false and not_for_production=false.",
+    "production_layer_inventory": "List each production layer or table with a sanitized name and row, feature, record, or object count.",
+    "lakehouse_storage": "Use columnar lakehouse storage such as GeoParquet, Iceberg, Delta, Hudi, Parquet, or ORC for million-scale layers.",
+    "partition_strategy": "Add administrative, temporal, or spatial partitioning columns for million-scale layers.",
+    "spatial_index_strategy": "Add a spatial index, grid, tile, Hilbert, S2, H3, or quadkey strategy for spatial layers.",
+    "distributed_compute": "Use distributed compute such as Spark/Sedona, Flink, Dask, Ray, Trino, Presto, or distributed SQL for ten-million-scale layers.",
+    "national_scale_sampling_or_tiling": "Add tiling, sampling, chunking, or pyramid strategy for hundred-million-scale validation and serving.",
+}
+
+
+def production_scale_check_diagnostics(checks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    diagnostics: list[dict[str, Any]] = []
+    for check in checks:
+        gate = str(check.get("gate") or "")
+        diagnostics.append(
+            {
+                "gate": gate,
+                "phase": "production_scale",
+                "status": "pass" if check.get("status") == "pass" else "missing",
+                "observed": check.get("observed"),
+                "requirement": check.get("requirement"),
+                "remediation": PRODUCTION_SCALE_REMEDIATIONS.get(gate, f"Provide evidence for {gate}."),
+            }
+        )
+    return diagnostics
+
+
+def production_scale_data_owner_summary(checks: list[dict[str, Any]]) -> dict[str, Any]:
+    diagnostics = production_scale_check_diagnostics(checks)
+    missing = [item for item in diagnostics if item.get("status") != "pass"]
+    return {
+        "phase": "production_scale",
+        "status": "pass" if not missing else "review",
+        "missing_gate_count": len(missing),
+        "missing_gates": [item.get("gate") for item in missing],
+        "remediations": [item.get("remediation") for item in missing],
+    }
+
+
 def build_production_scale_readiness(
     *,
     production_scale_profile: Path | str | None = None,
@@ -582,6 +998,14 @@ def build_production_scale_readiness(
             int((state_summary or {}).get("object_count") or 0),
             int((state_summary or {}).get("relation_count") or 0),
         )
+        checks = [
+            readiness_check(
+                "production_scale_profile_provided",
+                False,
+                "not_provided",
+                "provide a sanitized production-scale profile before claiming national or million-scale readiness",
+            )
+        ]
         return {
             "schema": "territory_world_model.production_scale_readiness.v1",
             "status": "not_provided",
@@ -594,32 +1018,30 @@ def build_production_scale_readiness(
                 "local_state_object_count": int((state_summary or {}).get("object_count") or 0),
                 "local_state_relation_count": int((state_summary or {}).get("relation_count") or 0),
             },
-            "checks": [
-                readiness_check(
-                    "production_scale_profile_provided",
-                    False,
-                    "not_provided",
-                    "provide a sanitized production-scale profile before claiming national or million-scale readiness",
-                )
-            ],
+            "checks": checks,
+            "check_diagnostics": production_scale_check_diagnostics(checks),
+            "data_owner_summary": production_scale_data_owner_summary(checks),
             "missing": ["production_scale_profile_provided"],
             "claim_boundary": "local/demo state size does not prove readiness for million- or hundred-million-scale production layers",
         }
     if not profile_path.exists():
+        checks = [
+            readiness_check(
+                "production_scale_profile_readable",
+                False,
+                "missing",
+                "production scale profile path must exist",
+            )
+        ]
         return {
             "schema": "territory_world_model.production_scale_readiness.v1",
             "status": "blocked",
             "profile_path": str(profile_path),
             "scale_tier": "unknown",
             "observed": {"max_layer_row_count": 0, "total_row_count": 0, "layer_count": 0},
-            "checks": [
-                readiness_check(
-                    "production_scale_profile_readable",
-                    False,
-                    "missing",
-                    "production scale profile path must exist",
-                )
-            ],
+            "checks": checks,
+            "check_diagnostics": production_scale_check_diagnostics(checks),
+            "data_owner_summary": production_scale_data_owner_summary(checks),
             "missing": ["production_scale_profile_readable"],
             "claim_boundary": "scale readiness cannot be evaluated when the supplied profile is missing",
         }
@@ -701,6 +1123,8 @@ def build_production_scale_readiness(
             "requires_national_scale_controls": needs_national_controls,
         },
         "checks": checks,
+        "check_diagnostics": production_scale_check_diagnostics(checks),
+        "data_owner_summary": production_scale_data_owner_summary(checks),
         "missing": [check["gate"] for check in failed],
         "claim_boundary": "scale readiness checks architecture evidence only; they do not prove model accuracy, rule correctness or planning optimality",
     }
@@ -1256,6 +1680,8 @@ def validation_bundle_recommendations(
     production_preflight: dict[str, Any] | None = None,
     production_scale_readiness: dict[str, Any] | None = None,
     production_readiness_gate: dict[str, Any] | None = None,
+    *,
+    paper58_external_benchmark: dict[str, Any] | None = None,
 ) -> list[str]:
     recommendations: list[str] = []
     recommendations.extend(str(item) for item in selected_bundle.get("recommendations") or [])
@@ -1266,6 +1692,11 @@ def validation_bundle_recommendations(
         recommendations.append("provide SCCA causal evidence output or disable require_scca_pass for non-causal offline smoke validation")
     if scca_report and (scca_report.get("evidence_gate") or {}).get("status") != "pass":
         recommendations.append("keep spatial causal claims in review until the SCCA evidence gate passes")
+    paper58_status = str((paper58_external_benchmark or {}).get("status") or "missing")
+    if paper58_status == "supporting_evidence":
+        recommendations.append("use Paper58 only as external benchmark support; keep TWM-native generation and planning as the runtime route")
+    elif paper58_status == "blocked":
+        recommendations.append("fix the sanitized Paper58 benchmark path or omit it; Paper58 evidence is optional and must not block TWM-native validation")
     production_status = str((production_preflight or {}).get("status") or "not_provided")
     if production_status == "not_provided":
         recommendations.append("provide real non-synthetic observed history to move beyond offline smoke validation")
@@ -1304,6 +1735,9 @@ def render_validation_bundle_markdown(report: dict[str, Any]) -> str:
     validation = report.get("validation_summary") or {}
     claim = report.get("claim_ladder") or {}
     scca = report.get("scca_summary") or {}
+    paper58 = report.get("paper58_external_benchmark") or build_paper58_external_benchmark(None)
+    pilot = report.get("pilot_readiness_matrix") or {}
+    fixture = report.get("rule_fixture_coverage_matrix") or {}
     production_normalization = summarize_production_observed_history_normalization(
         report.get("production_observed_history_normalization")
         or {
@@ -1340,6 +1774,7 @@ def render_validation_bundle_markdown(report: dict[str, Any]) -> str:
         f"- Scenario: `{inputs.get('scenario')}`",
         f"- Require SCCA pass: `{inputs.get('require_scca_pass')}`",
         f"- SCCA output: `{inputs.get('scca_output_dir') or inputs.get('scca_result_json')}`",
+        f"- Paper58 external benchmark: `{inputs.get('paper58_benchmark_dir')}`",
         f"- Production observed history: `{inputs.get('production_observed_history')}`",
         f"- Synthetic policy benchmark: `{inputs.get('synthetic_experiment_foundation')}`",
         f"- Production scale profile: `{inputs.get('production_scale_profile')}`",
@@ -1391,46 +1826,116 @@ def render_validation_bundle_markdown(report: dict[str, Any]) -> str:
         f"- Claim level: `{claim.get('current_level')}` (`{claim.get('current_claim')}`)",
         f"- SCCA: required=`{scca.get('required')}`, provided=`{scca.get('provided')}`, status=`{scca.get('status')}`",
         "",
-        "## Production Observed-History Preflight",
+        "## External Benchmark Evidence",
         "",
-        f"- Preflight status: `{production.get('status')}`",
-        f"- Schema status: `{production_schema.get('status')}`",
-        f"- Production-ready rows: `{(production_schema.get('row_quality') or {}).get('production_candidate_row_count', 0)}`",
-        f"- Temporal validation status: `{production_temporal.get('status')}`",
-        f"- Train/holdout rows: `{production_temporal.get('train_row_count', 0)}` / `{production_temporal.get('holdout_row_count', 0)}`",
-        f"- Temporal missing gates: `{production_temporal.get('missing_temporal_gates', [])}`",
-        f"- Policy-history status: `{production_policy.get('status')}`",
-        f"- Policy allowed/blocked rows: `{production_policy.get('allowed_count', 0)}` / `{production_policy.get('blocked_count', 0)}`",
-        f"- Region-policy keys: `{production_policy.get('region_policy_key_count', 0)}`",
-        f"- Region-action-policy keys: `{production_policy.get('region_action_policy_key_count', 0)}`",
-        f"- Alignment status: `{production_alignment.get('status')}`",
-        f"- Alignment missing: `{production_alignment.get('missing', [])}`",
+        f"- Paper58 status: `{paper58.get('status')}`",
+        f"- Provided: `{paper58.get('provided')}`",
+        f"- Claim scope: `{paper58.get('claim_scope')}`",
+        f"- Runtime dependency: `{paper58.get('runtime_dependency')}`",
+        f"- GeoFM runtime allowed: `{paper58.get('geofm_runtime_allowed')}`",
+        f"- TWM generator role: `{paper58.get('twm_generator_role')}`",
+        f"- Primary TWM route: `{paper58.get('primary_twm_route')}`",
+        f"- Best Paper58 method: `{((paper58.get('metric_summary') or {}).get('best_paper58_method'))}`",
+        f"- Baseline method: `{((paper58.get('metric_summary') or {}).get('baseline_method'))}`",
+        f"- Paper58 wins vs baseline: `{((paper58.get('metric_summary') or {}).get('paper58_vs_baseline_wins'))}`",
+        f"- Area count: `{((paper58.get('metric_summary') or {}).get('area_count'))}`",
+        f"- Boundary: {paper58.get('claim_boundary')}",
         "",
-        "## Production Scale Readiness",
+        "## Pilot Readiness Matrix",
         "",
-        f"- Scale status: `{scale.get('status')}`",
-        f"- Scale tier: `{scale.get('scale_tier')}`",
-        f"- Max layer rows: `{(scale.get('observed') or {}).get('max_layer_row_count', 0)}`",
-        f"- Total rows: `{(scale.get('observed') or {}).get('total_row_count', 0)}`",
-        f"- Layer count: `{(scale.get('observed') or {}).get('layer_count', 0)}`",
-        f"- Missing gates: `{scale.get('missing', [])}`",
+        f"- Overall status: `{pilot.get('overall_status')}`",
+        f"- Production claim: `{((pilot.get('claim_boundary') or {}).get('production_claim'))}`",
+        f"- Synthetic can satisfy production gate: `{((pilot.get('strict_policy') or {}).get('synthetic_data_can_satisfy_production_gate'))}`",
         "",
-        "## Production Readiness Gate",
-        "",
-        f"- Required: `{readiness.get('required')}`",
-        f"- Status: `{readiness.get('status')}`",
-        f"- Missing gates: `{readiness.get('missing', [])}`",
-        "",
-        "## Deployment Punch List",
-        "",
-        f"- Status: `{punch_list.get('status')}`",
-        f"- Required: `{punch_list.get('required')}`",
-        f"- Open actions: `{punch_list.get('open_action_count', 0)}`",
-        f"- Blocking actions: `{punch_list.get('blocking_action_count', 0)}`",
-        "",
-        "| Gate | Phase | Status | Resolution |",
-        "|---|---|---|---|",
     ]
+    for item in (pilot.get("dimensions") or []):
+        lines.append(
+            f"- `{item.get('id')}`: status=`{item.get('status')}`, score=`{item.get('score')}`, missing=`{item.get('missing')}`"
+        )
+    lines.extend(
+        [
+            "",
+            "## Rule Fixture Coverage Matrix",
+            "",
+            f"- Overall status: `{fixture.get('overall_status')}`",
+            f"- Hard rule count: `{((fixture.get('summary') or {}).get('hard_rule_count', 0))}`",
+            f"- Rules with boundary gap: `{((fixture.get('summary') or {}).get('rules_with_boundary_gap', 0))}`",
+            f"- Production-ready fixtures: `{((fixture.get('summary') or {}).get('production_ready_fixture_count', 0))}`",
+            f"- Synthetic can satisfy production acceptance: `{((fixture.get('coverage_policy') or {}).get('synthetic_fixture_can_satisfy_production_acceptance'))}`",
+            "",
+        ]
+    )
+    for item in (fixture.get("rules") or []):
+        lines.append(
+            f"- `{item.get('rule_code')}`: status=`{item.get('status')}`, missing=`{item.get('missing_categories')}`"
+        )
+    lines.extend(
+        [
+            "",
+            "## Production Observed-History Preflight",
+            "",
+            f"- Preflight status: `{production.get('status')}`",
+            f"- Schema status: `{production_schema.get('status')}`",
+            f"- Production-ready rows: `{(production_schema.get('row_quality') or {}).get('production_candidate_row_count', 0)}`",
+            f"- Temporal validation status: `{production_temporal.get('status')}`",
+            f"- Train/holdout rows: `{production_temporal.get('train_row_count', 0)}` / `{production_temporal.get('holdout_row_count', 0)}`",
+            f"- Temporal missing gates: `{production_temporal.get('missing_temporal_gates', [])}`",
+            f"- Policy-history status: `{production_policy.get('status')}`",
+            f"- Policy allowed/blocked rows: `{production_policy.get('allowed_count', 0)}` / `{production_policy.get('blocked_count', 0)}`",
+            f"- Region-policy keys: `{production_policy.get('region_policy_key_count', 0)}`",
+            f"- Region-action-policy keys: `{production_policy.get('region_action_policy_key_count', 0)}`",
+            f"- Alignment status: `{production_alignment.get('status')}`",
+            f"- Alignment missing: `{production_alignment.get('missing', [])}`",
+            "",
+        ]
+    )
+    lines.extend(
+        [
+            "## Production Scale Readiness",
+            "",
+            f"- Scale status: `{scale.get('status')}`",
+            f"- Scale tier: `{scale.get('scale_tier')}`",
+            f"- Max layer rows: `{(scale.get('observed') or {}).get('max_layer_row_count', 0)}`",
+            f"- Total rows: `{(scale.get('observed') or {}).get('total_row_count', 0)}`",
+            f"- Layer count: `{(scale.get('observed') or {}).get('layer_count', 0)}`",
+            f"- Missing gates: `{scale.get('missing', [])}`",
+            "",
+            "## Production Readiness Gate",
+            "",
+            f"- Required: `{readiness.get('required')}`",
+            f"- Status: `{readiness.get('status')}`",
+            f"- Missing gates: `{readiness.get('missing', [])}`",
+            "",
+            "## Deployment Punch List",
+            "",
+            f"- Status: `{punch_list.get('status')}`",
+            f"- Required: `{punch_list.get('required')}`",
+            f"- Open actions: `{punch_list.get('open_action_count', 0)}`",
+            f"- Blocking actions: `{punch_list.get('blocking_action_count', 0)}`",
+            "",
+            "| Gate | Phase | Status | Resolution |",
+            "|---|---|---|---|",
+        ]
+    )
+    scale_diagnostic_table = [
+        "",
+        "## Production Scale Check Diagnostics",
+        "",
+        "| Gate | Status | Observed | Requirement | Remediation |",
+        "|---|---|---|---|---|",
+    ]
+    for diagnostic in scale.get("check_diagnostics") or []:
+        observed = str(
+            diagnostic.get("observed") if diagnostic.get("observed") is not None else "not_provided"
+        ).replace("|", "\\|")
+        requirement = str(diagnostic.get("requirement") or "").replace("|", "\\|")
+        remediation = str(diagnostic.get("remediation") or "").replace("|", "\\|")
+        scale_diagnostic_table.append(
+            f"| `{diagnostic.get('gate')}` | `{diagnostic.get('status')}` | `{observed}` | {requirement} | {remediation} |"
+        )
+    scale_diagnostic_table.append("")
+    readiness_heading_index = lines.index("## Production Readiness Gate")
+    lines[readiness_heading_index:readiness_heading_index] = scale_diagnostic_table
     for action in punch_list.get("actions") or []:
         resolution = str(action.get("resolution") or "").replace("|", "\\|")
         lines.append(

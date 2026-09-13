@@ -26,6 +26,7 @@ dependencies = [
     "branca>=0.7",
     "Pillow>=10.0",
     "openpyxl>=3.1",
+    "xlrd>=2.0",
     "python-docx>=1.0",
     "argon2-cffi>=25.0",
     "PyJWT>=2.8",
@@ -95,6 +96,7 @@ include = ["data_agent*", "geocausal*"]
 
 [tool.setuptools.package-data]
 data_agent = [
+    "benchmarks/twm_runtime_v1/*.json",
     "scca_samples/data/*.csv",
     "scca_samples/spatial/county_data/*",
     "scca_samples/spatial/chongqing_uhi_points/*",

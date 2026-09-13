@@ -1,0 +1,103 @@
+{
+  "schema": "gwm_bench.report_figure_data.v1",
+  "sources": {
+    "manifest": "data/twm_public_landcover/gee_dynamic_world/twm_dynamic_world_manifest.json",
+    "observed_inputs": "benchmarks/gwm_bench_foundation_v0_1/development/observed_inputs.parquet",
+    "twm_prediction": "benchmarks/gwm_bench_foundation_v0_1/development/twm_v3_historical_backtest/twm_v3_prediction.parquet",
+    "flus_prediction": "benchmarks/gwm_bench_foundation_v0_1/development/flus_full_grid_historical_backtest_ensemble/flus_full_grid_historical_ensemble_prediction.parquet",
+    "evaluation": "benchmarks/gwm_bench_foundation_v0_1/development/twm_v3_historical_backtest/evaluation.json"
+  },
+  "dataset_coverage": {
+    "region_count": 20,
+    "unique_node_count": 1055,
+    "total_admin_area_km2": 4603.1302,
+    "minimum_region_node_count": 31,
+    "maximum_region_node_count": 76
+  },
+  "raw_preview": {
+    "region_id": "天津市_滨海新区_临港工业区",
+    "raster_shape": [
+      285,
+      330
+    ],
+    "valid_land_pixels": 33215,
+    "land_classes_present": [
+      0,
+      1,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "viirs_2020_min": 0.9566667079925537,
+    "viirs_2020_max": 103.53250122070312,
+    "elevation_min_m": -7.0,
+    "elevation_max_m": 11.0
+  },
+  "result_preview": {
+    "region_id": "天津市_滨海新区_临港工业区",
+    "target_year": 2020,
+    "node_count": 54,
+    "observed_change_count": 11,
+    "models": {
+      "TWM": {
+        "true_positive": 5,
+        "false_positive": 1,
+        "false_negative": 6,
+        "change_f1": 0.5882352941176471,
+        "predicted_change_count": 6
+      },
+      "FLUS": {
+        "true_positive": 2,
+        "false_positive": 3,
+        "false_negative": 9,
+        "change_f1": 0.25,
+        "predicted_change_count": 5
+      }
+    }
+  },
+  "final_comparison": {
+    "twm": {
+      "primary_change_f1": 0.2492117237337826,
+      "observed_changed_count": 172,
+      "predicted_changed_count": 191,
+      "change_f1": 0.27548209366391185,
+      "changed_destination_macro_f1": 0.06366811520672948,
+      "overall_class_macro_f1": 0.4681604172643314,
+      "multiclass_brier_score": 0.20084183785925358
+    },
+    "flus": {
+      "primary_change_f1": 0.15343434343434342,
+      "observed_changed_count": 172,
+      "predicted_changed_count": 87,
+      "change_f1": 0.19305019305019305,
+      "changed_destination_macro_f1": 0.04116081857822019,
+      "overall_class_macro_f1": 0.5285944059617143,
+      "multiclass_brier_score": 0.19167983149025802
+    },
+    "primary_absolute_difference": 0.09577738029943916,
+    "primary_relative_improvement": 0.6242238742359763,
+    "paired_region_bootstrap": {
+      "unit": "region_with_two_years_clustered",
+      "region_count": 20,
+      "mean_primary_difference": 0.09577738029943912,
+      "bootstrap_95_percent_interval": [
+        0.001397214407324706,
+        0.18042076591708933
+      ],
+      "bootstrap_probability_difference_above_zero": 0.9767,
+      "region_wins": 14,
+      "region_ties": 1,
+      "region_losses": 5,
+      "bootstrap_draw_count": 20000,
+      "seed": 20260723
+    },
+    "claim_boundary": {
+      "posthoc_development_only": true,
+      "historical_test_labels_known_before_v3_design": true,
+      "fresh_hidden_labels_required_for_unbiased_acceptance": true
+    }
+  }
+}

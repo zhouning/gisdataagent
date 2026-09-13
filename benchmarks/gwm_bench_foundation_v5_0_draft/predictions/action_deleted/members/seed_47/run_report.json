@@ -1,0 +1,13 @@
+{
+  "schema": "gwm_bench.foundation_v5_seed_multifold_run.v1",
+  "model_id": "action_deleted",
+  "seed": 47,
+  "outer_fold_count": 4,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/members/seed_47/prediction.parquet",
+    "bytes": 399581,
+    "sha256": "a9085fb3ad781da9b21983feed59e0e950ae8541213b438440ab5ba2209b0a8e"
+  },
+  "test_target_rows_loaded": false,
+  "exit_status": "success"
+}

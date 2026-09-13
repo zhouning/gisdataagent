@@ -6,8 +6,11 @@ import json
 import subprocess
 from pathlib import Path
 
+from scripts.run_twm_production_onboarding import build_model_promotion_gate
 
-SCRIPT = Path("scripts/run_twm_production_onboarding.py")
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SCRIPT = REPO_ROOT / "scripts/run_twm_production_onboarding.py"
 
 
 def _write_raw_approval_export(path: Path) -> None:
@@ -54,6 +57,64 @@ def _write_normalized_observed_history(path: Path) -> None:
     )
 
 
+def _write_same_case_baseline_exports(output_dir: Path) -> tuple[Path, Path]:
+    twm_path = output_dir / "twm_case_outputs.csv"
+    baseline_path = output_dir / "manual_overlay_case_outputs.csv"
+    twm_path.write_text(
+        "\n".join(
+            [
+                "case_id,ground_truth_conflict,detected_conflict,evidence_linked,unsupported_recommendation,not_for_production,sanitization_level",
+                "c001,true,true,true,false,true,real_sanitized",
+                "c002,true,true,true,false,true,real_sanitized",
+                "c003,false,false,true,false,true,real_sanitized",
+                "c004,true,false,true,false,true,real_sanitized",
+                "c005,false,false,true,false,true,real_sanitized",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    baseline_path.write_text(
+        "\n".join(
+            [
+                "case_id,ground_truth_conflict,detected_conflict,evidence_linked,unsupported_recommendation,not_for_production,sanitization_level",
+                "c001,true,true,true,false,true,real_sanitized",
+                "c002,true,false,true,false,true,real_sanitized",
+                "c003,false,false,true,false,true,real_sanitized",
+                "c004,true,false,true,false,true,real_sanitized",
+                "c005,false,false,true,false,true,real_sanitized",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return twm_path, baseline_path
+
+
+def _write_case_output(path: Path, case_ids: list[str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows = [
+        "case_id,ground_truth_conflict,detected_conflict,evidence_linked,unsupported_recommendation,not_for_production,sanitization_level"
+    ]
+    rows.extend(f"{case_id},true,true,true,false,true,real_sanitized" for case_id in case_ids)
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+
+def test_model_promotion_gate_non_strict_missing_inputs_are_diagnostic_only():
+    gate = build_model_promotion_gate(
+        validation_bundle_report={"production_readiness_gate": {"status": "review"}},
+        baseline_evidence_report={"status": "not_requested"},
+        require_production_readiness=False,
+    )
+
+    assert gate["required"] is False
+    assert gate["status"] == "pass"
+    assert gate["decision"] == "model_promotion_gate_not_required"
+    assert gate["missing"] == []
+    assert gate["production_observed_history_status"] == "not_provided"
+    assert gate["same_case_baseline_status"] == "not_requested"
+
+
 def test_twm_production_onboarding_runs_foundation_and_bundle_from_raw_export(tmp_path):
     raw_path = tmp_path / "raw_approval_export.csv"
     output_dir = tmp_path / "onboarding"
@@ -71,7 +132,7 @@ def test_twm_production_onboarding_runs_foundation_and_bundle_from_raw_export(tm
             "--output-dir",
             str(output_dir),
         ],
-        cwd=Path("/Users/zhouning/gisdataagent"),
+        cwd=REPO_ROOT,
         check=True,
     )
 
@@ -117,7 +178,7 @@ def test_twm_production_onboarding_accepts_already_normalized_observed_history(t
             "--output-dir",
             str(output_dir),
         ],
-        cwd=Path("/Users/zhouning/gisdataagent"),
+        cwd=REPO_ROOT,
         check=True,
     )
 
@@ -130,6 +191,120 @@ def test_twm_production_onboarding_accepts_already_normalized_observed_history(t
     assert summary["data_foundation"]["production_schema_status"] == "pass"
     assert summary["validation_bundle"]["production_preflight_status"] == "pass"
     assert summary["validation_bundle"]["production_preflight_history"] == str(production_path)
+
+
+def test_twm_production_onboarding_runs_same_case_baseline_pipeline(tmp_path):
+    production_path = tmp_path / "production_observed_history.csv"
+    output_dir = tmp_path / "onboarding_with_baseline"
+    output_dir.mkdir()
+    _write_normalized_observed_history(production_path)
+    twm_path, baseline_path = _write_same_case_baseline_exports(output_dir)
+
+    subprocess.run(
+        [
+            "/Users/zhouning/gisdataagent/.venv/bin/python",
+            str(SCRIPT),
+            "--production-observed-history",
+            str(production_path),
+            "--output-dir",
+            str(output_dir),
+            "--claim-id",
+            "C1_state_conflict_recall",
+            "--baseline-id",
+            "manual_gis_overlay_checklist",
+            "--twm-case-output",
+            str(twm_path),
+            "--baseline-case-output",
+            str(baseline_path),
+        ],
+        cwd=REPO_ROOT,
+        check=True,
+    )
+
+    summary = json.loads((output_dir / "twm_production_onboarding_summary.json").read_text(encoding="utf-8"))
+    assert summary["baseline_evidence"]["status"] == "review"
+    assert summary["baseline_evidence"]["export_validation_status"] == "pass"
+    assert summary["baseline_evidence"]["overlap_count"] == 5
+    assert summary["baseline_evidence"]["coverage_ratio"] == 1.0
+    assert "baseline_evidence_pipeline_report" in summary["outputs"]
+    pipeline_report = json.loads((output_dir / "twm_baseline_evidence_pipeline.json").read_text(encoding="utf-8"))
+    assert summary["baseline_evidence"]["export_validation_status"] == pipeline_report["export_validation"]["status"]
+    markdown = (output_dir / "twm_production_onboarding_summary.md").read_text(encoding="utf-8")
+    assert "## Same-Case Baseline Evidence" in markdown
+    assert "manual_gis_overlay_checklist" in markdown
+
+
+def test_twm_production_onboarding_strict_model_gate_uses_history_and_baseline(tmp_path):
+    production_path = tmp_path / "production_observed_history.csv"
+    output_dir = tmp_path / "onboarding_strict_model_gate"
+    output_dir.mkdir()
+    _write_normalized_observed_history(production_path)
+    twm_path, baseline_path = _write_same_case_baseline_exports(output_dir)
+
+    subprocess.run(
+        [
+            "/Users/zhouning/gisdataagent/.venv/bin/python",
+            str(SCRIPT),
+            "--production-observed-history",
+            str(production_path),
+            "--output-dir",
+            str(output_dir),
+            "--claim-id",
+            "C1_state_conflict_recall",
+            "--baseline-id",
+            "manual_gis_overlay_checklist",
+            "--twm-case-output",
+            str(twm_path),
+            "--baseline-case-output",
+            str(baseline_path),
+            "--require-production-readiness",
+        ],
+        cwd=REPO_ROOT,
+        check=True,
+    )
+
+    summary = json.loads((output_dir / "twm_production_onboarding_summary.json").read_text(encoding="utf-8"))
+    assert summary["model_promotion_gate"]["schema"] == "territory_world_model.model_promotion_gate.v1"
+    assert summary["model_promotion_gate"]["production_observed_history_status"] == "pass"
+    assert summary["model_promotion_gate"]["same_case_baseline_status"] == "pass"
+    assert summary["model_promotion_gate"]["decision"] == "blocked_by_production_scale_or_other_bundle_gates"
+
+
+def test_twm_production_onboarding_same_basename_external_files_do_not_collide(tmp_path):
+    production_path = tmp_path / "production_observed_history.csv"
+    output_dir = tmp_path / "onboarding_same_basename"
+    twm_path = tmp_path / "twm" / "cases.csv"
+    baseline_path = tmp_path / "baseline" / "cases.csv"
+    _write_normalized_observed_history(production_path)
+    _write_case_output(twm_path, ["t001", "t002"])
+    _write_case_output(baseline_path, ["b001", "b002"])
+
+    subprocess.run(
+        [
+            "/Users/zhouning/gisdataagent/.venv/bin/python",
+            str(SCRIPT),
+            "--production-observed-history",
+            str(production_path),
+            "--output-dir",
+            str(output_dir),
+            "--claim-id",
+            "C1_state_conflict_recall",
+            "--baseline-id",
+            "manual_gis_overlay_checklist",
+            "--twm-case-output",
+            str(twm_path),
+            "--baseline-case-output",
+            str(baseline_path),
+        ],
+        cwd=REPO_ROOT,
+        check=True,
+    )
+
+    summary = json.loads((output_dir / "twm_production_onboarding_summary.json").read_text(encoding="utf-8"))
+    assert summary["baseline_evidence"]["status"] == "blocked"
+    assert summary["baseline_evidence"]["pipeline_decision"] == "export_validation_blocked"
+    assert summary["baseline_evidence"]["export_validation_status"] == "blocked"
+    assert summary["baseline_evidence"]["overlap_count"] == 0
 
 
 def test_twm_production_onboarding_writes_summary_when_strict_readiness_blocks(tmp_path):
@@ -150,7 +325,7 @@ def test_twm_production_onboarding_writes_summary_when_strict_readiness_blocks(t
             str(output_dir),
             "--require-production-readiness",
         ],
-        cwd=Path("/Users/zhouning/gisdataagent"),
+        cwd=REPO_ROOT,
         check=True,
     )
 
@@ -159,6 +334,13 @@ def test_twm_production_onboarding_writes_summary_when_strict_readiness_blocks(t
     assert summary["validation_bundle"]["readiness_gate_status"] == "blocked"
     assert "production_scale_readiness_pass" in summary["validation_bundle"]["readiness_missing"]
     punch_list = summary["deployment_punch_list"]
+    assert punch_list["phase_counts"]["production_scale"] >= 1
+    assert punch_list["severity_counts"]["blocking"] >= 1
+    assert "production_scale" in summary["data_owner_next_steps"]
+    assert any("sanitized production scale profile" in item for item in summary["data_owner_next_steps"]["production_scale"])
+    markdown = (output_dir / "twm_production_onboarding_summary.md").read_text(encoding="utf-8")
+    assert "## Data Owner Next Steps" in markdown
+    assert "### production_scale" in markdown
     assert punch_list["status"] == "blocked"
     assert punch_list["blocking_action_count"] >= 1
     assert any(
@@ -187,7 +369,7 @@ def test_twm_production_onboarding_fail_on_blocked_returns_nonzero_after_summary
             "--require-production-readiness",
             "--fail-on-blocked",
         ],
-        cwd=Path("/Users/zhouning/gisdataagent"),
+        cwd=REPO_ROOT,
         check=False,
     )
 
@@ -215,7 +397,7 @@ def test_twm_production_onboarding_rejects_ambiguous_raw_and_normalized_inputs(t
             "--output-dir",
             str(output_dir),
         ],
-        cwd=Path("/Users/zhouning/gisdataagent"),
+        cwd=REPO_ROOT,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -224,6 +406,72 @@ def test_twm_production_onboarding_rejects_ambiguous_raw_and_normalized_inputs(t
 
     assert completed.returncode == 2
     assert "choose exactly one observed-history input" in completed.stdout
+    assert not (output_dir / "twm_production_onboarding_summary.json").exists()
+
+
+def test_twm_production_onboarding_requires_complete_baseline_arguments(tmp_path):
+    production_path = tmp_path / "production_observed_history.csv"
+    output_dir = tmp_path / "onboarding_incomplete_baseline"
+    _write_normalized_observed_history(production_path)
+
+    completed = subprocess.run(
+        [
+            "/Users/zhouning/gisdataagent/.venv/bin/python",
+            str(SCRIPT),
+            "--production-observed-history",
+            str(production_path),
+            "--output-dir",
+            str(output_dir),
+            "--claim-id",
+            "C1_state_conflict_recall",
+        ],
+        cwd=REPO_ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+
+    assert completed.returncode == 2
+    assert "baseline evidence requires --claim-id, --baseline-id, --twm-case-output and --baseline-case-output together" in completed.stdout
+    assert not (output_dir / "twm_production_onboarding_summary.json").exists()
+
+
+def test_twm_production_onboarding_missing_external_baseline_file_errors_cleanly(tmp_path):
+    production_path = tmp_path / "production_observed_history.csv"
+    output_dir = tmp_path / "onboarding_missing_external_baseline"
+    twm_path = tmp_path / "twm" / "cases.csv"
+    missing_baseline_path = tmp_path / "baseline" / "missing_cases.csv"
+    _write_normalized_observed_history(production_path)
+    _write_case_output(twm_path, ["c001", "c002"])
+
+    completed = subprocess.run(
+        [
+            "/Users/zhouning/gisdataagent/.venv/bin/python",
+            str(SCRIPT),
+            "--production-observed-history",
+            str(production_path),
+            "--output-dir",
+            str(output_dir),
+            "--claim-id",
+            "C1_state_conflict_recall",
+            "--baseline-id",
+            "manual_gis_overlay_checklist",
+            "--twm-case-output",
+            str(twm_path),
+            "--baseline-case-output",
+            str(missing_baseline_path),
+        ],
+        cwd=REPO_ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+
+    assert completed.returncode == 2
+    assert "baseline evidence file not found" in completed.stdout
+    assert str(missing_baseline_path) in completed.stdout
     assert not (output_dir / "twm_production_onboarding_summary.json").exists()
 
 
@@ -241,7 +489,7 @@ def test_twm_production_onboarding_requires_explicit_normalized_output_for_raw_i
             "--output-dir",
             str(output_dir),
         ],
-        cwd=Path("/Users/zhouning/gisdataagent"),
+        cwd=REPO_ROOT,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,

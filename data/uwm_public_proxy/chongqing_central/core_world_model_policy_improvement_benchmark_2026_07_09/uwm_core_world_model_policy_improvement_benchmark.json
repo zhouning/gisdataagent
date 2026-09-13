@@ -1,0 +1,816 @@
+{
+  "audit_trace": {
+    "action_signal_feature_names": [
+      "action_increase_green_infrastructure",
+      "action_traffic_emission_control",
+      "action_add_community_service",
+      "action_other",
+      "intensity",
+      "mask_heat_risk",
+      "mask_air_pollution",
+      "mask_service_gap"
+    ],
+    "model_class": "linear_ridge_action_conditioned_graph_dynamics",
+    "policy_improvement_uses_observed_policy_outcomes": false,
+    "shuffled_action_signal_roll_offset": 137,
+    "source_artifact_path": "data/uwm_public_proxy/chongqing_central/data_calibrated_planner_replay_full_admin_graph_2026_07_08/uwm_full_admin_graph_model_based_graph_search.json"
+  },
+  "benchmark_id": "uwm-core-world-model-policy-improvement-benchmark-2026-07-09",
+  "claim_boundary": {
+    "max_claim_level": "bounded_support",
+    "reason": "same-scene full-admin learned world-model finite-horizon policy improvement; observed policy outcome gates remain open"
+  },
+  "created_at": "2026-07-09T15:00:00Z",
+  "dynamics_holdout_metrics": {
+    "full_action_state_graph": {
+      "dynamics_variant": "full_action_state_graph",
+      "global_reward_residual_std": 4.138e-05,
+      "mae_by_target": {
+        "air_pollution_exposure_delta": 2.3891e-05,
+        "equity_delta": 2.3583e-05,
+        "heat_risk_delta": 4.7398e-05,
+        "livability_delta": 2.8648e-05,
+        "reward": 3.2363e-05,
+        "service_accessibility_delta": 7.0409e-05
+      },
+      "model_class": "linear_ridge_multi_output_dynamics",
+      "reward_residual_std_by_action_type": {
+        "add_community_service": 3.891e-05,
+        "increase_green_infrastructure": 6.5483e-05,
+        "traffic_emission_control": 3.9426e-05
+      }
+    },
+    "no_action_signal": {
+      "dynamics_variant": "no_action_signal",
+      "global_reward_residual_std": 7.7107e-05,
+      "mae_by_target": {
+        "air_pollution_exposure_delta": 0.000133698,
+        "equity_delta": 3.3746e-05,
+        "heat_risk_delta": 0.000166544,
+        "livability_delta": 4.9349e-05,
+        "reward": 5.0925e-05,
+        "service_accessibility_delta": 0.000166277
+      },
+      "model_class": "linear_ridge_multi_output_dynamics",
+      "reward_residual_std_by_action_type": {
+        "add_community_service": 4.1368e-05,
+        "increase_green_infrastructure": 7.1138e-05,
+        "traffic_emission_control": 4.3167e-05
+      }
+    },
+    "shuffled_action_signal": {
+      "dynamics_variant": "shuffled_action_signal",
+      "global_reward_residual_std": 7.7099e-05,
+      "mae_by_target": {
+        "air_pollution_exposure_delta": 0.000133643,
+        "equity_delta": 3.3773e-05,
+        "heat_risk_delta": 0.000166535,
+        "livability_delta": 4.9408e-05,
+        "reward": 5.0954e-05,
+        "service_accessibility_delta": 0.000166308
+      },
+      "model_class": "linear_ridge_multi_output_dynamics",
+      "reward_residual_std_by_action_type": {
+        "add_community_service": 4.1377e-05,
+        "increase_green_infrastructure": 7.1057e-05,
+        "traffic_emission_control": 4.316e-05
+      }
+    },
+    "train_mean_static": {
+      "mae_by_target": {
+        "air_pollution_exposure_delta": 0.00019195,
+        "equity_delta": 0.000112498,
+        "heat_risk_delta": 0.000515613,
+        "livability_delta": 0.000241026,
+        "reward": 0.00222562,
+        "service_accessibility_delta": 0.000278574
+      },
+      "model_class": "train_target_mean_static_baseline"
+    }
+  },
+  "empirical_superiority_claim": false,
+  "experiment_scope": "full_admin_graph",
+  "feature_names": [
+    "bias",
+    "action_increase_green_infrastructure",
+    "action_traffic_emission_control",
+    "action_add_community_service",
+    "action_other",
+    "intensity",
+    "target_heat_risk",
+    "target_air_pollution_exposure",
+    "target_service_gap",
+    "target_equity",
+    "target_livability_gap",
+    "target_degree_norm",
+    "target_travel_time_min_norm",
+    "target_road_segment_count_norm",
+    "target_road_length_km_norm",
+    "target_mean_road_speed_kmh_norm",
+    "target_capacity_norm",
+    "target_essential_norm",
+    "target_travel_time_inverse_norm",
+    "mask_heat_risk",
+    "mask_air_pollution",
+    "mask_service_gap",
+    "step_index_norm"
+  ],
+  "full_admin_scope_guard": {
+    "available_action_count": 1137,
+    "experiment_scope": "full_admin_graph",
+    "failed_count_fields": [],
+    "graph_edge_count": 7932,
+    "graph_node_count": 1017,
+    "passed": true,
+    "required_counts": {
+      "available_action_count": 1137,
+      "graph_edge_count": 7932,
+      "graph_node_count": 1017,
+      "transition_count": 6817,
+      "transition_row_count": 6817
+    },
+    "required_scope": "full_admin_graph",
+    "transition_count": 6817,
+    "transition_row_count": 6817
+  },
+  "observed_policy_outcome_superiority_claim": false,
+  "policy_improvement_config": {
+    "algorithm": "finite_horizon_model_based_value_backup",
+    "beam_width": 8,
+    "candidate_action_count": 1137,
+    "gamma": 0.9,
+    "horizon": 2,
+    "shuffle_offset": 137,
+    "state_update": "apply_predicted_dynamics_to_target_unit_latent_features",
+    "uncertainty_penalty": 0.5
+  },
+  "policy_improvement_gate": {
+    "baseline_rows": [
+      {
+        "baseline_conservative_return": -0.007381399,
+        "passed": true,
+        "policy_baseline": "static_single_step_baseline",
+        "world_model_policy_improvement_advantage": 0.00110234,
+        "world_model_policy_improvement_conservative_return": -0.006279059
+      },
+      {
+        "baseline_conservative_return": -0.007086926,
+        "passed": true,
+        "policy_baseline": "one_step_world_model_greedy",
+        "world_model_policy_improvement_advantage": 0.000807867,
+        "world_model_policy_improvement_conservative_return": -0.006279059
+      },
+      {
+        "baseline_conservative_return": -0.006459944,
+        "passed": true,
+        "policy_baseline": "no_action_signal_world_model_policy",
+        "world_model_policy_improvement_advantage": 0.000180885,
+        "world_model_policy_improvement_conservative_return": -0.006279059
+      },
+      {
+        "baseline_conservative_return": -0.006459553,
+        "passed": true,
+        "policy_baseline": "shuffled_action_signal_world_model_policy",
+        "world_model_policy_improvement_advantage": 0.000180494,
+        "world_model_policy_improvement_conservative_return": -0.006279059
+      }
+    ],
+    "diagnostic_policy_baselines": [
+      "multi_step_beam_search"
+    ],
+    "dynamics_reward_gate": {
+      "beats_no_action_signal": true,
+      "beats_shuffled_action_signal": true,
+      "beats_train_mean_static": true,
+      "full_reward_mae": 3.2363e-05,
+      "no_action_signal_reward_mae": 5.0925e-05,
+      "shuffled_action_signal_reward_mae": 5.0954e-05,
+      "train_mean_reward_mae": 0.00222562
+    },
+    "observed_policy_outcome_superiority_claim": false,
+    "passed": true,
+    "required_policy_baselines": [
+      "static_single_step_baseline",
+      "one_step_world_model_greedy",
+      "no_action_signal_world_model_policy",
+      "shuffled_action_signal_world_model_policy"
+    ],
+    "required_sequence_action_count": 2
+  },
+  "policy_variant_metrics": {
+    "multi_step_beam_search": {
+      "action_count": 2,
+      "action_sequence": [
+        {
+          "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+          "action_type": "increase_green_infrastructure",
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold",
+          "target_units": [
+            "沙坪坝区|石井坡街道|793"
+          ]
+        },
+        {
+          "action_id": "increase_green_infrastructure-九龙坡区|中梁山街道|91",
+          "action_type": "increase_green_infrastructure",
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold",
+          "target_units": [
+            "九龙坡区|中梁山街道|91"
+          ]
+        }
+      ],
+      "dynamics_variant": "full_action_state_graph",
+      "imagined_cumulative_conservative_return": -0.006279059,
+      "imagined_cumulative_predicted_return": -0.00621685,
+      "imagined_steps": [
+        {
+          "action": {
+            "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+            "action_type": "increase_green_infrastructure",
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "target_units": [
+              "沙坪坝区|石井坡街道|793"
+            ]
+          },
+          "conservative_reward": -0.007086926,
+          "post_state_features": {
+            "沙坪坝区|石井坡街道|793": {
+              "air_pollution_exposure": 0.613513808,
+              "capacity_norm": 0.0,
+              "equity": 0.771704881,
+              "essential_norm": 0.0,
+              "heat_risk": 0.722258098,
+              "livability": 0.229428844,
+              "mean_road_speed_kmh_norm": 0.545061775,
+              "road_length_km_norm": 0.063635162,
+              "road_segment_count_norm": 0.061749571,
+              "service_accessibility": 0.247005193,
+              "service_gap": 0.752994807,
+              "travel_time_inverse_norm": 0.981790309,
+              "travel_time_min_norm": 0.018209691
+            }
+          },
+          "predicted_dynamics": {
+            "air_pollution_exposure_delta": -0.000411192,
+            "equity_delta": 0.000377881,
+            "heat_risk_delta": -0.001360902,
+            "livability_delta": 0.000755844,
+            "service_accessibility_delta": 0.000480193
+          },
+          "predicted_reward": -0.007054184,
+          "reward_uncertainty": 6.5483e-05,
+          "step_index": 0
+        },
+        {
+          "action": {
+            "action_id": "increase_green_infrastructure-九龙坡区|中梁山街道|91",
+            "action_type": "increase_green_infrastructure",
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "target_units": [
+              "九龙坡区|中梁山街道|91"
+            ]
+          },
+          "conservative_reward": 0.00089763,
+          "post_state_features": {
+            "九龙坡区|中梁山街道|91": {
+              "air_pollution_exposure": 0.689556771,
+              "capacity_norm": 0.0,
+              "equity": 0.66790184,
+              "essential_norm": 0.0,
+              "heat_risk": 0.813294285,
+              "livability": 0.334401622,
+              "mean_road_speed_kmh_norm": 0.466678488,
+              "road_length_km_norm": 0.368521374,
+              "road_segment_count_norm": 0.305317324,
+              "service_accessibility": 0.503111152,
+              "service_gap": 0.496888848,
+              "travel_time_inverse_norm": 0.992334942,
+              "travel_time_min_norm": 0.007665058
+            }
+          },
+          "predicted_dynamics": {
+            "air_pollution_exposure_delta": -0.000899229,
+            "equity_delta": 0.00070684,
+            "heat_risk_delta": -0.003155715,
+            "livability_delta": 0.001596622,
+            "service_accessibility_delta": 0.000645152
+          },
+          "predicted_reward": 0.000930371,
+          "reward_uncertainty": 6.5483e-05,
+          "step_index": 1
+        }
+      ],
+      "policy_variant": "multi_step_beam_search",
+      "relative_to_world_model_policy_improvement": {
+        "world_model_policy_improvement_advantage": 0.0
+      },
+      "return_convention": {
+        "discount": "gamma",
+        "gamma": 0.9
+      }
+    },
+    "no_action_signal_world_model_policy": {
+      "action_count": 2,
+      "action_sequence": [
+        {
+          "action_id": "add_community_service-铜梁区|安溪镇|504",
+          "action_type": "add_community_service",
+          "intensity": 1.0,
+          "mask_reason": "service_accessibility_below_threshold",
+          "target_units": [
+            "铜梁区|安溪镇|504"
+          ]
+        },
+        {
+          "action_id": "add_community_service-黔江区|邻鄂镇|774",
+          "action_type": "add_community_service",
+          "intensity": 1.0,
+          "mask_reason": "service_accessibility_below_threshold",
+          "target_units": [
+            "黔江区|邻鄂镇|774"
+          ]
+        }
+      ],
+      "dynamics_variant": "no_action_signal",
+      "imagined_cumulative_conservative_return": -0.006459944,
+      "imagined_cumulative_predicted_return": -0.006420645,
+      "imagined_steps": [
+        {
+          "action": {
+            "action_id": "add_community_service-铜梁区|安溪镇|504",
+            "action_type": "add_community_service",
+            "intensity": 1.0,
+            "mask_reason": "service_accessibility_below_threshold",
+            "target_units": [
+              "铜梁区|安溪镇|504"
+            ]
+          },
+          "conservative_reward": -0.00718415,
+          "post_state_features": {
+            "铜梁区|安溪镇|504": {
+              "air_pollution_exposure": 0.48168891,
+              "capacity_norm": 0.0,
+              "equity": 0.72123201,
+              "essential_norm": 0.0,
+              "heat_risk": 0.563265483,
+              "livability": 0.279886227,
+              "mean_road_speed_kmh_norm": 0.462885787,
+              "road_length_km_norm": 0.040951713,
+              "road_segment_count_norm": 0.013722127,
+              "service_accessibility": 0.199297689,
+              "service_gap": 0.800702311,
+              "travel_time_inverse_norm": 0.960991071,
+              "travel_time_min_norm": 0.039008929
+            }
+          },
+          "predicted_dynamics": {
+            "air_pollution_exposure_delta": -0.00015109,
+            "equity_delta": 0.00056501,
+            "heat_risk_delta": -0.000136517,
+            "livability_delta": 0.000553227,
+            "service_accessibility_delta": 0.001531689
+          },
+          "predicted_reward": -0.007163466,
+          "reward_uncertainty": 4.1368e-05,
+          "step_index": 0
+        },
+        {
+          "action": {
+            "action_id": "add_community_service-黔江区|邻鄂镇|774",
+            "action_type": "add_community_service",
+            "intensity": 1.0,
+            "mask_reason": "service_accessibility_below_threshold",
+            "target_units": [
+              "黔江区|邻鄂镇|774"
+            ]
+          },
+          "conservative_reward": 0.000804673,
+          "post_state_features": {
+            "黔江区|邻鄂镇|774": {
+              "air_pollution_exposure": 0.179295032,
+              "capacity_norm": 0.0,
+              "equity": 0.54214193,
+              "essential_norm": 0.0,
+              "heat_risk": 0.195235383,
+              "livability": 0.46016619,
+              "mean_road_speed_kmh_norm": 0.459403,
+              "road_length_km_norm": 0.056221952,
+              "road_segment_count_norm": 0.012006861,
+              "service_accessibility": 0.190090971,
+              "service_gap": 0.809909029,
+              "travel_time_inverse_norm": 0.920884175,
+              "travel_time_min_norm": 0.079115825
+            }
+          },
+          "predicted_dynamics": {
+            "air_pollution_exposure_delta": -0.000541968,
+            "equity_delta": 0.00092493,
+            "heat_risk_delta": -0.001840617,
+            "livability_delta": 0.00138319,
+            "service_accessibility_delta": 0.001858971
+          },
+          "predicted_reward": 0.000825357,
+          "reward_uncertainty": 4.1368e-05,
+          "step_index": 1
+        }
+      ],
+      "policy_variant": "world_model_policy_improvement",
+      "relative_to_world_model_policy_improvement": {
+        "world_model_policy_improvement_advantage": 0.000180885
+      },
+      "return_convention": {
+        "discount": "gamma",
+        "gamma": 0.9
+      }
+    },
+    "one_step_world_model_greedy": {
+      "action_count": 1,
+      "action_sequence": [
+        {
+          "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+          "action_type": "increase_green_infrastructure",
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold",
+          "target_units": [
+            "沙坪坝区|石井坡街道|793"
+          ]
+        }
+      ],
+      "dynamics_variant": "full_action_state_graph",
+      "imagined_cumulative_conservative_return": -0.007086926,
+      "imagined_cumulative_predicted_return": -0.007054184,
+      "imagined_steps": [
+        {
+          "action": {
+            "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+            "action_type": "increase_green_infrastructure",
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "target_units": [
+              "沙坪坝区|石井坡街道|793"
+            ]
+          },
+          "conservative_reward": -0.007086926,
+          "post_state_features": {
+            "沙坪坝区|石井坡街道|793": {
+              "air_pollution_exposure": 0.613513808,
+              "capacity_norm": 0.0,
+              "equity": 0.771704881,
+              "essential_norm": 0.0,
+              "heat_risk": 0.722258098,
+              "livability": 0.229428844,
+              "mean_road_speed_kmh_norm": 0.545061775,
+              "road_length_km_norm": 0.063635162,
+              "road_segment_count_norm": 0.061749571,
+              "service_accessibility": 0.247005193,
+              "service_gap": 0.752994807,
+              "travel_time_inverse_norm": 0.981790309,
+              "travel_time_min_norm": 0.018209691
+            }
+          },
+          "predicted_dynamics": {
+            "air_pollution_exposure_delta": -0.000411192,
+            "equity_delta": 0.000377881,
+            "heat_risk_delta": -0.001360902,
+            "livability_delta": 0.000755844,
+            "service_accessibility_delta": 0.000480193
+          },
+          "predicted_reward": -0.007054184,
+          "reward_uncertainty": 6.5483e-05,
+          "step_index": 0
+        }
+      ],
+      "policy_variant": "one_step_world_model_greedy",
+      "relative_to_world_model_policy_improvement": {
+        "world_model_policy_improvement_advantage": 0.000807867
+      },
+      "return_convention": {
+        "discount": "gamma",
+        "gamma": 0.9
+      }
+    },
+    "shuffled_action_signal_world_model_policy": {
+      "action_count": 2,
+      "action_sequence": [
+        {
+          "action_id": "add_community_service-铜梁区|安溪镇|504",
+          "action_type": "add_community_service",
+          "intensity": 1.0,
+          "mask_reason": "service_accessibility_below_threshold",
+          "target_units": [
+            "铜梁区|安溪镇|504"
+          ]
+        },
+        {
+          "action_id": "add_community_service-黔江区|邻鄂镇|774",
+          "action_type": "add_community_service",
+          "intensity": 1.0,
+          "mask_reason": "service_accessibility_below_threshold",
+          "target_units": [
+            "黔江区|邻鄂镇|774"
+          ]
+        }
+      ],
+      "dynamics_variant": "shuffled_action_signal",
+      "imagined_cumulative_conservative_return": -0.006459553,
+      "imagined_cumulative_predicted_return": -0.006420244,
+      "imagined_steps": [
+        {
+          "action": {
+            "action_id": "add_community_service-铜梁区|安溪镇|504",
+            "action_type": "add_community_service",
+            "intensity": 1.0,
+            "mask_reason": "service_accessibility_below_threshold",
+            "target_units": [
+              "铜梁区|安溪镇|504"
+            ]
+          },
+          "conservative_reward": -0.007183879,
+          "post_state_features": {
+            "铜梁区|安溪镇|504": {
+              "air_pollution_exposure": 0.481686205,
+              "capacity_norm": 0.0,
+              "equity": 0.721231653,
+              "essential_norm": 0.0,
+              "heat_risk": 0.563264189,
+              "livability": 0.279886639,
+              "mean_road_speed_kmh_norm": 0.462885787,
+              "road_length_km_norm": 0.040951713,
+              "road_segment_count_norm": 0.013722127,
+              "service_accessibility": 0.199295034,
+              "service_gap": 0.800704966,
+              "travel_time_inverse_norm": 0.960991071,
+              "travel_time_min_norm": 0.039008929
+            }
+          },
+          "predicted_dynamics": {
+            "air_pollution_exposure_delta": -0.000153795,
+            "equity_delta": 0.000564653,
+            "heat_risk_delta": -0.000137811,
+            "livability_delta": 0.000553639,
+            "service_accessibility_delta": 0.001529034
+          },
+          "predicted_reward": -0.00716319,
+          "reward_uncertainty": 4.1377e-05,
+          "step_index": 0
+        },
+        {
+          "action": {
+            "action_id": "add_community_service-黔江区|邻鄂镇|774",
+            "action_type": "add_community_service",
+            "intensity": 1.0,
+            "mask_reason": "service_accessibility_below_threshold",
+            "target_units": [
+              "黔江区|邻鄂镇|774"
+            ]
+          },
+          "conservative_reward": 0.000804807,
+          "post_state_features": {
+            "黔江区|邻鄂镇|774": {
+              "air_pollution_exposure": 0.179293887,
+              "capacity_norm": 0.0,
+              "equity": 0.542141781,
+              "essential_norm": 0.0,
+              "heat_risk": 0.195234762,
+              "livability": 0.460166386,
+              "mean_road_speed_kmh_norm": 0.459403,
+              "road_length_km_norm": 0.056221952,
+              "road_segment_count_norm": 0.012006861,
+              "service_accessibility": 0.19008983,
+              "service_gap": 0.80991017,
+              "travel_time_inverse_norm": 0.920884175,
+              "travel_time_min_norm": 0.079115825
+            }
+          },
+          "predicted_dynamics": {
+            "air_pollution_exposure_delta": -0.000543113,
+            "equity_delta": 0.000924781,
+            "heat_risk_delta": -0.001841238,
+            "livability_delta": 0.001383386,
+            "service_accessibility_delta": 0.00185783
+          },
+          "predicted_reward": 0.000825496,
+          "reward_uncertainty": 4.1377e-05,
+          "step_index": 1
+        }
+      ],
+      "policy_variant": "world_model_policy_improvement",
+      "relative_to_world_model_policy_improvement": {
+        "world_model_policy_improvement_advantage": 0.000180494
+      },
+      "return_convention": {
+        "discount": "gamma",
+        "gamma": 0.9
+      }
+    },
+    "static_single_step_baseline": {
+      "action_count": 1,
+      "action_sequence": [
+        {
+          "action_id": "increase_green_infrastructure-涪陵区|蔺市镇|498",
+          "action_type": "increase_green_infrastructure",
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold",
+          "target_units": [
+            "涪陵区|蔺市镇|498"
+          ]
+        }
+      ],
+      "dynamics_variant": "full_action_state_graph",
+      "imagined_cumulative_conservative_return": -0.007381399,
+      "imagined_cumulative_predicted_return": -0.007348657,
+      "imagined_steps": [
+        {
+          "action": {
+            "action_id": "increase_green_infrastructure-涪陵区|蔺市镇|498",
+            "action_type": "increase_green_infrastructure",
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "target_units": [
+              "涪陵区|蔺市镇|498"
+            ]
+          },
+          "conservative_reward": -0.007381399,
+          "post_state_features": {
+            "涪陵区|蔺市镇|498": {
+              "air_pollution_exposure": 0.682632895,
+              "capacity_norm": 0.0,
+              "equity": 0.832172218,
+              "essential_norm": 0.0,
+              "heat_risk": 0.806088951,
+              "livability": 0.168564499,
+              "mean_road_speed_kmh_norm": 0.620280788,
+              "road_length_km_norm": 0.21464529,
+              "road_segment_count_norm": 0.116638079,
+              "service_accessibility": 0.221906491,
+              "service_gap": 0.778093509,
+              "travel_time_inverse_norm": 0.978330675,
+              "travel_time_min_norm": 0.021669325
+            }
+          },
+          "predicted_dynamics": {
+            "air_pollution_exposure_delta": -0.000382105,
+            "equity_delta": 0.000172218,
+            "heat_risk_delta": -0.001335049,
+            "livability_delta": 0.000564499,
+            "service_accessibility_delta": -9.6509e-05
+          },
+          "predicted_reward": -0.007348657,
+          "reward_uncertainty": 6.5483e-05,
+          "step_index": 0
+        }
+      ],
+      "policy_variant": "static_single_step_baseline",
+      "relative_to_world_model_policy_improvement": {
+        "world_model_policy_improvement_advantage": 0.00110234
+      },
+      "return_convention": {
+        "discount": "gamma",
+        "gamma": 0.9
+      }
+    },
+    "world_model_policy_improvement": {
+      "action_count": 2,
+      "action_sequence": [
+        {
+          "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+          "action_type": "increase_green_infrastructure",
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold",
+          "target_units": [
+            "沙坪坝区|石井坡街道|793"
+          ]
+        },
+        {
+          "action_id": "increase_green_infrastructure-九龙坡区|中梁山街道|91",
+          "action_type": "increase_green_infrastructure",
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold",
+          "target_units": [
+            "九龙坡区|中梁山街道|91"
+          ]
+        }
+      ],
+      "dynamics_variant": "full_action_state_graph",
+      "imagined_cumulative_conservative_return": -0.006279059,
+      "imagined_cumulative_predicted_return": -0.00621685,
+      "imagined_steps": [
+        {
+          "action": {
+            "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
+            "action_type": "increase_green_infrastructure",
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "target_units": [
+              "沙坪坝区|石井坡街道|793"
+            ]
+          },
+          "conservative_reward": -0.007086926,
+          "post_state_features": {
+            "沙坪坝区|石井坡街道|793": {
+              "air_pollution_exposure": 0.613513808,
+              "capacity_norm": 0.0,
+              "equity": 0.771704881,
+              "essential_norm": 0.0,
+              "heat_risk": 0.722258098,
+              "livability": 0.229428844,
+              "mean_road_speed_kmh_norm": 0.545061775,
+              "road_length_km_norm": 0.063635162,
+              "road_segment_count_norm": 0.061749571,
+              "service_accessibility": 0.247005193,
+              "service_gap": 0.752994807,
+              "travel_time_inverse_norm": 0.981790309,
+              "travel_time_min_norm": 0.018209691
+            }
+          },
+          "predicted_dynamics": {
+            "air_pollution_exposure_delta": -0.000411192,
+            "equity_delta": 0.000377881,
+            "heat_risk_delta": -0.001360902,
+            "livability_delta": 0.000755844,
+            "service_accessibility_delta": 0.000480193
+          },
+          "predicted_reward": -0.007054184,
+          "reward_uncertainty": 6.5483e-05,
+          "step_index": 0
+        },
+        {
+          "action": {
+            "action_id": "increase_green_infrastructure-九龙坡区|中梁山街道|91",
+            "action_type": "increase_green_infrastructure",
+            "intensity": 1.0,
+            "mask_reason": "heat_risk_above_threshold",
+            "target_units": [
+              "九龙坡区|中梁山街道|91"
+            ]
+          },
+          "conservative_reward": 0.00089763,
+          "post_state_features": {
+            "九龙坡区|中梁山街道|91": {
+              "air_pollution_exposure": 0.689556771,
+              "capacity_norm": 0.0,
+              "equity": 0.66790184,
+              "essential_norm": 0.0,
+              "heat_risk": 0.813294285,
+              "livability": 0.334401622,
+              "mean_road_speed_kmh_norm": 0.466678488,
+              "road_length_km_norm": 0.368521374,
+              "road_segment_count_norm": 0.305317324,
+              "service_accessibility": 0.503111152,
+              "service_gap": 0.496888848,
+              "travel_time_inverse_norm": 0.992334942,
+              "travel_time_min_norm": 0.007665058
+            }
+          },
+          "predicted_dynamics": {
+            "air_pollution_exposure_delta": -0.000899229,
+            "equity_delta": 0.00070684,
+            "heat_risk_delta": -0.003155715,
+            "livability_delta": 0.001596622,
+            "service_accessibility_delta": 0.000645152
+          },
+          "predicted_reward": 0.000930371,
+          "reward_uncertainty": 6.5483e-05,
+          "step_index": 1
+        }
+      ],
+      "policy_variant": "world_model_policy_improvement",
+      "relative_to_world_model_policy_improvement": {
+        "world_model_policy_improvement_advantage": 0.0
+      },
+      "return_convention": {
+        "discount": "gamma",
+        "gamma": 0.9
+      }
+    }
+  },
+  "remaining_gates": [
+    "observed_policy_outcome_holdout_required",
+    "off_policy_evaluation_on_real_intervention_logs_required",
+    "causal_policy_effect_validation_required",
+    "external_cross_city_or_cross_time_policy_holdout_required"
+  ],
+  "schema": "uwm.core_world_model_policy_improvement_benchmark.v1",
+  "source_report_schema": "uwm.model_based_graph_search_report.v1",
+  "supported_claim": "core_world_model_policy_improvement_beats_static_and_action_ablation_baselines",
+  "target_names": [
+    "reward",
+    "heat_risk_delta",
+    "air_pollution_exposure_delta",
+    "service_accessibility_delta",
+    "equity_delta",
+    "livability_delta"
+  ],
+  "training_summary": {
+    "first_holdout_index": 6,
+    "holdout_count": 973,
+    "holdout_stride": 7,
+    "last_holdout_index": 6810,
+    "ridge": 0.001,
+    "row_count": 6817,
+    "train_count": 5844
+  }
+}

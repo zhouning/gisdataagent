@@ -1,0 +1,13 @@
+{
+  "schema": "gwm_bench.foundation_v4_control_seed_run.v1",
+  "control_id": "action_component_permutation",
+  "seed": 73,
+  "source_model": "uwm_dam_gk_action",
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/action_component_permutation/members/seed_73/prediction.parquet",
+    "bytes": 100571,
+    "sha256": "164d1c17fa990b07a92b8b2d4420aaf1b27007f1fc52d711b955986a00df3478"
+  },
+  "test_target_rows_loaded": false,
+  "exit_status": "success"
+}

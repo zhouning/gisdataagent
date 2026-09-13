@@ -1,0 +1,57 @@
+{
+  "schema": "gwm_bench.foundation_v5_multifold_run_report.v1",
+  "model_id": "zone_exposure_shuffle_seed_20260723",
+  "outer_fold_count": 4,
+  "seed_count": 3,
+  "fold_reports": {
+    "holdout_2015": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2015/run_report.json",
+      "bytes": 37473,
+      "sha256": "8fccead22c212d1c1d8d81e489b02119cb2ccf22b02f4976163ee5e5e2c021db"
+    },
+    "holdout_2019": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2019/run_report.json",
+      "bytes": 37458,
+      "sha256": "f530f48a0d7d4bdd5dd497d4017e6254f431e91329eab340bdc831a57065e3d8"
+    },
+    "holdout_2022": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2022/run_report.json",
+      "bytes": 37445,
+      "sha256": "9198dfcabdf7eea1fcc0f08efb2c9983a1c390f49812afeef2ba6b98295f47a6"
+    },
+    "holdout_2025": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2025/run_report.json",
+      "bytes": 37504,
+      "sha256": "2b34d17b83df7ec47b06303da42e76aaca932775ca8005ff3854de67a33fa99c"
+    }
+  },
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/prediction.parquet",
+    "bytes": 414207,
+    "sha256": "7bf2788a9d3203497c1905374846e8e00683153d8b282909420c83ef760338eb"
+  },
+  "model_spec": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/model_spec.json",
+    "bytes": 570,
+    "sha256": "fe953663cb99ef7edd45be59c8a7f4dae9d1dc72a78af6896a079506ef0fa468"
+  },
+  "nested_selection_receipts": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/nested_selection_receipts.json",
+    "bytes": 16977,
+    "sha256": "a4b3e67d49e834873ad0c37daca163f67198500e90f16ded09c2b32238f42f7d"
+  },
+  "fold_training_manifests": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/fold_training_manifests.json",
+    "bytes": 4876,
+    "sha256": "96b69b74f45c78433d8eb6c56e367111badf203abcb85b89bdecd7e2b126493d"
+  },
+  "runtime_environment": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/runtime_environment.json",
+    "bytes": 409,
+    "sha256": "8cff80308e2a3c972ab7e8bd348db3f4dcbeab004b8e7a18071a9b12ba30c256"
+  },
+  "test_target_rows_loaded": false,
+  "model_process_target_access_permitted": false,
+  "exit_status": "success",
+  "failure_state": null
+}

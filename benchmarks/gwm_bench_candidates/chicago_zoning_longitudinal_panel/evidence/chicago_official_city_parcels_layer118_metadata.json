@@ -1,0 +1,517 @@
+{
+ "currentVersion": 11.4,
+ "cimVersion": "3.4.0",
+ "id": 118,
+ "name": "City Parcels",
+ "type": "Feature Layer",
+ "description": "",
+ "geometryType": "esriGeometryPolygon",
+ "sourceSpatialReference": {
+  "wkid": 102671,
+  "latestWkid": 3435,
+  "xyTolerance": 0.00328083333333333,
+  "zTolerance": 0.001,
+  "mTolerance": 0.001,
+  "falseX": -17463800,
+  "falseY": -46132600,
+  "xyUnits": 3048.0060960121905,
+  "falseZ": 0,
+  "zUnits": 1,
+  "falseM": 0,
+  "mUnits": 1
+ },
+ "copyrightText": "",
+ "parentLayer": {
+  "id": 0,
+  "name": "Map Layers"
+ },
+ "subLayers": [],
+ "minScale": 0,
+ "maxScale": 0,
+ "referenceScale": 0.0,
+ "drawingInfo": {
+  "renderer": {
+   "type": "simple",
+   "symbol": {
+    "type": "esriSFS",
+    "style": "esriSFSSolid",
+    "color": [
+     0,
+     0,
+     0,
+     255
+    ],
+    "outline": {
+     "type": "esriSLS",
+     "style": "esriSLSSolid",
+     "color": [
+      110,
+      110,
+      110,
+      255
+     ],
+     "width": 1
+    }
+   }
+  },
+  "scaleSymbols": true,
+  "transparency": 0,
+  "labelingInfo": null
+ },
+ "defaultVisibility": false,
+ "extent": {
+  "xmin": 1130038.80010892,
+  "ymin": 1814063.47984086,
+  "xmax": 1203074.46013968,
+  "ymax": 1950312.70012403,
+  "spatialReference": {
+   "wkid": 102671,
+   "latestWkid": 3435,
+   "xyTolerance": 2,
+   "zTolerance": 2,
+   "mTolerance": 2,
+   "falseX": -1.930822610573579E7,
+   "falseY": -4.94136286247675E7,
+   "xyUnits": 1.2476950709585837E8,
+   "falseZ": 0,
+   "zUnits": 1,
+   "falseM": -100000,
+   "mUnits": 10000
+  }
+ },
+ "hasAttachments": false,
+ "htmlPopupType": "esriServerHTMLPopupTypeAsHTMLText",
+ "displayField": "STREET_NAME",
+ "typeIdField": null,
+ "subtypeFieldName": null,
+ "subtypeField": null,
+ "defaultSubtypeCode": null,
+ "fields": [
+  {
+   "name": "OBJECTID",
+   "type": "esriFieldTypeOID",
+   "alias": "OBJECTID",
+   "domain": null
+  },
+  {
+   "name": "SHAPE",
+   "type": "esriFieldTypeGeometry",
+   "alias": "SHAPE",
+   "domain": null
+  },
+  {
+   "name": "LIS_ID",
+   "type": "esriFieldTypeInteger",
+   "alias": "LIS_ID",
+   "domain": null
+  },
+  {
+   "name": "PIN",
+   "type": "esriFieldTypeString",
+   "alias": "PIN",
+   "length": 18,
+   "domain": null
+  },
+  {
+   "name": "PIN10",
+   "type": "esriFieldTypeString",
+   "alias": "PIN10",
+   "length": 10,
+   "domain": null
+  },
+  {
+   "name": "STREET_NUMBER",
+   "type": "esriFieldTypeDouble",
+   "alias": "STREET_NUMBER",
+   "domain": null
+  },
+  {
+   "name": "STREET_NAME",
+   "type": "esriFieldTypeString",
+   "alias": "STREET_NAME",
+   "length": 50,
+   "domain": null
+  },
+  {
+   "name": "STANDARD_ADDRESS",
+   "type": "esriFieldTypeString",
+   "alias": "STANDARD_ADDRESS",
+   "length": 100,
+   "domain": null
+  },
+  {
+   "name": "ACQUISITION_METHOD",
+   "type": "esriFieldTypeString",
+   "alias": "ACQUISITION_METHOD",
+   "length": 30,
+   "domain": null
+  },
+  {
+   "name": "DATE_OF_DISPOSITION",
+   "type": "esriFieldTypeDate",
+   "alias": "DATE_OF_DISPOSITION",
+   "length": 8,
+   "domain": null
+  },
+  {
+   "name": "DEPT_HOLDING_DEED",
+   "type": "esriFieldTypeString",
+   "alias": "DEPT_HOLDING_DEED",
+   "length": 60,
+   "domain": null
+  },
+  {
+   "name": "DEPT_TO_HOLD_FOR_D",
+   "type": "esriFieldTypeString",
+   "alias": "DEPT_TO_HOLD_FOR_D",
+   "length": 60,
+   "domain": null
+  },
+  {
+   "name": "DATE_OF_ACQUISITION",
+   "type": "esriFieldTypeDate",
+   "alias": "DATE_OF_ACQUISITION",
+   "length": 8,
+   "domain": null
+  },
+  {
+   "name": "PROPERTY_STATUS",
+   "type": "esriFieldTypeString",
+   "alias": "PROPERTY_STATUS",
+   "length": 30,
+   "domain": null
+  },
+  {
+   "name": "ZONING",
+   "type": "esriFieldTypeString",
+   "alias": "ZONING",
+   "length": 50,
+   "domain": null
+  },
+  {
+   "name": "COMMUNITY_AREA",
+   "type": "esriFieldTypeString",
+   "alias": "COMMUNITY_AREA",
+   "length": 2,
+   "domain": null
+  },
+  {
+   "name": "COMMUNITY_AREA_NAME",
+   "type": "esriFieldTypeString",
+   "alias": "COMMUNITY_AREA_NAME",
+   "length": 30,
+   "domain": null
+  },
+  {
+   "name": "WARD",
+   "type": "esriFieldTypeString",
+   "alias": "WARD",
+   "length": 2,
+   "domain": null
+  },
+  {
+   "name": "X_COORD",
+   "type": "esriFieldTypeString",
+   "alias": "X_COORD",
+   "length": 50,
+   "domain": null
+  },
+  {
+   "name": "Y_COORD",
+   "type": "esriFieldTypeString",
+   "alias": "Y_COORD",
+   "length": 50,
+   "domain": null
+  },
+  {
+   "name": "LATITUDE",
+   "type": "esriFieldTypeString",
+   "alias": "LATITUDE",
+   "length": 50,
+   "domain": null
+  },
+  {
+   "name": "LONGITUDE",
+   "type": "esriFieldTypeString",
+   "alias": "LONGITUDE",
+   "length": 50,
+   "domain": null
+  },
+  {
+   "name": "CREATE_DATE",
+   "type": "esriFieldTypeDate",
+   "alias": "CREATE_DATE",
+   "length": 8,
+   "domain": null
+  },
+  {
+   "name": "DEED_NUMBER",
+   "type": "esriFieldTypeDouble",
+   "alias": "DEED_NUMBER",
+   "domain": null
+  },
+  {
+   "name": "TAX_STATUS",
+   "type": "esriFieldTypeString",
+   "alias": "TAX_STATUS",
+   "length": 50,
+   "domain": null
+  },
+  {
+   "name": "FUNDING_SOURCE",
+   "type": "esriFieldTypeString",
+   "alias": "FUNDING_SOURCE",
+   "length": 30,
+   "domain": null
+  },
+  {
+   "name": "CANCEL_SELL",
+   "type": "esriFieldTypeString",
+   "alias": "CANCEL_SELL",
+   "length": 1,
+   "domain": null
+  },
+  {
+   "name": "LOT_VACANT",
+   "type": "esriFieldTypeString",
+   "alias": "LOT_VACANT",
+   "length": 10,
+   "domain": null
+  },
+  {
+   "name": "HOLD_STATUS",
+   "type": "esriFieldTypeString",
+   "alias": "HOLD_STATUS",
+   "length": 1,
+   "domain": null
+  },
+  {
+   "name": "PIN_ADDRESS",
+   "type": "esriFieldTypeString",
+   "alias": "PIN_ADDRESS",
+   "length": 100,
+   "domain": null
+  },
+  {
+   "name": "PIN_CITY",
+   "type": "esriFieldTypeString",
+   "alias": "PIN_CITY",
+   "length": 50,
+   "domain": null
+  },
+  {
+   "name": "PIN_LANDSQFT",
+   "type": "esriFieldTypeDouble",
+   "alias": "PIN_LANDSQFT",
+   "domain": null
+  },
+  {
+   "name": "PIN_PIN14",
+   "type": "esriFieldTypeString",
+   "alias": "PIN_PIN14",
+   "length": 14,
+   "domain": null
+  },
+  {
+   "name": "PIN_ZIPCODE",
+   "type": "esriFieldTypeString",
+   "alias": "PIN_ZIPCODE",
+   "length": 10,
+   "domain": null
+  },
+  {
+   "name": "PIN_FLAG",
+   "type": "esriFieldTypeString",
+   "alias": "PIN_FLAG",
+   "length": 1,
+   "domain": null
+  },
+  {
+   "name": "PIN_BLDGVALUE",
+   "type": "esriFieldTypeDouble",
+   "alias": "PIN_BLDGVALUE",
+   "domain": null
+  },
+  {
+   "name": "PIN_TOTALVALUE",
+   "type": "esriFieldTypeDouble",
+   "alias": "PIN_TOTALVALUE",
+   "domain": null
+  },
+  {
+   "name": "TIF_DISTRICT_NUMBER",
+   "type": "esriFieldTypeString",
+   "alias": "TIF_DISTRICT_NUMBER",
+   "length": 50,
+   "domain": null
+  },
+  {
+   "name": "TIF_DISTRICT_NAME",
+   "type": "esriFieldTypeString",
+   "alias": "TIF_DISTRICT_NAME",
+   "length": 100,
+   "domain": null
+  },
+  {
+   "name": "POLICE_DISTRICT",
+   "type": "esriFieldTypeString",
+   "alias": "POLICE_DISTRICT",
+   "length": 50,
+   "domain": null
+  },
+  {
+   "name": "LANDMARK_DISTRICT",
+   "type": "esriFieldTypeString",
+   "alias": "LANDMARK_DISTRICT",
+   "length": 50,
+   "domain": null
+  },
+  {
+   "name": "CITY_OWNED_IND",
+   "type": "esriFieldTypeString",
+   "alias": "CITY_OWNED_IND",
+   "length": 50,
+   "domain": null
+  },
+  {
+   "name": "REMARK",
+   "type": "esriFieldTypeString",
+   "alias": "REMARK",
+   "length": 50,
+   "domain": null
+  },
+  {
+   "name": "GEOCODE_INDICATOR",
+   "type": "esriFieldTypeString",
+   "alias": "GEOCODE_INDICATOR",
+   "length": 1,
+   "domain": null
+  },
+  {
+   "name": "LEGAL_DESCRIPTION",
+   "type": "esriFieldTypeString",
+   "alias": "LEGAL_DESCRIPTION",
+   "length": 1073741822,
+   "domain": null
+  },
+  {
+   "name": "LAST_UPDATE",
+   "type": "esriFieldTypeDate",
+   "alias": "LAST_UPDATE",
+   "length": 8,
+   "domain": null
+  },
+  {
+   "name": "CREATE_BY",
+   "type": "esriFieldTypeString",
+   "alias": "CREATE_BY",
+   "length": 20,
+   "domain": null
+  },
+  {
+   "name": "UPDATE_BY",
+   "type": "esriFieldTypeString",
+   "alias": "UPDATE_BY",
+   "length": 30,
+   "domain": null
+  },
+  {
+   "name": "ACQ_DOC_NUMBER",
+   "type": "esriFieldTypeString",
+   "alias": "ACQ_DOC_NUMBER",
+   "length": 50,
+   "domain": null
+  },
+  {
+   "name": "SHAPE.AREA",
+   "type": "esriFieldTypeDouble",
+   "alias": "SHAPE.AREA",
+   "domain": null
+  },
+  {
+   "name": "SHAPE.LEN",
+   "type": "esriFieldTypeDouble",
+   "alias": "SHAPE.LEN",
+   "domain": null
+  }
+ ],
+ "geometryField": {
+  "name": "SHAPE",
+  "type": "esriFieldTypeGeometry",
+  "alias": "SHAPE"
+ },
+ "indexes": null,
+ "subtypes": [],
+ "relationships": [],
+ "canModifyLayer": true,
+ "canScaleSymbols": false,
+ "hasLabels": false,
+ "capabilities": "Map,Query,Data",
+ "maxRecordCount": 2000,
+ "maxSelectionCount": 2000,
+ "supportsStatistics": true,
+ "supportsExceedsLimitStatistics": true,
+ "supportsAdvancedQueries": true,
+ "supportedQueryFormats": "JSON, geoJSON, PBF",
+ "isDataVersioned": false,
+ "ownershipBasedAccessControlForFeatures": {"allowOthersToQuery": true},
+ "useStandardizedQueries": true,
+ "supportedSpatialRelationships": [
+  "esriSpatialRelIntersects",
+  "esriSpatialRelContains",
+  "esriSpatialRelCrosses",
+  "esriSpatialRelEnvelopeIntersects",
+  "esriSpatialRelIndexIntersects",
+  "esriSpatialRelOverlaps",
+  "esriSpatialRelTouches",
+  "esriSpatialRelWithin",
+  "esriSpatialRelRelation"
+ ],
+ "advancedQueryCapabilities": {
+  "useStandardizedQueries": true,
+  "supportsStatistics": true,
+  "supportsPercentileStatistics": true,
+  "supportsHavingClause": true,
+  "supportsOrderBy": true,
+  "supportsDistinct": true,
+  "supportsCountDistinct": true,
+  "supportsAdvancedQueryRelated": true,
+  "supportsQueryRelatedPagination": true,
+  "supportsPagination": true,
+  "supportsLod": false,
+  "supportsQueryWithLodSR": false,
+  "supportsTrueCurve": true,
+  "supportsQueryWithDatumTransformation": true,
+  "supportsReturningQueryExtent": true,
+  "supportsQueryWithDistance": true,
+  "supportsSqlExpression": true,
+  "supportsTimeRelation": true,
+  "supportsSqlFormat": false,
+  "supportsQueryAnalytic": true,
+  "supportsCurrentUserQueries": true
+ },
+ "supportsDatumTransformation": true,
+ "advancedQueryAnalyticCapabilities": {
+  "supportsLinearRegression": true,
+  "supportsAsync": false,
+  "supportsPercentileAnalytic": true
+ },
+ "dateFieldsTimeReference": null,
+ "preferredTimeReference": null,
+ "datesInUnknownTimezone": false,
+ "hasGeometryProperties": true,
+ "geometryProperties": {
+  "shapeAreaFieldName": "SHAPE.AREA",
+  "shapeLengthFieldName": "SHAPE.LEN",
+  "units": "esriFeet",
+  "mapUnits": {"uwkid": 9003}
+ },
+ "hasMetadata": true,
+ "isDataArchived": false,
+ "archivingInfo": {
+  "supportsQueryWithHistoricMoment": false,
+  "startArchivingMoment": -1
+ },
+ "supportsCoordinatesQuantization": true,
+ "supportsDynamicLegends": true
+}

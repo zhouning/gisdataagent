@@ -1,1885 +1,734 @@
-# GIS Data Agent — Roadmap
-
-**Last updated**: 2026-06-19 &nbsp;|&nbsp; **Current version**: v25.20 &nbsp;|&nbsp; **Next**: P5 remaining (影响范围联动 + 订阅更新提醒增强) + Self-Evolution regression gate &nbsp;|&nbsp; **ADK**: v1.27.2
-
-> 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
->
-> 核心战略：**Agentic Spatial Data Governance Platform（智能体驱动的时空数据治理平台）**——保持智能层 + 交互层领先，把空间数据治理、活跃元数据、声明式治理、数据产品化和多模态治理做成面向行业客户的产品能力；从"用户带数据来"转向"Agent 主动发现、治理、编排和运营数据"，从"一次性回答"转向"越用越准、越用越能沉淀的数据治理飞轮"。
->
-> **Data Agent Level**: v25.0 = **L4 — Agentic Governance**（标准全生命周期闭环 + 单向派生 + 双层世界模型 + NL2SQL 列名反查 + 跨家族评估），从场景驱动升级为**标准驱动**
-
----
-
-## 已完成 (v25.0) — Standards Platform 全链路 + 世界模型 v2 + NL2SQL hardening
-
-> **主题**: 数据标准从"Word 文档"升级为**全生命周期可治理资产**——采集 / 起草 / 审定 / 发布 / 派生 / 数据建模六阶段闭环；同时世界模型从单层 latent dynamics 升级为双层 dual-layer dreamer；NL2SQL 加上列名反查 + DISTINCT guard + LLM schema mapper。
-
-### Standards Platform — Wave 1 → Wave 6+ (主线, 2026-05-13 → 2026-05-28, ~30 commits)
-
-- [x] **Wave 1 / 1.5 — 采集底座 + data_elements 动态拼接** — 16 张 `std_*` 表 + Outbox 独立 worker + ltree + pgvector(768) + 12+6 REST + StandardsTab 双 sub-tab
-- [x] **Wave 2 — TipTap 起草 + 引用助手 + 一致性校验** + StandardsEditorAgent (Agent #7)
-- [x] **Wave 3 — 审定流模板 + v1 Fixes**
-- [x] **Wave 4 — 发布 + 版本快照**
-- [x] **Wave 5 — ABCD 产品化核心闭环** — standards_platform 210 passed / npm build OK / 浏览器 smoke 后端 SQL 验证
-- [x] **Wave 6-eng — ValueDomainStrategy 派生** — `agent_semantic_hints` (migration 081) + SemanticHintStrategy 合并 registry aliases
-- [x] **Wave 6+ — SynonymStrategy 派生** — `agent_semantic_sources.derived_synonyms` (migration 082) + grounding 合并 (`synonyms ‖ derived_synonyms`)，**派生覆盖率 33%→50% (3/6 strategy)**
-
-> Migrations 067-082 全部落地；230 standards_platform tests passed。Spec 全集见 `docs/superpowers/specs/2026-05-13-data-standard-lifecycle-platform-design.md`。
-
-### 世界模型 v2 + DRL hardening (2026-05 中下旬)
-
-- [x] **world_model_v2** — Causal World Model + Transition Model + 第二层 dynamics (`dual_layer_dreamer.py` + `dual_dreamer_pipeline.py`) + 4 个 DAgger ensemble resume 实验脚本
-- [x] **embedding_gateway** — Ollama backup path（本地 `192.168.31.252:11435` nomic-embed-text 768d）
-- [x] **classification_routes / world_model_v2_routes / capability_qa toolset** — 数据分级 API + 能力问答 toolset
-
-### NL2SQL hardening (2026-05 全月)
-
-- [x] **llm_schema_mapper** — LLM 主导的 schema 映射降级路径
-- [x] **sql_distinct_guard** — DISTINCT 注入静态分析（P=63.5% R=12.1%，作 ablation 而非主线）
-- [x] **grid_anonymize + PG 适配器** — 网格匿名化 + 单元 / PG 双套测试
-- [x] **gemini-3.5-flash 专属 system_instruction.md** — `prompts_nl2sql/gemini-3.5-flash/` 模型族特化
-
-> 详细攻防记录在内部 memory，本仓库不公开 v6/v7 paper experiments。
-
----
-
-## v25.3 — Standards Platform Wave 8b (P3 收口, 已完成, 2026-06-03)
-
-- [x] **EA-compatible XMI 导出** — 新增 `data_model_xmi_exporter.py`，从 active `std_data_model_snapshot.pdm_json` 导出 UML/XMI XML；稳定 ID 基于 package + physical_table / physical_column，PDM 类型映射覆盖 string / numeric / integer / boolean / geometry-as-string，nullable 映射为 UML multiplicity。
-- [x] **XMI 下载 API** — `GET /api/std/data-model/{vid}/xmi`，任何已登录角色可读；返回 `application/xml` + `Content-Disposition: data_model_<vid>.xml`，复用现有 active snapshot/version 404 语义。
-- [x] **前端下载入口** — `DataModelPreviewModal.tsx` 在 DDL 工具栏增加「下载 XMI」，复用既有数据模型预览 modal，不新增独立建模 sub-tab。
-- [x] **Round-trip 验证** — 导出的 XMI 可被现有 `parse_xmi_file()` 解析出 class / attribute / multiplicity；新增 exporter + API focused tests，前端 build 通过。
-
-> P3 首个生产级闭环完成：CDM/LDM/PDM + PostgreSQL DDL + EA-compatible XMI export。下一步进入 P4：审定流模板可视化、批量回滚、跨标准影响图谱。
-
----
-
-## v25.4 — Standards Platform P4 First Slice (已完成, 2026-06-05)
-
-- [x] **Outbox dead-letter UI** — 在 `DeriveSubTab` 增加 admin-only outbox 运维面板，可查看 `failed` / `pending` / `in_flight` / `done` 事件、展开 payload 与 last_error，并支持单条与批量 retry。
-- [x] **Outbox admin API** — 新增 `GET /api/std/outbox/events`、`POST /api/std/outbox/events/{id}/retry`、`POST /api/std/outbox/events/retry`；保留 worker at-least-once 语义，不删除或编辑事件 payload。
-- [x] **测试覆盖** — 新增 outbox repository + API focused tests；`pytest data_agent/standards_platform -q` 与 `npm run build` 通过。
-
-> P4 仍未完成的主线：审定流模板可视化、批量回滚、跨标准影响图谱。
-
----
-
-## v25.5 — Standards Platform P4 Batch Rollback First Slice (已完成, 2026-06-06)
-
-- [x] **Batch rollback repository/API** — 新增 `link_repo.rollback_versions()` 与 admin-only `POST /api/std/derive/rollback`，复用单版本 rollback 语义，支持 duplicate/missing/malformed ID 跳过与最多 50 个版本的批量请求。
-- [x] **Batch rollback UI** — 在 `DeriveSubTab` 增加 admin-only 批量回滚运维面板，可加入当前版本或粘贴多个 version id，显示 rolled_back / skipped 汇总与逐版本结果，并在前端提前拦截超过 50 个 ID 的请求。
-- [x] **测试覆盖** — 新增 repository + API focused tests；`pytest data_agent/standards_platform -q` 与 `npm run build` 通过。
-
-> P4 仍未完成的主线：审定流模板可视化、跨标准影响图谱。
-
----
-
-## v25.6 — Standards Platform P4 Cross-Standard Impact Graph First Slice (已完成, 2026-06-06)
-
-- [x] **Version impact graph repository/API** — 新增版本级影响图谱聚合，统一派生链、引用关系与相似条款边，输出 nodes/edges/summary，并对 `include_similar` / `min_similarity` / `top_k` 做 API 参数校验。
-- [x] **Analyze UI** — 在 `AnalyzeSubTab` 增加跨标准影响图谱摘要与边列表，展示 derives / references / similar_clause 关系和跨版本边计数；加载切换具备 stale guard，避免版本切换时图谱与条款列表错位。
-- [x] **测试覆盖** — 新增 repository + API focused tests；`pytest data_agent/standards_platform -q` 与 `npm run build` 通过。
-
-> P4 仍未完成的主线：审定流模板可视化。
-
----
-
-## v25.7 — Standards Platform P4 Review Template Visualization First Slice (已完成, 2026-06-06)
-
-- [x] **Review template repository/API** — 新增只读默认审定流模板，按现有 `std_document_version` / `std_review_round` / `std_reference` / `std_review_comment` 状态计算 draft → review → audit → comments → close → approved 的步骤、角色、门禁与摘要。
-- [x] **Review UI** — 在 `ReviewSubTab` 顶部增加审定流模板面板，展示版本状态、open/latest round、reviewer、待审引用、未决意见和六步流程状态；引用审定、评论解决、启动/关闭 round 后自动刷新。
-- [x] **测试覆盖** — 新增 repository + API focused tests；`pytest data_agent/standards_platform -q` 与 `npm run build` 通过。
-
-> P4 三项（审定流模板可视化、批量回滚、跨标准影响图谱）全部完成。下一阶段进入 P5：标准市场（多组织共享 + 订阅 + diff）。
-
----
-
-## v25.8 — Standards Platform P5 Market Catalog + Diff First Slice (已完成, 2026-06-06)
-
-- [x] **Market catalog repository/API** — 新增 released 标准版本市场目录，复用现有 `std_document_version.status='released'` 作为可共享条目，返回文档元数据、标签、owner、release 信息和条款/数据元/术语/值域资产计数。
-- [x] **Version diff repository/API** — 新增 `GET /api/std/market/diff`，支持两个版本按 clause / data_element / term / value_domain 自然键做 added / removed / changed / unchanged 的确定性结构化 diff。
-- [x] **Market UI** — `StandardsTab` 新增「市场」子页，可搜索 released 标准、查看资产计数、设置市场版本为当前版本，并以当前版本 vs 市场版本运行 diff。
-- [x] **测试覆盖** — 新增 market repository + API focused tests；`pytest data_agent/standards_platform -q` 与 `npm run build` 通过。
-
-> P5 已启动并完成目录 + diff first slice；订阅持久化已在 v25.9 补齐，市场审核已在 v25.10 补齐，多组织共享/权限模型已在 v25.11 补齐 first slice。P5 剩余主线：diff 深化。
-
----
-
-## v25.9 — Standards Platform P5 Market Subscriptions First Slice (已完成, 2026-06-06)
-
-- [x] **Market subscription repository/API** — 新增 `std_market_subscription` 迁移与仓储，支持按用户订阅 released 标准版本，记录 `source_version_id`、`last_seen_version_id`、active/cancelled 状态，并提供订阅、列表、mark-seen、取消订阅 API。
-- [x] **Update detection** — 订阅列表按同一 `std_document` 的最新 released version 计算 `has_update`，让用户能看到当前订阅版本、最新市场版本和是否有新版本可跟进。
-- [x] **Market UI** — 市场页增加「我的订阅」面板，支持从目录订阅/取消、切换订阅版本为当前版本、标记已读，并在目录项上显示已订阅与有更新状态。
-- [x] **测试覆盖** — 新增 market subscription repository + API focused tests；focused `12 passed`、standards_platform 全套 `422 passed, 1 skipped`，前端 `npm run build` 通过。
-
-> P5 已完成目录 + diff + 订阅持久化两个 first slice；市场审核已在 v25.10 补齐，多组织共享/权限模型已在 v25.11 补齐 first slice。P5 剩余主线：diff 深化。
-
----
-
-## v25.10 — Standards Platform P5 Market Review First Slice (已完成, 2026-06-06)
-
-- [x] **Market listing review repository/API** — 新增 `std_market_listing` 迁移与仓储，支持 released 标准版本提交上架、admin 通过/拒绝审核、待审列表与审核审计字段。
-- [x] **Catalog visibility integration** — 市场目录兼容历史 released 版本（无 listing 行视为 `legacy_approved`），但对已有 listing 的版本按审核状态控制展示：`submitted/rejected/withdrawn` 隐藏，`approved` 展示。
-- [x] **Market UI review controls** — 市场页增加「提交审核」与「市场审核」队列，支持刷新待审项、通过/拒绝，并在目录卡片显示上架审核状态。
-- [x] **测试覆盖** — 新增 market listing repository + API focused tests；market focused `34 passed`，standards_platform 全套 `432 passed, 1 skipped`，前端 `npm run build` 通过。
-
-> P5 已完成标准市场目录、版本 diff、订阅持久化和市场审核四个 first slice；多组织共享/权限模型已在 v25.11 补齐 first slice。P5 剩余主线：diff 深化。
-
----
-
-## v25.11 — Standards Platform P5 Organization Access First Slice (已完成, 2026-06-06)
-
-- [x] **Organization visibility model** — 扩展 `std_market_listing`，新增 `visibility_scope`、`owner_org_id`、`allowed_org_ids`，支持 `public / organization / private` 三类市场可见范围。
-- [x] **Catalog ACL integration** — 市场目录读取 JWT metadata 中的 `org_id / organization_id / org / tenant_id`，按 listing 可见范围过滤；legacy released 标准继续公开可见，admin 具备审核目录可见 bypass。
-- [x] **Market visibility API/UI** — 提交上架时可设置可见范围、owner org 与 allowed orgs，admin 可 PATCH listing visibility；市场页目录卡片与审核队列显示范围，提交审核表单支持组织访问参数。
-- [x] **测试覆盖** — 新增 market org access repository + API tests；market focused `45 passed`，standards_platform 全套 `443 passed, 1 skipped`，前端 `npm run build` 通过。
-
-> P5 标准市场已完成目录、diff first slice、订阅、审核与组织级访问控制。P5 剩余主线：diff 深化（字段级差异解释、影响范围联动、订阅更新提醒增强）。
-
----
-
-## v25.12 — Standards Platform P5 Diff Deepening First Slice (已完成, 2026-06-18)
-
-- [x] **Field-level market diff** — `GET /api/std/market/diff` 在 changed 资产上返回 `field_changes` 与 `field_change_count`，按 clause / data_element / term / value_domain 的内容字段生成确定性差异。
-- [x] **Diff review hints** — diff summary 新增 `field_changes`、`changed_fields_by_asset_type` 和 `review_hints`；对删除/修改项提示兼容性复核，对 datatype / obligation / cardinality / bound_table / bound_column / kind 等契约字段变化标高风险。
-- [x] **Market UI field detail** — 市场页 diff 表增加字段差异计数、复核提示和 source/target 字段值对比行，保留原 added / removed / changed / unchanged 视图。
-- [x] **测试覆盖** — market repository + API focused tests 通过；前端 `npm run build` 通过。
-
-> P5 diff 深化已完成字段级解释 first slice。剩余主线：影响范围联动（接 `std_impact` / 派生链）和订阅更新提醒增强。
-
----
-
-## v25.13 — Self-Evolution Orchestration First Slice (已完成, 2026-06-18)
-
-- [x] **SelfEvolutionEngine** — 新增 `data_agent/self_evolution.py`，把 v16 `ToolEvolution`、v19 `FeedbackLoop`、`FailureAnalyzer`、工具失败学习表和 failure-to-eval 串成 `observe -> analyze -> propose` 的可审计进化周期。
-- [x] **Dry-run first** — 默认只生成改进提案，不自动修改 prompt、工具或评测集；显式 `apply=true` 时才把 prompt 建议写入指定 environment，默认 `dev`。
-- [x] **Agent tool entry** — `ToolEvolutionToolset` 新增 `run_self_evolution_cycle`，Planner 可直接触发自主进化周期，返回反馈统计、失败模式、工具替代建议、prompt 目标、评测候选和下一步动作。
-- [x] **测试覆盖** — 新增 self-evolution unit tests，更新 ToolEvolutionToolset 注册测试。
-
-> 这一步把 roadmap 里已有的“工具演化 + 反馈飞轮 + 失败分析”从分散能力升级为可运行的自主进化闭环。后续可继续补：进化周期持久化、人工审批 UI、评测候选一键入库、prompt 建议 diff 视图。
-
----
-
-## v25.14 — Self-Evolution Persistence First Slice (已完成, 2026-06-18)
-
-- [x] **Cycle audit table** — 新增 `agent_self_evolution_cycles`（migration 089），持久化一次 `observe -> analyze -> propose` 周期的 summary / analysis / proposals / safeguards / full report，支持 proposed / applied / failed / dismissed 审计状态。
-- [x] **Runtime persistence API** — `data_agent/self_evolution.py` 增加 `ensure_self_evolution_tables()`、`record_cycle()`、`list_cycles()`、`get_cycle()`；数据库不可用时不会阻断自主进化周期，只返回 persistence skipped。
-- [x] **Agent tool persistence options** — `run_self_evolution_cycle` 新增 `persist`、`triggered_by`、`trigger_source` 参数；默认记录 dry-run 报告，显式关闭时只返回一次性报告。
-- [x] **Startup initialization** — Chainlit app 启动时初始化 self-evolution audit table，与 feedback / failure learning 表保持同一容错初始化路径。
-- [x] **测试覆盖** — 新增持久化、状态判定、查询解码、tool wrapper 参数透传单测。
-
-> 自主进化从“能跑一轮”推进到“能留下可审计候选记录”。后续主线：人工审批 UI、prompt 建议 diff 视图、eval candidates 一键入库、周期定时调度。
-
----
-
-## v25.15 — Self-Evolution Admin API First Slice (已完成, 2026-06-18)
-
-- [x] **Admin run endpoint** — 新增 `POST /api/self-evolution/run`，admin 可从 REST 触发一次自主进化周期；默认 dry-run + persist，`triggered_by` 默认当前 admin，`trigger_source=api`。
-- [x] **Cycle review endpoints** — 新增 `GET /api/self-evolution/cycles` 与 `GET /api/self-evolution/cycles/{id}`，可查看已持久化的进化候选列表与完整报告。
-- [x] **Existing RBAC integration** — 路由复用 `api.helpers._require_admin`，统一接入现有 JWT + admin role 鉴权；非 admin 不能触发或查看进化审计记录。
-- [x] **Frontend API mount** — 自主进化 API 挂入 `get_frontend_api_routes()`，与现有 React/Chainlit 前端 API 共用路由装载机制。
-- [x] **测试覆盖** — 增加 route registration、列表、详情、运行端点 focused tests。
-
-> 自主进化现在具备 Agent tool 和 Admin REST 两个入口。后续主线：审批 UI、prompt 建议 diff 视图、eval candidates 一键入库。
-
----
-
-## v25.16 — Self-Evolution Admin Review UI First Slice (已完成, 2026-06-18)
-
-- [x] **Admin dashboard entry** — 管理后台新增「自主进化」页签，作为 admin-only 的进化审计入口，不暴露给普通数据面板用户。
-- [x] **Dry-run cycle runner** — UI 可配置窗口天数、读取上限、低分阈值、是否生成 prompt 建议，并通过 `POST /api/self-evolution/run` 触发 dry-run + persist 周期。
-- [x] **Cycle audit list** — 展示周期 ID、时间、状态、模式、触发来源、坏例数、工具建议数与评测候选数，支持状态过滤和刷新。
-- [x] **Review detail preview** — 详情区展示 summary 指标、下一步动作、工具/prompt/eval 候选数量，并提供完整 JSON 报告展开查看。
-- [x] **Human-control boundary** — UI 暂不提供自动应用按钮；所有 prompt 变更、eval 入库和工具路由调整仍需后续审批动作实现。
-- [x] **验证** — 前端 `npm run build` 通过，保留既有 Vite loaders.gl/browser external 与大 chunk 警告。
-
-> 自主进化已从后端闭环推进到可人工查看的管理台。后续主线：审批动作 API、prompt diff 视图、eval candidates 一键入库。
-
----
-
-## v25.17 — Self-Evolution Approval Actions First Slice (已完成, 2026-06-18)
-
-- [x] **Review action API** — 新增 `POST /api/self-evolution/cycles/{id}/review`，支持 `approve_eval_candidates`、`approve_prompt_suggestions`、`dismiss` 三类 admin 审批动作。
-- [x] **Eval candidate promotion** — `approve_eval_candidates` 将周期报告中的 `eval_candidates` 写入 `agent_eval_datasets`，scenario=`self_evolution`，形成可回归评测的数据集候选。
-- [x] **Prompt dev version creation** — `approve_prompt_suggestions` 仅创建 `dev` 环境 prompt version，不直接部署到 prod；审批记录写入 cycle report。
-- [x] **Cycle approval audit** — 所有审批动作写回 `report.approvals` / `last_approval`，并更新 cycle status 为 `applied`、`dismissed` 或 `failed`。
-- [x] **Prompt diff preview** — 自主进化报告保留 `original_prompt` 与 `suggested_prompt`；管理后台可展开查看当前/建议 prompt 对照和 changes 列表。
-- [x] **Review UI actions** — 管理后台「自主进化」页签增加「入库评测候选」「创建 dev prompt 版本」「驳回候选」按钮，按钮按候选可用性禁用。
-- [x] **测试覆盖** — 新增审批动作单测和 `/review` API focused test；前端 `npm run build` 通过。
-
-> 自主进化已具备“提出候选 -> 持久化审计 -> 管理台查看 -> 人工审批生成改进资产”的闭环。仍未自动生产部署；下一步可做定时调度、审批队列提醒和 prod 部署门禁。
-
----
-
-## v25.18 — Self-Evolution Scheduler First Slice (已完成, 2026-06-18)
-
-- [x] **Lightweight interval scheduler** — 新增 `SelfEvolutionScheduler`，基于当前 asyncio event loop 运行单个后台任务，无新增调度依赖；默认关闭。
-- [x] **Conservative scheduled cycle** — 定时周期只运行 dry-run + persist，`trigger_source=scheduler`，不会自动应用 prompt、不会自动写 eval dataset、不会部署到 prod。
-- [x] **Environment controls** — `.env.example` 增加 `SELF_EVOLUTION_SCHEDULER_ENABLED`、`INTERVAL_SECONDS`、`DAYS`、`LIMIT`、`MIN_SCORE`、`INCLUDE_PROMPTS` 配置。
-- [x] **App startup integration** — Chainlit 首次会话启动时按配置启动调度器，和 workflow scheduler 一样延迟到 async context，避免 import 阶段创建任务。
-- [x] **Admin scheduler API** — 新增 `GET/POST /api/self-evolution/scheduler`，支持查看状态、启动、停止和 `run_once` 手动触发调度器周期。
-- [x] **Admin dashboard controls** — 「自主进化」页签显示调度器状态、最近周期、运行间隔，并提供启动/停止、立即运行按钮。
-- [x] **测试覆盖** — 新增 scheduler run-once、默认关闭、scheduler API focused tests；前端 `npm run build` 通过。
-
-> 自主进化主链路已完成“定时发现 -> 候选审计 -> 人工审批 -> 改进资产生成”的 first slice。审批提醒已在 v25.19 补齐；后续仍需 prod prompt 发布门禁，以及 P5 标准市场影响范围联动和订阅提醒增强。
-
----
-
-## v25.19 — Self-Evolution Approval Reminders First Slice (已完成, 2026-06-18)
-
-- [x] **Pending review summary** — 新增 `get_review_summary()`，基于 `agent_self_evolution_cycles.status='proposed'` 生成待审候选数、待审 eval / prompt / tool 建议数、高优先级计数和最近提醒列表。
-- [x] **Review priority heuristics** — 对同时包含 eval 候选与 prompt/tool 建议的周期、集中坏例/差评/工具失败信号标记 high priority；其余改进资产候选标记 medium，低信号周期保留 low。
-- [x] **Admin reminder API** — 新增 admin-only `GET /api/self-evolution/review-summary`，复用现有 `_require_admin` 鉴权，不暴露给普通用户。
-- [x] **Admin dashboard reminder panel** — 「自主进化」页签顶部增加审批提醒面板，展示待审数量、候选类型数量、最近待审周期快捷入口；运行周期、调度器立即运行和审批动作后自动刷新提醒。
-- [x] **测试覆盖** — 新增 review summary 聚合单测、API focused test 和路由注册断言。
-
-> 自主进化现在具备“定时/手动发现 -> 候选审计 -> 审批提醒 -> 人工审批 -> 改进资产生成”的主线闭环。prod prompt 发布门禁已在 v25.20 补齐；下一步是发布前回归评测门禁。
-
----
-
-## v25.20 — Self-Evolution Prod Prompt Gate First Slice (已完成, 2026-06-19)
-
-- [x] **Two-step prompt promotion** — `approve_prompt_suggestions` 只允许创建 dev/staging prompt version；直接把自主进化建议写入 prod 会被拒绝，避免绕过生产发布门禁。
-- [x] **Cycle-scoped prod deployment action** — 新增 `deploy_prompt_versions_to_prod` 审批动作，只部署该 cycle 审批记录中已经创建的非 prod prompt version，并把 source / target version 写入 cycle audit。
-- [x] **Duplicate deployment guard** — 已经通过该 cycle 发布过 prod 的 source version 不会重复部署；没有可发布 dev version 时返回可审计错误。
-- [x] **Admin API integration** — `/api/self-evolution/cycles/{id}/review` 支持 `target_environment=prod`，仍复用 admin-only 鉴权和 cycle 审计写回。
-- [x] **Admin UI control** — 「自主进化」详情页新增「发布 prod prompt」按钮，只有已有 dev prompt version 且尚未 prod 发布时可用，并显示审批记录摘要。
-- [x] **测试覆盖** — 新增 prod 绕过阻断、cycle-scoped prod 部署、重复部署阻断和 API 参数透传测试。
-
-> 自主进化现在支持“先生成 dev prompt 版本，再由管理员显式发布 prod”的生产门禁。仍不会自动部署生产 prompt；后续需要把发布前回归评测和阈值门禁接入该动作。
-
----
-
-## v25.3-eval — Standards Platform Wave 6-eval First Slice (已完成, 2026-06-03)
-
-- [x] **派生质量离线评测框架** — 新增 `data_agent/standards_platform/evaluation/`：统一 `DerivationEvalItem` schema、canonical identity、gold/prediction set 校验、重复身份拒绝。
-- [x] **P/R/F1 评分与阈值门禁** — `score_eval_sets()` 输出 overall + per-strategy precision / recall / F1，默认验收阈值 precision >= 0.85、recall >= 0.75；空 gold/prediction 场景按 no-op pass 处理。
-- [x] **预测提取器** — 从 active `std_derived_link` 抽取六类派生预测：semantic_hint、value_semantics、synonym、qc_rule、defect_code、data_model；`to_value_semantics` 将 value_domain kind/code/values 纳入匹配身份，`to_synonym` 按 table + token 粒度评分。
-- [x] **报告与 CLI** — `render_markdown()` 生成 CI/人工复核报告，`python -m data_agent.standards_platform.evaluation.cli` 支持 gold JSON + version_id 输出 JSON/Markdown，并用退出码表示阈值是否通过。
-- [x] **测试 +14** — Wave 6-eval schema / scorer / extractor / report / CLI 全覆盖；standards_platform 全套 **326 passed, 1 skipped**。
-
-> 这是一阶段评测底座：已具备 deterministic scoring 和报告门禁；后续仍需补 50 条款人工 gold set 与真实业务集成评测。
-
----
-
-## v25.2 — Standards Platform Wave 8 (已完成, 2026-06-01)
-
-- [x] **`to_data_model` 派生策略** — 每个 std_document_version 派生一份 CDM/LDM/PDM 三层模型 + PostgreSQL DDL（migration 085 + `std_data_model_snapshot` 表）；data_model_renderer 纯函数模块，类型映射含 enum CHECK / regex CHECK / range BETWEEN / GEOMETRY(SRID) + GIST / NOT NULL；**派生覆盖率 5/6 → 6/6 (100%)**
-- [x] **三层渲染器** — `data_model_renderer.py` 416 行：`build_model()` IR + `render_cdm/ldm/pdm/ddl()`；纯函数无 DB 调用；CDM 屏蔽技术细节、LDM 加 logical_type、PDM 含 PG 物理类型；DEFAULT_CODE_LENGTH / DEFAULT_GEOMETRY_SRID 模块常量便于未来扩展
-- [x] **3 个读取 REST 端点** — `GET /api/std/data-model/{vid}`（完整 payload，可 `?layer=cdm\|ldm\|pdm\|ddl`） + `GET /api/std/data-model/{vid}/ddl`（text/plain，Content-Disposition .sql 下载） + `GET /api/std/data-model/{vid}/snapshots`（历史列表）；任何已登录角色可读；写入复用 `/api/std/derive/rerun/{vid}`
-- [x] **rollback 联动** — `link_repo._TARGET_DERIVED_STATUS_TABLES` 纳入 std_data_model_snapshot；`rollback_version()` 自动 flip snapshot.derived_status='stale'，无需 strategy 特殊处理；manual snapshot 行永不被动
-- [x] **前端预览 modal** — `DataModelPreviewModal.tsx`：4 tab（PDM JSON / DDL 含「复制」+「下载 .sql」/ LDM JSON / CDM JSON）；`DeriveSubTab.tsx` 增加「📐 查看数据模型」按钮；4 个 SDK 函数加入 `standardsApi.ts`
-- [x] **测试 +46** — test_migration_085 (8) + test_data_model_renderer (16) + test_data_model_strategy (11) + test_api_data_model (11)；standards_platform 全套 310 passed (vs Wave 7 264)
-
-> 6 commits + spec/plan/roadmap：`db2f6c2..` HEAD。Spec：`docs/superpowers/specs/2026-06-01-std-platform-wave8-data-model-design.md`。
-
----
-
-## v25.1 — Standards Platform Wave 7 (已完成, 2026-05-30)
-
-- [x] **`to_qc_rule` 派生策略** — 标准 data_element → `agent_quality_rules` 单向派生（migration 083）；mandatory→completeness、enum/range/pattern→field_check；覆盖率 50%→66% (4/6)
-- [x] **`to_defect_taxonomy` 派生策略** — 标准 data_element → `agent_defect_code_bindings` 单向派生（migration 084）；mandatory→MIS-001、enum/range→NRM-003、pattern→NRM-002；覆盖率 66%→83% (5/6)
-- [x] **派生回滚** — `link_repo.rollback_version()` + `POST /api/std/derive/rollback/{vid}` admin-only；active 链 → superseded、下游 derived_status → stale、manual 行不动
-- [x] **影响图谱** — `link_repo.impact_graph()` + `GET /api/std/impact/{kind}/{id}` 4 种 source kind（clause/data_element/term/value_domain）；clause 自动展开到子 element/term/value_domain
-- [x] **Wave 6-eval first slice** — 派生质量评测底座：统一 eval item schema、active 派生预测抽取、overall/per-strategy P/R/F1、JSON/Markdown 报告与 CLI；50 条款人工 gold set 继续保留为后续数据工作。
-
----
-
-## v25.x — Standards Platform 后续阶段 (规划)
-
-- **P4**：审定流模板可视化、批量回滚、跨标准影响图谱（first slice 全部完成，v25.4-v25.7）
-- **P5**：标准市场（目录 + diff first slice、订阅持久化 first slice、市场审核 first slice、组织访问 first slice 已完成，后续补 diff 深化）
-
----
-
-## 历史 — v24.1 (NL2SQL Benchmark 16/16 + DeepSeek 兼容 + CostGuard 前端配置)
-
-> **主题**: NL2SQL 从"需要英文表名"到"纯自然语言查询"，benchmark 全量通过
-
-### NL2SQL 增强
-- [x] **Benchmark v2 去英文表名** — 16 题 question 全部改为纯中文自然语言，不再包含英文表名
-- [x] **双向子串匹配** — `_match_aliases()` 支持 alias→text 和 text→alias 双向匹配
-- [x] **中文同义词补齐** — 12 张 cq_* 表的 `agent_semantic_sources.synonyms` 全部补充短别名
-- [x] **可复用空间 few-shot** — 2 条 canonical pattern (AOI 距离 + 面面相交聚合) 入库 `agent_reference_queries`
-- [x] **智能 few-shot 跳过** — 简单单表查询不再触发 embedding 检索，grounding 提速 5-8x
-- [x] **SRID 修复** — `cq_ghfw` 和 `cq_jsydgzq` 从 SRID=0 更新为 4523，同步 `agent_semantic_sources`
-- [x] **Golden SQL 优化** — MEDIUM_02 空间 join 从 219s→0.5s（转换小表 + GiST 索引命中）
-- [x] **Grounding 单位标注** — 列 unit 字段显示在 grounding prompt 中（如"万人"）
-- [x] **Grounding SRID 建议** — SRID 不一致时给出具体 Transform 目标 SRID
-- [x] **Benchmark 题目修正** — EASY_01 去歧义、EASY_03 改措辞、HARD_03 重写 golden SQL
-- [x] **SQL 语法修复** — `reference_queries.py` 的 `:tags::jsonb` 改为 `CAST(:tags AS jsonb)`
-
-### DeepSeek 兼容
-- [x] **CoT 泄露清理** — 后端缓冲 sub_agent_direct 输出 + `clean_cot_leakage()` 正则清理
-- [x] **前端显示层兜底** — `ChatPanel.tsx` 的 `cleanCotLeakage()` 对 assistant 消息做最终清理
-- [x] **标准拒绝格式** — 写操作拒绝和不存在字段拒绝统一为一句标准文案
-- [x] **LIMIT 硬规则** — NL2SQL prompt 强制所有 SELECT 必须包含 LIMIT
-
-### CostGuard 前端配置
-- [x] **AdminDashboard 成本控制 tab** — 3 个输入框（警告阈值/中止阈值/USD 上限）+ 保存
-- [x] **REST API** — `GET/PUT /api/admin/cost-guard-config`（admin only）
-- [x] **DB 持久化** — 复用 `agent_model_config` 表，`ModelConfigManager` 扩展 3 个 cost_guard key
-- [x] **CostGuardPlugin 读 DB** — 优先从 DB 读取阈值，DB 不可用时降级到 env var
-
----
-
-## v24.2 — STAC 客户端标准化 + 遥感数据源扩展 (计划, 1 周)
-
-> **主题**: 把 v13.0 埋下的 STAC 基础设施升级为生产级国际标准对接能力
->
-> **背景**: `connectors/stac.py` + `satellite_presets.yaml` + `satellite-imagery` Skill 已经在 v13.0 落地，但实现是裸 httpx、缺 CQL2 / 分页 / 扩展校验，且 Skill 文档里写的 `stac_search` 工具侧一直没对齐。此版本把既有资产补齐到生产级，并为 v25.0 数据产品化和 v27.0 Agent 互操作打地基。
->
-> **动因**: STAC 1.1.0（2024-09）是 NASA / Microsoft Planetary Computer / AWS Open Data / Planet / Maxar / USGS / GEE / Esri 全部原生支持的地理数据资产事实标准；继续用方言对外叙事会削弱国际化和"跨系统互操作"定位
->
-> **工作量估算**: 1 周 | **依赖**: 无（pystac-client 纯 PyPI）
->
-> **Data Agent Level**: 不变（L3.5），仅技术栈标准化
-
-### P0 — 连接器标准化
-- [ ] **pystac-client 重构 StacConnector** — `connectors/stac.py` 用 pystac-client 替换裸 httpx，获得 CQL2 filter / 分页 / 扩展字段校验，目标代码 ~100 行 → ~30 行
-- [ ] **超时 + 代理配置** — 适配国内网络访问 ESA / AWS STAC 端点，对接 `data_agent/.env` 代理设置
-- [ ] **回归测试** — `test_connectors.py` 补 STAC 单元测试，mock pystac-client Client，覆盖 search / collections / 超时
-
-### P0 — 工具侧对齐
-- [ ] **stac_search 工具** — 新增到 `toolsets/rs_toolset.py`（或现有 RemoteSensingToolset），参数 `bbox / datetime / cloud_cover / collection / limit`，对齐 `satellite-imagery` Skill 文档契约
-- [ ] **stac_list_collections 工具** — 列出指定 STAC 端点的 collection 目录，便于 Agent 自主发现可用数据源
-- [ ] **Agent 注入** — 遥感 Agent + General Pipeline 挂载新工具
-
-### P0 — 预设扩展
-- [ ] **Microsoft Planetary Computer 预设** — 免认证全球覆盖，端点 `https://planetarycomputer.microsoft.com/api/stac/v1`，加入 `satellite_presets.yaml`
-- [ ] **NAIP 预设** — 美国高分辨率航空影像（可选，视客户需求）
-- [ ] **LULC 预设迁移** — 现有 `esri_lulc_10m` 是 `source_type: custom`，若有可用 STAC 端点则迁到 STAC 协议
-
-### P1 — 地图渲染直连
-- [ ] **STAC → Titiler 瓦片链路** — 搜到 COG `data_href` 后通过 Titiler 生成 XYZ 瓦片 URL，MapPanel 直接添加为 raster layer，不必下载
-- [ ] **MapPanel STAC layer 类型** — 新增 layer kind `stac_cog`，支持波段选择 / colormap / rescale 参数
-- [ ] **前端 STAC 搜索面板** — DataPanel 增加 "STAC" Tab（可放 v25.0，若 v24.2 时间不够则延后）
-
-### P2 — 华能演示联动（可选增强，不强绑定）
-- [ ] **场站影像时序监测辅助场景** — 用 Planetary Computer Sentinel-2/Sentinel-1 查询华能风电场站周边影像，作为演示的加分项（主线仍是 SCADA + RL/MARL，见 `华能新能源_行动计划.md`）
-
-### 质量保障
-- [ ] **对标 STAC 1.1.0 规范** — 连接器字段映射对照 STAC spec 文档
-- [ ] **pystac-client 版本锁定** — `requirements.txt` 追加 `pystac-client>=0.7.0`
-- [ ] **文档更新** — `satellite-imagery` SKILL.md 工具表补 `stac_search` / `stac_list_collections`
-
----
-
-## v25.x — 数据标准全生命周期智能化平台 (Standards Platform)
-
-### P0 (本期落地)：采集 + 分析底座 — 16 张 std_* 表 + Outbox 独立 worker
-  + ltree + pgvector(768) + 12 个 REST + StandardsTab 两个 sub-tab。
-  Spec: `docs/superpowers/specs/2026-05-13-data-standard-lifecycle-platform-design.md`
-- **P1**：起草（TipTap + 引用助手 + 一致性校验）+ StandardsEditorAgent (Agent #7)
-- **P2**：审定 + 发布 + 派生（6 strategy；标准 → semantic_hints / value_semantics
-  / synonyms / qc_rules / defect_taxonomy 单向派生）
-- **P3**：to_data_model — CDM/LDM/PDM 三层 + DDL + 反向 XMI（替代 EA 工作流）
-- **P4**：审定流模板可视化、批量回滚、跨标准影响图谱（first slice 全部完成，v25.4-v25.7）
-
----
-
-## 已完成 (v12.2)
-
-- [x] 能力浏览 Tab (CapabilitiesView) — 内置技能/自定义技能/工具集/用户工具聚合展示
-- [x] Custom Skills 前端 CRUD — 创建/编辑/删除自定义 Agent
-- [x] User-Defined Tools Phase 1 — 声明式工具模板 (http_call / sql_query / file_transform / chain)
-- [x] UserToolset — 用户工具暴露给 ADK Agent
-- [x] 多 Agent Pipeline 编排 — WorkflowEditor 支持 Skill Agent 节点 + DAG 执行
-- [x] 面板拖拽调整宽度 (240-700px)
-- [x] DataPanel Tab 横向滚动
-- [x] SEC-1~3: DB 降级后门移除、暴力破解防护、SQL 注入 Guardrail
-- [x] Skill Bundles 前端 UI — bundle 列表、创建/编辑表单、toolset/skill 多选
-- [x] Knowledge Base GraphRAG UI — 图构建按钮、实体列表、图谱搜索
-- [x] User Tools Phase 2: Python 沙箱 — AST 验证 + subprocess 隔离 + 环境清洗
-- [x] S-2: 线程安全 — _mcp_started / _a2a_started_at 双检锁
-- [x] F-2: 全局回调移除 — window.__* → CustomEvent
-- [x] SEC-4: Prompt 注入增强 — 24 模式 + 安全边界包裹
-- [x] WorkflowEditor 实时执行状态 — 轮询 run status + per-node 状态面板
-- [x] ADK list_skills_in_dir 采用 — 替代手动 YAML 解析
-- [x] S-4 API 拆分 — api/helpers + bundle_routes + kb_routes + mcp_routes + workflow_routes + skills_routes (42%)
-- [x] 启动缺表修复 — workflow_templates + skill_bundles 表初始化
-- [x] BP-3 分析血缘自动记录 — pipeline_run_id ContextVar + tool_params 传递 + KG derives_from/feeds_into 边
-- [x] 血缘 DAG 可视化 — DataPanel 资产详情横向 DAG 布局 (SVG 箭头 + 类型徽章)
-- [x] BP-5 行业分析模板 (首批) — 城市热岛效应/植被变化检测/土地利用优化 3 个模板
-- [x] CapabilitiesView 行业分组 — 行业模板过滤器 + /api/templates 集成
-- [x] Cartographic Precision UI — Space Grotesk + Teal/Amber + Stone 暖白 + 等高线登录页
-
----
-
-## 已完成 (v13.0) — 虚拟数据层
-
-> 从"9 个静态资产"到"按需连接多源数据"（参照 SeerAI Entanglement Engine）
-
-- [x] **BP-1 VirtualDataSource 注册表** — `virtual_sources.py`: CRUD + Fernet 加密，支持 `wfs` / `stac` / `ogc_api` / `custom_api` 四种源类型，零复制按需查询
-- [x] **WFS/STAC/OGC API 连接器** — 4 个 async 连接器 (`query_wfs`, `search_stac`, `query_ogc_api`, `query_api`)，支持 bbox + CQL 空间过滤
-- [x] **查询时 CRS 自动对齐** — 连接器返回 GeoDataFrame 后自动 `to_crs(target_crs)`
-- [x] **Schema 基础映射** — `apply_schema_mapping()` 列名重映射（语义匹配 fallback 进行中）
-- [x] **连接器健康监控** — `check_source_health()` 端点连通性检测 + DataPanel 健康状态指示灯
-- [x] **VirtualSourceToolset** — 5 个 ADK 工具，挂载到 General + Planner pipeline (24 toolsets)
-- [x] **REST API** — 6 个端点 `/api/virtual-sources/*` (101 total endpoints)
-- [x] **前端 "数据源" Tab** — VirtualSourcesView: 列表/新增/编辑/删除/测试连接 UI
-- [x] **52 单元测试** — CRUD、加密、连接器、调度器、健康检查全覆盖
-
----
-
-## v13.0.1 — Schema 语义映射 (已完成)
-
-> 基于向量嵌入的字段名自动映射
-
-- [x] **语义匹配 fallback** — 当 `schema_mapping` 为空时，用 `text-embedding-004` 对远程列名和规范词汇表做余弦相似度匹配
-- [x] **规范词汇表** — 35 个地理空间常用字段语义 (geometry, population, area, elevation, land_use, ...)
-
----
-
-## v13.1 — MCP Server 高阶工具暴露 (已完成)
-
-> 让外部 Agent（Claude Desktop / GPT）通过 MCP 调用 GIS Data Agent 的分析能力（参照 SeerAI MCP Server 设计）
-
-- [x] **BP-4 高阶元数据工具** — 新增 6 个 MCP 工具：`search_catalog`（语义搜索数据目录）、`get_data_lineage`（血缘追踪）、`list_skills`（技能列出）、`list_toolsets`（工具集列出）、`list_virtual_sources`（虚拟数据源）、`run_analysis_pipeline`（执行完整分析管线）
-- [x] **MCP Server v2.0** — 从 30+ 底层 GIS 工具扩展为 36+ 工具（底层 + 高阶元数据 + pipeline 执行）
-- [x] **外部 Agent 接入验证** — MCP routes + A2A server 集成测试 ✅
-
----
-
-## 已完成 (v14.0) — 交互增强 + 扩展市场
-
-> **主题**: 用户可见的体验提升，快速出价值
-
-### 自然语言交互
-- [x] **意图消歧对话** — AMBIGUOUS 分类时弹出选择卡片（Optimization/Governance/General），用户点选后路由
-- [x] **参数调整重跑** — rerun_with_params action + session 参数存储 ✅ v14.5
-- [x] **记忆搜索面板** — MemorySearchTab + /api/memory/search ✅ v14.5
-
-### 用户自扩展
-- [x] **Marketplace 画廊** — DataPanel 新增"市场"tab，聚合所有 is_shared=true 的 Skills/Tools/Templates/Bundles，支持排序（评分/使用量/时间）
-- [x] **统一评分系统** — Skills 和 Tools 增加 `rating_sum`/`rating_count` 字段 + REST 端点 `POST /api/skills/{id}/rate`、`POST /api/user-tools/{id}/rate`
-- [x] **Skill/Tool Clone** — 允许用户克隆他人共享的 Skill/Tool 到自己名下
-
-### DRL 优化
-- [x] **场景模板系统** — 定义 `DRLScenario` 配置类，内置 3 个场景模板：耕地优化（现有）、城市绿地布局、设施选址
-- [x] **奖励权重 UI** — 前端 slope_weight / contiguity_weight / balance_weight 滑块 ✅
-
-### 三面板 SPA
-- [x] **热力图支持** — 集成 deck.gl `HeatmapLayer` 到 Map3DView，MapPanel 增加 `type: heatmap` 处理
-- [x] **测量工具** — MapPanel 工具栏增加距离测量 + 面积测量（Leaflet.Draw 或 Turf.js）
-- [x] **3D 图层控制** — Map3DView 增加图层列表面板，支持 show/hide/opacity 调节
-
-### 多 Agent 编排
-- [x] **Workflow 断点续跑** — resume_workflow_dag + /runs/{id}/resume ✅ v14.5
-- [x] **步骤级重试** — retry_workflow_node + REST 端点 ✅ v14.5
-
----
-
-## 已完成 (v14.1) — 智能深化 + 协作基础
-
-> **主题**: AI 更聪明，协作开始落地
-
-### 自然语言交互
-- [x] **追问与上下文链** — Agent 输出后自动生成 3 个推荐追问，用户点击即发送
-- [x] **分析意图消歧 v2** — 对复杂查询拆解为子任务列表，用户确认后按序执行 ✅ v23.0
-- [x] **自动记忆提取增强** — pipeline 完成后自动调用 `extract_facts_from_conversation()` + 弹出确认 ✅
-
-### 用户自扩展
-- [x] **版本管理** — Skills/Tools 新增 `version` 字段，更新时自动 +1，保留最近 10 个版本，支持回滚
-- [x] **标签分类** — category + tags[] 列 + migration 035 ✅ v15.0
-- [x] **使用统计** — use_count 列 + increment_skill_use_count ✅ v15.0
-
-### DRL 优化
-- [x] **多场景环境引擎** — LandUseOptEnv 配置驱动多场景支持 ✅
-- [x] **约束建模** — 新增硬约束（保留率下限）+ 软约束（预算/面积上限），Gymnasium action mask 扩展 ✅ v23.0
-- [x] **结果对比面板** — OptimizationTab A/B 对比两次优化结果 ✅
-
-### 三面板 SPA
-- [x] **3D basemap 同步** — Map3DView 高德/天地图 MapLibre 栅格源 ✅ v14.5
-- [x] **标注协同** — WebSocket 实时推送标注变更 (单实例版) ✅ v23.0
-- [x] **GeoJSON 编辑器** — DataPanel 新增 tab/modal，支持粘贴/编辑 GeoJSON + 预览到地图
-- [x] **跨图层关联** — 选中 A 图层要素时高亮 B 图层空间关联要素 ✅ v23.0
-
-### 多 Agent 编排
-- [x] **Agent 注册中心** — 新增 `agent_registry.py`：注册/发现/心跳，Redis 或 PostgreSQL 后端
-- [x] **A2A 双向 RPC** — 扩展 `a2a_server.py` 支持主动调用远程 Agent
-- [x] **消息总线持久化** — `AgentMessageBus` PostgreSQL 持久化 + 投递确认 ✅
-
----
-
-## 已完成 (v14.2) — 深度智能 + 生产就绪
-
-> **主题**: DRL 专业化，系统可投产
-
-### 自然语言交互
-- [x] **多轮分析工作流** — 支持"分析链"：用户定义条件触发后续分析
-- [x] **语音输入** — 集成语音转文字（浏览器 SpeechRecognition）✅
-
-### 用户自扩展
-- [x] **Skill Marketplace 社区** — MarketplaceTab Gallery + 排序 + 热度排行 ✅
-- [x] **审批工作流** — 管理员审核 is_shared Skill 的发布请求
-
-### DRL 优化
-- [x] **自定义训练 API** — train_drl_model 工具暴露 ✅
-- [x] **可解释性模块** — 特征重要性分析 ✅ *(SHAP 集成待 GPU 环境)*
-- [x] **时序动画** — DRL 优化过程 GIF 回放 + 前后对比 PNG ✅ 2026-04-08
-
-### 三面板 SPA
-- [x] **要素绘制编辑** — Leaflet.Draw 点/线/面/矩形 + 导出 GeoJSON ✅ v14.5
-- [x] **标注导出** — 标注集导出为 GeoJSON / CSV
-- [x] **自适应布局** — 移动端响应式 ✅
-
-### 多 Agent 编排
-- [x] **分布式任务队列** — TaskQueue Redis Sorted Set 后端 (替代 Celery) ✅ 2026-04-08
-- [x] **Pipeline 断点恢复 v2** — workflow_engine.py checkpoint/resume 逻辑 ✅
-- [x] **Circuit Breaker** — 工具/Agent 连续失败时熔断，自动降级到备选 Agent
-
----
-
-## 已完成 (v14.3) — 联邦多 Agent + 生态开放
-
-> **主题**: 从单机走向分布式，从工具走向平台
-
-### 自然语言交互
-- [ ] **个性化模型微调** — 根据用户历史分析偏好微调 Agent 行为（LoRA adapter on Gemini）
-- [x] **多语言支持** — 英文/日文 prompt 自动检测 + 路由到对应语言 Agent
-
-### 用户自扩展
-- [x] **Skill 依赖图** — 允许 Skill A 依赖 Skill B（DAG 编排），拓扑排序 + 循环检测 + REST API ✅ v23.0
-- [x] **Webhook 集成** — 第三方平台 Skill 注册（GitHub Action、Zapier trigger）
-- [x] **Skill SDK** — gis-skill-sdk Python 包 (CLI + 验证器 + 测试) ✅
-
-### DRL 优化
-- [x] **多目标优化 v2** — NSGA-II 替代加权和方法，真 Pareto 前沿搜索
-- [x] **交通网络/设施布局场景** — 新增 2 个 Gymnasium 环境（路网优化、公共设施选址） ✅ v23.0
-- [ ] **联邦学习** — 多租户共享模型权重但不共享数据（隐私保护 DRL）
-
-### 三面板 SPA
-- [ ] **协同工作空间** — 多用户同时编辑同一项目（CRDT 冲突解决）
-- [x] **插件系统** — 允许用户开发自定义 DataPanel tab 插件
-- [x] **离线模式** — Service Worker 缓存基础地图 + 已下载数据集 ✅ v23.0
-
-### 多 Agent 编排
-- [x] **完整 A2A 协议** — 实现 Google A2A spec：Agent Card、Task lifecycle、Streaming、Push Notification
-- [x] **跨实例 Agent 协作** — Agent A (本机) 调用 Agent B (远程) 的工具，结果回传
-- [ ] **Agent 联邦** — 多个 GIS Data Agent 实例组成联邦，共享 Skill 注册表 + 负载均衡
-
----
-
-## 已完成 (v14.4) — 治理深化 + 交互式可视化
-
-> **主题**: 治理管道从 40% → 65%，非 GIS 数据的交互式图表从 0 → 可用
->
-> **依据**: `docs/governance-capability-assessment.md` (6 领域 22 子能力评估)、`docs/data-source-connector-assessment.md` (5 通道缺口分析)、dv.gaozhijun.me (数据可视化参考)
-
-### 数据治理管道强化
-- [x] **Ch21 审计修复** — P0/P1/P2 全部清零 (A2A 认证、SQL 参数化、线程安全 6 处) ✅ 2026-03-21
-- [x] **DataPanel 拆分重构** — 2922 行 → 17 模块化组件 + 分组 Tab (数据/智能/运维/编排) ✅ 2026-03-21
-- [x] **GovernanceToolset (7 工具)** — `check_gaps` / `check_completeness` / `check_attribute_range` / `check_duplicates` / `check_crs_consistency` / `governance_score` / `governance_summary` ✅ 2026-03-21
-- [x] **治理评分体系** — 6 维加权评分 (拓扑 25% / 间隙 15% / 完整性 20% / 属性 15% / 重复 10% / CRS 15%)，0-100 综合分 + 雷达图 JSON ✅ 2026-03-21
-- [x] **治理 Prompt 独立化** — `prompts/governance.yaml` 5 个治理专用 prompt ✅ 2026-03-21
-- [x] **GovernanceViz Agent** — 治理管道第 4 阶段：审计结果可视化 ✅ 2026-03-21
-
-### 交互式数据可视化
-- [x] **ChartToolset (9 工具)** — bar/line/pie/scatter/histogram/box_plot/heatmap/treemap/radar → ECharts JSON config ✅ 2026-03-21
-- [x] **前端 ECharts 集成** — ChartView 通用渲染组件 + DataPanel ChartsTab ✅ 2026-03-21
-- [x] **图表交付管道** — `/api/chart/pending` REST 端点 + `app.py` 图表检测 ✅ 2026-03-21
-- [x] **Prompt 图表感知** — `general_viz_instruction` 增加非地图可视化指引 ✅ 2026-03-21
-
-### 质量保障
-- [x] **治理工具测试** — `test_governance_tools.py` 7 工具 mock 测试 + 评分逻辑验证 ✅ 2026-03-21
-- [x] **图表工具测试** — `test_chart_tools.py` 9 工具 ECharts option schema 验证 ✅ 2026-03-21
-
----
-
-## 已完成 (v14.5) — 全栈治理升级 + 连接器插件化 + Skill 5 模式 + 可观测性
-
-> **主题**: 数据接入补齐短板，标准驱动治理引擎，Skill 设计模式从单一 Tool Wrapper 走向 5 模式全覆盖
->
-> **依据**: `docs/agent-observability-enhancement.md` (Phase 1 指标增强)、`docs/data-source-connector-assessment.md` (S1 阶段)、`docs/data-agent-readiness-assessment.md` (客户 Demo 差距评估)、`docs/skill-design-patterns-analysis.md` (5 种 Skill 设计模式)
-
-### 数据接入增强 + 连接器插件化 *(v15.0 插件化提前完成)*
-- [x] **BaseConnector 插件架构** — `connectors/__init__.py`: BaseConnector ABC + ConnectorRegistry 注册表，替代 virtual_sources.py 内联 if-elif 分派 ✅ 2026-03-22
-- [x] **现有 4 种连接器重构** — WFS/STAC/OGC API/Custom API 从 virtual_sources.py 提取为独立 Connector 子类 ✅ 2026-03-22
-- [x] **WMS/WMTS 连接器** — `connectors/wms.py`: GetCapabilities XML 解析 + 返回 `L.TileLayer.WMS` ���层配置 (非像素下载) ✅ 2026-03-22
-- [x] **ArcGIS REST FeatureServer 连接器** — `connectors/arcgis_rest.py`: 分页查询 + f=geojson + BBOX，返回 GeoDataFrame ✅ 2026-03-22
-- [x] **前端 WMS 图层渲染** — MapPanel 新增 `'wms'` 图层类型 + `L.tileLayer.wms()` 渲染 ✅ 2026-03-22
-- [x] **类型专属表单** — VirtualSourcesTab: WMS (layers/styles/format/version) + ArcGIS (layer_id/where/fields) 专属配置表单 ✅ 2026-03-22
-- [x] **图层发现** — `POST /api/virtual-sources/discover` 端点 + 前端"发现图层"按钮 (GetCapabilities 代理) ✅ 2026-03-22
-- [x] **Toolset 增强** — VirtualSourceToolset 5→7 工具: 新增 `discover_layers_tool` + `add_wms_layer_tool` ✅ 2026-03-22
-- [x] **22 连接器测试** — `test_connectors.py`: Registry + 6 连接器 + auth headers 全覆盖 ✅ 2026-03-22
-- [x] **Esri File Geodatabase (.gdb) 支持** — `_load_spatial_data()` 增加 FGDB 读取分支 + 图层列表枚举 ✅ 2026-03-22
-- [x] **DWG/DXF 元数据读取** — ezdxf 解析 DXF 图层/实体 (POINT/LINE/POLYLINE)，DWG 提示转换 ✅ 2026-03-22
-- [x] **数据源注册向导** — 4 步向导 UI (基本信息→CRS/刷新→类型配置→预览确认) ✅ 2026-03-22
-- [x] **字段映射可视化编辑器** — FieldMappingEditor 拖拽映射组件 ✅
-
-### 数据标准与治理引擎 *(全部完成)*
-- [x] **Data Standard Registry** — YAML 标准定义 + GB/T 21010 (73 值) + DLTB (30 字段 + 4 代码表) ✅ 2026-03-22
-- [x] **DataCleaningToolset** — 7 清洗工具 (空值填充/编码映射/字段重命名/类型转换/异常值/CRS/补齐) ✅ 2026-03-22
-- [x] **地类编码交叉映射** — CLCD→GB/T 21010 映射表 + map_field_codes 支持 mapping_id ✅ 2026-03-22
-- [x] **Gap Matrix 自动生成** — 逐字段标准对比 (present/missing/extra) + 必填覆盖率 ✅ 2026-03-22
-- [x] **批量数据集探查** — 目录递归扫描 + 可选标准对照 + 汇总统计 ✅ 2026-03-22
-- [x] **标准感知质检规则** — M/C/O 必填/max_length/类型兼容/枚举/公式校验/合规率评分 ✅ 2026-03-22
-- [x] **质量规则库 CRUD** — DB 持久化 + 批量执行 + 趋势记录 + REST API 8 端点 ✅ 2026-03-22
-- [x] **治理流程模板化** — generate_governance_plan 自动诊断→生成可执行治理步骤 ✅ 2026-03-22
-
-### Skill 设计模式升级 *(全部完成)*
-- [x] **Inversion 模式: site-selection** — 4 阶段采访 + 执行门控 (v3.0) ✅ 2026-03-22
-- [x] **Inversion 模式: land-fragmentation** — 4 阶段采访 + DRL 参数确认 (v3.0) ✅ 2026-03-22
-- [x] **Generator 模式: data-profiling** — assets/ 报告模板 + references/ 评分标准 (v3.0) ✅ 2026-03-22
-- [x] **Generator 模式: ecological-assessment** — assets/ 生态评估模板 ✅ 2026-03-22
-- [x] **Reviewer 模式: farmland-compliance** — 检查清单提取到 references/ (v3.0) ✅ 2026-03-22
-- [x] **Skill L3 参考文档补全** — +5 skills (geocoding/buffer-overlay/3d-viz/data-import-export/site-selection) ✅ 2026-03-22
-
-### Agent 可观测性 Phase 1 *(全部完成)*
-- [x] **Prometheus 指标扩展 (4→25+)** — LLM/Tool/Pipeline/Cache/HTTP/CB 6 层 ✅ 2026-03-22
-- [x] **ObservabilityMiddleware** — ASGI HTTP 中间件 + path 归一化 ✅ 2026-03-22
-- [x] **缓存命中率指标** — semantic_layer hit/miss Counter ✅ 2026-03-22
-- [x] **Grafana Dashboard 模板** — grafana/agent_overview.json 11 面板 ✅ 2026-03-22
-
-### 治理运营 *(全部完成)*
-- [x] **质量规则库 + 趋势 + 总览** — agent_quality_rules/trends 表 + 8 REST 端点 + GovernanceTab ✅ 2026-03-22
-
-### 交互体验打磨 *(全部完成)*
-- [x] **参数调整重跑** — last_pipeline_params session 存储 + rerun_with_params action ✅ 2026-03-22
-- [x] **记忆搜索面板** — /api/memory/search + MemorySearchTab + DataPanel "记忆" tab ✅ 2026-03-22
-- [x] **3D basemap 同步** — Map3DView 扩展高德/天地图 MapLibre 栅格源样式 ✅ 2026-03-22
-- [x] **要素绘制编辑** — Leaflet.Draw 点/线/面 + 导出 GeoJSON + /api/user/drawn-features ✅ 2026-03-22
-
-### 多 Agent 编排 *(全部完成)*
-- [x] **Workflow 断点续跑** — resume_workflow_dag() + POST /runs/{id}/resume 端点 ✅ 2026-03-22
-- [x] **步骤级重试** — retry_workflow_node() 已有，REST 端点已暴露 ✅ 2026-03-22
-
----
-
-## 已完成 (v15.0) — 深度可观测 + 数据安全 + 分布式计算
-
-> **主题**: OpenTelemetry 分布式追踪、Agent 决策透明化、安全合规、数据分发与反馈闭环
->
-> **依据**: 可观测性文档 Phase 2-4 + 治理评估 §4 数据安全 + 数据源评估 S2 + Spark 架构文档 + readiness 评估 P2 项 + skill-design-patterns P2 项
-
-### Agent 可观测性 Phase 2-4 *(全部完成)*
-- [x] **OpenTelemetry 分布式追踪** — `otel_tracing.py`: Pipeline/Agent/Tool 三级 Span + OTLP 导出 ✅ 2026-03-22
-- [x] **Agent 决策追踪** — `agent_decision_tracer.py`: DecisionEvent/DecisionTrace + Mermaid 序列图 ✅ 2026-03-22
-- [x] **Pipeline 执行瀑布图** — ObservabilityTab 决策时间线 + 事件颜色编码 ✅ 2026-03-22
-- [x] **Prometheus Alert 规则** — 9 条告警 (Pipeline/LLM/Tool/CB/Token/Cache/HTTP + 安全) ✅ 2026-03-22
-
-### 数据安全 *(全部完成)*
-- [x] **数据分类分级引擎** — PII 检测 (6 模式) + 5 级敏感度 + classify_data_sensitivity 工具 ✅ 2026-03-22
-- [x] **数据脱敏工具** — 4 策略 (mask/redact/hash/generalize) + mask_sensitive_fields 工具 ✅ 2026-03-22
-- [x] **RLS 实际落地** — 8 核心表 Row Level Security 策略 (owner/shared/admin) ✅ 2026-03-22
-- [x] **安全事件告警** — SensitiveDataAccessSpike + BruteForceDetected ✅ 2026-03-22
-
-### 数据分发与反馈闭环 *(全部完成)*
-- [x] **数据申请审批流程** — create/approve/reject + 角色过滤 ✅ 2026-03-22
-- [x] **数据分发包打包下载** — package_assets ZIP 打包 ✅ 2026-03-22
-- [x] **用户反馈通道** — add_review (1-5 评分 + 评论) + get_reviews ✅ 2026-03-22
-- [x] **使用热度统计** — log_access + get_hot_assets + access_stats ✅ 2026-03-22
-
-### 数据更新与版本管理 *(全部完成)*
-- [x] **增量更新机制** — compare_datasets 差异对比 (要素/列/CRS) ✅ 2026-03-22
-- [x] **数据版本管理** — create_version_snapshot + rollback_version + list_versions ✅ 2026-03-22
-- [x] **更新日志与通知** — notify_asset_update + get_notifications + mark_read ✅ 2026-03-22
-
-### 连接器扩展 *(全部完成)*
-- [x] **BaseConnector 抽象基类** — ConnectorRegistry *(v14.5 提前完成)*
-- [x] **DatabaseConnector** — MySQL/PostgreSQL/SQLite 外部数据库连接 ✅ 2026-03-22
-- [x] **ObjectStorageConnector** — S3/OBS/OSS 对象存储拉取 ✅ 2026-03-22
-
-### Skill 设计模式深化 *(核心完成)*
-- [x] **Pipeline 模式: multi-source-fusion** — 5 步检查点融合 (v3.0) ✅ 2026-03-22
-- [x] **新增 data-quality-reviewer Skill** — 入库前 13 项质量审查 ✅ 2026-03-22
-- [x] **数据模型推荐引擎** — recommend_data_model 工具 (差距分析+转换路径+工作量评估) ✅ 2026-03-22
-- [x] **Generator/Reviewer 输出结构化校验** — Pydantic schema ✅
-
-### 分布式计算 *(全部完成)*
-- [x] **SparkToolset (3 工具)** — submit_task + check_tier + list_jobs ✅ 2026-03-22
-- [x] **SparkGateway 网关** — 多后端抽象 (local/Livy/Dataproc/EMR) ✅ 2026-03-22
-- [x] **三层执行路由** — L1 本地(<100MB) / L2 队列(<1GB) / L3 Spark(>1GB) ✅ 2026-03-22
-
----
-
-## 已完成 (v15.2) — 地理空间世界模型 + NL2SQL + 地图时间轴
-
-> **主题**: 从"分析已有数据"到"预测未来演变"——构建地理空间 JEPA 世界模型，自然语言直达数据库
->
-> **依据**: `docs/world-model-tech-preview-design.md` (方案 A/B/C/D 评审 + 阶段 0 验证)、`docs/multimodal-semantic-fusion-plus-alphaearth-strategy.md`
-
-### 地理空间世界模型 (Plan D: AlphaEarth + LatentDynamicsNet)
-- [x] **LatentDynamicsNet 残差 CNN** — `world_model.py`: 459K 参数, 空洞卷积 (dilation 1/2/4, 170m 感受野), 残差连接 + L2 流形保持 ✅ 2026-03-22
-- [x] **AlphaEarth 64 维嵌入集成** — GEE `GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL` 采集 + zonal 聚合 ✅ 2026-03-22
-- [x] **5 种情景模拟** — 城市蔓延 / 生态修复 / 农业集约化 / 气候适应 / 基线趋势，one-hot 编码 ✅ 2026-03-22
-- [x] **地形上下文感知** — DEM elevation + slope 作为 CNN 额外通道 ✅ 2026-03-22
-- [x] **LULC 解码器** — LogisticRegression: 嵌入 → 9 类 ESRI LULC (准确率 83.7%) ✅ 2026-03-22
-- [x] **训练管线** — 15 区域 × 8 年嵌入对 + 多步展开训练损失 + GEE 自动下载 ✅ 2026-03-22
-- [x] **WorldModelToolset (5 工具)** — predict / scenarios / status / embedding_coverage / find_similar ✅ 2026-03-22
-- [x] **世界模型快捷路径** — 意图分类直判 world_model → 跳过 LLM Planner，1 次 API 调用完成预测 ✅ 2026-03-22
-- [x] **阶段 0 验证通过** — 年际 cos_sim=0.953, 变化/稳定分离度=2.44x, 嵌入→LULC 解码 83.7% ✅ 2026-03-22
-
-### pgvector 嵌入缓存
-- [x] **embedding_store.py** — `agent_geo_embeddings` 表 + pgvector VECTOR(64) + IVFFlat 索引 ✅ 2026-03-23
-- [x] **三级缓存** — pgvector (24ms) → .npy 文件 (ms) → GEE 下载 (seconds)，自动回填 ✅ 2026-03-23
-- [x] **余弦相似度搜索** — `find_similar_embeddings()` 支持空间半径 + top-K ✅ 2026-03-23
-
-### NL2SQL 动态数据查询
-- [x] **NL2SQLToolset (3 工具)** — discover_database_schema / execute_spatial_query / load_admin_boundary ✅ 2026-03-22
-- [x] **Schema 发现** — 自动探索 public schema 表结构 + 列类型 + 注释 ✅ 2026-03-22
-- [x] **参数化安全查询** — 自动 LIKE 模糊匹配构造，零 SQL 注入风险 ✅ 2026-03-22
-- [x] **行政区划加载** — 自然语言地名 → 模糊匹配 → 自动 SQL → GeoJSON ✅ 2026-03-22
-
-### 地图时间轴 + 底图增强
-- [x] **时间轴播放器** — MapPanel 多时序 LULC 图层动画切换 + 年份滑块 ✅ 2026-03-22
-- [x] **卫星影像底图** — Gaode Satellite + ESRI World Imagery 底图选项 ✅ 2026-03-22
-- [x] **WorldModelTab** — DataPanel 新增世界模型专属 Tab (情景选择/预测/面积趋势表/转移矩阵/堆叠条形图) ✅ 2026-03-22
-
-### 质量保障
-- [x] **世界模型测试** — `test_world_model.py` 场景/模型/预测/缓存全覆盖 ✅ 2026-03-22
-- [x] **NL2SQL 测试** — `test_nl2sql.py` Schema/Query/AdminBoundary 测试 ✅ 2026-03-22
-
----
-
-## 已完成 (v15.3) — 三角度时空因果推断体系
-
-> **主题**: 为论文构建三个互补角度的因果推断能力——统计方法 × LLM 推理 × 因果世界模型
->
-> **依据**: 项目思想起源 (2023-09) 时空因果推断平台构想
-
-### Angle A — GeoFM 嵌入因果推断 (6 tools)
-- [x] **CausalInferenceToolset** — `causal_inference.py` (1247 行): PSM / ERF / DiD / Granger / GCCM / Causal Forest ✅ 2026-03-25
-- [x] **AlphaEarth 嵌入增强** — 全部 6 工具支持 `use_geofm_embedding=True`，64 维嵌入作为空间混淆控制 ✅ 2026-03-25
-- [x] **空间距离加权匹配** — PSM 支持 `spatial_distance_weight` 空间邻近约束 ✅ 2026-03-25
-- [x] **21 测试** — 合成数据 ground truth 验证 (Park-price ATE, Pollution DiD, 灌溉 CATE 等) ✅ 2026-03-25
-
-### Angle B — LLM 因果推理 (4 tools)
-- [x] **LLMCausalToolset** — `llm_causal.py` (949 行): Gemini 2.5 Pro/Flash 驱动 ✅ 2026-03-25
-- [x] **因果 DAG 构建** — `construct_causal_dag()`: 变量/混淆因子/中介/碰撞因子识别 + networkx 可视化 + Mermaid 图 ✅ 2026-03-25
-- [x] **反事实推理** — `counterfactual_reasoning()`: 结构化推理链 + 置信度 + 敏感性因子 ✅ 2026-03-25
-- [x] **因果机制解释** — `explain_causal_mechanism()`: 接收 Angle A 统计结果 JSON 自动解读 ✅ 2026-03-25
-- [x] **What-If 情景生成** — `generate_what_if_scenarios()`: 自动映射到世界模型情景 + Angle A 参数 ✅ 2026-03-25
-- [x] **33 测试** — Gemini mock + JSON 解析 + DAG 渲染 + Mermaid 生成 ✅ 2026-03-25
-
-### Angle C — 因果世界模型 (4 tools)
-- [x] **CausalWorldModelToolset** — `causal_world_model.py` (1049 行): 世界模型 + 因果干预 ✅ 2026-03-25
-- [x] **空间干预预测** — `intervention_predict()`: 子区域施加干预 + 空间溢出效应分析 ✅ 2026-03-25
-- [x] **反事实对比** — `counterfactual_comparison()`: 平行情景 + 逐像素 LULC 差异 + 效应图 ✅ 2026-03-25
-- [x] **嵌入空间处理效应** — `embedding_treatment_effect()`: cosine/euclidean/manhattan 距离度量 ✅ 2026-03-25
-- [x] **统计先验整合** — `integrate_statistical_prior()`: ATT → 校准世界模型预测偏移 ✅ 2026-03-25
-- [x] **28 测试** — 空间 mask + 干预/反事实/嵌入效应/校准 全覆盖 ✅ 2026-03-25
-
-### 集成与前端
-- [x] **8 REST API 端点** — `/api/causal/*` (4) + `/api/causal-world-model/*` (4) ✅ 2026-03-25
-- [x] **CausalReasoningTab** — DataPanel 新增"因果推理" Tab (DAG/反事实/机制/情景 4 区域) ✅ 2026-03-25
-- [x] **WorldModelTab 扩展** — 模式切换 (预测/干预/反事实) + 子区域输入 + 双情景选择 ✅ 2026-03-25
-- [x] **Data Catalog 语义搜索** — `/api/catalog/search` + CatalogTab 双搜索模式 + 分页 ✅ 2026-03-25
-- [x] **intent_router 扩展** — `causal_reasoning` + `world_model` 子类别增强 ✅ 2026-03-25
-- [x] **tool_filter 扩展** — `causal_reasoning` 类别 (4 工具) + `world_model` 类别扩展 (7 工具) ✅ 2026-03-25
-
----
-
-## 已完成 (v15.5) — 论文修订 + DRL-World Model Dreamer 集成
-
-> **主题**: 学术论文 R2 审稿回复 + DRL 与世界模型深度融合
->
-> **依据**: IJGIS 审稿意见 + 因果推断论文投稿准备
-
-### 论文修订
-- [x] **World Model 论文 R2 回复** — 审稿人意见逐条回复 + 补充实验 ✅ 2026-03-26
-- [x] **因果推断论文** — 三角度因果推断体系论文撰写 (IJGIS 目标) ✅ 2026-03-26
-
-### DRL-World Model 融合
-- [x] **DreamerEnv** — 世界模型驱动的 DRL 环境，嵌入空间中训练 ✅ 2026-03-26
-- [x] **DreamerToolset** — 梦境训练 + 策略评估 + 情景对比工具 ✅ 2026-03-26
-
----
-
-## 已完成 (v15.7) — 测绘质检智能体系统
-
-> **主题**: 面向测绘行业的专业质检智能体，覆盖 GB/T 24356 标准全流程
->
-> **依据**: `docs/surveying_qc_agent_gap_analysis.md`、`docs/qc_agent_architecture_comparison.md`
-
-### 缺陷分类与标准
-- [x] **缺陷分类法** — 30 缺陷编码 / 5 类别 (几何/属性/拓扑/完整性/精度)，对标 GB/T 24356 ✅ 2026-03-27
-- [x] **QC 工作流模板** — `qc_workflow_templates.yaml`: 3 套标准流程 (通用/建筑/地形) + SLA 约束 ✅ 2026-03-27
-
-### 治理工具集扩展
-- [x] **GovernanceToolset 扩展至 18 工具** — 新增拓扑检查/面积一致性/层高验证/坐标精度等 ✅ 2026-03-27
-- [x] **DataCleaningToolset 扩展至 11 工具** — 新增几何修复/拓扑修复/属性标准化/批量清洗 ✅ 2026-03-27
-- [x] **PrecisionToolset (5 工具)** — 坐标精度评估/高程精度/面积精度/角度精度/综合精度报告 ✅ 2026-03-27
-
-### QC 运营
-- [x] **QC 报告引擎** — 结构化质检报告生成 (缺陷统计/分布图/修复建议) ✅ 2026-03-27
-- [x] **告警规则** — 缺陷率阈值告警 + SLA 超时告警 ✅ 2026-03-27
-- [x] **案例库** — 历史质检案例存储 + 相似案例检索 ✅ 2026-03-27
-- [x] **人工复核工作流** — 机检→人审→终审三级流程 + 复核意见记录 ✅ 2026-03-27
-
-### 4 独立子系统
-- [x] **CV 检测子系统** — `subsystems/cv_detection/`: 影像缺陷自动识别 ✅ 2026-03-27
-- [x] **CAD/3D 解析子系统** — `subsystems/cad_parser/`: DWG/DXF/BIM 数据解析 ✅ 2026-03-27
-- [x] **专业工具 MCP 服务** — `subsystems/mcp_tools/`: 测绘专业工具 MCP 封装 ✅ 2026-03-27
-- [x] **参考数据服务** — `subsystems/reference_data/`: 标准参考数据管理 ✅ 2026-03-27
-
-### 前端
-- [x] **QcMonitorTab** — 实时质检统计 + 最近审查列表 + 工作流进度 ✅ 2026-03-28
-- [x] **WorkflowsTab 增强** — 工作流列表 + 运行历史 + 进度可视化 ✅ 2026-03-28
-- [x] **质检 API** — `quality_routes.py` + `workflow_routes.py` REST 端点 ✅ 2026-03-28
-
----
-
-## 已完成 (v15.8) — BCG 企业智能体平台 + 技术债务清零
-
-> **主题**: 对标 BCG 企业级 Agent 平台 6 大能力模块，同时系统性清理全部技术债务
->
-> **依据**: `docs/bcg-enterprise-agents-analysis.md`、`tech_debt.md` 技术债务登记表
-
-### BCG 企业平台能力 (6 模块)
-- [x] **Prompt Registry** — 版本化 Prompt 管理 + 环境隔离 (dev/staging/prod) + A/B 测试 ✅ 2026-03-28
-- [x] **Model Gateway** — 任务感知路由 (Flash/Pro 自动选择) + 成本追踪 + 场景标注 ✅ 2026-03-28
-- [x] **Context Manager** — 可插拔上下文策略 + Token 预算管理 + 上下文压缩 ✅ 2026-03-28
-- [x] **Eval Scenario Framework** — 场景化评估框架 + 黄金数据集 + 自动回归测试 ✅ 2026-03-28
-- [x] **Token Tracking 增强** — 场景/项目/任务类型维度追踪 + 成本归因 ✅ 2026-03-28
-- [x] **Eval History** — 评估历史记录 + 版本间对比 + 趋势分析 ✅ 2026-03-28
-
-### DB 迁移 (045-048)
-- [x] **Migration 045** — Prompt Registry 表 (agent_prompt_registry) ✅ 2026-03-28
-- [x] **Migration 046** — Model Gateway 扩展 (token_usage 增加 scenario/project_id/task_type) ✅ 2026-03-28
-- [x] **Migration 047** — Eval Framework 表 (agent_eval_scenarios + agent_eval_history) ✅ 2026-03-28
-- [x] **Migration 048** — 数据资产表统一 (agent_data_catalog → agent_data_assets 兼容 VIEW) ✅ 2026-03-29
-
-### 技术债务清零 (6/6)
-- [x] **TD-001 (P1)** — 双数据资产表统一: migration 048 + data_catalog.py 全函数迁移至 agent_data_assets ✅ 2026-03-29
-- [x] **TD-002 (P2)** — SQLAlchemy `::jsonb` 类型转换: 改用 `CAST(:param AS jsonb)` ✅ 2026-03-28
-- [x] **TD-003 (P2)** — 自动迁移运行器: `migration_runner.py` + schema_migrations 追踪表 ✅ 2026-03-29
-- [x] **TD-004 (P2)** — 工作流 Chainlit 上下文丢失: `asyncio.create_task()` → `await` ✅ 2026-03-28
-- [x] **TD-005 (P1)** — 工作流步骤上下文隔离: `accumulated_context` 步间结果注入 ✅ 2026-03-29
-- [x] **TD-006 (P2)** — 工作流阻塞聊天: Chainlit context_var 传播至 background task ✅ 2026-03-29
-
-### 质量保障
-- [x] **test_workflow_context.py** — 工作流上下文注入验证 ✅ 2026-03-29
-- [x] **50/50 data_catalog 测试通过** — 表统一后全部测试绿色 ✅ 2026-03-29
-
----
-
-## 历史遗留未完成项 (v13~v14 积累)
-
-> 以下项目在各版本迭代中被跳过或延期，按优先级分类管理
-
-### 优先完成 (低成本高价值)
-- [x] **奖励权重 UI** — DRL 前端 slope/contiguity/balance 滑块 *(v14.0, 前端 ~100 行)* ✅ v15.9
-- [x] **字段映射可视化编辑器** — FieldMappingEditor 拖拽映射 ✅
-- [x] **MCP 外部 Agent 接入验证** — Claude Desktop / Cursor E2E 测试 *(v13.1)* ✅ v15.9
-
-### 择机完成 (中等价值)
-- [x] **分析意图消歧 v2** — 复杂查询拆解子任务列表 *(v14.1)* ✅ v15.9
-- [x] **自动记忆提取增强** — pipeline 后 extract_facts + 弹窗确认 *(v14.1)* ✅ v15.9
-- [x] **消息总线持久化** — AgentMessageBus → PostgreSQL *(v14.1)* ✅ v15.9
-- [x] **自适应布局** — 移动端响应式 ✅
-- [x] **Skill SDK 发布** — `gis-skill-sdk` Python 包 *(v14.3)* ✅ v15.9
-
-### 远期/冻结
-- [~] **标注协同 (WebSocket)** — 实时协同复杂度高 *(v14.1, 冻结)*
-- [~] **跨图层关联高亮** — 选中要素联动 *(v14.1, 冻结)*
-- [~] **Skill Marketplace 社区** — 需要公网部署 *(v14.2, 冻结)*
-- [~] **DRL 自定义训练 API** — *(v14.2, 冻结)*
-- [~] **DRL 可解释性 (SHAP)** — *(v14.2, 冻结)*
-- [~] **DRL 时序动画** — 优化过程回放 *(v14.2, 冻结)*
-- [~] **多场景环境引擎** — DRL 配置驱动重构 *(v14.1, 冻结)*
-- [~] **约束建模** — 硬/软约束 Gymnasium 扩展 *(v14.1, 冻结)*
-- [~] **结果对比面板** — A/B 对比优化结果 *(v14.1, 冻结)*
-- [~] **分布式任务队列 (Celery)** — *(v14.2, 冻结)*
-- [~] **Pipeline 断点恢复 v2** — 崩溃后自动恢复 *(v14.2, 冻结)*
-- [~] **协同工作空间 (CRDT)** — *(v14.3, 冻结)*
-- [~] **Agent 联邦** — 多实例负载均衡 *(v14.3, 冻结)*
-- [~] **联邦学习** — 隐私保护 DRL *(v14.3, 冻结)*
-- [~] **个性化模型微调 (LoRA)** — *(v14.3, 冻结)*
-- [~] **离线模式** — Service Worker *(v14.3, 冻结)*
-- [~] **语音输入 (Whisper)** — *(v14.2, 冻结)*
-- [~] **Generator/Reviewer 输出结构化校验** — Pydantic schema *(v15.0, 移至 v16.0+)*
-
----
-
----
-
-## v15.9 — 向 L3 迈进：Planner-Executor + 中间件链 + DeerFlow 工程质量
-
-> **主题**: 补齐 Proto-L3 短板 + 解决最大技术债 + 工程质量提升
->
-> **依据**: SIGMOD 2026 "Data Agents: Levels, State of the Art, and Open Problems" (Luo et al.) + DeerFlow v2.0 架构借鉴
->
-> **当前水平**: L2.5 (完整 L2 + 部分 Proto-L3) → **目标**: 完整 L3 条件自主
-
-### 核心升级：从 L2 执行者 → L3 编排者
-
-**关键演进跃迁 (SIGMOD 2026 论文):**
-- L2: 人类设计流程，Agent 执行任务特定过程
-- L3: Agent 设计流程，人类监督执行结果
-
-### DeerFlow 工程质量借鉴 (P0-P2)
-
-#### **D-1: App 分层重构 — Harness/App 分离 (P0)**
-- [x] **core/ 层提取** — agent_runtime.py (Agent 创建 + pipeline 组装) + tool_registry.py (Toolset 注册表) 从 agent.py 提取
-- [x] **app.py 瘦身** — 从 3340 行降到 <500 行，仅保留 Chainlit 回调 + 胶水代码
-- [x] **CI 边界测试** — test_harness_boundary.py 强制 core/ 永不 import chainlit
-- [x] **api/ 进一步拆分** — frontend_api.py 按 domain 拆分 (catalog/workflow/quality/skill 等)
-
-#### **D-2: 中间件链模式 (P1)**
-- [x] **PipelineMiddleware 协议** — before_run / after_run / on_error 三阶段钩子
-- [x] **7 层中间件提取** — RBAC → FileUpload → ContextSummarization → [Pipeline] → TokenTracking → LayerControl → ErrorClassification
-- [x] **中间件注册器** — 可组合、可启停、严格执行顺序
-
-#### **D-3: 上下文自动摘要 (P1)**
-- [x] **SummarizationMiddleware** — token 超 80% 阈值时自动压缩历史对话
-- [x] **摘要策略** — 保留最近 3 轮完整对话 + 关键数据路径 + 分析结论，丢弃中间推理
-- [x] **使用 Gemini 2.0 Flash** — 便宜快速的摘要模型
-
-### SIGMOD 2026 论文借鉴 (P1-P2)
-
-#### **S-1: Planner-Executor 分离 (P1, 向 L3 关键跃迁)**
-- [x] **PlannerAgent** — 根据用户意图动态生成 ExecutionPlan (DAG nodes + edges + dependencies)
-- [x] **ExecutorAgent** — 拓扑排序 + 并行执行计划
-- [x] **ExecutionPlan 数据结构** — 替代硬编码的三条流水线 (Optimization/Governance/General)
-- [x] **复用 workflow_engine.py** — DAG 执行逻辑已有，重构为 Planner 输出格式
-
-#### **S-2: 工具选择器 (P2)**
-- [x] **ToolSelector** — 根据 task_type + data_profile 推荐工具子集
-- [x] **选择规则** — 遥感任务 → RemoteSensingToolset，数据量 >1GB → SparkToolset，因果分析 → CausalInferenceToolset
-- [x] **降低 Agent 负担** — 从 28 个 Toolset 全暴露 → 智能推荐 5-8 个相关工具
-
-#### **S-3: 因果错误诊断 (P2)**
-- [x] **PipelineErrorDiagnoser** — 构建管道因果图 + 反向追踪错误传播路径
-- [x] **根因识别** — 定位哪一步引入错误 (而非仅报告哪一步失败)
-- [x] **修复建议** — 自动推荐修复策略 (插入工具调用、调整参数、替换工具)
-
-### 历史遗留完成 (低成本高价值)
-
-- [x] **奖励权重 UI** — DRL 前端 slope/contiguity/balance 滑块 *(v14.0 遗留)*
-- [x] **MCP 外部 Agent 接入验证** — Claude Desktop / Cursor E2E 测试 *(v13.1 遗留)*
-- [x] **分析意图消歧 v2** — 复杂查询拆解子任务列表 *(v14.1 遗留)*
-- [x] **自动记忆提取增强** — pipeline 后 extract_facts + 弹窗确认 *(v14.1 遗留)*
-- [x] **消息总线持久化** — AgentMessageBus → PostgreSQL *(v14.1 遗留)*
-- [x] **Skill SDK 发布** — `gis-skill-sdk` Python 包 *(v14.3 遗留)*
-
-### 质量保障
-- [x] **test_planner_executor.py** — Planner 生成计划 + Executor 执行验证
-- [x] **test_middleware_chain.py** — 7 层中间件执行顺序 + 钩子调用
-- [x] **test_tool_selector.py** — 任务特征 → 工具推荐准确性
-- [x] **test_error_diagnoser.py** — 管道错误根因识别
-
----
-
-## v16.0 — 完整 L3：语义算子 + 多 Agent 协作 + 遥感智能体
-
-> **主题**: 达到完整 L3 条件自主 + 遥感领域专业化
->
-> **依据**: SIGMOD 2026 论文 Proto-L3 设计模式 + Tang et al. (2026) 遥感智能体综述
->
-> **目标**: 成为地理空间领域标杆 L3 系统
-
-### SIGMOD 2026 论文借鉴 (完整 L3)
-
-#### **S-4: 语义算子层 (P1)**
-- [x] **SemanticOperator 抽象** — Clean / Integrate / Analyze / Visualize 高层算子 ✅ 2026-04-01
-- [x] **CleanOperator** — 封装 DataCleaningToolset 11 工具，根据数据特征自动选择清洗策略 ✅ 2026-04-01
-- [x] **IntegrateOperator** — 封装连接器 + schema 映射 + 冲突解决 ✅ 2026-04-01
-- [x] **AnalyzeOperator** — 封装 GeoProcessing + Analysis + CausalInference ✅ 2026-04-01
-- [x] **算子组合** — Planner 组合语义算子而非直接调用底层工具 ✅ 2026-04-01
-
-#### **S-5: 多 Agent 协作 (P1)**
-- [x] **DataEngineerAgent** — 负责数据准备 (清洗、集成、标准化) ✅ 2026-04-01
-- [x] **AnalystAgent** — 负责分析 (GIS 分析、统计、因果推断) ✅ 2026-04-01
-- [x] **VisualizerAgent** — 负责可视化 (地图、图表、报告) ✅ 2026-04-01
-- [x] **RemoteSensingAgent** — 负责遥感分析 (光谱指数、变化检测、时序分析) ✅ 2026-04-01
-- [x] **CoordinatorAgent** — Planner 增强为协调器，管理 4 专业 Agent + 2 组合工作流 ✅ 2026-04-01
-
-#### **S-6: 计划精化与错误恢复 (P2)**
-- [x] **PlanRefiner** — 根据执行反馈调整计划 (插入修复步骤、跳过失败步骤、替换工具) ✅ 2026-04-01
-- [x] **ErrorRecoveryStrategy** — 多种恢复策略 (retry / alternative_tool / skip / simplify / escalate) ✅ 2026-04-01
-- [x] **局部调整** — 从"全有或全无"到"局部精化" ✅ 2026-04-01
-
-#### **S-7: 工具演化 (P2)**
-- [x] **ToolEvolution** — 动态工具库管理 (add_tool / remove_tool / suggest_new_tools) ✅ 2026-04-01
-- [x] **失败驱动的工具发现** — 分析失败任务，推荐缺失的工具 ✅ 2026-04-01
-- [x] **工具元数据** — 能力描述、成本、可靠性、适用场景 ✅ 2026-04-01
-
-### DeerFlow 工程质量借鉴 (v16.0)
-
-#### **D-4: 工具调用 Guardrails (P2)**
-- [x] **GuardrailMiddleware** — 可插拔的确定性策略引擎 (非 LLM 判断) ✅ 2026-04-01
-- [x] **三级策略** — Deny (静默拒绝) / Require Confirmation (暂停确认) / Allow (直接执行) ✅ 2026-04-01
-- [x] **YAML 策略配置** — viewer deny [delete_*, drop_*], analyst require_confirmation [execute_sql_write] ✅ 2026-04-01
-- [x] **与 RBAC 协同** — RBAC (pipeline 级) + Guardrails (工具级) = 两层安全 ✅ 2026-04-01
-
-#### **D-5: AI 辅助 Skill 创建 (P2)**
-- [x] **skill-creator Skill** — 用自然语言描述需求 → AI 生成 Skill 配置 ✅ 2026-04-01
-- [x] **工作流** — 需求分析 → 推荐 toolsets → 生成配置 → 用户预览确认 → 保存 DB ✅ 2026-04-01
-- [x] **复用现有 API** — `/api/skills/generate` 端点 + custom_skills.py CRUD ✅ 2026-04-01
-
-### 遥感智能体 Phase 1 (v16.0)
-
-- [x] **光谱指数库** — 15+ 遥感指数 (EVI/SAVI/NDWI/NDBI/NBR 等) + 智能推荐 ✅ 2026-04-01
-- [x] **经验池 (Experience Pool)** — 成功分析经验记录 + RAG 检索 + 经验进化 ✅ 2026-04-01
-- [x] **数据质量门控** — 云覆盖检测 + 自动降级 (光学→SAR 切换) ✅ 2026-04-01
-- [x] **卫星数据预置** — Sentinel-2/Landsat/SAR STAC 模板 + 5 预置源 ✅ 2026-04-01
-- [x] **新增 Skills** — spectral-analysis + satellite-imagery ✅ 2026-04-02
-
-### 质量保障
-- [x] **test_semantic_operators.py** — 语义算子组合 + 自动工具选择 ✅ 2026-04-02
-- [x] **test_multi_agent_collaboration.py** — 多 Agent 任务分解 + 协调 + 汇总 ✅ 2026-04-02
-- [x] **test_plan_refinement.py** — 执行反馈 → 计划调整 ✅ 2026-04-02
-- [x] **test_guardrails.py** — 策略引擎 + 三级策略验证 ✅ 2026-04-02
-
----
-
-## 已完成 (v17.0) — 多模态融合 v2.0 增强
-
-> **主题**: 时序对齐 + 语义增强 + 冲突解决 + 可解释性
->
-> **依据**: `docs/fusion_v2_enhancement_plan.md` — 从基础融合到智能语义融合
->
-> **目标**: 提升多源数据融合质量，增强语义理解和冲突处理能力
-
-### 时序对齐模块
-
-- [x] **TemporalAligner** — `fusion/temporal.py` 时序对齐引擎 ✅ 2026-04-04
-- [x] **时间戳标准化** — 多时区/多格式统一到 UTC ISO8601 ✅ 2026-04-04
-- [x] **时序插值** — 线性/样条/最近邻插值，填补时间间隙 ✅ 2026-04-04
-- [x] **时间窗口对齐** — 滑动窗口匹配 + 容差配置 ✅ 2026-04-04
-- [x] **事件序列对齐** — DTW (Dynamic Time Warping) 算法 ✅ 2026-04-04
-- [x] **5 对齐工具** — standardize_timestamps / interpolate_temporal / align_time_windows / align_event_sequences / validate_temporal_consistency ✅ 2026-04-04
-
-### 语义增强模块
-
-- [x] **SemanticEnhancer** — `fusion/semantic_llm.py` + `fusion/ontology.py` 语义增强引擎 ✅ 2026-04-04
-- [x] **本体推理** — OWL 本体加载 + RDFS 推理 + 关系传播 ✅ 2026-04-04
-- [x] **LLM 语义理解** — Gemini 2.5 Pro 字段语义解析 + 关系抽取 ✅ 2026-04-04
-- [x] **跨源实体链接** — 基于嵌入的实体消歧 + 同义词扩展 ✅ 2026-04-04
-- [x] **语义相似度计算** — 字段级 + 记录级相似度评分 ✅ 2026-04-04
-- [x] **6 语义工具** — load_ontology / infer_relationships / llm_semantic_parse / link_entities / compute_semantic_similarity / enrich_with_context ✅ 2026-04-04
-
-### 冲突解决模块
-
-- [x] **ConflictResolver** — `fusion/conflict_resolver.py` 冲突解决引擎 ✅ 2026-04-04
-- [x] **冲突检测** — 值冲突 / 模式冲突 / 时序冲突 / 空间冲突 ✅ 2026-04-04
-- [x] **解决策略** — 6 种策略 (source_priority / latest_wins / voting / llm_arbitration / spatial_proximity / user_defined) ✅ 2026-04-04
-- [x] **置信度评分** — 数据源可信度 + 时效性 + 空间精度综合评分 ✅ 2026-04-04
-- [x] **冲突日志** — 记录所有冲突及解决决策，支持审计 ✅ 2026-04-04
-- [x] **5 冲突工具** — detect_conflicts / resolve_value_conflict / resolve_schema_conflict / resolve_temporal_conflict / log_conflict_resolution ✅ 2026-04-04
-
-### 可解释性模块
-
-- [x] **ExplainabilityEngine** — `fusion/explainability.py` 可解释性引擎 ✅ 2026-04-04
-- [x] **融合溯源** — 每个融合结果追溯到源数据集 + 转换步骤 ✅ 2026-04-04
-- [x] **决策解释** — 为什么选择某个值/策略，生成自然语言解释 ✅ 2026-04-04
-- [x] **影响分析** — 某个源数据变化对融合结果的影响评估 ✅ 2026-04-04
-- [x] **可视化报告** — Sankey 图 (数据流) + 决策树 (策略选择) ✅ 2026-04-04
-- [x] **4 解释工具** — trace_fusion_lineage / explain_decision / analyze_impact / generate_fusion_report ✅ 2026-04-04
-
-### 集成与测试
-
-- [x] **FusionToolset 扩展** — 新增 20 个融合 v2.0 工具 ✅ 2026-04-04
-- [x] **fusion_v2_routes.py** — 8 个 REST API 端点 ✅ 2026-04-04
-- [x] **FusionV2Tab** — DataPanel 新增融合 v2.0 配置和监控 Tab ✅ 2026-04-04
-- [x] **84 测试** — 时序对齐/语义增强/冲突解决/可解释性全覆盖 ✅ 2026-04-04
-
----
-
-## 已完成 (v17.1) — 矢量切片渲染 + 数据资产编码
-
-> **主题**: 大数据量地图渲染优化 + 数据资产标准化编码
->
-> **依据**: 大数据量 GeoJSON 渲染性能瓶颈 + 资产管理规范化需求
-
-### 矢量切片大数据渲染
-
-- [x] **三级自适应交付** — GeoJSON (≤5K features) / FlatGeobuf (5K-50K) / PostGIS MVT (>50K) ✅ 2026-04-04
-- [x] **tile_server.py** — MVT 矢量切片生成: 临时表管理 + ST_AsMVT 查询 + 过期清理 ✅ 2026-04-04
-- [x] **tile_routes.py** — 5 个切片 REST API 端点 ✅ 2026-04-04
-- [x] **Martin 集成** — 外部矢量切片服务器配置 ✅ 2026-04-04
-- [x] **Migration 050** — mvt_tile_layers 表 ✅ 2026-04-04
-
-### 数据资产编码系统
-
-- [x] **asset_coder.py** — DA-{TYPE}-{SRC}-{YEAR}-{SEQ} 编码规范 ✅ 2026-04-04
-- [x] **data_catalog.py 集成** — 资产注册时自动分配编码 ✅ 2026-04-04
-- [x] **Migration 051** — asset_code 字段 + 唯一索引 ✅ 2026-04-04
-
-### 质量保障
-
-- [x] **test_tile_server.py** — 切片生成/清理/API 全覆盖 ✅ 2026-04-04
-- [x] **test_asset_coder.py** — 编码生成/解析/唯一性验证 ✅ 2026-04-04
-
----
-
-## 已完成 (v18.0) — 应用层数据库优化
-
-> **主题**: 连接池扩容 + asyncpg 异步引擎 + 读写分离预埋 + 物化视图 + 连接池监控
->
-> **依据**: `docs/distributed_architecture_plan.md` Phase 1 (调整: 华为云 RDS 已有 HA，聚焦应用层优化)
->
-> **目标**: 提升数据库连接效率和可观测性，为未来 RDS 只读副本做接口预埋
-
-### 连接池扩容
-
-- [x] **pool_size 5→20** — 适配华为云 RDS 连接能力 ✅ 2026-04-04
-- [x] **max_overflow 10→30** — 允许更多突发连接 ✅ 2026-04-04
-- [x] **环境变量配置** — DB_POOL_SIZE / DB_MAX_OVERFLOW 可调 ✅ 2026-04-04
-
-### 读写分离接口预埋
-
-- [x] **get_engine(readonly=True/False)** — 接口预埋，当前 fallback 到主库 ✅ 2026-04-04
-- [x] **DATABASE_READ_URL 支持** — 配置 RDS 只读副本时自动启用读写分离 ✅ 2026-04-04
-- [x] **get_pool_status()** — 连接池实时状态查询 ✅ 2026-04-04
-
-### asyncpg 异步数据库引擎
-
-- [x] **db_engine_async.py** — asyncpg 连接池单例 (min=5, max=20, 可配置) ✅ 2026-04-04
-- [x] **便利函数** — fetch_async / fetchrow_async / fetchval_async / execute_async ✅ 2026-04-04
-- [x] **RLS 上下文注入** — _inject_user_context_async 支持异步连接 ✅ 2026-04-04
-- [x] **优雅关闭** — close_async_pool() 应用关闭时调用 ✅ 2026-04-04
-
-### 物化视图
-
-- [x] **Migration 052** — mv_pipeline_analytics + mv_token_usage_daily + refresh 函数 ✅ 2026-04-04
-- [x] **只读角色** — agent_reader 角色创建 (SELECT only) ✅ 2026-04-04
-- [x] **连接统计视图** — v_connection_stats (pg_stat_activity 聚合) ✅ 2026-04-04
-
-### 连接池 Prometheus 监控
-
-- [x] **4 个新 Gauge** — db_pool_size / checkedin / checkedout / overflow ✅ 2026-04-04
-- [x] **查询延迟 Histogram** — db_query_duration_seconds ✅ 2026-04-04
-- [x] **collect_db_pool_metrics()** — /metrics 端点自动采集 ✅ 2026-04-04
-
-### 质量保障
-
-- [x] **test_db_engine_v18.py** — 23 测试: 连接池配置/读写分离/async 生命周期/物化视图/监控 ✅ 2026-04-04
-
-### 跳过的项目 (华为云 RDS 已内置)
-
-- [~] ~~PostgreSQL 主从复制~~ — RDS 内置 HA
-- [~] ~~Patroni 故障转移~~ — RDS 自动故障转移
-- [~] ~~PgBouncer K8s 部署~~ — 应用层连接池已优化
-- [~] ~~postgres-replication.yaml~~ — RDS 已处理
-
----
-
-## 已完成 (v18.5) — 智能体平台能力增强 + Palantir 风格 UI 重设计
-
-> **主题**: NL2Workflow + 提示词自动优化 + 评估器扩充 + Palantir-inspired 深色主题 UI
->
-> **依据**: `docs/agentarts-benchmark-analysis.md` — 华为云 AgentArts 对标分析 + 产品顾问 UI/UX 建议
->
-> **目标**: 补齐平台级能力短板 + 产品级视觉升级
-
-### NL2Workflow — 自然语言生成工作流 (P0)
-
-> AgentArts 核心能力: 用户一句话描述业务场景 → 自动生成可执行工作流 DAG
-
-- [x] **NL2WorkflowGenerator** — LLM 解析自然语言需求 → 输出 workflow_engine DAG JSON ✅ 2026-04-04
-- [x] **工具推荐** — 根据描述自动匹配 Toolset/Skill 节点 (23 内置 Skill 元数据) ✅ 2026-04-04
-- [x] **预览确认** — 生成后返回 DAG 预览 + explanation，用户确认后执行 ✅ 2026-04-04
-- [x] **WorkflowEditor 集成** — auto_save 参数直接保存到 workflow_engine ✅ 2026-04-04
-- [x] **REST API** — `POST /api/workflows/generate` 接收自然语言描述 ✅ 2026-04-04
-- [x] **验证** — 循环依赖检测 (Kahn 拓扑排序) + 字段完整性 + pipeline_type 校验 ✅ 2026-04-04
-- [x] **测试** — 26 测试全覆盖 ✅ 2026-04-04
-
-### 提示词自动优化 (P1)
-
-> AgentArts 核心能力: 文本梯度自动分析 bad case → 提示词自动优化
-
-- [x] **BadCaseCollector** — 从评估历史/pipeline 失败/用户反馈三源收集 bad case ✅ 2026-04-04
-- [x] **FailureAnalyzer** — LLM 分析失败模式 (模式/根因/受影响 prompt) ✅ 2026-04-04
-- [x] **PromptOptimizer** — 基于失败分析生成改进后的 prompt 版本 ✅ 2026-04-04
-- [x] **Human-in-the-loop** — 优化建议保存到 dev 环境，需人工确认后部署 ✅ 2026-04-04
-- [x] **REST API** — 4 端点 (collect-bad-cases / analyze-failures / optimize / apply-suggestion) ✅ 2026-04-04
-- [x] **测试** — 20 测试全覆盖 ✅ 2026-04-04
-
-### 评估器扩充 (P1)
-
-> AgentArts: 30+ 平台精选评估器 (任务完成率/内容质量/安全/轨迹质量)
-
-- [x] **EvaluatorRegistry** — 可插拔评估器注册表 ✅ 2026-04-04
-- [x] **内置评估器 (15)** — Quality (ExactMatch/Regex/JsonSchema/Completeness/Coherence) + Safety (Safety/PII/SqlInjection) + Performance (Latency/TokenCost/OutputLength) + Accuracy (ToolCallAccuracy/Numeric/GeoSpatial/InstructionFollowing) ✅ 2026-04-04
-- [x] **批量评估** — `run_evaluation()` 多评估器 × 多测试用例 + 聚合统计 ✅ 2026-04-04
-- [x] **REST API** — `GET /api/eval/evaluators` + `POST /api/eval/evaluate` ✅ 2026-04-04
-- [x] **测试** — 67 测试全覆盖 ✅ 2026-04-04
-
-### Palantir-inspired UI/UX 重设计 (v18.5)
-
-> 产品顾问建议参照 Palantir AIP 风格，提升产品级视觉品质
-
-- [x] **Deep Intelligence 深色主题** — 设计令牌体系: #0B0F19 base / #3B82F6 primary / #111827 surface ✅ 2026-04-05
-- [x] **字体升级** — Space Grotesk → Inter (UI) + JetBrains Mono (代码/数据) ✅ 2026-04-05
-- [x] **Lucide 图标系统** — DataPanel 所有 emoji 图标 → Lucide SVG (lucide-react v1.7.0) ✅ 2026-04-05
-- [x] **DataPanel 3 组重构** — 4 组 → 3 组 (数据资源 / 智能分析 / 平台运营)，编排组解散 ✅ 2026-04-05
-- [x] **左右分屏登录页** — 居中卡片 → 左 60% 品牌展示 (统计+特性) + 右 40% 表单 ✅ 2026-04-05
-- [x] **AppNav 图标导航栏** — 48px 左侧 icon rail + Header 56px → 40px 状态栏 ✅ 2026-04-05
-
----
-
-## v19.0 — 上下文工程 + 反馈飞轮 (Datus.ai 对标) ✅ 2026-04-08
-
-> **主题**: 统一上下文引擎 + 结构化反馈闭环 + 语义模型标准化 + 参考查询库
->
-> **依据**: `docs/datus_ai_benchmark_analysis.md` — Datus.ai 对标分析 (上下文工程方法论 + 反馈飞轮设计)
->
-> **核心洞察**: LLM 回答准确性 80% 取决于输入上下文质量，而非模型本身能力。积累的语义模型、参考查询、成功案例才是真正壁垒。
->
-> **v19.0 S3 对象存储** 已在早期版本中实现 (cloud_storage.py + storage_manager.py + obs_storage.py)，版本号复用。
-
-### P0 — 统一上下文引擎 (Context Engine)
-
-> Datus 核心竞争力: Context Engine 自动构建"活的语义地图"，融合 6 类知识源为统一检索接口
->
-> 我们现状: semantic_layer.py / knowledge_graph.py / knowledge_base.py / context_manager.py 分散在 4 个模块
-
-- [x] **ContextEngine 统一抽象** — 新增 `context_engine.py`: 融合所有知识源为一个检索接口，替代 BCG context_manager.py 的简单实现 ✅ 2026-04-08
-- [x] **6 个 ContextProvider** — SemanticLayerProvider (现有) / KnowledgeGraphProvider (现有) / KnowledgeBaseProvider (现有) / ReferenceQueryProvider (新增) / SuccessStoryProvider (新增) / MetricDefinitionProvider (新增) ✅ 2026-04-08
-- [x] **相关性排序** — 基于 query embedding + 任务类型对所有 provider 返回的上下文块进行统一排序 ✅ 2026-04-08
-- [x] **Token 预算截断** — 按相关性分数截断到 token_budget，确保不超出 LLM 上下文窗口 ✅ 2026-04-08
-- [x] **上下文缓存** — 相同 query + task_type 组合缓存 3 分钟，避免重复检索 ✅ 2026-04-08
-- [x] **Pipeline 集成** — Planner/Executor 在生成计划和执行工具前自动调用 `context_engine.prepare()` ✅ 2026-04-08
-- [x] **REST API** — `GET /api/context/prepare` (预览上下文) + `GET /api/context/providers` (列出 provider 状态) ✅ 2026-04-08
-- [x] **测试** — context_engine 统一检索 + provider 注册 + 排序 + 截断 + 缓存全覆盖 ✅ 2026-04-08
-
-### P0 — 结构化反馈学习闭环 (Feedback Loop)
-
-> Datus 核心差异化: 用户每次 upvote/downvote 都在训练系统，形成"越用越准"的飞轮
->
-> 我们现状: prompt_optimizer.py 有 bad case 收集，但无用户侧反馈采集 UI 和自动学习管道
-
-- [x] **前端反馈 UI** — 每条 Agent 回答增加 👍/👎 按钮 + 可选 issue 描述弹窗 (ChatPanel 消息组件扩展) ✅ 2026-04-08
-- [x] **agent_feedback 表** — Migration: query_text, response_text, vote (up/down), issue_description, pipeline_type, resolved_at, created_by ✅ 2026-04-08
-- [x] **反馈收集 API** — `POST /api/feedback` (提交反馈) + `GET /api/feedback/stats` (反馈统计) ✅ 2026-04-08
-- [x] **成功案例自动提取** — upvote 的查询自动提取为参考查询 (query + response + tags)，进入 ReferenceQueryProvider ✅ 2026-04-08
-- [x] **失败模式分析管道** — 定期聚合 downvote 反馈 → 调用 prompt_optimizer.py FailureAnalyzer → 生成改进建议 ✅ 2026-04-08
-- [x] **反馈→上下文自动更新** — 成功案例 → SuccessStoryProvider；失败模式 → 触发 prompt 优化建议 ✅ 2026-04-08
-- [x] **反馈看板** — DataPanel 新增反馈统计子面板 (满意率趋势 / 高频失败模式 / 最近反馈列表) ✅ 2026-04-08
-- [x] **测试** — 反馈 CRUD + 成功案例提取 + 失败分析管道 + 统计聚合全覆盖 ✅ 2026-04-08
-
-### P1 — 语义模型标准化 (MetricFlow 兼容)
-
-> Datus 采用 MetricFlow YAML 语义模型，自动从表结构生成，支持指标/维度/关系定义
->
-> 我们现状: semantic_layer.py 自定义三级层次结构，与主流数据栈不兼容
-
-- [x] **GIS Semantic Model YAML 格式** — 扩展 MetricFlow YAML 规范，增加 `type: spatial` 维度 + `srid` 字段 + `geometry_type` 属性 ✅ 2026-04-08
-- [x] **自动生成器** — `gen_semantic_model` 工具: 从 PostGIS 表结构自动生成语义模型 YAML ✅ 2026-04-08
-- [x] **semantic_layer.py 适配** — 现有三级层次结构保留为向后兼容，新增 MetricFlow YAML 读取器 ✅ 2026-04-08
-- [x] **语义模型 CRUD API** — `GET/POST/PUT/DELETE /api/semantic/models` ✅ 2026-04-08
-- [x] **MetricDefinitionProvider** — 从语义模型中提取指标定义，注入 ContextEngine ✅ 2026-04-08
-- [x] **测试** — YAML 解析 + PostGIS 表结构提取 + 语义模型 CRUD + Provider 注入全覆盖 ✅ 2026-04-08
-
-### P1 — 参考查询库 (Reference Query Library)
-
-> Datus 的 gen_sql_summary 子Agent 自动分类+标注 SQL，成功查询积累为参考库
->
-> 我们现状: 无验证过的参考查询积累机制
-
-- [x] **agent_reference_queries 表** — Migration: query_text, description, tags[], verified_by, use_count, success_rate, pipeline_type, created_by ✅ 2026-04-08
-- [x] **ReferenceQueryProvider** — 实现 ContextProvider 接口，基于 query embedding 检索相似参考查询 ✅ 2026-04-08
-- [x] **自动入库** — 用户 upvote → 查询自动进入参考库 (关联 agent_feedback 表) ✅ 2026-04-08
-- [x] **手动策展** — `POST /api/reference-queries` 手动添加参考查询 + `PUT` 编辑标签/描述 ✅ 2026-04-08
-- [x] **NL2SQL 增强** — NL2SQLToolset 执行前先检索参考库中的相似查询作为 few-shot 示例 ✅ 2026-04-08
-- [x] **REST API** — 6 端点 (CRUD + search + stats) ✅ 2026-04-08
-- [x] **测试** — 参考查询 CRUD + 相似度检索 + NL2SQL few-shot 注入全覆盖 ✅ 2026-04-08
-
-### 质量保障
-
-- [x] **test_context_engine.py** — 统一上下文引擎全流程 ✅ 2026-04-08
-- [x] **test_feedback_loop.py** — 反馈收集→学习→上下文更新闭环 ✅ 2026-04-08
-- [x] **test_semantic_model_metricflow.py** — MetricFlow YAML 解析+生成 ✅ 2026-04-08
-- [x] **test_reference_queries.py** — 参考查询库 CRUD + NL2SQL 集成 ✅ 2026-04-08
-
----
-
-## v20.0 — 分布式任务队列与缓存 + 体验优化 ✅ 2026-04-08
-
-> **状态**: ✅ 完成 — Redis 本机部署 (localhost:6379)
->
-> **主题**: Celery 分布式任务队列 + Redis 缓存 + Datus 对标 P2 体验优化项
->
-> **依据**: `docs/distributed_architecture_plan.md` Phase 2 + `docs/datus_ai_benchmark_analysis.md` P2 项
-
-### Redis 分布式任务队列 ✅
-
-- [x] **redis_client.py** — 统一 Redis 连接管理 (async/sync) + 分布式锁 RedisLock (SETNX+TTL+Lua) ✅ 2026-04-08
-- [x] **task_queue.py Redis 后端** — Sorted Set 优先级队列 + 分布式信号量 + 内存降级 ✅ 2026-04-08
-- [x] **Redis 缓存迁移** — semantic_layer.py + context_engine.py 双层缓存 (Redis+内存) ✅ 2026-04-08
-- [x] **health.py 集成** — Redis 健康检查 + System Status 显示版本 ✅ 2026-04-08
-
-### P2 — 多 LLM 一键切换体验 ✅
-
-- [x] **统一 LLM 配置 YAML** — `conf/models.yaml` 声明式配置所有 LLM provider ✅ 2026-04-08
-- [x] **model_gateway.py 适配** — load_from_yaml() 动态注册，保持现有 API 兼容 ✅ 2026-04-08
-
-### P2 — Agentic/Workflow 双模式 ✅
-
-- [x] **模式检测** — intent_router.py 增加 execution_mode 检测 (中英文关键词 + WORKFLOW 意图) ✅ 2026-04-08
-- [x] **Agentic Mode** — 现有语义路由 → Planner 自主决策 → 灵活探索 (默认模式) ✅ 2026-04-08
-- [x] **Workflow Mode** — 选择预定义工作流 → 确定性步骤执行 → 无 LLM 中间决策 ✅ 2026-04-08
-- [x] **模式感知路由** — intent_router.py 返回 execution_mode，app.py 消费 ✅ 2026-04-08
-
-### P2 — 轻量化部署选项 ✅
-
-- [x] **DuckDB 适配器** — duckdb_adapter.py: DuckDB + spatial 扩展，GeoDataFrame 双向转换 ✅ 2026-04-08
-- [x] **Lite 模式设计** — 仅 General Pipeline + DuckDB 后端，无 PostGIS 依赖 ✅ v23.0
-- [x] **可选依赖分组** — `pip install gis-data-agent[lite]` (核心) vs `[full]` (含 PostGIS/DRL/WorldModel) ✅ v23.0
-- [x] **快速启动脚本** — `gis-agent init` 一键初始化 (DuckDB + 默认配置 + 示例数据) ✅ 2026-04-08
-
----
-
-## 已完成 (v24.0) — @SubAgent 显式路由 + XMI 领域标准
-
-> **主题**: 专家用户直控 + 行业标准体系化
->
-> **日期**: 2026-04-19
-
-### @SubAgent Mention Routing
-- [x] **mention_registry.py** — 4 类 target 聚合（pipeline / sub-agent / custom skill / ADK skill），handle 去重 + 大小写无关查找
-- [x] **mention_parser.py** — leading `@handle` 正则解析，非首位 `@` 忽略，未知 mention 回退语义路由
-- [x] **app.py 集成** — `classify_intent()` 前插入 mention 路由，4 种 dispatch 路径（pipeline 直设 intent / sub-agent 状态校验+直接执行 / custom skill DB 查找+build_custom_agent / ADK skill SkillToolset 包装）
-- [x] **agent.py `_make_agent_by_name`** — 10 个子代理工厂 lambda，ADK one-parent 约束下按需创建新实例
-- [x] **GET /api/chat/mention-targets** — RBAC 过滤的 autocomplete 数据源，返回 handle/type/description/allowed/required_state_keys
-- [x] **ChatPanel.tsx autocomplete** — `@` 触发 dropdown，ArrowUp/Down 导航，Enter/Tab 选中，Esc 关闭，onMouseDown 点选
-- [x] **observability.py** — `mention_routes` Prometheus counter (target_type/handle/status) + `log_mention_event` 结构化日志
-- [x] **24 单元/集成测试** — TestMentionRegistry (9) + TestMentionParser (8) + TestMentionDispatch (4) + TestMentionTargetsAPI (3)
-
-### XMI Domain Standard System
-- [x] **XMI 领域标准体系** — 解析器、编译器、工具集、上下文提供器、REST API、前端 Tab
-
----
-
-## 四看驱动的战略刷新 (2026-04-21)
-
-> **背景**: 基于 2026 Q2 技术四看分析（技术趋势 / 宏观 PEST / 竞争格局 / 自我评估），行业已从"AI 辅助数据治理"全面进入 **Agentic Data Governance** 阶段。GIS Data Agent 原型阶段已完成，下一阶段以"智能体驱动的时空数据治理平台"为叙事，分三个版本产品化落地。
->
-> **四看核心结论**:
-> - **趋势**: Gartner 2026 MQ for D&A Governance 把 agentic AI + 活跃元数据作为核心评估维度；数据产品化 + AI-Ready Data 成为新范式；MCP/A2A 协议栈重塑 Agent↔数据集成
-> - **宏观**: 国务院"AI+"意见、国家数据局数据产权三权分置登记、网安法修订罚款 5-10 倍提升、EU AI Act 2026.8 全面执行
-> - **竞争**: 北京数慧（数据编织 + 智能体）、土豆数据（Data for AI 闭环）、阿里 DataWorks（Agent + 语义 ETL）、袋鼠云（多模态数据中台）、Atlan / Alation / Ataccama（agentic governance + metadata lakehouse）
-> - **自己**: 空间数据一等公民是核心优势；智能化治理从"缺失"升级为"原型验证"；多模态治理、数据产品化、合规审计、声明式治理仍为缺失项
-
----
-
-## v25.0 — Agentic Governance Foundation (2026 H2, 计划)
-
-> **主题**: 把 GIS Data Agent 的智能化治理原型产品化，补齐 agentic data governance 基础设施
->
-> **Data Agent Level**: L3.5 → **L4**（治理 Agent 自主执行 + 声明式策略 + 持续监控）
->
-> **工作量估算**: 4-5 个月 | **依赖**: 无外部基础设施硬依赖（Kong / Jaeger 等保持搁置）
-
-### P0 — 活跃元数据引擎 (Atlan / Gartner 对标)
-
-- [ ] **active_metadata.py** — 统一活跃元数据层，封装 `semantic_layer.py` + `data_catalog.py` 现有能力 + 新增变更事件流
-- [ ] **自动采集扩展** — DB schema / 文件 / API 源 / MCP 工具四类来源的元数据自动采集
-- [ ] **元数据 CDC 事件流** — 元数据变更 → Redis Stream → 下游 Agent 订阅响应（血缘重建、质量门禁触发）
-- [ ] **活跃血缘** — 当前 BFS 血缘 → 增量血缘 + 影响分析（upstream change → downstream impact 告警）
-- [ ] **策略联动** — 元数据变更触发治理策略自动执行（质量门禁、分类分级、合规检查）
-
-### P0 — 治理 Agent 体系 (Alation / Ataccama 对标)
-
-- [ ] **ClassificationAgent** — `skills/classification-agent/` + Skill L1/L2/L3，智能分类分级 + 规则库持续学习
-- [ ] **QualityAgent** — `skills/quality-agent/`，智能质检 + 自动修复 + 质量趋势预测
-- [ ] **LineageAgent** — `skills/lineage-agent/`，血缘自动发现 + 影响分析 + 血缘差异报告
-- [ ] **ComplianceAgent** — `skills/compliance-agent/`，合规审计检查 + 审计报告生成 + 整改追踪
-- [ ] **CurationAgent** — `skills/curation-agent/`，元数据策展 + 质量门禁 + 自然语言治理意图翻译
-- [ ] **GovernanceTeamPipeline** — 5 个 Agent 组成的治理协作管线，复用现有 `TeamToolset` + A2A 协议
-
-### P0 — 声明式治理引擎 Policy as Code (Alation Curation Automation 对标)
-
-- [ ] **policy_engine.py** — 治理策略 DSL（YAML / JSON），类型: quality / classification / compliance / lineage
-- [ ] **LLM 策略翻译层** — 自然语言治理意图（如"所有含身份证号的字段必须脱敏"）→ 可执行策略定义
-- [ ] **持续监控** — 策略周期性检查（cron / 事件驱动）+ 违规告警 + Agent 自动修复
-- [ ] **策略版本管理** — 复用现有 `prompt_registry.py` 模式，支持 dev/staging/prod 环境隔离 + 回滚
-- [ ] **workflow_engine.py 扩展** — 新增 `policy_execution` 步骤类型，让策略执行纳入工作流编排
-
-### P0 — 数据产品化框架 (Gartner MQ 2026 "数据产品策展")
-
-- [ ] **data_products.py** — DataProduct 实体：数据契约 + 质量 SLA + 版本 + 消费统计 + 生命周期
-- [ ] **数据契约 DSL** — 面向消费者的数据契约定义（schema / freshness / completeness / uniqueness）
-- [ ] **质量门禁** — 数据产品发布前自动执行质检，未达标不允许发布
-- [ ] **数据产品目录** — 扩展现有 Marketplace，支持数据产品的发布、订阅、消费审计
-- [ ] **DB migration 064** — `agent_data_products` + `agent_data_product_contracts` + `agent_data_product_subscriptions`
-- [ ] **STAC 发布器** — DataProduct → STAC Collection/Item 静态目录导出，让治理成果对外遵循 STAC 1.1.0 国际标准，用户拿到链接可在 QGIS / ArcGIS Pro "Add STAC Layer" 直接消费（依赖 v24.2 的 pystac-client 基础）
-- [ ] **data_catalog ↔ STAC 双向映射** — `data_catalog.py` 资产加 `to_stac_item()` 方法，外部 STAC 端点加 `register_to_catalog()` 反向导入，实现内部资产编目（DA-{TYPE}-{SRC}-{YEAR}-{SEQ}）与 STAC 生态互通
-
-### P1 — 统一治理仪表盘
-
-- [ ] **GovernanceDashboard.tsx** — 治理覆盖率 / 质量趋势 / 合规状态 / Agent 执行统计四象限视图
-- [ ] **治理 KPI API** — `/api/governance/kpi` 聚合治理运营指标
-- [ ] **告警中心** — 治理异常的集中告警视图（复用现有 `AlertEngine`）
-
-### P2 — 面向空间数据的治理深化
-
-- [ ] **空间数据契约** — 数据产品契约扩展空间维度（CRS / 空间范围 / 几何有效性 / 拓扑一致性）
-- [ ] **STAC Extension 对齐** — 空间契约的 CRS / bbox / 云量 SLA / 波段规范对齐 STAC EO / Projection / Raster extension，避免重新发明轮子
-- [ ] **空间质检 Agent 化** — 现有 PrecisionToolset + DataCleaningToolset 包装为 QualityAgent 的子能力
-- [ ] **空间血缘可视化增强** — 血缘图谱在 MapPanel 上叠加展示（数据流经过的空间范围）
-- [ ] **本地 STAC Catalog 生成器** — 治理成果（清洗后矢量 / DRL 优化结果栅格 / QC 报告）一键发布到 `uploads/{user_id}/catalog/catalog.json`，形成可浏览的静态 STAC 目录树（不依赖数据库后端）
-
----
-
-## v26.0 — Multi-Modal & Data Economy (2027 H1, 计划)
-
-> **主题**: 多模态数据治理 + 数据要素流通与资产化支撑
->
-> **Data Agent Level**: L4 → **L4+**（多模态治理 + 数据资产化 + 合规自动化）
->
-> **工作量估算**: 5-6 个月 | **驱动政策**: 国家数据局数据产权登记、数据资产入表、网安法修订合规审计
-
-### P0 — 多模态数据治理 (袋鼠云多模态中台对标)
-
-- [ ] **unstructured_governance.py** — 文档 / 图像 / 视频 / 音频的元数据采集、解析、治理
-- [ ] **PDF / Word 解析器** — 结构化抽取（章节、表格、图片）+ 元数据提取 + 向量化
-- [ ] **图像 / 视频元数据提取** — EXIF / 帧采样 / OCR + 场景分类
-- [ ] **非结构化数据质检** — 完整性 / 格式合规 / 内容分类 / 敏感信息识别
-- [ ] **统一元数据模型** — 覆盖结构化 + 空间（矢量 / 栅格 / 三维）+ 非结构化的统一 schema
-- [ ] **multimodal.py 扩展** — 与 active_metadata 集成，非结构化数据自动纳入元数据管理
-
-### P0 — 数据资产化支撑 (响应数据资产入表政策)
-
-- [ ] **data_asset_valuation.py** — 数据资产价值评估模型（成本法 / 收益法 / 市场法）
-- [ ] **资产编码体系增强** — 扩展现有 `DA-{TYPE}-{SRC}-{YEAR}-{SEQ}` 编码，对接数据产权登记
-- [ ] **数据资产盘点** — 自动化数据资产清单生成（数量 / 质量 / 使用频次 / 衍生关系）
-- [ ] **入表辅助报告** — 按财政部《企业数据资源相关会计处理暂行规定》生成辅助资料
-- [ ] **数据产权三权分置支持** — 持有权 / 使用权 / 经营权元数据字段 + 登记信息导出
-
-### P0 — 合规审计自动化 (响应网安法修订 + 个保法合规审计制度)
-
-- [ ] **compliance_audit.py** — 合规检查规则库 + 自动化审计引擎
-- [ ] **GB/T 45574（敏感个人信息）规则适配** — 2025.11 生效
-- [ ] **GB/T 46068（跨境处理）规则适配** — 2026.3 生效
-- [ ] **个人信息合规审计** — 处理 1000 万+ 个人信息的企业每两年审计（自动生成审计底稿）
-- [ ] **跨境数据传输 PIP 认证辅助** — 非 CIIO 年传输 10 万-100 万人数据的合规检查
-- [ ] **整改追踪工作流** — 审计发现 → 整改任务 → Agent 自动修复 → 复查
-
-### P1 — 可信流通接口层 (预留数据空间 / 隐私计算集成位)
-
-- [ ] **trusted_exchange.py** — 数据契约签署 + 使用权授权 + 审计日志的统一抽象
-- [ ] **IDSA 连接器骨架** — 为可信数据空间预留连接器位置，实现需外部基础设施
-- [ ] **隐私计算集成接口** — 对接华为等厂商的隐私计算基础设施（联邦学习 / 多方安全计算）
-- [ ] **数据产权登记导出** — 生成符合国家数据局登记指南格式的 XML / JSON
-
-### P1 — 湖仓一体适配 (航天云际 / 星环科技对标)
-
-- [ ] **connectors/doris.py** — Doris 连接器 + 元数据采集
-- [ ] **connectors/starrocks.py** — StarRocks 连接器
-- [ ] **connectors/clickhouse.py** — ClickHouse 连接器
-- [ ] **connectors/iceberg.py** — Iceberg 表格式元数据采集
-- [ ] **空间数据湖仓统一查询** — PostGIS 空间能力 + 湖仓表数据的联邦查询
-
-### P2 — 数据要素交易试点支撑
-
-- [ ] **数据产品定价模型** — 基于使用频次 / 稀缺性 / 衍生价值的自动定价建议
-- [ ] **数据产品交易记录** — 审计级别的交易日志 + 区块链存证预留接口
-
----
-
-## v27.0 — Platform & Ecosystem (2027 H2 – 2028 H1, 计划)
-
-> **主题**: 平台化 + 规模化 + 生态化 + 搁置项清零
->
-> **Data Agent Level**: L4+ → **L4.5**（分布式治理 + Agent 互操作 + 经验沉淀 + 行业知识库深化）
->
-> **工作量估算**: 6-12 个月 | **依赖**: 外部基础设施就位（K8s 集群 / Kong / Jaeger / Loki / 隐私计算底座）
-
-### P0 — Agent 互操作协议标准化 (MCP / A2A / STAC / OGC API 对标)
-
-- [ ] **治理 Agent MCP 暴露** — v25.0 的 5 个治理 Agent 通过 MCP 向外部工具链暴露
-- [ ] **跨组织 A2A 协作** — 数据空间场景下的跨组织 Agent 协作（需可信身份 + 权限协商）
-- [ ] **MCP 工具目录联邦** — 多实例 MCP Hub 的工具目录联邦查询
-- [ ] **Agent 服务注册中心** — 基于现有 `agent_registry.py` 扩展，支持跨实例 Agent 发现
-- [ ] **STAC API 兼容视图** — `/api/catalog` 暴露 OGC API - Features + STAC API 子集（search / collections / items），让 Claude Desktop / GPT / QGIS / ArcGIS Pro 可通过地理领域事实标准直接发现平台治理的数据产品
-- [ ] **CQL2 NL2Search** — 复用 NL2Semantic2SQL 架构，自然语言 → CQL2 filter（"查 2024 年 6 月云量<10% 的山西 Sentinel-2 影像"），可独立成一篇小论文
-- [ ] **OGC API 家族对齐** — 评估 OGC API Features / Coverages / Tiles / Processes 的选择性实现，与现有 WFS / WMS / MVT 管线整合
-
-### P0 — 分布式治理架构
-
-- [ ] **治理任务分布式调度** — 基于现有 Celery 扩展，大规模数据治理任务拆分 + 并行执行
-- [ ] **metadata_federation.py** — 多实例元数据联邦同步（最终一致性）
-- [ ] **水平扩展** — 治理 Agent 无状态化 + 水平扩缩容（HPA）
-
-### P1 — Hermes 观察池择机落地
-
-- [ ] **USER Profile 轻量层** — 用户偏好记录（输出粒度 / 常用场景 / 工作习惯）
-- [ ] **历史会话召回** — PG FTS 检索 + LLM 总结，支持"上次做到哪了"
-- [ ] **Skill 建议沉淀** — 从成功任务 / 高质量工作流中提炼 Skill / Prompt 建议
-- [ ] **结果卡片沉淀入口** — ChatPanel "沉淀为能力"按钮，人工确认后入库
-
-### P1 — 行业知识库深化
-
-- [ ] **行业数据标准自动匹配** — 数据进入时自动匹配 DLTB / GB/T 21010 / CityGML 等标准
-- [ ] **行业质检规则模板库** — 自然资源 / 住建 / 水利 / 测绘 / 新能源的质检规则预置
-- [ ] **行业治理最佳实践案例库** — 扩展现有 `knowledge_base.py` 的 case 能力
-- [ ] **行业本体库** — 基于 v15.7 XMI 领域标准 + v16.0 本体论技术，持续沉淀行业本体
-
-### P2 — 外部基础设施落地 (搁置项清零)
-
-- [ ] **Kong API 网关** — kong-gateway.yaml + Ingress + 插件绑定
-- [ ] **Jaeger 追踪后端** — 与 OTel 现有埋点对接
-- [ ] **Loki 集中日志** — LokiHandler 日志推送 + 与 trace_id 关联
-- [ ] **Grafana 统一看板** — Prometheus + Jaeger + Loki 三数据源聚合
-
-### P2 — 面向客户的产品化交付
-
-- [ ] **治理交付模板** — 面向自然资源 / 住建 / 水利的"开箱即用"治理方案（Skill + Workflow + Policy 三件套）
-- [ ] **治理成熟度评估工具** — 对标 DAMA / 《智能化数据治理能力要求》，自动生成客户治理成熟度报告
-- [ ] **迁移助手** — 从传统数据治理平台（睿治 / 普元 / 国网等）的资产迁移工具
-
----
-
-## v21.0+ — L4 主动式探索 (已完成项归档)
-
-> 本节内容为 v21.0-v23.0 已完成项归档；v24.0 之后的新规划请参见上方 v25.0 / v26.0 / v27.0 段落
-
-
-
-> **主题**: 从响应式 → 主动式，从有监督 → 无监督
->
-> **依据**: SIGMOD 2026 论文 L4 愿景 + Datus.ai P3 CLI 入口
->
-> **目标**: 持续监控 + 自主任务发现 + 内在动机驱动
-
-### P3 — CLI 终端接口 ✅ (已在 v15.9 实现)
-
-- [x] **gis-agent CLI 框架** — cli.py (609 行, Typer + Rich) ✅
-- [x] **chat 命令** — `gis-agent chat` 交互式 REPL + `gis-agent run "..."` 单次执行 ✅
-- [x] **TUI 全屏界面** — tui.py (601 行, Textual) 三面板布局 (Chat/Report/Status) ✅
-- [x] **Rich 终端渲染** — 表格/进度条/Markdown 渲染 ✅
-
-### 跨系统血缘与数据治理 ✅ 2026-04-08
-
-- [x] **跨系统血缘追踪** — agent_asset_lineage 边表 + 外部资产字段 (external_system/external_id/external_url) ✅ 2026-04-08
-- [x] **Migration 056** — agent_asset_lineage 表 + agent_data_assets 外部字段 ✅ 2026-04-08
-- [x] **register_external_asset** — 注册外部系统资产 (Tableau/Airflow/PowerBI) ✅ 2026-04-08
-- [x] **add_lineage_edge** — 内部↔外部任意组合血缘边 ✅ 2026-04-08
-- [x] **get_cross_system_lineage** — BFS 跨系统血缘图谱查询 ✅ 2026-04-08
-- [x] **REST API** — 5 端点 (添加血缘/跨系统图谱/注册外部资产/列出系统/删除边) ✅ 2026-04-08
-
-### API 网关与服务网格 ⏸️ (搁置: 等待 Kong 实例)
-
-- [~] **Kong API 网关** — 统一入口，限流/熔断/认证前置 *(搁置)*
-- [ ] **kong-gateway.yaml** — K8s 部署 (2 副本 + LoadBalancer)
-- [x] **限流插件** — RateLimitMiddleware per-user/minute + per-IP/hour ✅ 2026-04-08
-- [x] **JWT 认证** — Starlette 中间件层 JWT cookie 认证 ✅
-- [x] **熔断器** — CircuitBreakerMiddleware CLOSED→OPEN→HALF_OPEN ✅ 2026-04-08
-- [ ] **kong-ingress.yaml** — Ingress 配置 + 插件绑定
-
-### 分布式追踪与可观测性 ⏸️ (搁置: 等待 Jaeger/Loki 实例)
-
-- [x] **OpenTelemetry 全链路追踪** — HTTP/DB/Pipeline/Tool/LLM 埋点就绪，graceful degradation ✅ v23.0 *(导出需 Jaeger)*
-- [~] **Jaeger 追踪后端** — 存储 trace 数据 + UI 查询 *(搁置: 需 Jaeger 实例)*
-- [~] **Loki 集中日志** — 替代 stdout，与 trace_id 关联 *(搁置: 需 Loki 实例)*
-- [~] **Grafana 统一看板** — Prometheus + Jaeger + Loki 数据源 *(搁置: 需 Grafana 实例)*
-- [x] **observability.py 增强** — setup_otel_tracing() + get_tracer() 已实现 ✅
-- [~] **LokiHandler** — 日志自动推送到 Loki *(搁置: 需 Loki 实例)*
-
-### SIGMOD 2026 论文借鉴 (L4 能力，v22.0+)
-
-#### **S-8: 持续监控与任务发现** ✅ 2026-04-08
-- [x] **DataLakeMonitor** — 7x24 监控守护进程 ✅ 2026-04-08
-- [x] **数据漂移检测** — 自动发现数据分布变化 → 触发重训练任务 ✅ 2026-04-08
-- [x] **性能退化检测** — 查询延迟监控 → 触发优化任务 ✅ 2026-04-08
-- [x] **优化机会发现** — 缺失索引、有益物化视图、冗余计算 → 自主优化 ✅ 2026-04-08
-- [x] **任务优先级** — 多任务自主排序 (紧急度 × 收益) ✅ 2026-04-08
-
-#### **S-9: 内在动机引擎** ✅ 2026-04-08
-- [x] **IntrinsicMotivation** — 内部奖励信号驱动探索 ✅ 2026-04-08
-- [x] **奖励函数** — 发现新数据源 +10，提升数据质量 +5×improvement，减少延迟 +2×reduction ✅ 2026-04-08
-- [x] **探索 vs 利用** — ε-greedy 策略平衡已知优化和新机会探索 ✅ 2026-04-08
-- [x] **持续自我改进** — 基于操作日志和遥测数据适应策略 ✅ 2026-04-08
-
-### 遥感智能体 Phase 2-4 (v22.0+)
-
-#### **Phase 2: 时空分析**
-- [x] **变化检测引擎** — 双时相差异 + 指数差异 + 分类后比较 (rs_temporal.py) ✅ 2026-04-08
-- [x] **时间序列分析** — Mann-Kendall 趋势 + 断点检测 (rs_temporal.py) ✅ 2026-04-08
-- [x] **证据充分性评估** — 数据覆盖度 × 方法多样性 × 结论支撑强度 (rs_temporal.py) ✅ 2026-04-08
-
-#### **Phase 3: 智能化可信度**
-- [x] **代码生成执行** — validate_generated_code 安全沙箱验证 (rs_credibility.py) ✅ 2026-04-08
-- [x] **幻觉检测增强** — 空间约束 Fact-Checking + 多源交叉验证 (rs_credibility.py) ✅ 2026-04-08
-- [x] **多 Agent Debate** — 主分析 + 独立验证 + 证据评分 + 判定 (rs_credibility.py) ✅ 2026-04-08
-- [x] **RS 领域知识库** — 光谱特性 (5 指数) + 处理流程 (3 模板) + 分类体系 (3 标准) ✅ 2026-04-08
-
-#### **Phase 4: 高级遥感**
-- [ ] **SAR/高光谱/LiDAR** 数据处理
-- [ ] **深度学习推理** — segment-anything-geo / SatMAE / Prithvi
-- [x] **具身执行接口** — BaseExecutor ABC + MockUAV/Satellite + 注册表 ✅ v23.0 *(对接实际硬件待定)*
-- [x] **Gemma 4 + 多模型管理** — Gemma 4 31B 注册 (Gemini API + vLLM) + DB 持久化管理员配置 + 前端交互式切换 + Intent Router 可配置化 ✅ v23.0
-
----
-
-## Hermes Agent 对标观察池 (暂不承诺版本)
-
-> **定位**: 作为后续平台化增强候选项进入观察池，不纳入当前已承诺版本范围
->
-> **依据**: `docs/hermes_agent_benchmark_analysis.md`
->
-> **原则**: 以垂直场景落地优先，仅在有明确产品收益或客户牵引时择机迭代；优先做低成本、高复用、可独立验证的小步增强
-
-### 候选方向 (按建议优先级)
-
-#### P0 — 连续协作体验增强 (优先试点)
-- [ ] **USER Profile 轻量层** — 记录用户偏好输出粒度、常用场景、工作习惯，用于提升跨会话协作连续性
-- [ ] **历史会话召回** — 基于 SQLite/PostgreSQL FTS 检索历史对话并由 LLM 总结，用于"上次做到哪了"类问题
-
-#### P0 — 经验沉淀闭环 (小范围验证)
-- [ ] **Skill 建议沉淀** — 从成功任务、用户正反馈或高质量工作流中自动提炼 Skill / Prompt / Workflow 建议项
-- [ ] **结果卡片沉淀入口** — ChatPanel 增加"沉淀为能力"入口，人工确认后入库，避免全自动写入污染资产库
-
-#### P1 — Agent Runtime 平台化增强 (观察项)
-- [ ] **执行后端抽象** — 梳理 local / docker / remote worker / arcpy worker / gpu worker 等统一执行后端接口
-- [ ] **Agent 执行面安全栈** — 补齐 User Tool / MCP / Shell 级别的审批、分级权限、URL/SSRF 防护、上下文注入检测、隔离执行策略
-- [ ] **轻量多入口扩展** — 先考虑消息投递/任务回执类入口，不优先建设完整 TUI 或通用消息网关
-
-### 何时启动
-- 出现明确客户需求：需要连续协作、跨端触达、远程任务托管或更强 Agent 安全治理
-- 现有垂直场景（测绘质检 / 新能源 / 数据治理）交付稳定，主线需求阶段性收敛
-- 能以 1-2 周试点验证价值，而非大规模架构改造
-
-### 当前结论
-- **现在不立即启动 Hermes 方向的大规模建设**
-- 先保留为 roadmap 观察池，后续仅择机推进 1 个低成本 P0 试点
-
----
-
-## 标杆对标进度 (更新 2026-04-18)
-
-> 新增标杆: DeerFlow (ByteDance 通用 Agent Harness) + **AgentArts (华为云企业级智能体平台)** + **Datus.ai (开源数据工程智能体 — 上下文工程 + 反馈飞轮)** + **Hermes Agent (通用 Agent Runtime — learning loop + 持久记忆 + 多入口网关)**
->
-> AgentArts 对标详情见 `docs/agentarts-benchmark-analysis.md`
->
-> Datus.ai 对标详情见 `docs/datus_ai_benchmark_analysis.md`
->
-> Hermes Agent 对标详情见 `docs/hermes_agent_benchmark_analysis.md`
-
-| 标杆能力 | 来源 | v16.0 ✅ | v17.1 ✅ | v18.0 ✅ | v18.5 ✅ | v19.0 ✅ | v20.0 ✅ | v21.0 ✅ |
-|----------|------|-----------|-----------|-----------|-----------|-----------|-----------|-----------|
-| 空间数据虚拟化 | SeerAI | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢🟢 跨系统 |
-| 知识图谱语义发现 | SeerAI | 🟢 | 🟢 | 🟢🟢 本体推理 | 🟢🟢 | 🟢🟢🟢 上下文引擎 | 🟢🟢🟢 | 🟢🟢🟢 |
-| 分析血缘自动追踪 | SeerAI | 🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢🟢 跨系统 |
-| 行业预置模板 | SeerAI | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
-| Agent 对话交互 | OpenClaw | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 NL2W | 🟢🟢🟢 反馈UI | 🟢🟢🟢 | 🟢🟢🟢🟢 CLI |
-| 企业级治理 | Frontier | 🟢🟢🟢 | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 |
-| Agent 可观测性 | — | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢🟢 全链路 |
-| 多 Agent 协作 | CoWork | 🟢🟢🟢 | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 |
-| 时空预测 | — | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
-| 因果推断 | — | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
-| 测绘质检 | — | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
-| 企业平台 | BCG | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢🟢 评估器+NL2W | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
-| **Harness/App 分离** | DeerFlow | 🔴 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 |
-| **中间件链** | DeerFlow | 🔴 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 |
-| **上下文摘要** | DeerFlow | 🔴 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 |
-| **Guardrails** | DeerFlow | 🟡 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 |
-| **Planner-Executor** | SIGMOD L3 | 🔴 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
-| **语义算子** | SIGMOD L3 | 🔴 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 |
-| **工具选择器** | SIGMOD L3 | 🔴 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 |
-| **因果错误诊断** | SIGMOD L3 | 🔴 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢 |
-| **多模态融合** | — | 🟢🟢 基础 | 🟢🟢🟢 v2.0 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
-| **NL2Workflow** | AgentArts | 🔴 | 🔴 | 🔴 | 🟢🟢 | 🟢🟢 | 🟢🟢 | 🟢🟢🟢 |
-| **提示词自动优化** | AgentArts | 🔴 | 🔴 | 🔴 | 🟢🟢 | 🟢🟢🟢 反馈驱动 | 🟢🟢🟢 | 🟢🟢🟢 |
-| **评估器体系** | AgentArts | 🟡 | 🟡 | 🟡 | 🟢🟢🟢 15 评估器 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
-| **产品级 UI** | Palantir | 🟡 | 🟡 | 🟡 | 🟢🟢 深色主题 | 🟢🟢 反馈UI | 🟢🟢 | 🟢🟢🟢 |
-| **数据库优化** | — | 🔴 | 🔴 | 🟢🟢 asyncpg+池 | 🟢🟢 | 🟢🟢 | 🟢🟢🟢 Celery | 🟢🟢🟢 |
-| **矢量切片** | — | 🔴 | 🟢🟢🟢 MVT | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢 |
-| **上下文引擎** | Datus | 🔴 | 🔴 | 🔴 | 🟡 BCG CM | 🟢🟢🟢 统一引擎 | 🟢🟢🟢 | 🟢🟢🟢🟢 |
-| **反馈学习闭环** | Datus | 🔴 | 🔴 | 🔴 | 🟡 bad case | 🟢🟢🟢 完整飞轮 | 🟢🟢🟢 | 🟢🟢🟢🟢 |
-| **语义模型标准化** | Datus | 🔴 | 🔴 | 🔴 | 🟡 自定义 | 🟢🟢 MetricFlow | 🟢🟢 | 🟢🟢🟢 |
-| **参考查询库** | Datus | 🔴 | 🔴 | 🔴 | 🔴 | 🟢🟢 NL2SQL 增强 | 🟢🟢🟢 | 🟢🟢🟢 |
-| **多 LLM 切换** | Datus | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟢🟢 YAML 配置 | 🟢🟢🟢 |
-| **双模式执行** | Datus | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟢🟢 Agentic/WF | 🟢🟢🟢 |
-| **CLI 终端入口** | Datus | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟢🟢 gis-agent |
-| **轻量部署** | Datus | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟢🟢 DuckDB Lite | 🟢🟢 |
-| **Learning Loop** | Hermes | 🔴 | 🔴 | 🔴 | 🔴 | 🟡 反馈闭环基础 | 🟡 | 🟡 观察池 |
-| **持久用户画像** | Hermes | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟡 观察池 |
-| **历史会话召回** | Hermes | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟡 观察池 |
-| **执行后端抽象** | Hermes | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟡 观察池 |
-| **Agent 执行面安全栈** | Hermes | 🟡 Guardrails | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 观察池 |
-| **多入口 Agent Runtime** | Hermes | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟡 CLI | 🟡 观察池 |
-| **API 网关** | — | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟢🟢 Kong || **分布式追踪** | — | 🟡 OTel | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟢🟢🟢 Jaeger |
-| **Data Agent Level** | SIGMOD | L3 | L3 | L3 | L3 | L3+ | L3+ | L3.5→L4 |
-
-### 四看驱动的新增对标维度 (2026-04-21)
-
-| 标杆能力 | 来源 | v24.0 ✅ | v25.0 🎯 | v26.0 🎯 | v27.0 🎯 |
-|----------|------|----------|----------|----------|----------|
-| **活跃元数据 (Active Metadata)** | Atlan / Gartner 2026 | 🟡 语义层 + 基础目录 | 🟢🟢🟢 CDC 事件流 + 策略联动 | 🟢🟢🟢🟢 全模态 | 🟢🟢🟢🟢 联邦 |
-| **Agentic Governance** | Alation / Ataccama | 🟡 Agent 原型 | 🟢🟢🟢 5 治理 Agent | 🟢🟢🟢🟢 | 🟢🟢🟢🟢 MCP 标准化 |
-| **声明式治理 (Policy as Code)** | Alation Curation Automation | 🔴 | 🟢🟢 LLM 策略翻译 + 规则库 | 🟢🟢🟢 合规策略 | 🟢🟢🟢🟢 |
-| **数据产品化** | Gartner MQ 2026 "数据产品策展" | 🔴 | 🟢🟢 契约 + 目录 | 🟢🟢🟢 市场化 | 🟢🟢🟢🟢 |
-| **多模态数据治理** | 袋鼠云多模态中台 | 🟡 `multimodal.py` 基础 | 🟡 | 🟢🟢🟢 非结构化治理 | 🟢🟢🟢🟢 |
-| **数据资产化 / 入表** | 国家数据局三权分置 | 🔴 | 🟡 编码体系扩展 | 🟢🟢🟢 评估 + 辅助报告 | 🟢🟢🟢 |
-| **合规审计自动化** | 网安法修订 / 个保法 | 🔴 | 🟡 合规 Agent 骨架 | 🟢🟢🟢 审计自动化 | 🟢🟢🟢🟢 |
-| **MCP / A2A 互操作** | Anthropic / Google | 🟢🟢 MCP Hub | 🟢🟢 | 🟢🟢🟢 | 🟢🟢🟢🟢 标准化暴露 |
-| **STAC / OGC API 标准对齐** | Radiant Earth / NASA / MS PC / OGC | 🟡 裸 httpx + 4 预设 (v13.0) | 🟢🟢 数据产品 STAC 发布器 + 空间契约 Extension | 🟢🟢🟢 | 🟢🟢🟢🟢 STAC API 兼容视图 + CQL2 NL2Search |
-| **湖仓一体适配** | 航天云际 / 星环 | 🔴 | 🟡 | 🟢🟢 Doris/StarRocks/ICE | 🟢🟢🟢 统一查询 |
-| **可信数据空间** | 国家数据局行动计划 | 🔴 | 🔴 | 🟡 接口骨架 | 🟢🟢 集成华为等底座 |
-| **行业知识库深化** | — | 🟢 XMI + 本体 | 🟢🟢 | 🟢🟢 | 🟢🟢🟢🟢 自然资源/住建/水利 |
-
-
-### Data Agent Level 演进路径
-
-```
-v15.9: L2.8 — + Planner-Executor + 中间件链 + 工具选择 + 上下文摘要
-v16.0: L3   — + 语义算子 + 多 Agent 协作 + 计划精化 + Guardrails
-v17.0: L3   — + 多模态融合 v2.0 (时序对齐 + 语义增强 + 冲突解决) ✅
-v17.1: L3   — + 矢量切片大数据渲染 (三级自适应) + 数据资产编码 ✅
-v18.0: L3   — + 应用层 DB 优化 (连接池扩容 + asyncpg + 物化视图 + 监控) ✅
-v18.5: L3   — + 平台能力增强 (NL2Workflow + 提示词自动优化 + 评估器) + Palantir UI ✅
-v19.0: L3+  — + 上下文工程 (统一引擎 + 反馈飞轮 + 语义模型标准化 + 参考查询库) ✅ 2026-04-08
-v20.0: L3+  — + 分布式任务队列 (Redis) + 多 LLM 切换 + 双模式执行 + DuckDB Lite ✅ 2026-04-08
-v21.0: L3.5 — + 跨系统血缘追踪 (外部资产 + 血缘边表 + BFS 图谱) ✅ 2026-04-08
-v21.0: L3.5 — + API 网关 + 分布式追踪 + 跨系统血缘 + CLI 终端入口 (向 L4 探索)
-v22.0: L4-  — + 持续监控 + 任务发现 + 内在动机 (L4 初步) ✅ 2026-04-08
-v23.0: L3.5 — + Roadmap 清零 (意图消歧 v2 + DRL 约束 + 交通/设施场景 + 离线模式) ✅ 2026-04-09
-v24.0: L3.5 — + @SubAgent 显式路由 + XMI 领域标准 ✅ 2026-04-19
-v25.0: L4   — + Agentic Governance (5 治理 Agent + 活跃元数据 + 声明式策略 + 数据产品化) 🎯
-v26.0: L4+  — + 多模态治理 + 数据资产化 + 合规自动化 + 湖仓一体 + 可信流通接口 🎯
-v27.0: L4.5 — + 分布式治理 + Agent 互操作 + 经验沉淀 + 行业知识库深化 + 搁置项清零 🎯
+# GIS Data Agent — 总体架构 Roadmap
+
+**Last updated**: 2026-07-20
+
+**Status**: Architecture reset, authoritative mainline
+
+**Current gate**: AR-0 Architecture, Schema and Runtime Truth Freeze
+
+**Next delivery gate**: AR-1 Unified Metadata and Orchestration Control Planes
+
+**Historical roadmap**: [roadmap-history-through-2026-07-18.md](roadmap-history-through-2026-07-18.md)
+
+> 本文是唯一有效的总体交付顺序。领域 roadmap、研究计划、版本历史和功能清单只能作为输入，不能改变本文的依赖顺序和退出门。
+
+## 1. 架构重置结论
+
+GIS Data Agent 的产品定义调整为：
+
+> 以传统时空数据中台的完整生产能力为下限，以 DataOps 持续交付和可靠运营为数据产品底座，以 AgentOps 管理 Agent 的评测、部署、安全和运行闭环，以统一元数据和统一调度作为平台控制脊柱，以 LLM 可选的 Web/API/SDK/CLI/TUI/Notebook/Agent 多入口降低复杂度，以 GWM 作为可插拔空间世界认知增强的 Data + AI 平台。
+
+过去的路线把 Agent、标准、本体、MMFE、TWM/UWM、前端和部署能力分别扩张，却没有先建立统一的数据生产主链、平台控制脊柱、DataOps/AgentOps 运营闭环和产品能力下限。此次重置纠正十一个问题：
+
+1. **先冻结 schema/config/runtime 真值**：迁移版本重复、失败继续和环境配置漂移不解决，任何新平台表都没有可信地基。
+2. **统一元数据必须采用双层 Metadata Fabric**：OpenMetadata 负责 owner、domain、术语、分类、质量、generic lineage 与治理 catalog；Gravitino 负责 technical metadata lake、metalake/catalog 与跨 catalog federation；GIS Data Agent 只维护 ResourceURN mapping、空间/证据 extension 与 control/evidence contracts。
+3. **统一调度必须采用分层运行时**：DolphinScheduler 统一 DataOps 的 DAG、定时、补数、资源队列和 Spark/Flink 任务；Temporal 统一 Agent/GWM 的长时等待、审批和补偿；GDA 只关联 PlatformRun，不能依赖 Web 进程或自研 scheduler 生命周期。
+4. **数据底座必须先于 Agent 智能升级**：没有可执行的数据分层、质量门禁、血缘和版本，Agent 只能操作文件和临时表。
+5. **湖仓不是远期生态能力，也不是固定厂商栈**：默认 profile 使用 MinIO + Iceberg、Spark/Sedona + Flink 和 PostGIS serving；相同逻辑合同可绑定 Azure 等云平台能力，或以 PostGIS/DuckDB 运行轻量存算一体 profile。
+6. **传统平台能力是下限，不是模板**：数据规划、源与汇聚、建模、开发、质量、安全、资产、服务、地图、审批和运维的代表任务必须有完整路径；不照搬其菜单、微服务和中间件。
+7. **Agentic 不等于 LLM 前提或取消专业工作台**：Visual/SQL/Notebook/API/SDK/CLI/TUI 和 Agent 必须通过同一 `CapabilitySpec` 编辑、提交和观察同一 typed definition、Run 和 Artifact；无 LLM profile 保留完整确定性平台路径，Agent 不能另建隐式 pipeline。
+8. **GWM 是消费者和增强内核**：GWM 消费已治理的数据产品，不能替代数据底座，也不能成为基础治理的前置依赖。
+9. **DataOps 是 P0 平台能力**：数据产品必须有 CI/CD、质量门、promotion、运行观测、SLO、事故、恢复和反馈闭环，不能只交付一个能运行的 pipeline。
+10. **AgentOps 是独立但共享控制面的 P1 能力**：Agent bundle、评测、灰度、AgentRun、ToolCall、安全、预算、事故、回滚和反馈必须有生命周期，不能把 Prompt registry 或 Agent trace 当作完成。
+11. **GIS 服务发布是独立 P0 架构域**：不能用一个 `ServiceDefinition` 名词或若干 OGC/MVT/STAC endpoint 代替发布平台；必须分别建设服务控制面、可认证 provider runtime 和统一 gateway/operations，覆盖图层、样式、二维/三维、部署 revision、消费者、SLO、原子切换、缓存一致性、回滚和退役。
+
+从本次刷新开始，新增 Agent、模型、工具、Tab、数据库或协议，必须说明它服务哪个数据产品、处于哪个生命周期阶段、读写哪一层、由什么规则验收。不能回答的工作不进入主线。
+
+## 2. 产品边界与约束
+
+### 2.1 优先场景
+
+1. 自然资源：地类图斑、规划管控、变化监测、遥感证据和治理报告。
+2. 城市：设施、道路、人口、环境、宜居性状态和干预证据。
+3. 空间原生但不排斥非空间数据：关系表、文档、图像、视频、日志、模型特征和评测数据可以独立治理，也可以与空间对象关联。
+
+### 2.2 约束
+
+- 支持私有化和离线部署，默认不能依赖外部 SaaS 数据平面。
+- 当前团队和运行边界不支持全面微服务化，先采用模块化单体和独立计算运行时。
+- 数据规模从单用户文件到千万级要素已有证据；TB/PB 级只作为架构容量方向，未通过基准前不得宣称已支持。
+- PostgreSQL/PostGIS、MinIO/S3、Spark/Flink、现有 Standards Platform 和 MMFE 必须通过 adapter 增量演进，不做一次性重写。
+- 存储后端、湖表格式/catalog 和计算执行器是三个独立配置维度；平台提供默认值，但 Blueprint/DeploymentProfile 不得硬编码单一云厂商或引擎。
+- 传统平台能力等价按用户结果判断，不按菜单、中间件或 connector 数量判断；首期只认证代表数据源和任务，保留扩展合同。
+- 当前工作树并行改动很多；每个架构阶段必须在独立变更边界内完成并验证。
+
+### 2.3 非目标
+
+- 不建设通用云数仓、通用 GIS 编辑器或无行业边界的数据中台。
+- 不因名词先进而引入 Kafka、Trino、RDF 服务、图数据库、专用向量库或服务网格；默认 Spark/Flink 也必须按任务能力和规模路由，不能强迫轻量任务使用分布式引擎。
+- 不用配置文件、接口 spec、mock publisher 或单个 notebook 证明平台已完成。
+- 不用测试数量、工具数量、Agent 数量或前端 Tab 数量代表产品进度。
+- 不复制传统平台的菜单树、微服务拓扑和默认全量中间件，也不以对话入口替代可审查、可调试的专业路径。
+
+## 3. 当前事实基线
+
+| 能力 | 当前可运行事实 | 架构判断 |
+|---|---|---|
+| Schema 与配置真值 | SQL migration、Compose、K8s migration Job 和多套环境配置存在 | `011`-`017` 迁移版本重复且失败不阻断；目标环境 schema 可能分叉，必须 P0 修复 |
+| 产品入口与专业工作台 | 对话、地图、DataPanel、WorkflowEditor 及大量领域 Tab | 有入口但信息架构偏功能堆叠；缺 Discover/Build/Operate/Govern 稳定工作面和同定义双入口 |
+| 数据源与汇聚 | virtual source/connectors、PostGIS intake、stream 和文件/对象存储组件 | 查询/扫描能力多于生产同步；无统一 Source/SyncDefinition/SyncRun、CDC，以及云盘客户端 `DriveTransfer` 的服务端会话/断点/入湖闭环 |
+| 应用与空间数据库 | PostgreSQL/PostGIS + pgvector；业务、治理、语义和运行表共库；Martin 提供矢量瓦片 | 可作为控制平面和在线 serving store，不能继续同时承担所有原始、分析和产品真值 |
+| 文件与对象存储 | 本地 `uploads/`；`StorageManager` 路由 file/S3/OBS/PostGIS；Compose 提供 uploads 和 lakehouse 两个 MinIO bucket | 有存储适配和对象存储，没有强制 Landing/ODS/DWD/DWS/ADS 生命周期 |
+| 存储/计算 profile | MinIO/S3、PostGIS、Iceberg、Spark/Sedona 和本地 Python 组件存在 | 配置分散，未形成 StorageBinding/TableCatalogBinding/ComputeBinding、capability certification 或云/轻量 profile |
+| 湖仓配置 | 约定 `raw/`、`curated/`、`warehouse/`；存在 Iceberg、STAC、S3A 和 Spark/Sedona 配置 | 是默认 profile 的基础配置，不是可替换的完整湖仓运行时 |
+| 湖仓执行 | 有独立 Spark/Sedona 镜像、smoke scripts 和 TxPoint10M 专项 Iceberg 作业；Flink 默认执行合同尚未形成 | 证明部分批处理技术可行；尚无通用 batch/stream ingestion/publish/rollback/serving pipeline |
+| 元数据与目录 | 资产 JSONB、catalog、lineage、intake、semantic/standard/AI registry 和 STAC/Iceberg 局部元数据 | 多写路径、双血缘和无统一 ResourceVersion；不是统一元数据中心 |
+| 调度与执行 | APScheduler、TaskQueue、SparkGateway、Standards outbox、自进化 scheduler 和 API background task | 无统一耐久作业模型；存在重复 cron、跨进程丢任务和无法接管风险 |
+| 数据治理 | 标准、质量规则、分类、版本、RLS、审计已有表与局部 API | 能力真实但分散，尚未成为逐层发布门禁 |
+| 建模与数据开发 | semantic/standard data model、workflow/template、SQL/Python/GIS tools 已有局部能力 | 缺 model deploy 生命周期、typed operator、preview sandbox 和 Notebook -> production 统一链 |
+| 资产与服务运营 | catalog、usage/tag、distribution/review、REST/MVT/STAC/MCP 接口和 Martin 部署存在 | 有 endpoint 和局部 serving，不等于 GIS 发布平台；缺统一 Service Control Plane、Layer/Style/TileMatrixSet 版本、provider 准入、部署 revision、原子切换、缓存一致性、3D/传统 OGC 兼容、消费者影响和退役闭环 |
+| 分析与空间体验 | NL2Semantic2SQL、图表、2D/3D map、遥感与领域分析能力丰富 | 差异能力真实，但未统一绑定产品版本、语义口径、权限和可复现 view |
+| 平台运维 | 结构化日志、Prometheus、OTel、K8s、数据库日备和 CI/CD 文件存在 | 缺数据产品级 SLI/SLO、联合恢复演练；CI 配置和生产 CD 有占位/漂移 |
+| DataOps | source、workflow、quality、catalog、Run、DataProduct 和部分 CI 组件存在 | 没有贯穿 definition -> CI -> promotion -> run -> observe -> incident -> replay 的统一运营闭环 |
+| AgentOps | Agent registry、Prompt version、eval history、OTel Agent/Tool span、guardrail、feedback、cost guard 存在 | 没有 AgentSpec bundle、EvaluationBinding、DeploymentRevision、online verdict、AgentRun/ToolCall 质量闭环、事故和可执行回滚 |
+| MMFE | Profiling、Assessment、Alignment、Execution、Validation 及语义产品合同已存在 | 应接入 Silver/Gold 数据生产，不再作为旁路工具 |
+| STAC | 外部 STAC connector、publish spec 和部分静态资产能力 | 尚无统一、可查询、可回滚的本地产品目录服务 |
+| Cognitive Runtime | 已有正式设计、Agent/Workflow/Policy/Evaluator 等局部实现 | 必须建立在稳定的数据契约和确定性 pipeline 之上 |
+| GWM/TWM/UWM | 领域模型、状态、规则、预测、规划和证据边界已有大量实现 | 作为 Gold/DataProduct 消费者保留；不能反向定义原始数据真值 |
+
+**当前总评**：项目是“Agent 应用 + PostGIS + 对象存储 + 分散控制组件 + 局部湖仓实验”的混合系统，尚未形成生产级地理空间湖仓、完整 DataOps 或 AgentOps 平台。它在部分智能能力上超过传统平台，但在基础生产与运营闭环上尚未达到传统时空数据中台的能力下限。完整证据见 [企业级架构复审](architecture-review-2026-07-19.md)、[传统平台能力基线与 Agentic 升维设计](traditional-platform-baseline-and-agentic-elevation-2026-07-19.md) 和 [ADR-005：DataOps 与 AgentOps 双运营闭环](architecture-decisions/adr-005-dataops-and-agentops-operating-loops.md)。
+
+## 4. 总体架构
+
+```text
+┌──────────────────────────────────────────────────────────────────────┐
+│ LLM-Optional Multi-Surface Experience Plane                          │
+│ Discover | Build | Operate | Govern | Conversational Copilot        │
+│ Visual/DAG | SQL | Notebook | Map/2D/3D | API/SDK | CLI/TUI | MCP/A2A │
+└───────────────────────────────┬──────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼──────────────────────────────────────┐
+│ Consumption & Intelligence Plane                                     │
+│ Human Views | Agent Context | AI Datasets | GWM Observation/Scenario │
+│ PostGIS/Martin | STAC/OGC | SQL/API | Files/Notebooks               │
+└───────────────────────────────┬──────────────────────────────────────┘
+                                │ DataProductVersion
+┌───────────────────────────────▼──────────────────────────────────────┐
+│ Unified Metadata & Governance Control Plane                          │
+│ OpenMetadata: Governance Catalog/Search/Owner/Glossary/Quality       │
+│ Gravitino: Technical Metadata Lake/Metalake/Catalog/Federation       │
+│ GDA Ledger: ResourceURN/Policy/Approval/Evidence/Action/Outcome      │
+└───────────────────────────────┬──────────────────────────────────────┘
+                                │ immutable resource/input binding
+┌───────────────────────────────▼──────────────────────────────────────┐
+│ Unified Orchestration & Job Control Plane                            │
+│ gda Gateway: Definition/Policy/PlatformRun/Artifact correlation     │
+│ DolphinScheduler: DataOps DAG/schedule/complement/resource queue     │
+│ Temporal: durable Agent/GWM workflow/signal/retry/compensation       │
+└───────────────────────────────┬──────────────────────────────────────┘
+                                │ governed executor contract
+┌───────────────────────────────▼──────────────────────────────────────┐
+│ Data Production Plane                                                │
+│ Ingest -> Profile -> Standardize -> Fuse/MMFE -> Aggregate -> Publish│
+│ DuckDB/local | PostGIS | Spark/Sedona | Flink | Cloud | AI/GWM      │
+└───────────────────────────────┬──────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼──────────────────────────────────────┐
+│ Storage & Serving Plane                                              │
+│ Configurable Storage/Table Providers                                 │
+│ default: MinIO + Iceberg | cloud: ADLS/etc. | light: PostGIS/DuckDB │
+│ PostgreSQL: GDA control/evidence ledger; OpenMetadata/Gravitino/     │
+│             DolphinScheduler/Temporal                                │
+│             each use their independently managed persistence stores  │
+│ PostGIS: operational editing, spatial serving, materialized products│
+│ Redis: cache/progress/rate limit; never queue or workflow truth      │
+└──────────────────────────────────────────────────────────────────────┘
+
+Cross-cutting: identity, policy, tenant isolation, observability,
+provenance, idempotency, checkpoint, backup, retention and cost.
+
+DataOps loop: DataProductSpec -> DolphinScheduler DAG/CI/quality -> promotion -> DataRun
+ -> SLO/observe -> incident/remediation -> replay/new DataProductVersion.
+
+AgentOps loop: AgentSpecBundle -> eval/safety/cost -> deployment/canary
+ -> Temporal AgentRun/ToolCall -> online verdict/guardrail -> incident/rollback/feedback.
+
+The two loops share Metadata, Orchestration, Policy, Artifact, Audit and Incident
+contracts. AgentOps can submit DataOps Run, but neither loop creates a second
+metadata authority or scheduler.
+
+Cognitive Runtime plans and submits approved capabilities across the planes when enabled.
+It is not a scheduler database, storage engine, metadata authority, quality truth
+or permission engine. Web/API/SDK/CLI/TUI/Notebook/Agent triggers enter the same durable Run model; the deterministic triggers remain available when LLM is disabled.
 ```
 
-### 治理能力评估对标 (《智能化数据治理能力要求》22 项)
+### 4.1 LLM 可选的多入口能力合同
 
-| 领域 | v14.5 ✅ | v18.5 ✅ | v21.0 ✅ | v24.0 ✅ | v25.0 🎯 | v26.0 🎯 | v27.0 🎯 |
-|------|-----------|-----------|-----------|-----------|-----------|-----------|-----------|
-| 数据标准 | 70% | 88% | 90% | 90% | 93% | 95% 多模态 | 98% |
-| 数据模型 | 20% | 50% 本体 | 55% | 55% | 65% 语义+策略 | 75% 多模态 | 85% |
-| 数据质量 | 90% | 98% | 98% | 98% | 98% | 98% | 98% |
-| 数据安全 | 30% | 60% | 65% | 65% | 75% 合规 Agent | 85% 审计自动化 | 92% |
-| 元数据 | 80% | 95% 语义 | 98% 跨系统 | 98% | 98% 活跃元数据 | 98% | 98% 联邦 |
-| 数据资源 | 80% | 92% | 95% 分布式 | 95% | 95% | 98% 多模态+湖仓 | 98% |
-| **综合** | **~62%** | **~80%** | **~84%** | **~84%** | **~87%** | **~92%** | **~95%** |
-
----
-
-## 架构演进对比
-
-### 当前架构 (v18.5)
-
-```
-单节点部署:
-- App (1 进程, Chainlit + ADK)
-- PostgreSQL (华为云 RDS 托管, 连接池 20+30, asyncpg 异步)
-- 物化视图 (mv_pipeline_analytics + mv_token_usage_daily)
-- 本地文件存储 (uploads/) + OBS 云存储可选
-- Prometheus 监控 (连接池 + 查询延迟)
-- 3300+ 测试, 254 REST API, 59 迁移, 40 工具集, 26 Skills
-
-适用场景: 开发环境、演示、<20 用户
+```text
+Web/Map/Canvas | API/SDK | gda CLI | gda TUI | Notebook | MCP/A2A Agent
+       \             |          |            |             |            /
+        \------------+----------+------------+-------------+-----------/
+                                    |
+           CapabilitySpec -> DefinitionVersion / ChangeSet -> Policy
+                                    |
+                         Preview / Approval -> PlatformRun
+                                    |
+       DolphinScheduler / Temporal / typed executor -> Artifact + Audit
 ```
 
-### 目标架构 (v21.0)
+每个生产 capability 先定义版本化 `CapabilitySpec`：输入/输出 JSON Schema 与 semantic type、query/command/long-running、读写资源/side effect/risk、SubjectContext/PolicyDecision obligation、idempotency/expected version、dry-run/preview、RunRef/Artifact/Evidence、cancel/compensate/reconcile，以及 OpenAPI/AsyncAPI-CloudEvents/MCP 映射。入口等价是 capability、definition、policy、Run、Artifact 和 audit 等价；TUI 无需复制 Web 地图的像素渲染，但必须能通过 layer/extent/style/Artifact descriptor 完成对应的受治理操作。
 
+`gda` CLI 使用项目既有的 Python `Typer` + `Rich`，支持 JSON/YAML、`--dry-run`、`--wait`、`--output json`、稳定退出码；`gda` TUI 使用既有 `Textual`，支持目录/搜索、definition diff、Run/日志/进度、质量问题、审批与恢复，且只调用公开 API。`llm_mode = disabled | optional | required_for_agent_feature` 是 DeploymentProfile 字段：禁用 LLM 时，Web/API/SDK/CLI/TUI/Notebook、调度、质量、安全、审批、服务、地图与确定性 GWM/规则仍完整可用；仅生成式能力返回 `LLM_UNAVAILABLE` 及等价确定性入口。详细决策见 [ADR-004](architecture-decisions/adr-004-capability-floor-and-dual-entry-agentic-platform.md)。
+
+### 4.2 GIS 服务发布三层架构
+
+```text
+DataProductVersion + Policy/Quality/Approval
+                  |
+                  v
+GIS Service Control Plane (GDA authority)
+Service/Layer/Style/TMS definition -> DeploymentRevision -> active/rollback pointer
+consumer/deprecation/SLO           -> publish Run/Artifact/Evidence
+                  |
+                  v
+Certified Provider Runtime (replaceable data plane)
+Feature/API | MVT | Raster/COG | STAC | Map/legacy OGC | 3D | Process
+                  |
+                  v
+Gateway, Cache and Operations
+OIDC/workload identity | policy enforcement | route/WAF/rate/quota
+cache/ETag | metrics/log/trace | usage/billing | incident/degraded mode
 ```
-分布式高可用部署:
-- App (3-5 Pod, HPA 自动扩缩容)
-- Celery Worker (3 Pod, 任务并行执行)
-- PostgreSQL (1主2从 + PgBouncer 连接池)
-- Redis Cluster (3主3从, 分片 + 副本)
-- MinIO (4 节点, 纠删码 EC:2)
-- Kong Gateway (2 Pod, 限流 + 熔断)
-- Observability Stack (Jaeger + Loki + Grafana)
 
-适用场景: 生产环境、>50 用户、高并发
-性能指标: 500+ 并发用户, <500ms P95 延迟, 99.9% 可用性
+服务控制面是 GDA 必须自有的领域能力，因为它承载跨 provider 的产品版本、治理策略、部署和消费者生命周期；它不是新的 GIS server。实际协议、渲染、切片和目录查询由成熟 provider 承担，Gateway 也不拥有服务生命周期。三层均使用统一 `ResourceURN`、`SubjectContext`、`PlatformRun`、Artifact、PolicyDecision、ApprovalCase、SLO/Incident 和 AuditEvent。
+
+核心发布对象冻结为：通用 `ServiceDefinitionVersion` 的 GIS typed profile `GISServiceDefinitionVersion`，以及 `LayerDefinitionVersion`、`StyleDefinitionVersion`、`TileMatrixSetDefinitionVersion`、`CachePolicyVersion`、`ServicePolicyBinding`、`ServiceDeploymentRevision`、`EndpointRevision`、`ConsumerBinding`、`ServiceSLO` 和 `RollbackPointer`；它们共用一个 service registry 和 lifecycle，不新建第二套服务权威。定义至少声明 source `DataProductVersion`、schema/geometry/CRS、spatial-temporal extent、scale/generalization/label/style、format/protocol、provider capability、auth/policy、quota/rate/cache、compatibility/deprecation 和 reliability class。运行时投影均可从产品版本重建，不得成为数据真值。
+
+首期 provider 基线不是单产品通吃：
+
+| 服务能力 | 默认 provider/格式 | 兼容或可替换 provider | 首期边界 |
+|---|---|---|---|
+| SQL/attribute API | GDA typed API projection + PostGIS/DuckDB adapter | 云 SQL/API、RocketAPI adapter | OpenAPI/JSON Schema 固化；RocketAPI 配置不成为权威 |
+| OGC API Features | `pg_featureserv` 用于 PostGIS 轻量直出；`pygeoapi` 用于多源 OGC API facade | GeoServer、云/商业 GIS adapter | provider 选择由过滤、事务、CRS、并发和扩展需求决定 |
+| OGC API Tiles/vector tile | PostGIS + Martin，MapLibre Style/TileJSON；OGC API Tiles 由标准 facade 暴露 | 云 tile provider、SuperMap/ArcGIS adapter | MVT 只读已发布 serving schema；版本进入 URL/ETag/cache key |
+| Raster/imagery | COG + TiTiler | GeoServer WCS/WMTS、云影像服务、SuperMap/ArcGIS | 原始/派生 COG 仍在对象存储；服务只做窗口、重采样、render projection |
+| STAC | pgSTAC + stac-fastapi 或通过同一 conformance 的实现 | 云 STAC provider | Catalog/Collection/Item 与对象 checksum、ProductVersion 和权限一致 |
+| WMS/WFS/WMTS/WCS 与复杂制图 | GeoServer 作为条件兼容 provider | SuperMap iServer、ArcGIS Enterprise | 不作为所有新服务默认路径；用于旧系统兼容、SLD/复杂制图和既有生态 |
+| 3D/点云/mesh | OGC 3D Tiles + object storage/gateway；构建任务进入 DataOps | S3M、I3S provider adapter；PDAL/Entwine/Py3DTilers 类构建 provider 经认证 | 3D Tiles/S3M/I3S 分别登记 capability、style/scene、LOD、坐标和版本，禁止笼统标记“支持 3D” |
+| 时空观测/实时订阅 | OGC API EDR/SensorThings capability profile；pygeoapi/FROST-Server 类 provider 经认证 | 云 IoT/stream API adapter | Flink/产品投影保存版本和 checkpoint；provider/broker 不是历史数据真值或第二调度器 |
+| OGC API Processes | pygeoapi/协议 facade 返回统一 `RunRef` | 商业 GIS process adapter | 执行委托 DolphinScheduler；provider 不建立第二调度器或隐藏长任务状态 |
+| File/export/offline package | 版本化 Artifact + signed distribution；GeoPackage/FlatGeobuf/GeoParquet/COG/PMTiles/MBTiles 按 capability 认证 | 云文件分发、商业离线包 adapter | 大文件复用 `DriveTransfer`/multipart；导出固定 ProductVersion、policy、checksum、expiry 和 consumer |
+| API gateway | Apache APISIX 作为私有化候选基线，经 ADR benchmark 后冻结 | Azure API Management 或其他云 gateway adapter | Gateway 只负责认证、路由、WAF、限流和观测；不能替代 Service Control Plane |
+
+详细取舍、接受条件和重评触发见 [ADR-017：GIS 服务发布控制面与 Provider Runtime](architecture-decisions/adr-017-gis-service-publishing-control-plane-and-provider-runtime.md)。在 ADR-017 从 Proposed 转为 Accepted 前，上表是实现和 benchmark 基线，不得宣称 production-supported。
+
+## 5. 数据分层与物理映射
+
+传统 ODS/DWD/DWS/ADS 与 Lakehouse Medallion 不再各建一套。下表定义逻辑层和默认湖仓映射；云与轻量 profile 必须保持相同层级、版本和发布门，不要求物理介质完全相同：
+
+| 逻辑层 | Lakehouse 映射 | 主要内容 | 主存储/格式 | 写入规则 | 退出门 |
+|---|---|---|---|---|---|
+| **Landing / Raw** | Raw zone | 原始文件、源导出、API 响应、影像、文档、压缩包 | 默认 MinIO/S3；云 blob/data lake；轻量 PostGIS/DuckDB append-only Raw table 或外部目录 | 不可覆盖；content hash；source/run manifest；敏感级别 | 内容/表版本、checksum、来源、许可、空间时间范围和 owner 齐全 |
+| **ODS** | Bronze | 对源结构做 1:1 可查询快照，不修业务语义 | 默认 Iceberg Parquet/GeoParquet；认证云湖表；轻量 PostGIS/DuckDB snapshot/table | 追加或 snapshot；保留源字段、源主键、批次和摄取时间 | 行数/字节数对账；schema drift 被记录；可按版本重放 |
+| **DIM + DWD** | Silver | 一致维度、标准化明细、对象身份、坐标/单位/代码统一、质量问题 | 默认 Iceberg；认证云湖表；轻量 schema/table/view | 标准/模型版本固定；确定性转换；问题不静默丢弃 | 主键/引用闭包、CRS、geometry、值域、拓扑、完整性和血缘门通过 |
+| **DWS** | Gold aggregate | 主题汇总、空间网格/行政区聚合、变化事实、指标和 AI 特征 | 默认 Iceberg；云/轻量物化表或受控快照 | 只能消费已发布 Silver version；指标公式版本化 | 汇总守恒、维度一致、增量等价、性能和质量 SLA 通过 |
+| **ADS / Serving** | Gold serving | 地图、API、报表、Agent context、AI dataset、GWM observation | PostGIS/Martin、STAC、API、GeoParquet/COG exports | 从指定 Gold/DataProductVersion 可重建；不反写上游 | 消费权限、版本一致性、可用性、回滚和审计通过 |
+
+默认 Iceberg profile 的首期跨引擎空间合同固定为 `geometry_wkb + srid + bbox + optional h3/geohash`。只有 Spark/Sedona、Flink、DuckDB/Spatial、PostGIS、PyArrow/GeoPandas 和目标云引擎对相关读写路径完成 geometry encoding、时间语义与 GeoParquet metadata 互操作测试后，才把原生 geometry 类型作为跨引擎权威合同。分区字段必须由真实查询基准决定，优先低基数时间、区域或受控空间分桶；禁止沿用未经验证的 `partition_by=product_id` 默认值，也禁止直接按高基数 geometry/object ID 分区。
+
+### 5.1 可配置存储与计算 profiles
+
+```text
+DataProductBlueprint requirements
+ -> DeploymentProfile defaults
+ -> PlacementPolicy
+ -> StorageBinding + TableFormatCatalogBinding + ComputeBinding
+ -> provider compiler -> ExecutionPlanArtifact
+ -> Run freezes provider/engine/version/config
 ```
 
----
+| Profile | 默认物理组合 | 使用场景 | 必须保持的合同 |
+|---|---|---|---|
+| Default Lakehouse | MinIO + Iceberg；Spark/Sedona batch；Flink stream；PostGIS serving | 标准私有化生产 | snapshot/checkpoint、ACID/幂等、lineage、replay、rollback、RPO/RTO |
+| Cloud Managed | Azure Blob/ADLS Gen2 等云数据湖 + 认证 catalog/table adapter + 云 Spark/Flink-compatible/managed compute adapter | 云部署、弹性和托管运维 | 云 IAM/密钥、region、加密、版本、取消/reconcile、成本和 egress 可见 |
+| Lightweight Integrated | PostGIS 或 DuckDB/Spatial；大对象可外接对象存储 | 单机、边缘、开发和较小数据集 | 逻辑分层、ResourceVersion、质量门、lineage、备份/导出和可重放 |
+| Hybrid | 上述 binding 按数据产品和 task 组合 | 云地协同、迁移和轻重混合 | 同一 Definition、Run、Artifact、DataProductVersion 和策略语义 |
 
-## 性能指标演进
+存储 provider 至少声明 object/blob、table/snapshot、transaction、encryption、versioning、retention 和 egress 能力；计算 provider 至少声明 batch/stream/interactive/spatial、checkpoint、cancel、reconcile、resource、metrics 和 cost 能力。TaskGraph 同时声明 `portable`、`engine_family` 或 `provider_native`：只有 portable operator 可跨引擎编译并比较 golden result，原生代码迁移必须生成新 DefinitionVersion。平台只调度经过 conformance suite 认证且满足 portability constraint 的组合。
 
-| 指标 | v16.0 当前 | v18.0 目标 | v19.0 目标 | v21.0 目标 |
-|------|------------|------------|------------|------------|
-| 并发用户 | 10 | 50 | 200 | 500+ |
-| 请求延迟 P95 | 2s | 1s | 800ms | <500ms |
-| 数据库连接数 | 5 | 50 主 + 100 从 | 50 主 + 100 从 | 50 主 + 100 从 |
-| 任务并发数 | 3 | 3 | 50+ | 50+ |
-| 文件存储 | 本地 5GB | 本地 5GB | MinIO 10TB+ | MinIO 10TB+ |
-| 可用性 | 单点 | 99% | 99.5% | 99.9% |
-| RTO 恢复时间 | 手动 | <30 分钟 | <10 分钟 | <5 分钟 |
-| RPO 数据丢失 | 未知 | <5 分钟 | <1 分钟 | <1 分钟 |
+### 5.2 数据家族策略
 
----
+| 数据家族 | 权威内容存储 | 表/目录策略 | 在线消费 |
+|---|---|---|---|
+| 矢量/关系表/时序事实 | Iceberg + GeoParquet/Parquet | ODS/Silver/Gold 表 | PostGIS 物化产品、SQL/API、文件导出 |
+| 栅格/遥感 | MinIO/S3 COG | STAC Collection/Item；索引、统计和派生事实可入 Iceberg | TiTiler/兼容服务、地图、窗口读取 |
+| 文档/图片/视频/3D/点云 | MinIO/S3 原对象或优化格式 | 资产 manifest、元数据、片段/特征/证据索引 | 受控下载、预览、检索和 MMFE |
+| 实时流 | Flink 是默认流执行器；消息/日志接入和短期状态可使用认证 broker/state backend | checkpoint 后写入 Bronze/Iceberg 或所选云/轻量 table binding | SSE/API；历史查询走版本化分析层 |
+| embedding/模型特征 | 先存 Iceberg/Parquet 并保留模型版本 | 百万级低延迟 ANN 需求成立后再引入 LanceDB/专用向量投影 | RAG、相似检索、训练 |
+| 图/RDF | PostgreSQL 关系和 JSON package 为第一权威 | 只有 competency query、互操作或 SLO 失败时增加图/RDF 读投影 | Resolver/API，不产生第二权威写源 |
 
-## 成本估算 (云厂商部署)
+### 5.3 真值边界
 
-### 阿里云 (华东2 区域)
+- 原始证据真值：Landing/Raw 对象和 source manifest。
+- 分析表真值：元数据中心登记的不可变 TableSnapshot/ResourceVersion；默认 profile 为 Iceberg snapshot/version。
+- 治理与产品权威：OpenMetadata 中的治理 catalog 事实、Gravitino 中的 technical metadata/federation 事实，以及 GDA PostgreSQL Control Ledger 中的 ResourceURN mapping、Policy/Approval、PlatformRun、Action/Outcome 和产品发布证据；三者通过受控 metadata fabric bridge 关联。
+- PostGIS operational 表可以是编辑事务的源系统，但每次有效变更必须生成版本/事件并重新进入 Raw/ODS；不得直接修改 Silver/Gold 真值。
+- PostGIS serving projection 可重建，不是批量分析唯一真值。
+- 遥感发现真值：STAC metadata + 对象 checksum；STAC 不保存影像内容。
+- GWM 输出：带来源和不确定性的派生产品，不是 observed outcome。
 
-| 资源 | v16.0 | v21.0 | 月成本 |
-|------|-------|-------|--------|
-| ECS 计算 | 1×4C8G | 5×4C8G | ¥3000 |
-| PolarDB MySQL | 无 | 2C4G 主从 | ¥1500 |
-| Redis 集群 | 单实例 | 4G×3 节点 | ¥1200 |
-| OSS 对象存储 | 无 | 10TB | ¥2000 |
-| SLB 负载均衡 | 无 | 标准版 | ¥300 |
-| **总计** | **~¥500** | **~¥8000** | **16x** |
+## 6. 模块边界
 
-### 自建 K8s (本地机房)
+| 模块 | 负责 | 不负责 |
+|---|---|---|
+| **Unified Metadata Control Plane** | OpenMetadata governance catalog/quality/generic lineage + Gravitino technical metadata lake/federation + GDA ResourceURN mapping、空间/证据 extension、policy/release evidence | 不自研 catalog/search/connector/lineage UI/technical metadata lake；不保存大对象或复制 Iceberg/STAC 内容真值 |
+| **Engine Provider Layer** | DeploymentProfile、Storage/Table/Compute binding、capability registry、placement、credential reference 和 conformance status | 不拥有产品语义、Run 真值或权限审批 |
+| **DataOps Operating Loop** | DolphinScheduler DAG/CI、quality gate、schedule、complement/backfill、worker group/resource queue、promotion、DataProduct release、SLO、incident、replay、cost/capacity feedback | 不拥有底层存储真值、Agent 行为状态或第二调度器 |
+| **AgentOps Operating Loop** | Temporal Agent workflow、AgentSpec bundle、eval/safety/cost、deployment/canary、AgentRun/ToolCall observation、guardrail、budget、incident、rollback、feedback | 不拥有数据产品真值、元数据 authority 或 DataOps asset scheduler |
+| **Unified Orchestration Control Plane** | `gda-orchestration-gateway` 的 definition/policy/PlatformRun correlation、artifact/lineage evidence、placement resolution；DolphinScheduler/Temporal 的运行时边界 | 不实现 cron、DAG、queue、lease、timer 或 workflow engine；不把 Web/Redis/外部引擎状态当唯一运行真值 |
+| **Data Platform Runtime** | ingest、分层转换、snapshot、发布、回滚、对账及 executor adapters | 不拥有调度状态，不理解自然语言，不自行批准治理变更 |
+| **Data Product Engineering** | blueprint、source/sync、关系/维度/空间模型、Visual/SQL/Notebook、preview/test、publish | 不维护第二套 definition，不绕过调度直接生产发布 |
+| **Governance & Product Control** | 标准、模型、本体、质量、安全、审批和保留策略 | 不另建资产身份/血缘写源，不执行大规模 GIS 计算 |
+| **Asset & Service Operations** | discover/search/map、申请/订阅、consumer impact、usage/SLO/incident/deprecation/retire | 不实现协议 runtime，不把 serving projection 作为分析真值，不暴露临时结果为长期服务 |
+| **GIS Service Control Plane** | Service/Layer/Style/TMS/Cache/Policy definition、provider placement、Deployment/Endpoint revision、publish/validate/activate/rollback、consumer/SLO 生命周期 | 不实现 OGC/STAC/MVT/3D 协议引擎，不保存地图服务数据，不承担 Gateway 路由和 WAF |
+| **GIS Provider Runtime** | pg_featureserv/pygeoapi、Martin、TiTiler、pgSTAC/stac-fastapi、GeoServer 及 SuperMap/ArcGIS/云 adapter 的协议、查询、渲染和切片运行时 | 不拥有 DataProductVersion、策略审批、active pointer 或消费者生命周期；不建立第二调度器 |
+| **Gateway & Service Edge** | OIDC/workload identity、策略执行、路由、WAF、quota/rate limit、cache/ETag、usage 和 request telemetry | 不成为 ServiceDefinition 权威，不允许 provider endpoint 绕过统一入口直接公开 |
+| **MMFE** | 多源多模态 profiling、对齐、融合、冲突和语义产品 | 不成为资产目录、权限或 Iceberg catalog |
+| **Cognitive Runtime** | 任务框定、检索、规划、能力选择、评价和 HITL | 不直接执行耐久长任务；此类工作由 Temporal workflow 调用 typed Action，不成为调度、数据、权限、质量或发布权威 |
+| **GWM Kernel** | 状态、行动、转移、不确定性、情景和证据 claim | 不绕过数据质量、安全、版本和审批门 |
 
-- 服务器 (32C64G × 3): 一次性 ¥60,000
-- 存储 (20TB): 一次性 ¥30,000
-- 网络设备: 一次性 ¥20,000
-- **总计**: ~¥110,000 (一次性) + 电费/运维
+### 6.1 DataOps 与 AgentOps 运营闭环
 
----
+```text
+DataOps:
+DataProductSpec -> Build/CI -> Quality/Security -> Promotion/Release
+ -> DataRun -> Observe/SLO -> DataIncident/Remediation -> Replay/New Product
 
-## 实施时间线
+AgentOps:
+AgentSpecBundle -> Eval/Safety/Cost -> Approval/Promotion
+ -> Shadow/Canary -> AgentRun/ToolCall -> Online Verdict/Guardrail
+ -> Incident/Rollback/Feedback -> New AgentSpecVersion
+```
 
-| 版本 | 主题 | 工作量 | 开始时间 | 完成时间 |
-|------|------|--------|----------|----------|
-| v17.0 | 多模态融合 v2.0 | 4-6 周 | 2026-04-01 | ✅ 2026-04-04 |
-| v18.0 | 数据库 HA | 2-3 周 | 2026-04-04 | ✅ 2026-04-04 |
-| v18.5 | 平台能力 + UI | 2-3 周 | 2026-04-04 | ✅ 2026-04-05 |
-| v19.0 | 上下文工程 + 反馈飞轮 (Datus) | 3-4 周 | 2026-04-08 | ✅ 2026-04-08 |
-| v20.0 | 分布式队列 + 体验优化 | 3-4 周 | 2026-04-08 | ✅ 2026-04-08 |
-| v21.0 | 跨系统血缘 + CLI | 4-5 周 | 2026-04-08 | ✅ 2026-04-08 |
-| v22.0 | L4 持续监控 + 遥感 Phase 2-3 | 1-2 周 | 2026-04-08 | ✅ 2026-04-08 |
-| v23.0 | Roadmap 清零 + DRL 约束 | 1-2 周 | 2026-04-09 | ✅ 2026-04-09 |
-| v24.0 | @SubAgent 路由 + XMI 域标准 | 2-3 周 | 2026-04-18 | ✅ 2026-04-19 |
-| **v24.2** | **STAC 客户端标准化 + 遥感数据源扩展** | **1 周** | **2026-05** | **🎯 2026 H1** |
-| **v25.0** | **Agentic Governance Foundation** | **4-5 个月** | **2026-05** | **🎯 2026 H2** |
-| **v26.0** | **多模态治理 + 数据要素流通** | **5-6 个月** | **2026-12** | **🎯 2027 H1** |
-| **v27.0** | **平台化 + 生态化 + 搁置项清零** | **6-12 个月** | **2027-07** | **🎯 2028 H1** |
+DataOps 管理数据产品的持续交付与可靠性；AgentOps 管理 Agent bundle 的评测、部署、安全、预算和在线行为。MLOps/LLMOps 是 AgentOps 的模型与 Prompt 子域，PlatformOps/SRE 管理共享基础设施，三者不能替代这两个领域闭环。
 
-**总计**: v12.0 → v24.0 全部完成。v25.0-v27.0 是基于 2026 Q2 技术四看刷新后的中长期规划，主线叙事从"Data Agent 自主性演进"升级为"Agentic Spatial Data Governance Platform"。
+两者共用 `ResourceURN`、不可变 version、`SubjectContext`、`Run/Artifact` 关联、`PolicyDecision`、`ApprovalCase`、`Incident/Problem`、`SLO`、`ChangeSet`、`AuditEvent` 和 transactional outbox，但保留领域状态机：`DataRun` 不能替代 `AgentRun`，`AgentRun` 也不能替代数据生产 Run。AgentOps 可以提交 DataOps Run；Agent 反馈、安全事件和 `DataDemand` 可以回流 DataOps，触发数据修复、重算或新产品版本。
 
----
+## 7. 关键架构决策
 
-## 关键文件清单 (v17.0-v21.0)
+详细理由见 [ADR-001：可插拔地理空间存储、计算与服务边界](architecture-decisions/adr-001-geospatial-lakehouse-and-postgis-boundary.md)、[ADR-002：统一元数据控制面](architecture-decisions/adr-002-unified-metadata-control-plane.md)、[ADR-003：统一调度与作业控制面](architecture-decisions/adr-003-unified-orchestration-and-job-control-plane.md)、[ADR-004：传统平台能力下限与 Human/Agent 双入口](architecture-decisions/adr-004-capability-floor-and-dual-entry-agentic-platform.md)、[ADR-005：DataOps 与 AgentOps 双运营闭环](architecture-decisions/adr-005-dataops-and-agentops-operating-loops.md)、[ADR-006：OpenMetadata + Gravitino Metadata Fabric](architecture-decisions/adr-006-openmetadata-governance-and-active-metadata-platform.md)、[ADR-007：DolphinScheduler + Temporal 编排平台](architecture-decisions/adr-007-dolphinscheduler-temporal-orchestration-platform.md) 和 [ADR-017：GIS 服务发布控制面与 Provider Runtime](architecture-decisions/adr-017-gis-service-publishing-control-plane-and-provider-runtime.md)。
 
-### v17.0 多模态融合 v2.0 (新增 ~15 个文件)
+| 决策 | 选择 | 放弃/延后 |
+|---|---|---|
+| 应用形态 | 模块化单体控制面 + 可插拔计算运行时 | 全面微服务 |
+| 存储与计算 | 默认 MinIO + Iceberg、Spark/Sedona + Flink；支持认证云 provider 与 PostGIS/DuckDB 轻量存算一体 profile | 固定厂商/引擎；每个后端复制一套 pipeline |
+| 空间在线服务 | PostGIS/Martin 承担 serving projection 和编辑型工作负载 | 把 PostGIS 当无限扩展的数据湖 |
+| 栅格 | COG + STAC；派生表和统计进入 Iceberg | 把大栅格二进制塞入关系表 |
+| 分层 | ODS/DWD/DWS/ADS 映射 Bronze/Silver/Gold/Serving | 两套并行分层术语和物理副本 |
+| 控制元数据 | OpenMetadata 是治理 catalog，Gravitino 是 technical metadata lake/federation；GDA PostgreSQL 仅保存 ResourceURN mapping、control/evidence contracts；物理系统通过 fabric bridge/harvester 同步 | 多 registry/JSONB 并行写；自建第二个 catalog/technical metadata lake/图/RDF 写权威 |
+| 调度与作业 | DolphinScheduler 是 DataOps DAG/schedule/backfill/worker-resource runtime；Temporal 是 durable Agent/GWMOps runtime；GDA 只保留 PlatformRun correlation | Web 内 APScheduler、`asyncio.create_task`、`TaskQueue`、Dagster 或自研 scheduler/workflow runtime 作为生产运行时 |
+| 元数据与调度事件 | transactional outbox + 幂等 consumer；首期不要求 Kafka | 无事实依据先上全量流平台 |
+| 产品入口 | Discover/Build/Operate/Govern 四工作面 + 上下文 Agent；Web/Map/Canvas、Visual/SQL/Notebook、API/SDK、CLI/TUI、MCP/A2A 共用 `CapabilitySpec`/definition；`llm_mode=disabled` 完整可用 | 对话或 LLM 取代专业工作台；入口各自实现业务逻辑；继续增加孤立基础平台 Tab |
+| 能力下限 | 传统平台代表任务作为 parity gate，Agentic 路径另设 uplift gate | 复制旧菜单/中间件；以新能力数量掩盖基础任务缺口 |
+| 计算路由 | capability + SLO + cost placement；默认 batch=Spark/Sedona、stream=Flink，轻量=PostGIS/DuckDB | 用数据量阈值或默认引擎名称硬编码所有任务 |
+| 发布 | DataOps 以 DataProductVersion 驱动 PostGIS/STAC/API/AI/GWM 投影；AgentOps 以 AgentDeploymentRevision 驱动 Agent bundle 灰度/回滚 | 各工具自行生成无版本结果 |
+| GIS 服务发布 | GDA Service Control Plane 持有定义/版本/部署/消费者/SLO；成熟 provider 负责协议与渲染；Gateway 负责入口安全和流量 | 让 GeoServer/SuperMap/ArcGIS/APISIX 配置成为平台权威；自研 OGC/STAC/MVT/3D server |
+| GIS provider 基线 | pg_featureserv/pygeoapi + Martin + TiTiler + pgSTAC/stac-fastapi；GeoServer、SuperMap、ArcGIS 和云能力作为经认证兼容 provider；3D 以 3D Tiles 开放交换为默认 | 单一 GIS server 承担所有协议、调度、治理和生命周期；用 endpoint 存在代替 conformance |
+| 运营闭环 | DataOps 与 AgentOps 共用 Metadata/Orchestration/Policy/Artifact/Audit/Incident 合同 | 仅有局部 registry、eval、trace 或 CI job 就宣称 Ops 完成 |
 
-- `data_agent/fusion/temporal_alignment.py` (~350 行)
-- `data_agent/fusion/semantic_enhancement.py` (~400 行)
-- `data_agent/fusion/conflict_resolution.py` (~380 行)
-- `data_agent/fusion/explainability.py` (~320 行)
-- `data_agent/toolsets/fusion_v2_tools.py` (~200 行)
-- `data_agent/api/fusion_v2_routes.py` (~180 行)
-- `frontend/src/components/datapanel/FusionV2Tab.tsx` (~250 行)
-- 测试文件 4 个 (~800 行)
+首期 PostgreSQL 控制表、operational 表和 PostGIS serving 表可以同集群部署，但必须使用独立 schema、角色、连接池和备份/恢复边界；只有资源争用、RPO/RTO 或故障隔离基准失败时才物理拆库。
 
-### v18.0-v21.0 分布式架构 (新增 ~40 个文件)
+## 8. 主路线与强制退出门
 
-- `data_agent/db_engine_async.py` (~150 行)
-- `data_agent/celery_app.py` + tasks/ (~400 行)
-- `data_agent/storage/object_storage.py` (~180 行)
-- `data_agent/archival/cold_storage.py` (~200 行)
-- K8s 配置 15+ 个 YAML 文件
-- 数据库迁移 3 个 (059-061)
+```text
+AR-0 Architecture / Schema / Runtime Truth
+  -> AR-1 Unified Metadata + Orchestration Control Planes
+  -> AR-2 Source / Ingestion + Geospatial Lakehouse Vertical Slice
+  -> AR-3 Data Product Engineering + Governance Workbench
+  -> AR-4 Asset / GIS Service / Spatial Experience Operations
+  -> AR-5 AgentOps Runtime + UX Uplift
+  -> AR-6 MMFE + Data for AI
+  -> AR-7 GWM Enhancement
+  -> AR-8 Scale / High-throughput Realtime / Federation / Ecosystem (conditional)
+```
 
----
+### AR-0 — Architecture, Schema and Runtime Truth Freeze（当前，P0）
 
-## 总结
+**目标**：停止概念、schema、配置和完成状态漂移，为两个控制面以及 DataOps/AgentOps 运营闭环建立可信地基。
 
-本次 roadmap 整合完成了 Datus.ai 对标分析的融入：
+交付：
 
-**1. v19.0 上下文工程 + 反馈飞轮 (Datus 对标, P0)** — 统一上下文引擎 + 结构化反馈闭环 + 语义模型标准化 + 参考查询库
+- 开发、测试、Compose、Kubernetes 和已知客户环境的 schema/config fingerprint；`schema_migrations` 实际记录与缺失表/列报告。
+- 迁移机制前向修复：迁移 ID/文件名/checksum 唯一，重复版本被显式拒绝，失败阻断 Job/启动，禁止静默 skip；不重写已执行历史。
+- 当前部署组件、数据存储、表、bucket/prefix、job/scheduler、API、registry 和 owner 清单。
+- DeploymentProfile、EngineCapability、StorageBinding、TableFormatCatalogBinding、ComputeBinding、placement 与 credential/cost/SLO 合同；默认、云托管和轻量 profile 的能力矩阵。
+- `CapabilitySpec` registry：P0 capability 的 JSON Schema/semantic type、query-command-long-running、side effect/risk、SubjectContext/policy、idempotency/preview/RunRef/Artifact、OpenAPI/AsyncAPI/MCP projection 与 Web/API/SDK/CLI/TUI/Notebook/Agent parity matrix；`llm_mode=disabled|optional|required_for_agent_feature` 及无 LLM 环境测试 profile。
+- DataOps/AgentOps 术语、对象、责任矩阵、环境晋级、Release/Promotion、Incident/Problem、SLO/SLI、on-call、审计和反馈合同。
+- 术语表：Asset、Dataset、Table、Product、Snapshot、Run、Artifact、Evidence 的唯一定义。
+- ADR-001 至 ADR-007、ADR-017、分层命名、控制面边界、数据保留和真值边界；其中 ADR-006 冻结 OpenMetadata + Gravitino metadata fabric，ADR-007 冻结 DolphinScheduler + Temporal，ADR-017 冻结 GIS 服务控制面、provider/Gateway 边界和首期框架矩阵，旧 ADR-002/003 的自建框架选型已被取代。
+- GIS 服务事实盘点与准入矩阵：当前 REST/MVT/STAC endpoint、Martin/PostGIS、样式、缓存、Ingress/Gateway、商业 GIS/云 GIS 依赖、消费者和外网暴露面；冻结 Feature/MVT/COG/STAC/legacy OGC/3D/Process 代表服务、数据规模、并发、冷启动、p95/p99、RPO/RTO、兼容和安全验收集。
+- OpenMetadata、Gravitino、DolphinScheduler、Temporal 的独立 namespace/database、OIDC/workload identity、backup/restore、OTel、Helm/IaC、版本 pin、升级 sandbox 和责任人清单；不以 docker-compose 能启动作为生产就绪证据。
+- 传统平台能力基线、代表任务清单、Human/Agent 双入口原则和 parity/uplift 指标基线。
+- SubjectContext、tenant/owner、service identity、secret reference 和 policy enforcement matrix。
+- 自然资源首条 vertical slice 的源数据、标准版本、预期产物和 golden checks。
+- CI/CD/config 基线；数据库集成测试必须证明连接真实 PostGIS，而不是走未配置 fallback。
+- metadata freshness、schedule lag、queue age、run success、RPO/RTO、吞吐和容量的试点 SLI/SLO 冻结。
+- data freshness、quality pass rate、release lead time、change failure rate、restore time、Agent eval pass rate、online safety verdict、tool error rate、intervention rate、token/cost budget 和 agent incident MTTR 的试点基线。
 
-**2. v20.0 增补体验优化项 (Datus 对标, P2)** — 多 LLM YAML 一键切换 + Agentic/Workflow 双模式 + 轻量部署 (DuckDB Lite)
+退出门：
 
-**3. v21.0+ 增补 CLI 终端入口 (Datus 对标, P3)** — gis-agent CLI 三命令设计 (chat/context/exec)
+- 所有目标环境 schema 达到已批准 fingerprint；重复迁移、checksum 漂移和失败迁移在 CI/部署中 fail closed。
+- 所有“已完成”能力都有代码、真实后端、测试或运行产物证据。
+- 元数据、调度、湖仓、STAC、MMFE、治理和 GWM 的“配置/合同/运行”状态被分别标注。
+- 每个生产数据产品和 Agent deployment 都能映射到 owner、definition version、approval、SLO、incident policy、rollback pointer 和运行证据。
+- 代表 P0 capability 的 Web/API/SDK/CLI/TUI/Notebook/Agent parity matrix、OpenAPI/AsyncAPI/MCP projection 和 `llm_mode=disabled` 测试计划均已冻结；不能以聊天 prompt、页面点击或 notebook cell 充当唯一接口。
+- metadata/lineage/workflow/task API 的双租户越权路径已有回归测试和修复计划。
+- 首条数据链路 owner、输入、规模、敏感级别和验收数据冻结。
 
-**4. 标杆对标表扩展** — 新增 8 行 Datus 对标能力追踪 (上下文引擎/反馈闭环/语义模型/参考查询/多LLM/双模式/CLI/轻量部署)
+### AR-1 — Unified Metadata and Orchestration Control Planes（P0）
 
-**5. 演进逻辑** — v18.5 (平台能力) → v19.0 (上下文工程, **无外部依赖可立即启动**) → v20.0 (分布式+体验) → v21.0+ (生产级+CLI)
+**依赖**：AR-0 schema/config truth 退出门通过。
 
-**6. 核心策略调整** — 从"Agent 更聪明"到"Agent 看到的上下文更好"。学习 Datus 的上下文工程方法论和反馈飞轮设计，嫁接到已有的空间智能深度上。
+**目标**：先建立所有数据生产、Agent 和 GWM 都必须复用的平台控制脊柱；采用 OpenMetadata + Gravitino、DolphinScheduler 和 Temporal，不建设新的孤立 registry、scheduler、queue 或 durable workflow runtime。
 
-**7. Hermes 对标纳入观察池** — 将 learning loop、用户画像、历史会话召回、执行后端抽象、Agent 执行面安全栈列为后续平台化候选项，但不进入当前版本承诺，避免分散垂直场景交付主线。
+统一元数据最小交付：
+
+- OpenMetadata production foundation：独立 PostgreSQL/OpenSearch、OIDC、backup/restore、health/metrics、版本 pin；OpenMetadata 是治理 catalog、owner/steward、domain、glossary、classification、generic lineage 和质量的写权威。
+- Gravitino foundation：metadata store、metalake/catalog namespace、provider binding、OIDC、backup/restore、health/metrics、版本 pin；它承担 technical metadata lake/federation，不替代治理 catalog。
+- `gda-metadata-fabric-bridge`：ResourceURN/entity/object mapping、GIS spatial/temporal/evidence extension、OpenLineage emitter、provider connector capability matrix 和 bridge replay；GDA PostgreSQL 只保留 control/evidence ledger，不能再充当通用 catalog。
+- ResourceURN、ResourceVersion、PhysicalLocation、SchemaVersion、DataContractVersion、PolicyBinding、QualityAssessment、LineageEvent 和 DataProductVersion；治理字段引用 OpenMetadata entityLink/version，技术 catalog 字段引用 Gravitino metalake/catalog/object，不复制完整 metadata JSON。
+- DeploymentProfile、EngineProvider/Capability、StorageBinding、TableFormatCatalogBinding、ComputeBinding 和 PlacementDecision 也进入统一资源/版本模型。
+- PostGIS/DuckDB schema、对象存储 manifest、Iceberg/云湖表 snapshot、STAC、workflow/job 的 harvester/adapter；每次采集记录 provider、region、source revision、observed_at、freshness、hash 和 tombstone。
+- Authority matrix、metadata change outbox、OpenMetadata/Gravitino search/read bridge、lineage/impact API；动态 filter/sort/layer 只允许服务端枚举。
+- `MetadataManager`、`data_catalog`、intake 和 JSONB/edge lineage 的 crosswalk；新链路停止 generic/technical metadata 多写源，旧接口通过 metadata fabric bridge facade 兼容。
+- repository 层统一 SubjectContext、RLS GUC 和显式授权，血缘节点/边继承资源权限。
+
+统一调度最小交付：
+
+- DolphinScheduler production foundation：self-hosted API/master/worker/alert、metadata DB、project/tenant/worker group/resource queue、OIDC/workload identity、backup/restore 与 metrics；它是唯一 DataOps process/schedule/complement/backfill/task framework。
+- PlatformDefinitionVersion、OrchestrationClass、PlatformRun、FrameworkAttemptObservation、Artifact、RunEvent/outbox 和 `gda-orchestration-gateway`；gateway 只做 policy gate、ProcessDefinition compiler、external run correlation、artifact/lineage evidence，不实现 cron、DAG、lease、queue 或 timer。
+- DataRun 与 AgentRun/TaskStep/ToolCall 的关联合同，以及 DataIncident、AgentSafetyIncident、Release、DeploymentRevision、EvaluationBinding、OnlineVerdict、Budget 和 Observation 最小对象。
+- DataOps 统一编译为 DolphinScheduler process/task；OpenMetadata/Gravitino ingestion、Source/Sync、Spark/Sedona、Flink deployment/reconcile、PostGIS/STAC projection、quality、publish 和 complement/backfill 不再经 APScheduler 或 `TaskQueue` 运行。
+- 平台与 DolphinScheduler 使用对应 idempotency/correlation key；DolphinScheduler 负责自身 process/task queue、worker group、launch/retry。Redis 只做 cache/progress fan-out，不保存 queue payload 或唯一运行状态。
+- DuckDB/local、PostGIS 和 external job 三类基础 executor adapter；Spark/Sedona batch、Flink stream 和云计算均通过 DolphinScheduler task/provider contract 接入；长任务 API 只创建 PlatformRun，不再用进程内 background task。
+- capability/SLO/cost placement resolver；Run 固化实际 storage/compute binding、engine/version、region 和配置，重放不得静默切换引擎。
+- input/output Artifact 自动登记元数据并生成 run lineage。
+
+**Temporal 的引入边界**：AR-1 只冻结 namespace、identity、SDK、workflow conventions 和 integration test harness，不迁入生产 Agent/GWM 任务。AR-5/AR-7 按 ADR-007 将 Agent approval/tool/action 与 GWM rollout/evaluation 迁入 Temporal；它不能替代 DolphinScheduler 的 DataOps scheduling。
+
+退出门：
+
+- PostGIS/DuckDB、Iceberg/云湖表、STAC 和对象存储中的同一试点资源可解析到唯一 ResourceURN/OpenMetadata entity/Gravitino object/Version/Location，重复采集幂等，schema drift 可见。
+- Gravitino 对 MinIO/Iceberg、Spark/Sedona、Flink 完成真实 create/read/write/schema evolution/snapshot/cancel/reconcile/lineage conformance；失败时自动保留认证 Iceberg REST catalog，不允许 Gravitino 进入该 profile 的唯一生产路径。
+- DolphinScheduler schedule、manual trigger、complement/backfill、retry、cancel、worker group/resource queue 和 DataOps UI 运行真实 vertical slice；APScheduler/`TaskQueue`/Dagster 不再创建生产 DataOps run。
+- `PlatformRun`、DolphinScheduler process/task、Spark/Flink/cloud job 和 Artifact 可双向关联；master/worker/API 重启后可 reconcile，迟到回调不能推进产品状态。
+- retry、cancel、checkpoint/replay 不产生重复 Artifact 或 active product version。
+- 双租户无法发现、遍历、运行、取消、重试或读取对方 Resource/Run/Artifact。
+- Web、DolphinScheduler、OpenMetadata、Gravitino、worker 和 bridge 重启后不丢版本、产品、血缘、PlatformRun correlation 或审批状态。
+- DataOps 状态可从 DolphinScheduler/OpenMetadata/Gravitino/GDA evidence 恢复；任何 release/deployment 都能从事件、Artifact、评测、策略、incident 和 rollback pointer 重放。Temporal durable recovery 在 AR-5/AR-7 单独验收。
+
+### AR-2 — Source, Ingestion and Geospatial Lakehouse Vertical Slice（P0）
+
+**依赖**：AR-1 两个控制面的最小合同通过故障注入和隔离验收。
+
+**目标**：用统一元数据和统一调度跑通一条真实自然资源 DataOps 链，并建立可扩展的 Source/Sync 基础，不依赖 LLM 和 GWM。
+
+链路：
+
+```text
+地类图斑源数据
+ -> Raw object + ingest manifest
+ -> ODS/Bronze source snapshot
+ -> DIM region/date/land_class/source
+ -> DWD/Silver land_patch + land_change
+ -> DWS/Gold region_period_change + coverage
+ -> ADS PostGIS map/API + STAC/DataProduct manifest
+```
+
+交付：
+
+- SourceDefinition、CredentialReference、SourceCapability、SyncDefinition/Version、SyncRun、Cursor/Watermark、SchemaDriftEvent 和 Reconciliation。
+- 数据库、对象存储/空间文件、HTTP/STAC 三类代表 source 的连接、凭据、连通、发现、preview、profile 和 owner 登记。
+- 全量/增量微批的 Append/Overwrite/Merge 策略，以及至少一个真实 CDC 或事件流 source 通过 Flink 写入版本化 Bronze；覆盖 watermark/offset、checkpoint、迟到/乱序、源端删除、幂等、对账、重放和失败恢复。
+- `DriveTransfer` 云盘客户端：`DriveEndpoint/FolderBinding/TransferSession/TransferCheckpoint/FileRevision/IntegrityVerdict/ArtifactManifest/IngestRequest`、上传/下载/目录同步、S3 multipart pre-signed URL 与认证 NAS/SMB/FTP/SFTP provider、pause/resume、part/full checksum、输入 fingerprint、配额、quarantine、bundle completeness、DolphinScheduler 入湖 process；本地 checkpoint 仅供恢复，服务端 session/manifest/audit 是真值。首期以真实大型空间 bundle 验收，不宣称未测试的 TB 规模。
+- Default Lakehouse、Cloud Managed、Lightweight Integrated 三类 DeploymentProfile，以及 object/table/catalog/compute/serving binding 的环境化配置。
+- 默认命名基线：Iceberg 使用 `gis_ods`、`gis_dim`、`gis_dwd`、`gis_dws` namespace；PostGIS 使用 `ads_<domain>` serving schema；云/轻量 provider 用 namespace mapping 保持相同逻辑层；现有 `agent_*` 控制表先映射、不做无收益搬迁。
+- 通用 ingest manifest、JobDefinitionVersion、Run/Attempt、Artifact、snapshot 和 layer transition contracts。
+- 默认 profile 的真实 MinIO/Iceberg writer、Spark/Sedona batch executor 和 Flink stream executor，不再只生成 publish spec；Flink 首期覆盖受控流/增量链、checkpoint、cancel、reconcile 和幂等 sink，不在此阶段承诺未验证的高吞吐 CDC SLO。
+- DataOps 最小闭环：release/promotion、DataSLO、数据观测、DataIncident、根因/修复、replay 和新 DataProductVersion。
+- 轻量 profile 以 PostGIS 或 DuckDB/Spatial 跑通同一逻辑 JobDefinitionVersion；至少一个 Azure 代表 adapter 完成 storage identity/读写/version 和 compute submit/status/cancel 的认证 smoke，具体托管服务由部署 profile 选择。
+- Silver 标准化：CRS、geometry、代码表、单位、主键、时间和行政区关联。
+- Gold 聚合和 PostGIS/STAC 发布；从同一 snapshot 一键重建和回滚。
+- CLI/API/人工触发调用同一 JobDefinitionVersion 和 pipeline implementation；所有 DataOps 执行由 DolphinScheduler 接管并关联同一 PlatformRun。
+
+退出门：
+
+- 三类代表 source 均完成 credential rotation、schema drift、网络中断和重复摄取测试；connector 支持矩阵只登记真实认证版本。
+- 云盘客户端在网络中断、进程/设备重启、session/credential 过期、源文件变更、并发同名上传和 commit 前崩溃后，只能从已验证分片恢复或安全拒绝；part/full checksum 与源一致，失败文件停留 quarantine，不能进入 Bronze active snapshot；Agent 未获本地路径/操作/期限授权不能启动传输。
+- 原始 bundle checksum、Bronze/Silver/Gold snapshot 和 serving version 可追溯。
+- 资源、位置、合同、质量、Run/Attempt、Artifact 和 column/object lineage 可从统一元数据中心解析。
+- 行数、面积、行政区/地类汇总守恒；geometry、CRS、值域和拓扑检查通过。
+- 同一输入和版本重复运行结果 hash 一致；失败可从 checkpoint 恢复。
+- Iceberg time travel、产品回滚、PostGIS 重建和 STAC 发现完成真实后端验证。
+- 默认湖仓与轻量 profile 对同一 golden input 产生语义等价的 ResourceVersion/DataProductVersion；差异在批准容差内并可解释。
+- provider conformance suite 阻止缺少必需 snapshot/checkpoint、cancel/reconcile、权限、lineage、metrics 或 recovery 能力的 engine binding 进入生产。
+- 完成 Raw、所选 TableBinding、control metadata 和 serving/STAC projection 的备份恢复与 rebuild 演练，达到该 DeploymentProfile 在 AR-0 冻结的 RPO/RTO。
+- Source/Sync、DataRun、质量、SLO、DataIncident、remediation、replay 到 DataProductVersion 的全链路可审计；故障注入后可恢复并防止重复发布。
+- 未通过质量门的数据不能发布到 ADS、AI 或 GWM。
+
+### AR-3 — Data Product Engineering and Governance Workbench（P0）
+
+**依赖**：AR-2 真实湖仓链已证明控制面合同。
+
+**目标**：补齐传统平台已经具备的规划、建模、开发、试运行、质量、安全和审批专业工作流，并把它们收束到统一 definition 和产品生命周期。
+
+核心对象：
+
+```text
+ResourceVersion -> Run -> Artifact -> QualityAssessment -> ChangeSet
+ -> Approval -> DataProductVersion -> ConsumptionProjection
+LineageEvent connects every transition.
+```
+
+交付：
+
+- DataProductBlueprint：domain/owner/source、layer/storage placement、model/contract、quality/security/SLO、pipeline/projection、retention/cost。
+- DataOps release manifest：环境 promotion、owner/on-call、DataSLO、quality/contract gate、incident policy、rollback pointer 和 cost/capacity budget。
+- 概念/逻辑/物理、关系/维度/空间模型的目录、版本、diff、兼容性、DDL/Iceberg deployment 和 rollback。
+- 同一 JobDefinitionVersion 的 Visual DAG、SQL、Python/Notebook、API/SDK、CLI/TUI 和 Agent tool 编辑/调用入口；typed operator registry、portability class/provider compiler、schema propagation、preview sandbox、中间结果、test 和 publish changeset。
+- Notebook/脚本生产化：代码、依赖、运行镜像、输入版本、资源规格和 owner 快照；交互 session 不直接成为生产定义。
+- 统一 Authority/Policy/Contract/Owner/Steward resolver，不另建资源身份和血缘写源。
+- 数据合同和 schema evolution policy；RuleVersion/RuleSet/AssessmentRun/Issue/Remediation/Recheck，质量门绑定层和产品。
+- 行政区、地类、时间和数据源一致维度；CanonicalID、代码集有效期、匹配/合并和变更影响。
+- 字段/对象级分类分级、resource/column/row/spatial/temporal/action/purpose policy、静态/动态脱敏和发布审批。
+- 通用 ApprovalCase/Inbox：发布、数据申请、敏感操作和模型/规则变更的审批、委托、超时、通知和审计；不以聊天 HITL 替代正式流程。
+- 血缘影响分析、质量趋势、消费审计、SLA 和 retention/archive。
+
+退出门：
+
+- 一个模型可从 blueprint 生成、以 Visual/SQL、Notebook、API/SDK 或 CLI/TUI 试运行、发布、调度、观察日志并回滚；不同入口解析到同一 definition/version，并在无 LLM profile 通过相同验收。
+- schema/model 不兼容变更产生 consumer impact 和 migration plan，不能直接上线。
+- Notebook 生产 Run 在干净 worker 上按固化依赖重放，结果不依赖用户交互环境。
+- 一次治理问题从发现、修复、评价、审批到新产品版本全程可审计。
+- DataOps CI/CD 能从 definition diff 触发 contract/quality/security test、审批、promotion、部署观察、事故处置和 replay；发布失败不会产生 active DataProductVersion。
+- 越权、缺 owner、缺 lineage、质量失败、schema 不兼容和未审批变更无法发布。
+- Visual/SQL/Notebook/API/SDK/CLI/TUI 路径在同一代表任务上通过传统能力 parity gate；Agent path 只在该 gate 后验证 uplift。
+
+### AR-4 — Asset, GIS Service and Spatial Experience Operations（P0）
+
+**依赖**：AR-3 可稳定发布 DataProductVersion；ADR-017 的 provider benchmark、ownership 和安全边界通过 AR-0 冻结门。
+
+**目标**：补齐传统平台的资产发现、申请订阅、API/GIS 服务、二维/三维地图和运营闭环，并把 GIS 发布从若干 endpoint 提升为可治理、可替换、可观测、可回滚的产品能力。
+
+#### AR-4.1 Discover 与消费生命周期
+
+- 通过 OpenMetadata catalog/search/lineage API + GDA spatial/policy bridge 提供关键词/分类/owner/质量/地图范围/时间搜索；自然语言检索是可选增强，不再开发平行 catalog search。
+- 产品详情、地图/时间 preview、related products、适用范围、draft/active/deprecated/retired、使用/热度/评分/问题/成本/freshness、申请/审批/订阅/到期、版本变更和废弃通知。
+- `ConsumerBinding` 固化 consumer、purpose、scope、Product/Service version range、credential、quota、expiry 和 compatibility；上游变更先做影响分析再允许 promotion。
+
+#### AR-4.2 GIS Service Control Plane
+
+- 实现 `GISServiceDefinitionVersion`、`LayerDefinitionVersion`、`StyleDefinitionVersion`、`TileMatrixSetDefinitionVersion`、`CachePolicyVersion`、`ServicePolicyBinding`、`ServiceDeploymentRevision`、`EndpointRevision`、`ConsumerBinding`、`ServiceSLO`、`RollbackPointer` 及状态机 `draft -> validating -> approved -> deploying -> active -> deprecated -> retired`，事故可进入 `suspended -> rollback`。
+- 发布只能引用 active/approved `DataProductVersion`；记录 input snapshot、schema/CRS/extent、quality/security verdict、style/TMS/generalization、provider/version/config fingerprint、Artifact hash、approval、endpoint、consumer impact 和 rollback pointer。
+- 构建新 projection 和 deployment revision，经 schema/protocol/security/visual/performance validation 后原子切换 active pointer；禁止原表就地发布、共享可变 style、覆盖对象 key 或让临时表/Notebook 结果直接上线。
+- 所有 publish/rebuild/warmup/validate/rollback/retire 都创建统一 `PlatformRun`；数据构建由 DolphinScheduler 执行，Gateway/provider 只返回外部 deployment/job reference 并支持 reconcile。
+
+#### AR-4.3 Provider Runtime 与兼容生态
+
+- 默认开源路径：PostGIS + pg_featureserv/pygeoapi、Martin、COG + TiTiler、pgSTAC + stac-fastapi；按 ADR-017 capability matrix 分配 Feature、MVT、Raster、STAC 和 Process 职责，不自研 GIS server。
+- GeoServer 作为 WMS/WFS/WMTS/WCS、SLD/复杂制图和旧客户端兼容 provider，不成为所有新服务的默认控制面。
+- SuperMap iServer/iObjects、ArcGIS Enterprise 和云 GIS 通过 `GISServingProvider` adapter 接入；ProviderManifest 固化许可、版本、协议、CRS、filter/style/transaction/3D、部署、监控和资源限制。
+- 3D 以 OGC 3D Tiles + 对象存储/Gateway 为默认开放交换；S3M、I3S 分别作为 provider capability，点云/mesh/倾斜摄影构建使用经认证 DataOps executor。scene、LOD、tileset、坐标、style 和时间版本必须显式建模。
+- 时空观测和实时订阅使用 OGC API EDR/SensorThings capability profile，pygeoapi、FROST-Server 或云 IoT provider 逐项认证；Flink/checkpoint 后的产品投影是历史消费依据，provider/broker 不成为第二历史真值。
+- OGC API Processes 只提供协议 facade；执行映射到受控异步 `PlatformRun`/DolphinScheduler process，禁止 GIS provider 自建隐藏 scheduler、queue 和结果真值。
+- file/export/offline package 以版本化 Artifact 发布，GeoPackage、FlatGeobuf、GeoParquet、COG、PMTiles、MBTiles 及商业离线包按 capability 认证；大文件交付复用 `DriveTransfer`/multipart、checksum、expiry 和 ConsumerBinding。
+
+#### AR-4.4 Gateway、安全与缓存一致性
+
+- 所有公开 endpoint 统一经过 Gateway；私有化候选基线为 Apache APISIX，云 profile 可替换为 Azure API Management 等认证 adapter。provider 使用 workload identity 和内网策略，不直接暴露公网。
+- SubjectContext/PolicyDecision 向 provider 下推 resource、column、row、spatial、temporal、action 和 purpose obligation；无法安全下推时由受控 projection 隔离，不能降级为仅隐藏 UI。
+- 版本进入 route、URL/TileJSON/STAC link、ETag 和 cache key；active pointer 切换触发精确 purge 或 namespace rollover。Redis/CDN/GeoWebCache/对象缓存均可丢且可重建，不保存权限或发布真值。
+- 统一 auth、WAF、quota/rate limit、signed URL、request/response schema、usage/cost、log/metric/trace、correlation id、审计和 abuse protection；错误、capabilities、tile metadata 和 preview 也必须通过权限检查。
+
+#### AR-4.5 空间体验与确定性多入口
+
+- HumanView、Map/Scene、AgentContext、AIDataset、GWMObservation 都是引用同一 DataProductVersion 的可重建投影。
+- NL2Semantic2SQL、SQL/空间分析、表格/图表/2D/3D 地图联动支持保存、分享和 replay；结论绑定查询/算法、语义口径、数据/服务/样式版本和权限。
+- Web/Map、API/SDK、CLI/TUI、Notebook 和 Agent 共用 publish/validate/diff/approve/deploy/observe/rollback/retire `CapabilitySpec`。`llm_mode=disabled` 时仍可完成全部 P0 发布和运维；Agent 只能生成可审查 ChangeSet。
+- Operate 工作面统一展示 source/sync、Run/Attempt、quality issue、DeploymentRevision、endpoint/consumer、service SLO、缓存、告警、成本和 recovery；支持 Compose/K8s install/upgrade/rollback/backup-restore preflight。
+
+退出门：
+
+- 用户能在目录和地图发现产品，完成申请、审批、订阅、消费、版本变更通知、废弃迁移和到期回收；每个 endpoint 可追溯到 consumer、policy、DataProductVersion、DeploymentRevision 和 owner。
+- 同一 DataProductVersion 端到端发布 OGC API Features/Tiles、MVT、COG/raster tile、STAC、versioned export 和 AgentContext；启用相应 profile 时，legacy OGC、3D Tiles、EDR/SensorThings 代表服务也必须通过。协议用 OGC CITE/对应 conformance、STAC validator、TileJSON/style/COG/3D Tiles validator 和平台 contract tests 验收，不能只做 HTTP 200 smoke。
+- 发布在持续流量下完成新 revision 构建、缓存预热、原子切换和回滚；客户端不会观察到跨 revision 的 layer/style/schema 混合，失败发布不改变 active pointer，projection 可从固定 ProductVersion 重建。
+- resource/column/row/spatial/temporal/purpose 的允许与拒绝用例覆盖 API、Feature、tile、STAC、下载、preview、capabilities 和错误响应；provider 公网直连和未授权数据泄漏为零。
+- provider conformance suite 覆盖 capability discovery、schema/CRS/axis order、geometry/empty/invalid、filter/paging、style/label/scale、cache invalidation、cancel/reconcile、restart/failover、metrics、backup/restore 和升级回滚；未认证组合不能被 placement resolver 选择。
+- OGC API Processes 请求产生统一 RunRef，可在 Web/API/CLI/TUI 中观察、取消、重试和追溯；DolphinScheduler 是唯一 DataOps 执行真值。
+- 在无 LLM 环境中，用户可通过 Web/API/SDK/CLI/TUI 完成定义、preview、diff、审批、发布、监控、回滚和退役，产物与 Agent 提交相同 ChangeSet 时等价。
+- 智能问数或空间分析结果可从固定语义/查询/算法、数据/服务/样式版本重放；临时表、交互 Notebook 和 provider 配置不能绕过发布合同。
+- 单机/Compose/K8s 目标环境通过安装、升级、provider 故障隔离、Gateway 降级、缓存重建、projection rebuild、回滚和联合恢复演练。
+- DataOps Operate 闭环覆盖产品 freshness/quality/SLO、服务 availability/latency/error/cache staleness、告警、DataIncident/Problem/RCA、remediation、backfill/replay、成本和容量；事故修复生成新的可审计 DataProductVersion 或 ServiceDeploymentRevision。
+
+### AR-5 — AgentOps Runtime and UX Uplift（P1）
+
+**依赖**：AR-1 至 AR-4 的确定性专业能力和代表任务通过 parity gate。
+
+**目标**：在 DataOps 通过 parity/control gate 后，建设完整 AgentOps 生命周期；Agent 将自然语言意图转成可审查、可执行、可回滚的数据产品 changeset，降低传统平台复杂度，而不是另建一套隐式 pipeline。
+
+交付：`AgentSpecVersion` bundle（Agent、Prompt、ModelBinding、Tool/Skill、Policy、Memory/Context）；EvaluationSet/EvaluationRun/OnlineVerdict、safety/red-team/tool-accuracy/cost eval；Approval/Promotion、Shadow/Canary、AgentDeploymentRevision；**Temporal-backed** AgentRun/TaskStep/ToolCall/TraceObservation；循环/超时/提示注入/越权检测、Guardrail、Budget、HITL、SafetyIncident/QualityIncident、disable/rollback、feedback 和 DataDemand 回流。RuntimeIdentity、RunnerFactory、RunWorkspace、intent-to-DataProductBlueprint、evidence-backed planning、typed TaskGraph/QualityVerdict、preview/diff/cost/impact、真实 retry/replan 复用统一控制面。
+
+退出门：
+
+- Visual/SQL/Notebook/API/SDK/CLI/TUI/MCP/Agent 使用相同身份、`CapabilitySpec`、definition、策略、工具合同、Run 和审计。
+- 用户可从 Agent 提案进入 blueprint/DAG/SQL/policy/Run 详情修改，也可从专业工作台请求 Agent 解释和诊断。
+- Agent 和确定性 pipeline 对相同任务产生同一产品版本或明确的可审计差异。
+- revise/replan 真实重跑；无效工具、越权工具和高风险写入不可绕过门禁。
+- 每个 active AgentDeploymentRevision 都有 bundle/version、评测证据、策略、预算、SLO、owner、灰度范围和 rollback pointer；离线通过不等于可生产。
+- 线上 AgentRun/ToolCall 能关联数据版本、策略决定、工具副作用、trace、成本、质量 verdict 和 incident；出现安全/质量/成本阈值越界可自动暂停或回滚。
+- AgentOps 事故可从用户反馈、tool failure、policy violation、stuck loop 或数据质量问题回溯到 AgentSpec/Prompt/Model/Tool/Policy 版本，并生成新评测和 changeset。
+- 在 AR-0 冻结的代表任务上，Agentic 路径至少在配置步骤、端到端耗时、首跑成功率或失败恢复之一达到批准的 uplift 阈值，并保留非 Agent、无 LLM 的重放；Agent runtime/LLM 不可用时不能使 P0 capability 退化。
+
+### AR-6 — MMFE and Data for AI Factory（P1）
+
+**依赖**：可信 DataProductVersion 和 AgentOps Runtime 稳定。
+
+**目标**：把 MMFE 纳入 Silver/Gold 生产，并建立 DataProduct -> Dataset -> Model -> DataDemand 闭环。
+
+交付：SemanticFusionProductVersion、统一调度 executor、增量/content-hash 执行、空间与非空间多模态融合 benchmark、DatasetVersion、EvaluationSet、Feature/Label lineage、ModelVersion/PromptVersion/Deployment 和 drift/DataDemand；ModelOps/LLMOps 作为 AgentOps bundle 的模型与 Prompt 子域，AI 对象登记统一元数据中心，不能建立第二套 AgentOps 资产目录或发布状态机。
+
+退出门：字段映射、实体解析、时空对齐、冲突识别、置信度校准、人工修正率、吞吐/成本和下游增益达到冻结阈值；未通过质量和权限门的数据不能进入训练、评测和推理。
+
+### AR-7 — GWM Kernel and LLM + GWM Product（P2）
+
+**依赖**：AR-6 形成稳定 GWMObservationProjection。
+
+**目标**：抽取共享 GWM Kernel，并让 TWM/UWM 消费同一可信产品版本。
+
+交付：StateSnapshot、CanonicalAction、Transition、Uncertainty、EvidenceClaimLedger、TWM/UWM adapters、DataDemand 和地图审计。
+
+退出门：关闭 GWM 后 Core Data Platform 仍完整运行；传统/规则、LLM-only、GWM-only、LLM+GWM 四路同题评测证明组合增益；observed/proxy/synthetic 和 claim boundary 自动执行。
+
+### AR-8 — Scale, High-throughput Realtime, Federation and Ecosystem（条件路线）
+
+只有真实负载或跨组织需求触发时启动：
+
+- 独立 Iceberg REST Catalog、更大规模 Spark/Flink 集群、查询联邦和冷热分层。
+- 高吞吐生产 CDC、Kafka/事件总线、Flink 多集群 HA、严格 exactly-once 跨系统 sink 和实时指标；只有 freshness/SLA 证明 AR-2 的增量/流 profile 不满足时启用。
+- 图/RDF/Search/LanceDB 读投影。
+- 跨组织 OGC/STAC federation、MCP/A2A 数据空间和隐私计算；单域 OGC/STAC 发布属于 AR-4 P0，不得延后到本阶段。
+- 多集群、HA、DR、服务拆分和容量治理。
+- Kafka/Redpanda、Trino、专用 vector/graph/RDF、跨地域 federation、service mesh 等条件能力；OpenMetadata/Gravitino/DolphinScheduler/Temporal 的扩容、版本升级和替换仍须经 ADR、TCO、恢复与 conformance 评审。
+
+进入门：现有架构在已批准的容量、SLO、隔离或互操作 benchmark 上失败，并完成 ADR、TCO、owner 和回滚评审。
+
+## 9. 首条 Vertical Slice 验收模型
+
+| 层 | 建议首批对象 | 必须记录 |
+|---|---|---|
+| Raw | source bundle、source manifest | source URI、license、checksum、size、CRS hint、spatial/temporal extent、owner、sensitivity |
+| ODS | `ods_land_patch_source` | source row ID、batch ID、ingested_at、raw asset version、raw fields |
+| DIM | `dim_region`、`dim_date`、`dim_land_class`、`dim_data_source` | authority/version、effective dates、code mappings |
+| DWD | `dwd_land_patch`、`dwd_land_change` | canonical ID、geometry、period、class、area、quality status、lineage |
+| DWS | `dws_region_period_change`、`dws_h3_period_coverage` | metric/formula version、source snapshots、aggregation grain |
+| ADS | PostGIS serving schema、STAC Collection/Item、Feature/MVT/COG/API/Map/Scene projection | product version、service/layer/style/TMS version、provider/build/deployment/endpoint revision、ACL/SLO、consumer、cache namespace、rollback pointer |
+
+Golden checks 至少覆盖：
+
+- raw/ODS 行数和字段对账；重复摄取幂等。
+- CRS、geometry validity、empty/duplicate、行政区包含关系和拓扑。
+- 地类代码、必填字段、单位、时间有效性和标准版本。
+- 面积从 DWD 到 DWS 的守恒及允许误差。
+- 全链路 column/object/run lineage 和 checksum。
+- snapshot/time travel、schema evolution、重跑、回滚和 PostGIS projection rebuild。
+- 双用户/双租户访问隔离和敏感字段策略。
+- Human/Agent/AI/GWM 投影引用同一产品版本。
+- OGC API Features、MVT、COG/TiTiler、STAC 和启用 profile 的 legacy OGC/3D 从同一产品版本发布；active revision、style、cache 和 rollback 一致。
+- 服务在 Gateway 内外、不同 zoom/extent/filter/format、capabilities/preview/error 路径均通过空间/属性/用途权限负向测试。
+
+## 10. 衡量方式
+
+### 10.1 架构与数据正确性
+
+- 100% 目标环境通过 migration ID/checksum 和 schema fingerprint 一致性门。
+- 100% 发布资源拥有唯一 ResourceURN、不可变 version、owner、location、contract 和 authority source。
+- 100% 发布产品可追溯到 raw asset、Run/Attempt、规则/标准版本和代码版本。
+- 100% serving projection 可从 DataProductVersion 重建。
+- 100% active GIS endpoint 关联不可变 Service/Layer/Style/TMS/Policy/Deployment revision、provider fingerprint、consumer/SLO 和 rollback pointer；provider 配置不得成为唯一发布真值。
+- 100% layer transition 通过声明式输入输出合同和质量门。
+- 未授权对象、属性、关系和 artifact 返回数为 0。
+- 未授权 feature、tile、raster window、STAC item/asset、3D tile、capabilities、preview 和错误响应泄漏数为 0；公开 provider 直连数为 0。
+- 同输入、同配置、同代码版本的确定性 pipeline 结果 hash 一致。
+- 每个生产 Run 固化 provider/engine/version/binding；跨 engine/profile 的 golden 结果满足批准的数值、geometry、时间与水位线语义容差。
+- 每个 active DataProductVersion 都有 DataOps release/promotion、quality verdict、DataSLO、owner/on-call、incident policy、rollback pointer 和运行观察证据。
+- 每个 active AgentDeploymentRevision 都有 AgentOps bundle、EvaluationBinding、online verdict、policy/budget、owner、灰度状态、incident policy 和 rollback pointer。
+
+### 10.2 运行质量
+
+- DolphinScheduler schedule/process/task queue age、worker group/resource saturation、retry/complement、Temporal workflow/task-queue latency/activity retry、cancel/reconcile 和 executor saturation 可观测。
+- ingest、transform、publish、rollback 各阶段有成功率、延迟、数据量和失败原因。
+- GIS 服务发布和运行至少观测 build/validation/warmup/activation/rollback 时延与失败率，endpoint availability、p50/p95/p99、error/timeout、cache hit/staleness/purge lag、provider saturation、bytes/tiles/features served、consumer usage/cost 和 revision skew。
+- storage/compute provider 的 submit latency、engine utilization、checkpoint age、cancel/reconcile、bytes scanned、egress 和 cost attribution 可观测。
+- DataOps 指标至少覆盖 release lead time、deployment frequency、change failure rate、data freshness/quality/SLO、DataIncident MTTR、replay success 和 cost drift。
+- AgentOps 指标至少覆盖 eval regression、online task success、tool-call error/latency、stuck-loop rate、policy violation、human intervention、token/cost budget、safety incident MTTR 和 rollback success。
+- checkpoint/resume 不重复提交数据或产生重复产品版本。
+- metadata harvest 有 freshness、drift、conflict、tombstone 和 impact completeness 指标。
+- RPO、RTO、吞吐和 p95/p99 在 AR-0 按试点环境冻结，不使用未验证的行业数字。
+
+### 10.3 产品价值
+
+- 12 项能力下限代表任务的 parity 通过率；只有全部通过，才可宣称达到下一代时空 Data Platform 基线。
+- 同一代表任务的有效配置步骤、端到端耗时、首跑成功率和失败恢复时间；分别比较旧平台、专业入口和 Agentic 入口。
+- Agentic 路径必须至少在一项批准指标上稳定优于专业基线，同时保持权限、审计、回滚、definition 导出和非 Agent 重放能力。
+- 从源数据到可用数据产品的周期。
+- 自动发现/修复率、人工修正率、质量趋势和规则误报/漏报。
+- Human/Agent/AI/GWM 的活跃消费、复用和版本升级影响。
+- MMFE 和 GWM 相对确定性/传统/单引擎基线的可重复增益。
+
+## 11. 近期执行清单
+
+只允许按以下顺序进入实现：
+
+1. 导出所有目标环境 schema/config fingerprint，修复重复 migration ID、checksum 和 fail-open runner。
+2. 完成部署、存储、bucket、registry、scheduler/job、API/GIS endpoint、图层/样式/缓存、provider/Gateway、数据资产、消费者和权限事实盘点；部署 OpenMetadata/Gravitino/DolphinScheduler/Temporal sandbox，冻结 owner、version、OIDC、backup/restore 和升级责任。
+3. 冻结 ResourceURN、ResourceVersion、PlatformDefinition/PlatformRun/FrameworkAttemptObservation/Artifact/LineageEvent、SubjectContext 与 storage/table/compute provider 最小合同。
+4. 实现 `gda-metadata-fabric-bridge`、空间/时间/证据 extension、OpenMetadata entity/Gravitino object mapping、PostGIS/DuckDB/Iceberg/STAC/object storage harvester、OpenLineage emitter 和旧目录 crosswalk；完成 Gravitino Spark/Sedona/Flink conformance。
+5. 实现 `gda-orchestration-gateway`、DolphinScheduler process/task/schedule/complement/worker-group、Spark/Flink provider task adapter 和故障注入；不再开发新的 lease/queue/scheduler。
+6. 冻结首条地类图斑数据、标准版本、敏感级别、owner、SLO 和 golden result。
+7. 冻结 Default Lakehouse、Cloud Managed、Lightweight Integrated profiles；以统一 Run 完成默认 MinIO/Iceberg/Spark/Flink、轻量 PostGIS/DuckDB 和 Azure 代表 adapter 的 conformance smoke。
+8. 实现跨 profile 的 Raw -> ODS -> DIM/DWD -> DWS -> ADS 通用生产、质量、发布、回滚和 golden equivalence。
+9. 建立 DataProductBlueprint、模型版本和 Visual/SQL/Notebook 共用 definition 的 Build 工作台，打通 preview、test、publish、approval 和 rollback。
+10. 完成并接受 ADR-017：用冻结服务集 benchmark pg_featureserv/pygeoapi、Martin、TiTiler、pgSTAC/stac-fastapi、GeoServer、APISIX 及启用的 SuperMap/ArcGIS/云 provider；输出 capability/TCO/security/SLO/upgrade matrix 和 production-supported 清单。
+11. 实现 GIS Service Control Plane 及 Service/Layer/Style/TMS/Cache/Policy/Deployment/Endpoint/Consumer/SLO 对象；所有 publish/validate/warmup/activate/rollback/retire 进入统一 PlatformRun 和审计。
+12. 打通 OGC API Features/Tiles、MVT、COG/raster、STAC、versioned export 和启用 profile 的 legacy OGC、3D、EDR/SensorThings 代表服务的 provider adapters、Gateway、权限下推、缓存 namespace、原子切换、回滚、conformance 与故障注入；OGC API Processes 映射 DolphinScheduler RunRef。
+13. 建立基于 OpenMetadata + Gravitino metadata fabric bridge 的 Discover/Operate/Govern 工作面，完成资产申请订阅、服务发布监控、消费者影响、空间分析重放和联合恢复；无 LLM 的 Web/API/SDK/CLI/TUI 路径完整验收。
+14. 实现 DataOps release/promotion、DataSLO、数据/服务观测、DataIncident/Problem、remediation、replay 和成本反馈闭环。
+15. 对 12 项代表任务及 GIS 发布 provider/conformance/security matrix 完成 parity 与 control gate；此时才接入 AgentOps Runtime。
+16. 部署 Temporal production profile；AgentOps 通过 Temporal workflow 的 approval/signal/retry/compensation、Agent bundle eval、shadow/canary、online verdict、incident/rollback 和配置步骤/耗时/首跑成功率/恢复效率 uplift gate 后，再推进 MMFE Data for AI 和 GWM 共享 Kernel。
+
+## 12. Stop List
+
+AR-4 parity/control gate 退出前暂停以下主线扩张：
+
+- 新的通用 Agent、推理模式、工具市场能力、领域 Agent 页面和孤立前端 Tab。
+- 没有首条数据产品消费者的数据库、图、向量或 RDF 基础设施。
+- 仅增加 spec、mock、配置、文档或 notebook，却标记为生产完成。
+- 直接从用户上传文件或临时 PostGIS 表生成新的“权威”AI/GWM 数据集。
+- 新增局部 metadata registry、scheduler、queue、后台线程或进程内长任务状态。
+- 绕过 Service Control Plane 直接公开 GeoServer/Martin/TiTiler/STAC/SuperMap/ArcGIS endpoint，或让 provider/Gateway 配置成为服务定义、权限和 active revision 的唯一真值。
+- 未经过 ADR-017 capability/conformance/security/TCO 认证即增加新的 GIS server、3D 服务格式、tile cache 或 API gateway；不得以 endpoint 可访问、地图可显示或 HTTP 200 代替发布完成。
+- 新增孤立的 Prompt/Model/Tool/Skill/Eval/Trace/Feedback registry，或以离线评测和 trace 数量冒充 AgentOps 完成。
+- 在 DataOps/AgentOps 缺少 owner、SLO、incident、rollback 和线上证据时新增领域 Agent 或自动写入能力。
+- 与首条 vertical slice 无关的架构重写和跨模块重构。
+
+## 13. 文档与状态纪律
+
+- 本文只维护总体架构、依赖顺序、阶段状态和退出门。
+- 阶段详细设计放入 `docs/superpowers/specs/`；实施步骤放入 `docs/superpowers/plans/`；重大决策放入 `docs/architecture-decisions/`。
+- 已完成历史保存在 [roadmap-history-through-2026-07-18.md](roadmap-history-through-2026-07-18.md)，不再混入主 roadmap。
+- 状态只允许 `planned`、`in_progress`、`blocked`、`verified`。`verified` 必须同时有实现、测试和真实后端/产物证据。
+- 文档中的目标架构、配置合同、smoke、benchmark 和生产能力必须分别标识，不得互相替代。
+
+## 14. 当前状态
+
+| 阶段 | 状态 | 下一证据 |
+|---|---|---|
+| AR-0 Architecture/Schema/Runtime Truth Freeze | `in_progress` | 全环境 schema/config fingerprint、迁移 fail-closed、事实清单、storage/compute/GIS serving provider profile/capability、ADR-017 benchmark、owner/SLO 和首条数据/服务验收集冻结 |
+| AR-1 Unified Metadata + Orchestration Control Planes | `planned` | OpenMetadata + Gravitino fabric bridge、DolphinScheduler process/schedules/complement、PlatformRun correlation 与 Spark/Flink adapter 通过故障注入和双租户验收 |
+| AR-2 Source/Ingestion + Geospatial Lakehouse Vertical Slice | `planned` | 三类代表源、`DriveTransfer` 云盘客户端和大文件恢复通过统一控制面；默认湖仓、轻量存算一体及 Azure 代表 adapter 通过 provider conformance 与 Raw -> ADS 验收 |
+| AR-3 Data Product Engineering + Governance Workbench | `planned` | Blueprint、模型、Visual/SQL/Notebook、DataOps CI/CD、质量/安全/审批共用 definition 和产品生命周期 |
+| AR-4 Asset/GIS Service/Spatial Experience Operations | `planned` | Service Control Plane、Features/Tiles/MVT/COG/STAC/export 及条件 legacy OGC/3D/EDR provider、Gateway/权限/缓存、原子切换/回滚、Discover/Operate/Govern 和无 LLM 多入口通过 conformance/parity/control gate |
+| AR-5 AgentOps Runtime + UX Uplift | `planned` | DataOps parity/control 通过；Agent bundle eval、deployment、online observation、incident/rollback 和 uplift gate |
+| AR-6 MMFE + Data for AI | `planned` | 稳定 DataProductVersion、统一 Run/Artifact 和 AgentOps ModelOps/LLMOps binding |
+| AR-7 GWM Enhancement | `planned` | 可信 GWMObservationProjection |
+| AR-8 Scale/High-throughput Realtime/Federation/Ecosystem | `planned, conditional` | 真实容量/SLO/freshness/互操作触发证据 |

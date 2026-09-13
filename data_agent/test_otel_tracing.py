@@ -47,6 +47,73 @@ class TestTraceContextManagers(unittest.IsolatedAsyncioTestCase):
                     pass  # Should not raise
 
 
+class TestTwmTraceContextManager(unittest.TestCase):
+    def test_twm_operation_span_noop(self):
+        from data_agent.otel_tracing import trace_twm_operation
+
+        with trace_twm_operation(
+            "counterfactual_rollout",
+            state_version_id="state-1",
+            backend="torch_spatiotemporal_transformer",
+            sample_count=12,
+            gate_status="review",
+        ) as ctx:
+            self.assertIsInstance(ctx, dict)
+
+    def test_twm_operation_span_sets_attributes(self):
+        import data_agent.otel_tracing as otel
+
+        class FakeSpan:
+            def __init__(self):
+                self.attributes = {}
+
+            def set_attribute(self, key, value):
+                self.attributes[key] = value
+
+        class FakeSpanContext:
+            def __init__(self, span):
+                self.span = span
+
+            def __enter__(self):
+                return self.span
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        class FakeTracer:
+            def __init__(self):
+                self.started = []
+                self.span = FakeSpan()
+
+            def start_as_current_span(self, name, attributes=None):
+                self.started.append((name, dict(attributes or {})))
+                return FakeSpanContext(self.span)
+
+        old_tracer = otel._tracer
+        fake = FakeTracer()
+        otel._tracer = fake
+        try:
+            with otel.trace_twm_operation(
+                "train_dynamics_candidate",
+                state_version_id="state-2",
+                backend="torch_hierarchical_graph",
+                sample_count=34,
+                gate_status="pass",
+            ):
+                pass
+        finally:
+            otel._tracer = old_tracer
+
+        self.assertEqual(fake.started[0][0], "twm:train_dynamics_candidate")
+        attrs = fake.started[0][1]
+        self.assertEqual(attrs["twm.operation"], "train_dynamics_candidate")
+        self.assertEqual(attrs["twm.state_version_id"], "state-2")
+        self.assertEqual(attrs["twm.backend"], "torch_hierarchical_graph")
+        self.assertEqual(attrs["twm.sample_count"], 34)
+        self.assertEqual(attrs["twm.gate_status"], "pass")
+        self.assertIn("twm.duration_ms", fake.span.attributes)
+
+
 class TestGracefulDegradation(unittest.TestCase):
     def test_import_without_otel(self):
         """Module should import cleanly regardless of OTel availability."""

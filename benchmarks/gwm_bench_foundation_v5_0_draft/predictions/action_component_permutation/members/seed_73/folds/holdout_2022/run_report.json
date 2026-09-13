@@ -1,0 +1,35 @@
+{
+  "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+  "model_id": "action_component_permutation",
+  "outer_fold_id": "holdout_2022",
+  "seed": 73,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_component_permutation/members/seed_73/folds/holdout_2022/prediction.parquet",
+    "bytes": 98660,
+    "sha256": "5bad6f1ed482ed40bea0ca17ca42e8383fe1593625cabfbba878533f78436364"
+  },
+  "checkpoint": null,
+  "training_final_loss": null,
+  "control_audit": {
+    "control_id": "action_component_permutation",
+    "component_permutation": [
+      9,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "permutation_has_fixed_points": false,
+    "outer_fold_id": "holdout_2022",
+    "swap_source_event": null
+  },
+  "model_process_target_access_permitted": false,
+  "test_target_rows_loaded": false,
+  "exit_status": "success",
+  "failure_state": null
+}

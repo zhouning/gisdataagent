@@ -1,0 +1,30 @@
+{
+  "schema": "territory_world_model.twm_runtime_negative_controls.v1",
+  "controls": [
+    {
+      "control_id": "impossible_action",
+      "description": "Hard-blocked land-use conversion or approval must be blocked.",
+      "required_signal": "block"
+    },
+    {
+      "control_id": "support_material_missing_action",
+      "description": "Low support-material coverage must remain review-only.",
+      "required_signal": "review"
+    },
+    {
+      "control_id": "policy_conflict_action",
+      "description": "Action mask policy conflict must be recalled as blocked.",
+      "required_signal": "block"
+    },
+    {
+      "control_id": "shuffled_action_control",
+      "description": "Performance must drop when action type is shuffled.",
+      "required_signal": "performance_drop"
+    },
+    {
+      "control_id": "shuffled_label_control",
+      "description": "The gate must fail when utility and risk labels are shuffled.",
+      "required_signal": "fail"
+    }
+  ]
+}

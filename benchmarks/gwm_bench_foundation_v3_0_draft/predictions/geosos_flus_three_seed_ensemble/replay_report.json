@@ -1,0 +1,83 @@
+{
+  "schema": "gwm_bench.runtime_r2_replay.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "scope": "geosos_flus_all_seed_members",
+  "status": "PASS_SEED_COMPLETE_REPLAY_LABEL_FIREWALL_INTACT",
+  "created_at": "2026-07-23T12:40:15.326050+00:00",
+  "members": [
+    {
+      "member": "seed_31",
+      "status": "PASS",
+      "checks": {
+        "prediction_file_sha256_equal": true,
+        "columns_equal": true,
+        "keys_and_order_equal": true,
+        "probability_values_bitwise_equal": true
+      },
+      "committed_prediction_sha256": "94046f796477bf31707d3bddf810a5dfd7a549ddbb3b1a8aaf55e2ea4c3ea02e",
+      "replayed_prediction_sha256": "94046f796477bf31707d3bddf810a5dfd7a549ddbb3b1a8aaf55e2ea4c3ea02e",
+      "row_count": 3681
+    },
+    {
+      "member": "seed_47",
+      "status": "PASS",
+      "checks": {
+        "prediction_file_sha256_equal": true,
+        "columns_equal": true,
+        "keys_and_order_equal": true,
+        "probability_values_bitwise_equal": true
+      },
+      "committed_prediction_sha256": "f478c558fe652b1628798b11b93e4377cfc983eb390632a42517c448a3b81ac6",
+      "replayed_prediction_sha256": "f478c558fe652b1628798b11b93e4377cfc983eb390632a42517c448a3b81ac6",
+      "row_count": 3681
+    },
+    {
+      "member": "seed_73",
+      "status": "PASS",
+      "checks": {
+        "prediction_file_sha256_equal": true,
+        "columns_equal": true,
+        "keys_and_order_equal": true,
+        "probability_values_bitwise_equal": true
+      },
+      "committed_prediction_sha256": "cb2705f37613f4b46debf180946efbb02013f66fc7b1a8efcef629b69c13589b",
+      "replayed_prediction_sha256": "cb2705f37613f4b46debf180946efbb02013f66fc7b1a8efcef629b69c13589b",
+      "row_count": 3681
+    }
+  ],
+  "ensemble": {
+    "member": "three_seed_ensemble",
+    "status": "PASS",
+    "checks": {
+      "prediction_file_sha256_equal": true,
+      "columns_equal": true,
+      "keys_and_order_equal": true,
+      "probability_values_bitwise_equal": true
+    },
+    "committed_prediction_sha256": "283c7ef0c491c8391c6429d804ab07d089c1ccd25ca543446b444381362a2f07",
+    "replayed_prediction_sha256": "283c7ef0c491c8391c6429d804ab07d089c1ccd25ca543446b444381362a2f07",
+    "row_count": 3681
+  },
+  "model_spec_sha256_equal": true,
+  "source_manifest_sha256_equal": true,
+  "label_firewall": {
+    "before": {
+      "target_root": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025",
+      "target_root_exists": false,
+      "target_file_count": 0,
+      "target_pixels_read": false,
+      "target_labels_visible_to_adapter": false,
+      "passed": true
+    },
+    "after": {
+      "target_root": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025",
+      "target_root_exists": false,
+      "target_file_count": 0,
+      "target_pixels_read": false,
+      "target_labels_visible_to_adapter": false,
+      "passed": true
+    },
+    "target_pixels_read": false
+  },
+  "wall_time_seconds": 365.9201361249434
+}

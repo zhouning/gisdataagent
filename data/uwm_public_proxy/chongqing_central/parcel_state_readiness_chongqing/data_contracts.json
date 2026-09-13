@@ -1,0 +1,1 @@
+{"bundle_id":"parcel-state-195b33acc1f9b06fec4a","data_contracts":{"uwm_parcel_state":{"required_fields":["state_node_id","source_feature_id","geometry_reference","current_state_code","state_taxonomy_version","observation_time","source_version_bundle","quality_flags","action_eligibility","successor_observation","provenance"]}},"schema":"uwm.parcel_state_contracts.v1"}

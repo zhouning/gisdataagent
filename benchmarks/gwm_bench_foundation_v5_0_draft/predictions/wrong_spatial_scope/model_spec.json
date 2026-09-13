@@ -1,0 +1,23 @@
+{
+  "schema": "gwm_bench.foundation_v5_model_spec.v1",
+  "model_id": "wrong_spatial_scope",
+  "algorithm": "DAM-GK multi-relation neural residual kernel over a frozen history AR forecast",
+  "prediction_equation": "final = frozen_history_ar + dam_gk_residual",
+  "action_conditioned": true,
+  "matched_no_action": false,
+  "control": true,
+  "seeds": [
+    31,
+    47,
+    73
+  ],
+  "ensemble_rule": "arithmetic mean in raw count space",
+  "lags": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "history_ar_alpha": 5.0,
+  "current_outer_fold_targets_read": false
+}

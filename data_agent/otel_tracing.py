@@ -165,3 +165,40 @@ async def trace_llm_call(agent_name: str, model_name: str = ""):
         finally:
             duration = time.monotonic() - ctx["start_time"]
             span.set_attribute("llm.duration_ms", round(duration * 1000, 1))
+
+
+@contextlib.contextmanager
+def trace_twm_operation(
+    operation: str,
+    *,
+    state_version_id: str = "",
+    backend: str = "",
+    sample_count: int | None = None,
+    gate_status: str = "",
+):
+    """Trace a synchronous Territory World Model operation.
+
+    TWM service methods are synchronous, so this mirrors the async helpers above
+    while preserving graceful degradation when OpenTelemetry is unavailable.
+    """
+    tracer = get_tracer()
+    if not tracer:
+        yield {}
+        return
+
+    attributes = {
+        "twm.operation": operation,
+        "twm.state_version_id": state_version_id,
+        "twm.backend": backend,
+        "twm.gate_status": gate_status,
+    }
+    if sample_count is not None:
+        attributes["twm.sample_count"] = int(sample_count)
+
+    with tracer.start_as_current_span(f"twm:{operation}", attributes=attributes) as span:
+        ctx = {"span": span, "start_time": time.monotonic()}
+        try:
+            yield ctx
+        finally:
+            duration = time.monotonic() - ctx["start_time"]
+            span.set_attribute("twm.duration_ms", round(duration * 1000, 1))

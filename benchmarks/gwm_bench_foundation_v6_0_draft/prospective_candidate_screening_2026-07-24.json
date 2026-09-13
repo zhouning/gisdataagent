@@ -1,0 +1,130 @@
+{
+  "schema": "gwm_bench.foundation_v6_prospective_candidate_screening.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V6.0-DRAFT1",
+  "created_at": "2026-07-24",
+  "access_boundary": {
+    "policy_pages_or_documents_archived": true,
+    "outcome_catalog_pages_archived": true,
+    "outcome_rows_downloaded": false,
+    "post_action_target_rows_opened": false,
+    "reason": "Both action dates are after the V6 protocol freeze and neither fixed 12-week target window had started."
+  },
+  "asset_audit": {
+    "integrity_pass": true,
+    "assets": [
+      {
+        "asset_id": "san_diego_sandag_fare_structure",
+        "path": "benchmarks/gwm_bench_foundation_v6_0_draft/candidate_evidence/prospective_2026_07_24/san_diego/sandag_transit_fare_structure_2026-07-24.html",
+        "sha256": "471ec635f90afa21ad2b127fdc986442b1e238da3d53bce5027c524b9eb94c18",
+        "bytes": 255119,
+        "authority": "San Diego Association of Governments",
+        "retrieval_url": "https://www.sandag.org/projects-and-programs/transit/transit-fare-structure",
+        "role": "official approval and 2026-10-01 effective-date evidence"
+      },
+      {
+        "asset_id": "san_diego_public_notice",
+        "path": "benchmarks/gwm_bench_foundation_v6_0_draft/candidate_evidence/prospective_2026_07_24/san_diego/fare_change_public_notice_2026-06-09.pdf",
+        "sha256": "7e23b72bd55820a0519d8849a661e8fbd4cf015103b0997f0b9a5180dacfcfc0",
+        "bytes": 782114,
+        "authority": "San Diego Association of Governments",
+        "retrieval_url": "https://www.sandag.org/-/media/SANDAG/Documents/PDF/projects-and-programs/transit/transit-fare-structure/fare-change-public-meeting-take-one-2026-06-09.pdf",
+        "role": "official current and proposed fare table"
+      },
+      {
+        "asset_id": "san_diego_fare_ordinance_amendments",
+        "path": "benchmarks/gwm_bench_foundation_v6_0_draft/candidate_evidence/prospective_2026_07_24/san_diego/comprehensive_fare_ordinance_proposed_amendments.pdf",
+        "sha256": "165de79e5874b47e93e67faddf8b8b11f26f5a92d1cc8dbf12748eed51e754d9",
+        "bytes": 262603,
+        "authority": "San Diego Association of Governments",
+        "retrieval_url": "https://www.sandag.org/-/media/SANDAG/Documents/PDF/footer/legal/comprehensive-fare-ordinance-proposed-amendments.pdf",
+        "role": "official amendment text and fare-product definitions"
+      },
+      {
+        "asset_id": "san_diego_mts_outcome_catalog",
+        "path": "benchmarks/gwm_bench_foundation_v6_0_draft/candidate_evidence/prospective_2026_07_24/san_diego/mts_reports_records_2026-07-24.html",
+        "sha256": "b3c53abc0eaa474bcf768ec0a0c402c2caf9a6abb32f24c4ba8e0b29fdaefcc7",
+        "bytes": 107338,
+        "authority": "San Diego Metropolitan Transit System",
+        "retrieval_url": "https://www.sdmts.com/about/reports-records-and-policies",
+        "role": "official outcome catalog metadata only"
+      },
+      {
+        "asset_id": "whatcom_wta_fare_changes",
+        "path": "benchmarks/gwm_bench_foundation_v6_0_draft/candidate_evidence/prospective_2026_07_24/whatcom_wta/wta_2026_fare_changes_2026-07-24.html",
+        "sha256": "2a331e5fda5a844becdca3f7824df0e66da8b669bd7d491c5d70007dec029eb9",
+        "bytes": 170746,
+        "authority": "Whatcom Transportation Authority",
+        "retrieval_url": "https://engage.ridewta.com/fares",
+        "role": "official approved fare bundle, implementation date and board-process evidence"
+      },
+      {
+        "asset_id": "whatcom_wta_effective_date_alert",
+        "path": "benchmarks/gwm_bench_foundation_v6_0_draft/candidate_evidence/prospective_2026_07_24/whatcom_wta/wta_webalerts_2026-07-24.html",
+        "sha256": "d62e37328437316538e00feb2f769bc3d745af4daf2d3d7672f8edc157435db7",
+        "bytes": 17955,
+        "authority": "Whatcom Transportation Authority",
+        "retrieval_url": "https://www.ridewta.com/webalerts/",
+        "role": "official 2026-09-01 effective-date confirmation"
+      },
+      {
+        "asset_id": "whatcom_wta_outcome_catalog",
+        "path": "benchmarks/gwm_bench_foundation_v6_0_draft/candidate_evidence/prospective_2026_07_24/whatcom_wta/wta_performance_2026-07-24.html",
+        "sha256": "4d52e77a3b7c7875b4066bdd1546e388aa506625909b860cfe1cf45d91e88b46",
+        "bytes": 22825,
+        "authority": "Whatcom Transportation Authority",
+        "retrieval_url": "https://www.ridewta.com/performance/",
+        "role": "official outcome catalog metadata only"
+      }
+    ]
+  },
+  "candidate_findings": {
+    "san_diego_2026_regional_transit_fare_bundle": {
+      "effective_date": "2026-10-01",
+      "official_action_authority_verified": true,
+      "prospective_newness_mode_valid": true,
+      "action_facts": {
+        "regional_adult_one_way_usd": [2.5, 3.0],
+        "regional_sdm_one_way_usd": [1.25, 1.5],
+        "regional_adult_day_pass_usd": [6.0, 7.0],
+        "regional_adult_month_pass_usd": [72.0, 85.0],
+        "coaster_zone_pricing_replaced_by_flat_adult_one_way_usd": 6.5,
+        "youth_opportunity_pass_remains_zero": true,
+        "qualified_mts_government_assistance_riders_exempt": true
+      },
+      "heterogeneous_spatial_exposure_potential": true,
+      "heterogeneity_reason": "COASTER changes from one-, two- and three-zone prices to one flat fare, so the relative price delta depends on the pre-action trip geography.",
+      "numeric_action_mapping_frozen": false,
+      "mapping_blocker": "Expected fractional cost and spatial applicability require a pre-action fare-product and origin-destination mix that has not been acquired or frozen.",
+      "outcome_catalog_finding": "The public MTS page exposes monthly ridership by mode and annual route statistics, not a qualifying weekly stop- or route-level origin-destination target with at least 50 stable units.",
+      "qualifying_outcome_source_verified": false,
+      "decision": "screened_not_admitted"
+    },
+    "whatcom_wta_2026_fare_bundle": {
+      "effective_date": "2026-09-01",
+      "official_action_authority_verified": true,
+      "prospective_newness_mode_valid": true,
+      "action_facts": {
+        "fixed_route_adult_cash_usd": [1.0, 2.0],
+        "fixed_route_reduced_cash_usd": [0.5, 1.0],
+        "adult_daily_cap_usd": 6.0,
+        "adult_monthly_cap_usd": 60.0,
+        "paratransit_adult_cash_usd": 3.0,
+        "youth_remain_free": true
+      },
+      "heterogeneous_spatial_exposure_potential": false,
+      "numeric_action_mapping_frozen": false,
+      "mapping_blocker": "The bundle combines cash changes, reduced fares, fare capping and fare-collection implementation; the pre-action rider-product mix is not frozen.",
+      "outcome_catalog_finding": "The official performance page links annual route ridership reports only; no qualifying weekly origin-destination or boarding/alighting source with at least 50 stable spatial units was identified.",
+      "qualifying_outcome_source_verified": false,
+      "decision": "screened_not_admitted"
+    }
+  },
+  "decision": {
+    "candidates_added": 2,
+    "candidates_admitted": 0,
+    "highest_priority_hidden_candidate": "san_diego_2026_regional_transit_fare_bundle",
+    "why": "It has a post-freeze effective date, exact official prices and a potentially identifiable heterogeneous spatial exposure.",
+    "next_gate": "Obtain a reproducible weekly spatial outcome contract without opening post-action rows, then freeze the target manifest, crosswalk and six-dimensional action mapping.",
+    "outcome_download_authorized": false
+  }
+}

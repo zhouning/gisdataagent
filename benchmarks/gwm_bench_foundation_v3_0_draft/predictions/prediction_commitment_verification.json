@@ -1,0 +1,82 @@
+{
+  "schema": "gwm_bench.v3_prediction_commitment_verification.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "status": "PASS_RC2_PREDICTIONS_COMMITTED_TARGET_ACQUISITION_ALLOWED",
+  "created_at": "2026-07-23T12:42:44.830921+00:00",
+  "commitment": {
+    "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/prediction_commitment.json",
+    "role": "verified_v3_prediction_commitment",
+    "size_bytes": 17755,
+    "sha256": "4bc8f9cbfa8b89c600c70834d844fc592c04ddbb001bd8878d01c1e8c2f5f6a2"
+  },
+  "commitment_fingerprint": "fcce6679f251b85d350f7ac41cab68164be383e6bbc5685df91542cbeb1b93c1",
+  "checks": {
+    "commitment_status_is_complete": true,
+    "protocol_hash_matches": true,
+    "phase_a_bundle_fingerprint_matches": true,
+    "commitment_fingerprint_matches": true,
+    "exactly_five_models": true,
+    "runtime_replay_report_hash_matches": true,
+    "all_artifact_hashes_match": true,
+    "all_submissions_match_contract": true,
+    "all_submissions_have_identical_keys": true,
+    "target_file_count_is_zero": true,
+    "target_pixels_read_is_false": true
+  },
+  "models": {
+    "twm_dam_gk_candidate": {
+      "artifact_hashes": {
+        "prediction": true,
+        "model_spec": true,
+        "run_report": true
+      },
+      "submission_contract_pass": true,
+      "prediction_sha256": "66caa44290722668ec848109fd901d9eb1582f2096c4c2d52e122528b4d3b00a"
+    },
+    "geosos_flus_three_seed_ensemble": {
+      "artifact_hashes": {
+        "prediction": true,
+        "model_spec": true,
+        "run_report": true
+      },
+      "submission_contract_pass": true,
+      "prediction_sha256": "283c7ef0c491c8391c6429d804ab07d089c1ccd25ca543446b444381362a2f07"
+    },
+    "state_persistence": {
+      "artifact_hashes": {
+        "prediction": true,
+        "model_spec": true,
+        "run_report": true
+      },
+      "submission_contract_pass": true,
+      "prediction_sha256": "2502653e9871c6d6585904832f73359d0f1f77180bf69300bf485bf1447be2ff"
+    },
+    "nonspatial_history_only": {
+      "artifact_hashes": {
+        "prediction": true,
+        "model_spec": true,
+        "run_report": true
+      },
+      "submission_contract_pass": true,
+      "prediction_sha256": "483d8b23eff55ed3f9f39ca9c4cf489ef115d0778207f4e080e0ca035e3977d0"
+    },
+    "fixed_adjacency_spatial": {
+      "artifact_hashes": {
+        "prediction": true,
+        "model_spec": true,
+        "run_report": true
+      },
+      "submission_contract_pass": true,
+      "prediction_sha256": "775a82427919ecafb155a02fbae7b0484e72c8fc58d1b8ed4cbce7c9da9b8195"
+    }
+  },
+  "label_firewall": {
+    "target_root": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025",
+    "target_root_exists": false,
+    "target_file_count": 0,
+    "target_pixels_read": false,
+    "target_labels_visible_to_adapter": false,
+    "passed": true
+  },
+  "target_acquisition_allowed": true
+}

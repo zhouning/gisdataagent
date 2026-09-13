@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-07-05",
+  "cwd": "/Users/zhouning/gisdataagent",
+  "output_dir": "docs/reports/uwm_shanghai_data_requirements_2026-07-05",
+  "project": "GIS Data Agent / Urban World Model",
+  "target_city": "Shanghai",
+  "relevant_modules": [
+    "data_agent/uwm/",
+    "data_agent/test_uwm_*.py",
+    "scripts/build_uwm_*.py",
+    "scripts/download_uwm_*.py"
+  ],
+  "relevant_docs": [
+    "docs/uwm-urban-livability-strategic-technical-proposal.md",
+    "docs/uwm-livability-track2-design-2026-07-04.md",
+    "docs/uwm-renderer-simulator-planner-theory-2026-07-04.md",
+    "docs/uwm-livability-implementation-roadmap-2026-07-04.md",
+    "docs/reports/uwm_data_foundation_summary_2026-07-05.md",
+    "docs/reports/uwm_data_foundation_manifest.md",
+    "docs/reports/uwm_livability_business_theory_2026-07-05.md",
+    "docs/reports/uwm_model_based_rl_inspiration_implementation_2026-07-05.md"
+  ],
+  "generated_artifacts": [
+    "UWM上海市权威数据需求说明书.md",
+    "UWM上海市权威数据需求说明书.docx",
+    "evidence-pack.md",
+    "traceability-matrix.md",
+    "templates/README_模板说明.md",
+    "templates/*.csv",
+    "templates/production_scale_profile_template.json"
+  ],
+  "claim_boundary": "Data requirement package only; does not claim UWM has proven superiority on Shanghai observed policy outcomes."
+}

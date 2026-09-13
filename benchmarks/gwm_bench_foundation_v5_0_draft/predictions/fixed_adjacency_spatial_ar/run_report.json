@@ -1,0 +1,57 @@
+{
+  "schema": "gwm_bench.foundation_v5_multifold_run_report.v1",
+  "model_id": "fixed_adjacency_spatial_ar",
+  "outer_fold_count": 4,
+  "seed_count": 0,
+  "fold_reports": {
+    "holdout_2015": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2015/run_report.json",
+      "bytes": 37473,
+      "sha256": "8fccead22c212d1c1d8d81e489b02119cb2ccf22b02f4976163ee5e5e2c021db"
+    },
+    "holdout_2019": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2019/run_report.json",
+      "bytes": 37458,
+      "sha256": "f530f48a0d7d4bdd5dd497d4017e6254f431e91329eab340bdc831a57065e3d8"
+    },
+    "holdout_2022": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2022/run_report.json",
+      "bytes": 37445,
+      "sha256": "9198dfcabdf7eea1fcc0f08efb2c9983a1c390f49812afeef2ba6b98295f47a6"
+    },
+    "holdout_2025": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2025/run_report.json",
+      "bytes": 37504,
+      "sha256": "2b34d17b83df7ec47b06303da42e76aaca932775ca8005ff3854de67a33fa99c"
+    }
+  },
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/fixed_adjacency_spatial_ar/prediction.parquet",
+    "bytes": 399775,
+    "sha256": "a75f817a86dac0830efb660ab304336bd6fc6479c2a5489a3b14125b9d2c0ca9"
+  },
+  "model_spec": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/fixed_adjacency_spatial_ar/model_spec.json",
+    "bytes": 427,
+    "sha256": "f3088edb6e53842e02b7931515cc615a22fea247a17b3bf6304f367205bf5b43"
+  },
+  "nested_selection_receipts": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/fixed_adjacency_spatial_ar/nested_selection_receipts.json",
+    "bytes": 16968,
+    "sha256": "4a0ffe8f7e6a6bd7f507cfa407f90666f9398fa295c1353baee7cf07499bf6e5"
+  },
+  "fold_training_manifests": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/fixed_adjacency_spatial_ar/fold_training_manifests.json",
+    "bytes": 4867,
+    "sha256": "3b2ffde69f18d1ffb8fb7f2ba98e65197509b858f26a91ea1b36904137d5b9b2"
+  },
+  "runtime_environment": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/fixed_adjacency_spatial_ar/runtime_environment.json",
+    "bytes": 409,
+    "sha256": "32d72673378c8043ca824ef96b76063560f70ab5e0cbf5bdea8241c733d45260"
+  },
+  "test_target_rows_loaded": false,
+  "model_process_target_access_permitted": false,
+  "exit_status": "success",
+  "failure_state": null
+}

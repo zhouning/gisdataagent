@@ -1,0 +1,26 @@
+{
+  "schema": "gwm_bench.runtime_r2_environment.v1",
+  "python": {
+    "version": "3.11.15",
+    "implementation": "CPython",
+    "executable_name": "python"
+  },
+  "platform": {
+    "system": "Darwin",
+    "release": "25.5.0",
+    "machine": "arm64"
+  },
+  "packages": {
+    "numpy": "2.4.6",
+    "pandas": "3.0.3",
+    "pyarrow": "20.0.0",
+    "rasterio": "1.4.4",
+    "torch": "2.10.0"
+  },
+  "thread_environment": {
+    "OMP_NUM_THREADS": null,
+    "OPENBLAS_NUM_THREADS": null,
+    "MKL_NUM_THREADS": null,
+    "VECLIB_MAXIMUM_THREADS": null
+  }
+}

@@ -1,16 +1,17 @@
 {
   "schema": "territory_world_model.validation_bundle.v1",
-  "created_at": "2026-06-25T00:36:34.322588+00:00",
+  "created_at": "2026-06-28T03:32:07.920983+00:00",
   "status": "review",
   "inputs": {
-    "bundle_dir": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion",
-    "optimization_dir": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_demo/optimization",
+    "bundle_dir": "/Users/zhouning/gisdataagent/.worktrees/twm-paper58-external-benchmark/data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion",
+    "optimization_dir": "/Users/zhouning/gisdataagent/.worktrees/twm-paper58-external-benchmark/data_agent/test_data/twm_bishan_demo/optimization",
     "scca_output_dir": null,
     "scca_result_json": null,
+    "paper58_benchmark_dir": null,
     "production_observed_history": null,
     "normalize_production_observed_history_source": null,
     "normalized_production_observed_history_output": null,
-    "synthetic_experiment_foundation": "/Users/zhouning/gisdataagent/docs/reports/twm_synthetic_experiment_foundation.csv",
+    "synthetic_experiment_foundation": "/Users/zhouning/gisdataagent/.worktrees/twm-paper58-external-benchmark/docs/reports/twm_synthetic_experiment_foundation.csv",
     "production_scale_profile": null,
     "require_scca_pass": false,
     "require_production_readiness": false,
@@ -20,52 +21,34 @@
     "evidence_coverage": 0.85
   },
   "project": {
-    "id": "f240595a-0b51-4949-84e2-b6c01337e4a8",
+    "id": "d39e2bfd-3908-4bb5-a50c-613c942746e5",
     "name": "TWM Offline Validation Bundle",
     "region_code": "500227",
     "business_scenario": "planning_supervision",
     "status": "draft"
   },
   "state_summary": {
-    "state_version_id": "f6b819a6-cf03-46e5-9bab-94fa6ae3800e",
-    "project_id": "f240595a-0b51-4949-84e2-b6c01337e4a8",
+    "state_version_id": "57522a07-6a5b-4bfc-bb68-cbda5b5033a2",
+    "project_id": "d39e2bfd-3908-4bb5-a50c-613c942746e5",
     "label": "offline_validation_bundle: state build",
     "build_status": "ready",
-    "object_count": 5745,
-    "relation_count": 10349,
+    "object_count": 657,
+    "relation_count": 0,
     "object_counts_by_role": {
-      "admin_unit": 5,
-      "parcel": 4900,
-      "annual_change": 78,
-      "eco_redline": 10,
-      "pbf": 14,
-      "planning_zone": 5,
-      "project": 60,
-      "remote_sensing_tile": 11,
-      "urban_boundary": 5,
       "approval_record": 60,
       "enforcement_event": 92,
       "multimodal_evidence_index": 173,
       "rule_evaluation": 240,
       "review_task": 92
     },
-    "relation_counts_by_type": {
-      "project_overlaps_parcel": 358,
-      "project_overlaps_permanent_basic_farmland": 39,
-      "project_overlaps_ecological_redline": 28,
-      "project_overlaps_planning_zone": 151,
-      "project_overlaps_urban_development_boundary": 7,
-      "project_observed_by_remote_sensing_tile": 71,
-      "annual_change_of_parcel": 4900,
-      "project_within_admin_unit": 4795
-    },
-    "metric_crs": "EPSG:32648",
+    "relation_counts_by_type": {},
+    "metric_crs": "EPSG:3857",
     "quality_summary": {
       "evidence_coverage": null,
       "manifest_quality_score": 0.85,
-      "synthetic_object_count": 836,
-      "not_for_production_object_count": 5736,
-      "qa_disabled_object_count": 60
+      "synthetic_object_count": 653,
+      "not_for_production_object_count": 653,
+      "qa_disabled_object_count": 0
     },
     "semantic_product": {
       "product_id": "sfp-twm-dc2a707aabda0c01",
@@ -82,37 +65,27 @@
     ]
   },
   "rule_summary": {
-    "rule_set_id": "cc770719-b6a7-4d6c-9917-b43d83a53809",
+    "rule_set_id": "64cf8efb-ecad-4802-ae8f-4f53030a3200",
     "default_rule_count": 7,
     "evaluated_rule_count": 7,
-    "hit_count": 96,
-    "review_task_count": 95,
-    "evidence_item_count": 380,
-    "severity_distribution": {
-      "blocking": 1,
-      "high": 44,
-      "critical": 2,
-      "medium": 49
-    },
+    "hit_count": 0,
+    "review_task_count": 0,
+    "evidence_item_count": 0,
+    "severity_distribution": {},
     "warnings": []
   },
   "audit_summary": {
-    "rule_hit_count": 96,
+    "rule_hit_count": 0,
     "confirmed_count": 0,
     "dismissed_count": 0,
     "mitigation_count": 0,
     "evidence_gate_passed": true,
     "evidence_gate_summary": {
-      "evidence_item_count": 380,
+      "evidence_item_count": 0,
       "all_have_checksum": true
     },
     "rule_summary": {
-      "severity_distribution": {
-        "high": 44,
-        "medium": 49,
-        "critical": 2,
-        "blocking": 1
-      }
+      "severity_distribution": {}
     }
   },
   "selected_plan_evaluation_bundle": {
@@ -120,7 +93,7 @@
     "status": "review",
     "source": {
       "kind": "farmland_layout_optimization_bundle",
-      "optimization_dir": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_demo/optimization"
+      "optimization_dir": "/Users/zhouning/gisdataagent/.worktrees/twm-paper58-external-benchmark/data_agent/test_data/twm_bishan_demo/optimization"
     },
     "selected": {
       "candidate_id": "SCN-BASELINE-CURRENT",
@@ -153,7 +126,7 @@
       "optimization_bundle": {
         "schema": "territory_world_model.farmland_layout_candidate_actions_from_optimization_bundle.v1",
         "status": "pass",
-        "optimization_dir": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_demo/optimization",
+        "optimization_dir": "/Users/zhouning/gisdataagent/.worktrees/twm-paper58-external-benchmark/data_agent/test_data/twm_bishan_demo/optimization",
         "summary": {
           "candidate_count": 7,
           "legal_feasible_count": 2,
@@ -194,8 +167,7 @@
         "passed": false,
         "status": "review",
         "missing": [
-          "not_for_production",
-          "qa_use_for_rules"
+          "not_for_production"
         ],
         "min_coverage": 0.85,
         "step_count": 6
@@ -246,7 +218,6 @@
         "status": "review",
         "missing": [
           "not_for_production",
-          "qa_use_for_rules",
           "action_mask_allowed",
           "action_mask_hard_blocks"
         ],
@@ -266,8 +237,7 @@
         "passed": false,
         "status": "review",
         "missing": [
-          "not_for_production",
-          "qa_use_for_rules"
+          "not_for_production"
         ],
         "min_coverage": 0.85,
         "step_count": 6
@@ -286,7 +256,7 @@
       "treat the bundle as review-only until validation stages and claim ladder are upgraded",
       "connect real observed-history and human review results before production deployment"
     ],
-    "created_at": "2026-06-25T00:36:34.316398+00:00"
+    "created_at": "2026-06-28T03:32:07.915146+00:00"
   },
   "validation_summary": {
     "overall_status": "review",
@@ -303,12 +273,12 @@
       "gis_deployability"
     ],
     "blocking_gaps": [
+      "state has no relations",
       "state contains not_for_production objects",
-      "constraint violation probability is high",
-      "blocking or critical rule hits remain open",
+      "no rule evaluation hits are available for constraint validation",
       "counterfactual rollout evidence gate did not pass",
       "intervention does not improve planning utility over baseline",
-      "95 review tasks are still pending"
+      "no evidence items are attached"
     ],
     "stages": [
       {
@@ -317,6 +287,7 @@
         "status": "review",
         "metrics": {},
         "gaps": [
+          "state has no relations",
           "state contains not_for_production objects"
         ],
         "evidence_summary": {}
@@ -335,11 +306,10 @@
         "status": "review",
         "metrics": {},
         "gaps": [
-          "constraint violation probability is high",
-          "blocking or critical rule hits remain open"
+          "no rule evaluation hits are available for constraint validation"
         ],
         "evidence_summary": {
-          "rule_hit_count": 96
+          "rule_hit_count": 0
         }
       },
       {
@@ -353,8 +323,7 @@
         "evidence_summary": {
           "evidence_gate_status": "review",
           "evidence_gate_missing": [
-            "not_for_production",
-            "qa_use_for_rules"
+            "not_for_production"
           ]
         }
       },
@@ -374,11 +343,11 @@
         "status": "review",
         "metrics": {},
         "gaps": [
-          "95 review tasks are still pending"
+          "no evidence items are attached"
         ],
         "evidence_summary": {
-          "evidence_item_count": 380,
-          "review_task_count": 95
+          "evidence_item_count": 0,
+          "review_task_count": 0
         }
       }
     ]
@@ -403,6 +372,25 @@
     "status": "not_provided",
     "evidence_gate_status": "not_provided"
   },
+  "paper58_external_benchmark": {
+    "schema": "territory_world_model.paper58_external_benchmark.v1",
+    "claim_scope": "external_benchmark_support_only",
+    "runtime_dependency": "none",
+    "geofm_runtime_allowed": false,
+    "twm_generator_role": "not_a_runtime_generator",
+    "primary_twm_route": "twm_native_generation_and_planning",
+    "blocks_validation": false,
+    "can_promote_claim_ladder": false,
+    "claim_boundary": "Paper58 is external benchmark support only. It does not make AlphaEarth/GeoFM a TWM runtime dependency, does not replace TWM-native generation, and does not prove TWM production accuracy.",
+    "status": "missing",
+    "provided": false,
+    "missing": [
+      "paper58_benchmark_dir_not_provided"
+    ],
+    "source_files": {},
+    "metric_summary": {},
+    "manifest_summary": {}
+  },
   "production_observed_history_normalization": {
     "status": "not_requested"
   },
@@ -410,7 +398,7 @@
     "schema": "territory_world_model.production_observed_history_preflight.v1",
     "status": "not_provided",
     "production_observed_history": null,
-    "synthetic_experiment_foundation": "/Users/zhouning/gisdataagent/docs/reports/twm_synthetic_experiment_foundation.csv",
+    "synthetic_experiment_foundation": "/Users/zhouning/gisdataagent/.worktrees/twm-paper58-external-benchmark/docs/reports/twm_synthetic_experiment_foundation.csv",
     "schema_audit": {
       "schema": "territory_world_model.observed_history_schema_audit.v1",
       "status": "not_provided",
@@ -419,6 +407,7 @@
       "field_count": 0,
       "missing_required_groups": [],
       "missing_data_gates": [],
+      "gate_diagnostics": [],
       "row_quality": {
         "production_candidate_row_count": 0,
         "production_treated_count": 0,
@@ -602,8 +591,8 @@
       "max_layer_row_count": 0,
       "total_row_count": 0,
       "layer_count": 0,
-      "local_state_object_count": 5745,
-      "local_state_relation_count": 10349
+      "local_state_object_count": 657,
+      "local_state_relation_count": 0
     },
     "checks": [
       {
@@ -613,6 +602,27 @@
         "requirement": "provide a sanitized production-scale profile before claiming national or million-scale readiness"
       }
     ],
+    "check_diagnostics": [
+      {
+        "gate": "production_scale_profile_provided",
+        "phase": "production_scale",
+        "status": "missing",
+        "observed": "not_provided",
+        "requirement": "provide a sanitized production-scale profile before claiming national or million-scale readiness",
+        "remediation": "Provide a sanitized production scale profile with row counts, storage formats, partitioning, spatial index, and compute metadata."
+      }
+    ],
+    "data_owner_summary": {
+      "phase": "production_scale",
+      "status": "review",
+      "missing_gate_count": 1,
+      "missing_gates": [
+        "production_scale_profile_provided"
+      ],
+      "remediations": [
+        "Provide a sanitized production scale profile with row counts, storage formats, partitioning, spatial index, and compute metadata."
+      ]
+    },
     "missing": [
       "production_scale_profile_provided"
     ],
@@ -674,6 +684,92 @@
     ],
     "claim_boundary": "production readiness requires passing real observed history, validation, claim ladder and human review gates; this gate is stricter than offline smoke validation"
   },
+  "deployment_punch_list": {
+    "schema": "territory_world_model.validation_bundle_deployment_punch_list.v1",
+    "status": "review",
+    "required": false,
+    "open_action_count": 6,
+    "blocking_action_count": 0,
+    "phase_counts": {
+      "selected_plan": 1,
+      "validation_ladder": 1,
+      "claim_ladder": 1,
+      "observed_history": 1,
+      "production_scale": 1,
+      "human_review": 1
+    },
+    "severity_counts": {
+      "blocking": 0,
+      "review": 6
+    },
+    "actions": [
+      {
+        "gate": "selected_plan_bundle_pass",
+        "phase": "selected_plan",
+        "status": "review",
+        "observed_status": "review",
+        "observed": "review",
+        "requirement": "selected-plan evaluation bundle must pass",
+        "resolution": "Run the selected-plan evaluation bundle until planner, evidence and selected-candidate checks pass.",
+        "blocks_current_run": false
+      },
+      {
+        "gate": "validation_report_pass",
+        "phase": "validation_ladder",
+        "status": "review",
+        "observed_status": "review",
+        "observed": "review",
+        "requirement": "validation ladder must pass",
+        "resolution": "Resolve validation ladder review/blocking stages before promoting the bundle.",
+        "blocks_current_run": false
+      },
+      {
+        "gate": "claim_ladder_deployable",
+        "phase": "claim_ladder",
+        "status": "review",
+        "observed_status": "review",
+        "observed": "L0",
+        "requirement": "claim ladder must reach L4 deployable GIS support",
+        "resolution": "Promote the claim ladder to L4 only after deployable GIS support evidence is available.",
+        "blocks_current_run": false
+      },
+      {
+        "gate": "production_observed_history_preflight_pass",
+        "phase": "observed_history",
+        "status": "review",
+        "observed_status": "review",
+        "observed": "not_provided",
+        "requirement": "real observed-history schema and policy-history alignment must pass",
+        "resolution": "Provide real non-synthetic observed history that passes schema, policy-history, temporal and alignment gates.",
+        "blocks_current_run": false
+      },
+      {
+        "gate": "production_scale_readiness_pass",
+        "phase": "production_scale",
+        "status": "review",
+        "observed_status": "review",
+        "observed": "not_provided",
+        "requirement": "production scale profile must pass lakehouse, partitioning, spatial-index and distributed-compute readiness gates",
+        "resolution": "Provide a sanitized production scale profile that passes storage, partitioning, spatial-index and compute-readiness checks.",
+        "blocks_current_run": false
+      },
+      {
+        "gate": "human_review_and_audit_pass",
+        "phase": "human_review",
+        "status": "review",
+        "observed_status": "review",
+        "observed": {
+          "selected_plan_status": "review",
+          "validation_status": "review",
+          "review_stage": "review"
+        },
+        "requirement": "human review, audit and GIS deployability gates must pass",
+        "resolution": "Complete human review, audit and GIS deployability checks.",
+        "blocks_current_run": false
+      }
+    ],
+    "claim_boundary": "derived from production_readiness_gate; it organizes deployment gaps without changing validation or production-readiness claims"
+  },
   "sanitized_export_policy": {
     "schema": "territory_world_model.sanitized_export_policy.v1",
     "exports_raw_geometries": false,
@@ -690,6 +786,7 @@
       "production policy-history coverage diagnostics",
       "production scale readiness diagnostics",
       "production readiness gate summary",
+      "deployment punch list",
       "recommendations"
     ],
     "intended_use": "air-gapped validation feedback and non-sensitive progress reporting"
@@ -710,6 +807,6 @@
     "treat the bundle as review-only until validation stages and claim ladder are upgraded"
   ],
   "outputs": {
-    "production_scale_profile_template": "/Users/zhouning/gisdataagent/docs/reports/twm_production_scale_profile_template.json"
+    "production_scale_profile_template": "/Users/zhouning/gisdataagent/.worktrees/twm-paper58-external-benchmark/docs/reports/twm_production_scale_profile_template.json"
   }
 }

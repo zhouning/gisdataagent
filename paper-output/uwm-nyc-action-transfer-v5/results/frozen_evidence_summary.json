@@ -1,0 +1,33 @@
+{
+  "all_inventory_hashes_match": true,
+  "best_submission": "effective_date_plus_4w",
+  "candidate_primary_error": 0.36838923900541926,
+  "claim_boundary": {
+    "does_not_support": [
+      "causal effects of any taxi fee or congestion-pricing policy",
+      "analyst-unseen or externally hidden labels",
+      "a new future intervention forecast",
+      "operational transportation forecasting validity",
+      "generalization beyond NYC yellow taxis or beyond the four admitted actions",
+      "complete universal GWM, UWM or DAM-GK validity"
+    ],
+    "supports_on_finalization": [
+      "reproducible model-held-out transfer evidence across four known NYC taxi actions",
+      "equal-event evidence for incremental action value over a strong historical forecast",
+      "mechanism-specific evidence from frozen action and spatial-scope corruptions",
+      "Runtime-R4 multi-fold isolation, commitment and replay evidence"
+    ]
+  },
+  "completion_status": "PASS_V5_BENCHMARK_COMPLETE_ACTION_TRANSFER_NOT_SUPPORTED",
+  "control_count": 7,
+  "event_count": 4,
+  "fold_improvement_count": 2,
+  "gate_count": 8,
+  "history_primary_error": 0.3626162626409588,
+  "mean_fold_skill": -0.025239441518234873,
+  "model_count": 11,
+  "passed_gate_count": 0,
+  "schema": "uwm.nyc_action_transfer_paper_evidence.v1",
+  "source_result_status": "ACTION_TRANSFER_NOT_SUPPORTED",
+  "spatial_ar_primary_error": 0.36141612169760795
+}

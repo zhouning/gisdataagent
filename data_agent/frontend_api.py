@@ -4198,9 +4198,40 @@ def get_frontend_api_routes():
     from .api.world_model_routes import get_world_model_routes
     from .api.causal_routes import get_causal_routes
     from .api.causal_world_model_routes import get_causal_world_model_routes
+    from .api.world_model_v11_routes import get_world_model_v11_routes
     from .api.world_model_v2_routes import get_world_model_v2_routes
     from .api.world_model_v21_routes import get_world_model_v21_routes
     from .api.territory_world_model_routes import get_territory_world_model_routes
+    from .api.uwm_traditional_livability_routes import get_uwm_traditional_livability_routes
+    from .api.uwm_traditional_mobility_routes import get_uwm_traditional_mobility_routes
+    from .api.uwm_traditional_social_public_service_routes import get_uwm_traditional_social_public_service_routes
+    from .api.uwm_traditional_public_space_routes import get_uwm_traditional_public_space_routes
+    from .api.uwm_traditional_safety_comfort_routes import get_uwm_traditional_safety_comfort_routes
+    from .api.uwm_traditional_daily_convenience_routes import get_uwm_traditional_daily_convenience_routes
+    from .api.uwm_traditional_housing_community_routes import get_uwm_traditional_housing_community_routes
+    from .api.uwm_traditional_cultural_heritage_routes import get_uwm_traditional_cultural_heritage_routes
+    from .api.uwm_cross_domain_impact_routes import get_uwm_cross_domain_impact_routes
+    from .api.uwm_implementation_roadmap_routes import get_uwm_implementation_roadmap_routes
+    from .api.uwm_resilience_kernel_routes import get_uwm_resilience_kernel_routes
+    from .api.uwm_digital_readiness_routes import get_uwm_digital_readiness_routes
+    from .api.uwm_operations_quality_routes import get_uwm_operations_quality_routes
+    from .api.uwm_business_licence_routes import get_uwm_business_licence_routes
+    from .api.uwm_development_control_routes import get_uwm_development_control_routes
+    from .api.uwm_financial_readiness_routes import get_uwm_financial_readiness_routes
+    from .api.uwm_public_feedback_readiness_routes import get_uwm_public_feedback_readiness_routes
+    from .api.uwm_spatial_scope_registry_routes import get_uwm_spatial_scope_registry_routes
+    from .api.uwm_planning_version_registry_routes import get_uwm_planning_version_registry_routes
+    from .api.uwm_parcel_state_readiness_routes import get_uwm_parcel_state_readiness_routes
+    from .api.uwm_infrastructure_network_readiness_routes import get_uwm_infrastructure_network_readiness_routes
+    from .api.uwm_asset_lifecycle_readiness_routes import get_uwm_asset_lifecycle_readiness_routes
+    from .api.uwm_population_demographic_readiness_routes import get_uwm_population_demographic_readiness_routes
+    from .api.uwm_livability_s2_routes import get_uwm_livability_s2_routes
+    from .api.uwm_livability_demand7_routes import get_uwm_livability_demand7_routes
+    from .api.uwm_environmental_kernel_routes import get_uwm_environmental_kernel_routes
+    from .api.uwm_multistage_intervention_routes import get_uwm_multistage_intervention_routes
+    from .api.uwm_livability_decision_routes import get_uwm_livability_decision_routes
+    from .api.uwm_ai_demand_readiness_routes import get_uwm_ai_demand_readiness_routes
+    from .api.uwm_livability_data_catalog_routes import get_uwm_livability_data_catalog_routes
     from .api.quality_routes import get_quality_routes
     from .api.domain_standard_routes import get_domain_standard_routes
     from .api.distribution_routes import get_distribution_routes
@@ -4343,12 +4374,53 @@ def get_frontend_api_routes():
         *get_virtual_source_routes(),
         # World Model (Tech Preview)
         *get_world_model_routes(),
+        # World Model v1.1 (Paper58 external benchmark evidence)
+        *get_world_model_v11_routes(),
         # World Model v2 (Bishan county — Dual-Layer Geospatial Dreamer)
         *get_world_model_v2_routes(),
         # World Model v2.1 (Paper9 arcgis-farmland-mpc Tool 4)
         *get_world_model_v21_routes(),
         # Territory World Model (TWM)
         *get_territory_world_model_routes(),
+        # UWM traditional static livability analysis
+        *get_uwm_traditional_livability_routes(),
+        # Traditional mobility and accessibility demand 8
+        *get_uwm_traditional_mobility_routes(),
+        *get_uwm_traditional_social_public_service_routes(),
+        *get_uwm_traditional_public_space_routes(),
+        *get_uwm_traditional_safety_comfort_routes(),
+        *get_uwm_traditional_daily_convenience_routes(),
+        *get_uwm_traditional_housing_community_routes(),
+        *get_uwm_traditional_cultural_heritage_routes(),
+        *get_uwm_cross_domain_impact_routes(),
+        *get_uwm_implementation_roadmap_routes(),
+        *get_uwm_resilience_kernel_routes(),
+        *get_uwm_digital_readiness_routes(),
+        *get_uwm_operations_quality_routes(),
+        *get_uwm_business_licence_routes(),
+        *get_uwm_development_control_routes(),
+        *get_uwm_financial_readiness_routes(),
+        *get_uwm_public_feedback_readiness_routes(),
+        *get_uwm_spatial_scope_registry_routes(),
+        *get_uwm_planning_version_registry_routes(),
+        *get_uwm_parcel_state_readiness_routes(),
+        *get_uwm_infrastructure_network_readiness_routes(),
+        *get_uwm_asset_lifecycle_readiness_routes(),
+        *get_uwm_population_demographic_readiness_routes(),
+        # UWM parcel-scale livability S2 land-use scenarios
+        *get_uwm_livability_s2_routes(),
+        # UWM demand-7 livability target and intervention planning
+        *get_uwm_livability_demand7_routes(),
+        # UWM environmental dynamics kernel
+        *get_uwm_environmental_kernel_routes(),
+        # UWM real-data multi-stage urban intervention planning
+        *get_uwm_multistage_intervention_routes(),
+        # UWM livability world-model decision package
+        *get_uwm_livability_decision_routes(),
+        # Canonical customer AI demand ownership readiness
+        *get_uwm_ai_demand_readiness_routes(),
+        # UWM livability data catalog and MMFE/RL readiness boundary
+        *get_uwm_livability_data_catalog_routes(),
         # Causal Reasoning (Angle B) + Causal World Model (Angle C)
         *get_causal_routes(),
         *get_causal_world_model_routes(),

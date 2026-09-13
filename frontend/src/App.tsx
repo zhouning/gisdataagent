@@ -74,6 +74,7 @@ export default function App() {
   }, [setUserFromAPI]);
 
   const handleMapUpdate = useCallback((cfg: any) => {
+    (window as any).__lastMapUpdate = cfg;
     if (cfg.layers) setMapLayers(cfg.layers);
     if (cfg.center) setMapCenter(cfg.center);
     if (cfg.zoom) setMapZoom(cfg.zoom);
@@ -259,7 +260,7 @@ export default function App() {
             )}
             {(!isMobile || activePanel === 'data') && (
               <ErrorBoundary name="数据面板">
-                <DataPanel dataFile={dataFile} userRole={userRole} username={user?.identifier || ''} />
+                <DataPanel dataFile={dataFile} userRole={userRole} username={user?.identifier || ''} onRequestWidth={setDataWidth} />
               </ErrorBoundary>
             )}
           </div>

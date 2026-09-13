@@ -1,0 +1,4 @@
+horizon_week,week_start,fixed_spatial_surcharge_contribution_usd,expected_total_delta_usd,expected_fractional_fare_delta,spatial_applicability_share,implementation_share
+1,2025-01-05,0.75,0.75,0.075,1.0,1.0
+2,2025-01-12,0.75,0.75,0.075,1.0,1.0
+3,2025-01-19,0.75,0.75,0.075,1.0,1.0

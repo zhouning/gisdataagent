@@ -10,9 +10,20 @@ class TestMentionRegistry(unittest.TestCase):
         from data_agent.mention_registry import build_registry
         registry = build_registry(user_id="testuser", role="admin")
         handles = {t["handle"] for t in registry}
+        self.assertIn("UWM规划", handles)
         self.assertIn("General", handles)
         self.assertIn("Governance", handles)
         self.assertIn("Optimization", handles)
+
+    def test_uwm_planning_target_and_aliases(self):
+        from data_agent.mention_registry import build_registry, lookup
+        registry = build_registry(user_id="testuser", role="admin")
+        target = lookup(registry, "UWM规划")
+        self.assertIsNotNone(target)
+        self.assertEqual(target["pipeline"], "UWM_MULTISTAGE")
+        self.assertEqual(target["allowed_roles"], ["admin", "analyst"])
+        self.assertEqual(lookup(registry, "UWM多阶段")["handle"], "UWM规划")
+        self.assertEqual(lookup(registry, "UWM多阶段城市干预规划")["handle"], "UWM规划")
 
     def test_pipeline_target_shape(self):
         from data_agent.mention_registry import build_registry
@@ -123,6 +134,15 @@ class TestMentionParser(unittest.TestCase):
         target = resolve_mention(parsed, registry)
         self.assertIsNotNone(target)
         self.assertEqual(target["type"], "pipeline")
+
+    def test_resolve_uwm_planning_mention(self):
+        from data_agent.mention_parser import parse_mention, resolve_mention
+        from data_agent.mention_registry import build_registry
+        registry = build_registry(user_id="testuser", role="admin")
+        parsed = parse_mention("@UWM规划 请先展示当前输入状态，再进行多阶段城市干预规划")
+        target = resolve_mention(parsed, registry)
+        self.assertIsNotNone(target)
+        self.assertEqual(target["pipeline"], "UWM_MULTISTAGE")
 
     def test_resolve_unknown_mention_returns_none(self):
         from data_agent.mention_parser import parse_mention, resolve_mention

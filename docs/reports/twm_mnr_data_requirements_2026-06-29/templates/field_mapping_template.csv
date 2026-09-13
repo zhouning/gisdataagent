@@ -1,0 +1,2 @@
+﻿source_dataset,source_field,target_template,target_field,required_level,transform_rule,owner_note
+raw_approval_export,AJBH,production_observed_history_template.csv,approval_id,必需,copy_as_string,审批件编号映射

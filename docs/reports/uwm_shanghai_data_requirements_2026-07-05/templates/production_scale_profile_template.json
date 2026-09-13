@@ -1,0 +1,53 @@
+{
+  "schema": "urban_world_model.production_scale_profile.v1",
+  "example_only": false,
+  "not_for_production": false,
+  "profile_id": "replace_with_sanitized_shanghai_profile_id",
+  "target_city": "Shanghai",
+  "generated_at": "replace_with_extract_time",
+  "layers": [
+    {
+      "name": "building_footprint_alias",
+      "role": "urban_form",
+      "row_count": 5000000,
+      "geometry_type": "Polygon",
+      "storage_format": "geoparquet",
+      "partition_columns": ["district_code", "year"],
+      "spatial_index": "h3",
+      "raw_geometry_export_allowed": false,
+      "sensitivity_level": "internal"
+    },
+    {
+      "name": "public_service_facility_alias",
+      "role": "service_accessibility",
+      "row_count": 300000,
+      "geometry_type": "Point",
+      "storage_format": "postgis",
+      "partition_columns": ["service_type", "district_code"],
+      "spatial_index": "gist",
+      "raw_geometry_export_allowed": false,
+      "sensitivity_level": "internal"
+    },
+    {
+      "name": "environment_observation_alias",
+      "role": "environment_observation",
+      "row_count": 100000000,
+      "geometry_type": "PointOrGrid",
+      "storage_format": "iceberg",
+      "partition_columns": ["observation_date", "observation_type"],
+      "spatial_index": "h3",
+      "raw_geometry_export_allowed": false,
+      "sensitivity_level": "internal"
+    }
+  ],
+  "compute": {
+    "distributed": true,
+    "recommended_engines": ["sedona", "spark", "trino"],
+    "requires_sampling_or_tiling": true
+  },
+  "security": {
+    "raw_geometry_cross_environment_export": false,
+    "individual_level_data_export": false,
+    "inner_network_execution_preferred": true
+  }
+}

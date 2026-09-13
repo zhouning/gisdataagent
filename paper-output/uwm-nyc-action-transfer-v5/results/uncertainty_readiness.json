@@ -1,0 +1,9 @@
+{
+  "calibrated_prediction_interval_ready": false,
+  "ensemble_spread_must_not_be_called_calibrated_interval": true,
+  "paper_action": "Report paired bootstrap uncertainty for score differences and state that calibrated predictive intervals are unavailable in V5.",
+  "reason": "V5 stores scalar inner-fold validation metrics but not residual-level cross-fitted training-action predictions. Three seed predictions on the held-out actions measure ensemble spread and cannot be calibrated with the same held-out targets without leakage.",
+  "schema": "uwm.nyc_action_transfer_uncertainty_readiness.v1",
+  "score_bootstrap_draws": 20000,
+  "score_bootstrap_uncertainty_ready": true
+}

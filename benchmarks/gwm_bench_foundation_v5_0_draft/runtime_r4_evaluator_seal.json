@@ -1,0 +1,226 @@
+{
+  "schema": "gwm_bench.foundation_v5_runtime_r4_evaluator_seal.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V5.0-DRAFT1",
+  "created_at": "2026-07-23T15:48:35.102734+00:00",
+  "status": "RUNTIME_R4_EVALUATOR_SEALED_PREDICTIONS_PENDING",
+  "check_count": 19,
+  "checks": {
+    "protocol_is_v5": true,
+    "preflight_passed_and_bound": true,
+    "bundle_materialized_and_bound": true,
+    "bundle_verification_passed_and_bound": true,
+    "runtime_contract_is_frozen": true,
+    "submission_contract_is_frozen": true,
+    "suite_ids_match": true,
+    "runtime_folds_exactly_match_protocol": true,
+    "runtime_models_exactly_match_protocol": true,
+    "runtime_controls_exactly_match_protocol": true,
+    "runtime_seeds_exactly_match_protocol": true,
+    "submission_has_exact_four_fold_key_contract": true,
+    "evaluator_conformance_passed": true,
+    "runtime_denies_current_fold_targets": true,
+    "runtime_forbids_observed_writeback": true,
+    "runtime_forbids_post_action_graph_update": true,
+    "evaluator_waits_for_complete_commitment": true,
+    "completion_does_not_require_model_win": true,
+    "claim_boundary_rejects_blind_causal_and_external_claims": true
+  },
+  "artifacts": {
+    "protocol": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/suite_protocol.json",
+      "bytes": 12695,
+      "sha256": "1802ec61ec229f11f95e541c219aa83b8c7af6cfd692d897c1f15ddfbf4d7e79"
+    },
+    "preflight": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/preflight_report.json",
+      "bytes": 7350,
+      "sha256": "40915523dd0a594956f79eb0a7fc97c56d72916b9a56089d627b765bb59e0511"
+    },
+    "bundle_manifest": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/bundle_manifest.json",
+      "bytes": 22074,
+      "sha256": "be128f7ff5a11c6fa2f70deedd8c0666bc3a218c41a741032637f3f373ff58fe"
+    },
+    "bundle_verification": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/bundle_verification.json",
+      "bytes": 16490,
+      "sha256": "17f28486584a0fa88f31bd1488982d80966118c2b0cac5488d6aaf3f139d9ab4"
+    },
+    "runtime_r4_contract": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/runtime_r4_contract.json",
+      "bytes": 7903,
+      "sha256": "a07aef09032d9d5ecfb4f01f0584b00a43c2636d1dda91f7b81ab218df39d20c"
+    },
+    "submission_contract": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/submission_contract.json",
+      "bytes": 1666,
+      "sha256": "04efcabc9caab4c43ddc5e3c1b9bae8725bf527750f61c786473431f5fbc9a51"
+    },
+    "evaluator": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/action_transfer_evaluator.py",
+      "bytes": 21098,
+      "sha256": "c44dd5159124a0258b26d1b4a73459b07f6646a38388d3c76176fd9a3c2e4de1"
+    },
+    "evaluator_conformance": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/evaluator_conformance_report.json",
+      "bytes": 5994,
+      "sha256": "651e546f0aadbf3b9fedb5006fb69a520031d6c1f04a41cba84eeebac1f5baad"
+    },
+    "evaluator_conformance_runner": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/run_evaluator_conformance.py",
+      "bytes": 11057,
+      "sha256": "42844697dabb180c9b0c6712f9804701c9a3d8d820990848ed1978c13fd47d2c"
+    },
+    "holdout_2015_development": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/development/weekly_state_action.parquet",
+      "bytes": 659326,
+      "sha256": "737a881fc78dca43a6ed8bb5016bf5b489d2a71278f66818cf6f701aab6694df"
+    },
+    "holdout_2015_history": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/test_input/weekly_state_history.parquet",
+      "bytes": 221860,
+      "sha256": "43ab6bf7af282d282c6c5198499a659ddaf967458239d60d61b42ef400ede5af"
+    },
+    "holdout_2015_action": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/test_input/future_action_spec.parquet",
+      "bytes": 18267,
+      "sha256": "548b4942c0fbc8eee3e87f9cf23ec798ff7c241f253545d8b4290bb3ad92beca"
+    },
+    "holdout_2015_keys": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/test_input/submission_keys.parquet",
+      "bytes": 5391,
+      "sha256": "255570eb116bebc5f76a2c76b54abb8a842fb307049d3bfc19ac6df59ebeaba4"
+    },
+    "holdout_2015_graph": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/graph/test_spatial_edges.parquet",
+      "bytes": 28218,
+      "sha256": "432a312781e9856e9a49966fca4c9fc49a56e01993aadf7f12df2a51a08ab52c"
+    },
+    "holdout_2015_targets": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/test_targets/weekly_targets.parquet",
+      "bytes": 55986,
+      "sha256": "eb8e47acc6f6da36c5607618876f2e68ffad512cfa9371db363c3365c305f4ac"
+    },
+    "holdout_2019_development": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/development/weekly_state_action.parquet",
+      "bytes": 664465,
+      "sha256": "5fd0ddf3ce69cdec7b3488a7bfa7e04d6fed515ea40f6f6f012e57108ce80b8b"
+    },
+    "holdout_2019_history": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/test_input/weekly_state_history.parquet",
+      "bytes": 208811,
+      "sha256": "d27d469a550757f099b66f4ab2eb3234c06f19d3a0c9ba42e5f7839397993d20"
+    },
+    "holdout_2019_action": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/test_input/future_action_spec.parquet",
+      "bytes": 27288,
+      "sha256": "14c0a3af690bb776a7db21d8993ed60a11423bbdfc0dd4c8d9c1240f373942da"
+    },
+    "holdout_2019_keys": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/test_input/submission_keys.parquet",
+      "bytes": 5391,
+      "sha256": "255570eb116bebc5f76a2c76b54abb8a842fb307049d3bfc19ac6df59ebeaba4"
+    },
+    "holdout_2019_graph": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/graph/test_spatial_edges.parquet",
+      "bytes": 31159,
+      "sha256": "51429bee2978345b1c3ecae72c080b70bd0e8df9aa6dbfbe5c82028ed1d91e45"
+    },
+    "holdout_2019_targets": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/test_targets/weekly_targets.parquet",
+      "bytes": 52420,
+      "sha256": "a9ab835e8c64a01a129faf25ffaba1025e54124876b01b43eb55566f686f3c1c"
+    },
+    "holdout_2022_development": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2022/development/weekly_state_action.parquet",
+      "bytes": 667169,
+      "sha256": "fc28c65d7efcd8794a125d7779237077da7bb82272dddf6b52cbcc0f9d7cdeff"
+    },
+    "holdout_2022_history": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2022/test_input/weekly_state_history.parquet",
+      "bytes": 182404,
+      "sha256": "f42fbc90ab04782b1bb2e8172a658c6d0410ad66874411ad6490aa3e256293d5"
+    },
+    "holdout_2022_action": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2022/test_input/future_action_spec.parquet",
+      "bytes": 58767,
+      "sha256": "ea79789067aeaf8cfcbb5372ffb116334a1a86b53fa93ac18a661d928554a217"
+    },
+    "holdout_2022_keys": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2022/test_input/submission_keys.parquet",
+      "bytes": 5391,
+      "sha256": "255570eb116bebc5f76a2c76b54abb8a842fb307049d3bfc19ac6df59ebeaba4"
+    },
+    "holdout_2022_graph": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2022/graph/test_spatial_edges.parquet",
+      "bytes": 29403,
+      "sha256": "59558e70f19adc8eb7f4ea8615bd28b720d5151d6de868efdacab350ea150dfe"
+    },
+    "holdout_2022_targets": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2022/test_targets/weekly_targets.parquet",
+      "bytes": 45666,
+      "sha256": "bc1c3fa4911e68932f8bfb65699fbf59a927d401aa73dc1f35d58f343b2edccc"
+    },
+    "holdout_2025_development": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2025/development/weekly_state_action.parquet",
+      "bytes": 686228,
+      "sha256": "af5760bd93b0785d4c294c93399bae09efa8e7cf20fe22447d210687a6bf56c2"
+    },
+    "holdout_2025_history": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2025/test_input/weekly_state_history.parquet",
+      "bytes": 185145,
+      "sha256": "f6939513da1e8f8c10fcb391174d2a484b6433ff83ef4ab15d472a2150d0a512"
+    },
+    "holdout_2025_action": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2025/test_input/future_action_spec.parquet",
+      "bytes": 27093,
+      "sha256": "408fe9ec73624707eb6a1f5dd75e9807199f7b5e86200bb5bdf6b325da08d3b4"
+    },
+    "holdout_2025_keys": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2025/test_input/submission_keys.parquet",
+      "bytes": 5391,
+      "sha256": "255570eb116bebc5f76a2c76b54abb8a842fb307049d3bfc19ac6df59ebeaba4"
+    },
+    "holdout_2025_graph": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2025/graph/test_spatial_edges.parquet",
+      "bytes": 30398,
+      "sha256": "e6b2873ef6be59376107c014b47fc2fc952621a238fda6a676256401aa786469"
+    },
+    "holdout_2025_targets": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2025/test_targets/weekly_targets.parquet",
+      "bytes": 49412,
+      "sha256": "4e3913cff5f5ee923d547653b2362342895129d82aeaeac31ccf9b3f3ee16876"
+    }
+  },
+  "model_runtime_target_access_permitted": false,
+  "formal_evaluator_target_access_permitted_after_complete_commitment": true,
+  "required_model_ids": [
+    "history_ar_backbone",
+    "fixed_adjacency_spatial_ar",
+    "dam_gk_residual_no_action",
+    "uwm_dam_gk_action_residual"
+  ],
+  "required_control_ids": [
+    "action_deleted",
+    "effective_date_minus_4w",
+    "effective_date_plus_4w",
+    "action_component_permutation",
+    "wrong_spatial_scope",
+    "cross_event_action_swap",
+    "zone_exposure_shuffle_seed_20260723"
+  ],
+  "required_seeds": [
+    31,
+    47,
+    73
+  ],
+  "required_outer_folds": [
+    "holdout_2015",
+    "holdout_2019",
+    "holdout_2022",
+    "holdout_2025"
+  ],
+  "expected_aggregate_submission_count": 11,
+  "expected_seed_level_multifold_prediction_count": 27,
+  "next_permitted_action": "Implement the frozen Runtime-R4 runner, then run and replay all required models, controls, seeds and folds without opening any current-fold test target."
+}

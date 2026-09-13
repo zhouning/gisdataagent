@@ -1,0 +1,257 @@
+{
+  "audit_trace": {
+    "artifact_path_policy": "local_prepared_full_admin_artifacts_no_network_download",
+    "data_claim_policy": "bounded same-scene world-model superiority only; observed policy outcome superiority remains forbidden",
+    "source_artifact_paths": {
+      "full_admin_energy_regularized_planner_report": "data/uwm_public_proxy/chongqing_central/energy_regularized_planner_full_admin_graph_2026_07_08/uwm_full_admin_graph_energy_regularized_planner_report.json",
+      "full_admin_graph_drl_training_report": "data/uwm_public_proxy/chongqing_central/livability_graph_drl_training_full_admin_graph_2026_07_08/uwm_full_admin_graph_livability_graph_drl_training_report.json",
+      "full_admin_graph_planner_replay": "data/uwm_public_proxy/chongqing_central/data_calibrated_planner_replay_full_admin_graph_2026_07_08/uwm_full_admin_graph_model_based_graph_search.json",
+      "full_admin_learned_world_model_rollout": "data/uwm_public_proxy/chongqing_central/learned_world_model_rollout_full_admin_graph_2026_07_08/uwm_full_admin_graph_learned_world_model_rollout.json",
+      "full_admin_livability_decision_package": "data/uwm_public_proxy/chongqing_central/full_admin_livability_decision_package_2026_07_08/uwm_full_admin_livability_decision_package.json",
+      "full_admin_service_accessibility_surface": "data/uwm_public_proxy/chongqing_central/full_admin_service_accessibility_surface_2026_07_08/uwm_full_admin_service_accessibility_surface.json",
+      "geographic_similarity_kernel": "data/uwm_public_proxy/chongqing_central/geographic_similarity_kernel_2026_07_08/uwm_geographic_similarity_kernel.json",
+      "livability_endpoint_suite": "data/uwm_public_proxy/chongqing_central/livability_endpoint_suite_2026_07_07/uwm_livability_endpoint_suite.json",
+      "production_governance_planner_binding_gate": "data/uwm_public_proxy/chongqing_central/production_governance_planner_binding_gate_2026_07_08/uwm_production_governance_planner_binding_gate.json",
+      "spatial_causal_question_registry": "data/uwm_public_proxy/chongqing_central/spatial_causal_question_registry_2026_07_09/uwm_spatial_causal_question_registry.json"
+    }
+  },
+  "causal_and_governance_gate": {
+    "accepted_authoritative_row_count": 0,
+    "authoritative_governance_data_closure_ready": false,
+    "causal_governance_gate_ready_for_bounded_claim": true,
+    "empirical_superiority_claim": false,
+    "final_attached_action_count": 6,
+    "final_output_causal_binding_ready": true,
+    "final_recommended_action_count": 6,
+    "missing_authoritative_table_count": 5,
+    "observed_policy_outcome_superiority_claim": false,
+    "planner_attached_action_count": 1137,
+    "planner_candidate_causal_binding_ready": true,
+    "planner_feasible_action_count": 1137,
+    "planner_missing_contract_action_count": 0,
+    "planner_policy_outcome_claim_allowed_action_count": 0,
+    "planner_underidentified_policy_effect_action_count": 1137,
+    "production_deployment_ready": false,
+    "production_governance_gate_ready": true,
+    "production_planner_governance_binding_ready": false,
+    "spatial_causal_registry_ready": true
+  },
+  "claim_boundary": {
+    "max_claim_level": "bounded_support",
+    "reason": "Full-admin dossier aggregates real prepared renderer, Graph-MDP, simulator, planner, learned value/rollout, endpoint and governance evidence. It supports bounded same-scene world-model advantage over traditional methods, not observed policy-outcome superiority."
+  },
+  "claim_ladder": [
+    {
+      "allowed_in_report": true,
+      "claim": "bounded_full_admin_world_model_advantage_over_traditional_methods",
+      "claim_level": "bounded_support",
+      "policy_outcome_claim": false,
+      "scope": "full_admin_graph_same_scene",
+      "spatial_attribution_claim": false
+    }
+  ],
+  "created_at": "2026-07-09T13:00:00Z",
+  "dossier_id": "uwm-full-admin-world-model-superiority-dossier-2026-07-09",
+  "empirical_superiority_claim": false,
+  "endpoint_superiority_matrix": {
+    "all_endpoints_beat_best_traditional": true,
+    "endpoint_count": 3,
+    "endpoint_rows": [
+      {
+        "beats_traditional_baselines": true,
+        "best_traditional_baseline": "chap_monthly_anchor_ridge",
+        "best_traditional_baseline_mae": 0.952794,
+        "domain": "air_quality",
+        "endpoint_id": "air_quality_pm25",
+        "policy_outcome_claim": false,
+        "relative_mae_reduction_vs_best_traditional": 0.003047,
+        "uwm_mae": 0.949891,
+        "uwm_model": "chap_cams_standardized_ridge"
+      },
+      {
+        "beats_traditional_baselines": true,
+        "best_traditional_baseline": "ghsl_built_surface_proxy",
+        "best_traditional_baseline_mae": 14.028006,
+        "domain": "service_accessibility",
+        "endpoint_id": "service_point_accessibility",
+        "policy_outcome_claim": false,
+        "relative_mae_reduction_vs_best_traditional": 0.128622,
+        "uwm_mae": 12.223697,
+        "uwm_model": "osm_road_floor_25d_standardized_ridge"
+      },
+      {
+        "beats_traditional_baselines": true,
+        "best_traditional_baseline": "city_mean",
+        "best_traditional_baseline_mae": 3.204762,
+        "domain": "service_accessibility",
+        "endpoint_id": "essential_service_accessibility",
+        "policy_outcome_claim": false,
+        "relative_mae_reduction_vs_best_traditional": 0.214343,
+        "uwm_mae": 2.517843,
+        "uwm_model": "osm_road_length_floor_25d_standardized_ridge"
+      }
+    ],
+    "endpoint_suite_ready": true,
+    "mean_relative_mae_reduction_vs_best_traditional": 0.115337,
+    "min_relative_mae_reduction_vs_best_traditional": 0.003047,
+    "observed_policy_outcome_superiority_claim": false,
+    "ready_endpoint_count": 3
+  },
+  "experiment_scope": "full_admin_graph",
+  "forbidden_claims": [
+    "observed_policy_outcome_superiority",
+    "empirical_policy_superiority",
+    "causal_effect_identification_from_current_proxy_scene",
+    "authoritative_governance_deployment_readiness"
+  ],
+  "full_admin_scope_guard": {
+    "admin_boundary_edge_count": 2847,
+    "available_action_count": 1137,
+    "geographic_similarity_edge_count": 5085,
+    "graph_edge_count": 7932,
+    "graph_node_count": 1017,
+    "local_poi_point_count": 1194351,
+    "local_road_count": 50366,
+    "mismatches": [],
+    "passed": true,
+    "required_scope": "full_admin_graph",
+    "service_missing_admin_count": 0,
+    "service_surface_admin_unit_count": 1017,
+    "transition_count": 6817
+  },
+  "observed_policy_outcome_superiority_claim": false,
+  "remaining_gates": [
+    "observed_policy_outcome_holdout_required",
+    "off_policy_evaluation_on_real_intervention_logs_required",
+    "causal_policy_effect_validation_required",
+    "authoritative_governance_data_closure_required",
+    "production_deployment_readiness_blocked"
+  ],
+  "schema": "uwm.full_admin_world_model_superiority_dossier.v1",
+  "supported_claim": "bounded_full_admin_world_model_advantage_over_traditional_methods",
+  "traditional_baseline_matrix": {
+    "baseline_families": {
+      "energy_regularized_traditional_static": {
+        "advantage_over_traditional_static": 0.001073357
+      },
+      "final_endpoint_best_traditional_baselines": [
+        {
+          "best_traditional_baseline": "chap_monthly_anchor_ridge",
+          "best_traditional_baseline_mae": 0.952794,
+          "endpoint_id": "air_quality_pm25",
+          "uwm_mae": 0.949891
+        },
+        {
+          "best_traditional_baseline": "ghsl_built_surface_proxy",
+          "best_traditional_baseline_mae": 14.028006,
+          "endpoint_id": "service_point_accessibility",
+          "uwm_mae": 12.223697
+        },
+        {
+          "best_traditional_baseline": "city_mean",
+          "best_traditional_baseline_mae": 3.204762,
+          "endpoint_id": "essential_service_accessibility",
+          "uwm_mae": 2.517843
+        }
+      ],
+      "learned_rollout_static_and_one_step_baselines": {
+        "imagined_advantage_over_one_step_policy": 0.00089763,
+        "imagined_advantage_over_static_single_step": 0.001192103
+      },
+      "same_scene_static_heuristic": {
+        "static_single_step_reward": -0.00734186
+      },
+      "traditional_static_graph_mdp_policy": {
+        "traditional_static_cumulative_reward": -0.007255052
+      }
+    },
+    "baseline_family_count": 5
+  },
+  "world_model_system_matrix": {
+    "all_required_world_model_advantages_positive": true,
+    "components": {
+      "energy_regularized_planner": {
+        "advantage_over_traditional_static": 0.001073357,
+        "observed_policy_outcome_superiority_claim": false,
+        "ready": true
+      },
+      "final_endpoint_suite": {
+        "observed_policy_outcome_superiority_claim": false,
+        "ready": true,
+        "supported_claim": "uwm_final_livability_endpoint_suite_beats_traditional_baselines"
+      },
+      "full_admin_decision_package": {
+        "observed_policy_outcome_superiority_claim": false,
+        "ready": true,
+        "supported_claim": "full_admin_livability_decision_package_supports_world_model_advantage_over_static_baselines"
+      },
+      "graph_dqn": {
+        "advantage_over_traditional_static": 0.000773039,
+        "node_feature_dim": 14,
+        "node_feature_names": [
+          "heat_risk",
+          "air_pollution_exposure",
+          "service_accessibility",
+          "equity",
+          "livability",
+          "estimated_nearest_essential_travel_time_min",
+          "road_segment_count",
+          "road_length_km",
+          "mean_road_speed_kmh",
+          "capacity_norm",
+          "essential_norm",
+          "travel_time_inverse_norm",
+          "service_gap",
+          "degree_norm"
+        ],
+        "observed_policy_outcome_superiority_claim": false,
+        "ready": true
+      },
+      "learned_rollout_one_step": {
+        "advantage_over_one_step_policy": 0.00089763,
+        "observed_policy_outcome_superiority_claim": false,
+        "ready": true
+      },
+      "learned_rollout_static": {
+        "advantage_over_static": 0.001192103,
+        "observed_policy_outcome_superiority_claim": false,
+        "ready": true,
+        "world_model_feature_names": [
+          "bias",
+          "action_increase_green_infrastructure",
+          "action_traffic_emission_control",
+          "action_add_community_service",
+          "action_other",
+          "intensity",
+          "target_heat_risk",
+          "target_air_pollution_exposure",
+          "target_service_gap",
+          "target_equity",
+          "target_livability_gap",
+          "target_degree_norm",
+          "target_travel_time_min_norm",
+          "target_road_segment_count_norm",
+          "target_road_length_km_norm",
+          "target_mean_road_speed_kmh_norm",
+          "target_capacity_norm",
+          "target_essential_norm",
+          "target_travel_time_inverse_norm",
+          "mask_heat_risk",
+          "mask_air_pollution",
+          "mask_service_gap",
+          "step_index_norm"
+        ]
+      },
+      "planner_replay": {
+        "advantage_over_static": 0.001436437,
+        "observed_policy_outcome_superiority_claim": false,
+        "ready": true
+      },
+      "risk_adjusted_planner": {
+        "advantage_over_static": 0.0013756,
+        "observed_policy_outcome_superiority_claim": false,
+        "ready": true
+      }
+    }
+  }
+}

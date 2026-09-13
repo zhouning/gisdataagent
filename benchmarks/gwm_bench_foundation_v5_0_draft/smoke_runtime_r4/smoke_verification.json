@@ -1,0 +1,53 @@
+{
+  "schema": "gwm_bench.foundation_v5_runtime_r4_smoke_verification.v1",
+  "generated_at": "2026-07-23T16:07:02.458170+00:00",
+  "status": "PASS_RUNTIME_R4_SMOKE_VERIFIED",
+  "check_count": 15,
+  "passed_check_count": 15,
+  "failed_checks": [],
+  "checks": {
+    "smoke_status_passed": true,
+    "smoke_is_not_formal_prediction": true,
+    "exactly_one_smoke_fold": true,
+    "read_audit_contains_no_answer_directory": true,
+    "all_recorded_read_artifacts_still_match": true,
+    "runner_and_model_core_hashes_match_smoke_report": true,
+    "all_eleven_fold_predictions_exist": true,
+    "all_prediction_keys_match_frozen_fold_keys": true,
+    "all_predictions_are_finite_and_nonnegative": true,
+    "candidate_emits_nonzero_residual": true,
+    "action_deleted_is_exact_history_backbone": true,
+    "plus_four_week_control_has_exact_four_week_zero_action_anchor": true,
+    "component_date_scope_and_swap_controls_change_prediction": true,
+    "uniform_citywide_exposure_explains_shuffle_identity": true,
+    "saved_checkpoint_replays_candidate_within_tolerance": true
+  },
+  "prediction_key_checks": {
+    "history_ar_backbone": true,
+    "fixed_adjacency_spatial_ar": true,
+    "dam_gk_residual_no_action": true,
+    "uwm_dam_gk_action_residual": true,
+    "action_deleted": true,
+    "effective_date_minus_4w": true,
+    "effective_date_plus_4w": true,
+    "action_component_permutation": true,
+    "wrong_spatial_scope": true,
+    "cross_event_action_swap": true,
+    "zone_exposure_shuffle_seed_20260723": true
+  },
+  "prediction_value_checks": {
+    "history_ar_backbone": true,
+    "fixed_adjacency_spatial_ar": true,
+    "dam_gk_residual_no_action": true,
+    "uwm_dam_gk_action_residual": true,
+    "action_deleted": true,
+    "effective_date_minus_4w": true,
+    "effective_date_plus_4w": true,
+    "action_component_permutation": true,
+    "wrong_spatial_scope": true,
+    "cross_event_action_swap": true,
+    "zone_exposure_shuffle_seed_20260723": true
+  },
+  "checkpoint_replay_max_abs_difference": 0.0,
+  "next_permitted_action": "Run the four-fold formal Runtime-R4 prediction matrix without answer access."
+}

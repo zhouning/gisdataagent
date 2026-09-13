@@ -1,0 +1,13 @@
+{
+  "schema": "gwm_bench.foundation_v5_seed_multifold_run.v1",
+  "model_id": "dam_gk_residual_no_action",
+  "seed": 73,
+  "outer_fold_count": 4,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_73/prediction.parquet",
+    "bytes": 399282,
+    "sha256": "9e3c8d6bb512c80050b62cf0b1dcf5151ad8f58b44c262b1bd205bcd2686f4c3"
+  },
+  "test_target_rows_loaded": false,
+  "exit_status": "success"
+}

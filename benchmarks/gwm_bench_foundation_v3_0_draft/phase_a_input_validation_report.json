@@ -1,0 +1,202 @@
+{
+  "schema": "gwm_bench.foundation_v3_phase_a_validation.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "generated_at": "2026-07-23T07:06:26.739664+00:00",
+  "status": "PASS_PHASE_A_INPUTS_VALIDATED",
+  "check_count": 16,
+  "checks": {
+    "download_status_passed": true,
+    "source_manifest_schema_valid": true,
+    "source_identity_valid": true,
+    "manifest_years_are_exactly_2017_2022": true,
+    "manifest_region_ids_match_lockbox": true,
+    "all_region_year_sets_are_exact": true,
+    "all_region_driver_sets_are_exact": true,
+    "all_180_raster_files_exist": true,
+    "all_rasters_follow_type_crs_nodata_resolution_contract": true,
+    "all_rasters_align_within_each_region": true,
+    "all_land_classes_are_in_0_8": true,
+    "all_valid_values_are_finite": true,
+    "all_regions_have_sampled_nodes": true,
+    "artifact_paths_contain_only_allowed_years": true,
+    "target_directory_contains_no_files": true,
+    "target_pixels_read_by_validator_is_false": true
+  },
+  "missing_paths": [],
+  "summary": {
+    "region_count": 20,
+    "annual_land_state_raster_count": 120,
+    "driver_raster_count": 60,
+    "total_artifact_bytes": 3263612,
+    "sampled_node_count": 1227,
+    "directed_edge_count": 4278,
+    "target_file_count": 0
+  },
+  "region_summaries": [
+    {
+      "region_id": "v3_shenyang_core",
+      "width": 179,
+      "height": 240,
+      "input_valid_pixel_count": 42542,
+      "sampled_node_count": 63,
+      "directed_four_neighbor_edge_count": 220
+    },
+    {
+      "region_id": "v3_dalian_core",
+      "width": 179,
+      "height": 230,
+      "input_valid_pixel_count": 40584,
+      "sampled_node_count": 63,
+      "directed_four_neighbor_edge_count": 220
+    },
+    {
+      "region_id": "v3_changchun_core",
+      "width": 179,
+      "height": 248,
+      "input_valid_pixel_count": 43542,
+      "sampled_node_count": 70,
+      "directed_four_neighbor_edge_count": 246
+    },
+    {
+      "region_id": "v3_harbin_core",
+      "width": 179,
+      "height": 256,
+      "input_valid_pixel_count": 45390,
+      "sampled_node_count": 70,
+      "directed_four_neighbor_edge_count": 246
+    },
+    {
+      "region_id": "v3_jinan_core",
+      "width": 179,
+      "height": 223,
+      "input_valid_pixel_count": 39294,
+      "sampled_node_count": 63,
+      "directed_four_neighbor_edge_count": 220
+    },
+    {
+      "region_id": "v3_qingdao_core",
+      "width": 179,
+      "height": 221,
+      "input_valid_pixel_count": 38940,
+      "sampled_node_count": 63,
+      "directed_four_neighbor_edge_count": 220
+    },
+    {
+      "region_id": "v3_shijiazhuang_core",
+      "width": 180,
+      "height": 227,
+      "input_valid_pixel_count": 40228,
+      "sampled_node_count": 63,
+      "directed_four_neighbor_edge_count": 220
+    },
+    {
+      "region_id": "v3_taiyuan_core",
+      "width": 179,
+      "height": 227,
+      "input_valid_pixel_count": 40050,
+      "sampled_node_count": 72,
+      "directed_four_neighbor_edge_count": 254
+    },
+    {
+      "region_id": "v3_wuxi_core",
+      "width": 179,
+      "height": 210,
+      "input_valid_pixel_count": 36816,
+      "sampled_node_count": 56,
+      "directed_four_neighbor_edge_count": 194
+    },
+    {
+      "region_id": "v3_wenzhou_core",
+      "width": 179,
+      "height": 203,
+      "input_valid_pixel_count": 35778,
+      "sampled_node_count": 56,
+      "directed_four_neighbor_edge_count": 194
+    },
+    {
+      "region_id": "v3_nanchang_core",
+      "width": 179,
+      "height": 204,
+      "input_valid_pixel_count": 35956,
+      "sampled_node_count": 56,
+      "directed_four_neighbor_edge_count": 194
+    },
+    {
+      "region_id": "v3_quanzhou_core",
+      "width": 179,
+      "height": 197,
+      "input_valid_pixel_count": 34710,
+      "sampled_node_count": 56,
+      "directed_four_neighbor_edge_count": 194
+    },
+    {
+      "region_id": "v3_kunming_core",
+      "width": 179,
+      "height": 197,
+      "input_valid_pixel_count": 34692,
+      "sampled_node_count": 56,
+      "directed_four_neighbor_edge_count": 194
+    },
+    {
+      "region_id": "v3_guiyang_core",
+      "width": 180,
+      "height": 200,
+      "input_valid_pixel_count": 35244,
+      "sampled_node_count": 56,
+      "directed_four_neighbor_edge_count": 194
+    },
+    {
+      "region_id": "v3_nanning_core",
+      "width": 179,
+      "height": 195,
+      "input_valid_pixel_count": 34161,
+      "sampled_node_count": 56,
+      "directed_four_neighbor_edge_count": 194
+    },
+    {
+      "region_id": "v3_haikou_core",
+      "width": 179,
+      "height": 191,
+      "input_valid_pixel_count": 33642,
+      "sampled_node_count": 49,
+      "directed_four_neighbor_edge_count": 168
+    },
+    {
+      "region_id": "v3_urumqi_core",
+      "width": 179,
+      "height": 248,
+      "input_valid_pixel_count": 43542,
+      "sampled_node_count": 70,
+      "directed_four_neighbor_edge_count": 246
+    },
+    {
+      "region_id": "v3_lanzhou_core",
+      "width": 179,
+      "height": 221,
+      "input_valid_pixel_count": 39160,
+      "sampled_node_count": 63,
+      "directed_four_neighbor_edge_count": 220
+    },
+    {
+      "region_id": "v3_xining_core",
+      "width": 180,
+      "height": 223,
+      "input_valid_pixel_count": 39338,
+      "sampled_node_count": 63,
+      "directed_four_neighbor_edge_count": 220
+    },
+    {
+      "region_id": "v3_yinchuan_core",
+      "width": 179,
+      "height": 229,
+      "input_valid_pixel_count": 40406,
+      "sampled_node_count": 63,
+      "directed_four_neighbor_edge_count": 220
+    }
+  ],
+  "artifact_manifest": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_a_input_artifact_manifest.json",
+  "artifact_manifest_sha256": "10da2a488b2776481d69b387eee3964a453335a1207c43e3ddf0f7775b40dd70",
+  "dataset_fingerprint": "8e83d8d2f0676d9c089a528375d994c89794059e4cf8654015145c1b7337ded2",
+  "target_pixels_read_by_validator": false,
+  "next_permitted_action": "Materialize fixed nodes and graphs from Phase A inputs; do not acquire targets."
+}

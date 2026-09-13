@@ -1,0 +1,378 @@
+{
+  "schema": "gwm_bench.foundation_contract.v1",
+  "benchmark_id": "gwm-bench-foundation-v0.1",
+  "title": "GWM-Bench Foundation v0.1: Mechanism Recovery and Observed Spatial Rollout",
+  "version": "0.1.1",
+  "release_stage": "internal_foundation_ready_public_release_pending",
+  "scientific_question": "Can a model recover known action-conditioned spatial mechanisms in a controlled system and predict multi-step observed geographic state transitions in unseen regions using only information available at the forecast origin?",
+  "design_rules": {
+    "benchmark_validity_independent_of_candidate_model_score": true,
+    "objective_reference_based_metrics_only": true,
+    "llm_judge_used_for_scoring": false,
+    "future_inputs_or_labels_allowed": false,
+    "one_weighted_aggregate_score_required": false,
+    "failed_model_results_must_be_preserved": true
+  },
+  "tracks": {
+    "CONTROLLED-M1": {
+      "name": "controlled_action_mechanism_recovery",
+      "role": "Verify action, directed propagation, relation type, lag and topology sensitivity where mechanism truth is known.",
+      "data_class": "deterministic_synthetic",
+      "current_generator": "data_agent/uwm/dam_geospatial_kernel/controlled_benchmark.py",
+      "materialization": {
+        "entity_tables": [
+          "controlled_nodes.parquet",
+          "controlled_edges.parquet",
+          "controlled_node_labels.parquet",
+          "controlled_edge_labels.parquet"
+        ],
+        "training_labels_visible_only_for_split": "train",
+        "scored_split": "development",
+        "node_prediction_key": [
+          "sample_id",
+          "node_id",
+          "horizon"
+        ],
+        "edge_prediction_key": [
+          "sample_id",
+          "edge_id"
+        ]
+      },
+      "development_split": {
+        "base_seed": 17,
+        "train_sample_count": 96,
+        "development_sample_count": 32,
+        "development_seed_offset": 10000,
+        "grid_size": 4
+      },
+      "inputs": [
+        "current_node_state",
+        "node_action",
+        "candidate_directed_edges",
+        "edge_features",
+        "relation_type"
+      ],
+      "targets": [
+        "future_state_delta_by_horizon",
+        "effective_action_gate_by_edge",
+        "topology_probability_by_edge",
+        "lag_distribution_by_edge"
+      ],
+      "metrics": {
+        "primary": "affected_node_state_delta_mae",
+        "secondary": [
+          "all_node_state_delta_mae",
+          "effective_action_gate_mae",
+          "topology_probability_mae",
+          "lag_distribution_mae"
+        ],
+        "direction": "lower_is_better"
+      },
+      "required_baselines_and_controls": [
+        "no_action_conditioning",
+        "single_relation",
+        "frozen_topology",
+        "no_lag_structure",
+        "action_assignment_shuffle",
+        "relation_type_shuffle",
+        "spatial_target_rewire"
+      ],
+      "claim_boundary": {
+        "supports": [
+          "controlled mechanism recovery",
+          "implementation falsification for action and spatial propagation"
+        ],
+        "does_not_support": [
+          "real-world action effects",
+          "observed geographic generalization",
+          "general GWM validity"
+        ]
+      }
+    },
+    "OBSERVED-O1": {
+      "name": "unseen_region_open_loop_land_state_rollout",
+      "role": "Measure real observed multi-step geographic state prediction without claiming an observed action effect.",
+      "data_class": "observed_remote_sensing",
+      "data_root": "data/twm_public_landcover/gee_dynamic_world",
+      "spatial_unit": "sampled_100m_raster_cell",
+      "sample_stride_pixels": 24,
+      "node_sampling": {
+        "row_start": 0,
+        "column_start": 0,
+        "row_step_pixels": 24,
+        "column_step_pixels": 24,
+        "selection_uses_only_inputs_available_through_2020": true,
+        "required_valid_inputs": [
+          "dynamic_world_2017_2020",
+          "annual_viirs_2016_2020",
+          "srtm_elevation",
+          "srtm_slope"
+        ],
+        "node_id_format": "r{row:05d}_c{column:05d}",
+        "label_validity_may_change_node_membership": false,
+        "missing_target_label_policy": "fail_materialization"
+      },
+      "spatial_graph": {
+        "type": "directed_four_neighbor_on_sampled_grid",
+        "edge_exists_when_row_or_column_differs_by_exactly_one_sample_stride": true,
+        "self_edges": false,
+        "directed_reverse_edge_required": true,
+        "edge_distance_m": 2400
+      },
+      "class_count": 9,
+      "forecast_origin_year": 2020,
+      "target_years": [
+        2021,
+        2022,
+        2023
+      ],
+      "allowed_inputs": {
+        "dynamic_world_labels_through_year": 2020,
+        "annual_viirs_through_year": 2020,
+        "static_srtm_elevation": true,
+        "static_srtm_slope": true
+      },
+      "prohibited_inputs": [
+        "dynamic_world_2021_2023",
+        "annual_viirs_2021_2023",
+        "viirs_nightlight_mean_2017_2023",
+        "target_derived_change_features",
+        "development_or_test_labels_during_fit"
+      ],
+      "training_protocol": {
+        "all_fit_regions_stop_at_year": 2020,
+        "fit_land_state_years": [
+          2017,
+          2018,
+          2019,
+          2020
+        ],
+        "fit_viirs_years": [
+          2016,
+          2017,
+          2018,
+          2019,
+          2020
+        ],
+        "post_2020_training_region_labels_allowed": false,
+        "validation_labels_allowed_in_gradient_fit": false,
+        "validation_labels_allowed_for_model_selection": true,
+        "test_labels_allowed_before_submission": false,
+        "rollout_mode": "open_loop_from_2020_without_observed_state_writeback"
+      },
+      "region_split": {
+        "method": "five_fold_region_holdout",
+        "fold_count": 5,
+        "training_region_count_per_fold": 12,
+        "validation_region_count_per_fold": 4,
+        "test_region_count_per_fold": 4,
+        "validation_fold_offset": 1,
+        "folds": [
+          [
+            "上海市_浦东新区_祝桥镇",
+            "厦门市_同安区_莲花镇",
+            "成都市_桂阳县_舂陵江镇",
+            "苏州市_吴江区_黎里镇"
+          ],
+          [
+            "东莞市_东莞市_虎门镇",
+            "合肥市_巢湖市_散兵镇",
+            "杭州市_淳安县_界首乡",
+            "西安市_周至县_陈河镇"
+          ],
+          [
+            "佛山市_高明区_杨和镇",
+            "天津市_滨海新区_临港工业区",
+            "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+            "郑州市_荥阳市_广武镇"
+          ],
+          [
+            "北京市_密云县_石城镇",
+            "宁波市_余姚市_小曹娥镇",
+            "深圳市_龙岗区_南澳街道",
+            "重庆市_云阳县_江口镇"
+          ],
+          [
+            "南京市_六合区_马鞍街道",
+            "广州市_增城区_正果镇",
+            "福州市_永泰县_嵩口镇",
+            "长沙市_浏阳市_高坪镇"
+          ]
+        ]
+      },
+      "submission_key": [
+        "fold_index",
+        "region_id",
+        "node_id",
+        "target_year"
+      ],
+      "prediction": "nine_class_probability_vector",
+      "submission_contract": {
+        "scored_split": "test",
+        "required_probability_columns": [
+          "probability_0",
+          "probability_1",
+          "probability_2",
+          "probability_3",
+          "probability_4",
+          "probability_5",
+          "probability_6",
+          "probability_7",
+          "probability_8"
+        ],
+        "probability_range": [
+          0.0,
+          1.0
+        ],
+        "probability_row_sum": 1.0,
+        "probability_row_sum_absolute_tolerance": 1e-06,
+        "duplicate_missing_or_extra_keys_allowed": false,
+        "non_finite_values_allowed": false,
+        "argmax_tie_break": "lowest_class_index"
+      },
+      "metrics": {
+        "primary": "mean_fold_horizon_change_f1",
+        "primary_definition": "Unweighted mean of 15 binary F1 values: one for each test fold and target year. Observed change compares each target with the preceding observed year; predicted change compares each argmax prediction with the preceding argmax prediction, using the observed 2020 origin for 2021.",
+        "zero_denominator_f1": 1.0,
+        "required_secondary": [
+          "changed_destination_macro_f1",
+          "overall_class_macro_f1",
+          "multiclass_brier_score",
+          "metric_by_horizon",
+          "metric_by_region"
+        ],
+        "multiclass_brier_definition": "Mean over rows of the sum across nine classes of squared probability error.",
+        "macro_f1_class_inclusion": "classes present in either prediction or reference within the reported group",
+        "single_composite_score": false
+      },
+      "required_baselines_and_controls": [
+        "2020_state_persistence",
+        "nonspatial_history_only",
+        "fixed_adjacency_spatial",
+        "independent_one_step_chain",
+        "temporal_history_shuffle",
+        "spatial_target_rewire"
+      ],
+      "claim_boundary": {
+        "supports": [
+          "observed land-state prediction",
+          "unseen-region evaluation",
+          "three-step recursive rollout evaluation"
+        ],
+        "does_not_support": [
+          "land-use policy effects",
+          "real action conditioning",
+          "parcel-scale land-use truth",
+          "general GWM validity"
+        ]
+      }
+    }
+  },
+  "observed_region_ids": [
+    "上海市_浦东新区_祝桥镇",
+    "东莞市_东莞市_虎门镇",
+    "佛山市_高明区_杨和镇",
+    "北京市_密云县_石城镇",
+    "南京市_六合区_马鞍街道",
+    "厦门市_同安区_莲花镇",
+    "合肥市_巢湖市_散兵镇",
+    "天津市_滨海新区_临港工业区",
+    "宁波市_余姚市_小曹娥镇",
+    "广州市_增城区_正果镇",
+    "成都市_桂阳县_舂陵江镇",
+    "杭州市_淳安县_界首乡",
+    "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+    "深圳市_龙岗区_南澳街道",
+    "福州市_永泰县_嵩口镇",
+    "苏州市_吴江区_黎里镇",
+    "西安市_周至县_陈河镇",
+    "郑州市_荥阳市_广武镇",
+    "重庆市_云阳县_江口镇",
+    "长沙市_浏阳市_高坪镇"
+  ],
+  "source_evidence": [
+    {
+      "path": "data_agent/uwm/dam_geospatial_kernel/controlled_benchmark.py",
+      "sha256": "73d0dbdb9af404c01fe8b09cfead3f3c6f7874d36add88b93a7e575b4c23fc6a",
+      "role": "current controlled generator discovery implementation"
+    },
+    {
+      "path": "data/benchmarks/dam_gk_2026-07-17/controlled_benchmark_recursive_v3.json",
+      "sha256": "e30a3b0ed8571999c8e584cbd5b4b229e5439809699445b392092c60053914dc",
+      "role": "controlled feasibility evidence, not a required candidate score"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/twm_dynamic_world_manifest.json",
+      "sha256": "2c50741e94af6efd31c91302190539efc31e45d64089402de519803798dd2926",
+      "role": "observed source discovery manifest"
+    },
+    {
+      "path": "data/benchmarks/dam_gk_2026-07-18/annual_viirs_download_status.json",
+      "sha256": "e7a8001be29f064ab34f22e4a7b0dde9275c23144b1b621ea18c45deb12c2281",
+      "role": "annual VIIRS local completeness evidence"
+    }
+  ],
+  "planned_bundle_resources": [
+    "development/controlled_nodes.parquet",
+    "development/controlled_edges.parquet",
+    "development/controlled_node_labels.parquet",
+    "development/controlled_edge_labels.parquet",
+    "development/observed_train.parquet",
+    "development/observed_inputs.parquet",
+    "development/observed_edges.parquet",
+    "development/observed_labels.parquet",
+    "development/region_folds.json",
+    "development/bundle_manifest.json"
+  ],
+  "planned_evaluators": [
+    "controlled_evaluator.py",
+    "observed_evaluator.py",
+    "evaluator_conformance_report.json"
+  ],
+  "planned_baseline_resources": [
+    "development/baselines/controlled_zero_node_submission.parquet",
+    "development/baselines/controlled_zero_edge_submission.parquet",
+    "development/baselines/observed_persistence_submission.parquet",
+    "development/baselines/observed_history_only_submission.parquet",
+    "development/baselines/observed_independent_one_step_submission.parquet",
+    "development/baselines/observed_fixed_adjacency_submission.parquet",
+    "development/baselines/baseline_report.json"
+  ],
+  "planned_control_resources": [
+    "development/controls/controlled_no_action_nodes.parquet",
+    "development/controls/controlled_action_shuffle_nodes.parquet",
+    "development/controls/controlled_single_relation_edges.parquet",
+    "development/controls/controlled_relation_shuffle_edges.parquet",
+    "development/controls/controlled_spatial_rewire_edges.parquet",
+    "development/controls/observed_history_shuffle_inputs.parquet",
+    "development/controls/observed_spatial_rewire_edges.parquet",
+    "development/controls/control_manifest.json"
+  ],
+  "readiness_tiers": {
+    "local_source_feasible": "All required local source assets and strict temporal rules are verified.",
+    "internal_foundation_ready": "Model-independent bundles, evaluators, conformance checks and baselines are materialized.",
+    "public_foundation_ready": "Internal readiness plus source-specific public redistribution authority and external hidden labels.",
+    "general_gwm_supported": "Not attainable from this foundation benchmark alone."
+  },
+  "extension_policy": {
+    "hydrocontrol_v0_3_role": "non_blocking_research_extension",
+    "hydrocontrol_completion_required_for_foundation": false,
+    "dwr_response_required_for_foundation": false,
+    "nwm_full_archive_required_for_foundation": false,
+    "existing_hydro_fail_closed_gates_may_be_relaxed": false
+  },
+  "claim_boundary": {
+    "supports_when_ready": [
+      "controlled action-mechanism evaluation",
+      "observed unseen-region state-rollout evaluation",
+      "falsification of selected foundation capabilities"
+    ],
+    "does_not_support": [
+      "identified real-world intervention effects",
+      "operational forecasting",
+      "cross-domain transfer",
+      "public release before license and hidden-label gates",
+      "general-purpose GWM validity"
+    ]
+  }
+}

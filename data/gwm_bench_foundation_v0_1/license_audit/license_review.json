@@ -1,0 +1,85 @@
+{
+  "schema": "gwm_bench.foundation_license_review.v1",
+  "reviewed_at": "2026-07-22",
+  "benchmark_id": "gwm-bench-foundation-v0.1",
+  "status": "source_redistribution_cleared_external_hidden_labels_pending",
+  "scope": {
+    "covered_artifacts": "The 100 m annual Dynamic World mode labels, annual VIIRS mean-radiance grids, and static SRTM elevation and slope grids used by OBSERVED-O1, plus derived tabular benchmark bundles.",
+    "not_covered": "Google Earth Engine account credentials, Earth Engine service quota, third-party branding, or any later-added source layer.",
+    "derivation": "All covered rasters are clipped, resampled and/or temporally reduced derivatives. Any public release must retain the source notices below and state that these are derived benchmark artifacts rather than official source products."
+  },
+  "sources": [
+    {
+      "source_id": "dynamic_world",
+      "dataset_id": "GOOGLE/DYNAMICWORLD/V1",
+      "publisher": "Google, National Geographic Society, and World Resources Institute",
+      "applies_to": "Annual mode-composited Dynamic World class rasters for 2017-2023; 2017-2020 are inputs and 2021-2023 are labels.",
+      "canonical_terms_url": "https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_DYNAMICWORLD_V1",
+      "retrieved_from_url": "https://developers.google.cn/earth-engine/datasets/catalog/GOOGLE_DYNAMICWORLD_V1",
+      "evidence_path": "data/gwm_bench_foundation_v0_1/license_audit/dynamic_world_earth_engine_catalog_2026-07-22.html",
+      "evidence_sha256": "305d11b787e57a363eaaa329b05c91f00b9b43acf46c18841b6669d1f6397558",
+      "evidence_markers": ["CC-BY 4.0", "Dynamic World", "Copernicus Sentinel"],
+      "redistribution_status": "cleared_with_attribution_and_change_notice",
+      "release_obligations": [
+        "License derived data under terms compatible with CC BY 4.0.",
+        "Credit the Dynamic World dataset as produced by Google in partnership with National Geographic Society and World Resources Institute.",
+        "State that the benchmark uses clipped, resampled annual mode composites rather than the native Dynamic World product.",
+        "Retain the applicable Copernicus Sentinel data legal notice."
+      ]
+    },
+    {
+      "source_id": "viirs_monthly_vcm_slcfg",
+      "dataset_id": "NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG",
+      "publisher": "Earth Observation Group, Payne Institute for Public Policy, Colorado School of Mines",
+      "applies_to": "Annual mean-radiance derivatives from 12 monthly VIIRS DNB images for 2016-2023; only 2016-2020 are benchmark inputs.",
+      "canonical_terms_url": "https://developers.google.com/earth-engine/datasets/catalog/NOAA_VIIRS_DNB_MONTHLY_V1_VCMSLCFG",
+      "retrieved_from_url": "https://developers.google.cn/earth-engine/datasets/catalog/NOAA_VIIRS_DNB_MONTHLY_V1_VCMSLCFG",
+      "evidence_path": "data/gwm_bench_foundation_v0_1/license_audit/viirs_earth_engine_catalog_2026-07-22.html",
+      "evidence_sha256": "438233b23ebf4809dd9505d7b2ec7429807412cb1099c45fe4e2e7193576db60",
+      "evidence_markers": [
+        "Earth Observation Group, Payne Institute for Public Policy, Colorado School of Mines",
+        "available without usage restrictions",
+        "Colorado School of Mines"
+      ],
+      "redistribution_status": "cleared_public_domain",
+      "release_obligations": [
+        "Cite the VIIRS DNB source and its Earth Observation Group provider for provenance.",
+        "State that the release contains annual means derived from the monthly collection and is not an official monthly product."
+      ]
+    },
+    {
+      "source_id": "srtmgl1_v003",
+      "dataset_id": "SRTMGL1.003",
+      "publisher": "NASA JPL via NASA Land Processes Distributed Active Archive Center",
+      "applies_to": "Static SRTM elevation and slope derivatives used by all OBSERVED-O1 regions.",
+      "canonical_terms_url": "https://www.earthdata.nasa.gov/data/catalog/lpcloud-srtmgl1-003",
+      "retrieved_from_url": "https://lpdaac.usgs.gov/products/srtmgl1v003/",
+      "evidence_path": "data/gwm_bench_foundation_v0_1/license_audit/srtmgl1_nasa_earthdata_catalog_2026-07-22.html",
+      "evidence_sha256": "020ed7d8e132be0aca347245fdcf7c36405feb05ff28d7044e1ba3d4461a4a03",
+      "evidence_markers": [
+        "This dataset is openly shared, without restriction",
+        "NASA Shuttle Radar Topography Mission Global 1 arc second",
+        "10.5067/MEASURES/SRTM/SRTMGL1.003"
+      ],
+      "redistribution_status": "cleared_openly_shared_without_restriction",
+      "release_obligations": [
+        "Cite NASA JPL (2013), NASA Shuttle Radar Topography Mission Global 1 arc second, DOI 10.5067/MEASURES/SRTM/SRTMGL1.003.",
+        "State that slope is a benchmark-derived quantity and elevation is a clipped and resampled derivative.",
+        "Do not imply NASA endorsement."
+      ]
+    }
+  ],
+  "artifact_decisions": {
+    "source_raster_snapshots": "may_be_redistributed_only_with_the_source_specific_notices_and_attribution_above",
+    "derived_100m_rasters": "may_be_redistributed_with_the_source_specific_notices_and_an_explicit_derivative_notice",
+    "derived_tabular_observed_bundle": "may_be_redistributed_with_the_source_specific_notices_and_an_explicit_derivative_notice",
+    "code_contracts_and_evaluators": "not_limited_by_this_source-data_review"
+  },
+  "release_gate": {
+    "source_specific_redistribution_authority_verified": true,
+    "external_hidden_label_boundary_verified": false,
+    "public_benchmark_release_allowed": false,
+    "remaining_blocker": "An external hidden-label boundary has not been established. This review does not authorize a public benchmark release before that independent gate passes."
+  },
+  "claim_boundary": "This is a provenance and source-terms audit, not legal advice. It covers only the named source products and the stated derived artifacts."
+}

@@ -1,0 +1,35 @@
+{
+  "schema": "gwm_bench.twm_v2_2026_evaluator_seal.v1",
+  "status": "evaluator_sealed_before_2026_labels",
+  "protocol_id": "TWM-V2-TEMPORAL-2026-PRECOMMIT-v1",
+  "candidate_fingerprint": "a822146464624aa8a78e1844472b1841b4f10d084ac79d1f8a3ae1b71dc72242",
+  "protocol_sha256": "e9493b440210dc355f975cedf8b67ba8f91b3736bb1eb465b83c7199b8912726",
+  "scorer_path": "benchmarks/gwm_bench_foundation_v0_1/score_twm_v2_2026_hidden.py",
+  "scorer_sha256": "9aabcc3a19ba9155eafb03453bf4b057a5ecd2b32e86443a2365bef4fca6ef05",
+  "scorer_size_bytes": 15081,
+  "dependencies": [
+    {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/commit_twm_v2_2026_forecast.py",
+      "role": "frozen_evaluator_dependency",
+      "size_bytes": 21261,
+      "sha256": "f76f0228dc4c79b13498d1f25c59d1e0882424891b2c207a3cc1c375514748ba"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/observed_evaluator.py",
+      "role": "frozen_evaluator_dependency",
+      "size_bytes": 9779,
+      "sha256": "fe487c54c880bf24a413bb4798d70c6c7f20ae778dc9c8a822df86e5dd9d3746"
+    }
+  ],
+  "acceptance_gates": [
+    "primary_metric_strictly_exceeds_both_precommitted_baselines",
+    "overall_change_f1_strictly_exceeds_both_precommitted_baselines",
+    "overall_change_f1_at_least_0.15",
+    "overall_class_macro_f1_at_least_persistence",
+    "multiclass_brier_score_no_greater_than_persistence",
+    "predicted_to_observed_change_ratio_between_0.5_and_1.75"
+  ],
+  "hidden_label_manifest_present": false,
+  "hidden_label_pixels_accessed": false,
+  "post_seal_evaluator_changes_allowed": false
+}

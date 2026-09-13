@@ -1,0 +1,23 @@
+{
+  "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+  "model_id": "zone_exposure_shuffle_seed_20260723",
+  "outer_fold_id": "holdout_2015",
+  "seed": 31,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/smoke_runtime_r4/zone_exposure_shuffle_seed_20260723/members/seed_31/folds/holdout_2015/prediction.parquet",
+    "bytes": 103418,
+    "sha256": "1d895d4e1c32b34eaae5cf4a342f1942b3af6d8a229da201c53cea31bd07fd0d"
+  },
+  "checkpoint": null,
+  "training_final_loss": null,
+  "control_audit": {
+    "control_id": "zone_exposure_shuffle_seed_20260723",
+    "zone_permutation_sha256": "e135bdbc26f1b5ffabc9707d95944be431300a1c5e4167bf5a7cc911d8fcbadf",
+    "outer_fold_id": "holdout_2015",
+    "swap_source_event": null
+  },
+  "model_process_target_access_permitted": false,
+  "test_target_rows_loaded": false,
+  "exit_status": "success",
+  "failure_state": null
+}

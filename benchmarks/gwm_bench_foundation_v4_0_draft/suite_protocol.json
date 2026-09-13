@@ -1,0 +1,382 @@
+{
+  "schema": "gwm_bench.foundation_v4_draft_protocol.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V4.0-DRAFT1",
+  "created_at": "2026-07-23",
+  "status": "draft_rc1_data_verified_runtime_r3_evaluator_pending",
+  "title": "GWM Benchmark V4.0 - Unseen Intervention Transfer",
+  "definition": "A model-unseen retrospective action-transfer benchmark on New York City taxi-zone mobility. Models learn from the 2019 and 2022 policy transitions and forecast the first 12 action-aligned weeks after the 2025 Congestion Relief Zone toll begins.",
+  "single_new_question": "Can an action-conditioned GWM transition learned from earlier real institutional changes forecast the spatial mobility trajectory after a new action, without using any post-action 2025 target as model input or training signal?",
+  "relationship_to_prior_versions": {
+    "v1": "Historical feasibility and baseline execution.",
+    "v2": "Prospective temporal evaluation on existing land-state regions.",
+    "v3": "Process-sealed geographic transfer on new land-state regions, including Runtime-R2 and Controlled-C2.",
+    "v4": "Model-unseen real-action transfer in the urban mobility domain, extending the benchmark runtime from TWM to UWM.",
+    "regimeworld_nyc_v4_compositional_is_not_this_suite": true,
+    "naming_note": "The earlier RegimeWorld NYC v4 research artifact is retained as prior falsification evidence. This suite is GWM Benchmark V4.0 and uses a separate machine-readable protocol."
+  },
+  "architecture_decision": {
+    "chosen": "2025_nyc_crz_model_unseen_action_transfer",
+    "rationale": [
+      "All required official TLC, taxi-zone, action-boundary and MTA validation data already exist locally.",
+      "The 2019 and 2022 interventions provide two distinct admitted training transitions.",
+      "The 2025 intervention changes both action magnitude and spatial exposure, so it directly tests action-conditioned transfer.",
+      "The complete benchmark can run now and does not depend on future downloads or reservoir-operation records."
+    ],
+    "rejected_primary_candidate": {
+      "candidate": "2015 improvement-surcharge sealed holdout",
+      "reason": "Its action vector fails the joint convex-support gate and the one-time sealed evaluation already contradicted transfer. It remains a published falsification artifact, not the V4 primary test."
+    },
+    "tradeoff": "The 2025 outcomes have been inspected in prior research. V4 therefore claims a model-unseen retrospective action test, not an analyst-unseen blind test or a causal policy-effect estimate."
+  },
+  "dataset": {
+    "domain": "UWM urban mobility",
+    "scene": "New York City yellow-taxi demand and CBD flow around real fare and congestion-pricing changes",
+    "spatial_unit": "NYC TLC Taxi Zone",
+    "zone_count": 263,
+    "temporal_unit": "action-aligned seven-day block",
+    "state_targets": [
+      "pickup_count",
+      "dropoff_count",
+      "cbd_inflow",
+      "cbd_outflow"
+    ],
+    "events": [
+      {
+        "event_id": "train_2019_nys_congestion_surcharge",
+        "effective_date": "2019-02-02",
+        "role": "training_and_development",
+        "action": "USD 2.50 yellow-taxi congestion surcharge for applicable Manhattan trips",
+        "pre_window": ["2018-02-03", "2019-02-01"],
+        "post_window": ["2019-02-02", "2019-04-26"],
+        "pre_week_count": 52,
+        "post_week_count": 12
+      },
+      {
+        "event_id": "train_2022_tlc_taximeter_adjustment",
+        "effective_date": "2022-12-19",
+        "role": "training_and_development",
+        "action": "Citywide metered-fare and surcharge component adjustment",
+        "pre_window": ["2021-12-20", "2022-12-18"],
+        "post_window": ["2022-12-19", "2023-03-12"],
+        "pre_week_count": 52,
+        "post_week_count": 12
+      },
+      {
+        "event_id": "test_2025_mta_crz",
+        "effective_date": "2025-01-05",
+        "role": "model_unseen_test_intervention",
+        "action": "USD 0.75 yellow-taxi per-trip Congestion Relief Zone charge with frozen CBD-zone exposure",
+        "pre_window": ["2024-01-07", "2025-01-04"],
+        "post_window": ["2025-01-05", "2025-03-29"],
+        "pre_week_count": 52,
+        "post_week_count": 12
+      }
+    ],
+    "weekly_aggregation": {
+      "alignment": "Each event starts a new seven-day block on its official effective date; pre-event blocks are counted backward from the previous day.",
+      "aggregation": "sum each target over seven admitted calendar days for each of 263 zones",
+      "missing_zone_day_rule": "materialize an explicit zero only after the daily panel admission rule has completed",
+      "partial_weeks_allowed": false
+    },
+    "derived_row_counts": {
+      "zone_week_rows_per_event": 16832,
+      "training_zone_week_rows": 33664,
+      "test_input_zone_week_rows": 13676,
+      "test_target_zone_week_rows": 3156,
+      "total_zone_week_rows": 50496,
+      "prediction_scalar_count": 12624
+    },
+    "raw_source_inventory": {
+      "tlc_monthly_file_count": 72,
+      "tlc_raw_row_count": 349782159,
+      "tlc_local_bytes": 5407738525,
+      "historical_months": "2018-02 through 2019-12 and 2021-12 through 2023-12",
+      "current_months": "2024-01 through 2025-12",
+      "daily_zone_panel_rows": 615946,
+      "daily_zone_panel_dates": 2342,
+      "daily_od_panel_rows": 21334750
+    },
+    "official_sources": {
+      "trip_records": "NYC Taxi and Limousine Commission monthly Yellow Taxi Parquet",
+      "zone_geometry": "NYC TLC taxi_zones.zip",
+      "zone_lookup": "NYC TLC taxi_zone_lookup.csv",
+      "policy_exposure": "MTA / New York State Open Data CBD taxi-zone polygons",
+      "policy_documents": [
+        "New York State 2019 congestion-surcharge page, memo and court notice",
+        "NYC TLC 2022 adopted taximeter-fare rule",
+        "MTA 2025 Congestion Relief Zone tolling and Taxi/FHV toll schedule"
+      ],
+      "independent_validation": [
+        "MTA CRZ vehicle entries",
+        "MTA CBD vehicle miles",
+        "MTA taxi/FHV CBD vehicle miles"
+      ]
+    },
+    "source_artifacts": {
+      "current_acquisition_manifest": "data/uwm_regimeworld_nyc/acquisition_manifest.json",
+      "historical_tlc_manifest": "data/uwm_regimeworld_nyc/tlc_historical_interventions/historical_tlc_manifest.json",
+      "policy_manifest": "data/uwm_regimeworld_nyc/policy/repeated_interventions/intervention_document_manifest.json",
+      "taxi_zone_geometry": "data/uwm_regimeworld_nyc/spatial/taxi_zones.zip",
+      "taxi_zone_lookup": "data/uwm_regimeworld_nyc/spatial/taxi_zone_lookup.csv",
+      "cbd_zone_exposure": "data/uwm_regimeworld_nyc/mta/mta_cbd_taxi_zones.json",
+      "daily_zone_state": "paper-output/regimeworld-nyc-v3-multi-intervention/results/daily_zone_state.parquet",
+      "daily_od_state": "paper-output/regimeworld-nyc-v3-multi-intervention/results/daily_od_state.parquet",
+      "compositional_event_panel": "paper-output/regimeworld-nyc-v4-compositional-uwm/results/development_event_panel.parquet",
+      "compositional_action_ontology": "plans/regimeworld-nyc-v4-compositional-uwm/COMPOSITIONAL_ACTION_ONTOLOGY.json",
+      "daily_state_build_report": "paper-output/regimeworld-nyc-v3-multi-intervention/results/data_build_report.json",
+      "action_ledger": "paper-output/regimeworld-nyc-v3-multi-intervention/results/action_ledger.json",
+      "graph_ledger": "paper-output/regimeworld-nyc-v1/results/graph_ledger.json"
+    }
+  },
+  "data_partition": {
+    "training_events": [
+      "train_2019_nys_congestion_surcharge",
+      "train_2022_tlc_taximeter_adjustment"
+    ],
+    "test_event": "test_2025_mta_crz",
+    "development_selection": "Two-fold leave-one-intervention-out validation using only the 2019 and 2022 events, followed by a frozen refit on both events.",
+    "test_target_prohibitions": [
+      "model fitting",
+      "early stopping",
+      "hyperparameter selection",
+      "threshold selection",
+      "graph construction",
+      "feature normalization",
+      "action encoding selection"
+    ],
+    "analyst_blindness_claimed": false,
+    "model_unseen_action_claimed": true,
+    "training_firewall": "Every submission must include a hashed training-row manifest proving that no date on or after 2025-01-05 was used for fitting or selection."
+  },
+  "action_contract": {
+    "opaque_event_id_permitted": false,
+    "policy_name_permitted_as_model_input": false,
+    "numeric_features": [
+      "fixed_spatial_surcharge_contribution_usd",
+      "flag_fall_contribution_usd",
+      "improvement_surcharge_contribution_usd",
+      "metered_unit_contribution_usd",
+      "rush_hour_contribution_usd",
+      "night_contribution_usd",
+      "jfk_flat_contribution_usd",
+      "jfk_rush_contribution_usd",
+      "lga_contribution_usd",
+      "newark_contribution_usd",
+      "expected_total_delta_usd",
+      "expected_fractional_fare_delta",
+      "spatial_applicability_share",
+      "temporal_applicability_share",
+      "implementation_share"
+    ],
+    "spatial_scope": "263-element frozen zone exposure vector derived from official CBD polygons",
+    "construction_rule": "Action features and spatial scope must be constructed from pre-event trips and official policy terms only."
+  },
+  "spatial_graph": {
+    "node_count": 263,
+    "relations": [
+      {
+        "name": "geographic_adjacency",
+        "directed_edge_count": 692,
+        "construction": "frozen TLC zone geometry contiguity"
+      },
+      {
+        "name": "origin_destination_flow",
+        "directed_edge_count": 2054,
+        "construction": "top-8 outgoing OD relations per zone from training-safe observations"
+      },
+      {
+        "name": "action_exposure",
+        "directed_edge_count": 263,
+        "construction": "zone self-relation carrying the frozen action exposure and numeric action vector"
+      }
+    ],
+    "test_post_action_graph_updates_permitted": false
+  },
+  "tracks": {
+    "RUNTIME-R3": {
+      "status": "specified_not_materialized",
+      "purpose": "Extend the V3 model-neutral runtime contract from TWM land-state rollout to UWM action-conditioned urban rollout.",
+      "contracts": [
+        "ZoneWeekStateSnapshot",
+        "NumericActionSpec",
+        "MultiRelationSpatialGraph",
+        "OpenLoopRolloutRequest",
+        "MultiTargetPredictionBundle",
+        "RuntimeAuditReceipt"
+      ],
+      "required_gates": [
+        "prepare-predict-writeback-audit lifecycle",
+        "twelve-step open-loop rollout with no observed 2025 state writeback",
+        "data, code, model, environment, seed and prediction hashes",
+        "deterministic replay or seed-complete replay",
+        "training-firewall verification",
+        "resource and failure-state recording",
+        "same submission keys for every model"
+      ]
+    },
+    "ACTION-A4": {
+      "status": "specified_not_materialized",
+      "purpose": "Test whether explicit action semantics and spatial exposure improve transfer to the unseen 2025 action.",
+      "forecast_horizons_weeks": [1, 2, 4, 8, 12],
+      "full_rollout_weeks": 12,
+      "required_models": [
+        "UWM DAM-GK action-conditioned candidate",
+        "matched DAM-GK without action input",
+        "fixed-adjacency spatial autoregression",
+        "nonspatial historical autoregression",
+        "52-week seasonal persistence"
+      ],
+      "required_negative_controls": [
+        "action deletion",
+        "effective-date shift minus four weeks",
+        "effective-date shift plus four weeks",
+        "action-component permutation",
+        "CBD exposure rewire to 38 non-CBD zones",
+        "zone exposure shuffle with seed 20260723"
+      ]
+    }
+  },
+  "core_algorithm": {
+    "name": "action-modulated multi-relation Graph-GRU",
+    "gwm_runtime_kernel_role": "Own versioned state, action, graph, rollout, writeback, reproducibility and audit contracts.",
+    "dam_gk_role": "Encode geographic adjacency, OD transport and action exposure; aggregate relation-specific messages; modulate the recurrent transition with numeric action semantics; roll the state forward without observed target writeback.",
+    "minimum_mechanism": [
+      "relation-specific graph message passing",
+      "numeric action encoder",
+      "zone-level exposure gate",
+      "recurrent state transition",
+      "multi-target output head",
+      "ensemble over seeds 31, 47 and 73"
+    ]
+  },
+  "submission_contract": {
+    "key_columns": ["zone_id", "horizon_week"],
+    "horizon_week_range": [1, 12],
+    "prediction_columns": [
+      "pickup_count_prediction",
+      "dropoff_count_prediction",
+      "cbd_inflow_prediction",
+      "cbd_outflow_prediction"
+    ],
+    "optional_uncertainty_columns": [
+      "pickup_count_p10",
+      "pickup_count_p90",
+      "dropoff_count_p10",
+      "dropoff_count_p90",
+      "cbd_inflow_p10",
+      "cbd_inflow_p90",
+      "cbd_outflow_p10",
+      "cbd_outflow_p90"
+    ],
+    "expected_key_count": 3156,
+    "duplicate_missing_or_extra_keys_allowed": false,
+    "negative_or_non_finite_predictions_allowed": false
+  },
+  "evaluation": {
+    "primary_metric": {
+      "name": "macro_pre_event_normalized_mae",
+      "direction": "lower_is_better",
+      "formula": "For each zone and target, divide absolute forecast error by max(mean weekly target over the 52 pre-event weeks, 1); then average equally over 263 zones, four targets and weeks 1, 2, 4, 8 and 12.",
+      "equal_weighting": ["zone", "target", "reported_horizon"]
+    },
+    "secondary_metrics": [
+      "metric by target and horizon",
+      "metric by borough and CBD exposure",
+      "system-total absolute percentage error",
+      "prediction-to-observed aggregate change ratio",
+      "80 percent interval coverage when uncertainty is submitted",
+      "paired action-conditioned minus baseline contrasts"
+    ],
+    "paired_comparison": {
+      "unit": "taxi zone",
+      "draws": 20000,
+      "seed": 20260723,
+      "interval": "percentile 95 percent paired bootstrap"
+    },
+    "action_transfer_claim_gate": {
+      "all_required": true,
+      "conditions": [
+        "action-conditioned primary metric is lower than matched no-action DAM-GK",
+        "the paired 95 percent interval for action-conditioned minus no-action lies entirely below zero",
+        "the action-conditioned improvement direction holds for at least three of four targets",
+        "the action-conditioned improvement direction holds for at least four of five reported horizons",
+        "correct action semantics outperform both action-component permutation and CBD exposure rewire"
+      ]
+    },
+    "benchmark_completion_requires_model_win": false,
+    "negative_result_publishable": true,
+    "single_composite_score": false
+  },
+  "release_stages": [
+    {
+      "stage": "V4.0-draft1",
+      "exit_gate": "definition, local source inventory, metadata-only preflight and claim boundary pass"
+    },
+    {
+      "stage": "V4.0-rc1-data",
+      "exit_gate": "50,496-row action-aligned weekly bundle, graphs, action vectors and training-row manifest are materialized and hashed"
+    },
+    {
+      "stage": "V4.0-rc2-predictions",
+      "exit_gate": "five required models, six controls, Runtime-R3 replay and prediction commitment are complete"
+    },
+    {
+      "stage": "V4.0-final",
+      "exit_gate": "frozen evaluator publishes all scores, controls, failures and claim decision"
+    }
+  ],
+  "completion_gates": [
+    "All 72 required monthly TLC files are present and match admitted manifests.",
+    "All three event windows contain exactly 52 complete pre-event weeks and 12 complete post-event weeks for 263 zones.",
+    "No 2025 post-action row is present in any fitting, selection, normalization or graph-construction manifest.",
+    "Action inputs contain only numeric semantics and frozen spatial exposure; event IDs and policy names are prohibited.",
+    "All required models and negative controls emit the same 3,156 keys.",
+    "Runtime-R3 replay, artifact hashing and failure-state checks pass.",
+    "The evaluator passes constructed-answer conformance tests before formal scoring.",
+    "Every model and control result is published even when the action-conditioned model loses.",
+    "The final report repeats the non-causal and non-blind claim boundary."
+  ],
+  "claim_boundary": {
+    "supports_on_finalization": [
+      "reproducible model-unseen action-transfer evidence for NYC taxi-zone mobility",
+      "twelve-week UWM open-loop rollout evidence",
+      "matched evidence for whether explicit action semantics and spatial exposure add predictive value",
+      "benchmark-level Runtime-R3 execution and audit evidence"
+    ],
+    "does_not_support": [
+      "causal effect of congestion pricing",
+      "analyst-unseen or externally hidden-label evaluation",
+      "operational traffic forecasting validation",
+      "general validity across cities or action types",
+      "complete universal GWM Runtime Kernel product",
+      "general UWM, DAM-GK or GWM validity"
+    ]
+  },
+  "resource_policy": {
+    "new_raw_download_required": false,
+    "existing_local_source_bytes": 5407738525,
+    "expected_derived_bundle_bytes_upper_bound": 536870912,
+    "minimum_free_space_bytes": 2147483648
+  },
+  "phase_artifacts": {
+    "preflight_report": "benchmarks/gwm_bench_foundation_v4_0_draft/preflight_report.json",
+    "rc1_bundle_manifest": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/bundle_manifest.json",
+    "rc1_bundle_verification": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/bundle_verification.json",
+    "runtime_r3_contract": "benchmarks/gwm_bench_foundation_v4_0_draft/runtime_r3_contract.json",
+    "submission_contract": "benchmarks/gwm_bench_foundation_v4_0_draft/submission_contract.json",
+    "action_a4_evaluator": "benchmarks/gwm_bench_foundation_v4_0_draft/action_a4_evaluator.py",
+    "evaluator_conformance_report": "benchmarks/gwm_bench_foundation_v4_0_draft/evaluator_conformance_report.json",
+    "runtime_r3_evaluator_seal": "benchmarks/gwm_bench_foundation_v4_0_draft/runtime_r3_evaluator_seal.json"
+  },
+  "current_state": {
+    "definition_complete": true,
+    "candidate_selected": true,
+    "raw_sources_local": true,
+    "daily_state_local": true,
+    "weekly_bundle_materialized": true,
+    "runtime_r3_contract_frozen": false,
+    "evaluator_frozen": false,
+    "predictions_committed": false,
+    "scores_available": false
+  }
+}

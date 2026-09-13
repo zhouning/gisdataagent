@@ -1,0 +1,41 @@
+{
+  "dataset_integrity_gate": {
+    "relation_rows_min": 1700,
+    "evidence_rows_min": 200,
+    "synthetic_experiment_rows": 256,
+    "counterfactual_pairs": 128,
+    "train_rows": 128,
+    "validation_rows": 64,
+    "test_rows": 64,
+    "action_type_count": 4,
+    "allowed_rows": 128,
+    "blocked_rows": 128
+  },
+  "renderer_gate": {
+    "object_count_min": 21000,
+    "relation_count_min": 1700,
+    "project_count_min": 90,
+    "rule_evaluation_count_min": 360,
+    "review_task_count_min": 100,
+    "support_material_count_min": 200
+  },
+  "simulator_gate": {
+    "transition_mae_max": 0.05,
+    "constraint_risk_mae_max": 0.05,
+    "planning_utility_mae_max": 0.05,
+    "ranking_correlation_proxy_min": 0.6,
+    "action_mask_accuracy_min": 0.85,
+    "blocked_action_recall_min": 0.85
+  },
+  "planner_gate": {
+    "legal_feasible_topk_precision_min": 0.8,
+    "candidate_rejection_reason_coverage_min": 0.85,
+    "planner_regret_against_human_oracle_max": 0.15
+  },
+  "negative_control_gate": {
+    "impossible_action_block_rate_min": 0.95,
+    "support_missing_review_rate_min": 0.95,
+    "policy_conflict_block_recall_min": 0.9,
+    "shuffled_action_performance_drop_min": 0.15
+  }
+}

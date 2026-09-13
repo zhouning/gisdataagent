@@ -1,0 +1,113 @@
+{
+  "schema": "gwm_bench.foundation_v3_controlled_c2_corpus_manifest.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "track_id": "CONTROLLED-C2",
+  "contract_sha256": "a16c27b908e32c8b62e6e5c749eea447ee76c90c0eb8603273f71f2562984ae5",
+  "fit": {
+    "sample_count": 128,
+    "node_count": 2048,
+    "edge_count": 14848,
+    "node_count_min": 16,
+    "node_count_max": 16,
+    "node_count_mean": 16.0,
+    "edge_count_min": 116,
+    "edge_count_max": 116,
+    "grid_side_histogram": {
+      "4": 128
+    },
+    "action_source_count_histogram": {
+      "1": 128
+    },
+    "relation_presence_histogram": {
+      "0-1": 43,
+      "1-2": 43,
+      "0-2": 42
+    },
+    "lag_peak_counts": [
+      0,
+      2778,
+      4288,
+      4229,
+      3553
+    ],
+    "irregular_sample_count": 0,
+    "topology_probability_min": 0.03233293071389198,
+    "topology_probability_max": 0.8975063562393188,
+    "topology_probability_std": 0.3468104600906372,
+    "affected_node_count": 1408,
+    "tensor_sha256": {
+      "node_state": "972ce2945cd580a267b4092c2e550b424a9237a2c5f95ced0e8b6a5e6c2a9d87",
+      "node_action": "6c01e83525e87cce305ba3526336f7ea41d4c02c81ad5a516ec8c3c88bb089b9",
+      "edge_index": "d1be9699a3104a5d344f6576015567bc03d0d3eebceee7a10dd210697eff6aa6",
+      "edge_features": "0f480b3bffa914310d0820fb00e5d06c4a289ad5bd2bece36de8929b21bed336",
+      "edge_types": "00101b481c49a3b403d690e5cf48f4435e3323777460960237b1af45206378c5",
+      "node_context": "6545895af235b115d0252fface11eac8e7b7648d0618a4d8b496391e8fbe1c86",
+      "target_delta": "27ffbad9e922e480c7491b3df2e34f2704f5084f1c9322ca1ec274ac61715d93",
+      "target_effective_gate": "e724eddcc5f60d66fd43ac71e3b7f786fe10ba0c41ae70404557e611c8005f8e",
+      "target_topology_probability": "dd74eaa2e1f5189003197bcc29ebbb27ecbc6f2ad1713cd87fa67c9959f7daa7",
+      "target_lag_distribution": "2572b522d9f78c2758239d1439b757e1e06565f8a7d37b1499d8efec7c3bde6b",
+      "affected_node_mask": "e66958e4c007746fda7ffdf66b5dae7acfbb52142c24873f39d6bd69447ef906"
+    },
+    "corpus_fingerprint": "c37f35c2bac86110a7189cd40b790f80638d2427f9c0cf20ca7bfa25d6a270f7"
+  },
+  "ood": {
+    "sample_count": 512,
+    "node_count": 18291,
+    "edge_count": 137012,
+    "node_count_min": 18,
+    "node_count_max": 59,
+    "node_count_mean": 35.724609375,
+    "edge_count_min": 94,
+    "edge_count_max": 524,
+    "grid_side_histogram": {
+      "5": 128,
+      "6": 128,
+      "7": 128,
+      "8": 128
+    },
+    "action_source_count_histogram": {
+      "1": 256,
+      "2": 256
+    },
+    "relation_presence_histogram": {
+      "0-1-2": 512
+    },
+    "lag_peak_counts": [
+      20393,
+      20754,
+      37733,
+      43845,
+      14287
+    ],
+    "irregular_sample_count": 512,
+    "topology_probability_min": 0.04074499383568764,
+    "topology_probability_max": 0.9167612195014954,
+    "topology_probability_std": 0.3260660767555237,
+    "affected_node_count": 5963,
+    "tensor_sha256": {
+      "node_state": "152b979df4d71d97fd4f289dc785b4324cc4a1a810d73b0f9b18af9ce1f60514",
+      "node_action": "27b2504b94b70ba384951007de3d76f120dda00a69930a3c725a770e14aa1a1f",
+      "edge_index": "086abd0b3ec21c0639abcfecb0a899c7c4512d155dc7f9d3feb526f1a86b2eb2",
+      "edge_features": "229a7d5a2b4e998abcf708d6444659f83e8c2186a28d623c6f11b5a6a280847f",
+      "edge_types": "f8ab5ac8350e9d52736a74600fe6121fb700259598d9be3ee37d0089f062a7f0",
+      "node_context": "e5e32f9ff2f6e3381d4270e4e4c319e8d868605e9d9b410a87acc4a7b4503eb7",
+      "target_delta": "c3baabd34c4136ce1a161f61a0d00c1e65484b8feed4f886fd2ffae8aa8e6be6",
+      "target_effective_gate": "978269c71bdac9d4bf29252380dfda74432bfc83452667238593f0564331be77",
+      "target_topology_probability": "5c9a6b89d12376c8b2af57c33933d33714fd758edf8a81e6d7a33b86e8b8365c",
+      "target_lag_distribution": "53675e992a123fc709856a43ad3b486c1458508a346606ae0b0b8a0cf642f269",
+      "affected_node_mask": "e2abf7c8815bddae1a82b92936e82d6c250354ef91839e3aa006ea1af5b915d1"
+    },
+    "corpus_fingerprint": "c9c2d3cbe804f7cb4f7de612afbe325032b9d7ff860a85728072fdbd90ea2a78"
+  },
+  "hidden_factor_checks": {
+    "minimum_512_ood_samples": true,
+    "ood_graphs_are_larger_than_fit_graphs": true,
+    "all_ood_graphs_are_irregular": true,
+    "fit_never_contains_all_three_relations": true,
+    "ood_contains_all_three_relations_per_sample": true,
+    "all_one_to_five_lag_peaks_present": true,
+    "soft_topology_is_non_degenerate": true,
+    "one_and_two_action_assignments_present": true
+  },
+  "manifest_fingerprint": "b414037ecb21b566dd19de8e776a97b25d8d13b067f110b5f15b266b0c226056"
+}

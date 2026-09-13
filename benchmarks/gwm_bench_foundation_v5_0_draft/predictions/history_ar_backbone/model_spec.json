@@ -1,0 +1,19 @@
+{
+  "schema": "gwm_bench.foundation_v5_model_spec.v1",
+  "model_id": "history_ar_backbone",
+  "algorithm": "fixed V4-style per-zone Ridge history AR backbone",
+  "prediction_equation": null,
+  "action_conditioned": false,
+  "matched_no_action": false,
+  "control": false,
+  "seeds": [],
+  "ensemble_rule": null,
+  "lags": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "history_ar_alpha": 5.0,
+  "current_outer_fold_targets_read": false
+}

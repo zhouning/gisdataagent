@@ -1,0 +1,165 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "Address": "1352 W Diversey Pkwy",
+        "OBJECTID": 1,
+        "record_number": "O2024-0008445"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "455 N Carpenter St",
+        "OBJECTID": 2,
+        "record_number": "O2024-0008449"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1157 W Grand Ave",
+        "OBJECTID": 3,
+        "record_number": "O2024-0008450"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1806 N Monticello Ave",
+        "OBJECTID": 4,
+        "record_number": "O2024-0008454"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "8719 S Houston Ave",
+        "OBJECTID": 5,
+        "record_number": "O2024-0008459"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "2405 W Grand Ave",
+        "OBJECTID": 6,
+        "record_number": "O2024-0008868"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1857 W 16th St",
+        "OBJECTID": 7,
+        "record_number": "O2024-0008869"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1145 W 17th St",
+        "OBJECTID": 8,
+        "record_number": "O2024-0008974"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1227 W Jackson Blvd",
+        "OBJECTID": 9,
+        "record_number": "O2024-0009009"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "2411 N Lincoln Ave",
+        "OBJECTID": 10,
+        "record_number": "O2024-0009011"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1055 W Diversey Pkwy",
+        "OBJECTID": 11,
+        "record_number": "O2024-0009013"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "6411 N Newgard Ave",
+        "OBJECTID": 12,
+        "record_number": "O2024-0010948"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "2219 S Oakley Ave",
+        "OBJECTID": 13,
+        "record_number": "O2024-0010950"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "7015 N Sheridan Rd",
+        "OBJECTID": 14,
+        "record_number": "O2024-0011132"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1810 N Richmond St",
+        "OBJECTID": 15,
+        "record_number": "O2024-0011150"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "4508 S Cottage Grove Ave",
+        "OBJECTID": 16,
+        "record_number": "O2024-0011139"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1228 W Race Ave",
+        "OBJECTID": 17,
+        "record_number": "O2024-0012247"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "5824 N Lincoln Ave",
+        "OBJECTID": 18,
+        "record_number": "O2024-0012332"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "2437 S Troy St",
+        "OBJECTID": 19,
+        "record_number": "O2024-0012334"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "2113 N Kenmore Ave",
+        "OBJECTID": 20,
+        "record_number": "O2024-0012506"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "912 N Richmond St",
+        "OBJECTID": 21,
+        "record_number": "O2024-0012520"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "6453 N Bosworth Ave",
+        "OBJECTID": 22,
+        "record_number": "O2024-0012532"
+      }
+    },
+    {
+      "attributes": {
+        "Address": "2658 W 21st Pl",
+        "OBJECTID": 23,
+        "record_number": "O2024-0013362"
+      }
+    }
+  ]
+}

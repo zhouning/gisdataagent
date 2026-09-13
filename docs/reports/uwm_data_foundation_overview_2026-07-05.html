@@ -1,0 +1,991 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UWM 数据基础总览 - 2026-07-05</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --ink: #17202a;
+      --muted: #5e6b78;
+      --line: #d9dee5;
+      --blue: #1d5f99;
+      --green: #177245;
+      --amber: #966600;
+      --red: #a33a2b;
+      --violet: #5a4b9f;
+      --chip: #eef2f6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.5;
+    }
+    header {
+      background: #142235;
+      color: #fff;
+      padding: 22px 28px;
+      border-bottom: 4px solid #2b7dbd;
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: 0;
+    }
+    header p {
+      margin: 0;
+      color: #d6e2ef;
+      max-width: 1180px;
+    }
+    main {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 20px 24px 48px;
+    }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin: 16px 0;
+      padding: 18px;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 16px 0 8px;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+    .note {
+      background: #fff8e6;
+      border: 1px solid #e7cd89;
+      color: #5d4700;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin: 10px 0 14px;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfcfe;
+      min-height: 86px;
+    }
+    .kpi .label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .kpi .value {
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+    .kpi .sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: #24384c;
+      background: #f0f4f8;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      max-height: 680px;
+    }
+    .status {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--chip);
+      color: #263747;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .ok { background: #e5f4ec; color: var(--green); }
+    .warn { background: #fff3cc; color: var(--amber); }
+    .bad { background: #f8dfda; color: var(--red); }
+    .info { background: #e3eef8; color: var(--blue); }
+    .violet { background: #ebe8f7; color: var(--violet); }
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 10px 0;
+      align-items: center;
+    }
+    input, select {
+      border: 1px solid #c8d0d8;
+      border-radius: 6px;
+      padding: 8px 10px;
+      min-height: 36px;
+      background: #fff;
+      color: var(--ink);
+    }
+    input { min-width: 280px; flex: 1; }
+    code {
+      background: #eef2f6;
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+    .claim-list {
+      margin: 0;
+      padding-left: 18px;
+    }
+    .claim-list li { margin: 5px 0; }
+    .source-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfcfe;
+    }
+    .source-card strong { display: block; margin-bottom: 6px; }
+    .small { color: var(--muted); font-size: 12px; }
+    footer {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 20px;
+    }
+    @media (max-width: 1000px) {
+      .kpis { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      main { padding: 14px; }
+      header { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>UWM 数据基础总览</h1>
+    <p>Urban World Model 数据资产、roadmap、证据门控和剩余缺口。生成日期：2026-07-05。来源：<code>uwm_data_foundation_manifest.csv</code>、role audit、Track 2 research log。</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>总状态</h2>
+      <div class="note">
+        这里的“64 行 / 18 个 real 条目 / 2 个 fitted_proxy 条目”指 manifest 资产组登记，不是数据记录数、文件数或空间要素数。你提供的是重庆全量/大规模本地数据，当前按资产组汇总到 manifest；已核对的本地源包括 447MB 规划院 zip、1.05GB 本地 shp 目录、43,655 条原始 xiangzhen 记录、107,452 条建筑轮廓记录、50,366 条 OSM roads 记录、1,194,351 条高德 POI、26,292 个百度 AOI、2,120 行联通通勤、325 条百度搜索指数流、2.8 亿像元级 CLCD 栅格、40 行重庆区县人口统计、UWM fitted 人口下推 852 行、联通潜在通勤图 1,067 条边，以及由 1,017 个重庆乡镇/街道行政单元派生的 2,847 条空间邻接边。
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="label">Manifest 资产组</div><div class="value">64</div><div class="sub">资产登记条目，不是要素数量</div></div>
+        <div class="kpi"><div class="label">本地源审计</div><div class="value">584</div><div class="sub">解压后 01数据样例实扫文件，含 GDB 内部文件</div></div>
+        <div class="kpi"><div class="label">核心角色缺口</div><div class="value">0</div><div class="sub">missing_required_roles = []</div></div>
+        <div class="kpi"><div class="label">Claim ceiling</div><div class="value">fragile</div><div class="sub">行政边界许可/年代等仍需核验</div></div>
+        <div class="kpi"><div class="label">Empirical blockers</div><div class="value">1</div><div class="sub">air_pollution_exposure</div></div>
+        <div class="kpi"><div class="label">UWM tests</div><div class="value">122</div><div class="sub">122 passed in latest focused run</div></div>
+        <div class="kpi"><div class="label">最强实证切片</div><div class="value">OpenAQ</div><div class="sub">状态预测层显著强于静态 baseline suite</div></div>
+        <div class="kpi"><div class="label">Spatial Graph-MDP</div><div class="value">96</div><div class="sub">36 个候选单元诱导出的真实空间边</div></div>
+        <div class="kpi"><div class="label">Replay value MAE</div><div class="value">0.000165</div><div class="sub">train-mean baseline 0.002418</div></div>
+        <div class="kpi"><div class="label">World-model policy</div><div class="value">0.009041</div><div class="sub">static replay reward 0.007840</div></div>
+        <div class="kpi"><div class="label">Learned rollout</div><div class="value">0.011529</div><div class="sub">static imagined score 0.001249</div></div>
+        <div class="kpi"><div class="label">Graph-aware WM</div><div class="value">0.000104</div><div class="sub">target-only MAE 0.000845</div></div>
+        <div class="kpi"><div class="label">Intervention package</div><div class="value">exploratory</div><div class="sub">证据门控宜居性干预方案包</div></div>
+        <div class="kpi"><div class="label">Evidence gate</div><div class="value">true</div><div class="sub">observed state prediction superiority</div></div>
+        <div class="kpi"><div class="label">TAP-like PM2.5 v2</div><div class="value">6048</div><div class="sub">CHAP anchor error 0.0</div></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>本地重庆数据规模</h2>
+      <div class="note">
+        这部分是为了回答“为什么不是只有 8 行”：8 是早期 manifest 中 <code>synthetic_status=real</code> 的资产组数量；当前复核后为 18 个 real 资产组。真实本地数据本身是大规模空间数据。没有读出的 feature count 不做猜测。
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>本地源 / 图层</th><th>已核对规模</th><th>当前 UWM 用法</th><th>仍需补充</th></tr></thead>
+          <tbody>
+            <tr><td>规划院 zip</td><td>447MB 压缩包；解压后 <code>01数据样例</code> 实扫 584 个文件，含 FileGDB 内部文件</td><td>建筑、DEM、CLCD、roads、POI/AOI、通勤、搜索指数、规划台账等本地资产入口</td><td>许可、年代、字段字典仍需逐步核验</td></tr>
+            <tr><td><code>/Users/zhouning/Downloads/shp</code></td><td>126 个文件；约 1.05GB；15 组 shapefile</td><td>行政单元和本地矢量源审计</td><td>许可、年代、字段字典、crosswalk</td></tr>
+            <tr><td><code>xiangzhen.shp</code> 原始层</td><td>43,655 records</td><td>派生重庆乡镇/街道治理单元</td><td>当前 UWM 子集为 1,017 单元、38 区县，需保留原始层与派生层区别</td></tr>
+            <tr><td>行政空间邻接图</td><td>1,017 nodes；2,847 boundary adjacency edges；0 isolated nodes</td><td>Graph-MDP 空间状态、simulator 邻接溢出、planner benchmark</td><td>行政拓扑图，不是道路网络、OD、交通流或出行时间图</td></tr>
+            <tr><td>重庆市各区县人口规模数据.xlsx</td><td>40 rows；39 个区县 + 1 个全市总计</td><td>population_vulnerability / equity context</td><td>区县级 2021 统计，不是乡镇/街道或格网人口，不是 2024 场景</td></tr>
+            <tr><td>UWM fitted 人口下推层</td><td>852 rows；3290.08 万输入人口 = 3290.08 万输出人口；845 个 GHSL 权重行 + 7 个区县 fallback 行</td><td>population_vulnerability / simulator context / planner scaffold</td><td>fitted_proxy；不是人口普查微观数据、乡镇/街道权威人口或 2024 场景人口</td></tr>
+            <tr><td>建筑轮廓 shapefile</td><td>107,452 records</td><td>urban form / renderer / baseline</td><td>楼层字段、年份、范围边界需进一步 profile</td></tr>
+            <tr><td>OSM roads shapefile</td><td>50,366 records</td><td>mobility graph 基础</td><td>网络阻抗、通行时间、OD/交通流仍缺</td></tr>
+            <tr><td>高德地图 POI 2024 FileGDB</td><td>1,194,351 Point features</td><td>service accessibility / baseline</td><td>受限本地资产；不能替代公开可复现 POI</td></tr>
+            <tr><td>百度地图 AOI 2024 FileGDB</td><td>26,292 MultiPolygon features</td><td>service accessibility / urban form</td><td>受限本地资产；分类和评分需保留来源边界</td></tr>
+            <tr><td>联通职住通勤 CSV</td><td>2,120 rows；259 个居住格网；697 个工作格网</td><td>mobility_activity / commuting_od</td><td>缺格网几何字典；不能直接当空间 OD 面或出行时间</td></tr>
+            <tr><td>UWM Unicom latent mobility graph</td><td>1,067 directed edges；756 nodes；expanded population 29,634.796667；work_grid=0 权重 12,933.005191</td><td>mobility_activity / simulator context / planner scaffold</td><td>fitted_proxy；无格网几何，不是空间 OD 面、travel-time surface 或交通流</td></tr>
+            <tr><td>成渝环渝百度搜索指数 GDB</td><td>325 MultiLineString flows；总搜索指数 8,694,518</td><td>urban activity proxy / mobility activity</td><td>搜索兴趣不是出行观测或政策 outcome</td></tr>
+            <tr><td>中心城区历史文化街区</td><td>20 Polygon Z features</td><td>cultural heritage / livability context</td><td>来源许可和年代需核验</td></tr>
+            <tr><td>璧山 DLTB</td><td>101,657 MultiPolygon features</td><td>land use context / planning constraints</td><td>区县样例，不是重庆全市</td></tr>
+            <tr><td>璧山 2019 用地台账</td><td>1,438 个非空工作表行，含表头/标题行</td><td>land development pressure / planner constraints</td><td>台账上下文，不是空间 outcome</td></tr>
+            <tr><td>福禄镇村规数据库</td><td>31 个 shapefile；8,050 total features</td><td>planning constraints / village livability context</td><td>和平村/斑竹村样例，不是全城</td></tr>
+            <tr><td>DEM</td><td>1,766 x 1,454 = 2,567,764 pixels</td><td>heat exposure / terrain context</td><td>CRS 与分辨率元数据需完整入 MMFE profile</td></tr>
+            <tr><td>CLCD 2020</td><td>18,579 x 15,082 = 280,208,478 pixels</td><td>remote sensing state / land-cover baseline</td><td>类别字典和面积统计需进一步入库</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Roadmap 完成情况</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>模块</th><th>状态</th><th>已完成事实</th><th>不能过度宣称</th></tr></thead>
+          <tbody>
+            <tr><td>契约 / MMFE state input</td><td><span class="status ok">完成 v0</span></td><td>Observation、rollout、plan package、MMFE state input 已有测试</td><td>契约可运行不等于实证有效</td></tr>
+            <tr><td>Data foundation manifest</td><td><span class="status ok">完成 v0，持续扩展</span></td><td>64 个资产组；核心角色无 missing；来源和 claim boundary 可审计；已新增本地区县人口统计、联通通勤、百度搜索指数、历史文化街区、璧山规划数据、CHAP PM2.5、NOAA ISD 观测气象、OSM complete bbox 服务/道路抽取、UWM fitted 人口下推、联通潜在通勤图、offline world-model policy、learned rollout planner、graph-aware world model、synthetic policy outcome scaffold、livability intervention package、data-foundation evidence gate、TAP-like PM2.5 v2 和 TAP access pending</td><td>claim ceiling 仍为 fragile</td></tr>
+            <tr><td>Renderer / scene state</td><td><span class="status ok">完成 v0</span></td><td>能转 canonical observation 和 simulator controls</td><td>不是完整城市数字孪生</td></tr>
+            <tr><td>Simulator</td><td><span class="status ok">完成 known-effect v0</span></td><td>action-conditioned rollout、负控、场景条件</td><td>机制参数尚未 data-calibrated</td></tr>
+            <tr><td>Planner</td><td><span class="status ok">完成 evidence-gated v0</span></td><td>只能消费 rollout trace；可做 known-effect regret benchmark</td><td>不是 observed policy outcome 优越性</td></tr>
+            <tr><td>Admin targeting panels</td><td><span class="status ok">完成 proxy v0</span></td><td>exposure-equity、service accessibility、livability target panel</td><td>proxy target 不是真实健康/宜居 outcome</td></tr>
+            <tr><td>Admin spatial Graph-MDP</td><td><span class="status ok">完成 v0</span></td><td>全量 1,017 个重庆乡镇/街道行政单元派生 2,847 条边；36 个 livability 候选单元诱导出 96 条空间边和 355 条 replay transitions；offline value model holdout MAE 0.000165326</td><td>不是道路/mobility graph；value model 仍不是 PPO/DRL policy 或真实 outcome model</td></tr>
+            <tr><td>Offline world-model policy</td><td><span class="status ok">完成 v0</span></td><td>基于 355 条 spatial Graph-MDP replay 学习 action-conditioned reward+dynamics model；holdout reward MAE 0.000165324 vs train-mean baseline 0.002418188；保守策略 replay reward 0.009041181 vs 静态启发式 0.007839757</td><td>只证明 simulator replay 上 learned world-model policy 优于静态启发式；不是 observed policy outcome 或在线 PPO</td></tr>
+            <tr><td>Learned world-model rollout planner</td><td><span class="status ok">完成 v0</span></td><td>使用 action-conditioned reward+dynamics model 做 2-step imagined rollout；selected sequence 为 increase_green_infrastructure-江北区|观音桥街道|653 -> add_community_service-九龙坡区|谢家湾街道|785；imagined conservative score 0.011528613 vs static 0.00124898 and one-step learned policy 0.002012933</td><td>只证明 learned dynamics imagination 上的多步规划优势；不是 observed policy outcome 或在线 PPO</td></tr>
+            <tr><td>Graph-aware world model</td><td><span class="status ok">完成 v0</span></td><td>基于 36 个候选单元和 96 条行政邻接边，把 neighbor means、target-neighbor contrast 和 action-neighborhood pressure 注入 dynamics；holdout reward MAE 0.000103937 vs target-only 0.000844982；win rate 0.957746479</td><td>只证明 prepared spatial replay holdout 上 graph-aware dynamics 优于 target-only baseline；不是 observed policy outcome</td></tr>
+            <tr><td>Livability intervention package</td><td><span class="status ok">完成 v0</span></td><td>按业务理论要求输出低宜居区域识别、机制解释、干预适宜性、多步 action sequence、前后指标 delta、公平性和证据边界；综合 delta：heat -1.027807246、air -0.411081019、service +0.965080014、equity +0.552991953、livability +0.786721588</td><td>依赖 learned rollout、synthetic outcome 和 TAP-like PM2.5 v2；不是 observed intervention outcome</td></tr>
+            <tr><td>Data-foundation evidence gate</td><td><span class="status ok">完成 v0</span></td><td>读取完整 UWM 数据基础和实际产物；接受 real/public_proxy/fitted_proxy/semi_synthetic/synthetic/restricted_expected，但按证据边界分层；OpenAQ observed temporal holdout：600 observations、180 holdout、150 wins、win rate 0.833333</td><td>只证明 observed temporal state prediction 强于传统静态 baseline；observed policy outcome superiority 仍为 false</td></tr>
+            <tr><td>OpenAQ temporal validation</td><td><span class="status ok">当前最强实证</span></td><td>真实观测 holdout 上显著强于静态 baseline suite；时间顺序负控通过</td><td>只证明状态预测层，不证明政策 outcome</td></tr>
+            <tr><td>Track 2 readiness</td><td><span class="status warn">部分完成</span></td><td>数据说明、代码、AI log、readiness gate 已有</td><td>完整初评研究报告仍未完成</td></tr>
+            <tr><td>真实政策 outcome / 因果验证</td><td><span class="status bad">未完成</span></td><td>当前只作为 gate/blocker 记录</td><td>不得宣称 planner 真实政策效果优于传统方法</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>来源分类</h2>
+      <div class="grid-3">
+        <div class="source-card"><strong>你提供 / 项目已有本地真实资产</strong><span class="status ok">18 个 real 资产组</span><p class="small">重庆建筑、DEM、CLCD、OSM roads、高德 POI、百度 AOI、联通通勤、百度搜索指数、历史文化街区、璧山规划数据、乡镇/街道行政单元、区县人口统计、行政空间邻接图和 Paper6 本地研究资产。每个资产组可对应全量重庆数据或大量要素。</p></div>
+        <div class="source-card"><strong>已下载公开代理 / 项目状态先验</strong><span class="status info">37 个 public_proxy 资产组</span><p class="small">GEE ERA5/CAMS、OpenAQ、Open-Meteo、CHAP、NOAA ISD、GHSL、OSM Overpass、Paper58 AlphaEarth/GeoFM state prior，以及由这些数据派生的 admin panels、Graph-MDP replay、offline world-model policy、learned rollout planner、graph-aware world model 和 data-foundation evidence gate。</p></div>
+        <div class="source-card"><strong>待授权 / 拟合 / 合成 / 半合成</strong><span class="status warn">9 个资产组</span><p class="small">TAP 为 restricted_expected 且账号审核中；UWM fitted 人口下推和联通潜在通勤图只作 simulator/planner scaffold；EPA Green Book、旧版 2024-07 PM2.5 scene panel 和 CHAP 锚定 TAP-like PM2.5 v2 是 semi_synthetic；synthetic policy outcome scaffold 和 livability intervention package 只作 OPE/负控联调与方案表达；synthetic air placeholder 只允许 smoke test，不支撑 empirical claim。</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>核心角色覆盖</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>UWM 角色</th><th>当前覆盖</th><th>主要数据</th><th>硬缺口</th></tr></thead>
+          <tbody>
+            <tr><td>urban_form</td><td><span class="status ok">有</span></td><td>本地建筑、Baidu AOI、历史文化街区、璧山 DLTB、GHSL built-up</td><td>权威楼栋许可/年份、受限本地许可需核验</td></tr>
+            <tr><td>administrative_units</td><td><span class="status ok">有</span></td><td>原始 <code>xiangzhen.shp</code> 43,655 records；UWM 派生重庆乡镇/街道行政单元 1,017 个</td><td>许可、官方年代、区县 crosswalk 需核验</td></tr>
+            <tr><td>spatial_adjacency_graph</td><td><span class="status ok">有</span></td><td>1,017 个行政节点；2,847 条行政边界邻接边；36 个 livability 候选单元诱导出 96 条空间边</td><td>不是道路网络、交通流、OD 或出行时间图</td></tr>
+            <tr><td>remote_sensing_state</td><td><span class="status ok">有</span></td><td>CLCD、CLCD 分类字典、AlphaEarth/Paper58、GHSL</td><td>更完整城市遥感状态栅格链</td></tr>
+            <tr><td>heat_exposure</td><td><span class="status ok">有</span></td><td>DEM、Paper6 UHI、admin panel</td><td>长期热暴露 observed holdout</td></tr>
+            <tr><td>meteorology</td><td><span class="status ok">proxy_available + observed station</span></td><td>ERA5、Open-Meteo、GEE admin representative point、GEE candidate polygon zonal proxy、NOAA ISD 2024-07 江北站观测气象</td><td>硬 blocker 已解除；仍缺全城格网/面状观测校准</td></tr>
+            <tr><td>air_pollution_exposure</td><td><span class="status warn">proxy_available</span></td><td>CAMS、OpenAQ、Open-Meteo、CHAP 2024-07 1km 月均 PM2.5、GEE admin representative point、GEE candidate polygon zonal proxy；TAP 审核中</td><td>仍是 empirical blocker：OpenAQ 2024-07 attempt 为 0 measurements，缺 station-calibrated/policy outcome holdout</td></tr>
+            <tr><td>population_vulnerability</td><td><span class="status ok">usable_real + proxy_available + fitted_proxy</span></td><td>本地区县人口统计 2021；GHSL admin alignment；UWM fitted population downscaling；WorldPop metadata downloaded but population raster not downloaded</td><td>仍缺乡镇/街道级权威人口、脆弱人群细分和 2024 场景人口；WorldPop 4.98GB/5.2GB 大文件未下载</td></tr>
+            <tr><td>service_accessibility</td><td><span class="status ok">usable_real + proxy_available</span></td><td>高德 POI 1,194,351 点、百度 AOI 26,292 面、历史文化街区 20 面 + OSM 200 点历史样本 + OSM complete bbox 786 个 amenity 元素</td><td>仍缺公开可复现全市 POI、权威服务目录和 network travel-time surface</td></tr>
+            <tr><td>mobility_graph / mobility_activity</td><td><span class="status warn">有基础 + 真实活动表 + fitted_proxy</span></td><td>本地 roads + OSM complete bbox highway topology：6,762 ways / 45,468 graph edges；联通通勤 2,120 行；百度搜索指数 325 条；联通 latent mobility graph 1,067 条边</td><td>联通缺格网几何字典；百度搜索不是出行观测；仍缺真实出行时间、交通流、网络阻抗；latent graph 不是空间 OD 面</td></tr>
+            <tr><td>state_dynamics_validation</td><td><span class="status ok">强实证切片</span></td><td>OpenAQ temporal benchmark</td><td>只覆盖 air-quality temporal state，不覆盖 policy outcome</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>当前最强事实证据</h2>
+      <div class="grid-2">
+        <div>
+          <h3>OpenAQ temporal benchmark</h3>
+          <ul class="claim-list">
+            <li>真实小时观测：600 条</li>
+            <li>污染物：6 个</li>
+            <li>Holdout 时点：180 个</li>
+            <li>动态状态更新 vs <code>static_train_mean</code>：150 wins，p = 3.17e-23</li>
+            <li>动态状态更新 vs <code>static_last_train_observation</code>：141 wins，p = 7.02e-28</li>
+            <li>PM2.5 best static MAE 9.466667 -> dynamic MAE 2.4</li>
+            <li>ordered-vs-shuffled temporal control：6/6 pollutants passed</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Spatial Graph-MDP benchmark</h3>
+          <ul class="claim-list">
+            <li>全量行政图：1,017 nodes、2,847 edges、0 isolated nodes</li>
+            <li>Livability 候选单元：36 个</li>
+            <li>候选子图真实空间边：96 条</li>
+            <li>Replay transitions：355 条</li>
+            <li>best 2-step reward：0.012346806</li>
+            <li>static single-step reward：0.001439757</li>
+            <li>offline value holdout MAE：0.000165326</li>
+            <li>train-mean baseline MAE：0.002418188</li>
+            <li>offline world-model policy reward MAE：0.000165324</li>
+            <li>offline world-model policy replay reward：0.009041181</li>
+            <li>static heuristic replay reward：0.007839757</li>
+            <li>learned rollout imagined score：0.011528613</li>
+            <li>static imagined score：0.00124898</li>
+            <li>one-step learned policy imagined score：0.002012933</li>
+            <li>graph-aware world model reward MAE：0.000103937</li>
+            <li>target-only dynamics baseline reward MAE：0.000844982</li>
+            <li>graph-aware win rate vs target-only：0.957746479</li>
+            <li>synthetic policy outcome learned reward：0.006346806</li>
+            <li>synthetic policy outcome static reward：-0.004560243</li>
+            <li>synthetic policy outcome learned advantage：0.010907049</li>
+            <li>livability intervention package supported claim：business_theory_aligned_learned_rollout_beats_static_proxy_baseline</li>
+            <li>livability intervention package claim boundary：exploratory_only</li>
+            <li>livability intervention package deltas：heat -1.027807246；air -0.411081019；service +0.965080014；equity +0.552991953；livability +0.786721588</li>
+            <li>TAP-like PM2.5 v2 records：6048</li>
+            <li>TAP-like PM2.5 v2 CHAP anchor max abs error：0.0</li>
+            <li>TAP-like PM2.5 v2 PM2.5 mean：16.433</li>
+            <li>empirical_superiority_claim：false</li>
+          </ul>
+        </div>
+        <div>
+          <h3>可声明 / 不可声明</h3>
+          <p><span class="status ok">可声明</span> UWM online temporal state update 在真实 OpenAQ 时间序列 holdout 上，显著强于传统静态 baseline suite，并通过时间顺序负控。</p>
+          <p><span class="status ok">可声明</span> 在透明 known-effect simulator 和 proxy target panel 中，空间 Graph-MDP 2-step 搜索优于静态单步启发式，且 offline value model 在 replay holdout 上优于 train-mean baseline。</p>
+          <p><span class="status ok">可声明</span> learned world-model rollout planner 在 learned dynamics imagination 中优于静态单步和一步 learned policy baseline。</p>
+          <p><span class="status bad">不可声明</span> UWM planner 已在真实政策 outcome 上优于传统方法。</p>
+          <p class="small">原因：真实政策 intervention outcome、scene-aligned station-calibrated holdout、因果验证仍缺。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>完整数据资产表</h2>
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="搜索 dataset、角色、状态、边界">
+        <select id="sourceFilter">
+          <option value="">全部来源</option>
+          <option value="restricted_local">restricted_local</option>
+          <option value="planning_sample">planning_sample</option>
+          <option value="paper6">paper6</option>
+          <option value="paper58">paper58</option>
+          <option value="public">public</option>
+          <option value="restricted_expected">restricted_expected</option>
+          <option value="synthetic">synthetic</option>
+        </select>
+        <select id="statusFilter">
+          <option value="">全部 synthetic_status</option>
+          <option value="real">real</option>
+          <option value="public_proxy">public_proxy</option>
+          <option value="fitted_proxy">fitted_proxy</option>
+          <option value="semi_synthetic">semi_synthetic</option>
+          <option value="restricted_expected">restricted_expected</option>
+          <option value="synthetic">synthetic</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table id="assetTable">
+          <thead>
+            <tr>
+              <th>#</th><th>Dataset</th><th>来源</th><th>状态</th><th>角色</th><th>质量/边界</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>剩余缺口</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>缺口</th><th>为什么重要</th><th>当前处理</th></tr></thead>
+          <tbody>
+            <tr><td>真实政策 intervention outcome</td><td>决定能否证明 planner 在真实治理目标上优于传统方法</td><td>未提供；未下载到公开可直接使用数据；本轮已补 synthetic policy outcome scaffold，但只作 OPE/负控联调，不能替代真实 outcome</td></tr>
+            <tr><td>2024 scene-aligned station-calibrated air-quality holdout</td><td>当前 2024 scene 使用 Open-Meteo/CAMS/CHAP proxy 和 TAP-like semi-synthetic v2，OpenAQ 不覆盖 2024-07</td><td>blocker 保留；v2 只解决开发闭环，不替代真实 holdout</td></tr>
+            <tr><td>scene-aligned meteorology grid/zonal validation</td><td>已有 NOAA ISD 江北站 2024-07 观测气象，但仍不是全城面状观测或多站校准</td><td>硬 blocker 已解除；作为精度和空间代表性弱点保留</td></tr>
+            <tr><td>本地人口普查/脆弱性权威数据</td><td>GHSL 是 public proxy，不是本地人口普查</td><td>暂用 GHSL；WorldPop 全国 100m 大文件未下载</td></tr>
+            <tr><td>完整服务可达性</td><td>OSM 已从 200 点样本升级到中心 bbox 完整 amenity 抽取，但仍不是全市 POI 或路网时间面</td><td>bbox gap 明确保留，不解释成真实服务缺失</td></tr>
+            <tr><td>mobility / travel time / OD</td><td>OSM highway topology 已补 6,762 条 ways 和 45,468 条图边；联通通勤提供 2,120 行真实 OD 表；百度搜索指数提供 325 条活动流</td><td>联通缺格网几何字典，百度搜索不是出行观测；仍不能当 travel-time surface、traffic-flow 或真实可达性 outcome</td></tr>
+            <tr><td>learned value / policy</td><td>当前已完成 offline value model、action-conditioned world-model policy 和 learned dynamics multi-step rollout planner，但还不是在线 PPO/DRL，也没有 observed policy outcome OPE</td><td>下一步是图结构 dynamics、uncertainty-calibrated MPC/CEM/MCTS、真实/准真实 outcome 和因果门控</td></tr>
+            <tr><td>因果识别 / SCCA policy evidence</td><td>policy claim 必须通过因果门控</td><td>未完成</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>
+      静态页面，无需服务端。相关文件：uwm_data_foundation_manifest.csv、uwm_data_foundation_summary_2026-07-05.md、uwm_local_planning_zip_audit_2026-07-05.md、uwm_track2_research_log.md。
+    </footer>
+  </main>
+
+  <script>
+    const assets = [
+      [
+            "chongqing_central_buildings_2021",
+            "restricted_local",
+            "real",
+            "available",
+            "renderer;urban_form;baseline",
+            "usable"
+      ],
+      [
+            "chongqing_dem_80m",
+            "planning_sample",
+            "real",
+            "available",
+            "renderer;heat_exposure",
+            "usable"
+      ],
+      [
+            "chongqing_clcd_2020",
+            "planning_sample",
+            "real",
+            "available",
+            "renderer;remote_sensing_state;baseline",
+            "usable"
+      ],
+      [
+            "chongqing_osm_roads_2021",
+            "planning_sample",
+            "real",
+            "available",
+            "renderer;mobility_activity;graph",
+            "usable"
+      ],
+      [
+            "gaode_poi_2024",
+            "restricted_local",
+            "real",
+            "available",
+            "service_accessibility;baseline",
+            "usable_profiled"
+      ],
+      [
+            "baidu_aoi_2024",
+            "restricted_local",
+            "real",
+            "available",
+            "service_accessibility;urban_form",
+            "usable_profiled"
+      ],
+      [
+            "paper6_chongqing_uhi",
+            "paper6",
+            "real",
+            "available",
+            "evidence_gate;heat_exposure",
+            "usable"
+      ],
+      [
+            "paper58_alphaearth_state",
+            "paper58",
+            "public_proxy",
+            "available",
+            "remote_sensing_state;simulator",
+            "usable"
+      ],
+      [
+            "epa_greenbook_policy_structure",
+            "paper6",
+            "semi_synthetic",
+            "available",
+            "uwm_air;evidence_gate",
+            "usable"
+      ],
+      [
+            "era5_meteorology_chongqing",
+            "public",
+            "public_proxy",
+            "available",
+            "meteorology;uwm_heat;uwm_air;simulator_context;mmfe_alignment",
+            "gee_reanalysis_point_proxy_not_holdout"
+      ],
+      [
+            "openmeteo_weather_current_proxy",
+            "public",
+            "public_proxy",
+            "api_reachable_2026-07-04",
+            "meteorology;uwm_heat;live_environmental_proxy;simulator_smoke",
+            "live_proxy"
+      ],
+      [
+            "cams_air_pollution_proxy",
+            "public",
+            "public_proxy",
+            "available",
+            "air_pollution_exposure;uwm_air;simulator_context;mmfe_alignment;evidence_gate",
+            "gee_model_point_proxy_not_holdout"
+      ],
+      [
+            "openaq_air_quality_proxy",
+            "public",
+            "public_proxy",
+            "available",
+            "air_pollution_exposure;uwm_air;evidence_gate;mmfe_alignment;station_validation_context",
+            "station_observation_available_not_scene_holdout"
+      ],
+      [
+            "openmeteo_air_quality_current_proxy",
+            "public",
+            "public_proxy",
+            "api_reachable_2026-07-04",
+            "air_pollution_exposure;uwm_air;live_environmental_proxy;simulator_smoke",
+            "live_proxy"
+      ],
+      [
+            "openmeteo_weather_historical_point_proxy",
+            "public",
+            "public_proxy",
+            "available",
+            "meteorology;uwm_heat;simulator_context;mmfe_alignment",
+            "point_history_proxy_not_holdout"
+      ],
+      [
+            "openmeteo_air_quality_historical_point_proxy",
+            "public",
+            "public_proxy",
+            "available",
+            "air_pollution_exposure;uwm_air;simulator_context;mmfe_alignment",
+            "point_history_proxy_not_holdout"
+      ],
+      [
+            "openmeteo_livability_admin_air_quality_proxy",
+            "public",
+            "public_proxy",
+            "available",
+            "air_pollution_exposure;uwm_air;admin_environment_context;planner_targeting;state_dynamics_validation",
+            "public_model_proxy_not_station_observation"
+      ],
+      [
+            "chongqing_township_admin_units_local",
+            "restricted_local",
+            "real",
+            "available",
+            "administrative_units;governance_unit;township;mmfe_alignment;equity_evaluation;planner;renderer",
+            "usable_requires_vintage_topology_check"
+      ],
+      [
+            "worldpop_population_chongqing_proxy",
+            "public",
+            "public_proxy",
+            "planned_public_download",
+            "population_vulnerability;equity;baseline",
+            "planned"
+      ],
+      [
+            "chongqing_district_population_stats_2021_local",
+            "planning_sample",
+            "real",
+            "available",
+            "population_vulnerability;equity_evaluation;baseline_context;mmfe_alignment",
+            "local_district_statistics_not_township_grid_or_policy_outcome"
+      ],
+      [
+            "ghsl_population_built_chongqing_proxy",
+            "public",
+            "public_proxy",
+            "raw_public_proxy_available",
+            "population_vulnerability;urban_form;remote_sensing_state;equity",
+            "raw_tiles_downloaded_zip_validated"
+      ],
+      [
+            "ghsl_admin_zonal_proxy_alignment",
+            "public",
+            "public_proxy",
+            "available",
+            "population_vulnerability;urban_form;remote_sensing_state;equity_evaluation;renderer_alignment;mmfe_alignment",
+            "proxy_zonal_stats_available_pixel_center_not_fractional_area"
+      ],
+      [
+            "gee_era5_hourly_chongqing_proxy",
+            "public",
+            "public_proxy",
+            "available",
+            "meteorology;uwm_heat;simulator_context;mmfe_alignment",
+            "gee_reanalysis_point_proxy_not_holdout"
+      ],
+      [
+            "gee_cams_nrt_chongqing_proxy",
+            "public",
+            "public_proxy",
+            "available",
+            "air_pollution_exposure;uwm_air;simulator_context;mmfe_alignment",
+            "gee_model_point_proxy_not_holdout"
+      ],
+      [
+            "openaq_air_quality_station_observation_proxy",
+            "public",
+            "public_proxy",
+            "available",
+            "air_pollution_exposure;uwm_air;station_validation_context;mmfe_alignment",
+            "station_observation_available_not_scene_holdout"
+      ],
+      [
+            "gee_admin_environment_chongqing_proxy",
+            "public",
+            "public_proxy",
+            "available",
+            "meteorology;air_pollution_exposure;admin_environment_context;mmfe_alignment;planner_targeting",
+            "representative_point_proxy_not_zonal_mean"
+      ],
+      [
+            "gee_livability_admin_zonal_environment_proxy",
+            "public",
+            "public_proxy",
+            "available",
+            "meteorology;air_pollution_exposure;admin_environment_context;planner_targeting;uwm_livability",
+            "gee_zonal_model_proxy_not_station_holdout"
+      ],
+      [
+            "admin_exposure_equity_panel_2024_07",
+            "public",
+            "public_proxy",
+            "available",
+            "population_vulnerability;air_pollution_exposure;heat_exposure;equity_evaluation;planner_targeting;uwm_livability",
+            "proxy_targeting_panel_not_observed_outcome"
+      ],
+      [
+            "osm_services_chongqing_public_proxy",
+            "public",
+            "public_proxy",
+            "available",
+            "service_accessibility;baseline_context;planner_targeting;mmfe_alignment",
+            "overpass_bbox_sample_not_complete_osm_extract"
+      ],
+      [
+            "osm_services_geometry_public_proxy",
+            "public",
+            "public_proxy",
+            "available",
+            "service_accessibility;baseline_context;planner_targeting;mmfe_alignment",
+            "service_point_sample_not_accessibility_surface"
+      ],
+      [
+            "admin_service_accessibility_panel_2026_07_05",
+            "public",
+            "public_proxy",
+            "available",
+            "service_accessibility;equity_evaluation;planner_targeting;baseline_context",
+            "admin_bbox_sample_not_complete_accessibility_surface"
+      ],
+      [
+            "admin_livability_target_panel_2024_07",
+            "public",
+            "public_proxy",
+            "available",
+            "service_accessibility;air_pollution_exposure;heat_exposure;population_vulnerability;equity_evaluation;planner_targeting;uwm_livability",
+            "composite_proxy_target_not_observed_livability"
+      ],
+      [
+            "osm_services_complete_bbox_public_proxy",
+            "public",
+            "public_proxy",
+            "available",
+            "service_accessibility;baseline_context;planner_targeting;mmfe_alignment",
+            "overpass_complete_bbox_not_full_municipality_or_accessibility_surface"
+      ],
+      [
+            "osm_mobility_network_complete_bbox_public_proxy",
+            "public",
+            "public_proxy",
+            "available",
+            "mobility_graph;mobility_activity;simulator_context;baseline_context;mmfe_alignment",
+            "overpass_highway_topology_not_travel_time_or_od"
+      ],
+      [
+            "admin_service_accessibility_complete_bbox_panel_2026_07_05",
+            "public",
+            "public_proxy",
+            "available",
+            "service_accessibility;equity_evaluation;planner_targeting;baseline_context",
+            "admin_bbox_extract_not_full_accessibility_surface"
+      ],
+      [
+            "admin_livability_target_complete_bbox_panel_2024_07",
+            "public",
+            "public_proxy",
+            "available",
+            "service_accessibility;air_pollution_exposure;heat_exposure;population_vulnerability;equity_evaluation;planner_targeting;uwm_livability",
+            "composite_proxy_target_not_observed_livability"
+      ],
+      [
+            "openaq_observed_temporal_benchmark_2018_10",
+            "public",
+            "public_proxy",
+            "available",
+            "air_pollution_exposure;evidence_gate;state_dynamics_validation;uwm_air",
+            "observed_temporal_state_benchmark_not_policy_outcome"
+      ],
+      [
+            "openmeteo_weather_history_openaq_window_2018_10",
+            "public",
+            "public_proxy",
+            "available",
+            "meteorology;openaq_temporal_context;simulator_context;mmfe_alignment",
+            "point_history_proxy_not_holdout_air_quality_missing"
+      ],
+      [
+            "uwm_model_based_graph_search_admin_livability_proxy",
+            "public",
+            "public_proxy",
+            "available",
+            "model_based_rl;planner_targeting;uwm_livability;evidence_gate;trajectory_dataset",
+            "known_effect_graph_mdp_proxy_not_policy_outcome"
+      ],
+      [
+            "chongqing_admin_spatial_adjacency_graph_2026_07_05",
+            "restricted_local",
+            "real",
+            "available",
+            "spatial_adjacency_graph;admin_spatial_graph;admin_boundary_adjacency;model_based_rl;planner_targeting;simulator;uwm_livability",
+            "usable_topology_graph_requires_source_vintage_license_check"
+      ],
+      [
+            "uwm_model_based_graph_search_admin_livability_spatial_graph_proxy",
+            "planning_sample",
+            "public_proxy",
+            "available",
+            "model_based_rl;planner_targeting;uwm_livability;evidence_gate;trajectory_dataset",
+            "known_effect_spatial_graph_mdp_proxy_not_policy_outcome"
+      ],
+      [
+            "uwm_offline_value_model_admin_livability_spatial_graph_proxy",
+            "planning_sample",
+            "public_proxy",
+            "available",
+            "model_based_rl;offline_value_model;planner_targeting;uwm_livability;evidence_gate;trajectory_dataset",
+            "offline_replay_value_model_not_policy_outcome"
+      ],
+      [
+            "uwm_offline_world_model_policy_admin_livability_spatial_graph_proxy",
+            "planning_sample",
+            "public_proxy",
+            "available",
+            "model_based_rl;offline_world_model;policy_improvement;planner_targeting;uwm_livability;evidence_gate;trajectory_dataset",
+            "offline_world_model_policy_replay_not_policy_outcome"
+      ],
+      [
+            "uwm_offline_world_model_rollout_planner_admin_livability_spatial_graph_proxy",
+            "planning_sample",
+            "public_proxy",
+            "available",
+            "model_based_rl;offline_world_model;learned_rollout_planner;policy_improvement;planner_targeting;uwm_livability;evidence_gate;trajectory_dataset",
+            "learned_world_model_rollout_replay_not_policy_outcome"
+      ],
+      [
+            "uwm_graph_aware_world_model_admin_livability_spatial_graph_proxy",
+            "planning_sample",
+            "public_proxy",
+            "available",
+            "model_based_rl;offline_world_model;graph_aware_dynamics;spatial_adjacency_graph;policy_improvement;planner_targeting;uwm_livability;evidence_gate;trajectory_dataset",
+            "graph_aware_replay_world_model_not_policy_outcome"
+      ],
+      [
+            "uwm_synthetic_policy_outcome_benchmark_admin_livability_spatial_graph",
+            "synthetic",
+            "synthetic",
+            "available",
+            "policy_outcome_scaffold;offline_policy_evaluation;model_based_rl;synthetic_holdout_scaffold;planner_targeting;uwm_livability",
+            "synthetic_policy_outcome_not_observed"
+      ],
+      [
+            "uwm_livability_intervention_package_admin_livability_spatial_graph",
+            "synthetic",
+            "synthetic",
+            "available",
+            "livability_intervention_package;planner_output;model_based_rl;offline_world_model;policy_outcome_scaffold;synthetic_holdout_scaffold;uwm_livability;evidence_gate",
+            "business_theory_aligned_intervention_package_not_observed_policy_outcome"
+      ],
+      [
+            "uwm_data_foundation_evidence_gate_2026_07_05",
+            "planning_sample",
+            "public_proxy",
+            "available",
+            "data_foundation;evidence_gate;state_dynamics_validation;model_based_rl;uwm_livability;claim_boundary",
+            "observed_state_prediction_bounded_policy_outcome_blocked"
+      ],
+      [
+            "chap_pm25_monthly_1km_2024_07_proxy",
+            "public",
+            "public_proxy",
+            "available",
+            "air_pollution_exposure;uwm_air;admin_environment_context;planner_targeting;state_dynamics_validation",
+            "ai_fused_gridded_product_not_station_observation"
+      ],
+      [
+            "noaa_isd_chongqing_weather_observation_2024_07",
+            "public",
+            "public_proxy",
+            "available",
+            "meteorology;observed_weather_holdout;simulator_context;mmfe_alignment;state_dynamics_validation",
+            "observed_station_weather_holdout_ready"
+      ],
+      [
+            "tap_pm25_china_access_pending",
+            "restricted_expected",
+            "restricted_expected",
+            "registration_pending_user_account_under_review",
+            "air_pollution_exposure;tap_candidate;acquisition_queue",
+            "access_pending_not_downloaded"
+      ],
+      [
+            "semi_synthetic_air_quality_scene_2024_07",
+            "synthetic",
+            "semi_synthetic",
+            "available",
+            "air_pollution_exposure;synthetic_holdout_scaffold;simulator_stress;state_dynamics_validation;uwm_air",
+            "semi_synthetic_scene_air_quality_not_observed_holdout"
+      ],
+      [
+            "tap_like_pm25_scene_v2_2024_07",
+            "synthetic",
+            "semi_synthetic",
+            "available",
+            "air_pollution_exposure;tap_like_scaffold;synthetic_holdout_scaffold;simulator_stress;state_dynamics_validation;uwm_air;planner_targeting",
+            "tap_like_pm25_scene_not_observed_holdout"
+      ],
+      [
+            "synthetic_air_quality_placeholder",
+            "synthetic",
+            "synthetic",
+            "planned",
+            "uwm_air;simulator_smoke",
+            "smoke_only"
+      ],
+      [
+            "chongqing_unicom_commuting_2023_local",
+            "restricted_local",
+            "real",
+            "available",
+            "mobility_activity;commuting_od;population_vulnerability;simulator_context;planner_targeting;mmfe_alignment",
+            "usable_real_grid_geometry_missing"
+      ],
+      [
+            "baidu_search_index_2023_local",
+            "restricted_local",
+            "real",
+            "available",
+            "mobility_activity;urban_activity_proxy;simulator_context;planner_targeting;mmfe_alignment",
+            "real_search_interest_not_trip_or_policy_outcome"
+      ],
+      [
+            "chongqing_historic_districts_local",
+            "restricted_local",
+            "real",
+            "available",
+            "urban_form;cultural_heritage;service_accessibility;livability_context;renderer;planner_targeting",
+            "usable_real_cultural_heritage_context"
+      ],
+      [
+            "bishan_land_use_dltb_local",
+            "planning_sample",
+            "real",
+            "available",
+            "land_use_context;urban_form;planning_constraints;simulator_context;baseline",
+            "usable_one_district_land_use_context_not_chongqing_wide"
+      ],
+      [
+            "bishan_admin_cadastral_boundary_local",
+            "planning_sample",
+            "real",
+            "available",
+            "administrative_units;land_use_context;planning_constraints;baseline",
+            "usable_local_boundary_context_not_modern_citywide"
+      ],
+      [
+            "bishan_land_development_ledger_2019_local",
+            "planning_sample",
+            "real",
+            "available",
+            "land_development_pressure;planning_context;planner_constraints;simulator_context",
+            "tabular_planning_context_not_spatial_outcome"
+      ],
+      [
+            "fulu_village_planning_database_local",
+            "planning_sample",
+            "real",
+            "available",
+            "planning_constraints;land_use_context;village_livability_context;simulator_context",
+            "usable_village_planning_context_not_citywide"
+      ],
+      [
+            "clcd_classification_dictionary_local",
+            "planning_sample",
+            "real",
+            "available",
+            "remote_sensing_state;renderer;baseline_context",
+            "usable_metadata_for_clcd_state"
+      ],
+      [
+            "uwm_fitted_admin_population_downscaling_2021",
+            "synthetic",
+            "fitted_proxy",
+            "available",
+            "population_vulnerability;equity_evaluation;simulator_context;planner_targeting;mmfe_alignment",
+            "fitted_total_preserving_population_proxy_not_census"
+      ],
+      [
+            "uwm_unicom_latent_mobility_graph_2023",
+            "synthetic",
+            "fitted_proxy",
+            "available",
+            "mobility_activity;commuting_od;simulator_context;planner_targeting;mmfe_alignment",
+            "latent_mobility_graph_no_geometry_not_travel_time"
+      ]
+];
+    const tbody = document.querySelector("#assetTable tbody");
+    const search = document.querySelector("#search");
+    const sourceFilter = document.querySelector("#sourceFilter");
+    const statusFilter = document.querySelector("#statusFilter");
+    function badgeClass(value) {
+      if (value === "real" || value === "available") return "ok";
+      if (value === "public_proxy" || value === "public") return "info";
+      if (value === "synthetic" || value.includes("missing")) return "bad";
+      if (value === "semi_synthetic" || value.includes("planned") || value.includes("proxy")) return "warn";
+      return "";
+    }
+    function render() {
+      const q = search.value.trim().toLowerCase();
+      const source = sourceFilter.value;
+      const status = statusFilter.value;
+      tbody.innerHTML = "";
+      assets
+        .filter(row => !source || row[1] === source)
+        .filter(row => !status || row[2] === status)
+        .filter(row => !q || row.join(" ").toLowerCase().includes(q))
+        .forEach((row, index) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${index + 1}</td>
+            <td><code>${row[0]}</code></td>
+            <td><span class="status ${badgeClass(row[1])}">${row[1]}</span></td>
+            <td><span class="status ${badgeClass(row[2])}">${row[2]}</span> <span class="status ${badgeClass(row[3])}">${row[3]}</span></td>
+            <td>${row[4].split(";").map(x => `<span class="status">${x}</span>`).join(" ")}</td>
+            <td>${row[5]}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+    }
+    search.addEventListener("input", render);
+    sourceFilter.addEventListener("change", render);
+    statusFilter.addEventListener("change", render);
+    render();
+  </script>
+</body>
+</html>

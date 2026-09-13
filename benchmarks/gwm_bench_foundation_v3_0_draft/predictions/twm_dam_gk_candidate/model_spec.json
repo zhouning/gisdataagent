@@ -1,0 +1,376 @@
+{
+  "schema": "gwm_bench.v3_twm_dam_gk_candidate.v1",
+  "model_id": "twm_dam_gk_candidate",
+  "candidate_name": "TWM V2 unified one-year recursive model",
+  "v2_candidate_fingerprint": "a822146464624aa8a78e1844472b1841b4f10d084ac79d1f8a3ae1b71dc72242",
+  "v2_precommit_protocol_sha256": "e9493b440210dc355f975cedf8b67ba8f91b3736bb1eb465b83c7199b8912726",
+  "training": {
+    "name": "TWM V2 unified one-year recursive model",
+    "seeds": [
+      31,
+      47,
+      73
+    ],
+    "epochs": 80,
+    "training_windows": [
+      [
+        2017,
+        2018
+      ],
+      [
+        2018,
+        2019
+      ],
+      [
+        2019,
+        2020
+      ]
+    ],
+    "model_selection_data": "2017-2020 validation-region annual windows only",
+    "recursive_context": "recompute predicted change history, neighborhood distribution, built share, entropy, and same-class share every year",
+    "annual_change_control": "validation-selected cap from training-period regional change-rate statistics",
+    "post_2020_observed_land_or_viirs_used": false,
+    "labels_2021_2025_used_for_training_or_selection": false,
+    "weights_retrained_for_2026": false,
+    "parameters_reselected_for_2026": false,
+    "member_count": 3,
+    "fold_count": 5
+  },
+  "forecast_origin_year": 2022,
+  "target_years": [
+    2023,
+    2024,
+    2025
+  ],
+  "rollout": "three_step_open_loop_with_predicted_probability_writeback",
+  "geographic_transfer_ensemble": {
+    "reason": "new V3 regions have no natural development fold assignment",
+    "seed_weight": 0.3333333333333333,
+    "fold_weight_within_seed": 0.2,
+    "member_count": 15,
+    "selection_on_v3_targets": false
+  },
+  "v3_adapter": {
+    "full_observed_land_history_for_dynamic_context": [
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022
+    ],
+    "origin_static_state_year": 2022,
+    "origin_static_history_slots": {
+      "trained_slot_2017": 2019,
+      "trained_slot_2018": 2020,
+      "trained_slot_2019": 2021,
+      "trained_slot_2020": 2022
+    },
+    "nightlight_policy": "repeat the Phase A 2017-2022 mean as a fixed level; lag change equals zero",
+    "clock_policy": "use real feature years 2022, 2023 and 2024",
+    "weights_retrained": false,
+    "thresholds_or_caps_reselected": false,
+    "target_pixels_read": false
+  },
+  "members": [
+    {
+      "seed": 31,
+      "fold_ensemble_weight": 0.2,
+      "folds": [
+        {
+          "fold_index": 0,
+          "weights": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_0_weights.pt",
+            "size_bytes": 484454,
+            "sha256": "21e40a5b29eb647a0b431276ddfcddf79c0b2cfb65350401eede52822031d58d"
+          },
+          "selection_trials": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_0_selection_trials.json",
+            "size_bytes": 22008,
+            "sha256": "a9d988805ac83a39a50579f2e08f5e87a4ed0025358e844d5abd773569abea68"
+          },
+          "selected_logit_offset": -0.5,
+          "selected_cap_rate": 0.03485
+        },
+        {
+          "fold_index": 1,
+          "weights": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_1_weights.pt",
+            "size_bytes": 484454,
+            "sha256": "d16a5297d34adb87615c119729ed82aa8e33e0c9d3339fa5ad6fb3cc7c9bb537"
+          },
+          "selection_trials": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_1_selection_trials.json",
+            "size_bytes": 21497,
+            "sha256": "aede75167ad890f8454ac9a34e412b8dd4ff327942433ddbac15f01a2be1fe65"
+          },
+          "selected_logit_offset": -0.5,
+          "selected_cap_rate": 0.148148
+        },
+        {
+          "fold_index": 2,
+          "weights": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_2_weights.pt",
+            "size_bytes": 484454,
+            "sha256": "7b7147370af2356ff5086dc5b882543824ccc56fe8f58b7f9fe3ff57fe222f81"
+          },
+          "selection_trials": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_2_selection_trials.json",
+            "size_bytes": 22315,
+            "sha256": "8d7784a075dbf366671624666a8f560eb311cbb10c6567e72ac0b2901af442b7"
+          },
+          "selected_logit_offset": -1.0,
+          "selected_cap_rate": 0.107143
+        },
+        {
+          "fold_index": 3,
+          "weights": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_3_weights.pt",
+            "size_bytes": 484454,
+            "sha256": "fb5afa43615c339428add10d5d6c11281f3cdc4b030e2c5ef4ff62be26e2b7aa"
+          },
+          "selection_trials": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_3_selection_trials.json",
+            "size_bytes": 22140,
+            "sha256": "4659815a319b26a94f5ad3825949aa214110dd954d0be9ce99959a2232f5d3b9"
+          },
+          "selected_logit_offset": 0.5,
+          "selected_cap_rate": 0.035088
+        },
+        {
+          "fold_index": 4,
+          "weights": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_4_weights.pt",
+            "size_bytes": 484454,
+            "sha256": "030a470a09f93ca780bf5877a0a6181c9705059cb3d10b7fb2109ba9e99dd0e8"
+          },
+          "selection_trials": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_4_selection_trials.json",
+            "size_bytes": 22416,
+            "sha256": "6e14b4eca47aa169b7b9cca0c556c4a362904ce29e926a5eb4d8718069d468cc"
+          },
+          "selected_logit_offset": 0.0,
+          "selected_cap_rate": 0.110035
+        }
+      ]
+    },
+    {
+      "seed": 47,
+      "fold_ensemble_weight": 0.2,
+      "folds": [
+        {
+          "fold_index": 0,
+          "weights": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_0_weights.pt",
+            "size_bytes": 484454,
+            "sha256": "64bc743f8336479a4f3dbd51a8d1c76fd6867a70b9fadee312a677989923274d"
+          },
+          "selection_trials": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_0_selection_trials.json",
+            "size_bytes": 21835,
+            "sha256": "9dc15a2ceaab07ceb4cc9a587cee5ffda0adb1f76a0b53d7a9f60ae860dfaadb"
+          },
+          "selected_logit_offset": -0.5,
+          "selected_cap_rate": 0.03485
+        },
+        {
+          "fold_index": 1,
+          "weights": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_1_weights.pt",
+            "size_bytes": 484454,
+            "sha256": "8c8d97fedae39f753b97a5f04a936040426225c1a3d208dcdd395f80c33596a0"
+          },
+          "selection_trials": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_1_selection_trials.json",
+            "size_bytes": 21474,
+            "sha256": "f25011736a94f1ab974a26ea154adb58eddeab3af68c9c0761218785dbee43c2"
+          },
+          "selected_logit_offset": -0.5,
+          "selected_cap_rate": 0.119685
+        },
+        {
+          "fold_index": 2,
+          "weights": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_2_weights.pt",
+            "size_bytes": 484454,
+            "sha256": "dcad57c67d6f3ff3fe1e47b7f7de80123dc298a29d47ab753757f599282fa6da"
+          },
+          "selection_trials": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_2_selection_trials.json",
+            "size_bytes": 22320,
+            "sha256": "c5111b493c5e8765f88a68712b86d6191ba2c74693255db5e1e85ff12ede3aa5"
+          },
+          "selected_logit_offset": -1.0,
+          "selected_cap_rate": 0.107143
+        },
+        {
+          "fold_index": 3,
+          "weights": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_3_weights.pt",
+            "size_bytes": 484454,
+            "sha256": "c87d2fe11e0cecf43271f9ae0e3709e9dce08788a511fc7405e7c715aafc1df8"
+          },
+          "selection_trials": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_3_selection_trials.json",
+            "size_bytes": 22029,
+            "sha256": "6249e5db43b46a86b562cf6b0bf00bae19f5acc242aee7f623a35ef92c1ec69d"
+          },
+          "selected_logit_offset": 0.0,
+          "selected_cap_rate": 0.168864
+        },
+        {
+          "fold_index": 4,
+          "weights": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_4_weights.pt",
+            "size_bytes": 484454,
+            "sha256": "0a0057f09be91ae2f954f8df9ca05b63dfbc01df4196ef3087b3b42aec5e7574"
+          },
+          "selection_trials": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_4_selection_trials.json",
+            "size_bytes": 22319,
+            "sha256": "6a92d78e6b0c1eb2cb02b0f7130610fc63c4a6552b803115b4c8fb2b452ca774"
+          },
+          "selected_logit_offset": 0.0,
+          "selected_cap_rate": 0.148148
+        }
+      ]
+    },
+    {
+      "seed": 73,
+      "fold_ensemble_weight": 0.2,
+      "folds": [
+        {
+          "fold_index": 0,
+          "weights": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_0_weights.pt",
+            "size_bytes": 484454,
+            "sha256": "65bea9ab10a5c453b5db86d4e781279ca3bd47e1ef6d68a1c505778ead975d0a"
+          },
+          "selection_trials": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_0_selection_trials.json",
+            "size_bytes": 22189,
+            "sha256": "eb8eb2ae2f6a63cf205f525eb2980297e05c54b1420164543fc7b7d4edc60751"
+          },
+          "selected_logit_offset": 0.0,
+          "selected_cap_rate": 0.083398
+        },
+        {
+          "fold_index": 1,
+          "weights": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_1_weights.pt",
+            "size_bytes": 484454,
+            "sha256": "110dc42b7f3aab724fea1e3c692fd455ff51bddaa3d940a5e914d8944f343cac"
+          },
+          "selection_trials": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_1_selection_trials.json",
+            "size_bytes": 21506,
+            "sha256": "1e4cb52293aad369e07213be07fe702cc99ab2da43c7a3b16ed1611ea5f525dc"
+          },
+          "selected_logit_offset": -1.0,
+          "selected_cap_rate": 0.074168
+        },
+        {
+          "fold_index": 2,
+          "weights": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_2_weights.pt",
+            "size_bytes": 484454,
+            "sha256": "bf67d9342afaf735682e94e01874e6ffdc92e1453c73d587f093114c221e4c3c"
+          },
+          "selection_trials": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_2_selection_trials.json",
+            "size_bytes": 22425,
+            "sha256": "96164ff5c7937e68593a5adfc0ce6abac2b4f1177e3032a8ced0a606e1f81a87"
+          },
+          "selected_logit_offset": -0.5,
+          "selected_cap_rate": 0.107143
+        },
+        {
+          "fold_index": 3,
+          "weights": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_3_weights.pt",
+            "size_bytes": 484454,
+            "sha256": "ef2b94f9c694f2a1320c7e8b81ea709bde85a179f34c9c28350e28ecfe988dc2"
+          },
+          "selection_trials": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_3_selection_trials.json",
+            "size_bytes": 22149,
+            "sha256": "c86128817352e1e8a2b9c6124cbd8ff2203e254a2100208fc18b3f1476f962f3"
+          },
+          "selected_logit_offset": 0.5,
+          "selected_cap_rate": 0.110639
+        },
+        {
+          "fold_index": 4,
+          "weights": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_4_weights.pt",
+            "size_bytes": 484454,
+            "sha256": "ce87bee44f660217755e2a82b400e08c5b7e47e87443490bbde173807b7708b8"
+          },
+          "selection_trials": {
+            "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_4_selection_trials.json",
+            "size_bytes": 22263,
+            "sha256": "c691f6ce2928c90872c78a3cc1f4f5446f7871a01b2d5d814398560c9aaa0b96"
+          },
+          "selected_logit_offset": 0.5,
+          "selected_cap_rate": 0.110035
+        }
+      ]
+    }
+  ],
+  "implementation_sources": [
+    {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/run_twm_dam_gk_candidate.py",
+      "role": "v3_twm_runtime_r2_adapter_source",
+      "size_bytes": 20201,
+      "sha256": "13c5f29b59cc23304b39f4b638ccea926477f3bc7280b340c33db4740035f3f5"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/run_twm_multiregion_posthoc_v2.py",
+      "role": "frozen_twm_runtime_dependency",
+      "size_bytes": 27824,
+      "sha256": "a56f0ad6af19eb23d19d55994ee20e193e0f1be14ddc74201d2825466341c66d"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/run_twm_observed_scenario.py",
+      "role": "frozen_twm_runtime_dependency",
+      "size_bytes": 50242,
+      "sha256": "a96a837a1922a70c02186919fa55e897a472f55642d7cdc73b4b5eeae6595485"
+    },
+    {
+      "path": "data_agent/uwm/dam_geospatial_kernel/twm_adapter.py",
+      "role": "frozen_twm_runtime_dependency",
+      "size_bytes": 16758,
+      "sha256": "cfe0c35c983d23f77e84b7dc43516fb127deeaade91987261045b24b436e6db2"
+    },
+    {
+      "path": "data_agent/uwm/dam_geospatial_kernel/twm_sequence_adapter.py",
+      "role": "frozen_twm_runtime_dependency",
+      "size_bytes": 19314,
+      "sha256": "a9e3d99d1af7e95a2313d7eaff179ecafad21129fdb41407c9da0c87928b5841"
+    },
+    {
+      "path": "data_agent/uwm/dam_geospatial_kernel/model.py",
+      "role": "frozen_twm_runtime_dependency",
+      "size_bytes": 16463,
+      "sha256": "bbe35d52aa755a67e3e1fe6e5c44c39f7c63da201714fdc367566c0b3d72e769"
+    },
+    {
+      "path": "data_agent/uwm/dam_geospatial_kernel/contracts.py",
+      "role": "frozen_twm_runtime_dependency",
+      "size_bytes": 6397,
+      "sha256": "2ef476ae30ae1ccd5829115f04de214dc42815188a4d2058b618ef71cef7f26e"
+    },
+    {
+      "path": "data_agent/uwm/dam_geospatial_kernel/twm_transition_head.py",
+      "role": "frozen_twm_runtime_dependency",
+      "size_bytes": 2838,
+      "sha256": "58219107edb6160b1a1e8991d37e55478c972cfcefc43a5c8dc86d3a9eb25610"
+    },
+    {
+      "path": "data_agent/uwm/dam_geospatial_kernel/twm_sequence_benchmark.py",
+      "role": "frozen_twm_runtime_dependency",
+      "size_bytes": 33399,
+      "sha256": "79813ddf37300796a13ed6637847b5b870ebfb960097692c7dabbb0660d137e9"
+    }
+  ]
+}

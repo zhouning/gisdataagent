@@ -1,0 +1,57 @@
+{
+  "schema": "gwm_bench.foundation_v5_multifold_run_report.v1",
+  "model_id": "dam_gk_residual_no_action",
+  "outer_fold_count": 4,
+  "seed_count": 3,
+  "fold_reports": {
+    "holdout_2015": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2015/run_report.json",
+      "bytes": 37473,
+      "sha256": "8fccead22c212d1c1d8d81e489b02119cb2ccf22b02f4976163ee5e5e2c021db"
+    },
+    "holdout_2019": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2019/run_report.json",
+      "bytes": 37458,
+      "sha256": "f530f48a0d7d4bdd5dd497d4017e6254f431e91329eab340bdc831a57065e3d8"
+    },
+    "holdout_2022": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2022/run_report.json",
+      "bytes": 37445,
+      "sha256": "9198dfcabdf7eea1fcc0f08efb2c9983a1c390f49812afeef2ba6b98295f47a6"
+    },
+    "holdout_2025": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2025/run_report.json",
+      "bytes": 37504,
+      "sha256": "2b34d17b83df7ec47b06303da42e76aaca932775ca8005ff3854de67a33fa99c"
+    }
+  },
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/prediction.parquet",
+    "bytes": 413180,
+    "sha256": "8f8d38313027f3f82e3d4cab52e4da137589967f763693ddd29f4988844a2f21"
+  },
+  "model_spec": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/model_spec.json",
+    "bytes": 561,
+    "sha256": "7b12a30440f9bc1053dd16d4285d9ecedb1f93720225c1f0578457a86a0062ab"
+  },
+  "nested_selection_receipts": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/nested_selection_receipts.json",
+    "bytes": 16967,
+    "sha256": "26c5a0b1e70129324df9de726fcb53078232bfd51e853af81e6e6a67796145db"
+  },
+  "fold_training_manifests": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/fold_training_manifests.json",
+    "bytes": 4866,
+    "sha256": "943e29d3e26da9b1d680ce169ca1b1f8f962aef368d70827c77c7e2b89da4ea6"
+  },
+  "runtime_environment": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/runtime_environment.json",
+    "bytes": 409,
+    "sha256": "9deb9f3f7f6ef0f99a78b0a351f9825d78c443971e50ec9acecc748b5854e877"
+  },
+  "test_target_rows_loaded": false,
+  "model_process_target_access_permitted": false,
+  "exit_status": "success",
+  "failure_state": null
+}

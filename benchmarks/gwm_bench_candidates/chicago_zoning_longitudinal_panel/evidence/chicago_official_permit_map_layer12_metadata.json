@@ -1,0 +1,348 @@
+{
+ "currentVersion": 11.4,
+ "cimVersion": "3.4.0",
+ "id": 12,
+ "name": "SPADE.PWU_PERMITS",
+ "type": "Feature Layer",
+ "description": "",
+ "geometryType": "esriGeometryPoint",
+ "sourceSpatialReference": {
+  "wkid": 102671,
+  "latestWkid": 3435,
+  "xyTolerance": 2.0E-4,
+  "zTolerance": 0.001,
+  "mTolerance": 0.001,
+  "falseX": -17463800,
+  "falseY": -46132600,
+  "xyUnits": 40000,
+  "falseZ": 0,
+  "zUnits": 1,
+  "falseM": 0,
+  "mUnits": 1
+ },
+ "copyrightText": "",
+ "parentLayer": {
+  "id": 0,
+  "name": "Map Layers"
+ },
+ "subLayers": [],
+ "minScale": 0,
+ "maxScale": 0,
+ "referenceScale": 0.0,
+ "drawingInfo": {
+  "renderer": {
+   "type": "simple",
+   "symbol": {
+    "type": "esriSMS",
+    "style": "esriSMSCircle",
+    "color": [
+     43,
+     173,
+     0,
+     255
+    ],
+    "size": 4,
+    "angle": 0,
+    "xoffset": 0,
+    "yoffset": 0,
+    "outline": {
+     "color": [
+      0,
+      0,
+      0,
+      255
+     ],
+     "width": 1
+    }
+   }
+  },
+  "scaleSymbols": true,
+  "transparency": 0,
+  "labelingInfo": null
+ },
+ "defaultVisibility": false,
+ "extent": {
+  "xmin": 1091192.4026,
+  "ymin": 1816689.235625,
+  "xmax": 1204579.52085,
+  "ymax": 1950864.67735,
+  "spatialReference": {
+   "wkid": 102671,
+   "latestWkid": 3435,
+   "xyTolerance": 2.0E-4,
+   "zTolerance": 2,
+   "mTolerance": 0.001,
+   "falseX": -17463800,
+   "falseY": -46132600,
+   "xyUnits": 1.3724482207846552E8,
+   "falseZ": 0,
+   "zUnits": 1,
+   "falseM": -100000,
+   "mUnits": 10000
+  }
+ },
+ "hasAttachments": false,
+ "htmlPopupType": "esriServerHTMLPopupTypeNone",
+ "displayField": "PWU_PERMIT_STATUS",
+ "typeIdField": null,
+ "subtypeFieldName": null,
+ "subtypeField": null,
+ "defaultSubtypeCode": null,
+ "fields": [
+  {
+   "name": "OBJECTID",
+   "type": "esriFieldTypeOID",
+   "alias": "OBJECTID",
+   "domain": null
+  },
+  {
+   "name": "PWU_PERMIT_NUM",
+   "type": "esriFieldTypeInteger",
+   "alias": "PWU_PERMIT_NUM",
+   "domain": null
+  },
+  {
+   "name": "PWU_ACCT_NUM",
+   "type": "esriFieldTypeInteger",
+   "alias": "PWU_ACCT_NUM",
+   "domain": null
+  },
+  {
+   "name": "PWU_SITE_NUM",
+   "type": "esriFieldTypeSmallInteger",
+   "alias": "PWU_SITE_NUM",
+   "domain": null
+  },
+  {
+   "name": "PWU_PERMIT_STATUS",
+   "type": "esriFieldTypeString",
+   "alias": "PWU_PERMIT_STATUS",
+   "length": 12,
+   "domain": null
+  },
+  {
+   "name": "PWU_DBA_TEXT",
+   "type": "esriFieldTypeString",
+   "alias": "PWU_DBA_TEXT",
+   "length": 128,
+   "domain": null
+  },
+  {
+   "name": "PWU_ISSUE_DATE",
+   "type": "esriFieldTypeDate",
+   "alias": "PWU_ISSUE_DATE",
+   "length": 8,
+   "domain": null
+  },
+  {
+   "name": "PWU_EXPIRE_DATE",
+   "type": "esriFieldTypeDate",
+   "alias": "PWU_EXPIRE_DATE",
+   "length": 8,
+   "domain": null
+  },
+  {
+   "name": "PWU_PERMIT_ADDRESS",
+   "type": "esriFieldTypeString",
+   "alias": "PWU_PERMIT_ADDRESS",
+   "length": 80,
+   "domain": null
+  },
+  {
+   "name": "PWU_LOCATION_DETAILS",
+   "type": "esriFieldTypeString",
+   "alias": "PWU_LOCATION_DETAILS",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "LOW_ADDR",
+   "type": "esriFieldTypeInteger",
+   "alias": "LOW_ADDR",
+   "domain": null
+  },
+  {
+   "name": "HIGH_ADDR",
+   "type": "esriFieldTypeInteger",
+   "alias": "HIGH_ADDR",
+   "domain": null
+  },
+  {
+   "name": "COMMON_STREETNAMEID",
+   "type": "esriFieldTypeInteger",
+   "alias": "COMMON_STREETNAMEID",
+   "domain": null
+  },
+  {
+   "name": "BLDG_ID",
+   "type": "esriFieldTypeInteger",
+   "alias": "BLDG_ID",
+   "domain": null
+  },
+  {
+   "name": "X_COORD",
+   "type": "esriFieldTypeDouble",
+   "alias": "X_COORD",
+   "domain": null
+  },
+  {
+   "name": "Y_COORD",
+   "type": "esriFieldTypeDouble",
+   "alias": "Y_COORD",
+   "domain": null
+  },
+  {
+   "name": "DUPLICATE_FLAG",
+   "type": "esriFieldTypeString",
+   "alias": "DUPLICATE_FLAG",
+   "length": 1,
+   "domain": null
+  },
+  {
+   "name": "PWU_PERMIT_TYPE",
+   "type": "esriFieldTypeString",
+   "alias": "PWU_PERMIT_TYPE",
+   "length": 80,
+   "domain": null
+  },
+  {
+   "name": "DATADEFINITION_ID",
+   "type": "esriFieldTypeInteger",
+   "alias": "DATADEFINITION_ID",
+   "domain": null
+  },
+  {
+   "name": "PWU_PERMIT_ID",
+   "type": "esriFieldTypeInteger",
+   "alias": "PWU_PERMIT_ID",
+   "domain": null
+  },
+  {
+   "name": "PWU_EXPIRE_GRACE_DATE",
+   "type": "esriFieldTypeDate",
+   "alias": "PWU_EXPIRE_GRACE_DATE",
+   "length": 8,
+   "domain": null
+  },
+  {
+   "name": "STREETNAMEID",
+   "type": "esriFieldTypeInteger",
+   "alias": "STREETNAMEID",
+   "domain": null
+  },
+  {
+   "name": "SHAPE",
+   "type": "esriFieldTypeGeometry",
+   "alias": "SHAPE",
+   "domain": null
+  },
+  {
+   "name": "CREATE_DATE",
+   "type": "esriFieldTypeDate",
+   "alias": "CREATE_DATE",
+   "length": 8,
+   "domain": null
+  },
+  {
+   "name": "UPDATE_DATE",
+   "type": "esriFieldTypeDate",
+   "alias": "UPDATE_DATE",
+   "length": 8,
+   "domain": null
+  }
+ ],
+ "geometryField": {
+  "name": "SHAPE",
+  "type": "esriFieldTypeGeometry",
+  "alias": "SHAPE"
+ },
+ "indexes": [
+  {
+   "name": "I8348PWU_ISSUE_D",
+   "fields": "PWU_ISSUE_DATE",
+   "isAscending": true,
+   "isUnique": false,
+   "description": ""
+  },
+  {
+   "name": "R693_SDE_ROWID_UK",
+   "fields": "OBJECTID",
+   "isAscending": true,
+   "isUnique": true,
+   "description": ""
+  },
+  {
+   "name": "A549_IX1",
+   "fields": "SHAPE",
+   "isAscending": true,
+   "isUnique": true,
+   "description": ""
+  }
+ ],
+ "subtypes": [],
+ "relationships": [],
+ "canModifyLayer": true,
+ "canScaleSymbols": false,
+ "hasLabels": false,
+ "capabilities": "Map,Query,Data",
+ "maxRecordCount": 2000,
+ "maxSelectionCount": 2000,
+ "supportsStatistics": true,
+ "supportsExceedsLimitStatistics": true,
+ "supportsAdvancedQueries": true,
+ "supportedQueryFormats": "JSON, geoJSON, PBF",
+ "isDataVersioned": false,
+ "ownershipBasedAccessControlForFeatures": {"allowOthersToQuery": true},
+ "useStandardizedQueries": true,
+ "supportedSpatialRelationships": [
+  "esriSpatialRelIntersects",
+  "esriSpatialRelContains",
+  "esriSpatialRelCrosses",
+  "esriSpatialRelEnvelopeIntersects",
+  "esriSpatialRelIndexIntersects",
+  "esriSpatialRelOverlaps",
+  "esriSpatialRelTouches",
+  "esriSpatialRelWithin",
+  "esriSpatialRelRelation"
+ ],
+ "advancedQueryCapabilities": {
+  "useStandardizedQueries": true,
+  "supportsStatistics": true,
+  "supportsPercentileStatistics": true,
+  "supportsHavingClause": true,
+  "supportsOrderBy": true,
+  "supportsDistinct": true,
+  "supportsCountDistinct": true,
+  "supportsAdvancedQueryRelated": true,
+  "supportsQueryRelatedPagination": true,
+  "supportsPagination": true,
+  "supportsLod": false,
+  "supportsQueryWithLodSR": false,
+  "supportsTrueCurve": true,
+  "supportsQueryWithDatumTransformation": true,
+  "supportsReturningQueryExtent": true,
+  "supportsQueryWithDistance": true,
+  "supportsSqlExpression": true,
+  "supportsTimeRelation": true,
+  "supportsSqlFormat": false,
+  "supportsQueryAnalytic": true,
+  "supportsCurrentUserQueries": true
+ },
+ "supportsDatumTransformation": true,
+ "advancedQueryAnalyticCapabilities": {
+  "supportsLinearRegression": true,
+  "supportsAsync": false,
+  "supportsPercentileAnalytic": true
+ },
+ "dateFieldsTimeReference": null,
+ "preferredTimeReference": null,
+ "datesInUnknownTimezone": false,
+ "hasMetadata": true,
+ "isDataArchived": false,
+ "archivingInfo": {
+  "supportsQueryWithHistoricMoment": false,
+  "startArchivingMoment": -1
+ },
+ "supportsCoordinatesQuantization": true,
+ "supportsDynamicLegends": true
+}

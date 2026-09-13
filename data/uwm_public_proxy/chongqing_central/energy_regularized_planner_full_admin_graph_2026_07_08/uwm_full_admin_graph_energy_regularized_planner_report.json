@@ -1,0 +1,313 @@
+{
+  "schema": "uwm.full_admin_energy_regularized_action_sequence_planner.v1",
+  "report_id": "uwm-full-admin-energy-regularized-planner-2026-07-08",
+  "created_at": "2026-07-08T19:35:00Z",
+  "source_environment_schema": "uwm.livability_graph_mdp_env.v1",
+  "source_observation_id": "admin-livability-full-admin-energy-planner-obs-2026-07-08",
+  "planner_algorithm": {
+    "algorithm": "energy_regularized_model_based_action_sequence_planner",
+    "is_model_based": true,
+    "is_model_free": false,
+    "uses_behavior_prior_energy": true,
+    "uses_ood_action_drift_guard": true,
+    "uses_graph_dqn_alignment_evidence": true,
+    "world_model_backend": "real_data_uwm_livability_graph_mdp_env_v1",
+    "selection_objective": "simulator_rollout_return_minus_behavior_energy_and_ood_drift_penalties"
+  },
+  "real_data_graph_mdp_summary": {
+    "real_data_graph_node_count": 1017,
+    "real_data_graph_edge_count": 7932,
+    "real_data_available_action_count": 1137,
+    "mechanism_table_id": "uwm-full-admin-graph-data-calibrated-mechanism-table-2026-07-08",
+    "spatial_spillover_kernel_id": null,
+    "spatial_spillover_directional_edge_count": 0,
+    "air_quality_holdout_id": "uwm-scene-aligned-gridded-air-quality-holdout-2026-07-06"
+  },
+  "search_config": {
+    "horizon": 2,
+    "top_k_per_step": 16,
+    "candidate_action_count": 1137,
+    "candidate_action_index_count": 48,
+    "evaluated_sequence_count": 2256,
+    "energy_weight": 0.00035,
+    "ood_penalty_weight": 0.00055
+  },
+  "behavior_prior": {
+    "prior": "feasible_action_geometry_priority_degree_type_prior",
+    "source": "full_admin_graph_available_actions_boundary_and_similarity_edges",
+    "action_count": 1137,
+    "mean_behavior_energy": 0.438766255,
+    "min_behavior_energy": 0.155295123,
+    "max_behavior_energy": 0.714009911,
+    "energy_threshold": 0.518719419,
+    "threshold_quantile": 0.7,
+    "observed_intervention_log_prior": false,
+    "historical_policy_prior_claim": false
+  },
+  "selected_sequence": {
+    "action_count": 2,
+    "action_indices": [
+      3,
+      6
+    ],
+    "action_sequence": [
+      {
+        "action_id": "increase_green_infrastructure-沙坪坝区|覃家岗街道|973",
+        "action_type": "increase_green_infrastructure",
+        "target_units": [
+          "沙坪坝区|覃家岗街道|973"
+        ],
+        "intensity": 1.0,
+        "mask_reason": "heat_risk_above_threshold"
+      },
+      {
+        "action_id": "increase_green_infrastructure-沙坪坝区|歌乐山镇|800",
+        "action_type": "increase_green_infrastructure",
+        "target_units": [
+          "沙坪坝区|歌乐山镇|800"
+        ],
+        "intensity": 1.0,
+        "mask_reason": "heat_risk_above_threshold"
+      }
+    ],
+    "raw_cumulative_reward": -0.006181695,
+    "regularized_score": -0.006467447,
+    "mean_behavior_energy": 0.319954059,
+    "ood_action_drift": -0.19876536,
+    "advantage_over_traditional_static": 0.001073357,
+    "transition_rewards": [
+      -0.007072696,
+      0.000891001
+    ],
+    "simulator_mechanism_sources": [
+      "data_calibrated_mechanism_table"
+    ],
+    "rollout_trace_steps": [
+      "validate_observation_contract",
+      "read_scene_state_controls",
+      "read_data_calibrated_mechanism_table",
+      "apply_action_effects",
+      "apply_action_effects",
+      "aggregate_rollout_delta"
+    ]
+  },
+  "raw_best_sequence": {
+    "action_count": 2,
+    "action_indices": [
+      3,
+      6
+    ],
+    "action_sequence": [
+      {
+        "action_id": "increase_green_infrastructure-沙坪坝区|覃家岗街道|973",
+        "action_type": "increase_green_infrastructure",
+        "target_units": [
+          "沙坪坝区|覃家岗街道|973"
+        ],
+        "intensity": 1.0,
+        "mask_reason": "heat_risk_above_threshold"
+      },
+      {
+        "action_id": "increase_green_infrastructure-沙坪坝区|歌乐山镇|800",
+        "action_type": "increase_green_infrastructure",
+        "target_units": [
+          "沙坪坝区|歌乐山镇|800"
+        ],
+        "intensity": 1.0,
+        "mask_reason": "heat_risk_above_threshold"
+      }
+    ],
+    "raw_cumulative_reward": -0.006181695,
+    "regularized_score": -0.006467447,
+    "mean_behavior_energy": 0.319954059,
+    "ood_action_drift": -0.19876536,
+    "advantage_over_traditional_static": 0.001073357,
+    "transition_rewards": [
+      -0.007072696,
+      0.000891001
+    ],
+    "simulator_mechanism_sources": [
+      "data_calibrated_mechanism_table"
+    ],
+    "rollout_trace_steps": [
+      "validate_observation_contract",
+      "read_scene_state_controls",
+      "read_data_calibrated_mechanism_table",
+      "apply_action_effects",
+      "apply_action_effects",
+      "aggregate_rollout_delta"
+    ]
+  },
+  "traditional_static_baseline": {
+    "baseline": "traditional_static_priority_single_step_same_graph_mdp",
+    "action_index": 625,
+    "action_sequence": [
+      {
+        "action_id": "increase_green_infrastructure-铜梁区|东城街道|100",
+        "action_type": "increase_green_infrastructure",
+        "target_units": [
+          "铜梁区|东城街道|100"
+        ],
+        "intensity": 1.0,
+        "mask_reason": "heat_risk_above_threshold"
+      }
+    ],
+    "action_count": 1,
+    "cumulative_reward": -0.007255052,
+    "rollout_trace_steps": [
+      "validate_observation_contract",
+      "read_scene_state_controls",
+      "read_data_calibrated_mechanism_table",
+      "apply_action_effects",
+      "aggregate_rollout_delta"
+    ]
+  },
+  "conservative_search_audit": {
+    "evaluated_sequence_count": 2256,
+    "raw_best_sequence_raw_reward": -0.006181695,
+    "raw_best_sequence_mean_behavior_energy": 0.319954059,
+    "raw_best_sequence_ood_action_drift": -0.19876536,
+    "selected_sequence_regularized_score": -0.006467447,
+    "selected_sequence_energy": 0.319954059,
+    "selected_sequence_ood_action_drift": -0.19876536,
+    "energy_threshold": 0.518719419,
+    "planner_exploitation_guard_passed": true,
+    "top_candidate_audit": [
+      {
+        "action_indices": [
+          3,
+          6
+        ],
+        "action_ids": [
+          "increase_green_infrastructure-沙坪坝区|覃家岗街道|973",
+          "increase_green_infrastructure-沙坪坝区|歌乐山镇|800"
+        ],
+        "raw_cumulative_reward": -0.006181695,
+        "regularized_score": -0.006467447,
+        "mean_behavior_energy": 0.319954059,
+        "ood_action_drift": -0.19876536,
+        "advantage_over_traditional_static": 0.001073357
+      },
+      {
+        "action_indices": [
+          6,
+          3
+        ],
+        "action_ids": [
+          "increase_green_infrastructure-沙坪坝区|歌乐山镇|800",
+          "increase_green_infrastructure-沙坪坝区|覃家岗街道|973"
+        ],
+        "raw_cumulative_reward": -0.006181695,
+        "regularized_score": -0.006467447,
+        "mean_behavior_energy": 0.319954059,
+        "ood_action_drift": -0.19876536,
+        "advantage_over_traditional_static": 0.001073357
+      },
+      {
+        "action_indices": [
+          3,
+          50
+        ],
+        "action_ids": [
+          "increase_green_infrastructure-沙坪坝区|覃家岗街道|973",
+          "increase_green_infrastructure-南岸区|南山街道|921"
+        ],
+        "raw_cumulative_reward": -0.006188021,
+        "regularized_score": -0.006475957,
+        "mean_behavior_energy": 0.326446136,
+        "ood_action_drift": -0.192273283,
+        "advantage_over_traditional_static": 0.001067031
+      },
+      {
+        "action_indices": [
+          50,
+          3
+        ],
+        "action_ids": [
+          "increase_green_infrastructure-南岸区|南山街道|921",
+          "increase_green_infrastructure-沙坪坝区|覃家岗街道|973"
+        ],
+        "raw_cumulative_reward": -0.006188021,
+        "regularized_score": -0.006475957,
+        "mean_behavior_energy": 0.326446136,
+        "ood_action_drift": -0.192273283,
+        "advantage_over_traditional_static": 0.001067031
+      },
+      {
+        "action_indices": [
+          6,
+          50
+        ],
+        "action_ids": [
+          "increase_green_infrastructure-沙坪坝区|歌乐山镇|800",
+          "increase_green_infrastructure-南岸区|南山街道|921"
+        ],
+        "raw_cumulative_reward": -0.006224324,
+        "regularized_score": -0.006513585,
+        "mean_behavior_energy": 0.32671022,
+        "ood_action_drift": -0.192009198,
+        "advantage_over_traditional_static": 0.001030728
+      }
+    ]
+  },
+  "search_value_alignment": {
+    "graph_dqn_report_available": true,
+    "graph_dqn_training_sample_count": 1248,
+    "graph_dqn_holdout_case_count": 178,
+    "graph_dqn_holdout_win_rate_vs_train_mean": 1.0,
+    "graph_dqn_q_return_mae": 5.3133e-05,
+    "graph_dqn_train_mean_return_mae": 0.000994236,
+    "graph_dqn_advantage_over_traditional_static": 0.000773039,
+    "selected_sequence_reward_beats_traditional_static": true,
+    "selected_sequence_reward_advantage_over_traditional_static": 0.001073357,
+    "search_value_alignment_ready": true,
+    "observed_policy_outcome_superiority_claim": false,
+    "full_admin_graph_dqn_alignment_ready": true,
+    "full_admin_graph_node_count": 1017,
+    "full_admin_graph_edge_count": 7932
+  },
+  "supported_claim": "full_admin_energy_regularized_model_based_action_sequence_planner_advantage_over_traditional_static",
+  "claim_boundary": {
+    "max_claim_level": "bounded_support",
+    "reason": "Full-admin energy-regularized planner compares simulator rollouts over the 1017-node Graph-MDP with boundary and geographic-similarity edges, feasible-action geometry prior and full-admin GraphDQN holdout evidence; it is not observed policy-outcome evidence and does not use historical intervention logs."
+  },
+  "observed_policy_outcome_superiority_claim": false,
+  "empirical_superiority_claim": false,
+  "remaining_gates": [
+    "observed_policy_outcome_holdout_required",
+    "off_policy_evaluation_on_real_intervention_logs_required",
+    "causal_policy_effect_validation_required",
+    "historical_policy_intervention_log_required",
+    "cross_time_or_cross_city_conservative_planner_validation_required"
+  ],
+  "base_planner_schema": "uwm.energy_regularized_action_sequence_planner.v1",
+  "experiment_scope": "full_admin_graph",
+  "full_admin_energy_regularized_planner_ready": true,
+  "full_data_guard": {
+    "passed": true,
+    "required_scope": "full_admin_graph",
+    "graph_node_count": 1017,
+    "graph_edge_count": 7932,
+    "available_action_count": 1137,
+    "geographic_similarity_edge_count": 5085,
+    "non_adjacent_similarity_edge_count": 4835,
+    "evaluated_sequence_count": 2256
+  },
+  "geographic_similarity_evidence": {
+    "geographic_similarity_kernel_ready": true,
+    "kernel_id": "uwm-geographic-similarity-kernel-2026-07-08",
+    "validation_errors": [],
+    "panel_unit_count": 1017,
+    "similarity_edge_count": 5085,
+    "non_adjacent_similarity_edge_count": 4835,
+    "mean_configuration_similarity": 0.741347419,
+    "rotated_target_similarity_control_passed": true,
+    "observed_policy_outcome_superiority_claim": false
+  },
+  "source_admin_livability_panel_path": "data/uwm_public_proxy/chongqing_central/admin_livability_target_full_admin_graph_2024_07_2026_07_08/uwm_admin_livability_target_full_admin_graph_panel.json",
+  "source_admin_spatial_graph_path": "data/uwm_public_proxy/chongqing_central/admin_spatial_graph_2026_07_05/uwm_admin_spatial_adjacency_graph.json",
+  "source_geographic_similarity_kernel_path": "data/uwm_public_proxy/chongqing_central/geographic_similarity_kernel_2026_07_08/uwm_geographic_similarity_kernel.json",
+  "source_mechanism_table_path": "data/uwm_public_proxy/chongqing_central/data_calibrated_mechanism_table_full_admin_graph_2026_07_08/uwm_full_admin_graph_data_calibrated_mechanism_table.json",
+  "source_air_quality_holdout_path": "data/uwm_public_proxy/chongqing_central/scene_aligned_gridded_air_quality_holdout_2026_07_06/uwm_scene_aligned_gridded_air_quality_holdout.json",
+  "source_full_admin_graph_drl_training_report_path": "data/uwm_public_proxy/chongqing_central/livability_graph_drl_training_full_admin_graph_2026_07_08/uwm_full_admin_graph_livability_graph_drl_training_report.json"
+}

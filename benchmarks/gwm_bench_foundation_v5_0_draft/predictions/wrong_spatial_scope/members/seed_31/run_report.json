@@ -1,0 +1,13 @@
+{
+  "schema": "gwm_bench.foundation_v5_seed_multifold_run.v1",
+  "model_id": "wrong_spatial_scope",
+  "seed": 31,
+  "outer_fold_count": 4,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/wrong_spatial_scope/members/seed_31/prediction.parquet",
+    "bytes": 400034,
+    "sha256": "84fb53f5555a7a5ef3ba29340fb3ed93ab4f4da32f6f9323849902ca8ea9a2ff"
+  },
+  "test_target_rows_loaded": false,
+  "exit_status": "success"
+}

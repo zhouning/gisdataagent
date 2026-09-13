@@ -1,0 +1,10 @@
+{
+  "schema": "gwm_bench.foundation_v4_submission_training_reference.v1",
+  "source": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/development/training_row_manifest.json",
+    "bytes": 782,
+    "sha256": "8c0552a655221473628993ee166cd86dbf6d18cec3ec617f225d08a7f3172a5f"
+  },
+  "post_2025_action_rows": 0,
+  "model_process_target_access_permitted": false
+}

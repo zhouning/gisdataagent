@@ -1,0 +1,13 @@
+{
+  "schema": "gwm_bench.foundation_v5_seed_multifold_run.v1",
+  "model_id": "cross_event_action_swap",
+  "seed": 31,
+  "outer_fold_count": 4,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/cross_event_action_swap/members/seed_31/prediction.parquet",
+    "bytes": 401559,
+    "sha256": "13920c47419d074ed9309f72034e1184207540be6368e2d0010c9da3bf23d1cc"
+  },
+  "test_target_rows_loaded": false,
+  "exit_status": "success"
+}

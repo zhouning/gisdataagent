@@ -84,6 +84,63 @@ If a new window opens, start here:
 The safest continuation rule is unchanged: keep TWM focused on real usable
 territorial workflow support, not paper-first overclaiming.
 
+## 2026-06-26 Technical Review Absorption
+
+Reviewed `docs/twm-technical-review-2026-06-25.md` and adopted the parts that
+match the current code and validation evidence. Treat this as the current
+engineering debt and claim-boundary addendum:
+
+- Confirmed and adopted: `data_agent/territory_world_model/service.py` is still
+  a 10K+ line facade. The next structural implementation phase should split it
+  into state, dynamics, calibration, planner, evidence/audit and production
+  readiness services before adding another large TWM feature surface.
+- Updated: the neural trainable backends now preserve a multi-head contract with
+  a trainable `future_latent_state` v2 vector head decoded into area,
+  feature-count, land-space-type and transition-delta summaries. This is no
+  longer an area-total compatibility proxy, but it still is not full
+  parcel-geometry generation; external wording must keep that boundary explicit.
+- Continued: dynamics evaluation now reports
+  `target_head_metrics.future_latent_state.latent_v2_quality`, checking whether
+  predictions are true v2 latents, include decoded state, transition delta,
+  latent vector, representation boundary, and target-dimension coverage. This
+  turns the v2 latent head into an auditable quality surface rather than only a
+  prediction payload.
+- Confirmed and adopted: local causal calibration remains observational. Code
+  now exposes this as first-class `identification_strength="observational"` on
+  `causal_calibration_report`, not only as a provenance note. SCCA evidence is
+  still optional external spatial causal evidence and does not replace rollout,
+  production observed-history or human review gates.
+- Confirmed and adopted: production evidence is still the primary blocker:
+  real observed approval/review history, authoritative action-feasibility
+  labels, temporal holdout support and production scale profile are still
+  absent. Synthetic and public benchmark wins must not upgrade production
+  accuracy claims.
+- Confirmed and adopted: GeoFM B0/B1 and D2/D3/D4 gates remain mostly evidence
+  contracts or scaffolded experiment reports unless explicit real downstream
+  prediction evidence is supplied. Keep GeoFM optional and gate-controlled.
+- Confirmed and adopted: Dynamic World / FLUS comparison claims must stay
+  metric-specific. TWM has stronger change-FoM evidence in some current
+  Dynamic World admin20 modes, but FLUS remains stronger on OA/macro-F1 in the
+  main conservative map-product reading; no blanket "TWM beats FLUS" wording.
+- Implemented: dedicated TWM OTel spans now wrap `train_dynamics_candidate`,
+  `counterfactual_rollout` and `estimate_observational_treatment_effect`.
+  They emit `state_version_id`, backend, sample count and final gate status
+  while preserving graceful no-op behavior when OpenTelemetry is unavailable.
+- Confirmed and adopted backlog: review JSONB-heavy TWM storage before
+  production scale. Stable high-selectivity fields such as statuses, severities,
+  scenario type and build status should remain indexed/queryable, and common
+  JSONB attributes may need GIN or extracted columns.
+- Confirmed and adopted backlog: mature `rule_dsl.py` from validation helpers
+  into a real policy-rule DSL with spatial predicates, temporal constraints,
+  severity and versioned rule lineage before claiming policy-simulator depth.
+- Confirmed and adopted backlog: add a model registry/version pinning surface
+  for TWM dynamics backends; current payload-level `model_version` is useful for
+  reports but not a full registry/rollback chain.
+- Not adopted as immediate implementation: large service decomposition,
+  database schema migration and learned ranking/action-mask rewrites. They are
+  valid technical direction, but they need isolated plans and tests rather than
+  opportunistic edits.
+
 ## Public Land-Cover Benchmark Progress
 
 Implemented on 2026-06-22:
@@ -3752,6 +3809,41 @@ Important local-data note:
   downloader and benchmark reports are committed; use
   `scripts/download_twm_gee_dynamic_world_benchmark.py` with GEE project
   `ee-zn19860115` if the raster stack must be recreated.
+
+## TxPoint10M Lakehouse Scale Evidence 2026-06-29
+
+Completed continuation:
+
+- `scripts/txpoint10m_lakehouse_analysis.py` can convert the MinIO/Iceberg/Sedona
+  TxPoint10M summary into `territory_world_model.production_scale_profile.v1`.
+- `scripts/run_twm_validation_bundle.py` now accepts
+  `--txpoint10m-lakehouse-summary` and optional
+  `--txpoint10m-scale-profile-output`.
+- If `--production-scale-profile` is provided, it remains the explicit
+  override. Otherwise, the TxPoint10M summary is converted into
+  `txpoint10m_twm_production_scale_profile.json` and used by
+  `build_production_scale_readiness`.
+- Regression coverage:
+  `data_agent/test_twm_data_foundation_validation.py::test_twm_validation_bundle_prepares_scale_profile_from_txpoint10m_summary`.
+
+Current local evidence:
+
+- Existing summary:
+  `outputs/txpoint10m_lakehouse/txpoint10m_summary.json`
+- Existing map:
+  `outputs/txpoint10m_lakehouse/txpoint10m_leaflet_map.html`
+- Observed scale: 10,000,000 transaction rows, 6,578 0.25-degree grid cells.
+- Observed benchmark wall time in the summary: 36.31 seconds.
+- TWM readiness from generated profile: `status=pass`,
+  `scale_tier=ten_million_scale`, `missing=[]`.
+
+Boundary:
+
+- This is a real ten-million-row lakehouse analytics readiness gate for TWM's
+  production-scale data path.
+- It proves MinIO/Iceberg/Sedona storage and spatial aggregation can supply
+  TWM scale metadata; it does not prove national cluster capacity, model
+  accuracy, simulator quality or planning optimality.
 
 Recommended next TWM tasks:
 

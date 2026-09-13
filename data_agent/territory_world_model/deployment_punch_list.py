@@ -29,12 +29,21 @@ def build_deployment_punch_list(
                 "blocks_current_run": status == "blocked",
             }
         )
+    phase_counts: dict[str, int] = {}
+    severity_counts = {"blocking": 0, "review": 0}
+    for action in actions:
+        phase = str(action.get("phase") or "deployment")
+        phase_counts[phase] = phase_counts.get(phase, 0) + 1
+        severity = "blocking" if action.get("blocks_current_run") else "review"
+        severity_counts[severity] = severity_counts.get(severity, 0) + 1
     return {
         "schema": schema,
         "status": status if actions else "pass",
         "required": bool(readiness_gate.get("required")),
         "open_action_count": len(actions),
         "blocking_action_count": sum(1 for action in actions if action["blocks_current_run"]),
+        "phase_counts": phase_counts,
+        "severity_counts": severity_counts,
         "actions": actions,
         "claim_boundary": "derived from production_readiness_gate; it organizes deployment gaps without changing validation or production-readiness claims",
     }

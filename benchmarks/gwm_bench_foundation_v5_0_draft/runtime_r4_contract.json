@@ -1,0 +1,212 @@
+{
+  "schema": "gwm_bench.foundation_v5_runtime_r4_contract.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V5.0-DRAFT1",
+  "created_at": "2026-07-23",
+  "status": "frozen_before_predictions",
+  "purpose": "Run four leave-one-action-out folds with one model-neutral lifecycle while preventing every model process from reading the current fold post-action targets.",
+  "lifecycle": [
+    "prepare_four_outer_folds",
+    "run_three_inner_leave_one_action_out_selections",
+    "freeze_nested_selection_receipt",
+    "fit_or_load_frozen_history_backbone",
+    "commit_backbone_forecast",
+    "fit_action_residual_on_three_training_events",
+    "predict_twelve_open_loop_weeks",
+    "validate_complete_fold_prediction",
+    "commit_model_seed_and_fold_hashes",
+    "replay_all_folds",
+    "commit_complete_multifold_prediction",
+    "score_after_all_model_control_seed_and_fold_commitments",
+    "audit"
+  ],
+  "outer_folds": [
+    {
+      "fold_id": "holdout_2015",
+      "test_event": "event_2015_improvement_surcharge",
+      "training_events": [
+        "event_2019_nys_congestion_surcharge",
+        "event_2022_tlc_taximeter_adjustment",
+        "event_2025_mta_crz"
+      ],
+      "fold_root": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015"
+    },
+    {
+      "fold_id": "holdout_2019",
+      "test_event": "event_2019_nys_congestion_surcharge",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2022_tlc_taximeter_adjustment",
+        "event_2025_mta_crz"
+      ],
+      "fold_root": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019"
+    },
+    {
+      "fold_id": "holdout_2022",
+      "test_event": "event_2022_tlc_taximeter_adjustment",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2019_nys_congestion_surcharge",
+        "event_2025_mta_crz"
+      ],
+      "fold_root": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2022"
+    },
+    {
+      "fold_id": "holdout_2025",
+      "test_event": "event_2025_mta_crz",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2019_nys_congestion_surcharge",
+        "event_2022_tlc_taximeter_adjustment"
+      ],
+      "fold_root": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2025"
+    }
+  ],
+  "contracts": {
+    "EventWeekBundle": {
+      "event_count": 4,
+      "rows_per_event": 16832,
+      "pre_action_weeks": 52,
+      "post_action_weeks": 12,
+      "zones": 263
+    },
+    "OuterFoldFirewall": {
+      "development_relative_path": "development/weekly_state_action.parquet",
+      "history_relative_path": "test_input/weekly_state_history.parquet",
+      "action_relative_path": "test_input/future_action_spec.parquet",
+      "submission_keys_relative_path": "test_input/submission_keys.parquet",
+      "test_graph_relative_path": "graph/test_spatial_edges.parquet",
+      "targets_relative_path": "test_targets/weekly_targets.parquet",
+      "heldout_post_action_target_access_permitted": false,
+      "heldout_post_action_graph_update_permitted": false
+    },
+    "NestedSelectionReceipt": {
+      "inner_folds_per_outer_fold": 3,
+      "selection_unit": "held-out training action",
+      "required_fields": [
+        "outer_fold_id",
+        "candidate_grid_sha256",
+        "inner_fold_scores",
+        "selected_hyperparameters",
+        "selection_code_sha256",
+        "training_event_ids",
+        "validation_event_ids"
+      ],
+      "current_outer_fold_targets_permitted": false
+    },
+    "FrozenBackboneForecast": {
+      "model_id": "history_ar_backbone",
+      "prediction_rows_per_fold": 3156,
+      "must_be_committed_before_action_residual_fit": true,
+      "action_features_permitted": false
+    },
+    "ActionResidualRolloutRequest": {
+      "equation": "final_prediction = frozen_history_backbone_prediction + dam_gk_action_residual",
+      "steps": 12,
+      "observed_test_state_writeback_permitted": false,
+      "test_post_action_graph_update_permitted": false,
+      "event_name_year_or_fold_id_as_learned_feature_permitted": false
+    },
+    "FoldPredictionBundle": {
+      "key": ["zone_id", "horizon_week"],
+      "expected_key_count": 3156,
+      "target_count": 4
+    },
+    "MultiFoldPredictionBundle": {
+      "contract": "benchmarks/gwm_bench_foundation_v5_0_draft/submission_contract.json",
+      "key": ["fold_id", "zone_id", "horizon_week"],
+      "expected_key_count": 12624,
+      "expected_prediction_scalars": 50496
+    },
+    "MultiFoldPredictionCommitment": {
+      "required_status": "MULTIFOLD_PREDICTIONS_COMMITTED_EVALUATOR_ACCESS_PERMITTED",
+      "all_models_controls_seeds_and_folds_required_before_target_access": true,
+      "prediction_artifact_fields": ["path", "bytes", "sha256"]
+    },
+    "RuntimeAuditReceipt": {
+      "required_hashes": [
+        "protocol",
+        "rc1_bundle",
+        "outer_fold_training_rows",
+        "nested_selection",
+        "backbone_prediction",
+        "code",
+        "environment",
+        "model",
+        "fold_predictions",
+        "multifold_prediction"
+      ],
+      "required_runtime_fields": [
+        "model_id",
+        "adapter_id",
+        "outer_fold_id",
+        "seed",
+        "started_at",
+        "finished_at",
+        "wall_seconds",
+        "peak_rss_bytes",
+        "exit_status",
+        "failure_state"
+      ]
+    }
+  },
+  "read_routes": {
+    "model_runtime_allowed_per_current_fold": [
+      "current_fold/development",
+      "current_fold/test_input",
+      "current_fold/graph",
+      "other_training_event_bundles_and_graphs"
+    ],
+    "model_runtime_denied_per_current_fold": [
+      "current_fold/test_targets",
+      "other_model_predictions_for_current_fold",
+      "formal_evaluator_outputs_before_complete_commitment"
+    ],
+    "formal_evaluator_allowed_after_complete_commitment": [
+      "all_four_fold/test_targets",
+      "committed_multifold_predictions"
+    ]
+  },
+  "required_models": [
+    "history_ar_backbone",
+    "fixed_adjacency_spatial_ar",
+    "dam_gk_residual_no_action",
+    "uwm_dam_gk_action_residual"
+  ],
+  "required_controls": [
+    "action_deleted",
+    "effective_date_minus_4w",
+    "effective_date_plus_4w",
+    "action_component_permutation",
+    "wrong_spatial_scope",
+    "cross_event_action_swap",
+    "zone_exposure_shuffle_seed_20260723"
+  ],
+  "deterministic_submission_ids": [
+    "history_ar_backbone",
+    "fixed_adjacency_spatial_ar"
+  ],
+  "stochastic_submission_ids": [
+    "dam_gk_residual_no_action",
+    "uwm_dam_gk_action_residual",
+    "action_deleted",
+    "effective_date_minus_4w",
+    "effective_date_plus_4w",
+    "action_component_permutation",
+    "wrong_spatial_scope",
+    "cross_event_action_swap",
+    "zone_exposure_shuffle_seed_20260723"
+  ],
+  "stochastic_seed_contract": {
+    "required_seeds": [31, 47, 73],
+    "ensemble_rule": "arithmetic mean in raw count space after every seed emits all 12,624 multifold keys",
+    "missing_or_replaced_seed_permitted": false,
+    "required_seed_level_multifold_predictions": 27
+  },
+  "replay": {
+    "deterministic_models": "every fold and multifold prediction hash must reproduce exactly in the frozen environment",
+    "stochastic_models": "each required seed and fold must reproduce within absolute tolerance 1e-6 before ensemble",
+    "failed_runs": "retain and publish every failed attempt; reruns require a new attempt identifier"
+  },
+  "firewall_violation_rule": "Any model, normalization, selection or graph-building process that opens the current outer fold test_targets before the complete multifold prediction commitment is invalid and must not be scored as a V5 submission.",
+  "claim_boundary": "Runtime-R4 completion proves reproducible multi-action benchmark execution and auditability, not causal policy identification, analyst blindness or generalization outside the four admitted NYC taxi actions."
+}

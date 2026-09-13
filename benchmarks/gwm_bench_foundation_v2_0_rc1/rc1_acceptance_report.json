@@ -1,0 +1,193 @@
+{
+  "schema": "gwm_bench.foundation_v2_rc1_acceptance.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V2.0-RC1",
+  "generated_at": "2026-07-23T05:04:45.720455+00:00",
+  "status": "PASS_LABELS_PENDING",
+  "protocol_sha256": "98c730b8430da7bad434768689af836c82bc417ea67e3751deeb5e670fe8d2d5",
+  "artifact_check_count": 14,
+  "semantic_check_count": 16,
+  "artifact_checks": [
+    {
+      "name": "benchmark_contract",
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v0_1/benchmark_contract.json",
+      "exists": true,
+      "expected_size_bytes": 14306,
+      "actual_size_bytes": 14306,
+      "expected_sha256": "6b13ded8c7ac35b16589466a22182ed815d23c86743e25327e74ca4fba81caa3",
+      "actual_sha256": "6b13ded8c7ac35b16589466a22182ed815d23c86743e25327e74ca4fba81caa3",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "bundle_manifest",
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v0_1/development/bundle_manifest.json",
+      "exists": true,
+      "expected_size_bytes": 100435,
+      "actual_size_bytes": 100435,
+      "expected_sha256": "1310e534c31bee5948b445d65149a19de310304490c4893bd18332395de2c8cb",
+      "actual_sha256": "1310e534c31bee5948b445d65149a19de310304490c4893bd18332395de2c8cb",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "data_validation",
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v0_1/development/data_validation_report.json",
+      "exists": true,
+      "expected_size_bytes": 2523,
+      "actual_size_bytes": 2523,
+      "expected_sha256": "791165a74c5d4b9645ca058d01cc0171449a866828de3678a2bfb16dd3650799",
+      "actual_sha256": "791165a74c5d4b9645ca058d01cc0171449a866828de3678a2bfb16dd3650799",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "runtime_contract",
+      "path": "/Users/zhouning/gisdataagent/data_agent/uwm/dam_geospatial_kernel/contracts.py",
+      "exists": true,
+      "expected_size_bytes": 6397,
+      "actual_size_bytes": 6397,
+      "expected_sha256": "2ef476ae30ae1ccd5829115f04de214dc42815188a4d2058b618ef71cef7f26e",
+      "actual_sha256": "2ef476ae30ae1ccd5829115f04de214dc42815188a4d2058b618ef71cef7f26e",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "twm_protocol",
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/precommit_protocol.json",
+      "exists": true,
+      "expected_size_bytes": 22849,
+      "actual_size_bytes": 22849,
+      "expected_sha256": "e9493b440210dc355f975cedf8b67ba8f91b3736bb1eb465b83c7199b8912726",
+      "actual_sha256": "e9493b440210dc355f975cedf8b67ba8f91b3736bb1eb465b83c7199b8912726",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "twm_verification",
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/precommit_verification.json",
+      "exists": true,
+      "expected_size_bytes": 1002,
+      "actual_size_bytes": 1002,
+      "expected_sha256": "41a529fff255111b832d6a89d03efc4cf9e205b8ebcdc1b44737e0153ecbbfbf",
+      "actual_sha256": "41a529fff255111b832d6a89d03efc4cf9e205b8ebcdc1b44737e0153ecbbfbf",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "twm_evaluator_seal",
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/evaluator_implementation_seal.json",
+      "exists": true,
+      "expected_size_bytes": 1576,
+      "actual_size_bytes": 1576,
+      "expected_sha256": "b63ac58c91be377ad2e5cc4d1e21f38ccc14d45e37160ec87610a713a83b3d87",
+      "actual_sha256": "b63ac58c91be377ad2e5cc4d1e21f38ccc14d45e37160ec87610a713a83b3d87",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "twm_prediction",
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/twm_v2_prediction_2021_2026.parquet",
+      "exists": true,
+      "expected_size_bytes": 73078,
+      "actual_size_bytes": 73078,
+      "expected_sha256": "2a4987cb75a1d43f04e85b765633af1e185415a0143edf79da3bb9eb683b1312",
+      "actual_sha256": "2a4987cb75a1d43f04e85b765633af1e185415a0143edf79da3bb9eb683b1312",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "persistence_prediction",
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/persistence_prediction_2021_2026.parquet",
+      "exists": true,
+      "expected_size_bytes": 11812,
+      "actual_size_bytes": 11812,
+      "expected_sha256": "f731761da7239067b69dd2653b38577b1d627bed5bd2ad2f9a6dd20a07d18d44",
+      "actual_sha256": "f731761da7239067b69dd2653b38577b1d627bed5bd2ad2f9a6dd20a07d18d44",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "fixed_adjacency_prediction",
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/fixed_adjacency_prediction_2021_2026.parquet",
+      "exists": true,
+      "expected_size_bytes": 454682,
+      "actual_size_bytes": 454682,
+      "expected_sha256": "9f965eff1d42b0818686287afab48937b0044b3dd1736367d2da9bbdd10ff543",
+      "actual_sha256": "9f965eff1d42b0818686287afab48937b0044b3dd1736367d2da9bbdd10ff543",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "flus_protocol",
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v2_0_rc1/flus_2026_precommit/precommit_protocol.json",
+      "exists": true,
+      "expected_size_bytes": 7724,
+      "actual_size_bytes": 7724,
+      "expected_sha256": "82ef381e257ac5bbdcd6a502be56dc9dbd53b021b39e13bad25cfa2b10fd5af0",
+      "actual_sha256": "82ef381e257ac5bbdcd6a502be56dc9dbd53b021b39e13bad25cfa2b10fd5af0",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "flus_prediction",
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v2_0_rc1/flus_2026_precommit/flus_prediction_2021_2026.parquet",
+      "exists": true,
+      "expected_size_bytes": 13943,
+      "actual_size_bytes": 13943,
+      "expected_sha256": "05d7f3ae4b3bafed328c9600adb2e729bd2c606bf2caea458fd565031a13006c",
+      "actual_sha256": "05d7f3ae4b3bafed328c9600adb2e729bd2c606bf2caea458fd565031a13006c",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "scorer",
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v2_0_rc1/score_v2_2026_hidden.py",
+      "exists": true,
+      "expected_size_bytes": 9593,
+      "actual_size_bytes": 9593,
+      "expected_sha256": "d6018756aaecb4ea8e62f77f3ab25d90ac656c2c4f68b8fe915ee6ae1f788cf1",
+      "actual_sha256": "d6018756aaecb4ea8e62f77f3ab25d90ac656c2c4f68b8fe915ee6ae1f788cf1",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "scorer_dependency",
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v0_1/score_twm_v2_2026_hidden.py",
+      "exists": true,
+      "expected_size_bytes": 15081,
+      "actual_size_bytes": 15081,
+      "expected_sha256": "9aabcc3a19ba9155eafb03453bf4b057a5ecd2b32e86443a2365bef4fca6ef05",
+      "actual_sha256": "9aabcc3a19ba9155eafb03453bf4b057a5ecd2b32e86443a2365bef4fca6ef05",
+      "passed": true,
+      "errors": []
+    }
+  ],
+  "semantic_checks": {
+    "suite_status_is_rc1_labels_pending": true,
+    "all_direct_artifacts_match": true,
+    "all_13_data_checks_passed": true,
+    "value_comparison_count_is_271698": true,
+    "runtime_replay_evidence_passed": true,
+    "twm_candidate_sealed_without_labels": true,
+    "flus_candidate_sealed_without_labels": true,
+    "twm_prediction_schema_and_keys_valid": true,
+    "flus_prediction_schema_and_keys_valid": true,
+    "twm_and_flus_keys_identical": true,
+    "twm_prediction_commitment_matches": true,
+    "flus_prediction_commitment_matches": true,
+    "hidden_label_manifest_absent": true,
+    "earliest_export_date_preserved": true,
+    "benchmark_completion_independent_of_model_win": true,
+    "shared_runtime_product_not_overclaimed": true
+  },
+  "prediction_summary": {
+    "row_count_per_model": 6330,
+    "twm_predicted_2026_change_count": 43,
+    "flus_predicted_2026_change_count": 22,
+    "scores_available": false
+  },
+  "remaining_gate": {
+    "status": "pending_full_calendar_2026_labels",
+    "earliest_valid_export_date": "2027-01-01"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "schema": "gwm_bench.foundation_v4_evaluator_r1_2_conformance.v1",
+  "generated_at": "2026-07-23T15:03:40.084629+00:00",
+  "status": "PASS_ACTION_A4_EVALUATOR_R1_2_CONFORMANCE",
+  "check_count": 17,
+  "checks": {
+    "perfect_submission_validates": true,
+    "perfect_primary_metric_is_zero": true,
+    "biased_primary_metric_is_positive": true,
+    "perfect_beats_biased": true,
+    "perfect_vs_biased_interval_is_below_zero": true,
+    "all_four_target_directions_are_correct": true,
+    "all_five_horizon_directions_are_correct": true,
+    "duplicate_keys_are_rejected": true,
+    "missing_keys_are_rejected": true,
+    "negative_predictions_are_rejected": true,
+    "nonfinite_predictions_are_rejected": true,
+    "partial_uncertainty_is_rejected": true,
+    "bad_uncertainty_order_is_rejected": true,
+    "metric_reports_only_frozen_horizons": true,
+    "metric_reports_all_four_targets": true,
+    "integer_storage_width_does_not_change_key_identity": true,
+    "delegation_remains_stable_while_r1_entry_is_patched": true
+  },
+  "constructed_answer_metrics": {
+    "perfect": 0.0,
+    "biased": 0.08411432105521312,
+    "perfect_minus_biased": {
+      "candidate_minus_baseline": -0.08411432105521312,
+      "bootstrap_draws": 2000,
+      "bootstrap_seed": 20260723,
+      "bootstrap_95_percentile_interval": [
+        -0.08440183372869149,
+        -0.0838456876726121
+      ],
+      "by_target": {
+        "cbd_inflow": -0.08003877903302728,
+        "cbd_outflow": -0.07410408000830049,
+        "dropoff_count": -0.08700758356338119,
+        "pickup_count": -0.09530684161614357
+      },
+      "by_horizon": {
+        "1": -0.08411432105521313,
+        "2": -0.08411432105521313,
+        "4": -0.08411432105521313,
+        "8": -0.08411432105521313,
+        "12": -0.08411432105521313
+      }
+    }
+  },
+  "erratum_scope": "Only key integer widths and stable delegation are addressed; scoring is R1."
+}

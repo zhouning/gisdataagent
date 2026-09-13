@@ -1,0 +1,70 @@
+{
+  "schema": "gwm_bench.foundation_v4_evaluator_r1_1_erratum_seal.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V4.0-DRAFT1",
+  "created_at": "2026-07-23T15:01:54.570575+00:00",
+  "status": "EVALUATOR_R1_1_ERRATUM_SEALED_SCORING_PERMITTED",
+  "r1_failed_attempt": {
+    "result_file_created": false,
+    "exception": "SubmissionError: missing or extra submission keys",
+    "root_cause": "R1 used pandas.DataFrame.equals, which treats int16 and int64 storage widths as unequal even when all key values are identical.",
+    "expected_key_rows": 3156,
+    "submission_key_rows": 3156,
+    "duplicate_submission_keys": 0,
+    "all_key_values_equal_after_int64_normalization": true,
+    "frozen_key_dtypes": {
+      "zone_id": "int64",
+      "horizon_week": "int16"
+    },
+    "submission_key_dtypes": {
+      "zone_id": "int16",
+      "horizon_week": "int64"
+    },
+    "note": "The evaluator process opened the target Parquet before validation, but every prediction had already been hashed in the commitment manifest."
+  },
+  "erratum_scope": {
+    "changed": [
+      "Normalize zone_id and horizon_week integral values to int64 before R1 validation."
+    ],
+    "unchanged": [
+      "prediction artifacts and hashes",
+      "test targets",
+      "metric equations and reported horizons",
+      "paired bootstrap draws and seed",
+      "action-transfer gate conditions",
+      "claim boundary"
+    ]
+  },
+  "artifacts": {
+    "original_runtime_seal": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/runtime_r3_evaluator_seal.json",
+      "bytes": 4487,
+      "sha256": "93c8a7f3335bf9c4e7338c6490f951119bc6542e5f6a87fb2656aa901674528c"
+    },
+    "original_evaluator_r1": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/action_a4_evaluator.py",
+      "bytes": 13887,
+      "sha256": "26cfb70002108a1d145e143b2d4b0b5588223f6ee0ffc2a0ccaca4ac2030f655"
+    },
+    "evaluator_r1_1": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/action_a4_evaluator_r1_1.py",
+      "bytes": 3368,
+      "sha256": "355f1ce5d1eae2d2a233e404793d5ba37c30d375af676ca4eb2d5c48c7217f2e"
+    },
+    "r1_1_conformance": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/evaluator_r1_1_conformance_report.json",
+      "bytes": 1843,
+      "sha256": "2f63571bf8b26eba319b6b0dd7e9a3dee396217b7df44afeaf3470d36ff6e367"
+    },
+    "prediction_commitment": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/prediction_commitment.json",
+      "bytes": 45131,
+      "sha256": "3c39a405b74d84ba026767c7d50c6ddd28b5e21736166e7c60b743f87660a2b3"
+    },
+    "test_targets": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/test_targets/weekly_targets.parquet",
+      "bytes": 49412,
+      "sha256": "4e3913cff5f5ee923d547653b2362342895129d82aeaeac31ccf9b3f3ee16876"
+    }
+  },
+  "next_permitted_action": "Score the committed predictions exactly once with evaluator R1.1 and publish the result."
+}

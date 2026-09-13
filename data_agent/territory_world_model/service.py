@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import hashlib
 import json
+import math
 import re
 import threading
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
+from urllib.parse import unquote, urlparse
 
 from .models import (
     StateBuildResult,
@@ -19,6 +22,7 @@ from .models import (
     TwmDynamicsBackendReport,
     TwmDynamicsEvaluationReport,
     TwmDynamicsFitReport,
+    TwmDynamicsModelRegistryEntry,
     TwmDynamicsReadinessReport,
     TwmDynamicsTrainingDataset,
     TwmDynamicsTrainingExample,
@@ -52,6 +56,7 @@ from .models import (
 )
 from .causal_calibration import estimate_observational_treatment_effect
 from .claim_ladder import evaluate_claim_ladder
+from .executive_demo import build_executive_demo_report
 from .spatial_causal_estimator import SPATIAL_CAUSAL_ESTIMATOR_SCHEMA
 from .neural_dynamics import (
     HIERARCHICAL_GRAPH_DYNAMICS_SCHEMA,
@@ -64,17 +69,88 @@ from .neural_dynamics import (
 from .planner import TerritoryWorldModelPlanner
 from .repository import TwmRepository, get_twm_repository
 from .rule_evaluator import RuleEvaluator, evaluate_rules
+from .spatial_scenario_simulator import (
+    SIMULATOR_BACKEND as SPATIAL_SIMULATOR_BACKEND,
+    compile_optimization_spatial_profiles,
+    load_optimization_spatial_runtime,
+    simulate_optimization_spatial_candidate,
+)
 from .state_builder import StateBuilder, build_state_from_bundle
 from .utils import compact_text, read_csv, read_json, safe_float, safe_int, truthy
+from ..otel_tracing import trace_twm_operation
 
 
 _INSTANCE_LOCK = threading.Lock()
 _INSTANCE: "TerritoryWorldModelService | None" = None
 TWM_BASELINE_EXPORT_MAX_BYTES = 5 * 1024 * 1024
+_UUID_REFERENCE_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
+_DYNAMICS_TOP_LEVEL_GENERATED_SEMANTIC_KEYS = {
+    "id",
+    "created_at",
+    "updated_at",
+    "state_version_id",
+    "project_id",
+}
+_DYNAMICS_GENERATED_REFERENCE_SEMANTIC_KEYS = {
+    "state_version_id",
+    "project_id",
+    "review_task_id",
+    "rule_hit_id",
+    "evidence_item_id",
+}
+_DYNAMICS_FLAT_PROVENANCE_GENERATED_SEMANTIC_KEYS = _DYNAMICS_GENERATED_REFERENCE_SEMANTIC_KEYS | {
+    "created_at",
+    "updated_at",
+    "generated_at",
+    "timestamp",
+}
+_DYNAMICS_GENERATED_FUTURE_LATENT_STATE_KEYS = {
+    "state_version_id",
+    "project_id",
+}
 
 
 def _json(data: Any) -> str:
     return json.dumps(jsonable(data), ensure_ascii=False, default=str)
+
+
+def _stable_sha256(value: Any) -> str:
+    material = json.dumps(jsonable(value), ensure_ascii=False, default=str, sort_keys=True, separators=(",", ":"))
+    return "sha256:" + hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def _mapping_payload(value: Any, *, raw_key: str = "raw") -> dict[str, Any]:
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return dict(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return {}
+        try:
+            parsed = json.loads(text)
+        except Exception:
+            return {raw_key: value}
+        if isinstance(parsed, dict):
+            return dict(parsed)
+        return {raw_key: parsed}
+    try:
+        return dict(value)
+    except (TypeError, ValueError):
+        return {raw_key: value}
+
+
+def _set_trace_attribute(trace_ctx: dict[str, Any], key: str, value: Any) -> None:
+    span = (trace_ctx or {}).get("span")
+    if span is None:
+        return
+    try:
+        span.set_attribute(key, value)
+    except Exception:
+        return
 
 
 TWM_BUSINESS_SCENARIOS: tuple[dict[str, Any], ...] = (
@@ -140,7 +216,7 @@ TWM_RESEARCH_POSITIONING: dict[str, Any] = {
         },
         {
             "name": "Action-conditioned multi-head territorial dynamics",
-            "claim": "TWM forecasts future latent state, constraint-risk, planning utility, uncertainty and action-mask feasibility conditional on review/protect/convert/restore actions.",
+            "claim": "TWM forecasts a multi-dimensional hierarchical future-state latent, constraint-risk, planning utility, uncertainty and action-mask feasibility conditional on review/protect/convert/restore actions; the latent is decoded into state summaries and does not generate full parcel geometry.",
             "why_it_matters": "The decision object is not only land-use change, but the consequence of governance actions under hard constraints and evidence limits.",
         },
         {
@@ -1134,6 +1210,11 @@ class TerritoryWorldModelService:
             "updated_at": now_utc_iso(),
         }
 
+    def executive_demo_report(self) -> dict[str, Any]:
+        """Return fail-closed evidence for the natural-resources briefing UI."""
+
+        return build_executive_demo_report()
+
     def _report_cache_key(
         self,
         state_version_id: str,
@@ -1235,6 +1316,590 @@ class TerritoryWorldModelService:
 
     def research_positioning(self) -> dict[str, Any]:
         return json.loads(_json(TWM_RESEARCH_POSITIONING))
+
+    def roadmap_status_report(self) -> dict[str, Any]:
+        data_foundation = self.data_foundation_assessment()
+        validation = dict(data_foundation.get("validation_snapshot") or {})
+        production_rows = safe_int(validation.get("production_ready_observed_history_rows"), 0)
+        policy_rows = safe_int(validation.get("production_policy_history_row_count"), 0)
+        engineering_mvp = bool((data_foundation.get("landing_readiness") or {}).get("engineering_mvp_supported"))
+        phases = [
+            {
+                "id": "demo_closure",
+                "label": "Natural resources demo closure",
+                "status": "complete",
+                "completion_ratio": 0.9,
+                "evidence": [
+                    "Chinese-first TWM frontend tabs are implemented",
+                    "data foundation map preview and bbox-aligned overview map are implemented",
+                    "automated E2E evidence exists for the demo workflow",
+                ],
+                "remaining": ["manual acceptance and demo freeze before external presentation"],
+            },
+            {
+                "id": "engineering_scaffold",
+                "label": "Auditable TWM engineering scaffold",
+                "status": "partial" if engineering_mvp else "review",
+                "completion_ratio": 0.9 if engineering_mvp else 0.7,
+                "evidence": [
+                    "state/rule/evidence/audit pipeline",
+                    "forecast, counterfactual rollout, validation ladder and beam planning consumer",
+                    "trainable dynamics candidates and observational causal calibration reports",
+                    "dynamics model registry release gate report is implemented",
+                    "persistent model registry/version rollback is implemented in service, repository, API and Agent tools",
+                    "state snapshot lakehouse manifest maps TWM state, rule, evidence and registry layers to Iceberg/GeoParquet/Parquet storage",
+                    "state snapshot lakehouse materializer writes local Parquet/GeoParquet-compatible artifacts through service, API and Agent tools",
+                    "Iceberg/Sedona publish plan generates table DDL, artifact publish specs and geohash spatial index jobs",
+                    "Spark executor contract validates Iceberg snapshot ids, row counts and Sedona spatial index job results",
+                    "spark-submit execution bundle writes a production Spark/Sedona/Iceberg plan file and command package",
+                ],
+                "remaining": ["service decomposition", "credentialed production Spark run and external Iceberg audit acceptance"],
+            },
+            {
+                "id": "data_foundation_productization",
+                "label": "Data foundation productization",
+                "status": "partial",
+                "completion_ratio": 0.7,
+                "evidence": [
+                    "demo dataset catalog, CRS diagnostics and map overlay readiness are exposed",
+                    "full GeoJSON preview is available for the current demo scale",
+                    "lineage and field drilldown reports are exposed through API, tools and frontend",
+                    "CRS remediation plan is exposed through API, tools and frontend",
+                    "authoritative production data templates are exposed through API, tools and frontend",
+                ],
+                "remaining": ["vector tiles or server-side chunking", "production CRS conversion ETL", "production lineage ingestion templates"],
+            },
+            {
+                "id": "trusted_poc",
+                "label": "Trusted pilot validation",
+                "status": "candidate" if production_rows > 0 and policy_rows > 0 else "blocked",
+                "completion_ratio": 0.4 if production_rows > 0 and policy_rows > 0 else 0.25,
+                "evidence": [
+                    "public Dynamic World and GeoSOS/FLUS benchmark evidence exists",
+                    "claim ladder and baseline comparison contracts exist",
+                ],
+                "remaining": ["real observed approval/review history", "policy/action feasibility labels", "same-case baseline and holdout evaluation"],
+            },
+            {
+                "id": "productionization",
+                "label": "Production and air-gapped deployment",
+                "status": "blocked",
+                "completion_ratio": 0.15,
+                "evidence": ["air-gapped deployment strategy exists"],
+                "remaining": ["offline deployment package", "permissioned audit trail", "model/rule/version comparison", "sanitized diagnostic export"],
+            },
+        ]
+        blockers = [
+            {
+                "id": "production_observed_history",
+                "priority": "P0",
+                "status": "blocked" if production_rows <= 0 else "partial",
+                "current_value": production_rows,
+                "required_value": "one pilot region with multi-year observed approval/review history",
+            },
+            {
+                "id": "policy_action_history",
+                "priority": "P0",
+                "status": "blocked" if policy_rows <= 0 else "partial",
+                "current_value": policy_rows,
+                "required_value": "authoritative policy/action feasibility labels",
+            },
+            {
+                "id": "service_decomposition",
+                "priority": "P1",
+                "status": "open",
+                "current_value": "large facade service",
+                "required_value": "state, dynamics, calibration, planner, evidence/audit and readiness services",
+            },
+            {
+                "id": "full_flus_and_holdout_baselines",
+                "priority": "P2",
+                "status": "open",
+                "current_value": "public benchmark and simplified/direct adapters",
+                "required_value": "same-case full FLUS/GeoSOS baseline plus cross-region/cross-year holdout",
+            },
+        ]
+        next_actions = [
+            {
+                "priority": "P0",
+                "action": "secure real or sanitized observed history and policy/action labels for one pilot region",
+                "roadmap_phase": "trusted_poc",
+            },
+            {
+                "priority": "P0",
+                "action": "freeze and manually accept the current natural-resources demo workflow",
+                "roadmap_phase": "demo_closure",
+            },
+            {
+                "priority": "P1",
+                "action": "split the TWM facade service along state/dynamics/calibration/planner/evidence boundaries",
+                "roadmap_phase": "engineering_scaffold",
+            },
+            {
+                "priority": "P1",
+                "action": "finish vector tiles or chunked preview, production CRS conversion ETL, and production lineage ingestion templates",
+                "roadmap_phase": "data_foundation_productization",
+            },
+        ]
+        return {
+            "schema": "territory_world_model.roadmap_status_report.v1",
+            "generated_at": now_utc_iso(),
+            "overall_status": "prototype_complete_review_only",
+            "claim_boundary": "Current TWM is a rigorous prototype: demo-complete and engineering-reviewable, but production, prediction and causal claims remain review-only until real observed history, policy labels and same-case baselines pass.",
+            "data_gate": {
+                "status": data_foundation.get("status", "review"),
+                "production_ready_observed_history_rows": production_rows,
+                "production_policy_history_row_count": policy_rows,
+                "predictive_or_causal_claim_supported": bool((data_foundation.get("landing_readiness") or {}).get("predictive_or_causal_claim_supported")),
+            },
+            "phases": phases,
+            "blockers": blockers,
+            "next_actions": next_actions,
+        }
+
+    def pilot_readiness_matrix_report(self) -> dict[str, Any]:
+        data_foundation = self.data_foundation_assessment()
+        roadmap = self.roadmap_status_report()
+        validation = dict(data_foundation.get("validation_snapshot") or {})
+        landing = dict(data_foundation.get("landing_readiness") or {})
+        structural = dict(validation.get("structural_fixture") or {})
+        synthetic = dict(validation.get("synthetic_experiment") or {})
+        review_context = dict(validation.get("project_review_context") or {})
+        production_rows = safe_int(validation.get("production_ready_observed_history_rows"), 0)
+        policy_rows = safe_int(validation.get("production_policy_history_row_count"), 0)
+        synthetic_rows = safe_int(synthetic.get("row_count"), 0)
+        structural_rows = safe_int(structural.get("row_count"), 0)
+        rule_eval_count = safe_int(review_context.get("rule_eval_count"), 0)
+        review_task_count = safe_int(review_context.get("review_task_count"), 0)
+
+        dimensions = [
+            {
+                "id": "data_foundation",
+                "label": "Data foundation",
+                "status": "review" if data_foundation.get("status") == "review" else "pass",
+                "score": 0.7 if landing.get("engineering_mvp_supported") else 0.4,
+                "evidence": [
+                    f"dataset_count={len(data_foundation.get('datasets') or [])}",
+                    f"structural_fixture_rows={structural_rows}",
+                    f"synthetic_experiment_rows={synthetic_rows}",
+                    f"structural_status={structural.get('structural_status', 'unknown')}",
+                ],
+                "missing": list(landing.get("key_blockers") or []),
+                "test_data_work": [
+                    "keep demo and synthetic fixtures explicitly marked not-for-production",
+                    "add boundary-case fixture rows for CRS, geometry validity and layer role binding",
+                    "add authorized production observed-history rows only after custodian signoff",
+                ],
+            },
+            {
+                "id": "policy_rules",
+                "label": "Policy rules",
+                "status": "review",
+                "score": 0.68,
+                "evidence": [
+                    "default rule catalog and rule/evidence pipeline are implemented",
+                    "to_spatial_policy_rule can derive review-required disabled candidates from standards",
+                    f"local_rule_evaluation_rows={rule_eval_count}",
+                ],
+                "missing": [
+                    "authoritative rule clause to executable rule acceptance records",
+                    "positive, negative and boundary fixtures for each production rule code",
+                ],
+                "test_data_work": [
+                    "add one pass, one violation and one boundary-touching feature set per hard-constraint rule",
+                    "add stale/re-derived spatial-policy-rule fixtures linked to standard versions",
+                ],
+            },
+            {
+                "id": "simulator",
+                "label": "Simulator",
+                "status": "review",
+                "score": 0.55 if synthetic_rows else 0.3,
+                "evidence": [
+                    "action-conditioned forecast, counterfactual rollout and trainable dynamics candidates exist",
+                    "synthetic multi-period experiment foundation supports simulator plumbing regression",
+                    "public Dynamic World and GeoSOS/FLUS benchmark evidence exists as non-production support",
+                ],
+                "missing": [
+                    "real temporal holdout from observed approval/review history",
+                    "policy/action feasibility labels for action-mask validation",
+                    "same-case full FLUS/GeoSOS or manual baseline evidence",
+                ],
+                "test_data_work": [
+                    "extend synthetic false-allow and false-block cases without changing production gate status",
+                    "add same-case baseline export fixtures with train/holdout split metadata",
+                ],
+            },
+            {
+                "id": "planner",
+                "label": "Planner",
+                "status": "review",
+                "score": 0.6,
+                "evidence": [
+                    "beam planner consumes candidate actions under hard-constraint and evidence gates",
+                    "farmland optimization bundle adapter rejects hard-blocked candidates from recommendation",
+                    "selected-plan evaluation bundle links planning, rollout and validation reports",
+                ],
+                "missing": [
+                    "real candidate-plan source and human review outcomes",
+                    "planner regret and legal-feasible top-k metrics against same-case baselines",
+                ],
+                "test_data_work": [
+                    "add candidate bundles where the highest utility candidate is infeasible and must be blocked",
+                    "add baseline replay fixtures for manual GIS, rule-only and optimizer outputs",
+                ],
+            },
+            {
+                "id": "evidence_audit",
+                "label": "Evidence and audit",
+                "status": "review",
+                "score": 0.62,
+                "evidence": [
+                    "audit report, evidence chain and review-task surfaces are implemented",
+                    f"local_review_task_rows={review_task_count}",
+                    "claim ladder and deployment punch-list gates are exposed",
+                ],
+                "missing": [
+                    "production human-review completion evidence",
+                    "row-level evidence material lineage from authoritative systems",
+                ],
+                "test_data_work": [
+                    "add evidence-component fixtures for missing-document, conflicting-source and resolved-review cases",
+                    "add audit export fixtures that prove raw geometries remain excluded from sanitized bundles",
+                ],
+            },
+            {
+                "id": "production_gate",
+                "label": "Production gate",
+                "status": "blocked" if production_rows <= 0 or policy_rows <= 0 else "review",
+                "score": 0.0 if production_rows <= 0 or policy_rows <= 0 else 0.35,
+                "evidence": [
+                    f"production_observed_history_rows={production_rows}",
+                    f"production_policy_history_rows={policy_rows}",
+                    f"roadmap_overall_status={roadmap.get('overall_status')}",
+                ],
+                "missing": [
+                    f"production_observed_history_rows={production_rows}",
+                    f"production_policy_history_rows={policy_rows}",
+                    "same_case_baseline_holdout_evidence",
+                ],
+                "test_data_work": [
+                    "prepare authoritative observed-history intake template for custodian-provided rows",
+                    "prepare authoritative policy/action feasibility template with allowed and blocked examples",
+                    "do not replace production gate with synthetic rows or public benchmark wins",
+                ],
+            },
+        ]
+        statuses = {str(item.get("status")) for item in dimensions}
+        overall_status = "blocked" if "blocked" in statuses else "review" if "review" in statuses else "pass"
+        test_data_items = [
+            {
+                "priority": "P0",
+                "dimension": "production_gate",
+                "action": "collect custodian-signed authoritative observed-history and policy/action feasibility rows",
+                "why": "this is the only path from prototype evidence to trusted pilot validation",
+            },
+            {
+                "priority": "P1",
+                "dimension": "policy_rules",
+                "action": "expand hard-constraint fixtures with pass, violation and boundary cases per rule",
+                "why": "rule behavior should fail safely before authoritative data arrives",
+            },
+            {
+                "priority": "P1",
+                "dimension": "simulator",
+                "action": "add synthetic false-allow and false-block stress cases while keeping not_for_production flags",
+                "why": "simulator safety can improve without weakening production gates",
+            },
+            {
+                "priority": "P1",
+                "dimension": "planner",
+                "action": "add candidate bundles where infeasible high-score plans are blocked from recommendation",
+                "why": "planner value depends on legal-feasible ranking, not raw score maximization",
+            },
+        ]
+        return {
+            "schema": "territory_world_model.pilot_readiness_matrix.v1",
+            "generated_at": now_utc_iso(),
+            "overall_status": overall_status,
+            "dimensions": dimensions,
+            "claim_boundary": {
+                "production_claim": "blocked_until_authoritative_history_and_policy_labels_pass",
+                "prediction_claim": "review_only_until_temporal_and_spatial_holdout_pass",
+                "causal_claim": "observational_only_until_identification_design_is_supplied",
+                "planning_claim": "review_only_until_same_case_baseline_replay_passes",
+            },
+            "strict_policy": {
+                "synthetic_data_can_satisfy_production_gate": False,
+                "public_benchmark_can_satisfy_production_gate": False,
+                "demo_e2e_can_satisfy_production_gate": False,
+            },
+            "test_data_plan": {
+                "status": "action_required" if overall_status != "pass" else "monitor",
+                "items": test_data_items,
+            },
+            "source_reports": {
+                "data_foundation_assessment": "territory_world_model.data_foundation_assessment.v1",
+                "roadmap_status": "territory_world_model.roadmap_status_report.v1",
+                "data_foundation_health": "docs/reports/twm_data_foundation_health.md",
+            },
+        }
+
+    def rule_fixture_coverage_matrix_report(self) -> dict[str, Any]:
+        hard_rules = (
+            "TWM-FARM-001",
+            "TWM-ECO-001",
+            "TWM-PLAN-001",
+            "TWM-URBAN-001",
+        )
+        repo_root = self._repo_root()
+        fixture_root = repo_root / "data_agent" / "test_data" / "twm_bishan_demo"
+        source_paths = {
+            "rule_evaluation": fixture_root / "tables" / "rule_evaluation.csv",
+            "scenario_constraint_violations": fixture_root / "optimization" / "scenario_constraint_violations.csv",
+            "standard_rules_lifecycle": fixture_root / "standard_rules.lifecycle.json",
+        }
+
+        def rel(path: Path) -> str:
+            try:
+                return path.relative_to(repo_root).as_posix()
+            except Exception:
+                return path.as_posix()
+
+        source_files: dict[str, dict[str, Any]] = {}
+        missing_sources: list[str] = []
+        read_errors: dict[str, str] = {}
+        rule_eval_rows: list[dict[str, Any]] = []
+        scenario_rows: list[dict[str, Any]] = []
+        standard_payload: dict[str, Any] = {}
+        for source_id, path in source_paths.items():
+            source_files[source_id] = {"path": rel(path), "exists": path.exists()}
+            if not path.exists():
+                missing_sources.append(rel(path))
+                continue
+            try:
+                if path.suffix.lower() == ".csv":
+                    rows = read_csv(path)
+                    source_files[source_id]["row_count"] = len(rows)
+                    if source_id == "rule_evaluation":
+                        rule_eval_rows = rows
+                    elif source_id == "scenario_constraint_violations":
+                        scenario_rows = rows
+                else:
+                    standard_payload = read_json(path)
+                    source_files[source_id]["rule_count"] = len(standard_payload.get("rules") or [])
+            except Exception as exc:
+                read_errors[source_id] = str(exc)
+
+        standard_by_rule: dict[str, dict[str, Any]] = {}
+        for item in standard_payload.get("rules") or []:
+            if isinstance(item, dict) and item.get("rule_id") in hard_rules:
+                standard_by_rule[str(item.get("rule_id"))] = item
+
+        def empty_category() -> dict[str, Any]:
+            return {"covered": False, "fixture_count": 0, "source_files": [], "examples": []}
+
+        rules: dict[str, dict[str, Any]] = {}
+        for rule_code in hard_rules:
+            standard_rule = standard_by_rule.get(rule_code, {})
+            rules[rule_code] = {
+                "rule_code": rule_code,
+                "rule_name_zh": standard_rule.get("rule_name_zh") or rule_code,
+                "logic": standard_rule.get("logic") or "",
+                "target_layer": standard_rule.get("target_layer") or "",
+                "constraint_layer": standard_rule.get("constraint_layer") or "",
+                "severity": standard_rule.get("severity") or "",
+                "categories": {
+                    "positive_violation": empty_category(),
+                    "negative_pass": empty_category(),
+                    "boundary_case": empty_category(),
+                },
+                "fixture_count": 0,
+                "synthetic_fixture_count": 0,
+                "not_for_production_fixture_count": 0,
+                "production_ready_fixture_count": 0,
+            }
+
+        def add_fixture(rule_code: str, category: str, source_id: str, row: dict[str, Any], evidence: str) -> None:
+            rule = rules.get(rule_code)
+            if not rule:
+                return
+            payload = rule["categories"][category]
+            payload["covered"] = True
+            payload["fixture_count"] += 1
+            source_path = source_files.get(source_id, {}).get("path", source_id)
+            if source_path not in payload["source_files"]:
+                payload["source_files"].append(source_path)
+            if len(payload["examples"]) < 5:
+                payload["examples"].append(
+                    {
+                        "id": str(
+                            row.get("rule_eval_id")
+                            or row.get("scenario_id")
+                            or row.get("project_id")
+                            or f"{rule_code}:{category}:{payload['fixture_count']}"
+                        ),
+                        "evidence": evidence,
+                        "synthetic": truthy(row.get("synthetic")),
+                        "not_for_production": truthy(row.get("not_for_production")),
+                    }
+                )
+
+        def mark_fixture_accounting(rule_code: str, row: dict[str, Any]) -> None:
+            rule = rules.get(rule_code)
+            if not rule:
+                return
+            synthetic = truthy(row.get("synthetic"))
+            not_for_production = truthy(row.get("not_for_production"))
+            rule["fixture_count"] += 1
+            if synthetic:
+                rule["synthetic_fixture_count"] += 1
+            if not_for_production:
+                rule["not_for_production_fixture_count"] += 1
+            if not synthetic and not not_for_production:
+                rule["production_ready_fixture_count"] += 1
+
+        def is_boundary_fixture(row: dict[str, Any]) -> bool:
+            text = " ".join(
+                str(row.get(key) or "")
+                for key in (
+                    "fixture_type",
+                    "fixture_category",
+                    "case_type",
+                    "finding_status",
+                    "finding_basis",
+                    "scenario_id",
+                    "constraint_id",
+                    "notes",
+                    "description",
+                )
+            ).lower()
+            markers = (
+                "boundary_case",
+                "boundary case",
+                "touching",
+                "touch-only",
+                "edge_case",
+                "edge case",
+                "threshold",
+                "near_zero",
+                "near-zero",
+                "临界",
+                "贴边",
+                "阈值",
+            )
+            return any(marker in text for marker in markers)
+
+        for row in rule_eval_rows:
+            rule_code = str(row.get("rule_id") or row.get("rule_code") or "").strip()
+            if rule_code not in rules:
+                continue
+            mark_fixture_accounting(rule_code, row)
+            status = str(row.get("finding_status") or "").strip().lower()
+            severity = str(row.get("severity") or "").strip().lower()
+            metric = safe_float(row.get("metric_value"), 0.0)
+            evidence = f"{status or severity}; metric={metric} {row.get('metric_unit') or ''}".strip()
+            if "pass" in status:
+                add_fixture(rule_code, "negative_pass", "rule_evaluation", row, evidence)
+            if "hit" in status or "requires_review" in status or severity in {"blocking", "critical", "high"}:
+                add_fixture(rule_code, "positive_violation", "rule_evaluation", row, evidence)
+            if is_boundary_fixture(row):
+                add_fixture(rule_code, "boundary_case", "rule_evaluation", row, evidence)
+
+        scenario_rule_map = {
+            "CONSTRAINT-PBF": "TWM-FARM-001",
+            "CONSTRAINT-ECO": "TWM-ECO-001",
+            "CONSTRAINT-PLANNING": "TWM-PLAN-001",
+            "CONSTRAINT-URBAN": "TWM-URBAN-001",
+        }
+        for row in scenario_rows:
+            rule_code = scenario_rule_map.get(str(row.get("constraint_id") or "").strip())
+            if rule_code not in rules:
+                continue
+            mark_fixture_accounting(rule_code, row)
+            value = safe_float(row.get("violation_value"), 0.0)
+            evidence = f"{row.get('constraint_id')}; violation_value={value} {row.get('unit') or ''}".strip()
+            if truthy(row.get("requires_review")) or (value is not None and value > 0):
+                add_fixture(rule_code, "positive_violation", "scenario_constraint_violations", row, evidence)
+            if is_boundary_fixture(row):
+                add_fixture(rule_code, "boundary_case", "scenario_constraint_violations", row, evidence)
+
+        rule_reports: list[dict[str, Any]] = []
+        for rule_code in hard_rules:
+            rule = rules[rule_code]
+            missing_categories = [
+                category
+                for category, category_report in rule["categories"].items()
+                if not category_report["covered"]
+            ]
+            test_data_work = []
+            if "positive_violation" in missing_categories:
+                test_data_work.append(f"add positive violation fixture for {rule_code}")
+            if "negative_pass" in missing_categories:
+                test_data_work.append(f"add negative pass fixture for {rule_code}")
+            if "boundary_case" in missing_categories:
+                test_data_work.append(f"add explicit boundary/threshold/touching fixture for {rule_code}")
+            if rule["production_ready_fixture_count"] <= 0:
+                test_data_work.append(f"keep {rule_code} regression fixtures separate from future authoritative production acceptance rows")
+            rule_reports.append(
+                {
+                    **rule,
+                    "status": "pass" if not missing_categories else "action_required",
+                    "missing_categories": missing_categories,
+                    "test_data_work": test_data_work,
+                }
+            )
+
+        blocked = bool(missing_sources or read_errors)
+        overall_status = (
+            "blocked"
+            if blocked
+            else "action_required"
+            if any(item["status"] == "action_required" for item in rule_reports)
+            else "pass"
+        )
+        production_ready_fixture_count = sum(safe_int(item.get("production_ready_fixture_count"), 0) for item in rule_reports)
+        return {
+            "schema": "territory_world_model.rule_fixture_coverage_matrix.v1",
+            "generated_at": now_utc_iso(),
+            "overall_status": overall_status,
+            "summary": {
+                "hard_rule_count": len(hard_rules),
+                "rule_eval_row_count": len(rule_eval_rows),
+                "scenario_constraint_row_count": len(scenario_rows),
+                "rules_with_boundary_gap": sum(1 for item in rule_reports if "boundary_case" in item["missing_categories"]),
+                "synthetic_fixture_count": sum(safe_int(item.get("synthetic_fixture_count"), 0) for item in rule_reports),
+                "not_for_production_fixture_count": sum(safe_int(item.get("not_for_production_fixture_count"), 0) for item in rule_reports),
+                "production_ready_fixture_count": production_ready_fixture_count,
+            },
+            "coverage_policy": {
+                "required_categories": ["positive_violation", "negative_pass", "boundary_case"],
+                "synthetic_fixture_can_satisfy_production_acceptance": False,
+                "demo_fixture_can_satisfy_production_acceptance": False,
+                "production_acceptance_requires_authoritative_custodian_rows": True,
+            },
+            "rules": rule_reports,
+            "source_files": source_files,
+            "missing_sources": missing_sources,
+            "read_errors": read_errors,
+            "test_data_plan": {
+                "status": "action_required" if overall_status != "pass" else "monitor",
+                "items": [
+                    {
+                        "priority": "P0",
+                        "action": "add explicit boundary/threshold/touching fixtures for each hard-constraint rule",
+                    },
+                    {
+                        "priority": "P1",
+                        "action": "add future authoritative production acceptance rows only after custodian signoff",
+                    },
+                    {
+                        "priority": "P1",
+                        "action": "keep synthetic regression fixtures marked synthetic and not_for_production",
+                    },
+                ],
+            },
+        }
 
     def research_claim_matrix(self) -> dict[str, Any]:
         data_foundation = self.data_foundation_assessment()
@@ -2534,6 +3199,774 @@ class TerritoryWorldModelService:
         }
         return json.loads(_json(result))
 
+    def data_foundation_lineage_report(self, dataset_id: str) -> dict[str, Any]:
+        dataset_id = compact_text(dataset_id)
+        spec = next((item for item in TWM_DATA_FOUNDATION_DATASETS if item.get("id") == dataset_id), None)
+        if spec is None:
+            raise LookupError(f"data foundation dataset not found: {dataset_id}")
+
+        assessment = self.data_foundation_assessment()
+        validation = dict(assessment.get("validation_snapshot") or {})
+        summary = next((item for item in assessment.get("datasets", []) if item.get("id") == dataset_id), None)
+        if summary is None:
+            summary = self._data_foundation_dataset_summary(spec)
+
+        spatial_by_path = {
+            str(layer.get("path") or layer.get("name") or ""): layer
+            for layer in summary.get("spatial_layer_catalog", [])
+            if layer.get("path") or layer.get("name")
+        }
+        files: list[dict[str, Any]] = []
+        for item in summary.get("files", []):
+            rel_path = str(item.get("path") or "")
+            unit = str(item.get("unit") or "")
+            exists = bool(item.get("exists"))
+            count = safe_int(item.get("count"), 0)
+            synthetic_count = safe_int(item.get("synthetic_count"), 0)
+            not_for_production_count = safe_int(item.get("not_for_production_count"), 0)
+            spatial_layer = spatial_by_path.get(rel_path) or {}
+            source_role = "spatial_layer" if unit == "feature" else "auxiliary_table" if unit == "row" else "supporting_file"
+            if not exists:
+                lineage_status = "missing"
+            elif bool(summary.get("not_for_production", True)) or synthetic_count > 0 or not_for_production_count > 0:
+                lineage_status = "review_not_for_production"
+            else:
+                lineage_status = "candidate_authoritative"
+            row = {
+                "path": rel_path,
+                "unit": unit,
+                "source_role": source_role,
+                "exists": exists,
+                "count": count,
+                "synthetic_count": synthetic_count,
+                "not_for_production_count": not_for_production_count,
+                "lineage_status": lineage_status,
+                "source_nature": spec.get("nature"),
+                "dataset_root": spec.get("path"),
+                "not_for_production": bool(summary.get("not_for_production", True)) or not_for_production_count > 0,
+                "readiness_note": (
+                    "可用于字段、空间范围和链路回归核查；not_for_production 数据不得作为生产治理结论。"
+                    if lineage_status == "review_not_for_production"
+                    else "缺失文件需先补齐后才能进入数据基础核查。"
+                    if lineage_status == "missing"
+                    else "候选权威来源仍需人工验收数据版本、来源证明和权限边界。"
+                ),
+            }
+            if spatial_layer:
+                row.update({
+                    "bbox": spatial_layer.get("bbox"),
+                    "crs_diagnostic": spatial_layer.get("crs_diagnostic"),
+                    "property_field_count": spatial_layer.get("property_field_count"),
+                    "sample_properties": spatial_layer.get("sample_properties"),
+                })
+            files.append(row)
+
+        production_rows = safe_int(validation.get("production_ready_observed_history_rows"), 0)
+        policy_rows = safe_int(validation.get("production_policy_history_row_count"), 0)
+        map_overlay_readiness = summary.get("map_overlay_readiness") or {}
+        nonproduction_count = safe_int(summary.get("not_for_production_count"), 0)
+        synthetic_count = safe_int(summary.get("synthetic_count"), 0)
+        lineage_status = "review_not_for_production" if bool(summary.get("not_for_production", True)) or nonproduction_count > 0 else "candidate_authoritative"
+        readiness_gates = [
+            {
+                "id": "authoritative_source_lineage",
+                "status": "blocked" if lineage_status == "review_not_for_production" else "review",
+                "current_value": f"{nonproduction_count} not-for-production records; {synthetic_count} synthetic records",
+                "required_value": "source authority, data version, update time, permission boundary and custodian sign-off for each production layer/table",
+            },
+            {
+                "id": "production_observed_history",
+                "status": "blocked" if production_rows <= 0 else "partial",
+                "current_value": production_rows,
+                "required_value": "real or sanitized approval/review/remediation/enforcement history with final outcomes",
+            },
+            {
+                "id": "production_policy_action_labels",
+                "status": "blocked" if policy_rows <= 0 else "partial",
+                "current_value": policy_rows,
+                "required_value": "authoritative policy/action feasibility labels for TWM action-conditioned validation",
+            },
+            {
+                "id": "map_overlay_crs",
+                "status": "ready" if map_overlay_readiness.get("status") == "ready" else "blocked",
+                "current_value": map_overlay_readiness.get("message", ""),
+                "required_value": "all spatial layers have known CRS and can be converted to the map display CRS",
+            },
+        ]
+        return json.loads(_json({
+            "schema": "territory_world_model.data_foundation_lineage_report.v1",
+            "generated_at": now_utc_iso(),
+            "dataset_id": dataset_id,
+            "dataset_label": spec.get("label"),
+            "dataset_root": spec.get("path"),
+            "source_nature": spec.get("nature"),
+            "positioning": spec.get("positioning"),
+            "not_for_production": bool(summary.get("not_for_production", True)),
+            "file_count": safe_int(summary.get("file_count"), len(files)),
+            "spatial_layer_count": sum(1 for item in files if item.get("source_role") == "spatial_layer"),
+            "table_count": sum(1 for item in files if item.get("source_role") == "auxiliary_table"),
+            "total_record_count": safe_int(summary.get("total_count"), 0),
+            "synthetic_record_count": synthetic_count,
+            "not_for_production_record_count": nonproduction_count,
+            "lineage_coverage": {
+                "status": lineage_status,
+                "file_count": len(files),
+                "existing_file_count": sum(1 for item in files if item.get("exists")),
+                "missing_file_count": sum(1 for item in files if not item.get("exists")),
+                "authoritative_source_count": sum(1 for item in files if item.get("lineage_status") == "candidate_authoritative"),
+                "review_only_source_count": sum(1 for item in files if item.get("lineage_status") == "review_not_for_production"),
+            },
+            "map_overlay_readiness": map_overlay_readiness,
+            "readiness_gates": readiness_gates,
+            "files": files,
+            "required_next_data": list(TWM_DATA_FOUNDATION_REQUIRED_NEXT_DATA),
+            "claim_boundary": (
+                "Lineage report supports source review, field mapping, CRS readiness and production onboarding planning; "
+                "it does not upgrade not-for-production datasets into authoritative evidence."
+            ),
+        }))
+
+    def data_foundation_crs_remediation_plan(self, dataset_id: str) -> dict[str, Any]:
+        dataset_id = compact_text(dataset_id)
+        spec = next((item for item in TWM_DATA_FOUNDATION_DATASETS if item.get("id") == dataset_id), None)
+        if spec is None:
+            raise LookupError(f"data foundation dataset not found: {dataset_id}")
+
+        assessment = self.data_foundation_assessment()
+        summary = next((item for item in assessment.get("datasets", []) if item.get("id") == dataset_id), None)
+        if summary is None:
+            summary = self._data_foundation_dataset_summary(spec)
+
+        target_crs = "EPSG:4326"
+        layers: list[dict[str, Any]] = []
+        for layer in summary.get("spatial_layer_catalog", []):
+            layer_path = str(layer.get("path") or layer.get("name") or "")
+            if not layer_path:
+                continue
+            crs_diagnostic = dict(layer.get("crs_diagnostic") or {})
+            map_overlay_ready = crs_diagnostic.get("map_overlay_ready") is True
+            source_crs_assumption = (
+                target_crs
+                if map_overlay_ready
+                else "unknown_projected_or_non_wgs84"
+                if crs_diagnostic.get("status") == "projected_or_non_wgs84"
+                else "unknown"
+            )
+            if map_overlay_ready:
+                status = "ready"
+                conversion_steps = [
+                    {
+                        "action": "verify_declared_crs",
+                        "status": "recommended",
+                        "source_crs_assumption": source_crs_assumption,
+                        "acceptance": "dataset custodian or metadata confirms EPSG:4326 / WGS84 lonlat",
+                    },
+                    {
+                        "action": "preserve_source_layer",
+                        "status": "ready",
+                        "reason": "bbox already falls within longitude/latitude bounds for the current demo map overlay",
+                    },
+                ]
+                output_policy = {
+                    "write_new_file": False,
+                    "suffix": "",
+                    "target_crs": target_crs,
+                    "lineage_fields": [],
+                }
+            else:
+                status = "requires_conversion"
+                conversion_steps = [
+                    {
+                        "action": "identify_source_crs",
+                        "status": "required",
+                        "source_crs_assumption": source_crs_assumption,
+                        "method": "read CRS metadata, dataset manifest, sidecar .prj, or obtain custodian confirmation before transformation",
+                    },
+                    {
+                        "action": "reproject_to_target_crs",
+                        "status": "required",
+                        "target_crs": target_crs,
+                        "tooling": "GDAL/ogr2ogr, pyproj/geopandas, or an approved spatial ETL job",
+                    },
+                    {
+                        "action": "validate_bbox_and_geometry",
+                        "status": "required",
+                        "acceptance": "converted bbox is within lon/lat bounds, feature count matches source, and invalid geometries are reported",
+                    },
+                    {
+                        "action": "write_lineage_preserving_output",
+                        "status": "required",
+                        "output_suffix": "_wgs84.geojson",
+                        "lineage_fields": ["_twm_source_file", "_twm_source_crs", "_twm_target_crs", "_twm_conversion_time"],
+                    },
+                ]
+                output_policy = {
+                    "write_new_file": True,
+                    "suffix": "_wgs84.geojson",
+                    "target_crs": target_crs,
+                    "overwrite_source": False,
+                    "lineage_fields": ["_twm_source_file", "_twm_source_crs", "_twm_target_crs", "_twm_conversion_time"],
+                }
+
+            layers.append({
+                "path": layer_path,
+                "label": layer.get("label") or layer_path.replace("synthetic_", "").replace(".geojson", ""),
+                "status": status,
+                "feature_count": safe_int(layer.get("feature_count") or layer.get("source_feature_count"), 0),
+                "bbox": layer.get("bbox"),
+                "source_crs_assumption": source_crs_assumption,
+                "target_crs": target_crs,
+                "crs_diagnostic": crs_diagnostic,
+                "suggested_action": "no_conversion_required" if map_overlay_ready else "convert_to_wgs84_before_map_overlay",
+                "conversion_steps": conversion_steps,
+                "output_policy": output_policy,
+                "not_for_production": bool(layer.get("not_for_production", summary.get("not_for_production", True))),
+            })
+
+        blocked_layer_count = sum(1 for layer in layers if layer.get("status") == "requires_conversion")
+        ready_layer_count = sum(1 for layer in layers if layer.get("status") == "ready")
+        status = "action_required" if blocked_layer_count else "ready" if layers else "no_spatial_layers"
+        return json.loads(_json({
+            "schema": "territory_world_model.data_foundation_crs_remediation_plan.v1",
+            "generated_at": now_utc_iso(),
+            "dataset_id": dataset_id,
+            "dataset_label": spec.get("label"),
+            "dataset_root": spec.get("path"),
+            "source_nature": spec.get("nature"),
+            "positioning": spec.get("positioning"),
+            "target_crs": target_crs,
+            "status": status,
+            "layer_count": len(layers),
+            "ready_layer_count": ready_layer_count,
+            "blocked_layer_count": blocked_layer_count,
+            "map_overlay_readiness": summary.get("map_overlay_readiness"),
+            "layers": layers,
+            "execution_policy": {
+                "plan_only": True,
+                "transform_geometry_in_this_api": False,
+                "require_authoritative_source_crs": True,
+                "require_lineage_preserving_output": True,
+                "default_output_suffix": "_wgs84.geojson",
+            },
+            "acceptance_criteria": [
+                "每个待处理空间图层必须先确认 source CRS，不能仅凭 bbox 猜测直接转换。",
+                "转换后 bbox 必须落入 EPSG:4326 经纬度范围，且要素数量与源文件一致。",
+                "输出文件必须保留源文件、源 CRS、目标 CRS、转换时间和工具版本 lineage。",
+                "not-for-production 数据仅可用于演示和回归；CRS 转换不会提升其生产权威性。",
+            ],
+            "claim_boundary": (
+                "This CRS remediation plan is an onboarding and map-overlay readiness artifact. "
+                "It does not transform geometries in the API response, certify source authority, or support production decision claims."
+            ),
+        }))
+
+    def data_foundation_authoritative_templates(self) -> dict[str, Any]:
+        shared_lineage_fields = [
+            "source_agency",
+            "source_system",
+            "source_dataset_name",
+            "source_dataset_version",
+            "source_crs",
+            "target_crs",
+            "valid_from",
+            "valid_to",
+            "ingested_at",
+            "custodian",
+            "custodian_signoff_id",
+            "permission_scope",
+            "not_for_production",
+        ]
+        templates = [
+            {
+                "template_id": "parcel_current_authoritative",
+                "label": "Current land parcel authoritative layer",
+                "role": "parcel",
+                "unit": "feature",
+                "accepted_formats": ["GeoPackage layer", "GeoJSON after approved CRS conversion", "PostGIS table"],
+                "required_fields": [
+                    "geometry",
+                    "parcel_id",
+                    "admin_code",
+                    "land_use_code",
+                    "area_m2",
+                    "source_crs",
+                    "data_version",
+                    "valid_from",
+                    "custodian_signoff_id",
+                ],
+                "recommended_fields": ["owner_type", "farmland_grade", "protection_status", "source_update_time"],
+                "minimum_quality_gates": ["known_crs", "valid_geometry", "unique_parcel_id", "area_positive", "custodian_signoff"],
+                "production_use": "state_object_build_and_rule_overlay",
+            },
+            {
+                "template_id": "planning_zone_authoritative",
+                "label": "Territorial planning zone authoritative layer",
+                "role": "planning_zone",
+                "unit": "feature",
+                "accepted_formats": ["GeoPackage layer", "PostGIS table"],
+                "required_fields": [
+                    "geometry",
+                    "zone_id",
+                    "admin_code",
+                    "zone_type",
+                    "control_rule_code",
+                    "source_crs",
+                    "data_version",
+                    "custodian_signoff_id",
+                ],
+                "recommended_fields": ["control_intensity", "approval_doc_id", "valid_from", "valid_to"],
+                "minimum_quality_gates": ["known_crs", "valid_geometry", "zone_type_domain_check", "custodian_signoff"],
+                "production_use": "policy_constraint_and_action_mask",
+            },
+            {
+                "template_id": "approval_records_authoritative",
+                "label": "Approval and review history authoritative table",
+                "role": "approval_record",
+                "unit": "row",
+                "accepted_formats": ["CSV", "Parquet", "database view"],
+                "required_fields": [
+                    "case_id",
+                    "project_id",
+                    "admin_code",
+                    "review_stage",
+                    "submitted_at",
+                    "final_decision",
+                    "decision_at",
+                    "decision_reason_code",
+                    "custodian_signoff_id",
+                ],
+                "recommended_fields": ["reviewer_role", "required_remediation", "linked_document_id", "sanitization_level"],
+                "minimum_quality_gates": ["unique_case_id", "final_decision_domain_check", "decision_time_order", "custodian_signoff"],
+                "production_use": "claim_gate_observed_history_and_same_case_baseline",
+            },
+            {
+                "template_id": "policy_action_history_authoritative",
+                "label": "Policy action feasibility authoritative table",
+                "role": "policy_action_history",
+                "unit": "row",
+                "accepted_formats": ["CSV", "Parquet", "database view"],
+                "required_fields": [
+                    "case_id",
+                    "action_id",
+                    "action_type",
+                    "target_role",
+                    "target_id",
+                    "action_allowed",
+                    "blocking_rule_code",
+                    "decision_context_time",
+                    "custodian_signoff_id",
+                ],
+                "recommended_fields": ["human_override_reason", "expected_utility_delta", "policy_version", "evidence_bundle_id"],
+                "minimum_quality_gates": ["case_action_key_unique", "action_allowed_boolean", "blocking_rule_traceable", "custodian_signoff"],
+                "production_use": "action_conditioned_dynamics_validation_and_planner_evaluation",
+            },
+            {
+                "template_id": "evidence_index_authoritative",
+                "label": "Evidence document and media index authoritative table",
+                "role": "evidence_item",
+                "unit": "row",
+                "accepted_formats": ["CSV", "Parquet", "database view"],
+                "required_fields": [
+                    "evidence_id",
+                    "case_id",
+                    "source_type",
+                    "document_uri",
+                    "content_hash",
+                    "evidence_time",
+                    "permission_scope",
+                    "custodian_signoff_id",
+                ],
+                "recommended_fields": ["redaction_status", "ocr_status", "linked_rule_code", "human_review_required"],
+                "minimum_quality_gates": ["content_hash_present", "permission_scope_present", "case_link_valid", "custodian_signoff"],
+                "production_use": "audit_trail_and_evidence_gate",
+            },
+            {
+                "template_id": "rule_evaluation_authoritative",
+                "label": "Rule evaluation authoritative table",
+                "role": "rule_evaluation",
+                "unit": "row",
+                "accepted_formats": ["CSV", "Parquet", "database view"],
+                "required_fields": [
+                    "case_id",
+                    "rule_code",
+                    "subject_id",
+                    "target_id",
+                    "severity",
+                    "hit_status",
+                    "evaluated_at",
+                    "policy_version",
+                    "custodian_signoff_id",
+                ],
+                "recommended_fields": ["geometry_overlap_area_m2", "evidence_id", "review_task_id", "resolution_status"],
+                "minimum_quality_gates": ["rule_code_versioned", "severity_domain_check", "hit_status_domain_check", "custodian_signoff"],
+                "production_use": "hard_constraint_recall_and_audit_defensibility_metrics",
+            },
+        ]
+        readiness_gates = [
+            {
+                "id": "custodian_signoff",
+                "status": "blocked",
+                "required_value": "each authoritative source has named custodian, sign-off id, source version and permission scope",
+                "current_value": "templates defined; no production custodian sign-off loaded",
+            },
+            {
+                "id": "not_for_production_flag_clearance",
+                "status": "blocked",
+                "required_value": "production datasets must explicitly set not_for_production=false after governance approval",
+                "current_value": "demo fixtures remain not-for-production",
+            },
+            {
+                "id": "same_case_join_keys",
+                "status": "open",
+                "required_value": "case_id/project_id/action_id keys join across approval, action, evidence and rule tables",
+                "current_value": "template contract only",
+            },
+            {
+                "id": "crs_and_geometry_acceptance",
+                "status": "open",
+                "required_value": "known CRS, validated geometry and EPSG:4326 map-overlay derivative where needed",
+                "current_value": "CRS remediation plan exists; production ETL not implemented",
+            },
+        ]
+        return json.loads(_json({
+            "schema": "territory_world_model.data_foundation_authoritative_templates.v1",
+            "generated_at": now_utc_iso(),
+            "status": "template_ready_review_only",
+            "production_deployment_supported": False,
+            "template_count": len(templates),
+            "templates": templates,
+            "shared_lineage_fields": shared_lineage_fields,
+            "readiness_gates": readiness_gates,
+            "onboarding_steps": [
+                "map authoritative source fields to the template required_fields and shared_lineage_fields",
+                "run schema, CRS, domain, uniqueness and join-key validation before TWM state build",
+                "load sanitized same-case approval/action/evidence history for baseline comparison",
+                "keep not-for-production fixtures separate from production candidate datasets",
+            ],
+            "claim_boundary_notes": [
+                "Templates define what production onboarding must provide; they are not production data.",
+                "Passing these templates requires custodian sign-off and not-for-production flag clearance.",
+                "The template report does not validate predictive, causal or approval automation claims.",
+            ],
+            "claim_boundary": (
+                "Authoritative templates support production data onboarding planning and review. "
+                "They do not by themselves certify authority, data rights, model performance or production deployment readiness."
+            ),
+        }))
+
+    def _update_data_foundation_bbox(self, coords: Any, bbox: list[float | None]) -> None:
+        if (
+            isinstance(coords, list)
+            and len(coords) >= 2
+            and isinstance(coords[0], (int, float))
+            and isinstance(coords[1], (int, float))
+        ):
+            lng = float(coords[0])
+            lat = float(coords[1])
+            bbox[0] = lng if bbox[0] is None else min(float(bbox[0]), lng)
+            bbox[1] = lat if bbox[1] is None else min(float(bbox[1]), lat)
+            bbox[2] = lng if bbox[2] is None else max(float(bbox[2]), lng)
+            bbox[3] = lat if bbox[3] is None else max(float(bbox[3]), lat)
+            return
+        if isinstance(coords, list):
+            for item in coords:
+                self._update_data_foundation_bbox(item, bbox)
+
+    def _data_foundation_crs_diagnostic(self, layer_bbox: list[float | None] | None) -> dict[str, Any]:
+        if not layer_bbox or not all(value is not None for value in layer_bbox):
+            return {
+                "status": "unknown",
+                "coordinate_space": "unknown",
+                "map_overlay_ready": False,
+                "warning_code": "missing_spatial_extent",
+                "suggested_action": "inspect_geometry_before_map_overlay",
+                "message": "空间范围缺失，不能确认是否可直接叠加到经纬度底图。",
+            }
+        min_x, min_y, max_x, max_y = [float(value) for value in layer_bbox]
+        is_lonlat = -180.0 <= min_x <= 180.0 and -180.0 <= max_x <= 180.0 and -90.0 <= min_y <= 90.0 and -90.0 <= max_y <= 90.0
+        if is_lonlat:
+            return {
+                "status": "wgs84_lonlat",
+                "coordinate_space": "lonlat_degrees",
+                "map_overlay_ready": True,
+                "warning_code": None,
+                "suggested_action": "ready_for_map_overlay",
+                "message": "坐标范围符合经纬度范围，可直接用于当前演示地图叠加。",
+            }
+        return {
+            "status": "projected_or_non_wgs84",
+            "coordinate_space": "projected_or_large_numeric",
+            "map_overlay_ready": False,
+            "warning_code": "requires_crs_conversion",
+            "suggested_action": "convert_to_wgs84_before_map_overlay",
+            "message": "坐标范围超出经纬度范围，直接叠加到当前地图前需要做 CRS 识别和转换。",
+        }
+
+    def _data_foundation_map_overlay_readiness(self, layers: list[dict[str, Any]]) -> dict[str, Any]:
+        ready_layer_count = sum(1 for layer in layers if (layer.get("crs_diagnostic") or {}).get("map_overlay_ready") is True)
+        blocked_layer_count = len(layers) - ready_layer_count
+        warning_codes = sorted({
+            str((layer.get("crs_diagnostic") or {}).get("warning_code"))
+            for layer in layers
+            if (layer.get("crs_diagnostic") or {}).get("warning_code")
+        })
+        return {
+            "status": "ready" if layers and blocked_layer_count == 0 else "blocked" if blocked_layer_count else "empty",
+            "ready_layer_count": ready_layer_count,
+            "blocked_layer_count": blocked_layer_count,
+            "warning_codes": warning_codes,
+            "suggested_action": "load_on_map" if layers and blocked_layer_count == 0 else "fix_crs_before_map_overlay" if blocked_layer_count else "add_spatial_layers",
+            "message": (
+                "全部空间图层可直接叠加到当前地图。"
+                if layers and blocked_layer_count == 0
+                else "部分或全部空间图层不是经纬度坐标，直接叠加前需要 CRS 转换。"
+                if blocked_layer_count
+                else "未发现可预览空间图层。"
+            ),
+        }
+
+    def _data_foundation_property_value_type(self, value: Any) -> str:
+        if value is None:
+            return "null"
+        if isinstance(value, bool):
+            return "boolean"
+        if isinstance(value, (int, float)):
+            return "number"
+        if isinstance(value, str):
+            return "string"
+        if isinstance(value, list):
+            return "array"
+        if isinstance(value, dict):
+            return "object"
+        return type(value).__name__
+
+    def _data_foundation_layer_property_profile(self, features: list[Any]) -> dict[str, Any]:
+        field_order: list[str] = []
+        field_counts: dict[str, int] = {}
+        field_types: dict[str, str] = {}
+        sample_properties: dict[str, Any] = {}
+        for feature in features:
+            if not isinstance(feature, dict):
+                continue
+            properties = feature.get("properties")
+            if not isinstance(properties, dict):
+                continue
+            for raw_name, value in properties.items():
+                name = str(raw_name)
+                if name not in field_counts:
+                    field_order.append(name)
+                    field_types[name] = self._data_foundation_property_value_type(value)
+                field_counts[name] = field_counts.get(name, 0) + 1
+                if len(sample_properties) < 12 and name not in sample_properties:
+                    sample_properties[name] = value
+        return {
+            "property_field_count": len(field_order),
+            "property_fields": [
+                {
+                    "name": name,
+                    "value_type": field_types.get(name, "unknown"),
+                    "observed_count": field_counts.get(name, 0),
+                }
+                for name in field_order[:48]
+            ],
+            "sample_properties": sample_properties,
+        }
+
+    def _data_foundation_spatial_layer_catalog(self, root: Path, files: dict[str, Any]) -> list[dict[str, Any]]:
+        catalog: list[dict[str, Any]] = []
+        for rel_path, unit in files.items():
+            if unit != "feature" or not str(rel_path).endswith(".geojson"):
+                continue
+            path = root / str(rel_path)
+            if not path.exists():
+                continue
+            try:
+                payload = read_json(path)
+            except Exception:
+                continue
+            features = payload.get("features") if isinstance(payload, dict) and payload.get("type") == "FeatureCollection" else None
+            if not isinstance(features, list):
+                continue
+            layer_bbox: list[float | None] = [None, None, None, None]
+            for feature in features:
+                if isinstance(feature, dict):
+                    self._update_data_foundation_bbox((feature.get("geometry") or {}).get("coordinates"), layer_bbox)
+            bbox = layer_bbox if all(value is not None for value in layer_bbox) else None
+            property_profile = self._data_foundation_layer_property_profile(features)
+            catalog.append({
+                "path": str(rel_path),
+                "label": str(rel_path).replace("synthetic_", "").replace(".geojson", ""),
+                "unit": unit,
+                "feature_count": len(features),
+                "bbox": bbox,
+                **property_profile,
+                "crs_diagnostic": self._data_foundation_crs_diagnostic(bbox),
+                "not_for_production": True,
+            })
+        return catalog
+
+    def data_foundation_map_preview(
+        self,
+        dataset_id: str,
+        max_features_per_layer: Any = 500,
+        layer_path: Any = None,
+    ) -> dict[str, Any]:
+        dataset_id = compact_text(dataset_id)
+        raw_limit = compact_text(max_features_per_layer)
+        selected_layer_path = compact_text(layer_path)
+        full_load = raw_limit.lower() in {"all", "full", "true"} or safe_int(max_features_per_layer, 500) <= 0
+        max_features = None if full_load else max(1, min(safe_int(max_features_per_layer, 500), 2000))
+        spec = next((item for item in TWM_DATA_FOUNDATION_DATASETS if item.get("id") == dataset_id), None)
+        if spec is None:
+            raise LookupError(f"data foundation dataset not found: {dataset_id}")
+
+        def sample_features(features: list[Any]) -> list[Any]:
+            if max_features is None:
+                return features
+            if len(features) <= max_features:
+                return features
+            if max_features == 1:
+                return [features[0]]
+            step = (len(features) - 1) / (max_features - 1)
+            return [features[round(idx * step)] for idx in range(max_features)]
+
+        root = self._repo_root() / str(spec["path"])
+        layers: list[dict[str, Any]] = []
+        overall_bbox: list[float | None] = [None, None, None, None]
+        total_source_feature_count = 0
+        total_preview_feature_count = 0
+        for rel_path, unit in dict(spec.get("files") or {}).items():
+            if unit != "feature" or not str(rel_path).endswith(".geojson"):
+                continue
+            if selected_layer_path and str(rel_path) != selected_layer_path:
+                continue
+            path = root / str(rel_path)
+            if not path.exists():
+                continue
+            payload = read_json(path)
+            if not isinstance(payload, dict):
+                continue
+            features = payload.get("features") if payload.get("type") == "FeatureCollection" else None
+            if not isinstance(features, list):
+                continue
+            sampled_features = []
+            layer_bbox: list[float | None] = [None, None, None, None]
+            total_source_feature_count += len(features)
+            for feature in sample_features(features):
+                if not isinstance(feature, dict):
+                    continue
+                cloned = deepcopy(feature)
+                properties = dict(cloned.get("properties") or {})
+                properties["_twm_dataset_id"] = dataset_id
+                properties["_twm_source_file"] = str(rel_path)
+                properties["_twm_preview"] = True
+                cloned["properties"] = properties
+                self._update_data_foundation_bbox(cloned.get("geometry", {}).get("coordinates"), layer_bbox)
+                self._update_data_foundation_bbox(cloned.get("geometry", {}).get("coordinates"), overall_bbox)
+                sampled_features.append(cloned)
+            total_preview_feature_count += len(sampled_features)
+            layer_bbox_value = layer_bbox if all(value is not None for value in layer_bbox) else None
+            layer_crs_diagnostic = self._data_foundation_crs_diagnostic(layer_bbox_value)
+            layers.append({
+                "name": str(rel_path),
+                "label": str(rel_path).replace("synthetic_", "").replace(".geojson", ""),
+                "unit": unit,
+                "delivery_mode": "full_geojson" if full_load else "sampled_geojson",
+                "source_feature_count": len(features),
+                "preview_feature_count": len(sampled_features),
+                "not_for_production": True,
+                "bbox": layer_bbox_value,
+                "crs_diagnostic": layer_crs_diagnostic,
+                "geojson": {
+                    "type": "FeatureCollection",
+                    "features": sampled_features,
+                },
+            })
+        center = None
+        bbox = overall_bbox if all(value is not None for value in overall_bbox) else None
+        if selected_layer_path and not layers:
+            raise LookupError(f"data foundation spatial layer not found: {dataset_id}/{selected_layer_path}")
+        if bbox:
+            center = [
+                (float(bbox[1]) + float(bbox[3])) / 2,
+                (float(bbox[0]) + float(bbox[2])) / 2,
+            ]
+
+        map_overlay_readiness = self._data_foundation_map_overlay_readiness(layers)
+
+        return json.loads(_json({
+            "schema": "territory_world_model.data_foundation_map_preview.v1",
+            "dataset_id": dataset_id,
+            "label": spec.get("label"),
+            "positioning": spec.get("positioning"),
+            "not_for_production": True,
+            "max_features_per_layer": max_features,
+            "delivery_mode": "full_geojson" if full_load else "sampled_geojson",
+            "layer_count": len(layers),
+            "total_source_feature_count": total_source_feature_count,
+            "total_preview_feature_count": total_preview_feature_count,
+            "bbox": bbox,
+            "center": center,
+            "map_overlay_readiness": map_overlay_readiness,
+            "layers": layers,
+        }))
+
+    def data_foundation_layer_detail(
+        self,
+        dataset_id: str,
+        layer_path: str,
+        sample_limit: Any = 5,
+    ) -> dict[str, Any]:
+        dataset_id = compact_text(dataset_id)
+        selected_layer_path = compact_text(layer_path)
+        if not selected_layer_path:
+            raise LookupError("data foundation spatial layer path is required")
+        sample_count = max(1, min(safe_int(sample_limit, 5), 25))
+        spec = next((item for item in TWM_DATA_FOUNDATION_DATASETS if item.get("id") == dataset_id), None)
+        if spec is None:
+            raise LookupError(f"data foundation dataset not found: {dataset_id}")
+        files = dict(spec.get("files") or {})
+        if files.get(selected_layer_path) != "feature" or not selected_layer_path.endswith(".geojson"):
+            raise LookupError(f"data foundation spatial layer not found: {dataset_id}/{selected_layer_path}")
+        root = self._repo_root() / str(spec["path"])
+        path = root / selected_layer_path
+        if not path.exists():
+            raise LookupError(f"data foundation spatial layer not found: {dataset_id}/{selected_layer_path}")
+        payload = read_json(path)
+        features = payload.get("features") if isinstance(payload, dict) and payload.get("type") == "FeatureCollection" else None
+        if not isinstance(features, list):
+            raise LookupError(f"data foundation spatial layer is not a FeatureCollection: {dataset_id}/{selected_layer_path}")
+        layer_bbox: list[float | None] = [None, None, None, None]
+        sample_records: list[dict[str, Any]] = []
+        for idx, feature in enumerate(features):
+            if not isinstance(feature, dict):
+                continue
+            self._update_data_foundation_bbox((feature.get("geometry") or {}).get("coordinates"), layer_bbox)
+            if len(sample_records) < sample_count:
+                sample_records.append({
+                    "feature_index": idx,
+                    "properties": dict(feature.get("properties") or {}),
+                })
+        bbox = layer_bbox if all(value is not None for value in layer_bbox) else None
+        property_profile = self._data_foundation_layer_property_profile(features)
+        return json.loads(_json({
+            "schema": "territory_world_model.data_foundation_layer_detail.v1",
+            "dataset_id": dataset_id,
+            "dataset_label": spec.get("label"),
+            "layer_path": selected_layer_path,
+            "label": selected_layer_path.replace("synthetic_", "").replace(".geojson", ""),
+            "unit": "feature",
+            "not_for_production": True,
+            "feature_count": len(features),
+            "bbox": bbox,
+            "crs_diagnostic": self._data_foundation_crs_diagnostic(bbox),
+            **property_profile,
+            "sample_record_count": len(sample_records),
+            "sample_records": sample_records,
+            "delivery_mode": "properties_only",
+            "claim_boundary": "Layer detail is for data readiness, field inspection and evidence browsing; it is not production authority evidence by itself.",
+        }))
+
     def _load_data_foundation_validation(self) -> dict[str, Any]:
         path = self._repo_root() / "docs" / "reports" / "twm_data_foundation_validation.json"
         if not path.exists():
@@ -2561,6 +3994,7 @@ class TerritoryWorldModelService:
                 "unit": unit,
                 **audit,
             })
+        spatial_layer_catalog = self._data_foundation_spatial_layer_catalog(root, dict(spec.get("files") or {}))
         return {
             "id": spec["id"],
             "label": spec["label"],
@@ -2575,6 +4009,8 @@ class TerritoryWorldModelService:
             "synthetic_count": synthetic_count,
             "not_for_production_count": not_for_production_count,
             "files": files,
+            "spatial_layer_catalog": spatial_layer_catalog,
+            "map_overlay_readiness": self._data_foundation_map_overlay_readiness(spatial_layer_catalog),
             "claim_boundary": "该数据包用于测试和适配验证；not_for_production=true 时不得作为真实治理结论依据。",
         }
 
@@ -2708,6 +4144,1374 @@ class TerritoryWorldModelService:
             "evidence_items": [item.to_dict() for item in bundle["evidence_items"]],
             "review_tasks": [item.to_dict() for item in bundle["review_tasks"]],
         }
+
+    def state_graph_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        bundle = self.repository.get_state_bundle(state_version_id)
+        state = self.repository.get_state_version(state_version_id)
+        if bundle is None or state is None:
+            raise LookupError(f"state not found: {state_version_id}")
+
+        objects: list[TwmStateObject] = list(bundle.get("objects") or [])
+        relations: list[TwmStateRelation] = list(bundle.get("relations") or [])
+        rule_hits: list[TwmRuleHit] = self.repository.list_rule_hits(state_version_id=state_version_id)
+        support_materials: list[TwmEvidenceItem] = self.repository.list_evidence_items(state_version_id=state_version_id)
+        review_tasks: list[TwmReviewTask] = self.repository.list_review_tasks(state_version_id=state_version_id)
+
+        object_by_id = {item.id: item for item in objects}
+        hit_by_id = {item.id: item for item in rule_hits}
+        support_by_hit: dict[str, list[TwmEvidenceItem]] = {}
+        for item in support_materials:
+            support_by_hit.setdefault(item.rule_hit_id, []).append(item)
+        review_by_hit: dict[str, list[TwmReviewTask]] = {}
+        for item in review_tasks:
+            review_by_hit.setdefault(item.rule_hit_id, []).append(item)
+
+        object_counts: dict[str, int] = {}
+        for obj in objects:
+            role = self._state_graph_object_role(obj)
+            object_counts[role] = object_counts.get(role, 0) + 1
+        relation_counts: dict[str, int] = {}
+        for rel in relations:
+            rel_type = compact_text(rel.relation_type or rel.predicate or "unknown")
+            relation_counts[rel_type] = relation_counts.get(rel_type, 0) + 1
+        support_counts: dict[str, int] = {}
+        for item in support_materials:
+            support_type = compact_text(item.evidence_type or "support_material")
+            support_counts[support_type] = support_counts.get(support_type, 0) + 1
+
+        nodes: list[dict[str, Any]] = []
+        edges: list[dict[str, Any]] = []
+        node_ids: set[str] = set()
+
+        def add_node(node: dict[str, Any]) -> None:
+            node_id = compact_text(node.get("id"))
+            if not node_id or node_id in node_ids:
+                return
+            node_ids.add(node_id)
+            nodes.append(node)
+
+        def add_edge(edge: dict[str, Any]) -> None:
+            source = compact_text(edge.get("source"))
+            target = compact_text(edge.get("target"))
+            if not source or not target or source not in node_ids or target not in node_ids:
+                return
+            edges.append(edge)
+
+        for obj in objects:
+            add_node(self._state_graph_object_node(obj))
+        for hit in rule_hits:
+            add_node(self._state_graph_rule_hit_node(hit))
+        for item in support_materials:
+            add_node(self._state_graph_support_material_node(item))
+        for task in review_tasks:
+            add_node(self._state_graph_review_task_node(task))
+
+        for rel in relations:
+            add_edge({
+                "id": f"relation:{rel.id}",
+                "source": rel.subject_object_id,
+                "target": rel.object_object_id,
+                "kind": "state_relation",
+                "label": compact_text(rel.relation_type or rel.predicate or "关联"),
+                "predicate": compact_text(rel.predicate or rel.relation_type),
+                "confidence": safe_float(rel.confidence, 0.0),
+                "metrics": jsonable(rel.metrics or {}),
+            })
+        for hit in rule_hits:
+            hit_node_id = f"rule_hit:{hit.id}"
+            if hit.subject_object_id in node_ids:
+                add_edge({
+                    "id": f"rule_subject:{hit.id}",
+                    "source": hit.subject_object_id,
+                    "target": hit_node_id,
+                    "kind": "rule_subject",
+                    "label": "触发规则判断",
+                    "severity": hit.severity,
+                })
+            if hit.target_object_id and hit.target_object_id in node_ids:
+                add_edge({
+                    "id": f"rule_target:{hit.id}",
+                    "source": hit_node_id,
+                    "target": hit.target_object_id,
+                    "kind": "rule_target",
+                    "label": "涉及管控对象",
+                    "severity": hit.severity,
+                })
+            for item in support_by_hit.get(hit.id, []):
+                add_edge({
+                    "id": f"support:{item.id}:hit:{hit.id}",
+                    "source": f"support:{item.id}",
+                    "target": hit_node_id,
+                    "kind": "support_material",
+                    "label": "支撑判断",
+                    "support_type": item.evidence_type,
+                })
+            for task in review_by_hit.get(hit.id, []):
+                add_edge({
+                    "id": f"review:{task.id}:hit:{hit.id}",
+                    "source": hit_node_id,
+                    "target": f"review:{task.id}",
+                    "kind": "review_task",
+                    "label": "形成复核任务",
+                    "status": task.status,
+                })
+
+        visual_limit = max(1, safe_int(payload.get("visual_node_limit"), 160))
+        focus_object_id = compact_text(payload.get("focus_object_id") or payload.get("focus_node_id"))
+        visual_graph = self._state_graph_visual_subset(nodes, edges, visual_limit=visual_limit, focus_node_id=focus_object_id)
+        include_full_graph = truthy(payload.get("include_full_graph"))
+
+        full_counts = {
+            "state_object_count": len(objects),
+            "state_relation_count": len(relations),
+            "rule_hit_count": len(rule_hits),
+            "support_material_count": len(support_materials),
+            "review_task_count": len(review_tasks),
+            "total_node_count": len(nodes),
+            "total_edge_count": len(edges),
+        }
+        return {
+            "schema": "territory_world_model.state_graph.v1",
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "generated_at": now_utc_iso(),
+            "graph_store": {
+                "backend": "twm_repository_state_graph",
+                "full_graph_persisted": True,
+                "node_tables": ["twm_state_object", "twm_rule_hit", "twm_evidence_item", "twm_review_task"],
+                "edge_tables": ["twm_state_relation", "derived_rule_support_review_edges"],
+                "production_policy": "full state graph is persisted; browser visualization may render a focus subset for usability",
+            },
+            "full_graph_counts": full_counts,
+            "object_counts_by_role": object_counts,
+            "relation_counts_by_type": relation_counts,
+            "support_material_counts_by_type": support_counts,
+            "visual_graph": visual_graph,
+            "full_graph": {
+                "included": include_full_graph,
+                "nodes": nodes if include_full_graph else [],
+                "edges": edges if include_full_graph else [],
+            },
+            "terminology": {
+                "support_material": "界面和汇报中使用“支撑材料/判断依据”，后端兼容字段仍可能叫 evidence。",
+                "simulator": "状态 + 动作 -> 下一状态摘要、约束风险、收益和可信度。",
+                "planner": "在模拟器评价的动作或候选方案中，按约束、收益、风险和支撑材料完整度选择下一步。",
+            },
+        }
+
+    def _state_graph_visual_subset(
+        self,
+        nodes: list[dict[str, Any]],
+        edges: list[dict[str, Any]],
+        *,
+        visual_limit: int,
+        focus_node_id: str = "",
+    ) -> dict[str, Any]:
+        node_by_id = {compact_text(node.get("id")): node for node in nodes}
+        selected: list[str] = []
+        selected_set: set[str] = set()
+
+        def select(node_id: str) -> None:
+            if not node_id or node_id in selected_set or node_id not in node_by_id:
+                return
+            if len(selected) >= visual_limit:
+                return
+            selected_set.add(node_id)
+            selected.append(node_id)
+
+        if focus_node_id:
+            select(focus_node_id)
+            for edge in edges:
+                source = compact_text(edge.get("source"))
+                target = compact_text(edge.get("target"))
+                if source == focus_node_id:
+                    select(target)
+                elif target == focus_node_id:
+                    select(source)
+                if len(selected) >= visual_limit:
+                    break
+
+        severity_rank = {"blocking": 5, "critical": 4, "high": 3, "medium": 2, "low": 1}
+        ranked_nodes = sorted(
+            nodes,
+            key=lambda node: (
+                0 if compact_text(node.get("id")) in selected_set else 1,
+                -severity_rank.get(compact_text(node.get("severity")), 0),
+                0 if node.get("kind") == "rule_hit" else 1,
+                0 if node.get("kind") == "state_object" and node.get("role") == "project" else 1,
+                compact_text(node.get("label")),
+            ),
+        )
+        for node in ranked_nodes:
+            select(compact_text(node.get("id")))
+            if len(selected) >= visual_limit:
+                break
+
+        visual_nodes = [node_by_id[node_id] for node_id in selected]
+        visual_node_ids = set(selected)
+        visual_edges = [
+            edge for edge in edges
+            if compact_text(edge.get("source")) in visual_node_ids and compact_text(edge.get("target")) in visual_node_ids
+        ]
+        return {
+            "nodes": visual_nodes,
+            "edges": visual_edges,
+            "render_policy": {
+                "visual_node_limit": visual_limit,
+                "rendered_node_count": len(visual_nodes),
+                "rendered_edge_count": len(visual_edges),
+                "full_graph_node_count": len(nodes),
+                "full_graph_edge_count": len(edges),
+                "visual_subset_only": len(visual_nodes) < len(nodes),
+                "full_graph_counts_available": True,
+                "focus_node_id": focus_node_id,
+            },
+        }
+
+    def _state_graph_object_role(self, obj: TwmStateObject) -> str:
+        return compact_text(obj.canonical_role or obj.source_role or obj.object_type or "unknown")
+
+    def _state_graph_object_node(self, obj: TwmStateObject) -> dict[str, Any]:
+        attrs = dict(obj.attributes or {})
+        label = (
+            compact_text(attrs.get("XMMC"))
+            or compact_text(attrs.get("project_name"))
+            or compact_text(attrs.get("name"))
+            or compact_text(attrs.get("DLMC"))
+            or compact_text(attrs.get("zone_type"))
+            or compact_text(obj.object_code)
+            or compact_text(obj.source_feature_id)
+            or obj.id
+        )
+        role = self._state_graph_object_role(obj)
+        return {
+            "id": obj.id,
+            "kind": "state_object",
+            "role": role,
+            "label": label,
+            "object_code": obj.object_code,
+            "source_role": obj.source_role,
+            "source_path": obj.source_path,
+            "bbox": jsonable(obj.bbox),
+            "quality_score": obj.quality_score,
+            "synthetic": obj.synthetic,
+            "not_for_production": obj.not_for_production,
+            "map_stage": self._state_graph_map_stage_for_role(role),
+            "summary": self._state_graph_compact_attributes(attrs),
+        }
+
+    def _state_graph_rule_hit_node(self, hit: TwmRuleHit) -> dict[str, Any]:
+        return {
+            "id": f"rule_hit:{hit.id}",
+            "kind": "rule_hit",
+            "role": "rule_hit",
+            "label": compact_text(hit.rule_id or "规则判断"),
+            "severity": hit.severity,
+            "risk_score": hit.risk_score,
+            "status": hit.hit_status,
+            "summary": compact_text(hit.explanation),
+            "map_stage": "risk",
+        }
+
+    def _state_graph_support_material_node(self, item: TwmEvidenceItem) -> dict[str, Any]:
+        payload = dict(item.payload or {})
+        return {
+            "id": f"support:{item.id}",
+            "kind": "support_material",
+            "role": "support_material",
+            "label": compact_text(item.source_ref or item.evidence_type or "支撑材料"),
+            "support_type": item.evidence_type,
+            "source_system": item.source_system,
+            "source_ref": item.source_ref,
+            "has_checksum": bool(item.checksum),
+            "summary": self._state_graph_compact_attributes(payload),
+            "map_stage": "risk",
+        }
+
+    def _state_graph_review_task_node(self, task: TwmReviewTask) -> dict[str, Any]:
+        return {
+            "id": f"review:{task.id}",
+            "kind": "review_task",
+            "role": "review_task",
+            "label": compact_text(task.decision or task.status or "人工复核"),
+            "status": task.status,
+            "summary": compact_text(task.comment),
+            "map_stage": "risk",
+        }
+
+    def _state_graph_compact_attributes(self, attrs: dict[str, Any], limit: int = 5) -> dict[str, Any]:
+        priority = [
+            "XMMC",
+            "project_name",
+            "YDMJ",
+            "approval_status",
+            "risk_scenario",
+            "DLMC",
+            "TDYTMC",
+            "zone_type",
+            "source_layer",
+            "overlap_area_m2",
+        ]
+        result: dict[str, Any] = {}
+        for key in priority:
+            if key in attrs and len(result) < limit:
+                result[key] = jsonable(attrs[key])
+        for key, value in attrs.items():
+            if len(result) >= limit:
+                break
+            if key not in result:
+                result[str(key)] = jsonable(value)
+        return result
+
+    def _state_graph_map_stage_for_role(self, role: str) -> str:
+        normalized = role.lower()
+        if "candidate" in normalized or "scenario" in normalized:
+            return "plan"
+        if "rule" in normalized or "review" in normalized:
+            return "risk"
+        if "farmland" in normalized or "eco" in normalized or "constraint" in normalized:
+            return "risk"
+        return "locate"
+
+    def state_snapshot_lakehouse_manifest(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        bundle = self.repository.get_state_bundle(state_version_id)
+        if state is None or bundle is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        object_store_uri = compact_text(payload.get("lakehouse_uri") or payload.get("object_store_uri") or "s3://gis-agent-lakehouse").rstrip("/")
+        namespace = compact_text(payload.get("namespace") or "twm").replace("-", "_").replace("/", "_")
+        warehouse_uri = f"{object_store_uri}/warehouse/iceberg/{namespace}"
+        state_uri = f"{object_store_uri}/curated/twm/state_snapshots/state_version_id={state_version_id}"
+        objects = list(bundle.get("objects") or [])
+        relations = list(bundle.get("relations") or [])
+        rule_hits = self.repository.list_rule_hits(state_version_id=state_version_id)
+        evidence_items = self.repository.list_evidence_items(state_version_id=state_version_id)
+        review_tasks = self.repository.list_review_tasks(state_version_id=state_version_id)
+        registry_entries = self.repository.list_dynamics_model_registry_entries(state_version_id)
+        include_vector_sidecar = truthy(payload.get("include_vector_sidecar"))
+        vector_sidecar = {
+            "enabled": include_vector_sidecar,
+            "format": "lance" if include_vector_sidecar else "",
+            "uri": f"{object_store_uri}/features/lance/twm_state_features/state_version_id={state_version_id}" if include_vector_sidecar else "",
+            "role": "optional high-dimensional embedding sidecar; authoritative facts remain in Iceberg/PostGIS",
+        }
+        artifacts = {
+            "state_metadata": self._lakehouse_manifest_artifact(
+                namespace=namespace,
+                table="state_metadata",
+                fmt="parquet",
+                uri=f"{state_uri}/state_metadata",
+                partitioning=["state_version_id"],
+                row_count=1,
+            ),
+            "state_objects": self._lakehouse_manifest_artifact(
+                namespace=namespace,
+                table="state_objects",
+                fmt="geoparquet",
+                uri=f"{state_uri}/state_objects",
+                partitioning=["state_version_id", "canonical_role"],
+                row_count=len(objects),
+            ),
+            "state_relations": self._lakehouse_manifest_artifact(
+                namespace=namespace,
+                table="state_relations",
+                fmt="geoparquet",
+                uri=f"{state_uri}/state_relations",
+                partitioning=["state_version_id", "relation_type"],
+                row_count=len(relations),
+            ),
+            "rule_hits": self._lakehouse_manifest_artifact(
+                namespace=namespace,
+                table="rule_hits",
+                fmt="parquet",
+                uri=f"{state_uri}/rule_hits",
+                partitioning=["state_version_id", "severity", "hit_status"],
+                row_count=len(rule_hits),
+            ),
+            "evidence_items": self._lakehouse_manifest_artifact(
+                namespace=namespace,
+                table="evidence_items",
+                fmt="parquet",
+                uri=f"{state_uri}/evidence_items",
+                partitioning=["state_version_id", "evidence_type"],
+                row_count=len(evidence_items),
+            ),
+            "review_tasks": self._lakehouse_manifest_artifact(
+                namespace=namespace,
+                table="review_tasks",
+                fmt="parquet",
+                uri=f"{state_uri}/review_tasks",
+                partitioning=["state_version_id", "status"],
+                row_count=len(review_tasks),
+            ),
+            "dynamics_model_registry": self._lakehouse_manifest_artifact(
+                namespace=namespace,
+                table="dynamics_model_registry",
+                fmt="parquet",
+                uri=f"{state_uri}/dynamics_model_registry",
+                partitioning=["state_version_id", "status"],
+                row_count=len(registry_entries),
+            ),
+        }
+        return json.loads(_json({
+            "schema": "territory_world_model.state_snapshot_lakehouse_manifest.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "storage": {
+                "object_store_uri": object_store_uri,
+                "warehouse_uri": warehouse_uri,
+                "table_format": "iceberg",
+                "primary_file_formats": ["geoparquet", "parquet"],
+                "spatial_compute": "apache_sedona",
+                "vector_sidecar": vector_sidecar,
+            },
+            "snapshot": {
+                "state_version_id": state_version_id,
+                "object_count": len(objects),
+                "relation_count": len(relations),
+                "rule_hit_count": len(rule_hits),
+                "evidence_item_count": len(evidence_items),
+                "review_task_count": len(review_tasks),
+                "dynamics_model_registry_entry_count": len(registry_entries),
+                "quality_summary": dict(state.quality_summary or {}),
+            },
+            "artifacts": artifacts,
+            "readiness": {
+                "sedona_batch_ready": len(objects) >= 1,
+                "twm_training_snapshot_ready": len(objects) >= 1 and "state_objects" in artifacts,
+                "iceberg_snapshot_ready": True,
+                "requires_external_writer": True,
+            },
+            "write_plan": [
+                "materialize each artifact as Parquet/GeoParquet under its target_uri",
+                "register or append each artifact into the named Iceberg table",
+                "preserve state_version_id and lineage columns for temporal training and rollback",
+                "write high-dimensional vectors to the Lance sidecar only when vector_sidecar.enabled is true",
+            ],
+            "claim_boundary": "Manifest only: this report defines the production lakehouse snapshot contract; it does not write Iceberg tables or prove production data quality.",
+        }))
+
+    def _lakehouse_manifest_artifact(
+        self,
+        *,
+        namespace: str,
+        table: str,
+        fmt: str,
+        uri: str,
+        partitioning: list[str],
+        row_count: int,
+    ) -> dict[str, Any]:
+        namespace_name = compact_text(namespace or "twm").replace("-", "_").replace("/", "_")
+        table_name = compact_text(table).replace("-", "_").replace("/", "_")
+        return {
+            "table": f"{namespace_name}.{table_name}",
+            "format": compact_text(fmt),
+            "target_uri": compact_text(uri).rstrip("/"),
+            "partitioning": list(partitioning or []),
+            "row_count": max(0, int(row_count or 0)),
+            "write_mode": "replace_partitions_by_state_version",
+            "lineage_columns": ["state_version_id", "project_id", "generated_at"],
+            "iceberg": {
+                "namespace": namespace_name,
+                "table": table_name,
+                "snapshot_isolation_key": "state_version_id",
+            },
+        }
+
+    def materialize_state_snapshot_lakehouse(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        manifest = self.state_snapshot_lakehouse_manifest(state_version_id, payload)
+        state = self.repository.get_state_version(state_version_id)
+        bundle = self.repository.get_state_bundle(state_version_id)
+        if state is None or bundle is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        rows_by_artifact = self._state_snapshot_lakehouse_artifact_rows(
+            state,
+            bundle,
+            self.repository.list_rule_hits(state_version_id=state_version_id),
+            self.repository.list_evidence_items(state_version_id=state_version_id),
+            self.repository.list_review_tasks(state_version_id=state_version_id),
+            self.repository.list_dynamics_model_registry_entries(state_version_id),
+        )
+        artifacts: dict[str, Any] = {}
+        skipped: list[dict[str, Any]] = []
+        written_count = 0
+        for artifact_name, artifact in dict(manifest.get("artifacts") or {}).items():
+            target_uri = compact_text(artifact.get("target_uri") or "")
+            target_dir = self._local_path_from_lakehouse_uri(target_uri)
+            if target_dir is None:
+                skipped.append({
+                    "artifact": artifact_name,
+                    "target_uri": target_uri,
+                    "reason": "non_local_uri_requires_object_store_writer",
+                })
+                continue
+            rows, columns, geo_metadata = rows_by_artifact.get(artifact_name, ([], ["state_version_id"], False))
+            target_dir.mkdir(parents=True, exist_ok=True)
+            local_path = target_dir / "part-00000.parquet"
+            self._write_lakehouse_parquet(local_path, rows, columns, geo_metadata=geo_metadata)
+            materialized = dict(artifact)
+            materialized.update({
+                "materialized": True,
+                "local_path": str(local_path),
+                "local_uri": local_path.as_uri(),
+                "record_count": len(rows),
+                "bytes": local_path.stat().st_size,
+            })
+            artifacts[artifact_name] = materialized
+            manifest["artifacts"][artifact_name] = materialized
+            written_count += 1
+
+        manifest_uri = compact_text(
+            payload.get("manifest_uri")
+            or f"{manifest['storage']['object_store_uri']}/manifests/twm/state_snapshot_lakehouse_manifest/state_version_id={state_version_id}/manifest.json"
+        )
+        manifest_local_path = self._local_path_from_lakehouse_uri(manifest_uri)
+        if manifest_local_path is not None:
+            if manifest_local_path.suffix.lower() != ".json":
+                manifest_local_path = manifest_local_path / "manifest.json"
+            manifest_local_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_local_path.write_text(_json(manifest) + "\n", encoding="utf-8")
+
+        return json.loads(_json({
+            "schema": "territory_world_model.state_snapshot_lakehouse_materialization.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "manifest_uri": manifest_uri,
+            "manifest_local_path": str(manifest_local_path) if manifest_local_path is not None else "",
+            "written_artifact_count": written_count,
+            "skipped_artifacts": skipped,
+            "artifacts": artifacts,
+            "manifest": manifest,
+            "readiness": {
+                "local_parquet_written": written_count > 0,
+                "sedona_geoparquet_read_ready": all(
+                    name in artifacts for name in ("state_objects", "state_relations")
+                ),
+                "iceberg_registration_required": True,
+                "object_store_writer_required": bool(skipped),
+            },
+            "iceberg_registration_plan": [
+                "CREATE NAMESPACE IF NOT EXISTS for the manifest namespace",
+                "CREATE OR REPLACE Iceberg tables with Parquet/GeoParquet source files",
+                "replace partitions by state_version_id for repeatable snapshot rollback",
+                "run Sedona spatial index jobs on state_objects and state_relations geometry columns",
+            ],
+            "claim_boundary": "Materialization only: this writes local Parquet/GeoParquet-compatible snapshot artifacts and a manifest; it does not register Iceberg tables or build distributed spatial indexes.",
+        }))
+
+    def state_snapshot_lakehouse_publish_plan(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        materialization = self._payload_mapping(payload.get("materialization"))
+        manifest = self._payload_mapping(materialization.get("manifest") or payload.get("manifest"))
+        if not manifest:
+            manifest = self.state_snapshot_lakehouse_manifest(state_version_id, payload)
+        manifest_artifacts = self._payload_mapping(manifest.get("artifacts"))
+        materialized_artifacts = self._payload_mapping(materialization.get("artifacts"))
+        catalog = self._sql_identifier_part(payload.get("catalog") or payload.get("iceberg_catalog") or "twm", "twm")
+        namespace = self._sql_namespace(payload.get("namespace") or self._manifest_namespace(manifest) or "twm")
+        warehouse_uri = compact_text(
+            payload.get("warehouse_uri")
+            or payload.get("iceberg_warehouse_uri")
+            or (manifest.get("storage") or {}).get("warehouse_uri")
+            or "s3://gis-agent-lakehouse/warehouse/iceberg"
+        )
+        geohash_precision = min(12, max(1, safe_int(payload.get("geohash_precision"), 8)))
+        spark_conf = self._iceberg_sedona_spark_conf(catalog, warehouse_uri, payload.get("spark_conf"))
+        ddl_statements = [f"CREATE NAMESPACE IF NOT EXISTS {catalog}.{namespace}"]
+        publish_specs: list[dict[str, Any]] = []
+        sedona_specs: list[dict[str, Any]] = []
+        missing_sources: list[str] = []
+        for artifact_name, artifact in manifest_artifacts.items():
+            if not isinstance(artifact, dict):
+                continue
+            materialized = materialized_artifacts.get(artifact_name) if isinstance(materialized_artifacts.get(artifact_name), dict) else {}
+            merged = {**artifact, **materialized}
+            table_name = self._artifact_table_name(artifact_name, merged)
+            table_identifier = f"{catalog}.{namespace}.{table_name}"
+            source_uri = compact_text(merged.get("local_uri") or merged.get("source_uri") or merged.get("target_uri") or "")
+            if not source_uri:
+                missing_sources.append(str(artifact_name))
+            partition_by = [
+                self._sql_identifier_part(item, "")
+                for item in list(merged.get("partitioning") or [])
+                if self._sql_identifier_part(item, "")
+            ]
+            partition_sql = f"\nPARTITIONED BY ({', '.join(partition_by)})" if partition_by else ""
+            source_sql = self._spark_parquet_source(source_uri)
+            ddl = (
+                f"CREATE OR REPLACE TABLE {table_identifier}\n"
+                f"USING iceberg{partition_sql}\n"
+                f"AS SELECT * FROM {source_sql}"
+            )
+            ddl_statements.append(ddl)
+            publish_specs.append({
+                "schema": "territory_world_model.iceberg_artifact_publish_spec.v1",
+                "artifact": artifact_name,
+                "table_identifier": table_identifier,
+                "catalog": catalog,
+                "namespace": namespace,
+                "table": table_name,
+                "warehouse_uri": warehouse_uri,
+                "source_uri": source_uri,
+                "source_format": compact_text(merged.get("format") or "parquet"),
+                "partition_by": partition_by,
+                "row_count": safe_int(merged.get("record_count"), safe_int(merged.get("row_count"), 0)),
+                "write_mode": compact_text(merged.get("write_mode") or "replace_partitions_by_state_version"),
+                "ddl": ddl,
+                "spark_conf": spark_conf,
+            })
+            if self._artifact_has_geometry(artifact_name, merged):
+                sedona_specs.append(self._sedona_spatial_index_spec(
+                    artifact_name=artifact_name,
+                    table_identifier=table_identifier,
+                    warehouse_uri=warehouse_uri,
+                    catalog=catalog,
+                    geohash_precision=geohash_precision,
+                    spark_conf=spark_conf,
+                ))
+        publish_status = "pass" if publish_specs and not missing_sources and warehouse_uri else "blocked"
+        sedona_status = "pass" if sedona_specs else "review"
+        return json.loads(_json({
+            "schema": "territory_world_model.state_snapshot_lakehouse_publish_plan.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "target": {
+                "catalog": catalog,
+                "namespace": namespace,
+                "warehouse_uri": warehouse_uri,
+                "table_format": "iceberg",
+                "spatial_engine": "apache_sedona",
+            },
+            "source_manifest_schema": manifest.get("schema", ""),
+            "iceberg_publish_specs": publish_specs,
+            "sedona_spatial_index_specs": sedona_specs,
+            "ddl_statements": ddl_statements,
+            "validation_gates": {
+                "publish_spec_gate": {
+                    "status": publish_status,
+                    "missing_sources": missing_sources,
+                    "spec_count": len(publish_specs),
+                },
+                "sedona_spatial_index_gate": {
+                    "status": sedona_status,
+                    "index_spec_count": len(sedona_specs),
+                    "strategy": {"type": "geohash", "precision": geohash_precision},
+                },
+            },
+            "execution_order": [
+                "create Iceberg namespace",
+                "publish each Parquet/GeoParquet artifact as an Iceberg table",
+                "build Sedona geohash spatial index tables for geometry-bearing artifacts",
+                "validate row counts and snapshot ids before switching consumers",
+            ],
+            "claim_boundary": "Publish plan only: this creates Iceberg and Sedona execution specifications but does not run Spark, register tables, or build distributed indexes.",
+        }))
+
+    def execute_state_snapshot_lakehouse_publish_plan(
+        self,
+        state_version_id: str,
+        payload: dict[str, Any] | None = None,
+        *,
+        executor: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        plan = self._payload_mapping(payload.get("publish_plan") or payload.get("plan"))
+        if not plan:
+            plan = self.state_snapshot_lakehouse_publish_plan(state_version_id, payload)
+        if executor is None:
+            return json.loads(_json({
+                "schema": "territory_world_model.state_snapshot_lakehouse_publish_execution.v1",
+                "generated_at": now_utc_iso(),
+                "state_version_id": state_version_id,
+                "project_id": state.project_id,
+                "status": "blocked",
+                "publish_plan": plan,
+                "iceberg_publish_results": [],
+                "sedona_spatial_index_results": [],
+                "validation_gates": {
+                    "spark_executor_gate": {"status": "blocked", "missing": ["executor"]},
+                    "iceberg_snapshot_gate": {"status": "blocked", "missing": ["executor"]},
+                    "sedona_spatial_index_gate": {"status": "blocked", "missing": ["executor"]},
+                    "consumer_switch_gate": {"status": "blocked", "missing": ["executor"]},
+                },
+                "claim_boundary": "Execution report only: no Spark executor was supplied, so no Iceberg table or Sedona spatial index was created.",
+            }))
+
+        publish_results: list[dict[str, Any]] = []
+        for spec in list(plan.get("iceberg_publish_specs") or []):
+            if not isinstance(spec, dict):
+                continue
+            task = {
+                "kind": "iceberg_publish",
+                "artifact": spec.get("artifact", ""),
+                "table_identifier": spec.get("table_identifier", ""),
+                "ddl": spec.get("ddl", ""),
+                "source_uri": spec.get("source_uri", ""),
+                "expected_row_count": safe_int(spec.get("row_count"), 0),
+                "spark_conf": dict(spec.get("spark_conf") or {}),
+                "spec": spec,
+            }
+            raw = self._call_twm_publish_executor(executor, task)
+            publish_results.append(self._normalize_iceberg_publish_result(task, raw))
+
+        sedona_results: list[dict[str, Any]] = []
+        for spec in list(plan.get("sedona_spatial_index_specs") or []):
+            if not isinstance(spec, dict):
+                continue
+            task = {
+                "kind": "sedona_spatial_index",
+                "artifact": spec.get("artifact", ""),
+                "output_table": spec.get("output_table", ""),
+                "input_tables": list(spec.get("input_tables") or []),
+                "sql": spec.get("sql", ""),
+                "index_strategy": dict(spec.get("index_strategy") or {}),
+                "spark_conf": dict(spec.get("spark_conf") or {}),
+                "spec": spec,
+            }
+            raw = self._call_twm_publish_executor(executor, task)
+            sedona_results.append(self._normalize_sedona_spatial_index_result(task, raw))
+
+        publish_gate = self._iceberg_snapshot_gate(publish_results)
+        sedona_gate = self._sedona_spatial_index_execution_gate(sedona_results, plan)
+        executor_gate = {
+            "status": "pass" if publish_gate["status"] == "pass" and sedona_gate["status"] == "pass" else "blocked",
+            "publish_task_count": len(publish_results),
+            "sedona_task_count": len(sedona_results),
+        }
+        consumer_gate_status = "pass" if executor_gate["status"] == "pass" else "blocked"
+        overall = "pass" if consumer_gate_status == "pass" else "blocked"
+        return json.loads(_json({
+            "schema": "territory_world_model.state_snapshot_lakehouse_publish_execution.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": overall,
+            "publish_plan": plan,
+            "iceberg_publish_results": publish_results,
+            "sedona_spatial_index_results": sedona_results,
+            "validation_gates": {
+                "spark_executor_gate": executor_gate,
+                "iceberg_snapshot_gate": publish_gate,
+                "sedona_spatial_index_gate": sedona_gate,
+                "consumer_switch_gate": {
+                    "status": consumer_gate_status,
+                    "required_gates": ["spark_executor_gate", "iceberg_snapshot_gate", "sedona_spatial_index_gate"],
+                },
+            },
+            "claim_boundary": "Execution report only: this records executor results and validation gates; forecast consumers should switch only when all gates pass and the reported Iceberg snapshots are externally auditable.",
+        }))
+
+    def state_snapshot_lakehouse_spark_submit_bundle(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        plan = self._payload_mapping(payload.get("publish_plan") or payload.get("plan"))
+        if not plan:
+            plan = self.state_snapshot_lakehouse_publish_plan(state_version_id, payload)
+        output_dir = Path(compact_text(payload.get("output_dir") or "")) if payload.get("output_dir") else Path("outputs/twm_lakehouse_spark") / state_version_id
+        output_dir = output_dir.expanduser()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        plan_path = output_dir / "state_snapshot_lakehouse_publish_plan.json"
+        report_path = output_dir / "state_snapshot_lakehouse_publish_execution_report.json"
+        plan_path.write_text(_json(plan) + "\n", encoding="utf-8")
+        script_path = self._spark_submit_script_path()
+        spark_conf = self._spark_submit_conf_from_plan(plan)
+        executor_image = compact_text(payload.get("executor_image") or payload.get("spark_kubernetes_image") or "")
+        if executor_image:
+            spark_conf["spark.kubernetes.container.image"] = executor_image
+        extra_conf = self._payload_mapping(payload.get("spark_conf"))
+        for key, value in extra_conf.items():
+            if key:
+                spark_conf[str(key)] = str(value)
+        command = self._spark_submit_command(
+            script_path=script_path,
+            plan_path=plan_path,
+            report_path=report_path,
+            spark_master=compact_text(payload.get("spark_master") or "local[*]"),
+            deploy_mode=compact_text(payload.get("deploy_mode") or "client"),
+            spark_conf=spark_conf,
+            packages=compact_text(
+                payload.get("spark_packages")
+                or "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.8.1,org.apache.sedona:sedona-spark-shaded-3.5_2.12:1.9.0"
+            ),
+        )
+        return json.loads(_json({
+            "schema": "territory_world_model.state_snapshot_lakehouse_spark_submit_bundle.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "plan_path": str(plan_path),
+            "execution_report_path": str(report_path),
+            "executor_script": str(script_path),
+            "spark_submit": {
+                "command": command,
+                "master": compact_text(payload.get("spark_master") or "local[*]"),
+                "deploy_mode": compact_text(payload.get("deploy_mode") or "client"),
+                "conf": spark_conf,
+            },
+            "execution_contract": {
+                "expected_publish_task_count": len(list(plan.get("iceberg_publish_specs") or [])),
+                "expected_spatial_index_task_count": len(list(plan.get("sedona_spatial_index_specs") or [])),
+                "required_output": str(report_path),
+                "required_gates": ["iceberg_snapshot_gate", "sedona_spatial_index_gate", "consumer_switch_gate"],
+            },
+            "claim_boundary": "Spark submit bundle only: this writes the executable plan and command for a Spark/Sedona/Iceberg runtime; it does not submit the job or verify external cluster execution.",
+        }))
+
+    def _spark_submit_script_path(self) -> Path:
+        return Path(__file__).resolve().parents[2] / "scripts" / "twm_state_snapshot_lakehouse_publish_job.py"
+
+    def _spark_submit_conf_from_plan(self, plan: dict[str, Any]) -> dict[str, str]:
+        for spec in list(plan.get("iceberg_publish_specs") or []):
+            if isinstance(spec, dict) and isinstance(spec.get("spark_conf"), dict):
+                return {str(key): str(value) for key, value in dict(spec.get("spark_conf") or {}).items()}
+        return {}
+
+    def _spark_submit_command(
+        self,
+        *,
+        script_path: Path,
+        plan_path: Path,
+        report_path: Path,
+        spark_master: str,
+        deploy_mode: str,
+        spark_conf: dict[str, str],
+        packages: str,
+    ) -> list[str]:
+        command = ["spark-submit", "--master", spark_master, "--deploy-mode", deploy_mode]
+        if packages:
+            command.extend(["--packages", packages])
+        for key in sorted(spark_conf):
+            command.extend(["--conf", f"{key}={spark_conf[key]}"])
+        command.extend([str(script_path), "--plan", str(plan_path), "--output", str(report_path)])
+        return command
+
+    def _call_twm_publish_executor(
+        self,
+        executor: Callable[[dict[str, Any]], dict[str, Any]],
+        task: dict[str, Any],
+    ) -> dict[str, Any]:
+        try:
+            result = executor(task)
+        except Exception as exc:
+            return {"returncode": 1, "error": str(exc)}
+        return self._payload_mapping(result)
+
+    def _normalize_iceberg_publish_result(self, task: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
+        expected = safe_int(task.get("expected_row_count"), 0)
+        rows_written = safe_int(raw.get("rows_written"), -1)
+        returncode = safe_int(raw.get("returncode"), 0 if raw.get("snapshot_id") else 1)
+        snapshot_id = compact_text(raw.get("snapshot_id") or raw.get("iceberg_snapshot_id") or "")
+        row_count_status = "pass" if rows_written == expected else "fail"
+        return {
+            "artifact": compact_text(task.get("artifact") or ""),
+            "table_identifier": compact_text(raw.get("table_identifier") or task.get("table_identifier") or ""),
+            "returncode": returncode,
+            "snapshot_id": snapshot_id,
+            "expected_row_count": expected,
+            "rows_written": rows_written,
+            "row_count_status": row_count_status,
+            "status": "pass" if returncode == 0 and snapshot_id and row_count_status == "pass" else "fail",
+            "raw_result": raw,
+        }
+
+    def _normalize_sedona_spatial_index_result(self, task: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
+        returncode = safe_int(raw.get("returncode"), 0 if raw.get("snapshot_id") else 1)
+        snapshot_id = compact_text(raw.get("snapshot_id") or raw.get("iceberg_snapshot_id") or "")
+        rows_written = safe_int(raw.get("rows_written"), safe_int(raw.get("indexed_rows"), -1))
+        return {
+            "artifact": compact_text(task.get("artifact") or ""),
+            "output_table": compact_text(raw.get("output_table") or task.get("output_table") or ""),
+            "returncode": returncode,
+            "snapshot_id": snapshot_id,
+            "rows_written": rows_written,
+            "index_strategy": dict(task.get("index_strategy") or {}),
+            "status": "pass" if returncode == 0 and snapshot_id else "fail",
+            "raw_result": raw,
+        }
+
+    def _iceberg_snapshot_gate(self, results: list[dict[str, Any]]) -> dict[str, Any]:
+        missing = []
+        failed = []
+        for item in results:
+            artifact = compact_text(item.get("artifact") or "artifact")
+            if not item.get("snapshot_id"):
+                missing.append(f"{artifact}.snapshot_id")
+            if item.get("row_count_status") != "pass":
+                failed.append(f"{artifact}.row_count")
+            if item.get("status") != "pass":
+                failed.append(f"{artifact}.execution")
+        return {
+            "status": "pass" if results and not missing and not failed else "blocked",
+            "snapshot_count": sum(1 for item in results if item.get("snapshot_id")),
+            "missing": missing,
+            "failed": sorted(set(failed)),
+        }
+
+    def _sedona_spatial_index_execution_gate(self, results: list[dict[str, Any]], plan: dict[str, Any]) -> dict[str, Any]:
+        expected_count = len(list(plan.get("sedona_spatial_index_specs") or []))
+        missing = []
+        failed = []
+        for item in results:
+            artifact = compact_text(item.get("artifact") or "artifact")
+            if not item.get("snapshot_id"):
+                missing.append(f"{artifact}.snapshot_id")
+            if item.get("status") != "pass":
+                failed.append(f"{artifact}.execution")
+        return {
+            "status": "pass" if expected_count > 0 and len(results) == expected_count and not missing and not failed else "blocked",
+            "expected_index_count": expected_count,
+            "completed_index_count": len(results),
+            "missing": missing,
+            "failed": sorted(set(failed)),
+        }
+
+    def _manifest_namespace(self, manifest: dict[str, Any]) -> str:
+        artifacts = self._payload_mapping(manifest.get("artifacts"))
+        for artifact in artifacts.values():
+            if not isinstance(artifact, dict):
+                continue
+            table = compact_text(artifact.get("table") or "")
+            if "." in table:
+                return table.rsplit(".", 1)[0]
+        return ""
+
+    def _artifact_table_name(self, artifact_name: str, artifact: dict[str, Any]) -> str:
+        table = compact_text(artifact.get("table") or artifact_name)
+        if "." in table:
+            table = table.rsplit(".", 1)[-1]
+        return self._sql_identifier_part(table, self._sql_identifier_part(artifact_name, "artifact"))
+
+    def _artifact_has_geometry(self, artifact_name: str, artifact: dict[str, Any]) -> bool:
+        fmt = compact_text(artifact.get("format") or "").lower()
+        return fmt == "geoparquet" or artifact_name in {"state_objects", "state_relations", "rule_hits"}
+
+    def _sedona_spatial_index_spec(
+        self,
+        *,
+        artifact_name: str,
+        table_identifier: str,
+        warehouse_uri: str,
+        catalog: str,
+        geohash_precision: int,
+        spark_conf: dict[str, str],
+    ) -> dict[str, Any]:
+        output_table = f"{table_identifier}_spatial_index"
+        sql = (
+            f"CREATE OR REPLACE TABLE {output_table}\n"
+            "USING iceberg\n"
+            "AS\n"
+            "SELECT *,\n"
+            "       ST_GeomFromWKB(geometry_wkb) AS geometry,\n"
+            f"       ST_GeoHash(ST_GeomFromWKB(geometry_wkb), {geohash_precision}) AS geohash_{geohash_precision}\n"
+            f"FROM {table_identifier}\n"
+            "WHERE geometry_wkb IS NOT NULL"
+        )
+        return {
+            "schema": "territory_world_model.sedona_spatial_index_job.v1",
+            "artifact": artifact_name,
+            "task": "geohash_spatial_index",
+            "catalog": catalog,
+            "warehouse_uri": warehouse_uri,
+            "input_tables": [table_identifier],
+            "output_table": output_table,
+            "geometry_column": "geometry_wkb",
+            "index_strategy": {"type": "geohash", "precision": geohash_precision},
+            "sql": sql,
+            "spark_conf": spark_conf,
+        }
+
+    def _iceberg_sedona_spark_conf(self, catalog: str, warehouse_uri: str, extra: Any = None) -> dict[str, str]:
+        conf = {
+            "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+            f"spark.sql.catalog.{catalog}": "org.apache.iceberg.spark.SparkCatalog",
+            f"spark.sql.catalog.{catalog}.type": "hadoop",
+            f"spark.sql.catalog.{catalog}.warehouse": warehouse_uri,
+            "spark.serializer": "org.apache.spark.serializer.KryoSerializer",
+            "spark.kryo.registrator": "org.apache.sedona.core.serde.SedonaKryoRegistrator",
+        }
+        extra_conf = self._payload_mapping(extra)
+        for key, value in extra_conf.items():
+            if key:
+                conf[str(key)] = str(value)
+        return conf
+
+    def _spark_parquet_source(self, uri: str) -> str:
+        escaped = compact_text(uri).replace("`", "")
+        return f"parquet.`{escaped}`" if escaped else "parquet.``"
+
+    def _sql_namespace(self, namespace: Any) -> str:
+        parts = [self._sql_identifier_part(part, "") for part in compact_text(namespace).split(".")]
+        clean = [part for part in parts if part]
+        return ".".join(clean) if clean else "twm"
+
+    def _sql_identifier_part(self, value: Any, default: str = "item") -> str:
+        text = compact_text(value or default).replace("-", "_").replace("/", "_")
+        text = re.sub(r"[^0-9A-Za-z_]", "_", text)
+        text = re.sub(r"_+", "_", text).strip("_")
+        if not text:
+            text = default or "item"
+        if text[0].isdigit():
+            text = f"_{text}"
+        return text
+
+    def _state_snapshot_lakehouse_artifact_rows(
+        self,
+        state: TwmStateVersion,
+        bundle: dict[str, Any],
+        rule_hits: list[TwmRuleHit],
+        evidence_items: list[TwmEvidenceItem],
+        review_tasks: list[TwmReviewTask],
+        registry_entries: list[TwmDynamicsModelRegistryEntry],
+    ) -> dict[str, tuple[list[dict[str, Any]], list[str], bool]]:
+        objects = list(bundle.get("objects") or [])
+        relations = list(bundle.get("relations") or [])
+        generated_at = now_utc_iso()
+        return {
+            "state_metadata": (
+                [{
+                    "state_version_id": state.id,
+                    "project_id": state.project_id,
+                    "state_time": state.state_time,
+                    "label": state.label,
+                    "rule_set_id": state.rule_set_id or "",
+                    "object_count": len(objects),
+                    "relation_count": len(relations),
+                    "build_status": state.build_status,
+                    "quality_summary_json": self._json_cell(state.quality_summary),
+                    "summary_json": self._json_cell(state.summary),
+                    "source_manifest_json": self._json_cell(state.source_manifest),
+                    "generated_at": generated_at,
+                }],
+                [
+                    "state_version_id",
+                    "project_id",
+                    "state_time",
+                    "label",
+                    "rule_set_id",
+                    "object_count",
+                    "relation_count",
+                    "build_status",
+                    "quality_summary_json",
+                    "summary_json",
+                    "source_manifest_json",
+                    "generated_at",
+                ],
+                False,
+            ),
+            "state_objects": (
+                [self._lakehouse_state_object_row(item) for item in objects],
+                [
+                    "state_version_id",
+                    "object_id",
+                    "object_code",
+                    "object_type",
+                    "source_role",
+                    "source_asset_id",
+                    "source_feature_id",
+                    "source_path",
+                    "canonical_role",
+                    "quality_score",
+                    "synthetic",
+                    "not_for_production",
+                    "qa_use_for_rules",
+                    "geometry_crs",
+                    "geometry_wkb",
+                    "bbox_json",
+                    "attributes_json",
+                    "semantic_tags_json",
+                ],
+                True,
+            ),
+            "state_relations": (
+                [self._lakehouse_state_relation_row(item) for item in relations],
+                [
+                    "state_version_id",
+                    "relation_id",
+                    "subject_object_id",
+                    "predicate",
+                    "object_object_id",
+                    "relation_type",
+                    "confidence",
+                    "source_subject_role",
+                    "source_target_role",
+                    "synthetic",
+                    "not_for_production",
+                    "geometry_wkb",
+                    "metrics_json",
+                    "evidence_json",
+                ],
+                True,
+            ),
+            "rule_hits": (
+                [self._lakehouse_rule_hit_row(item) for item in rule_hits],
+                [
+                    "state_version_id",
+                    "rule_hit_id",
+                    "rule_id",
+                    "subject_object_id",
+                    "target_object_id",
+                    "hit_status",
+                    "severity",
+                    "risk_score",
+                    "explanation",
+                    "review_task_id",
+                    "created_at",
+                    "reviewed_at",
+                    "geometry_wkb",
+                    "metrics_json",
+                ],
+                True,
+            ),
+            "evidence_items": (
+                [self._lakehouse_evidence_item_row(item) for item in evidence_items],
+                [
+                    "evidence_item_id",
+                    "rule_hit_id",
+                    "evidence_type",
+                    "source_system",
+                    "source_ref",
+                    "checksum",
+                    "created_at",
+                    "payload_json",
+                ],
+                False,
+            ),
+            "review_tasks": (
+                [self._lakehouse_review_task_row(item) for item in review_tasks],
+                [
+                    "review_task_id",
+                    "rule_hit_id",
+                    "assignee",
+                    "status",
+                    "decision",
+                    "comment",
+                    "created_at",
+                    "updated_at",
+                ],
+                False,
+            ),
+            "dynamics_model_registry": (
+                [self._lakehouse_registry_entry_row(item) for item in registry_entries],
+                [
+                    "registry_entry_id",
+                    "state_version_id",
+                    "project_id",
+                    "registry_key",
+                    "model_name",
+                    "model_version",
+                    "model_family",
+                    "status",
+                    "promotion_decision",
+                    "previous_active_registry_key",
+                    "activated_at",
+                    "created_at",
+                    "updated_at",
+                    "lineage_json",
+                    "metadata_json",
+                    "registry_report_json",
+                ],
+                False,
+            ),
+        }
+
+    def _lakehouse_state_object_row(self, item: TwmStateObject) -> dict[str, Any]:
+        return {
+            "state_version_id": item.state_version_id,
+            "object_id": item.id,
+            "object_code": item.object_code,
+            "object_type": item.object_type,
+            "source_role": item.source_role,
+            "source_asset_id": item.source_asset_id,
+            "source_feature_id": item.source_feature_id or "",
+            "source_path": item.source_path,
+            "canonical_role": item.canonical_role,
+            "quality_score": item.quality_score,
+            "synthetic": item.synthetic,
+            "not_for_production": item.not_for_production,
+            "qa_use_for_rules": item.qa_use_for_rules,
+            "geometry_crs": item.geometry_crs,
+            "geometry_wkb": self._geometry_wkb(item.geom),
+            "bbox_json": self._json_cell(item.bbox),
+            "attributes_json": self._json_cell(item.attributes),
+            "semantic_tags_json": self._json_cell(item.semantic_tags),
+        }
+
+    def _lakehouse_state_relation_row(self, item: TwmStateRelation) -> dict[str, Any]:
+        return {
+            "state_version_id": item.state_version_id,
+            "relation_id": item.id,
+            "subject_object_id": item.subject_object_id,
+            "predicate": item.predicate,
+            "object_object_id": item.object_object_id,
+            "relation_type": item.relation_type,
+            "confidence": item.confidence,
+            "source_subject_role": item.source_subject_role,
+            "source_target_role": item.source_target_role,
+            "synthetic": item.synthetic,
+            "not_for_production": item.not_for_production,
+            "geometry_wkb": self._geometry_wkb(item.geom),
+            "metrics_json": self._json_cell(item.metrics),
+            "evidence_json": self._json_cell(item.evidence),
+        }
+
+    def _lakehouse_rule_hit_row(self, item: TwmRuleHit) -> dict[str, Any]:
+        return {
+            "state_version_id": item.state_version_id,
+            "rule_hit_id": item.id,
+            "rule_id": item.rule_id,
+            "subject_object_id": item.subject_object_id,
+            "target_object_id": item.target_object_id or "",
+            "hit_status": item.hit_status,
+            "severity": item.severity,
+            "risk_score": item.risk_score,
+            "explanation": item.explanation,
+            "review_task_id": item.review_task_id or "",
+            "created_at": item.created_at,
+            "reviewed_at": item.reviewed_at or "",
+            "geometry_wkb": self._geometry_wkb(item.geom),
+            "metrics_json": self._json_cell(item.metrics),
+        }
+
+    def _lakehouse_evidence_item_row(self, item: TwmEvidenceItem) -> dict[str, Any]:
+        return {
+            "evidence_item_id": item.id,
+            "rule_hit_id": item.rule_hit_id,
+            "evidence_type": item.evidence_type,
+            "source_system": item.source_system,
+            "source_ref": item.source_ref,
+            "checksum": item.checksum or "",
+            "created_at": item.created_at,
+            "payload_json": self._json_cell(item.payload),
+        }
+
+    def _lakehouse_review_task_row(self, item: TwmReviewTask) -> dict[str, Any]:
+        return {
+            "review_task_id": item.id,
+            "rule_hit_id": item.rule_hit_id,
+            "assignee": item.assignee or "",
+            "status": item.status,
+            "decision": item.decision,
+            "comment": item.comment,
+            "created_at": item.created_at,
+            "updated_at": item.updated_at,
+        }
+
+    def _lakehouse_registry_entry_row(self, item: TwmDynamicsModelRegistryEntry) -> dict[str, Any]:
+        return {
+            "registry_entry_id": item.id,
+            "state_version_id": item.state_version_id,
+            "project_id": item.project_id,
+            "registry_key": item.registry_key,
+            "model_name": item.model_name,
+            "model_version": item.model_version,
+            "model_family": item.model_family,
+            "status": item.status,
+            "promotion_decision": item.promotion_decision,
+            "previous_active_registry_key": item.previous_active_registry_key,
+            "activated_at": item.activated_at,
+            "created_at": item.created_at,
+            "updated_at": item.updated_at,
+            "lineage_json": self._json_cell(item.lineage),
+            "metadata_json": self._json_cell(item.metadata),
+            "registry_report_json": self._json_cell(item.registry_report),
+        }
+
+    def _write_lakehouse_parquet(
+        self,
+        path: Path,
+        rows: list[dict[str, Any]],
+        columns: list[str],
+        *,
+        geo_metadata: bool,
+    ) -> None:
+        try:
+            import pyarrow as pa
+            import pyarrow.parquet as pq
+        except Exception as exc:  # pragma: no cover - exercised only in missing optional dependency envs
+            raise RuntimeError("pyarrow is required to materialize TWM lakehouse Parquet artifacts") from exc
+        hive_partition_columns = self._hive_partition_columns(path)
+        file_columns = [column for column in columns if column not in hive_partition_columns]
+        normalized = [{column: row.get(column) for column in file_columns} for row in rows]
+        if normalized:
+            table = pa.Table.from_pylist(normalized).select(file_columns)
+        else:
+            table = pa.table({column: pa.array([], type=pa.string()) for column in file_columns})
+        if geo_metadata:
+            metadata = dict(table.schema.metadata or {})
+            metadata[b"geo"] = json.dumps(
+                {
+                    "version": "1.1.0",
+                    "primary_column": "geometry_wkb",
+                    "columns": {
+                        "geometry_wkb": {
+                            "encoding": "WKB",
+                            "crs": {"type": "name", "properties": {"name": "EPSG:4326"}},
+                            "geometry_types": [],
+                        }
+                    },
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            ).encode("utf-8")
+            table = table.replace_schema_metadata(metadata)
+        pq.write_table(table, path)
+
+    def _local_path_from_lakehouse_uri(self, uri: str) -> Path | None:
+        text = compact_text(uri)
+        if not text:
+            return None
+        parsed = urlparse(text)
+        if parsed.scheme == "file":
+            return Path(unquote(parsed.path))
+        if parsed.scheme:
+            return None
+        return Path(text).expanduser()
+
+    def _hive_partition_columns(self, path: Path) -> set[str]:
+        columns: set[str] = set()
+        for part in path.parent.parts:
+            if "=" not in part:
+                continue
+            name, value = part.split("=", 1)
+            if name and value:
+                columns.add(name)
+        return columns
+
+    def _json_cell(self, value: Any) -> str:
+        return json.dumps(jsonable(value), ensure_ascii=False, default=str, sort_keys=True)
+
+    def _geometry_wkb(self, geom: Any) -> bytes | None:
+        if geom is None:
+            return None
+        if isinstance(geom, bytes):
+            return geom
+        try:
+            if hasattr(geom, "wkb"):
+                return bytes(geom.wkb)
+            from shapely import wkt as shapely_wkt
+            from shapely.geometry import shape as shapely_shape
+
+            if isinstance(geom, dict):
+                return bytes(shapely_shape(geom).wkb)
+            if isinstance(geom, str) and geom.strip():
+                return bytes(shapely_wkt.loads(geom).wkb)
+        except Exception:
+            return None
+        return None
 
     def state_contract_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
@@ -2879,102 +5683,139 @@ class TerritoryWorldModelService:
 
     def train_dynamics_candidate(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
-        state = self.repository.get_state_version(state_version_id)
-        if state is None or self.repository.get_state_bundle(state_version_id) is None:
-            raise LookupError(f"state not found: {state_version_id}")
-        dataset_payload = payload.get("dataset")
-        dataset = dict(dataset_payload) if isinstance(dataset_payload, dict) else self.dynamics_training_examples(state_version_id, payload)
-        readiness = self.dynamics_readiness_report(state_version_id, {"dataset": dataset, **payload})
         trainer = self._train_dynamics_trainer_descriptor(payload)
-        seed_objective = self.training_objective_report(state_version_id, {"dataset": dataset, **payload})
-        if readiness.get("status") != "pass" or seed_objective.get("evidence_gate", {}).get("status") == "blocked":
+        dataset_payload = payload.get("dataset")
+        initial_sample_count = len(dataset_payload.get("examples") or []) if isinstance(dataset_payload, dict) else None
+        with trace_twm_operation(
+            "train_dynamics_candidate",
+            state_version_id=state_version_id,
+            backend=str(trainer.get("model_name") or trainer.get("model_family") or trainer.get("trainer_id") or ""),
+            sample_count=initial_sample_count,
+            gate_status="pending",
+        ) as trace_ctx:
+            state = self.repository.get_state_version(state_version_id)
+            if state is None or self.repository.get_state_bundle(state_version_id) is None:
+                raise LookupError(f"state not found: {state_version_id}")
+            dataset = dict(dataset_payload) if isinstance(dataset_payload, dict) else self.dynamics_training_examples(state_version_id, payload)
+            _set_trace_attribute(trace_ctx, "twm.sample_count", len(dataset.get("examples") or []))
+            readiness = self.dynamics_readiness_report(state_version_id, {"dataset": dataset, **payload})
+            seed_objective = self.training_objective_report(state_version_id, {"dataset": dataset, **payload})
+            if readiness.get("status") != "pass" or seed_objective.get("evidence_gate", {}).get("status") == "blocked":
+                evidence_gate = self._train_dynamics_evidence_gate(
+                    readiness=readiness,
+                    backend_report={},
+                    objective_report=seed_objective,
+                    trainer=trainer,
+                )
+                report = TwmTrainDynamicsReport(
+                    state_version_id=state_version_id,
+                    project_id=state.project_id,
+                    status=evidence_gate.get("status", "blocked"),
+                    trainer=trainer,
+                    objective=seed_objective,
+                    learned_parameters={},
+                    predictions={},
+                    candidate_report={},
+                    backend_report={},
+                    evidence_gate=evidence_gate,
+                    recommendations=self._train_dynamics_recommendations(evidence_gate, trainer),
+                )
+                result = report.to_dict()
+                _set_trace_attribute(trace_ctx, "twm.gate_status", result.get("evidence_gate", {}).get("status", result.get("status", "review")))
+                _set_trace_attribute(trace_ctx, "twm.prediction_count", 0)
+                return result
+
+            if self._use_spatiotemporal_transformer_dynamics_trainer(trainer):
+                train_result = train_spatiotemporal_transformer_dynamics(dataset, trainer, seed_objective, payload)
+                learned_parameters = dict(train_result.get("learned_parameters") or {})
+                predictions = dict(train_result.get("predictions") or {})
+                candidate_report = self._neural_dynamics_candidate_report(trainer, learned_parameters, predictions, dict(train_result.get("diagnostics") or {}))
+            elif self._use_hierarchical_graph_dynamics_trainer(trainer):
+                train_result = train_hierarchical_graph_dynamics(dataset, trainer, seed_objective, payload)
+                learned_parameters = dict(train_result.get("learned_parameters") or {})
+                predictions = dict(train_result.get("predictions") or {})
+                candidate_report = self._neural_dynamics_candidate_report(trainer, learned_parameters, predictions, dict(train_result.get("diagnostics") or {}))
+            elif self._use_neural_dynamics_trainer(trainer):
+                train_result = train_neural_multi_head_dynamics(dataset, trainer, seed_objective, payload)
+                learned_parameters = dict(train_result.get("learned_parameters") or {})
+                predictions = dict(train_result.get("predictions") or {})
+                candidate_report = self._neural_dynamics_candidate_report(trainer, learned_parameters, predictions, dict(train_result.get("diagnostics") or {}))
+            else:
+                learned_parameters = self._train_dynamics_parameters(dataset, seed_objective, trainer)
+                predictions = self._predict_with_baseline_dynamics(dataset, learned_parameters)
+                candidate_report = self._train_dynamics_candidate_report(trainer, learned_parameters, predictions)
+            backend_payload = {
+                "dataset": dataset,
+                "backend": {
+                    "backend_id": trainer["trainer_id"],
+                    "backend_type": "trainable_candidate_scaffold",
+                    "model_name": trainer["model_name"],
+                    "model_version": trainer["model_version"],
+                    "model_family": trainer["model_family"],
+                    "trainable": True,
+                    "action_conditioned": True,
+                    "uses_geofm": trainer.get("uses_geofm", False),
+                    "uses_causal_calibration": trainer.get("uses_causal_calibration", False),
+                },
+                "candidate_report": candidate_report,
+                "thresholds": payload.get("thresholds") or {},
+                "geofm_gate_report": payload.get("geofm_gate_report") or {},
+                "causal_calibration_report": payload.get("causal_calibration_report") or {},
+            }
+            backend_report = self.dynamics_backend_report(state_version_id, backend_payload)
+            _set_trace_attribute(trace_ctx, "twm.backend_gate_status", (backend_report.get("evidence_gate") or {}).get("status", backend_report.get("status", "review")))
+            objective_report = self.training_objective_report(
+                state_version_id,
+                {
+                    "dataset": dataset,
+                    "dynamics_backend_report": backend_report,
+                    "predictions": predictions,
+                },
+            )
             evidence_gate = self._train_dynamics_evidence_gate(
                 readiness=readiness,
-                backend_report={},
-                objective_report=seed_objective,
+                backend_report=backend_report,
+                objective_report=objective_report,
                 trainer=trainer,
+            )
+            registry_report = self.dynamics_model_registry_report(
+                state_version_id,
+                {
+                    "dynamics_training_dataset": dataset,
+                    "candidate_report": candidate_report,
+                    "readiness_report": readiness,
+                    "evaluation_report": payload.get("evaluation_report")
+                    or payload.get("dynamics_evaluation_report")
+                    or backend_report,
+                    "registry_metadata": payload.get("registry_metadata")
+                    or payload.get("metadata")
+                    or {},
+                    "production_data_gate": payload.get("production_data_gate")
+                    or payload.get("production_gate")
+                    or {},
+                    "current_registry_key": payload.get("current_registry_key")
+                    or payload.get("production_registry_key")
+                    or "",
+                },
             )
             report = TwmTrainDynamicsReport(
                 state_version_id=state_version_id,
                 project_id=state.project_id,
-                status=evidence_gate.get("status", "blocked"),
+                status=evidence_gate.get("status", "review"),
                 trainer=trainer,
-                objective=seed_objective,
-                learned_parameters={},
-                predictions={},
-                candidate_report={},
-                backend_report={},
+                objective=objective_report,
+                learned_parameters=learned_parameters,
+                predictions=predictions,
+                candidate_report=candidate_report,
+                backend_report=backend_report,
+                registry_report=registry_report,
                 evidence_gate=evidence_gate,
                 recommendations=self._train_dynamics_recommendations(evidence_gate, trainer),
             )
-            return report.to_dict()
-
-        if self._use_spatiotemporal_transformer_dynamics_trainer(trainer):
-            train_result = train_spatiotemporal_transformer_dynamics(dataset, trainer, seed_objective, payload)
-            learned_parameters = dict(train_result.get("learned_parameters") or {})
-            predictions = dict(train_result.get("predictions") or {})
-            candidate_report = self._neural_dynamics_candidate_report(trainer, learned_parameters, predictions, dict(train_result.get("diagnostics") or {}))
-        elif self._use_hierarchical_graph_dynamics_trainer(trainer):
-            train_result = train_hierarchical_graph_dynamics(dataset, trainer, seed_objective, payload)
-            learned_parameters = dict(train_result.get("learned_parameters") or {})
-            predictions = dict(train_result.get("predictions") or {})
-            candidate_report = self._neural_dynamics_candidate_report(trainer, learned_parameters, predictions, dict(train_result.get("diagnostics") or {}))
-        elif self._use_neural_dynamics_trainer(trainer):
-            train_result = train_neural_multi_head_dynamics(dataset, trainer, seed_objective, payload)
-            learned_parameters = dict(train_result.get("learned_parameters") or {})
-            predictions = dict(train_result.get("predictions") or {})
-            candidate_report = self._neural_dynamics_candidate_report(trainer, learned_parameters, predictions, dict(train_result.get("diagnostics") or {}))
-        else:
-            learned_parameters = self._train_dynamics_parameters(dataset, seed_objective, trainer)
-            predictions = self._predict_with_baseline_dynamics(dataset, learned_parameters)
-            candidate_report = self._train_dynamics_candidate_report(trainer, learned_parameters, predictions)
-        backend_payload = {
-            "dataset": dataset,
-            "backend": {
-                "backend_id": trainer["trainer_id"],
-                "backend_type": "trainable_candidate_scaffold",
-                "model_name": trainer["model_name"],
-                "model_version": trainer["model_version"],
-                "model_family": trainer["model_family"],
-                "trainable": True,
-                "action_conditioned": True,
-                "uses_geofm": trainer.get("uses_geofm", False),
-                "uses_causal_calibration": trainer.get("uses_causal_calibration", False),
-            },
-            "candidate_report": candidate_report,
-            "thresholds": payload.get("thresholds") or {},
-            "geofm_gate_report": payload.get("geofm_gate_report") or {},
-            "causal_calibration_report": payload.get("causal_calibration_report") or {},
-        }
-        backend_report = self.dynamics_backend_report(state_version_id, backend_payload)
-        objective_report = self.training_objective_report(
-            state_version_id,
-            {
-                "dataset": dataset,
-                "dynamics_backend_report": backend_report,
-                "predictions": predictions,
-            },
-        )
-        evidence_gate = self._train_dynamics_evidence_gate(
-            readiness=readiness,
-            backend_report=backend_report,
-            objective_report=objective_report,
-            trainer=trainer,
-        )
-        report = TwmTrainDynamicsReport(
-            state_version_id=state_version_id,
-            project_id=state.project_id,
-            status=evidence_gate.get("status", "review"),
-            trainer=trainer,
-            objective=objective_report,
-            learned_parameters=learned_parameters,
-            predictions=predictions,
-            candidate_report=candidate_report,
-            backend_report=backend_report,
-            evidence_gate=evidence_gate,
-            recommendations=self._train_dynamics_recommendations(evidence_gate, trainer),
-        )
-        return report.to_dict()
+            result = report.to_dict()
+            _set_trace_attribute(trace_ctx, "twm.gate_status", result.get("evidence_gate", {}).get("status", result.get("status", "review")))
+            _set_trace_attribute(trace_ctx, "twm.prediction_count", len(predictions))
+            return result
 
     # ------------------------------------------------------------------
     # Rules / reviews / evidence
@@ -3056,6 +5897,7 @@ class TerritoryWorldModelService:
         )
         if hit is None or task is None:
             raise LookupError(f"rule hit not found: {hit_id}")
+        self._clear_report_cache(state_version_id=hit.state_version_id)
         return {
             "hit": hit.to_dict(),
             "review_task": task.to_dict(),
@@ -3174,7 +6016,7 @@ class TerritoryWorldModelService:
             parameters=dict(payload.get("parameters") or {}),
             treatment=str(payload.get("treatment") or ""),
         )
-        scenario_context = dict(payload.get("scenario_context") or {})
+        scenario_context = _mapping_payload(payload.get("scenario_context"))
         scenario_context = self._scenario_context_with_causal_calibration(state_version_id, payload, scenario_context)
         plan = self.planner.plan(
             {
@@ -3194,7 +6036,8 @@ class TerritoryWorldModelService:
             scenario_context=scenario_context,
         )
         result = plan.to_dict()
-        return self._forecast_with_dynamics_candidate(result, payload)
+        candidate_payload = {**payload, "_state_version_id": state_version_id}
+        return self._forecast_with_dynamics_candidate(result, candidate_payload)
 
     def action_mask_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
@@ -3332,27 +6175,44 @@ class TerritoryWorldModelService:
                     }
                 )
             ]
-        scenario_context = dict(payload.get("scenario_context") or {})
-        scenario_context = self._scenario_context_with_causal_calibration(state_version_id, payload, scenario_context)
-        rollout = self.planner.counterfactual_rollout(
-            {
-                "state_version": state,
-                "objects": state_bundle["objects"],
-                "relations": state_bundle["relations"],
-                "quality_summary": state.quality_summary,
-                "warnings": [],
-                "hierarchy_tokens": state.summary,
-            },
-            baseline_action=baseline_action,
-            intervention_actions=intervention_actions,
-            scenario=payload.get("scenario") or baseline_action.scenario,
-            horizon=int(payload.get("horizon") or 3),
-            rule_hits=self.repository.list_rule_hits(state_version_id=state_version_id),
-            evidence_coverage=payload.get("evidence_coverage"),
-            scenario_context=scenario_context,
-        )
-        result = rollout.to_dict()
-        return self._counterfactual_with_dynamics_candidate(result, payload)
+        horizon = int(payload.get("horizon") or 3)
+        sample_count = horizon * (1 + len(intervention_actions))
+        with trace_twm_operation(
+            "counterfactual_rollout",
+            state_version_id=state_version_id,
+            backend="planner",
+            sample_count=sample_count,
+            gate_status="pending",
+        ) as trace_ctx:
+            scenario_context = _mapping_payload(payload.get("scenario_context"))
+            scenario_context = self._scenario_context_with_causal_calibration(state_version_id, payload, scenario_context)
+            rollout = self.planner.counterfactual_rollout(
+                {
+                    "state_version": state,
+                    "objects": state_bundle["objects"],
+                    "relations": state_bundle["relations"],
+                    "quality_summary": state.quality_summary,
+                    "warnings": [],
+                    "hierarchy_tokens": state.summary,
+                },
+                baseline_action=baseline_action,
+                intervention_actions=intervention_actions,
+                scenario=payload.get("scenario") or baseline_action.scenario,
+                horizon=horizon,
+                rule_hits=self.repository.list_rule_hits(state_version_id=state_version_id),
+                evidence_coverage=payload.get("evidence_coverage"),
+                scenario_context=scenario_context,
+            )
+            result = self._counterfactual_with_dynamics_candidate(rollout.to_dict(), payload)
+            _set_trace_attribute(trace_ctx, "twm.gate_status", result.get("evidence_gate", {}).get("status", "review"))
+            _set_trace_attribute(trace_ctx, "twm.horizon", int(result.get("horizon") or horizon))
+            _set_trace_attribute(trace_ctx, "twm.intervention_action_count", len(intervention_actions))
+            _set_trace_attribute(
+                trace_ctx,
+                "twm.rollout_step_count",
+                len(result.get("baseline_steps") or []) + len(result.get("intervention_steps") or []),
+            )
+            return result
 
     def beam_plan(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
@@ -3576,6 +6436,17 @@ class TerritoryWorldModelService:
         violations_by_id: dict[str, list[dict[str, Any]]] = {}
         for row in violation_rows:
             violations_by_id.setdefault(str(row.get("scenario_id") or ""), []).append(row)
+        horizon = max(1, min(12, int(payload.get("horizon") or 3)))
+        spatial_profiles = self._optimization_spatial_profiles(
+            root,
+            scenario_specs={
+                str(row.get("scenario_id") or ""): dict(row)
+                for row in candidates
+                if str(row.get("scenario_id") or "")
+            },
+            horizon=horizon,
+            hard_constraint_tolerance_m2=float(safe_float(pareto.get("hard_constraint_tolerance_m2"), 1.0) or 1.0),
+        )
 
         actions: list[dict[str, Any]] = []
         for row in candidates:
@@ -3585,9 +6456,14 @@ class TerritoryWorldModelService:
             feasibility = dict(feasibility_by_id.get(scenario_id) or row)
             metrics = metrics_by_id.get(scenario_id) or []
             violations = violations_by_id.get(scenario_id) or []
+            spatial_profile = dict(spatial_profiles.get(scenario_id) or {})
+            spatial_recheck = dict(spatial_profile.get("final_constraint_recheck") or {})
+            requires_spatial_state = "baseline" not in str(row.get("scenario_type") or scenario_id).lower()
             blocked = (
                 str(feasibility.get("hard_constraint_status") or row.get("hard_constraint_status") or "") != "legal_feasible"
                 or truthy(feasibility.get("excluded_from_recommendation") or row.get("excluded_from_recommendation"))
+                or (requires_spatial_state and not spatial_profile.get("available"))
+                or (bool(spatial_profile.get("available")) and not spatial_recheck.get("passed", False))
             )
             requires_review = truthy(feasibility.get("requires_legal_review") or row.get("requires_legal_review"))
             hard_blocks = [
@@ -3596,6 +6472,11 @@ class TerritoryWorldModelService:
                 if str(item.get("severity") or "").lower() in {"critical", "blocking"}
             ]
             hard_blocks = [item for item in hard_blocks if item]
+            if requires_spatial_state and not spatial_profile.get("available"):
+                hard_blocks.append("spatial_state_unavailable")
+            if spatial_profile.get("available") and not spatial_recheck.get("passed", False):
+                hard_blocks.extend(spatial_recheck.get("failed_constraints") or ["spatial_hard_constraint_recheck"])
+            hard_blocks = list(dict.fromkeys(hard_blocks))
             if blocked and not hard_blocks:
                 hard_blocks = ["hard_constraint_violation"]
             weighted_score = self._optimization_weighted_score(scenario_id, pareto, metrics)
@@ -3607,6 +6488,15 @@ class TerritoryWorldModelService:
                     "candidate_id": scenario_id,
                     "action_type": self._optimization_action_type(row),
                     "target_role": str(payload.get("target_role") or "scenario"),
+                    "target_objects": list(spatial_profile.get("action_ids") or []),
+                    "spatial_scope": {
+                        "level": "candidate_scenario",
+                        "crs": spatial_profile.get("crs"),
+                        "bbox": spatial_profile.get("final_bbox"),
+                        "geometry_sha256": spatial_profile.get("final_geometry_sha256"),
+                        "state_sha256": spatial_profile.get("final_state_sha256"),
+                        "materialized_from_action_geometries": bool(spatial_profile.get("available")),
+                    },
                     "magnitude": round(max(0.0, safe_float(row.get("project_count"), 0.0) or 0.0), 4),
                     "scenario": scenario_id,
                     "description": str(row.get("description_zh") or row.get("scenario_name_zh") or scenario_id),
@@ -3630,12 +6520,17 @@ class TerritoryWorldModelService:
                         "hard_constraint_violation_m2": safe_float(feasibility.get("hard_constraint_violation_m2"), 0.0),
                         "pbf_overlap_m2": safe_float(feasibility.get("pbf_overlap_m2"), 0.0),
                         "eco_overlap_m2": safe_float(feasibility.get("eco_overlap_m2"), 0.0),
+                        "transition_source": "optimization_bundle_spatial_state",
+                        "spatial_trajectory": list(spatial_profile.get("periods") or []),
+                        "spatial_trajectory_role": "renderer_admissibility_audit_only_not_simulator_input",
+                        "spatial_constraint_recheck": spatial_recheck,
                     },
                     "provenance": {
                         "optimization_dir": str(root),
                         "synthetic": truthy(row.get("synthetic")),
                         "not_for_production": truthy(row.get("not_for_production")),
                         "source": "twm_optimization_fixture",
+                        "spatial_state_compiler": spatial_profile.get("provenance") or {},
                     },
                 }
             )
@@ -3650,6 +6545,15 @@ class TerritoryWorldModelService:
                 "algorithm_family": str(payload.get("algorithm_family") or pareto.get("method") or "hard_constraint_filter_then_pareto_summary"),
                 "validation": {
                     "hard_constraint_recheck": "pass" if actions and legal_count + blocked_count == len(actions) else "review",
+                    "spatial_state_compilation": "pass" if spatial_profiles and all(
+                        profile.get("available") or profile.get("no_action_baseline")
+                        for profile in spatial_profiles.values()
+                    ) else "review",
+                    "per_period_hard_constraint_recheck": "pass" if spatial_profiles and all(
+                        (profile.get("final_constraint_recheck") or {}).get("passed", False)
+                        or not profile.get("available")
+                        for profile in spatial_profiles.values()
+                    ) else "review",
                     "spatial_holdout": payload.get("spatial_holdout_validation") or "not_provided",
                     "temporal_holdout": payload.get("temporal_holdout_validation") or "not_provided",
                     "planning_lift": payload.get("planning_lift_benchmark") or "not_provided",
@@ -3670,7 +6574,35 @@ class TerritoryWorldModelService:
                 "hard_constraint_policy": pareto.get("hard_constraint_policy_zh"),
                 "claim_boundary": "optimization_fixture_only_not_for_production",
             },
+            "spatial_state_compiler": {
+                "schema": "territory_world_model.optimization_spatial_state_compiler.v1",
+                "horizon": horizon,
+                "hard_constraint_tolerance_m2": float(safe_float(pareto.get("hard_constraint_tolerance_m2"), 1.0) or 1.0),
+                "scenario_count": len(spatial_profiles),
+                "compiled_scenario_count": sum(1 for profile in spatial_profiles.values() if profile.get("available")),
+                "transition_evaluation_count": sum(
+                    int(profile.get("transition_evaluation_count") or 0)
+                    for profile in spatial_profiles.values()
+                ),
+                "source_files": ["action_space.geojson", "scenario_project_membership.csv", "constraint_masks.geojson"],
+                "fail_closed": True,
+            },
         }
+
+    def _optimization_spatial_profiles(
+        self,
+        root: Path,
+        *,
+        scenario_specs: dict[str, dict[str, Any]],
+        horizon: int,
+        hard_constraint_tolerance_m2: float,
+    ) -> dict[str, dict[str, Any]]:
+        return compile_optimization_spatial_profiles(
+            root,
+            scenario_specs=scenario_specs,
+            horizon=horizon,
+            hard_constraint_tolerance_m2=hard_constraint_tolerance_m2,
+        )
 
     def farmland_layout_beam_plan_from_optimization_bundle(
         self,
@@ -3683,19 +6615,18 @@ class TerritoryWorldModelService:
         if state is None or self.repository.get_state_bundle(state_version_id) is None:
             raise LookupError(f"state not found: {state_version_id}")
         adapter = self.farmland_layout_candidate_actions_from_optimization_bundle(optimization_dir, payload)
-        candidate_actions = [dict(item) for item in adapter.get("candidate_actions") or [] if isinstance(item, dict)]
-        beam_payload = dict(payload)
-        beam_payload["scenario"] = str(payload.get("scenario") or "farmland_layout_optimization_bundle")
-        beam_payload["candidate_actions"] = candidate_actions
-        beam_payload["optimizer_evidence"] = adapter.get("optimizer_evidence") or {}
-        if "dynamics_candidate_report" not in beam_payload and truthy(payload.get("use_optimizer_metric_projection", True)):
-            beam_payload["dynamics_candidate_report"] = self._optimizer_metric_projection_report_from_candidate_actions(
-                candidate_actions,
-                adapter,
-                payload,
-            )
-            beam_payload["optimizer_metric_projection_applied"] = True
-        beam_report = self.beam_plan(state_version_id, beam_payload)
+        multi_horizon_comparison = self._farmland_layout_multi_horizon_comparison(
+            state_version_id,
+            adapter,
+            payload,
+        )
+        beam_report = self._spatial_trace_plan_report(
+            state_version_id=state_version_id,
+            project_id=state.project_id,
+            adapter=adapter,
+            comparison=multi_horizon_comparison,
+            payload=payload,
+        )
         selection_audit = self._farmland_layout_bundle_beam_selection_audit(adapter, beam_report)
         not_for_production = bool(
             ((adapter.get("optimizer_evidence") or {}).get("pareto_summary") or {}).get("not_for_production", True)
@@ -3711,7 +6642,7 @@ class TerritoryWorldModelService:
             "state_version_id": state_version_id,
             "project_id": state.project_id,
             "status": status,
-            "scenario": beam_payload["scenario"],
+            "scenario": str(payload.get("scenario") or "farmland_layout_optimization_bundle"),
             "optimization_bundle": {
                 "schema": adapter.get("schema"),
                 "status": adapter.get("status"),
@@ -3720,20 +6651,482 @@ class TerritoryWorldModelService:
                 "optimizer_evidence": adapter.get("optimizer_evidence") or {},
             },
             "beam_plan": beam_report,
+            "multi_horizon_comparison": multi_horizon_comparison,
             "selection_audit": selection_audit,
             "claim_boundary": {
                 "production_claim": "not_supported_from_fixture_bundle_without_real_observed_history_and_holdout_validation",
                 "planner_role": "consumer_and_auditor_of_external_farmland_layout_candidates",
                 "hard_constraint_rule": "hard-blocked candidates remain visible for audit but cannot be selected as recommended plans",
-                "optimizer_metric_projection": (
-                    "used_as_candidate_forecast_input_only"
-                    if beam_payload.get("optimizer_metric_projection_applied")
-                    else "not_applied"
-                ),
+                "selection_basis": "all_legal_candidates_multi_horizon_recursive_rollout",
+                "optimizer_metric_projection": "retained_for_input_audit_only_not_used_for_selection",
+                "planner_contract": "planner_consumes_spatial_simulator_trace_only",
             },
             "recommendations": self._farmland_layout_bundle_beam_recommendations(adapter, beam_report, selection_audit),
             "created_at": now_utc_iso(),
         }
+
+    def _spatial_trace_plan_report(
+        self,
+        *,
+        state_version_id: str,
+        project_id: str,
+        adapter: dict[str, Any],
+        comparison: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Build the planner result exclusively from simulator traces."""
+
+        trajectories = {
+            str(item.get("candidate_id") or ""): dict(item)
+            for item in comparison.get("candidate_trajectories") or []
+            if isinstance(item, dict) and str(item.get("candidate_id") or "")
+        }
+        overrides = payload.get("candidate_metric_overrides")
+        overrides = dict(overrides) if isinstance(overrides, dict) else {}
+        candidates = []
+        for action in adapter.get("candidate_actions") or []:
+            if not isinstance(action, dict):
+                continue
+            candidate_id = str(action.get("candidate_id") or "")
+            execution_mask = dict(action.get("execution_mask") or {})
+            trajectory = trajectories.get(candidate_id)
+            action_override = overrides.get(candidate_id)
+            action_override = dict(action_override) if isinstance(action_override, dict) else {}
+            input_parameters = dict(action.get("parameters") or {})
+            input_metrics = {
+                "planning_utility_delta": float(
+                    safe_float(
+                        action_override.get("planning_utility_delta", input_parameters.get("planning_utility_delta")),
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                "constraint_violation_probability": float(
+                    safe_float(
+                        action_override.get(
+                            "constraint_violation_probability",
+                            input_parameters.get("constraint_violation_probability"),
+                        ),
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                "confidence": float(
+                    safe_float(action_override.get("confidence", execution_mask.get("confidence")), 0.0) or 0.0
+                ),
+                "selection_role": "input_audit_only",
+            }
+            trajectory_complete = bool(
+                trajectory
+                and trajectory.get("trace_completed")
+                and trajectory.get("hard_constraint_passed_all_periods")
+                and len(trajectory.get("periods") or []) == int(comparison.get("horizon") or 0)
+            )
+            if trajectory_complete:
+                utility = float(safe_float(trajectory.get("discounted_cumulative_utility"), 0.0) or 0.0)
+                risk = float(safe_float(trajectory.get("max_constraint_risk"), 0.0) or 0.0)
+                confidence = float(safe_float(trajectory.get("minimum_confidence"), 0.0) or 0.0)
+                rank_score = float(safe_float(trajectory.get("rank_score"), 0.0) or 0.0)
+                final_period = (trajectory.get("periods") or [{}])[-1]
+                trace_gate = dict((trajectory.get("simulator_trace") or {}).get("evidence_gate") or {})
+                evidence_gate = {
+                    **trace_gate,
+                    "action_mask": execution_mask,
+                    "selection_source": "spatial_simulator_trace",
+                }
+                forecast = {
+                    "planning_utility_delta": round(utility, 6),
+                    "constraint_violation_probability": round(risk, 6),
+                    "uncertainty": {"confidence": round(confidence, 6)},
+                    "evidence_gate": evidence_gate,
+                    "future_latent_state": {
+                        "projected": {
+                            "spatial_state": final_period,
+                            "source": "spatial_simulator_trace",
+                        }
+                    },
+                }
+                selection_status = "eligible"
+            else:
+                trace = dict((trajectory or {}).get("simulator_trace") or {})
+                utility = float(safe_float((trajectory or {}).get("discounted_cumulative_utility"), 0.0) or 0.0)
+                risk = float(safe_float((trajectory or {}).get("max_constraint_risk"), 0.0) or 0.0)
+                confidence = float(safe_float((trajectory or {}).get("minimum_confidence"), 0.0) or 0.0)
+                rank_score = self._beam_rank_score(
+                    utility=utility,
+                    risk=risk,
+                    confidence=confidence,
+                    blocked=True,
+                    evidence_status="blocked",
+                    ranking_policy=self._beam_ranking_policy(payload),
+                )
+                evidence_gate = {
+                    "passed": False,
+                    "status": "blocked",
+                    "missing": list(
+                        (trace.get("evidence_gate") or {}).get("missing")
+                        or execution_mask.get("hard_blocks")
+                        or ["complete_legal_feasible_spatial_trace"]
+                    ),
+                    "action_mask": execution_mask,
+                    "selection_source": "spatial_simulator_fail_closed" if trajectory else "candidate_admissibility_gate",
+                }
+                forecast = {
+                    "planning_utility_delta": round(input_metrics["planning_utility_delta"], 6) if not trajectory else round(utility, 6),
+                    "constraint_violation_probability": round(input_metrics["constraint_violation_probability"], 6) if not trajectory else round(risk, 6),
+                    "uncertainty": {
+                        "confidence": round(input_metrics["confidence"], 6) if not trajectory else round(confidence, 6)
+                    },
+                    "evidence_gate": evidence_gate,
+                }
+                selection_status = "hard_blocked"
+            candidates.append(
+                {
+                    "candidate_id": candidate_id,
+                    "action": dict(action),
+                    "forecast": forecast,
+                    "utility": round(utility, 6),
+                    "risk": round(risk, 6),
+                    "confidence": round(confidence, 6),
+                    "rank_score": round(rank_score, 6),
+                    "input_metric_audit": input_metrics,
+                    "multi_horizon": trajectory or {},
+                    "simulator_trace": (trajectory or {}).get("simulator_trace") or {},
+                    "evidence_gate": evidence_gate,
+                    "claim_status": "review_required",
+                    "selection_status": selection_status,
+                }
+            )
+
+        candidates.sort(
+            key=lambda item: (
+                item.get("selection_status") != "hard_blocked",
+                float(item.get("rank_score") or 0.0),
+            ),
+            reverse=True,
+        )
+        ranking = []
+        for rank, candidate in enumerate(candidates, start=1):
+            candidate["rank"] = rank
+            ranking.append(
+                {
+                    "rank": rank,
+                    "candidate_id": candidate.get("candidate_id"),
+                    "action_type": (candidate.get("action") or {}).get("action_type"),
+                    "rank_score": candidate.get("rank_score"),
+                    "utility": candidate.get("utility"),
+                    "risk": candidate.get("risk"),
+                    "confidence": candidate.get("confidence"),
+                    "selection_status": candidate.get("selection_status"),
+                    "multi_horizon_simulated": bool(candidate.get("simulator_trace")),
+                }
+            )
+        selected_id = str(comparison.get("selected_candidate_id") or "")
+        selected = next(
+            (candidate for candidate in candidates if str(candidate.get("candidate_id") or "") == selected_id),
+            {},
+        )
+        ranking_policy = self._beam_ranking_policy(payload) | {
+            "selection_basis": "spatial_simulator_trace_only",
+            "horizon": comparison.get("horizon"),
+            "input_metric_projection_used_for_selection": False,
+        }
+        return {
+            "schema": "territory_world_model.beam_plan_report.v1",
+            "state_version_id": state_version_id,
+            "project_id": project_id,
+            "scenario": str(payload.get("scenario") or "farmland_layout_optimization_bundle"),
+            "status": "review" if selected else "blocked",
+            "ranking_policy": ranking_policy,
+            "candidates": candidates,
+            "ranking": ranking,
+            "selected": selected,
+            "evidence_gate": {
+                "passed": False,
+                "status": "review" if selected else "blocked",
+                "missing": ["real_observed_transition_holdout", "production_policy_effect_validation"],
+                "selection_trace_available": bool(selected and selected.get("simulator_trace")),
+            },
+            "recommendations": [
+                "retain the selected result as a controlled engineering comparison until real holdout evidence is available",
+                "require human legal review before any operational GIS deployment",
+            ],
+            "multi_horizon_comparison_schema": comparison.get("schema"),
+            "created_at": now_utc_iso(),
+        }
+
+    def _farmland_layout_multi_horizon_comparison(
+        self,
+        state_version_id: str,
+        adapter: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        horizon = max(1, min(12, int(payload.get("horizon") or 3)))
+        gamma = max(0.0, min(1.0, float(safe_float(payload.get("discount_factor"), 0.95) or 0.95)))
+        ranking_policy = self._beam_ranking_policy(payload)
+        legal_actions = [
+            dict(action)
+            for action in adapter.get("candidate_actions") or []
+            if isinstance(action, dict) and bool((action.get("execution_mask") or {}).get("allowed"))
+        ]
+        spatial_runtime = load_optimization_spatial_runtime(Path(str(adapter.get("optimization_dir") or "")))
+        hard_constraint_tolerance_m2 = float(
+            safe_float(
+                (adapter.get("spatial_state_compiler") or {}).get("hard_constraint_tolerance_m2"),
+                1.0,
+            )
+            or 1.0
+        )
+        trajectories: list[dict[str, Any]] = []
+        for action in legal_actions:
+            candidate_id = str(action.get("candidate_id") or "")
+            parameters = dict(action.get("parameters") or {})
+            scenario_type = str(parameters.get("scenario_type") or candidate_id).lower()
+            trace = simulate_optimization_spatial_candidate(
+                runtime=spatial_runtime,
+                candidate_id=candidate_id,
+                scenario_name=str(action.get("description") or candidate_id),
+                initial_state_ref=state_version_id,
+                horizon=horizon,
+                hard_constraint_tolerance_m2=hard_constraint_tolerance_m2,
+                evidence_coverage=float(safe_float(payload.get("evidence_coverage"), 0.0) or 0.0),
+                synthetic=truthy((action.get("provenance") or {}).get("synthetic")),
+                not_for_production=truthy((action.get("provenance") or {}).get("not_for_production")),
+                no_action_baseline="baseline" in scenario_type,
+            )
+            intervention_steps = [
+                dict(step)
+                for step in trace.get("transitions") or []
+                if isinstance(step, dict)
+            ]
+            period_metrics = []
+            discounted_utility = 0.0
+            max_risk = 0.0
+            min_confidence = 1.0
+            trace_completed = str(trace.get("status") or "") == "completed"
+            hard_constraint_passed = trace_completed and len(intervention_steps) == horizon
+            evidence_statuses: list[str] = []
+            writeback_count = 0
+            for idx, step in enumerate(intervention_steps):
+                metrics = dict(step.get("outcome") or {})
+                spatial_state = dict(step.get("next_state") or {})
+                writeback = dict(step.get("state_writeback") or {})
+                recheck = dict(spatial_state.get("constraint_recheck") or {})
+                utility = float(safe_float(metrics.get("spatial_objective_delta"), 0.0) or 0.0)
+                risk = float(safe_float(metrics.get("constraint_violation_probability"), 0.0) or 0.0)
+                confidence = float(safe_float(metrics.get("confidence"), 0.0) or 0.0)
+                evidence_status = str((trace.get("evidence_gate") or {}).get("status") or "review")
+                discounted_utility += (gamma ** idx) * utility
+                max_risk = max(max_risk, risk)
+                min_confidence = min(min_confidence, confidence)
+                hard_constraint_passed = hard_constraint_passed and bool(recheck.get("passed", False))
+                hard_constraint_passed = hard_constraint_passed and bool(writeback.get("parent_link_verified"))
+                if idx:
+                    hard_constraint_passed = hard_constraint_passed and (
+                        writeback.get("from_state_sha256")
+                        == period_metrics[-1].get("state_sha256")
+                    )
+                evidence_statuses.append(evidence_status)
+                writeback_count += int(bool(writeback.get("applied")))
+                period_metrics.append(
+                    {
+                        "period": idx + 1,
+                        "utility_delta": round(utility, 6),
+                        "constraint_risk": round(risk, 6),
+                        "confidence": round(confidence, 6),
+                        "evidence_gate_status": evidence_status,
+                        "state_sha256": spatial_state.get("state_sha256"),
+                        "geometry_sha256": spatial_state.get("geometry_sha256"),
+                        "area_m2": spatial_state.get("area_m2"),
+                        "action_count": spatial_state.get("action_count"),
+                        "completion_ratio": spatial_state.get("completion_ratio"),
+                        "outcome_metrics": spatial_state.get("outcome_metrics") or {},
+                        "relation_counts_by_type": spatial_state.get("relation_counts_by_type") or {},
+                        "constraint_recheck": recheck,
+                        "state_writeback": writeback,
+                        "transition_sha256": step.get("transition_sha256"),
+                    }
+                )
+            if min_confidence == 1.0 and not intervention_steps:
+                min_confidence = 0.0
+            rank_score = self._beam_rank_score(
+                utility=discounted_utility,
+                risk=max_risk,
+                confidence=min_confidence,
+                blocked=not hard_constraint_passed,
+                evidence_status="pass" if evidence_statuses and all(status == "pass" for status in evidence_statuses) else "review",
+                ranking_policy=ranking_policy,
+            )
+            trajectories.append(
+                {
+                    "candidate_id": candidate_id,
+                    "scenario_name": action.get("description") or candidate_id,
+                    "horizon": horizon,
+                    "periods": period_metrics,
+                    "discounted_cumulative_utility": round(discounted_utility, 6),
+                    "max_constraint_risk": round(max_risk, 6),
+                    "minimum_confidence": round(min_confidence, 6),
+                    "hard_constraint_passed_all_periods": hard_constraint_passed,
+                    "evidence_gate_status": "pass" if evidence_statuses and all(status == "pass" for status in evidence_statuses) else "review",
+                    "state_writeback_count": writeback_count,
+                    "trace_completed": trace_completed,
+                    "simulation_errors": list(trace.get("errors") or []),
+                    "rank_score": rank_score,
+                    "simulator_trace": trace,
+                }
+            )
+        trajectories.sort(
+            key=lambda item: (
+                bool(item.get("hard_constraint_passed_all_periods")),
+                float(item.get("rank_score") or 0.0),
+                float(item.get("minimum_confidence") or 0.0),
+            ),
+            reverse=True,
+        )
+        for rank, trajectory in enumerate(trajectories, start=1):
+            trajectory["rank"] = rank
+        selected = next((item for item in trajectories if item.get("hard_constraint_passed_all_periods")), {})
+        transition_hashes = {
+            str(period.get("transition_sha256") or "")
+            for item in trajectories
+            for period in item.get("periods") or []
+            if str(period.get("transition_sha256") or "")
+        }
+        simulator_call_count = sum(len(item.get("periods") or []) for item in trajectories)
+        completed_trajectories = [
+            item
+            for item in trajectories
+            if item.get("trace_completed") and len(item.get("periods") or []) == horizon
+        ]
+        state_materialization_count = int(
+            (adapter.get("spatial_state_compiler") or {}).get("transition_evaluation_count") or 0
+        )
+        return {
+            "schema": "territory_world_model.multi_candidate_multi_horizon_comparison.v1",
+            "status": "pass" if legal_actions and len(completed_trajectories) == len(legal_actions) else "blocked",
+            "horizon": horizon,
+            "discount_factor": gamma,
+            "legal_candidate_count": len(legal_actions),
+            "simulator_attempted_candidate_count": len(trajectories),
+            "simulated_candidate_count": len(completed_trajectories),
+            "candidate_trajectories": trajectories,
+            "ranking": [
+                {
+                    "rank": item.get("rank"),
+                    "candidate_id": item.get("candidate_id"),
+                    "rank_score": item.get("rank_score"),
+                    "discounted_cumulative_utility": item.get("discounted_cumulative_utility"),
+                    "max_constraint_risk": item.get("max_constraint_risk"),
+                    "minimum_confidence": item.get("minimum_confidence"),
+                    "hard_constraint_passed_all_periods": item.get("hard_constraint_passed_all_periods"),
+                }
+                for item in trajectories
+            ],
+            "selected_candidate_id": selected.get("candidate_id"),
+            "execution_accounting": {
+                "simulator_call_count": simulator_call_count,
+                "unique_state_transition_count": len(transition_hashes),
+                "candidate_admissibility_evaluation_count": len(adapter.get("candidate_actions") or []),
+                "renderer_spatial_state_evaluation_count": state_materialization_count,
+                "legal_candidate_transition_count": simulator_call_count,
+                "state_writeback_count": sum(int(item.get("state_writeback_count") or 0) for item in trajectories),
+                "hard_constraint_recomputation_count": sum(
+                    int(bool((period.get("constraint_recheck") or {}).get("method")))
+                    for item in trajectories
+                    for period in item.get("periods") or []
+                ),
+                "formula": "legal_candidates * horizon; each legal candidate is one independent state-action trajectory",
+            },
+            "strict_execution": {
+                "all_legal_candidates_simulated": bool(legal_actions) and len(completed_trajectories) == len(legal_actions),
+                "all_periods_state_written_back": all(
+                    item.get("trace_completed") and int(item.get("state_writeback_count") or 0) == horizon
+                    for item in trajectories
+                ) if legal_actions and len(trajectories) == len(legal_actions) else False,
+                "hard_constraints_recomputed_each_period": all(
+                    item.get("trace_completed")
+                    and len(item.get("periods") or []) == horizon
+                    and all(bool((period.get("constraint_recheck") or {}).get("method")) for period in item.get("periods") or [])
+                    for item in trajectories
+                ) if legal_actions and len(trajectories) == len(legal_actions) else False,
+                "selection_uses_multi_horizon_rank": bool(selected),
+                "planner_consumes_simulator_trace_only": all(
+                    bool(item.get("simulator_trace"))
+                    and not bool(((item.get("simulator_trace") or {}).get("backend") or {}).get("precomputed_period_states_consumed"))
+                    for item in trajectories
+                ) if legal_actions and len(trajectories) == len(legal_actions) else False,
+            },
+            "transition_sources": [
+                "optimization_bundle_action_membership",
+                "GIS_geometry_intersection_and_topology",
+                "action_conditioned_recursive_state_writeback",
+                SPATIAL_SIMULATOR_BACKEND,
+            ],
+            "claim_boundary": {
+                "supported": "engineering_fixture_multi_horizon_GIS_rule_mechanism_execution",
+                "not_supported": "learned_real_world_dynamics_or_production_effect_validation",
+            },
+        }
+
+    def _apply_multi_horizon_selection(
+        self,
+        beam_report: dict[str, Any],
+        comparison: dict[str, Any],
+    ) -> dict[str, Any]:
+        report = dict(beam_report)
+        trajectories = {
+            str(item.get("candidate_id") or ""): dict(item)
+            for item in comparison.get("candidate_trajectories") or []
+            if isinstance(item, dict)
+        }
+        candidates = [dict(item) for item in report.get("candidates") or [] if isinstance(item, dict)]
+        for candidate in candidates:
+            trajectory = trajectories.get(str(candidate.get("candidate_id") or ""))
+            if not trajectory:
+                continue
+            candidate["multi_horizon"] = {
+                key: value
+                for key, value in trajectory.items()
+                if key != "rollout_trace"
+            }
+            candidate["rank_score"] = trajectory.get("rank_score")
+            candidate["utility"] = trajectory.get("discounted_cumulative_utility")
+            candidate["risk"] = trajectory.get("max_constraint_risk")
+            candidate["confidence"] = trajectory.get("minimum_confidence")
+        candidates.sort(
+            key=lambda item: (
+                str(item.get("candidate_id") or "") in trajectories,
+                float((trajectories.get(str(item.get("candidate_id") or "")) or {}).get("rank_score") or item.get("rank_score") or 0.0),
+            ),
+            reverse=True,
+        )
+        selected_id = str(comparison.get("selected_candidate_id") or "")
+        selected = next((item for item in candidates if str(item.get("candidate_id") or "") == selected_id), {})
+        ranking = []
+        for rank, item in enumerate(candidates, start=1):
+            item["rank"] = rank
+            ranking.append(
+                {
+                    "rank": rank,
+                    "candidate_id": item.get("candidate_id"),
+                    "action_type": (item.get("action") or {}).get("action_type"),
+                    "rank_score": item.get("rank_score"),
+                    "utility": item.get("utility"),
+                    "risk": item.get("risk"),
+                    "confidence": item.get("confidence"),
+                    "selection_status": item.get("selection_status"),
+                    "multi_horizon_simulated": str(item.get("candidate_id") or "") in trajectories,
+                }
+            )
+        report["candidates"] = candidates
+        report["ranking"] = ranking
+        report["selected"] = selected
+        report["ranking_policy"] = dict(report.get("ranking_policy") or {}) | {
+            "selection_basis": "multi_candidate_multi_horizon_recursive_rollout",
+            "horizon": comparison.get("horizon"),
+        }
+        report["multi_horizon_comparison_schema"] = comparison.get("schema")
+        return report
 
     def selected_plan_evaluation_bundle(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
@@ -3799,7 +7192,7 @@ class TerritoryWorldModelService:
             "evidence_coverage": payload.get("evidence_coverage"),
             "treatment": payload.get("treatment") or "",
             "parameters": dict(payload.get("parameters") or {}),
-            "scenario_context": dict(payload.get("scenario_context") or {}),
+            "scenario_context": _mapping_payload(payload.get("scenario_context")),
         }
         self._copy_dynamics_candidate_payload(payload, forecast_payload)
         forecast = self.forecast(state_version_id, forecast_payload)
@@ -3821,7 +7214,7 @@ class TerritoryWorldModelService:
                     "parameters": dict(payload.get("parameters") or {}),
                 }
             ],
-            "scenario_context": dict(payload.get("scenario_context") or {}),
+            "scenario_context": _mapping_payload(payload.get("scenario_context")),
         }
         self._copy_dynamics_candidate_payload(payload, rollout_payload)
         rollout = self.counterfactual_rollout(state_version_id, rollout_payload)
@@ -3949,7 +7342,7 @@ class TerritoryWorldModelService:
                 core_algorithm={
                     "role_in_taxonomy": "simulator",
                     "algorithm_family": "action-conditioned territorial dynamics",
-                    "core_algorithm": "multi-head forecast + counterfactual rollout over future_latent_state / constraint / utility / uncertainty, backed by deterministic scaffold, trainable MLP candidate, hierarchical graph-temporal candidate, or lightweight spatiotemporal transformer candidate",
+                    "core_algorithm": "multi-head forecast + counterfactual rollout over a future-state latent decoded into area, feature-count, land-space-type and transition-delta summaries, plus constraint, utility and uncertainty, backed by deterministic scaffold, trainable MLP candidate, hierarchical graph-temporal candidate, or lightweight spatiotemporal transformer candidate",
                     "current_implementation": [
                         "deterministic forecast scaffold",
                         "counterfactual rollout",
@@ -3960,7 +7353,7 @@ class TerritoryWorldModelService:
                     "note": "The current trainable simulator includes small candidate backends, not yet the final production-scale territorial graph transformer.",
                 },
                 implemented_components=[
-                    "future latent state forecast",
+                    "future-state latent decoded into area, feature-count, land-space-type and transition-delta summaries",
                     "constraint violation probability",
                     "counterfactual rollout",
                     "uncertainty and calibration metadata",
@@ -4093,7 +7486,14 @@ class TerritoryWorldModelService:
                 "scenario_context",
                 "split",
                 "temporal_holdout",
+                "holdout_year",
+                "rule_version",
+                "policy_version",
+                "model_version",
+                "baseline_version",
+                "random_seed",
                 "thresholds",
+                "geofm_gate_report",
                 "include_synthetic",
                 "max_examples",
                 "limit",
@@ -4125,7 +7525,7 @@ class TerritoryWorldModelService:
                 "scenario": scenario,
                 "horizon": horizon,
                 "evidence_coverage": evidence_coverage,
-                "scenario_context": dict(payload.get("scenario_context") or {}),
+                "scenario_context": _mapping_payload(payload.get("scenario_context")),
             },
         )
         source_transition_examples = self._temporal_transition_examples_from_state_snapshots(
@@ -4160,7 +7560,7 @@ class TerritoryWorldModelService:
                 scenario=scenario,
                 rule_hits=rule_hits,
                 evidence_coverage=evidence_coverage,
-                scenario_context=dict(payload.get("scenario_context") or {}),
+                scenario_context=_mapping_payload(payload.get("scenario_context")),
             )
             action_mask = (forecast.evidence_gate or {}).get("action_mask") or {}
             not_for_training: list[str] = []
@@ -4182,7 +7582,7 @@ class TerritoryWorldModelService:
                 scenario_context={
                     "scenario": scenario,
                     "horizon": horizon,
-                    "scenario_context": dict(payload.get("scenario_context") or {}),
+                    "scenario_context": _mapping_payload(payload.get("scenario_context")),
                     "temporal_holdout": self._temporal_holdout_policy(payload),
                 },
                 targets={
@@ -4212,6 +7612,10 @@ class TerritoryWorldModelService:
                 evidence_gate=forecast.evidence_gate,
                 provenance={
                     "state_version_id": state_version_id,
+                    "action_target_objects": self._dynamics_action_target_object_provenance(
+                        action,
+                        list(state_bundle["objects"]),
+                    ),
                     "rule_hit_count": len(rule_hits),
                     "evidence_item_count": len(evidence_items),
                     "validation_overall_status": validation.get("overall_status"),
@@ -4224,6 +7628,7 @@ class TerritoryWorldModelService:
             examples.append(example)
         examples.extend(source_transition_examples)
         examples.sort(key=lambda item: item.labels.get("ranking_score", 0.0), reverse=True)
+        state_contract = self.state_contract_report(state_version_id, payload)
         dataset = TwmDynamicsTrainingDataset(
             state_version_id=state_version_id,
             project_id=state.project_id,
@@ -4249,6 +7654,12 @@ class TerritoryWorldModelService:
                     "deterministic_scaffold": sum(1 for item in examples if item.labels.get("supervision_source") == "deterministic_scaffold"),
                     "state_snapshots": sum(1 for item in examples if item.labels.get("supervision_source") == "state_snapshots"),
                 },
+                "mrep_trace": self._dynamics_dataset_mrep_trace(
+                    state=state,
+                    payload=payload,
+                    examples=examples,
+                    state_contract=state_contract,
+                ),
                 "schema_notes": [
                     "This is a training-data contract for future trainable dynamics.",
                     "Forecast scaffold targets are generated by deterministic TWM logic and must not be treated as ground truth labels.",
@@ -4281,6 +7692,16 @@ class TerritoryWorldModelService:
                 "thresholds",
                 "require_geofm_pass",
                 "require_causal_pass",
+                "require_production_observed_history",
+                "require_production_readiness",
+                "require_same_case_baseline",
+                "min_production_ready_observed_history_rows",
+                "min_same_case_overlap_ratio",
+                "production_observed_history_preflight",
+                "observed_history_preflight",
+                "production_history_preflight",
+                "baseline_evidence_pipeline_report",
+                "baseline_export_validation_report",
                 "uses_geofm",
                 "geofm_required",
                 "uses_causal_calibration",
@@ -4431,6 +7852,5552 @@ class TerritoryWorldModelService:
             recommendations=self._dynamics_evaluation_recommendations(evidence_gate, candidate, eval_inventory),
         )
         return report.to_dict()
+
+    def dynamics_evaluation_bundle(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        dataset_payload = payload.get("dataset")
+        dataset = dict(dataset_payload) if isinstance(dataset_payload, dict) else self.dynamics_training_examples(state_version_id, payload)
+        readiness = self.dynamics_readiness_report(state_version_id, {**payload, "dataset": dataset})
+        evaluation = self.dynamics_evaluation_report(state_version_id, {**payload, "dataset": dataset})
+        registry = self.dynamics_model_registry_report(
+            state_version_id,
+            {
+                "dynamics_training_dataset": dataset,
+                "candidate_report": payload.get("candidate_report") or {
+                    "candidate": evaluation.get("candidate") or {},
+                    "status": evaluation.get("status", "review"),
+                    "evidence_gate": evaluation.get("evidence_gate") or {},
+                    "evaluation": evaluation,
+                },
+                "readiness_report": readiness,
+                "evaluation_report": evaluation,
+                "registry_metadata": payload.get("registry_metadata") or payload.get("metadata") or {},
+                "production_data_gate": payload.get("production_data_gate") or payload.get("production_gate") or {},
+                "current_registry_key": payload.get("current_registry_key") or payload.get("production_registry_key") or "",
+            },
+        )
+        evidence_summary = self._dynamics_evaluation_bundle_evidence_summary(dataset, readiness, evaluation, registry)
+        status = "pass" if not evidence_summary["blocking_missing"] else "review"
+        if readiness.get("status") == "blocked" or evaluation.get("status") == "blocked":
+            status = "blocked"
+        summary = self._payload_mapping(dataset.get("summary"))
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_evaluation_bundle.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "dataset": {
+                "schema": dataset.get("schema"),
+                "example_count": summary.get("example_count", len(dataset.get("examples") or [])),
+                "usable_example_count": summary.get("usable_example_count", 0),
+                "review_example_count": summary.get("review_example_count", 0),
+                "mrep_trace": summary.get("mrep_trace") or {},
+            },
+            "readiness": readiness,
+            "evaluation": evaluation,
+            "registry": registry,
+            "split_summary": self._dynamics_evaluation_bundle_split_summary(dataset),
+            "evidence_summary": evidence_summary,
+            "promotion_blockers": list(registry.get("missing_for_promotion") or []),
+            "recommendations": self._dynamics_evaluation_bundle_recommendations(evidence_summary, registry),
+            "claim_boundary": {
+                "status": "review_only_until_promotion_gates_pass",
+                "non_goals": [
+                    "full_future_geometry_generation",
+                    "broad_flus_geosos_superiority",
+                    "autonomous_l3_self_evolution",
+                ],
+            },
+        }))
+
+    def _dynamics_evaluation_bundle_split_summary(self, dataset: dict[str, Any]) -> dict[str, Any]:
+        summary = self._payload_mapping(dataset.get("summary"))
+        mrep_trace = self._payload_mapping(summary.get("mrep_trace"))
+        split_definition = self._payload_mapping(mrep_trace.get("split_definition"))
+        examples = list(dataset.get("examples") or [])
+        split_counts: dict[str, int] = {}
+        for item in examples:
+            split = compact_text(self._payload_mapping(item).get("split") or "unknown")
+            split_counts[split] = split_counts.get(split, 0) + 1
+        return {
+            "split": split_definition.get("split") or "default",
+            "temporal_holdout": split_definition.get("temporal_holdout") or summary.get("temporal_holdout") or {},
+            "holdout_example_count": split_definition.get(
+                "holdout_example_count",
+                sum(1 for item in examples if self._payload_mapping(item).get("split") == "holdout"),
+            ),
+            "split_counts": split_counts,
+        }
+
+    def _dynamics_evaluation_bundle_evidence_summary(
+        self,
+        dataset: dict[str, Any],
+        readiness: dict[str, Any],
+        evaluation: dict[str, Any],
+        registry: dict[str, Any],
+    ) -> dict[str, Any]:
+        summary = self._payload_mapping(dataset.get("summary"))
+        mrep_trace = self._payload_mapping(summary.get("mrep_trace"))
+        registry_missing = list(registry.get("missing_for_promotion") or [])
+        missing_registry_metadata = list(registry.get("missing_registry_metadata") or [])
+        blocking_missing = sorted(set(registry_missing + missing_registry_metadata))
+        return {
+            "dataset_snapshot_hash": mrep_trace.get("dataset_snapshot_hash"),
+            "mrep_trace_status": "pass"
+            if mrep_trace.get("schema") == "territory_world_model.mrep_trace.v1" and mrep_trace.get("dataset_snapshot_hash")
+            else "missing",
+            "readiness_status": readiness.get("status", "review"),
+            "evaluation_status": evaluation.get("status", "review"),
+            "registry_promotion_decision": registry.get("promotion_decision", "review_only_not_promoted"),
+            "registry_missing": registry_missing,
+            "missing_registry_metadata": missing_registry_metadata,
+            "blocking_missing": blocking_missing,
+        }
+
+    def _dynamics_evaluation_bundle_recommendations(self, evidence_summary: dict[str, Any], registry: dict[str, Any]) -> list[str]:
+        recommendations = [
+            "use this bundle as the required evidence packet for P2A dynamics model comparisons",
+            "compare model families only when they share the same dataset snapshot hash and split summary",
+        ]
+        if evidence_summary.get("blocking_missing"):
+            recommendations.append("resolve promotion blockers before nominating this candidate for controlled pilot")
+        if registry.get("promotion_decision") != "candidate_for_registry_promotion":
+            recommendations.append("keep this model review-only until registry promotion decision passes")
+        return recommendations
+
+    def pilot_package_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        dataset_payload = payload.get("dataset")
+        dataset = dict(dataset_payload) if isinstance(dataset_payload, dict) else self.dynamics_training_examples(state_version_id, payload)
+        state_contract = self.state_contract_report(state_version_id, {**payload, "dataset": dataset})
+        dynamics_bundle = self.dynamics_evaluation_bundle(state_version_id, {**payload, "dataset": dataset})
+        summary = self._payload_mapping(dataset.get("summary"))
+        mrep_trace = self._payload_mapping(summary.get("mrep_trace"))
+        trajectory_manifest = self._pilot_package_trajectory_dataset_manifest(dataset, mrep_trace)
+        package_gates = self._pilot_package_gate_summary(
+            state_contract=state_contract,
+            mrep_trace=mrep_trace,
+            dynamics_bundle=dynamics_bundle,
+            payload=payload,
+        )
+        promotion_blockers = self._pilot_package_promotion_blockers(package_gates, trajectory_manifest)
+        strict_blocked = any(
+            bool(gate.get("required")) and gate.get("status") != "pass"
+            for gate in package_gates.values()
+        )
+        if dynamics_bundle.get("status") == "blocked" or package_gates["mrep_trace"].get("status") != "pass":
+            strict_blocked = True
+        status = "blocked" if strict_blocked else "pass" if not promotion_blockers else "review"
+        dataset_hash = compact_text(mrep_trace.get("dataset_snapshot_hash") or trajectory_manifest.get("dataset_snapshot_hash"))
+        package_id = compact_text(payload.get("package_id") or payload.get("pilot_package_id") or "")
+        if not package_id:
+            package_id = f"pilot:{state.project_id}:{dataset_hash[:12] or state_version_id[:12]}"
+        result = {
+            "schema": "territory_world_model.pilot_package.v1",
+            "generated_at": now_utc_iso(),
+            "package_id": package_id,
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "state_contract": state_contract,
+            "dataset": {
+                "schema": dataset.get("schema"),
+                "example_count": summary.get("example_count", len(dataset.get("examples") or [])),
+                "usable_example_count": summary.get("usable_example_count", 0),
+                "review_example_count": summary.get("review_example_count", 0),
+            },
+            "mrep_trace": mrep_trace,
+            "trajectory_dataset_manifest": trajectory_manifest,
+            "dynamics_evaluation_bundle": dynamics_bundle,
+            "split_summary": {
+                "temporal": self._payload_mapping(mrep_trace.get("split_definition")),
+                "spatial": self._payload_mapping(payload.get("spatial_split")),
+            },
+            "package_gates": package_gates,
+            "evidence_summary": {
+                "package_id": package_id,
+                "dataset_snapshot_hash": dataset_hash,
+                "state_contract_status": state_contract.get("status", "review"),
+                "dynamics_evaluation_bundle_status": dynamics_bundle.get("status", "review"),
+                "same_case_baseline_status": package_gates["same_case_baseline"].get("status"),
+                "production_data_status": package_gates["production_data"].get("status"),
+                "baseline_reference": package_gates["same_case_baseline"].get("baseline_reference"),
+            },
+            "promotion_blockers": promotion_blockers,
+            "lance_sidecar_manifest": (
+                self._pilot_package_lance_sidecar_manifest(package_id, trajectory_manifest)
+                if truthy(payload.get("include_lance_sidecar") or payload.get("lance_sidecar"))
+                else None
+            ),
+            "recommendations": self._pilot_package_recommendations(status, promotion_blockers),
+            "claim_boundary": {
+                "status": "pilot_package_is_evidence_contract_not_model_promotion",
+                "non_goals": [
+                    "model_family_superiority",
+                    "production_readiness",
+                    "full_future_geometry_generation",
+                    "autonomous_l3_self_evolution",
+                ],
+            },
+        }
+        return json.loads(_json(result))
+
+    def dynamics_model_shootout_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        package_payload = payload.get("pilot_package_report") or payload.get("pilot_package")
+        pilot_package = (
+            self._payload_mapping(package_payload)
+            if isinstance(package_payload, dict)
+            else self.pilot_package_report(state_version_id, payload)
+        )
+        package_integrity = self._dynamics_shootout_package_integrity(pilot_package)
+        auto_candidate_reports, auto_training = self._dynamics_shootout_auto_train_candidate_reports(
+            state_version_id=state_version_id,
+            payload=payload,
+            package_integrity=package_integrity,
+        )
+        baseline_candidate_reports, auto_baselines = self._dynamics_shootout_auto_baseline_candidate_reports(
+            state_version_id=state_version_id,
+            payload=payload,
+            package_integrity=package_integrity,
+        )
+        candidate_reports = self._dynamics_shootout_candidate_reports(payload) + baseline_candidate_reports + auto_candidate_reports
+        candidate_reports, auto_fov_stress_generation = self._dynamics_shootout_auto_fov_stress_candidate_reports(
+            payload=payload,
+            candidate_reports=candidate_reports,
+            package_integrity=package_integrity,
+        )
+        candidate_summaries = [
+            self._dynamics_shootout_candidate_summary(
+                item,
+                index=index,
+                package_integrity=package_integrity,
+            )
+            for index, item in enumerate(candidate_reports)
+        ]
+        complexity_gain_gate = self._dynamics_shootout_complexity_gain_gate(candidate_summaries)
+        self._dynamics_shootout_apply_complexity_gain_gate(
+            candidate_summaries=candidate_summaries,
+            complexity_gain_gate=complexity_gain_gate,
+            package_integrity=package_integrity,
+        )
+        active_regression_suite_gate = self._dynamics_shootout_apply_active_regression_suite_gate(
+            candidate_summaries=candidate_summaries,
+            active_regression_suite_manifest=self._active_regression_suite_manifest(payload),
+            package_binding=package_integrity,
+        )
+        fov_stress_summary = self._dynamics_shootout_fov_stress_summary(candidate_summaries)
+        ranked_candidates = sorted(
+            candidate_summaries,
+            key=lambda item: (
+                1 if item.get("blockers") else 0,
+                -float(item.get("shootout_score") or 0.0),
+                str(item.get("candidate_id") or ""),
+            ),
+        )
+        eligible_candidates = [item for item in ranked_candidates if not item.get("blockers")]
+        promotion_recommendation = (
+            {
+                "candidate_id": eligible_candidates[0]["candidate_id"],
+                "model_family": eligible_candidates[0]["model_family"],
+                "recommendation": eligible_candidates[0]["recommendation"],
+                "shootout_score": eligible_candidates[0]["shootout_score"],
+                "claim_status": "review_only_until_replay_registry_and_production_gates_pass",
+            }
+            if eligible_candidates
+            else {
+                "candidate_id": None,
+                "recommendation": "blocked",
+                "claim_status": "no_eligible_candidate",
+            }
+        )
+        mismatch_blockers = sorted(
+            {
+                blocker
+                for item in candidate_summaries
+                for blocker in item.get("blockers", [])
+                if blocker.endswith("_mismatch") or blocker.endswith("_missing")
+            }
+        )
+        status = "blocked" if candidate_reports and not eligible_candidates else "review"
+        if not candidate_reports:
+            status = "blocked"
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_model_shootout_report.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "package_integrity": {
+                **package_integrity,
+                "candidate_mismatch_blockers": mismatch_blockers,
+            },
+            "candidate_count": len(candidate_summaries),
+            "eligible_candidate_count": len(eligible_candidates),
+            "auto_training": auto_training,
+            "auto_baselines": auto_baselines,
+            "auto_fov_stress_generation": auto_fov_stress_generation,
+            "fov_stress_summary": fov_stress_summary,
+            "complexity_gain_gate": complexity_gain_gate,
+            "active_regression_suite_gate": active_regression_suite_gate,
+            "candidate_summaries": candidate_summaries,
+            "ranked_candidates": ranked_candidates,
+            "promotion_recommendation": promotion_recommendation,
+            "comparison_scope": {
+                "required_families": [
+                    "deterministic_rule_baseline",
+                    "persistence_markov_baseline",
+                    "mlp_multi_head_dynamics",
+                    "hierarchical_graph_dynamics",
+                    "spatiotemporal_transformer_dynamics",
+                ],
+                "optional_families": [
+                    "flus_geosos_adapter",
+                    "mpc_baseline",
+                    "geofm_augmented_dynamics",
+                ],
+                "selection_unit": "one_pilot_package_one_dataset_hash_one_split_definition",
+            },
+            "recommendations": self._dynamics_shootout_recommendations(package_integrity, candidate_summaries, eligible_candidates),
+            "claim_boundary": {
+                "status": "shootout_is_algorithm_selection_not_production_promotion",
+                "non_goals": [
+                    "production_readiness",
+                    "full_future_geometry_generation",
+                    "broad_flus_geosos_superiority",
+                    "autonomous_l3_self_evolution",
+                ],
+            },
+        }))
+
+    def same_case_planner_replay_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        package_payload = payload.get("pilot_package_report") or payload.get("pilot_package")
+        pilot_package = (
+            self._payload_mapping(package_payload)
+            if isinstance(package_payload, dict)
+            else self.pilot_package_report(state_version_id, payload)
+        )
+        shootout_payload = (
+            payload.get("dynamics_model_shootout_report")
+            or payload.get("shootout_report")
+            or payload.get("model_shootout_report")
+        )
+        shootout = (
+            self._payload_mapping(shootout_payload)
+            if isinstance(shootout_payload, dict)
+            else self.dynamics_model_shootout_report(state_version_id, {**payload, "pilot_package_report": pilot_package})
+        )
+        package_integrity = self._dynamics_shootout_package_integrity(pilot_package)
+        package_binding = self._same_case_replay_package_binding(package_integrity, shootout)
+        selected_candidate = self._same_case_replay_selected_candidate(shootout, payload)
+        replay_cases = self._same_case_replay_cases(payload)
+        top_k = max(1, safe_int(payload.get("top_k") or payload.get("k"), 1))
+        case_results = [
+            self._same_case_replay_case_result(item, top_k=top_k)
+            for item in replay_cases
+        ]
+        replay_metrics = self._same_case_replay_metrics(case_results)
+        outcome_summary = self._same_case_replay_outcome_summary(case_results)
+        loss_cases = [
+            self._same_case_replay_loss_case(item)
+            for item in case_results
+            if item.get("outcome") == "lose"
+        ]
+        active_regression_suite_gate = self._active_regression_suite_gate(
+            manifest=self._active_regression_suite_manifest(payload),
+            covered_case_ids=[item.get("case_id") for item in case_results],
+            package_binding=package_binding,
+        )
+        blockers = list(package_binding.get("blockers") or [])
+        if not selected_candidate.get("candidate_id"):
+            blockers.append("selected_candidate")
+        if not replay_cases:
+            blockers.append("same_case_replay_cases")
+        if selected_candidate.get("blockers"):
+            blockers.append("selected_candidate_blockers")
+        if active_regression_suite_gate.get("status") == "blocked":
+            blockers.append("active_regression_suite_cases")
+        blockers = sorted(set(blockers))
+        status = "blocked" if blockers else "review"
+        promotion_gate = self._same_case_replay_promotion_gate(
+            blockers=blockers,
+            replay_metrics=replay_metrics,
+            outcome_summary=outcome_summary,
+        )
+        return json.loads(_json({
+            "schema": "territory_world_model.same_case_planner_replay_report.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "selected_candidate": selected_candidate,
+            "package_binding": package_binding,
+            "replay_scope": {
+                "top_k": top_k,
+                "selection_policy": "payload_selected_candidate_or_top_eligible_shootout_candidate",
+                "comparison_unit": "same_case_action_replay",
+            },
+            "replay_metrics": replay_metrics,
+            "outcome_summary": outcome_summary,
+            "loss_cases": loss_cases[:safe_int(payload.get("max_loss_cases"), 25)],
+            "case_results": case_results[:safe_int(payload.get("max_case_results"), 25)],
+            "active_regression_suite_gate": active_regression_suite_gate,
+            "promotion_gate": promotion_gate,
+            "recommendations": self._same_case_replay_recommendations(blockers, outcome_summary, replay_metrics),
+            "claim_boundary": {
+                "status": "same_case_replay_is_decision_evidence_not_production_promotion",
+                "max_claim": "promotion_candidate_review",
+                "non_goals": [
+                    "production_readiness",
+                    "autonomous_l3_self_evolution",
+                    "broad_model_family_superiority",
+                    "causal_policy_effect_proof",
+                ],
+            },
+        }))
+
+    def _same_case_replay_package_binding(self, package_integrity: dict[str, Any], shootout: dict[str, Any]) -> dict[str, Any]:
+        shootout_integrity = self._payload_mapping(shootout.get("package_integrity"))
+        package_id = compact_text(package_integrity.get("package_id") or "")
+        dataset_hash = compact_text(package_integrity.get("dataset_snapshot_hash") or "")
+        shootout_package_id = compact_text(shootout_integrity.get("package_id") or "")
+        shootout_dataset_hash = compact_text(shootout_integrity.get("dataset_snapshot_hash") or "")
+        blockers: list[str] = []
+        if package_id and shootout_package_id and package_id != shootout_package_id:
+            blockers.append("package_id_mismatch")
+        if dataset_hash and shootout_dataset_hash and dataset_hash != shootout_dataset_hash:
+            blockers.append("dataset_snapshot_hash_mismatch")
+        split_summary = self._payload_mapping(package_integrity.get("split_summary"))
+        shootout_split = self._payload_mapping(shootout_integrity.get("split_summary"))
+        if split_summary and shootout_split and _stable_sha256(split_summary) != _stable_sha256(shootout_split):
+            blockers.append("split_summary_mismatch")
+        return {
+            "status": "pass" if not blockers else "blocked",
+            "package_id": package_id,
+            "shootout_package_id": shootout_package_id,
+            "dataset_snapshot_hash": dataset_hash,
+            "shootout_dataset_snapshot_hash": shootout_dataset_hash,
+            "split_summary": split_summary,
+            "blockers": sorted(set(blockers)),
+        }
+
+    def _same_case_replay_selected_candidate(self, shootout: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+        requested_id = compact_text(payload.get("selected_candidate_id") or payload.get("candidate_id") or "")
+        promotion = self._payload_mapping(shootout.get("promotion_recommendation"))
+        selected_id = requested_id or compact_text(promotion.get("candidate_id") or "")
+        summaries = [
+            self._payload_mapping(item)
+            for item in shootout.get("candidate_summaries") or []
+            if isinstance(item, dict)
+        ]
+        ranked = [
+            self._payload_mapping(item)
+            for item in shootout.get("ranked_candidates") or []
+            if isinstance(item, dict)
+        ]
+        if not selected_id:
+            selected = next((item for item in ranked if not item.get("blockers")), {})
+        else:
+            selected = next(
+                (item for item in summaries + ranked if compact_text(item.get("candidate_id") or "") == selected_id),
+                {},
+            )
+        return {
+            "candidate_id": compact_text(selected.get("candidate_id") or selected_id),
+            "model_family": compact_text(selected.get("model_family") or ""),
+            "model_name": compact_text(selected.get("model_name") or ""),
+            "model_version": compact_text(selected.get("model_version") or ""),
+            "shootout_score": selected.get("shootout_score"),
+            "recommendation": selected.get("recommendation"),
+            "promotion_limits": list(selected.get("promotion_limits") or []),
+            "blockers": list(selected.get("blockers") or []),
+        }
+
+    def _same_case_replay_cases(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
+        raw = (
+            payload.get("replay_cases")
+            or payload.get("same_case_replay_cases")
+            or payload.get("planner_replay_cases")
+            or []
+        )
+        if not raw:
+            baseline_artifacts = self._payload_mapping(
+                payload.get("baseline_planner_artifacts")
+                or payload.get("baseline_replay")
+                or payload.get("planner_artifacts")
+            )
+            raw = baseline_artifacts.get("replay_cases") or baseline_artifacts.get("cases") or []
+        if isinstance(raw, dict):
+            raw = [raw]
+        if not isinstance(raw, list):
+            return []
+        return [self._payload_mapping(item) for item in raw if isinstance(item, dict)]
+
+    def _same_case_replay_case_result(self, row: dict[str, Any], *, top_k: int) -> dict[str, Any]:
+        target = self._same_case_replay_decision(row, ["target_decision", "observed_decision", "ground_truth", "target"])
+        candidate = self._same_case_replay_decision(row, ["candidate_decision", "model_decision", "twm_decision", "candidate"])
+        baseline = self._same_case_replay_decision(row, ["baseline_decision", "rule_baseline_decision", "human_decision", "baseline"])
+        target_allowed = self._same_case_replay_allowed(target)
+        candidate_allowed = self._same_case_replay_allowed(candidate)
+        baseline_allowed = self._same_case_replay_allowed(baseline)
+        candidate_rank = safe_int(candidate.get("rank") or candidate.get("rank_position") or candidate.get("top_k_rank"), top_k)
+        candidate_top_k = candidate_rank <= top_k
+        legal_feasible_top_k_hit = bool(candidate_top_k and candidate_allowed is True and target_allowed is True)
+        false_allow = bool(candidate_allowed is True and target_allowed is False)
+        false_block = bool(candidate_allowed is False and target_allowed is True)
+        blocked_action_hit = bool(candidate_allowed is False and target_allowed is False)
+        target_utility = float(safe_float(target.get("utility") or target.get("score"), 0.0) or 0.0)
+        candidate_utility = float(safe_float(candidate.get("utility") or candidate.get("score"), 0.0) or 0.0)
+        baseline_utility = float(safe_float(baseline.get("utility") or baseline.get("score"), 0.0) or 0.0)
+        candidate_regret = max(0.0, target_utility - candidate_utility)
+        baseline_regret = max(0.0, target_utility - baseline_utility)
+        utility_delta = candidate_utility - baseline_utility
+        loss_type = ""
+        outcome = "tie"
+        if false_allow:
+            loss_type = "false_allow"
+            outcome = "lose"
+        elif false_block:
+            loss_type = "false_block"
+            outcome = "lose"
+        elif utility_delta > 1e-9 or (blocked_action_hit and baseline_allowed is True):
+            outcome = "improve"
+        elif utility_delta < -1e-9:
+            loss_type = "planner_regret"
+            outcome = "lose"
+        return {
+            "case_id": compact_text(row.get("case_id") or row.get("id") or row.get("example_id") or ""),
+            "region_code": compact_text(row.get("region_code") or self._payload_mapping(row.get("provenance")).get("region_code") or ""),
+            "split": compact_text(row.get("split") or self._payload_mapping(row.get("provenance")).get("split") or "unknown"),
+            "target_allowed": target_allowed,
+            "candidate_allowed": candidate_allowed,
+            "baseline_allowed": baseline_allowed,
+            "candidate_rank": candidate_rank,
+            "candidate_top_k": candidate_top_k,
+            "legal_feasible_top_k_hit": legal_feasible_top_k_hit,
+            "blocked_action_hit": blocked_action_hit,
+            "false_allow": false_allow,
+            "false_block": false_block,
+            "target_utility": round(target_utility, 6),
+            "candidate_utility": round(candidate_utility, 6),
+            "baseline_utility": round(baseline_utility, 6),
+            "candidate_regret": round(candidate_regret, 6),
+            "baseline_regret": round(baseline_regret, 6),
+            "utility_delta_vs_baseline": round(utility_delta, 6),
+            "candidate_review_required": bool(candidate.get("review_required")),
+            "baseline_review_required": bool(baseline.get("review_required")),
+            "outcome": outcome,
+            "loss_type": loss_type,
+        }
+
+    def _same_case_replay_decision(self, row: dict[str, Any], keys: list[str]) -> dict[str, Any]:
+        for key in keys:
+            value = row.get(key)
+            if isinstance(value, dict):
+                return self._payload_mapping(value)
+        return {}
+
+    def _same_case_replay_allowed(self, decision: dict[str, Any]) -> bool | None:
+        for key in ["allowed", "legal_feasible", "feasible", "approved"]:
+            if key not in decision:
+                continue
+            value = decision.get(key)
+            if isinstance(value, bool):
+                return value
+            text = compact_text(value).lower()
+            if text in {"true", "1", "yes", "y", "allowed", "allow", "approved", "approve", "pass"}:
+                return True
+            if text in {"false", "0", "no", "n", "blocked", "block", "denied", "deny", "rejected", "reject", "fail"}:
+                return False
+        return None
+
+    def _same_case_replay_metrics(self, case_results: list[dict[str, Any]]) -> dict[str, Any]:
+        case_count = len(case_results)
+        top_k_count = sum(1 for item in case_results if item.get("candidate_top_k"))
+        legal_hits = sum(1 for item in case_results if item.get("legal_feasible_top_k_hit"))
+        target_blocked = [item for item in case_results if item.get("target_allowed") is False]
+        target_allowed = [item for item in case_results if item.get("target_allowed") is True]
+        blocked_hits = sum(1 for item in target_blocked if item.get("blocked_action_hit"))
+        false_allows = sum(1 for item in target_blocked if item.get("false_allow"))
+        false_blocks = sum(1 for item in target_allowed if item.get("false_block"))
+        candidate_regrets = [float(item.get("candidate_regret") or 0.0) for item in case_results]
+        baseline_regrets = [float(item.get("baseline_regret") or 0.0) for item in case_results]
+        utility_deltas = [float(item.get("utility_delta_vs_baseline") or 0.0) for item in case_results]
+        candidate_review_count = sum(1 for item in case_results if item.get("candidate_review_required"))
+        baseline_review_count = sum(1 for item in case_results if item.get("baseline_review_required"))
+        candidate_mean_regret = sum(candidate_regrets) / case_count if case_count else 0.0
+        baseline_mean_regret = sum(baseline_regrets) / case_count if case_count else 0.0
+        return {
+            "case_count": case_count,
+            "legal_feasible_top_k_precision": round(legal_hits / top_k_count, 6) if top_k_count else None,
+            "blocked_action_recall": round(blocked_hits / len(target_blocked), 6) if target_blocked else None,
+            "false_allow_rate": round(false_allows / len(target_blocked), 6) if target_blocked else None,
+            "false_block_rate": round(false_blocks / len(target_allowed), 6) if target_allowed else None,
+            "planner_regret": {
+                "candidate_mean_regret": round(candidate_mean_regret, 6),
+                "baseline_mean_regret": round(baseline_mean_regret, 6),
+                "regret_reduction_vs_baseline": round(baseline_mean_regret - candidate_mean_regret, 6),
+            },
+            "ranking_lift": round(sum(utility_deltas) / case_count, 6) if case_count else 0.0,
+            "review_workload_impact": {
+                "candidate_review_count": candidate_review_count,
+                "baseline_review_count": baseline_review_count,
+                "review_reduction": baseline_review_count - candidate_review_count,
+            },
+        }
+
+    def _same_case_replay_outcome_summary(self, case_results: list[dict[str, Any]]) -> dict[str, Any]:
+        improves = sum(1 for item in case_results if item.get("outcome") == "improve")
+        ties = sum(1 for item in case_results if item.get("outcome") == "tie")
+        loses = sum(1 for item in case_results if item.get("outcome") == "lose")
+        return {
+            "improves": improves,
+            "ties": ties,
+            "loses": loses,
+            "mixed": bool(improves and loses),
+            "dominant_outcome": "improves" if improves > loses else "loses" if loses > improves else "ties",
+        }
+
+    def _same_case_replay_loss_case(self, case_result: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "case_id": case_result.get("case_id"),
+            "loss_type": case_result.get("loss_type") or "planner_regret",
+            "region_code": case_result.get("region_code"),
+            "split": case_result.get("split"),
+            "target_allowed": case_result.get("target_allowed"),
+            "candidate_allowed": case_result.get("candidate_allowed"),
+            "baseline_allowed": case_result.get("baseline_allowed"),
+            "candidate_regret": case_result.get("candidate_regret"),
+            "baseline_regret": case_result.get("baseline_regret"),
+            "utility_delta_vs_baseline": case_result.get("utility_delta_vs_baseline"),
+            "not_for_production": True,
+        }
+
+    def _same_case_replay_promotion_gate(
+        self,
+        *,
+        blockers: list[str],
+        replay_metrics: dict[str, Any],
+        outcome_summary: dict[str, Any],
+    ) -> dict[str, Any]:
+        if blockers:
+            return {
+                "status": "blocked",
+                "passed": False,
+                "missing": blockers,
+                "max_recommendation": "replay_ready",
+            }
+        regret = self._payload_mapping(replay_metrics.get("planner_regret"))
+        return {
+            "status": "review",
+            "passed": True,
+            "missing": [],
+            "max_recommendation": "promotion_candidate_review",
+            "evidence_result": (
+                "mixed"
+                if outcome_summary.get("mixed")
+                else compact_text(outcome_summary.get("dominant_outcome") or "ties")
+            ),
+            "regret_reduction_vs_baseline": regret.get("regret_reduction_vs_baseline"),
+            "claim_status": "same_case_replay_required_before_registry_or_production_claims",
+        }
+
+    def _same_case_replay_recommendations(
+        self,
+        blockers: list[str],
+        outcome_summary: dict[str, Any],
+        replay_metrics: dict[str, Any],
+    ) -> list[str]:
+        recommendations = [
+            "use this packet to connect model-family shootout evidence to same-case planning behavior",
+            "inspect loss_cases before claiming decision-support lift for the selected candidate",
+        ]
+        if blockers:
+            recommendations.append("resolve replay package binding and same-case case coverage blockers before interpreting planner lift")
+        if outcome_summary.get("loses"):
+            recommendations.append("feed replay loss cases back into FoV stress and action-mask training diagnostics")
+        regret = self._payload_mapping(replay_metrics.get("planner_regret"))
+        if float(safe_float(regret.get("regret_reduction_vs_baseline"), 0.0) or 0.0) <= 0:
+            recommendations.append("do not advance the candidate until planner regret improves against the same-case baseline")
+        return recommendations
+
+    def dynamics_promotion_evidence_bundle(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        pilot_package = self._promotion_bundle_pilot_package(state_version_id, payload)
+        shootout = self._promotion_bundle_shootout_report(state_version_id, payload, pilot_package)
+        replay = self._promotion_bundle_replay_report(state_version_id, payload, pilot_package, shootout)
+        registry = self._promotion_bundle_registry_report(state_version_id, payload)
+        rollback_evidence = self._payload_mapping(
+            payload.get("rollback_evidence")
+            or payload.get("rollback_report")
+            or payload.get("rollback_plan")
+        )
+        selected_candidate = self._promotion_bundle_selected_candidate(shootout, replay, payload)
+        evidence_gates = self._promotion_bundle_evidence_gates(
+            pilot_package=pilot_package,
+            shootout=shootout,
+            replay=replay,
+            registry=registry,
+            rollback_evidence=rollback_evidence,
+            selected_candidate=selected_candidate,
+        )
+        fov_tail_cases = self._promotion_bundle_fov_tail_cases(shootout)
+        missing = sorted({
+            item
+            for gate in evidence_gates.values()
+            for item in list(gate.get("missing") or [])
+        })
+        status = "blocked" if missing else "review"
+        package_integrity = self._dynamics_shootout_package_integrity(pilot_package)
+        registry_entry = self._payload_mapping(registry.get("registry_entry"))
+        registry_metadata = self._payload_mapping(registry_entry.get("metadata"))
+        promotion_decision = {
+            "status": "review" if not missing else "blocked",
+            "max_recommendation": "promotion_candidate_review" if not missing else "replay_ready",
+            "missing": missing,
+            "production_activation_allowed": False,
+            "registry_promotion_decision": registry.get("promotion_decision"),
+            "claim_status": "controlled_pilot_review_only" if not missing else "blocked_until_required_evidence_passes",
+        }
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_promotion_evidence_bundle.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "selected_candidate": selected_candidate,
+            "evidence_summary": {
+                "package_id": package_integrity.get("package_id"),
+                "dataset_snapshot_hash": package_integrity.get("dataset_snapshot_hash"),
+                "model_artifact_uri": registry_metadata.get("model_artifact_uri"),
+                "training_dataset_hash": registry_metadata.get("training_dataset_hash"),
+                "state_contract_version": registry_metadata.get("state_contract_version"),
+                "evaluation_report_id": registry_metadata.get("evaluation_report_id"),
+                "same_case_replay_case_count": self._payload_mapping(replay.get("replay_metrics")).get("case_count"),
+                "fov_tail_case_count": len(fov_tail_cases),
+                "rollback_target": (
+                    rollback_evidence.get("rollback_target_registry_key")
+                    or rollback_evidence.get("target_registry_key")
+                    or self._payload_mapping(registry.get("rollback_plan")).get("current_registry_key")
+                ),
+            },
+            "evidence_gates": evidence_gates,
+            "fov_tail_cases": fov_tail_cases[:safe_int(payload.get("max_fov_tail_cases"), 25)],
+            "same_case_loss_cases": list(replay.get("loss_cases") or [])[:safe_int(payload.get("max_replay_loss_cases"), 25)],
+            "rollback_evidence": rollback_evidence,
+            "canary_scope": self._payload_mapping(payload.get("canary_scope") or payload.get("controlled_pilot_scope")),
+            "promotion_decision": promotion_decision,
+            "recommendations": self._promotion_bundle_recommendations(promotion_decision, evidence_gates),
+            "claim_boundary": {
+                "status": "promotion_evidence_bundle_is_not_production_activation",
+                "max_claim": "controlled_pilot_candidate_review",
+                "non_goals": [
+                    "production_readiness",
+                    "registry_activation",
+                    "autonomous_l3_self_evolution",
+                    "broad_model_family_superiority",
+                ],
+            },
+        }))
+
+    def _promotion_bundle_pilot_package(self, state_version_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        package_payload = payload.get("pilot_package_report") or payload.get("pilot_package")
+        return (
+            self._payload_mapping(package_payload)
+            if isinstance(package_payload, dict)
+            else self.pilot_package_report(state_version_id, payload)
+        )
+
+    def _promotion_bundle_shootout_report(
+        self,
+        state_version_id: str,
+        payload: dict[str, Any],
+        pilot_package: dict[str, Any],
+    ) -> dict[str, Any]:
+        shootout_payload = (
+            payload.get("dynamics_model_shootout_report")
+            or payload.get("shootout_report")
+            or payload.get("model_shootout_report")
+        )
+        return (
+            self._payload_mapping(shootout_payload)
+            if isinstance(shootout_payload, dict)
+            else self.dynamics_model_shootout_report(state_version_id, {**payload, "pilot_package_report": pilot_package})
+        )
+
+    def _promotion_bundle_replay_report(
+        self,
+        state_version_id: str,
+        payload: dict[str, Any],
+        pilot_package: dict[str, Any],
+        shootout: dict[str, Any],
+    ) -> dict[str, Any]:
+        replay_payload = (
+            payload.get("same_case_planner_replay_report")
+            or payload.get("same_case_replay_report")
+            or payload.get("planner_replay_report")
+        )
+        return (
+            self._payload_mapping(replay_payload)
+            if isinstance(replay_payload, dict)
+            else self.same_case_planner_replay_report(
+                state_version_id,
+                {**payload, "pilot_package_report": pilot_package, "dynamics_model_shootout_report": shootout},
+            )
+        )
+
+    def _promotion_bundle_registry_report(self, state_version_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        registry_payload = (
+            payload.get("dynamics_model_registry_report")
+            or payload.get("registry_report")
+            or payload.get("model_registry_report")
+        )
+        return (
+            self._payload_mapping(registry_payload)
+            if isinstance(registry_payload, dict)
+            else self.dynamics_model_registry_report(state_version_id, payload)
+        )
+
+    def _promotion_bundle_selected_candidate(
+        self,
+        shootout: dict[str, Any],
+        replay: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        requested_id = compact_text(payload.get("selected_candidate_id") or payload.get("candidate_id") or "")
+        replay_selected = self._payload_mapping(replay.get("selected_candidate"))
+        candidate_id = requested_id or compact_text(replay_selected.get("candidate_id") or "")
+        summaries = [
+            self._payload_mapping(item)
+            for item in shootout.get("candidate_summaries") or []
+            if isinstance(item, dict)
+        ]
+        selected = next(
+            (item for item in summaries if compact_text(item.get("candidate_id") or "") == candidate_id),
+            {},
+        )
+        if not selected and replay_selected:
+            selected = replay_selected
+        return {
+            "candidate_id": compact_text(selected.get("candidate_id") or candidate_id),
+            "model_family": compact_text(selected.get("model_family") or replay_selected.get("model_family") or ""),
+            "model_name": compact_text(selected.get("model_name") or replay_selected.get("model_name") or ""),
+            "model_version": compact_text(selected.get("model_version") or replay_selected.get("model_version") or ""),
+            "recommendation": compact_text(selected.get("recommendation") or replay_selected.get("recommendation") or ""),
+            "promotion_limits": list(selected.get("promotion_limits") or replay_selected.get("promotion_limits") or []),
+        }
+
+    def _promotion_bundle_evidence_gates(
+        self,
+        *,
+        pilot_package: dict[str, Any],
+        shootout: dict[str, Any],
+        replay: dict[str, Any],
+        registry: dict[str, Any],
+        rollback_evidence: dict[str, Any],
+        selected_candidate: dict[str, Any],
+    ) -> dict[str, Any]:
+        package_integrity = self._dynamics_shootout_package_integrity(pilot_package)
+        selected_id = compact_text(selected_candidate.get("candidate_id") or "")
+        package_gate = self._promotion_bundle_package_gate(pilot_package, package_integrity)
+        shootout_gate = self._promotion_bundle_shootout_gate(shootout, package_integrity, selected_id)
+        replay_gate = self._promotion_bundle_replay_gate(replay, package_integrity, selected_id)
+        registry_gate = self._promotion_bundle_registry_gate(registry, package_integrity, selected_candidate)
+        rollback_gate = self._promotion_bundle_rollback_gate(rollback_evidence, registry)
+        return {
+            "pilot_package": package_gate,
+            "shootout": shootout_gate,
+            "same_case_replay": replay_gate,
+            "registry": registry_gate,
+            "rollback": rollback_gate,
+        }
+
+    def _promotion_bundle_package_gate(self, pilot_package: dict[str, Any], package_integrity: dict[str, Any]) -> dict[str, Any]:
+        missing: list[str] = []
+        if pilot_package.get("schema") != "territory_world_model.pilot_package.v1":
+            missing.append("pilot_package_report")
+        if not compact_text(package_integrity.get("package_id") or ""):
+            missing.append("package_id")
+        if not compact_text(package_integrity.get("dataset_snapshot_hash") or ""):
+            missing.append("dataset_snapshot_hash")
+        if pilot_package.get("status") == "blocked":
+            missing.append("pilot_package_not_blocked")
+        return {
+            "status": "pass" if not missing else "blocked",
+            "missing": sorted(set(missing)),
+            "package_id": package_integrity.get("package_id"),
+            "dataset_snapshot_hash": package_integrity.get("dataset_snapshot_hash"),
+        }
+
+    def _promotion_bundle_shootout_gate(
+        self,
+        shootout: dict[str, Any],
+        package_integrity: dict[str, Any],
+        selected_candidate_id: str,
+    ) -> dict[str, Any]:
+        missing: list[str] = []
+        if shootout.get("schema") != "territory_world_model.dynamics_model_shootout_report.v1":
+            missing.append("dynamics_model_shootout_report")
+        shootout_integrity = self._payload_mapping(shootout.get("package_integrity"))
+        if compact_text(shootout_integrity.get("package_id") or "") != compact_text(package_integrity.get("package_id") or ""):
+            missing.append("shootout_package_id_match")
+        if compact_text(shootout_integrity.get("dataset_snapshot_hash") or "") != compact_text(package_integrity.get("dataset_snapshot_hash") or ""):
+            missing.append("shootout_dataset_hash_match")
+        candidate_ids = {
+            compact_text(item.get("candidate_id") or "")
+            for item in shootout.get("candidate_summaries") or []
+            if isinstance(item, dict)
+        }
+        if selected_candidate_id and selected_candidate_id not in candidate_ids:
+            missing.append("selected_candidate_in_shootout")
+        if not selected_candidate_id:
+            missing.append("selected_candidate")
+        return {
+            "status": "pass" if not missing else "blocked",
+            "missing": sorted(set(missing)),
+            "candidate_count": shootout.get("candidate_count", 0),
+            "selected_candidate_id": selected_candidate_id,
+        }
+
+    def _promotion_bundle_replay_gate(
+        self,
+        replay: dict[str, Any],
+        package_integrity: dict[str, Any],
+        selected_candidate_id: str,
+    ) -> dict[str, Any]:
+        missing: list[str] = []
+        if replay.get("schema") != "territory_world_model.same_case_planner_replay_report.v1":
+            missing.append("same_case_planner_replay_report")
+        if replay.get("status") == "blocked":
+            missing.append("same_case_replay_not_blocked")
+        binding = self._payload_mapping(replay.get("package_binding"))
+        if binding.get("status") == "blocked":
+            missing.extend(str(item) for item in binding.get("blockers") or ["same_case_replay_package_binding"])
+        if compact_text(binding.get("dataset_snapshot_hash") or "") != compact_text(package_integrity.get("dataset_snapshot_hash") or ""):
+            missing.append("same_case_replay_dataset_hash_match")
+        replay_selected = self._payload_mapping(replay.get("selected_candidate"))
+        if selected_candidate_id and compact_text(replay_selected.get("candidate_id") or "") != selected_candidate_id:
+            missing.append("same_case_replay_selected_candidate_match")
+        metrics = self._payload_mapping(replay.get("replay_metrics"))
+        if safe_int(metrics.get("case_count"), 0) <= 0:
+            missing.append("same_case_replay_cases")
+        promotion_gate = self._payload_mapping(replay.get("promotion_gate"))
+        if promotion_gate.get("status") == "blocked":
+            missing.append("same_case_replay_promotion_gate")
+        return {
+            "status": "pass" if not missing else "blocked",
+            "missing": sorted(set(missing)),
+            "case_count": metrics.get("case_count", 0),
+            "promotion_gate_status": promotion_gate.get("status"),
+        }
+
+    def _promotion_bundle_registry_gate(
+        self,
+        registry: dict[str, Any],
+        package_integrity: dict[str, Any],
+        selected_candidate: dict[str, Any],
+    ) -> dict[str, Any]:
+        missing: list[str] = []
+        if registry.get("schema") != "territory_world_model.dynamics_model_registry_report.v1":
+            missing.append("dynamics_model_registry_report")
+        if registry.get("promotion_decision") != "candidate_for_registry_promotion":
+            missing.append("registry_candidate_for_promotion")
+        missing.extend(str(item) for item in registry.get("missing_for_promotion") or [])
+        missing.extend(str(item) for item in registry.get("missing_registry_metadata") or [])
+        registry_entry = self._payload_mapping(registry.get("registry_entry"))
+        metadata = self._payload_mapping(registry_entry.get("metadata"))
+        registry_model_name = compact_text(registry_entry.get("model_name") or "")
+        selected_model_name = compact_text(selected_candidate.get("model_name") or "")
+        if selected_model_name and registry_model_name and registry_model_name != selected_model_name:
+            missing.append("registry_selected_candidate_match")
+        dataset_hash = compact_text(package_integrity.get("dataset_snapshot_hash") or "")
+        for key in ["training_dataset_hash", "training_dataset_snapshot"]:
+            value = compact_text(metadata.get(key) or "")
+            if dataset_hash and value and value != dataset_hash:
+                missing.append(f"{key}_match")
+        rollback_plan = self._payload_mapping(registry.get("rollback_plan"))
+        if not rollback_plan.get("rollback_available"):
+            missing.append("registry_rollback_available")
+        return {
+            "status": "pass" if not missing else "blocked",
+            "missing": sorted(set(missing)),
+            "registry_key": registry_entry.get("registry_key"),
+            "promotion_decision": registry.get("promotion_decision"),
+            "rollback_available": bool(rollback_plan.get("rollback_available")),
+        }
+
+    def _promotion_bundle_rollback_gate(self, rollback_evidence: dict[str, Any], registry: dict[str, Any]) -> dict[str, Any]:
+        missing: list[str] = []
+        rollback_plan = self._payload_mapping(registry.get("rollback_plan"))
+        if not rollback_evidence:
+            missing.append("rollback_evidence")
+        status = compact_text(rollback_evidence.get("status") or "")
+        if rollback_evidence and status != "pass":
+            missing.append("rollback_evidence_pass")
+        target = compact_text(
+            rollback_evidence.get("rollback_target_registry_key")
+            or rollback_evidence.get("target_registry_key")
+            or rollback_plan.get("current_registry_key")
+            or ""
+        )
+        if not target:
+            missing.append("rollback_target_registry_key")
+        current = compact_text(rollback_evidence.get("current_registry_key") or rollback_plan.get("current_registry_key") or "")
+        if not current:
+            missing.append("current_registry_key")
+        return {
+            "status": "pass" if not missing else "missing" if "rollback_evidence" in missing else "blocked",
+            "missing": sorted(set(missing)),
+            "current_registry_key": current,
+            "rollback_target_registry_key": target,
+        }
+
+    def _promotion_bundle_fov_tail_cases(self, shootout: dict[str, Any]) -> list[dict[str, Any]]:
+        tail_cases: list[dict[str, Any]] = []
+        for candidate in shootout.get("candidate_summaries") or []:
+            candidate_row = self._payload_mapping(candidate)
+            fov_stress = self._payload_mapping(candidate_row.get("fov_stress"))
+            for test in fov_stress.get("tests") or []:
+                test_row = self._payload_mapping(test)
+                for example in test_row.get("tail_examples") or []:
+                    if not isinstance(example, dict):
+                        continue
+                    tail_cases.append({
+                        **self._payload_mapping(example),
+                        "candidate_id": candidate_row.get("candidate_id"),
+                        "factor": test_row.get("factor"),
+                    })
+        return tail_cases
+
+    def _promotion_bundle_recommendations(
+        self,
+        promotion_decision: dict[str, Any],
+        evidence_gates: dict[str, dict[str, Any]],
+    ) -> list[str]:
+        recommendations = [
+            "use this bundle as the auditable envelope for a single controlled TWM promotion candidate",
+            "keep production activation separate from evidence bundling and registry review",
+        ]
+        missing = list(promotion_decision.get("missing") or [])
+        if missing:
+            recommendations.append("resolve missing or stale evidence before using promotion language beyond replay_ready")
+        if evidence_gates.get("rollback", {}).get("status") != "pass":
+            recommendations.append("attach rollback evidence before any controlled pilot nomination")
+        if evidence_gates.get("same_case_replay", {}).get("status") == "pass":
+            recommendations.append("feed same-case replay loss cases into FoV and action-mask regression suites")
+        return recommendations
+
+    def dynamics_reliability_drift_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        previous_bundle = self._payload_mapping(
+            payload.get("previous_promotion_evidence_bundle")
+            or payload.get("baseline_promotion_evidence_bundle")
+            or payload.get("previous_bundle")
+        )
+        candidate_bundle = self._payload_mapping(
+            payload.get("candidate_promotion_evidence_bundle")
+            or payload.get("current_promotion_evidence_bundle")
+            or payload.get("candidate_bundle")
+        )
+        thresholds = self._reliability_drift_thresholds(payload)
+        previous_metrics = self._reliability_drift_bundle_metrics(previous_bundle)
+        candidate_metrics = self._reliability_drift_bundle_metrics(candidate_bundle)
+        metric_deltas = self._reliability_drift_metric_deltas(previous_metrics, candidate_metrics)
+        comparison_binding = self._reliability_drift_comparison_binding(previous_bundle, candidate_bundle)
+        active_regression_suite_gate = self._active_regression_suite_gate(
+            manifest=self._active_regression_suite_manifest(payload),
+            covered_case_ids=self._active_regression_suite_covered_case_ids(candidate_bundle),
+            package_binding=comparison_binding,
+        )
+        regression_gates = self._reliability_drift_regression_gates(
+            metric_deltas=metric_deltas,
+            candidate_bundle=candidate_bundle,
+            comparison_binding=comparison_binding,
+            thresholds=thresholds,
+        )
+        missing = sorted({
+            item
+            for gate in regression_gates.values()
+            for item in list(gate.get("missing") or [])
+        })
+        if active_regression_suite_gate.get("status") == "blocked":
+            missing.append("active_regression_suite_cases")
+            missing = sorted(set(missing))
+        status = "blocked" if missing else "pass"
+        regression_cases = self._reliability_drift_regression_cases(previous_bundle, candidate_bundle)
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_reliability_drift_report.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "comparison_binding": comparison_binding,
+            "thresholds": thresholds,
+            "previous_candidate": self._payload_mapping(previous_bundle.get("selected_candidate")),
+            "candidate": self._payload_mapping(candidate_bundle.get("selected_candidate")),
+            "metric_deltas": metric_deltas,
+            "regression_gates": regression_gates,
+            "active_regression_suite_gate": active_regression_suite_gate,
+            "regression_cases": regression_cases[:safe_int(payload.get("max_regression_cases"), 25)],
+            "promotion_decision": {
+                "status": "blocked" if missing else "pass",
+                "max_recommendation": "replay_ready" if missing else "promotion_candidate_review",
+                "missing": missing,
+                "production_activation_allowed": False,
+                "claim_status": "blocked_until_reliability_regressions_resolve" if missing else "reliability_review_passed",
+            },
+            "recommendations": self._reliability_drift_recommendations(missing, regression_cases),
+            "claim_boundary": {
+                "status": "reliability_drift_gate_is_not_production_activation",
+                "max_claim": "controlled_pilot_candidate_review",
+                "non_goals": [
+                    "production_readiness",
+                    "registry_activation",
+                    "autonomous_l3_self_evolution",
+                    "broad_model_family_superiority",
+                ],
+            },
+        }))
+
+    def _reliability_drift_thresholds(self, payload: dict[str, Any]) -> dict[str, Any]:
+        raw = self._payload_mapping(payload.get("thresholds") or payload.get("drift_thresholds"))
+        return {
+            "max_false_allow_rate_delta": float(safe_float(raw.get("max_false_allow_rate_delta"), 0.0) or 0.0),
+            "max_false_block_rate_delta": float(safe_float(raw.get("max_false_block_rate_delta"), 0.05) or 0.05),
+            "max_fov_tail_case_delta": safe_int(raw.get("max_fov_tail_case_delta"), 0),
+            "max_same_case_loss_case_delta": safe_int(raw.get("max_same_case_loss_case_delta"), 0),
+            "max_high_risk_loss_case_delta": safe_int(raw.get("max_high_risk_loss_case_delta"), 0),
+            "min_ranking_lift_delta": float(safe_float(raw.get("min_ranking_lift_delta"), -0.01) or -0.01),
+            "min_regret_reduction_delta": float(safe_float(raw.get("min_regret_reduction_delta"), -0.01) or -0.01),
+        }
+
+    def _reliability_drift_bundle_metrics(self, bundle: dict[str, Any]) -> dict[str, Any]:
+        evidence_summary = self._payload_mapping(bundle.get("evidence_summary"))
+        replay_metrics = self._payload_mapping(
+            bundle.get("replay_metrics")
+            or bundle.get("same_case_replay_metrics")
+            or self._payload_mapping(bundle.get("same_case_planner_replay_report")).get("replay_metrics")
+        )
+        planner_regret = self._payload_mapping(replay_metrics.get("planner_regret"))
+        same_case_loss_cases = [
+            self._payload_mapping(item)
+            for item in bundle.get("same_case_loss_cases") or []
+            if isinstance(item, dict)
+        ]
+        fov_tail_cases = [
+            self._payload_mapping(item)
+            for item in bundle.get("fov_tail_cases") or []
+            if isinstance(item, dict)
+        ]
+        return {
+            "package_id": compact_text(evidence_summary.get("package_id") or ""),
+            "dataset_snapshot_hash": compact_text(evidence_summary.get("dataset_snapshot_hash") or ""),
+            "false_allow_rate": safe_float(replay_metrics.get("false_allow_rate"), None),
+            "false_block_rate": safe_float(replay_metrics.get("false_block_rate"), None),
+            "ranking_lift": safe_float(replay_metrics.get("ranking_lift"), None),
+            "regret_reduction_vs_baseline": safe_float(planner_regret.get("regret_reduction_vs_baseline"), None),
+            "fov_tail_case_count": safe_int(evidence_summary.get("fov_tail_case_count"), len(fov_tail_cases)),
+            "same_case_loss_case_count": len(same_case_loss_cases),
+            "high_risk_loss_case_count": self._reliability_drift_high_risk_case_count(same_case_loss_cases),
+            "high_risk_fov_tail_case_count": self._reliability_drift_high_risk_case_count(fov_tail_cases),
+        }
+
+    def _reliability_drift_metric_deltas(self, previous: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
+        def delta(key: str) -> float | None:
+            old = safe_float(previous.get(key), None)
+            new = safe_float(candidate.get(key), None)
+            if old is None or new is None:
+                return None
+            return round(float(new) - float(old), 6)
+
+        return {
+            "false_allow_rate_delta": delta("false_allow_rate"),
+            "false_block_rate_delta": delta("false_block_rate"),
+            "ranking_lift_delta": delta("ranking_lift"),
+            "regret_reduction_delta": delta("regret_reduction_vs_baseline"),
+            "fov_tail_case_count_delta": safe_int(candidate.get("fov_tail_case_count"), 0) - safe_int(previous.get("fov_tail_case_count"), 0),
+            "same_case_loss_case_count_delta": safe_int(candidate.get("same_case_loss_case_count"), 0)
+            - safe_int(previous.get("same_case_loss_case_count"), 0),
+            "high_risk_loss_case_count_delta": safe_int(candidate.get("high_risk_loss_case_count"), 0)
+            - safe_int(previous.get("high_risk_loss_case_count"), 0),
+            "high_risk_fov_tail_case_count_delta": safe_int(candidate.get("high_risk_fov_tail_case_count"), 0)
+            - safe_int(previous.get("high_risk_fov_tail_case_count"), 0),
+        }
+
+    def _reliability_drift_comparison_binding(self, previous_bundle: dict[str, Any], candidate_bundle: dict[str, Any]) -> dict[str, Any]:
+        previous_summary = self._payload_mapping(previous_bundle.get("evidence_summary"))
+        candidate_summary = self._payload_mapping(candidate_bundle.get("evidence_summary"))
+        previous_hash = compact_text(previous_summary.get("dataset_snapshot_hash") or "")
+        candidate_hash = compact_text(candidate_summary.get("dataset_snapshot_hash") or "")
+        previous_package = compact_text(previous_summary.get("package_id") or "")
+        candidate_package = compact_text(candidate_summary.get("package_id") or "")
+        blockers: list[str] = []
+        if previous_bundle.get("schema") != "territory_world_model.dynamics_promotion_evidence_bundle.v1":
+            blockers.append("previous_promotion_evidence_bundle")
+        if candidate_bundle.get("schema") != "territory_world_model.dynamics_promotion_evidence_bundle.v1":
+            blockers.append("candidate_promotion_evidence_bundle")
+        if previous_hash and candidate_hash and previous_hash != candidate_hash:
+            blockers.append("dataset_snapshot_hash_mismatch")
+        if previous_package and candidate_package and previous_package != candidate_package:
+            blockers.append("package_id_mismatch")
+        return {
+            "status": "pass" if not blockers else "blocked",
+            "package_id": candidate_package or previous_package,
+            "previous_package_id": previous_package,
+            "candidate_package_id": candidate_package,
+            "dataset_snapshot_hash": candidate_hash or previous_hash,
+            "previous_dataset_snapshot_hash": previous_hash,
+            "candidate_dataset_snapshot_hash": candidate_hash,
+            "blockers": sorted(set(blockers)),
+        }
+
+    def _reliability_drift_regression_gates(
+        self,
+        *,
+        metric_deltas: dict[str, Any],
+        candidate_bundle: dict[str, Any],
+        comparison_binding: dict[str, Any],
+        thresholds: dict[str, Any],
+    ) -> dict[str, Any]:
+        return {
+            "binding": self._reliability_drift_gate_from_missing(
+                "pass" if comparison_binding.get("status") == "pass" else "blocked",
+                list(comparison_binding.get("blockers") or []),
+            ),
+            "action_mask_false_allow": self._reliability_drift_delta_gate(
+                metric_deltas.get("false_allow_rate_delta"),
+                thresholds["max_false_allow_rate_delta"],
+                "action_mask_false_allow_regression",
+                higher_is_worse=True,
+            ),
+            "action_mask_false_block": self._reliability_drift_delta_gate(
+                metric_deltas.get("false_block_rate_delta"),
+                thresholds["max_false_block_rate_delta"],
+                "action_mask_false_block_regression",
+                higher_is_worse=True,
+            ),
+            "fov_tail_cases": self._reliability_drift_delta_gate(
+                metric_deltas.get("fov_tail_case_count_delta"),
+                thresholds["max_fov_tail_case_delta"],
+                "fov_tail_case_regression",
+                higher_is_worse=True,
+            ),
+            "same_case_loss_cases": self._reliability_drift_delta_gate(
+                metric_deltas.get("same_case_loss_case_count_delta"),
+                thresholds["max_same_case_loss_case_delta"],
+                "same_case_loss_case_regression",
+                higher_is_worse=True,
+            ),
+            "high_risk_loss_cases": self._reliability_drift_delta_gate(
+                metric_deltas.get("high_risk_loss_case_count_delta"),
+                thresholds["max_high_risk_loss_case_delta"],
+                "high_risk_loss_case_regression",
+                higher_is_worse=True,
+            ),
+            "ranking_lift": self._reliability_drift_delta_gate(
+                metric_deltas.get("ranking_lift_delta"),
+                thresholds["min_ranking_lift_delta"],
+                "ranking_lift_regression",
+                higher_is_worse=False,
+            ),
+            "planner_regret": self._reliability_drift_delta_gate(
+                metric_deltas.get("regret_reduction_delta"),
+                thresholds["min_regret_reduction_delta"],
+                "planner_regret_regression",
+                higher_is_worse=False,
+            ),
+            "rollback": self._reliability_drift_rollback_gate(candidate_bundle),
+        }
+
+    def _reliability_drift_delta_gate(
+        self,
+        value: Any,
+        threshold: float,
+        missing_name: str,
+        *,
+        higher_is_worse: bool,
+    ) -> dict[str, Any]:
+        if value is None:
+            return {"status": "missing", "missing": [missing_name.replace("_regression", "_metric")], "delta": None, "threshold": threshold}
+        numeric = float(value)
+        blocked = numeric > threshold if higher_is_worse else numeric < threshold
+        return {
+            "status": "blocked" if blocked else "pass",
+            "missing": [missing_name] if blocked else [],
+            "delta": round(numeric, 6),
+            "threshold": threshold,
+        }
+
+    def _reliability_drift_gate_from_missing(self, status: str, missing: list[str]) -> dict[str, Any]:
+        return {
+            "status": status,
+            "missing": sorted(set(missing)),
+        }
+
+    def _reliability_drift_rollback_gate(self, candidate_bundle: dict[str, Any]) -> dict[str, Any]:
+        rollback_gate = self._payload_mapping(self._payload_mapping(candidate_bundle.get("evidence_gates")).get("rollback"))
+        status = compact_text(rollback_gate.get("status") or "")
+        missing: list[str] = []
+        if status != "pass":
+            missing.append("rollback_evidence")
+        return {
+            "status": "blocked" if missing else "pass",
+            "missing": missing,
+            "source_status": status or "missing",
+        }
+
+    def _reliability_drift_regression_cases(self, previous_bundle: dict[str, Any], candidate_bundle: dict[str, Any]) -> list[dict[str, Any]]:
+        previous_ids = {
+            self._reliability_drift_case_id(item)
+            for item in list(previous_bundle.get("same_case_loss_cases") or []) + list(previous_bundle.get("fov_tail_cases") or [])
+            if isinstance(item, dict)
+        }
+        cases: list[dict[str, Any]] = []
+        for source, rows in [
+            ("same_case_loss_cases", candidate_bundle.get("same_case_loss_cases") or []),
+            ("fov_tail_cases", candidate_bundle.get("fov_tail_cases") or []),
+        ]:
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                item = self._payload_mapping(row)
+                case_id = self._reliability_drift_case_id(item)
+                if not case_id or case_id in previous_ids:
+                    continue
+                cases.append({
+                    "case_id": case_id,
+                    "source": source,
+                    "loss_type": item.get("loss_type") or item.get("factor") or "tail_case",
+                    "risk_level": compact_text(item.get("risk_level") or item.get("severity") or "review"),
+                    "not_for_production": True,
+                })
+        return cases
+
+    def _reliability_drift_case_id(self, item: dict[str, Any]) -> str:
+        return compact_text(item.get("case_id") or item.get("example_id") or item.get("id") or "")
+
+    def _reliability_drift_high_risk_case_count(self, rows: list[dict[str, Any]]) -> int:
+        high_risk = {"high", "critical", "severe", "blocked"}
+        return sum(1 for item in rows if compact_text(item.get("risk_level") or item.get("severity") or "").lower() in high_risk)
+
+    def _reliability_drift_recommendations(self, missing: list[str], regression_cases: list[dict[str, Any]]) -> list[str]:
+        recommendations = [
+            "use this report as a cross-version reliability gate for controlled TWM candidates",
+            "keep candidate promotion blocked whenever legal, FoV or high-risk replay regressions appear",
+        ]
+        if missing:
+            recommendations.append("route blocked metrics back into the P2D/P3A replay suite before another promotion bundle is reviewed")
+        if regression_cases:
+            recommendations.append("add new regression cases to the compact same-case replay suite and FoV tail-case suite")
+        return recommendations
+
+    def dynamics_regression_suite_manifest(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        promotion_bundle = self._payload_mapping(
+            payload.get("promotion_evidence_bundle")
+            or payload.get("candidate_promotion_evidence_bundle")
+            or payload.get("dynamics_promotion_evidence_bundle")
+        )
+        drift_report = self._payload_mapping(
+            payload.get("dynamics_reliability_drift_report")
+            or payload.get("reliability_drift_report")
+            or payload.get("drift_report")
+        )
+        package_binding = self._regression_suite_package_binding(promotion_bundle, drift_report)
+        cases = self._regression_suite_cases(
+            promotion_bundle=promotion_bundle,
+            drift_report=drift_report,
+            explicit_cases=payload.get("regression_cases") or payload.get("cases") or [],
+        )
+        suite_id = compact_text(payload.get("suite_id") or "")
+        if not suite_id:
+            dataset_hash = compact_text(package_binding.get("dataset_snapshot_hash") or "")
+            suite_id = f"regression-suite:{state_version_id[:12]}:{dataset_hash[:12] or 'unbound'}"
+        case_type_counts: dict[str, int] = {}
+        for item in cases:
+            case_type = compact_text(item.get("case_type") or "unknown")
+            case_type_counts[case_type] = case_type_counts.get(case_type, 0) + 1
+        high_or_critical = [
+            item for item in cases
+            if compact_text(item.get("risk_level") or "").lower() in {"high", "critical", "severe", "blocked"}
+        ]
+        required_for = {
+            "dynamics_model_shootout_report": True,
+            "same_case_planner_replay_report": True,
+            "dynamics_reliability_drift_report": True,
+            "dynamics_promotion_evidence_bundle": True,
+        }
+        missing: list[str] = []
+        if not cases:
+            missing.append("regression_cases")
+        if package_binding.get("status") != "pass":
+            missing.extend(str(item) for item in package_binding.get("blockers") or [])
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "suite_id": suite_id,
+            "status": "active_review_suite" if not missing else "blocked",
+            "package_binding": package_binding,
+            "case_count": len(cases),
+            "case_type_counts": case_type_counts,
+            "risk_summary": {
+                "high_or_critical_count": len(high_or_critical),
+                "risk_levels": sorted({compact_text(item.get("risk_level") or "review") for item in cases}),
+            },
+            "cases": cases,
+            "replay_suite": {
+                "required_for": required_for,
+                "selection_policy": "stable_case_id_dedup_preserve_first_source",
+                "storage_boundary": "manifest_only_no_authoritative_rows_written",
+            },
+            "promotion_gate": {
+                "status": "pass" if not missing else "blocked",
+                "missing": sorted(set(missing)),
+                "max_recommendation": "promotion_candidate_review" if not missing else "replay_ready",
+            },
+            "recommendations": self._regression_suite_recommendations(cases, missing),
+            "claim_boundary": {
+                "status": "regression_suite_manifest_is_replay_contract_not_training_ground_truth",
+                "non_goals": [
+                    "production_readiness",
+                    "automatic_model_promotion",
+                    "ground_truth_label_creation",
+                    "autonomous_l3_self_evolution",
+                ],
+            },
+        }))
+
+    def _regression_suite_package_binding(self, promotion_bundle: dict[str, Any], drift_report: dict[str, Any]) -> dict[str, Any]:
+        evidence_summary = self._payload_mapping(promotion_bundle.get("evidence_summary"))
+        drift_binding = self._payload_mapping(drift_report.get("comparison_binding"))
+        package_id = compact_text(evidence_summary.get("package_id") or drift_binding.get("package_id") or "")
+        dataset_hash = compact_text(evidence_summary.get("dataset_snapshot_hash") or drift_binding.get("dataset_snapshot_hash") or "")
+        blockers: list[str] = []
+        if promotion_bundle and promotion_bundle.get("schema") != "territory_world_model.dynamics_promotion_evidence_bundle.v1":
+            blockers.append("promotion_evidence_bundle_schema")
+        if drift_report and drift_report.get("schema") != "territory_world_model.dynamics_reliability_drift_report.v1":
+            blockers.append("dynamics_reliability_drift_report_schema")
+        drift_package = compact_text(drift_binding.get("package_id") or "")
+        drift_hash = compact_text(drift_binding.get("dataset_snapshot_hash") or "")
+        if package_id and drift_package and package_id != drift_package:
+            blockers.append("package_id_mismatch")
+        if dataset_hash and drift_hash and dataset_hash != drift_hash:
+            blockers.append("dataset_snapshot_hash_mismatch")
+        if not package_id:
+            blockers.append("package_id")
+        if not dataset_hash:
+            blockers.append("dataset_snapshot_hash")
+        return {
+            "status": "pass" if not blockers else "blocked",
+            "package_id": package_id,
+            "dataset_snapshot_hash": dataset_hash,
+            "promotion_package_id": compact_text(evidence_summary.get("package_id") or ""),
+            "drift_package_id": drift_package,
+            "promotion_dataset_snapshot_hash": compact_text(evidence_summary.get("dataset_snapshot_hash") or ""),
+            "drift_dataset_snapshot_hash": drift_hash,
+            "blockers": sorted(set(blockers)),
+        }
+
+    def _regression_suite_cases(
+        self,
+        *,
+        promotion_bundle: dict[str, Any],
+        drift_report: dict[str, Any],
+        explicit_cases: Any,
+    ) -> list[dict[str, Any]]:
+        rows: list[tuple[str, dict[str, Any]]] = []
+        for item in promotion_bundle.get("same_case_loss_cases") or []:
+            if isinstance(item, dict):
+                rows.append(("same_case_loss", self._payload_mapping(item)))
+        for item in promotion_bundle.get("fov_tail_cases") or []:
+            if isinstance(item, dict):
+                rows.append(("fov_tail", self._payload_mapping(item)))
+        for item in drift_report.get("regression_cases") or []:
+            if isinstance(item, dict):
+                row = self._payload_mapping(item)
+                rows.append((self._regression_suite_case_type_from_source(row.get("source")), row))
+        if isinstance(explicit_cases, dict):
+            explicit_cases = [explicit_cases]
+        if isinstance(explicit_cases, list):
+            for item in explicit_cases:
+                if isinstance(item, dict):
+                    rows.append(("manual_regression", self._payload_mapping(item)))
+
+        seen: set[str] = set()
+        cases: list[dict[str, Any]] = []
+        for case_type, row in rows:
+            case_id = self._regression_suite_case_id(row)
+            if not case_id or case_id in seen:
+                continue
+            seen.add(case_id)
+            cases.append(self._regression_suite_case(case_id, case_type, row))
+        return sorted(cases, key=lambda item: (str(item.get("case_type") or ""), str(item.get("case_id") or "")))
+
+    def _regression_suite_case_type_from_source(self, source: Any) -> str:
+        text = compact_text(source or "").lower()
+        if "same_case" in text or "loss" in text:
+            return "same_case_loss"
+        if "fov" in text or "tail" in text:
+            return "fov_tail"
+        if "manual" in text:
+            return "manual_regression"
+        return "drift_regression"
+
+    def _regression_suite_case_id(self, row: dict[str, Any]) -> str:
+        return compact_text(row.get("case_id") or row.get("example_id") or row.get("id") or "")
+
+    def _regression_suite_case(self, case_id: str, case_type: str, row: dict[str, Any]) -> dict[str, Any]:
+        source_lineage = {
+            key: row.get(key)
+            for key in ["source", "factor", "partition_value", "region_code", "split"]
+            if row.get(key) not in (None, "")
+        }
+        replay_payload = {
+            key: row.get(key)
+            for key in ["target_decision", "candidate_decision", "baseline_decision", "target_allowed", "candidate_allowed", "baseline_allowed"]
+            if row.get(key) not in (None, "")
+        }
+        return {
+            "case_id": case_id,
+            "case_type": case_type,
+            "loss_type": compact_text(row.get("loss_type") or row.get("factor") or "regression_case"),
+            "risk_level": compact_text(row.get("risk_level") or row.get("severity") or "review"),
+            "source_lineage": source_lineage,
+            "replay_payload": replay_payload,
+            "not_for_production": True,
+        }
+
+    def _regression_suite_recommendations(self, cases: list[dict[str, Any]], missing: list[str]) -> list[str]:
+        recommendations = [
+            "use this manifest as the active compact replay contract for TWM regression checks",
+            "feed these cases into future shootout, same-case replay and reliability drift reports",
+        ]
+        if missing:
+            recommendations.append("resolve suite package binding or add regression cases before requiring this manifest in promotion gates")
+        if any(item.get("case_type") == "fov_tail" for item in cases):
+            recommendations.append("preserve weak partition labels so FoV regressions remain geospatially attributable")
+        return recommendations
+
+    def _active_regression_suite_manifest(self, payload: dict[str, Any]) -> dict[str, Any]:
+        raw = (
+            payload.get("dynamics_regression_suite_manifest")
+            or payload.get("regression_suite_manifest")
+            or payload.get("active_regression_suite")
+            or payload.get("active_regression_suite_manifest")
+        )
+        return self._payload_mapping(raw) if isinstance(raw, dict) else {}
+
+    def _active_regression_suite_required_case_ids(self, manifest: dict[str, Any]) -> list[str]:
+        cases = manifest.get("cases") or []
+        if isinstance(cases, dict):
+            cases = [cases]
+        if not isinstance(cases, list):
+            return []
+        ids = {
+            self._regression_suite_case_id(self._payload_mapping(item))
+            for item in cases
+            if isinstance(item, dict)
+        }
+        return sorted(item for item in ids if item)
+
+    def _active_regression_suite_covered_case_ids(self, value: Any) -> list[str]:
+        ids: set[str] = set()
+
+        def collect(node: Any) -> None:
+            if isinstance(node, dict):
+                direct_id = self._regression_suite_case_id(self._payload_mapping(node))
+                if direct_id:
+                    ids.add(direct_id)
+                for key in [
+                    "case_ids",
+                    "covered_case_ids",
+                    "replayed_case_ids",
+                    "regression_case_ids",
+                    "regression_suite_case_ids",
+                    "active_regression_suite_case_ids",
+                ]:
+                    raw_ids = node.get(key)
+                    if isinstance(raw_ids, (list, tuple, set)):
+                        ids.update(compact_text(item) for item in raw_ids if compact_text(item))
+                    elif compact_text(raw_ids):
+                        ids.add(compact_text(raw_ids))
+                for key in [
+                    "regression_suite_replay",
+                    "active_regression_suite",
+                    "active_regression_suite_gate",
+                    "regression_suite_results",
+                    "case_results",
+                    "replay_cases",
+                    "cases",
+                    "loss_cases",
+                    "same_case_loss_cases",
+                    "fov_tail_cases",
+                    "regression_cases",
+                ]:
+                    if key in node:
+                        collect(node.get(key))
+            elif isinstance(node, (list, tuple, set)):
+                for item in node:
+                    collect(item)
+            elif compact_text(node):
+                ids.add(compact_text(node))
+
+        collect(value)
+        return sorted(ids)
+
+    def _active_regression_suite_gate(
+        self,
+        *,
+        manifest: dict[str, Any],
+        covered_case_ids: Any,
+        package_binding: dict[str, Any],
+    ) -> dict[str, Any]:
+        if not manifest:
+            return {
+                "schema": "territory_world_model.active_regression_suite_gate.v1",
+                "status": "not_supplied",
+                "required": False,
+                "suite_id": "",
+                "required_case_ids": [],
+                "covered_case_ids": [],
+                "missing_case_ids": [],
+                "missing": [],
+            }
+        blockers: list[str] = []
+        if manifest.get("schema") != "territory_world_model.dynamics_regression_suite_manifest.v1":
+            blockers.append("dynamics_regression_suite_manifest_schema")
+        if compact_text(manifest.get("status") or "") == "blocked":
+            blockers.append("dynamics_regression_suite_manifest_not_blocked")
+        manifest_binding = self._payload_mapping(manifest.get("package_binding"))
+        package_id = compact_text(package_binding.get("package_id") or "")
+        dataset_hash = compact_text(package_binding.get("dataset_snapshot_hash") or "")
+        manifest_package = compact_text(manifest_binding.get("package_id") or "")
+        manifest_hash = compact_text(manifest_binding.get("dataset_snapshot_hash") or "")
+        if package_id and manifest_package and package_id != manifest_package:
+            blockers.append("regression_suite_package_id_match")
+        if dataset_hash and manifest_hash and dataset_hash != manifest_hash:
+            blockers.append("regression_suite_dataset_snapshot_hash_match")
+        required_ids = self._active_regression_suite_required_case_ids(manifest)
+        covered_ids = self._active_regression_suite_covered_case_ids(covered_case_ids)
+        missing_case_ids = sorted(set(required_ids) - set(covered_ids))
+        missing = list(blockers)
+        if missing_case_ids:
+            missing.append("active_regression_suite_cases")
+        return {
+            "schema": "territory_world_model.active_regression_suite_gate.v1",
+            "status": "pass" if not missing else "blocked",
+            "required": True,
+            "suite_id": compact_text(manifest.get("suite_id") or ""),
+            "package_id": manifest_package,
+            "dataset_snapshot_hash": manifest_hash,
+            "required_case_count": len(required_ids),
+            "covered_case_count": len(set(required_ids) & set(covered_ids)),
+            "required_case_ids": required_ids,
+            "covered_case_ids": covered_ids,
+            "missing_case_ids": missing_case_ids,
+            "missing": sorted(set(missing)),
+            "storage_boundary": "active_suite_replay_contract_not_training_ground_truth",
+        }
+
+    def dynamics_geospatial_hard_negative_mining_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        manifest = self._active_regression_suite_manifest(payload)
+        case_contexts = self._hard_negative_case_contexts(payload)
+        cases = self._hard_negative_cases(manifest, case_contexts)
+        axes = self._hard_negative_axes(payload)
+        clusters = self._hard_negative_clusters(cases, axes, max_clusters=safe_int(payload.get("max_clusters"), 25))
+        high_or_critical = [
+            item for item in cases
+            if compact_text(item.get("risk_level") or "").lower() in {"high", "critical", "severe", "blocked"}
+        ]
+        status = "blocked" if not manifest or not cases else "review"
+        package_binding = self._payload_mapping(manifest.get("package_binding"))
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_geospatial_hard_negative_mining_report.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "suite_binding": {
+                "suite_id": compact_text(manifest.get("suite_id") or ""),
+                "package_id": compact_text(package_binding.get("package_id") or ""),
+                "dataset_snapshot_hash": compact_text(package_binding.get("dataset_snapshot_hash") or ""),
+                "suite_status": compact_text(manifest.get("status") or "missing"),
+            },
+            "case_summary": {
+                "case_count": len(cases),
+                "high_or_critical_count": len(high_or_critical),
+                "false_allow_count": sum(1 for item in cases if compact_text(item.get("loss_type") or "") == "false_allow"),
+                "fov_tail_count": sum(1 for item in cases if compact_text(item.get("case_type") or "") == "fov_tail"),
+            },
+            "mining_axes": axes,
+            "hard_negative_clusters": clusters,
+            "axis_summaries": self._hard_negative_axis_summaries(clusters),
+            "sampling_plan": self._hard_negative_sampling_plan(cases, clusters),
+            "retraining_diagnostics": self._hard_negative_retraining_diagnostics(clusters),
+            "claim_boundary": {
+                "status": "hard_negative_mining_is_sampling_diagnostic_not_training_ground_truth",
+                "non_goals": [
+                    "automatic_label_creation",
+                    "production_activation",
+                    "autonomous_l3_self_evolution",
+                    "causal_policy_effect_proof",
+                ],
+            },
+        }))
+
+    def _hard_negative_case_contexts(self, payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        raw = payload.get("case_contexts") or payload.get("hard_negative_case_contexts") or []
+        if isinstance(raw, dict):
+            raw = list(raw.values()) if not self._regression_suite_case_id(raw) else [raw]
+        if not isinstance(raw, list):
+            return {}
+        contexts: dict[str, dict[str, Any]] = {}
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            row = self._payload_mapping(item)
+            case_id = self._regression_suite_case_id(row)
+            if case_id:
+                contexts[case_id] = row
+        return contexts
+
+    def _hard_negative_axes(self, payload: dict[str, Any]) -> list[str]:
+        raw = payload.get("mining_axes") or payload.get("hard_negative_axes")
+        default = ["region_code", "rule_version", "evidence_gap", "action_type", "loss_type", "case_type"]
+        if not raw:
+            return default
+        if isinstance(raw, str):
+            raw = [item.strip() for item in raw.split(",")]
+        if not isinstance(raw, list):
+            return default
+        axes = [compact_text(item) for item in raw if compact_text(item)]
+        return axes or default
+
+    def _hard_negative_cases(self, manifest: dict[str, Any], case_contexts: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+        rows = manifest.get("cases") or []
+        if isinstance(rows, dict):
+            rows = [rows]
+        if not isinstance(rows, list):
+            rows = []
+        cases: list[dict[str, Any]] = []
+        for item in rows:
+            if not isinstance(item, dict):
+                continue
+            row = self._payload_mapping(item)
+            case_id = self._regression_suite_case_id(row)
+            context = self._payload_mapping(case_contexts.get(case_id))
+            lineage = {
+                **self._payload_mapping(row.get("source_lineage")),
+                **self._payload_mapping(context.get("source_lineage")),
+            }
+            factor = compact_text(lineage.get("factor") or row.get("factor") or "")
+            partition_value = compact_text(lineage.get("partition_value") or row.get("partition_value") or "")
+            evidence_gap = compact_text(
+                row.get("evidence_gap")
+                or context.get("evidence_gap")
+                or lineage.get("evidence_gap")
+                or lineage.get("evidence_completeness")
+                or ("missing_evidence" if factor == "evidence_completeness" and partition_value else "")
+            )
+            region_code = compact_text(
+                row.get("region_code")
+                or context.get("region_code")
+                or lineage.get("region_code")
+                or (partition_value if factor in {"region", "region_code", "admin_region"} else "")
+            )
+            enriched = {
+                "case_id": case_id,
+                "case_type": compact_text(row.get("case_type") or context.get("case_type") or "regression_case"),
+                "loss_type": compact_text(row.get("loss_type") or context.get("loss_type") or row.get("factor") or "regression_case"),
+                "risk_level": compact_text(row.get("risk_level") or context.get("risk_level") or row.get("severity") or "review"),
+                "region_code": region_code or "unknown",
+                "rule_version": compact_text(row.get("rule_version") or context.get("rule_version") or lineage.get("rule_version") or lineage.get("rule_set_id") or "unknown"),
+                "evidence_gap": evidence_gap or "unknown",
+                "action_type": compact_text(row.get("action_type") or context.get("action_type") or lineage.get("action_type") or "unknown"),
+                "split": compact_text(row.get("split") or context.get("split") or lineage.get("split") or "unknown"),
+                "source_lineage": lineage,
+            }
+            enriched["priority_score"] = self._hard_negative_case_priority(enriched)
+            cases.append(enriched)
+        return sorted(cases, key=lambda item: (-float(item.get("priority_score") or 0.0), str(item.get("case_id") or "")))
+
+    def _hard_negative_case_priority(self, case: dict[str, Any]) -> float:
+        risk = compact_text(case.get("risk_level") or "").lower()
+        risk_score = {
+            "critical": 5.0,
+            "severe": 5.0,
+            "blocked": 5.0,
+            "high": 4.0,
+            "medium": 2.0,
+            "review": 1.5,
+            "low": 1.0,
+        }.get(risk, 1.0)
+        if compact_text(case.get("loss_type") or "") == "false_allow":
+            risk_score += 2.0
+        if compact_text(case.get("case_type") or "") == "fov_tail":
+            risk_score += 1.0
+        if compact_text(case.get("evidence_gap") or "") not in {"", "unknown", "complete", "pass"}:
+            risk_score += 0.75
+        return round(risk_score, 4)
+
+    def _hard_negative_clusters(self, cases: list[dict[str, Any]], axes: list[str], *, max_clusters: int) -> list[dict[str, Any]]:
+        axis_rank = {axis: index for index, axis in enumerate(axes)}
+        grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
+        for case in cases:
+            for axis in axes:
+                value = compact_text(case.get(axis) or "unknown")
+                if not value or value == "unknown":
+                    continue
+                grouped.setdefault((axis, value), []).append(case)
+        clusters: list[dict[str, Any]] = []
+        for (axis, value), rows in grouped.items():
+            high_rows = [
+                item for item in rows
+                if compact_text(item.get("risk_level") or "").lower() in {"high", "critical", "severe", "blocked"}
+            ]
+            false_allow_count = sum(1 for item in rows if compact_text(item.get("loss_type") or "") == "false_allow")
+            priority = sum(float(item.get("priority_score") or 0.0) for item in rows)
+            clusters.append({
+                "cluster_id": f"{axis}:{value}",
+                "axis": axis,
+                "value": value,
+                "case_count": len(rows),
+                "high_or_critical_count": len(high_rows),
+                "false_allow_count": false_allow_count,
+                "priority_score": round(priority, 4),
+                "case_ids": [compact_text(item.get("case_id") or "") for item in rows],
+                "targeting_policy": self._hard_negative_targeting_policy(axis, value, rows),
+            })
+        clusters.sort(
+            key=lambda item: (
+                -float(item.get("priority_score") or 0.0),
+                -safe_int(item.get("high_or_critical_count"), 0),
+                -safe_int(item.get("case_count"), 0),
+                axis_rank.get(str(item.get("axis") or ""), 999),
+                str(item.get("value") or ""),
+            )
+        )
+        return clusters[:max(1, max_clusters)]
+
+    def _hard_negative_targeting_policy(self, axis: str, value: str, rows: list[dict[str, Any]]) -> str:
+        if axis == "region_code":
+            return "increase_spatial_replay_weight_for_region"
+        if axis == "rule_version":
+            return "replay_under_rule_version_before_candidate_upgrade"
+        if axis == "evidence_gap":
+            return "require_evidence_completeness_stress_before_upgrade"
+        if axis == "action_type":
+            return "increase_action_conditioned_negative_replay_weight"
+        if any(compact_text(item.get("loss_type") or "") == "false_allow" for item in rows):
+            return "prioritize_false_allow_guardrail_replay"
+        return "keep_as_review_suite_diagnostic"
+
+    def _hard_negative_axis_summaries(self, clusters: list[dict[str, Any]]) -> dict[str, Any]:
+        summaries: dict[str, Any] = {}
+        for cluster in clusters:
+            axis = compact_text(cluster.get("axis") or "")
+            if not axis:
+                continue
+            summaries.setdefault(axis, {"top_values": []})
+            summaries[axis]["top_values"].append({
+                "value": cluster.get("value"),
+                "case_count": cluster.get("case_count"),
+                "priority_score": cluster.get("priority_score"),
+            })
+        return summaries
+
+    def _hard_negative_sampling_plan(self, cases: list[dict[str, Any]], clusters: list[dict[str, Any]]) -> dict[str, Any]:
+        return {
+            "policy": "priority_weighted_replay_sampling_not_ground_truth_labeling",
+            "case_weights": {
+                compact_text(item.get("case_id") or ""): round(float(item.get("priority_score") or 1.0), 4)
+                for item in cases
+                if compact_text(item.get("case_id") or "")
+            },
+            "top_cluster_ids": [cluster.get("cluster_id") for cluster in clusters[:5]],
+            "max_weight_multiplier": max([float(item.get("priority_score") or 1.0) for item in cases] or [1.0]),
+        }
+
+    def _hard_negative_retraining_diagnostics(self, clusters: list[dict[str, Any]]) -> dict[str, Any]:
+        target_axes = []
+        for cluster in clusters[:5]:
+            axis = compact_text(cluster.get("axis") or "")
+            if axis and axis not in target_axes:
+                target_axes.append(axis)
+        return {
+            "target_axes": target_axes,
+            "recommended_use": "targeted_replay_and_sampling_diagnostic",
+            "not_allowed_use": "automatic_training_ground_truth_or_autonomous_model_activation",
+        }
+
+    def dynamics_canary_failure_memory_protocol(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        manifest = self._active_regression_suite_manifest(payload)
+        mining_report = self._payload_mapping(
+            payload.get("dynamics_geospatial_hard_negative_mining_report")
+            or payload.get("geospatial_hard_negative_mining_report")
+            or payload.get("hard_negative_mining_report")
+        )
+        if not mining_report and manifest:
+            mining_report = self.dynamics_geospatial_hard_negative_mining_report(
+                state_version_id,
+                {"dynamics_regression_suite_manifest": manifest},
+            )
+        package_binding = self._payload_mapping(manifest.get("package_binding"))
+        suite_id = compact_text(manifest.get("suite_id") or "unbound-suite")
+        dataset_hash = compact_text(package_binding.get("dataset_snapshot_hash") or "")
+        case_ids = self._active_regression_suite_required_case_ids(manifest)
+        canary_scope = self._canary_failure_memory_scope(payload, mining_report)
+        version_hash = _stable_sha256({
+            "suite_id": suite_id,
+            "dataset_snapshot_hash": dataset_hash,
+            "case_ids": case_ids,
+            "canary_scope": canary_scope,
+        })[:12]
+        lakehouse_namespace = compact_text(payload.get("lakehouse_namespace") or "twm_failure_memory")
+        registry_namespace = compact_text(payload.get("registry_namespace") or "twm_model_registry")
+        memory_version_id = f"failure-memory:{suite_id}:{version_hash}"
+        status = "blocked" if not manifest or not case_ids else "review"
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_canary_failure_memory_protocol.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "failure_memory_version": {
+                "version_id": memory_version_id,
+                "suite_id": suite_id,
+                "dataset_snapshot_hash": dataset_hash,
+                "package_id": compact_text(package_binding.get("package_id") or ""),
+                "case_count": len(case_ids),
+                "version_hash": version_hash,
+            },
+            "canary_scope": canary_scope,
+            "storage_plan": {
+                "boundary": "protocol_only_no_tables_written",
+                "lakehouse_namespace": lakehouse_namespace,
+                "lakehouse_tables": {
+                    "regression_suite_cases": f"{lakehouse_namespace}.regression_suite_cases",
+                    "hard_negative_clusters": f"{lakehouse_namespace}.hard_negative_clusters",
+                    "canary_scopes": f"{lakehouse_namespace}.canary_scopes",
+                    "replay_results": f"{lakehouse_namespace}.replay_results",
+                },
+                "required_keys": [
+                    "failure_memory_version_id",
+                    "suite_id",
+                    "dataset_snapshot_hash",
+                    "state_version_id",
+                    "case_id",
+                    "region_code",
+                    "rule_version",
+                    "evidence_gap",
+                    "action_type",
+                ],
+            },
+            "registry_pointer": {
+                "registry_namespace": registry_namespace,
+                "registry_key": f"failure_memory:{suite_id}:{version_hash}",
+                "activation_status": "review_only",
+                "rollback_pointer_required": True,
+            },
+            "resolution_contract": {
+                "required_reports": {
+                    "dynamics_model_shootout_report": True,
+                    "same_case_planner_replay_report": True,
+                    "dynamics_reliability_drift_report": True,
+                    "dynamics_geospatial_hard_negative_mining_report": True,
+                    "rollback_evidence": True,
+                },
+                "version_resolution_policy": "all_reports_must_reference_same_failure_memory_version_id",
+                "promotion_boundary": "controlled_pilot_review_only",
+            },
+            "scheduler_seed": {
+                "target_axes": list(self._payload_mapping(mining_report.get("retraining_diagnostics")).get("target_axes") or []),
+                "top_cluster_ids": list(self._payload_mapping(mining_report.get("sampling_plan")).get("top_cluster_ids") or []),
+                "case_weights": self._payload_mapping(self._payload_mapping(mining_report.get("sampling_plan")).get("case_weights")),
+                "max_case_count": canary_scope.get("max_case_count"),
+            },
+            "claim_boundary": {
+                "status": "canary_failure_memory_protocol_is_review_only_not_l3_activation",
+                "non_goals": [
+                    "production_activation",
+                    "autonomous_l3_self_evolution",
+                    "automatic_model_registry_activation",
+                    "automatic_training_ground_truth_creation",
+                ],
+            },
+        }))
+
+    def dynamics_hard_negative_replay_scheduler_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        mining_report = self._payload_mapping(
+            payload.get("dynamics_geospatial_hard_negative_mining_report")
+            or payload.get("geospatial_hard_negative_mining_report")
+            or payload.get("hard_negative_mining_report")
+        )
+        protocol = self._payload_mapping(
+            payload.get("dynamics_canary_failure_memory_protocol")
+            or payload.get("canary_failure_memory_protocol")
+            or payload.get("failure_memory_protocol")
+        )
+        failure_memory_version = self._payload_mapping(protocol.get("failure_memory_version"))
+        scheduler_seed = self._payload_mapping(protocol.get("scheduler_seed"))
+        resolution_contract = self._payload_mapping(protocol.get("resolution_contract"))
+        required_reports = self._payload_mapping(resolution_contract.get("required_reports"))
+        sampling_plan = self._payload_mapping(mining_report.get("sampling_plan"))
+        case_weights = {
+            compact_text(case_id): safe_float(weight, 0.0)
+            for case_id, weight in self._payload_mapping(sampling_plan.get("case_weights") or scheduler_seed.get("case_weights")).items()
+            if compact_text(case_id)
+        }
+        clusters = [
+            self._payload_mapping(item)
+            for item in mining_report.get("hard_negative_clusters") or []
+            if isinstance(item, dict)
+        ]
+        case_cluster_index = self._hard_negative_case_cluster_index(clusters)
+        cluster_priority_index = {
+            compact_text(cluster.get("cluster_id") or ""): safe_float(cluster.get("priority_score"), 0.0)
+            for cluster in clusters
+            if compact_text(cluster.get("cluster_id") or "")
+        }
+        raw_max_cases = payload.get("max_replay_cases") or scheduler_seed.get("max_case_count")
+        max_replay_cases = max(1, safe_int(raw_max_cases, len(case_weights) or 1))
+        scheduled_cases = self._hard_negative_replay_schedule_items(
+            case_weights,
+            case_cluster_index,
+            cluster_priority_index,
+            required_reports,
+        )[:max_replay_cases]
+        version_id = compact_text(failure_memory_version.get("version_id") or "")
+        suite_id = compact_text(failure_memory_version.get("suite_id") or mining_report.get("suite_binding", {}).get("suite_id") or "")
+        dataset_hash = compact_text(
+            failure_memory_version.get("dataset_snapshot_hash")
+            or self._payload_mapping(mining_report.get("suite_binding")).get("dataset_snapshot_hash")
+            or ""
+        )
+        schedule_hash = _stable_sha256({
+            "failure_memory_version_id": version_id,
+            "suite_id": suite_id,
+            "dataset_snapshot_hash": dataset_hash,
+            "case_ids": [item.get("case_id") for item in scheduled_cases],
+            "cluster_ids": [cluster.get("cluster_id") for cluster in clusters],
+        })[:19]
+        status = "review" if mining_report and protocol and scheduled_cases else "blocked"
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_hard_negative_replay_scheduler_report.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "schedule_binding": {
+                "schedule_id": f"hard-negative-replay:{suite_id or 'unbound-suite'}:{schedule_hash}",
+                "failure_memory_version_id": version_id,
+                "suite_id": suite_id,
+                "dataset_snapshot_hash": dataset_hash,
+                "package_id": compact_text(failure_memory_version.get("package_id") or ""),
+                "mining_report_schema": compact_text(mining_report.get("schema") or ""),
+                "protocol_schema": compact_text(protocol.get("schema") or ""),
+            },
+            "schedule_summary": {
+                "scheduled_case_count": len(scheduled_cases),
+                "candidate_case_count": len(case_weights),
+                "cluster_count": len(clusters),
+                "top_cluster_ids": list(sampling_plan.get("top_cluster_ids") or scheduler_seed.get("top_cluster_ids") or []),
+                "selection_policy": "geospatial_failure_memory_priority_replay",
+            },
+            "replay_schedule": scheduled_cases,
+            "execution_contract": {
+                "boundary": "report_only_no_jobs_started",
+                "review_only": True,
+                "automatic_training_ground_truth_allowed": False,
+                "automatic_model_activation_allowed": False,
+                "required_version_resolution_policy": compact_text(
+                    resolution_contract.get("version_resolution_policy")
+                    or "all_reports_must_reference_same_failure_memory_version_id"
+                ),
+            },
+            "claim_boundary": {
+                "status": "hard_negative_replay_schedule_is_review_only_not_ground_truth",
+                "non_goals": [
+                    "synthetic_training_ground_truth_creation",
+                    "automatic_model_registry_activation",
+                    "production_batch_scheduler",
+                    "autonomous_l3_self_evolution",
+                ],
+            },
+        }))
+
+    def _hard_negative_case_cluster_index(self, clusters: list[dict[str, Any]]) -> dict[str, list[str]]:
+        case_cluster_index: dict[str, list[str]] = {}
+        for cluster in clusters:
+            cluster_id = compact_text(cluster.get("cluster_id") or "")
+            raw_case_ids = cluster.get("case_ids") or []
+            if not cluster_id or not isinstance(raw_case_ids, list):
+                continue
+            for raw_case_id in raw_case_ids:
+                case_id = compact_text(raw_case_id)
+                if not case_id:
+                    continue
+                case_cluster_index.setdefault(case_id, [])
+                if cluster_id not in case_cluster_index[case_id]:
+                    case_cluster_index[case_id].append(cluster_id)
+        return case_cluster_index
+
+    def _hard_negative_replay_schedule_items(
+        self,
+        case_weights: dict[str, float],
+        case_cluster_index: dict[str, list[str]],
+        cluster_priority_index: dict[str, float],
+        required_reports: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        items: list[dict[str, Any]] = []
+        for case_id, weight in case_weights.items():
+            cluster_ids = case_cluster_index.get(case_id, [])
+            cluster_priority = sum(cluster_priority_index.get(cluster_id, 0.0) for cluster_id in cluster_ids)
+            items.append({
+                "case_id": case_id,
+                "cluster_ids": cluster_ids,
+                "sampling_weight": round(weight, 4),
+                "cluster_priority_score": round(cluster_priority, 4),
+                "required_reports": {
+                    "dynamics_model_shootout_report": bool(required_reports.get("dynamics_model_shootout_report", True)),
+                    "same_case_planner_replay_report": bool(required_reports.get("same_case_planner_replay_report", True)),
+                    "dynamics_reliability_drift_report": bool(required_reports.get("dynamics_reliability_drift_report", True)),
+                },
+                "review_only": True,
+                "synthetic_ground_truth_allowed": False,
+            })
+        items.sort(
+            key=lambda item: (
+                -safe_float(item.get("sampling_weight"), 0.0),
+                -safe_float(item.get("cluster_priority_score"), 0.0),
+                str(item.get("case_id") or ""),
+            )
+        )
+        return items
+
+    def dynamics_failure_memory_materialization(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        manifest = self._active_regression_suite_manifest(payload)
+        mining_report = self._payload_mapping(
+            payload.get("dynamics_geospatial_hard_negative_mining_report")
+            or payload.get("geospatial_hard_negative_mining_report")
+            or payload.get("hard_negative_mining_report")
+        )
+        if not mining_report and manifest:
+            mining_report = self.dynamics_geospatial_hard_negative_mining_report(
+                state_version_id,
+                {"dynamics_regression_suite_manifest": manifest},
+            )
+        protocol = self._payload_mapping(
+            payload.get("dynamics_canary_failure_memory_protocol")
+            or payload.get("canary_failure_memory_protocol")
+            or payload.get("failure_memory_protocol")
+        )
+        if not protocol and manifest:
+            protocol = self.dynamics_canary_failure_memory_protocol(
+                state_version_id,
+                {
+                    "dynamics_regression_suite_manifest": manifest,
+                    "dynamics_geospatial_hard_negative_mining_report": mining_report,
+                    "canary_scope": payload.get("canary_scope"),
+                    "lakehouse_namespace": payload.get("namespace") or payload.get("lakehouse_namespace"),
+                },
+            )
+        schedule = self._payload_mapping(
+            payload.get("dynamics_hard_negative_replay_scheduler_report")
+            or payload.get("hard_negative_replay_scheduler_report")
+            or payload.get("replay_scheduler_report")
+        )
+        if not schedule and mining_report and protocol:
+            schedule = self.dynamics_hard_negative_replay_scheduler_report(
+                state_version_id,
+                {
+                    "dynamics_geospatial_hard_negative_mining_report": mining_report,
+                    "dynamics_canary_failure_memory_protocol": protocol,
+                    "max_replay_cases": payload.get("max_replay_cases"),
+                },
+            )
+        failure_memory_version = self._payload_mapping(protocol.get("failure_memory_version"))
+        storage_plan = self._payload_mapping(protocol.get("storage_plan"))
+        lakehouse_tables = self._payload_mapping(storage_plan.get("lakehouse_tables"))
+        registry_pointer = self._payload_mapping(protocol.get("registry_pointer"))
+        binding = self._failure_memory_binding(manifest, mining_report, protocol, schedule)
+        namespace = compact_text(payload.get("namespace") or storage_plan.get("lakehouse_namespace") or "twm_failure_memory")
+        object_store_uri = compact_text(payload.get("lakehouse_uri") or payload.get("object_store_uri") or "s3://gis-agent-lakehouse").rstrip("/")
+        version_token = self._safe_baseline_export_token(binding.get("failure_memory_version_id") or binding.get("suite_id") or "failure-memory")
+        rows_by_artifact = self._failure_memory_materialization_rows(
+            state_version_id=state_version_id,
+            manifest=manifest,
+            mining_report=mining_report,
+            protocol=protocol,
+            schedule=schedule,
+            binding=binding,
+        )
+        artifact_columns = self._failure_memory_materialization_columns()
+        artifact_tables = {
+            "regression_suite_cases": compact_text(lakehouse_tables.get("regression_suite_cases") or f"{namespace}.regression_suite_cases"),
+            "hard_negative_clusters": compact_text(lakehouse_tables.get("hard_negative_clusters") or f"{namespace}.hard_negative_clusters"),
+            "canary_scopes": compact_text(lakehouse_tables.get("canary_scopes") or f"{namespace}.canary_scopes"),
+            "replay_schedules": compact_text(lakehouse_tables.get("replay_schedules") or f"{namespace}.replay_schedules"),
+            "registry_pointers": compact_text(lakehouse_tables.get("registry_pointers") or f"{namespace}.registry_pointers"),
+        }
+        artifacts: dict[str, Any] = {}
+        skipped: list[dict[str, Any]] = []
+        written_count = 0
+        for artifact_name, rows in rows_by_artifact.items():
+            target_uri = f"{object_store_uri}/artifacts/twm/failure_memory/{artifact_name}/{version_token}"
+            target_dir = self._local_path_from_lakehouse_uri(target_uri)
+            artifact = {
+                "format": "parquet",
+                "table": artifact_tables.get(artifact_name, f"{namespace}.{artifact_name}"),
+                "target_uri": target_uri,
+                "record_count": len(rows),
+                "partitioning": ["failure_memory_version_id", "suite_id", "dataset_snapshot_hash"],
+                "lineage_columns": ["state_version_id", "failure_memory_version_id", "suite_id", "dataset_snapshot_hash"],
+            }
+            if target_dir is None:
+                skipped.append({
+                    "artifact": artifact_name,
+                    "target_uri": target_uri,
+                    "reason": "non_local_uri_requires_object_store_writer",
+                })
+                artifact["materialized"] = False
+                artifacts[artifact_name] = artifact
+                continue
+            target_dir.mkdir(parents=True, exist_ok=True)
+            local_path = target_dir / "part-00000.parquet"
+            self._write_lakehouse_parquet(
+                local_path,
+                rows,
+                artifact_columns[artifact_name],
+                geo_metadata=False,
+            )
+            artifact.update({
+                "materialized": True,
+                "local_path": str(local_path),
+                "local_uri": local_path.as_uri(),
+                "bytes": local_path.stat().st_size,
+            })
+            artifacts[artifact_name] = artifact
+            written_count += 1
+
+        manifest_uri = compact_text(
+            payload.get("manifest_uri")
+            or f"{object_store_uri}/manifests/twm/failure_memory_materialization/{version_token}/manifest.json"
+        )
+        materialization_manifest = {
+            "failure_memory_binding": binding,
+            "registry_pointer": registry_pointer,
+            "artifacts": artifacts,
+            "skipped_artifacts": skipped,
+        }
+        manifest_local_path = self._local_path_from_lakehouse_uri(manifest_uri)
+        if manifest_local_path is not None:
+            if manifest_local_path.suffix.lower() != ".json":
+                manifest_local_path = manifest_local_path / "manifest.json"
+            manifest_local_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_local_path.write_text(_json(materialization_manifest) + "\n", encoding="utf-8")
+
+        status = "materialized" if written_count == len(rows_by_artifact) and not skipped else "planned" if skipped and not written_count else "partial"
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_failure_memory_materialization.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "failure_memory_binding": binding,
+            "lakehouse": {
+                "object_store_uri": object_store_uri,
+                "namespace": namespace,
+                "table_format": "parquet_lakehouse_boundary",
+            },
+            "manifest_uri": manifest_uri,
+            "manifest_local_path": str(manifest_local_path) if manifest_local_path is not None else "",
+            "written_artifact_count": written_count,
+            "skipped_artifacts": skipped,
+            "artifacts": artifacts,
+            "registry_pointer": registry_pointer,
+            "readiness": {
+                "local_parquet_written": written_count > 0,
+                "all_failure_memory_artifacts_written": written_count == len(rows_by_artifact) and not skipped,
+                "object_store_writer_required": bool(skipped),
+                "registry_resolution_ready": bool(registry_pointer.get("registry_key") and binding.get("failure_memory_version_id")),
+                "iceberg_registration_required": True,
+            },
+            "claim_boundary": {
+                "status": "failure_memory_materialization_is_versioned_storage_boundary_not_activation",
+                "non_goals": [
+                    "automatic_model_registry_activation",
+                    "production_canary_execution",
+                    "synthetic_training_ground_truth_creation",
+                    "autonomous_l3_self_evolution",
+                ],
+            },
+        }))
+
+    def _failure_memory_binding(
+        self,
+        manifest: dict[str, Any],
+        mining_report: dict[str, Any],
+        protocol: dict[str, Any],
+        schedule: dict[str, Any],
+    ) -> dict[str, Any]:
+        failure_memory_version = self._payload_mapping(protocol.get("failure_memory_version"))
+        suite_binding = self._payload_mapping(mining_report.get("suite_binding"))
+        schedule_binding = self._payload_mapping(schedule.get("schedule_binding"))
+        package_binding = self._payload_mapping(manifest.get("package_binding"))
+        return {
+            "failure_memory_version_id": compact_text(
+                failure_memory_version.get("version_id")
+                or schedule_binding.get("failure_memory_version_id")
+                or ""
+            ),
+            "suite_id": compact_text(
+                failure_memory_version.get("suite_id")
+                or suite_binding.get("suite_id")
+                or schedule_binding.get("suite_id")
+                or manifest.get("suite_id")
+                or ""
+            ),
+            "dataset_snapshot_hash": compact_text(
+                failure_memory_version.get("dataset_snapshot_hash")
+                or suite_binding.get("dataset_snapshot_hash")
+                or schedule_binding.get("dataset_snapshot_hash")
+                or package_binding.get("dataset_snapshot_hash")
+                or ""
+            ),
+            "package_id": compact_text(
+                failure_memory_version.get("package_id")
+                or suite_binding.get("package_id")
+                or schedule_binding.get("package_id")
+                or package_binding.get("package_id")
+                or ""
+            ),
+        }
+
+    def _failure_memory_materialization_rows(
+        self,
+        *,
+        state_version_id: str,
+        manifest: dict[str, Any],
+        mining_report: dict[str, Any],
+        protocol: dict[str, Any],
+        schedule: dict[str, Any],
+        binding: dict[str, Any],
+    ) -> dict[str, list[dict[str, Any]]]:
+        return {
+            "regression_suite_cases": self._failure_memory_regression_suite_case_rows(state_version_id, manifest, binding),
+            "hard_negative_clusters": self._failure_memory_hard_negative_cluster_rows(state_version_id, mining_report, binding),
+            "canary_scopes": self._failure_memory_canary_scope_rows(state_version_id, protocol, binding),
+            "replay_schedules": self._failure_memory_replay_schedule_rows(state_version_id, schedule, binding),
+            "registry_pointers": self._failure_memory_registry_pointer_rows(state_version_id, protocol, binding),
+        }
+
+    def _failure_memory_materialization_columns(self) -> dict[str, list[str]]:
+        common = ["state_version_id", "failure_memory_version_id", "suite_id", "dataset_snapshot_hash", "package_id"]
+        return {
+            "regression_suite_cases": common + [
+                "case_id",
+                "case_type",
+                "loss_type",
+                "risk_level",
+                "region_code",
+                "rule_version",
+                "evidence_gap",
+                "action_type",
+                "source_lineage_json",
+                "replay_payload_json",
+                "not_for_training_ground_truth",
+            ],
+            "hard_negative_clusters": common + [
+                "cluster_id",
+                "axis",
+                "value",
+                "case_count",
+                "high_or_critical_count",
+                "false_allow_count",
+                "priority_score",
+                "case_ids_json",
+                "targeting_policy",
+            ],
+            "canary_scopes": common + [
+                "region_codes_json",
+                "rule_versions_json",
+                "evidence_gaps_json",
+                "action_types_json",
+                "max_case_count",
+                "scope_policy",
+            ],
+            "replay_schedules": common + [
+                "schedule_id",
+                "case_id",
+                "cluster_ids_json",
+                "sampling_weight",
+                "cluster_priority_score",
+                "required_reports_json",
+                "review_only",
+                "synthetic_ground_truth_allowed",
+            ],
+            "registry_pointers": common + [
+                "registry_namespace",
+                "registry_key",
+                "activation_status",
+                "rollback_pointer_required",
+            ],
+        }
+
+    def _failure_memory_common_row(self, state_version_id: str, binding: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "state_version_id": state_version_id,
+            "failure_memory_version_id": compact_text(binding.get("failure_memory_version_id") or ""),
+            "suite_id": compact_text(binding.get("suite_id") or ""),
+            "dataset_snapshot_hash": compact_text(binding.get("dataset_snapshot_hash") or ""),
+            "package_id": compact_text(binding.get("package_id") or ""),
+        }
+
+    def _failure_memory_regression_suite_case_rows(self, state_version_id: str, manifest: dict[str, Any], binding: dict[str, Any]) -> list[dict[str, Any]]:
+        raw_cases = manifest.get("cases") or []
+        if isinstance(raw_cases, dict):
+            raw_cases = [raw_cases]
+        if not isinstance(raw_cases, list):
+            return []
+        rows: list[dict[str, Any]] = []
+        for item in raw_cases:
+            if not isinstance(item, dict):
+                continue
+            case = self._payload_mapping(item)
+            lineage = self._payload_mapping(case.get("source_lineage"))
+            replay_payload = self._payload_mapping(case.get("replay_payload"))
+            row = self._failure_memory_common_row(state_version_id, binding)
+            row.update({
+                "case_id": self._regression_suite_case_id(case),
+                "case_type": compact_text(case.get("case_type") or ""),
+                "loss_type": compact_text(case.get("loss_type") or ""),
+                "risk_level": compact_text(case.get("risk_level") or ""),
+                "region_code": compact_text(case.get("region_code") or lineage.get("region_code") or ""),
+                "rule_version": compact_text(case.get("rule_version") or lineage.get("rule_version") or lineage.get("rule_set_id") or ""),
+                "evidence_gap": compact_text(case.get("evidence_gap") or lineage.get("evidence_gap") or ""),
+                "action_type": compact_text(case.get("action_type") or lineage.get("action_type") or ""),
+                "source_lineage_json": self._json_cell(lineage),
+                "replay_payload_json": self._json_cell(replay_payload),
+                "not_for_training_ground_truth": True,
+            })
+            rows.append(row)
+        return rows
+
+    def _failure_memory_hard_negative_cluster_rows(self, state_version_id: str, mining_report: dict[str, Any], binding: dict[str, Any]) -> list[dict[str, Any]]:
+        clusters = mining_report.get("hard_negative_clusters") or []
+        if isinstance(clusters, dict):
+            clusters = [clusters]
+        rows: list[dict[str, Any]] = []
+        for item in clusters if isinstance(clusters, list) else []:
+            if not isinstance(item, dict):
+                continue
+            cluster = self._payload_mapping(item)
+            row = self._failure_memory_common_row(state_version_id, binding)
+            row.update({
+                "cluster_id": compact_text(cluster.get("cluster_id") or ""),
+                "axis": compact_text(cluster.get("axis") or ""),
+                "value": compact_text(cluster.get("value") or ""),
+                "case_count": safe_int(cluster.get("case_count"), 0),
+                "high_or_critical_count": safe_int(cluster.get("high_or_critical_count"), 0),
+                "false_allow_count": safe_int(cluster.get("false_allow_count"), 0),
+                "priority_score": safe_float(cluster.get("priority_score"), 0.0),
+                "case_ids_json": self._json_cell(cluster.get("case_ids") or []),
+                "targeting_policy": compact_text(cluster.get("targeting_policy") or ""),
+            })
+            rows.append(row)
+        return rows
+
+    def _failure_memory_canary_scope_rows(self, state_version_id: str, protocol: dict[str, Any], binding: dict[str, Any]) -> list[dict[str, Any]]:
+        scope = self._payload_mapping(protocol.get("canary_scope"))
+        row = self._failure_memory_common_row(state_version_id, binding)
+        row.update({
+            "region_codes_json": self._json_cell(scope.get("region_codes") or []),
+            "rule_versions_json": self._json_cell(scope.get("rule_versions") or []),
+            "evidence_gaps_json": self._json_cell(scope.get("evidence_gaps") or []),
+            "action_types_json": self._json_cell(scope.get("action_types") or []),
+            "max_case_count": safe_int(scope.get("max_case_count"), 0),
+            "scope_policy": compact_text(scope.get("scope_policy") or ""),
+        })
+        return [row]
+
+    def _failure_memory_replay_schedule_rows(self, state_version_id: str, schedule: dict[str, Any], binding: dict[str, Any]) -> list[dict[str, Any]]:
+        schedule_binding = self._payload_mapping(schedule.get("schedule_binding"))
+        schedule_id = compact_text(schedule_binding.get("schedule_id") or "")
+        raw_schedule = schedule.get("replay_schedule") or []
+        if isinstance(raw_schedule, dict):
+            raw_schedule = [raw_schedule]
+        rows: list[dict[str, Any]] = []
+        for item in raw_schedule if isinstance(raw_schedule, list) else []:
+            if not isinstance(item, dict):
+                continue
+            entry = self._payload_mapping(item)
+            row = self._failure_memory_common_row(state_version_id, binding)
+            row.update({
+                "schedule_id": schedule_id,
+                "case_id": compact_text(entry.get("case_id") or ""),
+                "cluster_ids_json": self._json_cell(entry.get("cluster_ids") or []),
+                "sampling_weight": safe_float(entry.get("sampling_weight"), 0.0),
+                "cluster_priority_score": safe_float(entry.get("cluster_priority_score"), 0.0),
+                "required_reports_json": self._json_cell(entry.get("required_reports") or {}),
+                "review_only": bool(entry.get("review_only", True)),
+                "synthetic_ground_truth_allowed": bool(entry.get("synthetic_ground_truth_allowed", False)),
+            })
+            rows.append(row)
+        return rows
+
+    def _failure_memory_registry_pointer_rows(self, state_version_id: str, protocol: dict[str, Any], binding: dict[str, Any]) -> list[dict[str, Any]]:
+        pointer = self._payload_mapping(protocol.get("registry_pointer"))
+        row = self._failure_memory_common_row(state_version_id, binding)
+        row.update({
+            "registry_namespace": compact_text(pointer.get("registry_namespace") or ""),
+            "registry_key": compact_text(pointer.get("registry_key") or ""),
+            "activation_status": compact_text(pointer.get("activation_status") or ""),
+            "rollback_pointer_required": bool(pointer.get("rollback_pointer_required", True)),
+        })
+        return [row]
+
+    def _canary_failure_memory_scope(self, payload: dict[str, Any], mining_report: dict[str, Any]) -> dict[str, Any]:
+        raw_scope = self._payload_mapping(payload.get("canary_scope") or payload.get("controlled_pilot_scope"))
+        clusters = [
+            self._payload_mapping(item)
+            for item in mining_report.get("hard_negative_clusters") or []
+            if isinstance(item, dict)
+        ]
+        inferred_regions = [
+            compact_text(item.get("value") or "")
+            for item in clusters
+            if item.get("axis") == "region_code" and compact_text(item.get("value") or "")
+        ]
+
+        def list_value(key: str, fallback: list[str] | None = None) -> list[str]:
+            raw = raw_scope.get(key)
+            if isinstance(raw, str):
+                raw = [item.strip() for item in raw.split(",")]
+            if isinstance(raw, list):
+                return [compact_text(item) for item in raw if compact_text(item)]
+            return list(fallback or [])
+
+        return {
+            "region_codes": list_value("region_codes", inferred_regions[:5]),
+            "rule_versions": list_value("rule_versions"),
+            "evidence_gaps": list_value("evidence_gaps"),
+            "action_types": list_value("action_types"),
+            "max_case_count": safe_int(raw_scope.get("max_case_count"), 25),
+            "scope_policy": "geospatial_failure_memory_canary_scope",
+        }
+
+    def dynamics_reviewer_feedback_ingestion_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        manifest = self._active_regression_suite_manifest(payload)
+        package_binding = self._payload_mapping(manifest.get("package_binding"))
+        existing_case_ids = set(self._active_regression_suite_required_case_ids(manifest))
+        feedback_rows = self._reviewer_feedback_rows(payload)
+        audited_rows = [row for row in feedback_rows if self._reviewer_feedback_audited(row)]
+        proposed_cases: list[dict[str, Any]] = []
+        duplicate_case_ids: list[str] = []
+        skipped_case_ids: list[str] = []
+        for row in feedback_rows:
+            case_id = self._reviewer_feedback_case_id(row)
+            if not self._reviewer_feedback_audited(row):
+                if case_id:
+                    skipped_case_ids.append(case_id)
+                continue
+            if case_id in existing_case_ids:
+                duplicate_case_ids.append(case_id)
+                continue
+            proposed_cases.append(self._reviewer_feedback_proposed_case(row, case_id))
+        status = "review" if proposed_cases else "blocked"
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_reviewer_feedback_ingestion_report.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "suite_binding": {
+                "suite_id": compact_text(manifest.get("suite_id") or ""),
+                "package_id": compact_text(package_binding.get("package_id") or ""),
+                "dataset_snapshot_hash": compact_text(package_binding.get("dataset_snapshot_hash") or ""),
+                "existing_case_count": len(existing_case_ids),
+            },
+            "feedback_summary": {
+                "feedback_count": len(feedback_rows),
+                "audited_feedback_count": len(audited_rows),
+                "draft_or_unaudited_count": len(feedback_rows) - len(audited_rows),
+            },
+            "proposed_regression_cases": proposed_cases,
+            "proposal_gate": {
+                "status": "review" if proposed_cases else "blocked",
+                "proposed_case_count": len(proposed_cases),
+                "duplicate_case_ids": sorted(set(duplicate_case_ids)),
+                "skipped_unaudited_case_ids": sorted(set(skipped_case_ids)),
+                "missing": [] if proposed_cases else ["audited_reviewer_feedback"],
+            },
+            "activation_policy": {
+                "automatic_suite_update_allowed": False,
+                "automatic_training_ground_truth_allowed": False,
+                "required_next_step": "human_review_to_accept_or_reject_regression_suite_proposals",
+            },
+            "claim_boundary": {
+                "status": "reviewer_feedback_ingestion_is_proposal_not_training_ground_truth",
+                "non_goals": [
+                    "automatic_suite_activation",
+                    "automatic_training_label_creation",
+                    "production_activation",
+                    "autonomous_l3_self_evolution",
+                ],
+            },
+        }))
+
+    def _reviewer_feedback_rows(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
+        raw = payload.get("reviewer_feedback") or payload.get("feedback") or payload.get("review_feedback") or []
+        if isinstance(raw, dict):
+            raw = [raw]
+        if not isinstance(raw, list):
+            return []
+        return [self._payload_mapping(item) for item in raw if isinstance(item, dict)]
+
+    def _reviewer_feedback_audited(self, row: dict[str, Any]) -> bool:
+        status = compact_text(row.get("review_status") or row.get("audit_status") or row.get("status") or "").lower()
+        return status in {"audited", "approved", "accepted", "verified", "human_audited"}
+
+    def _reviewer_feedback_case_id(self, row: dict[str, Any]) -> str:
+        return compact_text(row.get("case_id") or row.get("feedback_id") or row.get("review_task_id") or row.get("id") or "")
+
+    def _reviewer_feedback_loss_type(self, row: dict[str, Any]) -> str:
+        model_decision = self._payload_mapping(row.get("model_decision") or row.get("candidate_decision") or row.get("twm_decision"))
+        corrected_decision = self._payload_mapping(row.get("corrected_decision") or row.get("target_decision") or row.get("human_decision"))
+        model_allowed = self._same_case_replay_allowed(model_decision)
+        corrected_allowed = self._same_case_replay_allowed(corrected_decision)
+        if model_allowed is True and corrected_allowed is False:
+            return "false_allow"
+        if model_allowed is False and corrected_allowed is True:
+            return "false_block"
+        return compact_text(row.get("loss_type") or row.get("correction_type") or "reviewer_correction")
+
+    def _reviewer_feedback_proposed_case(self, row: dict[str, Any], case_id: str) -> dict[str, Any]:
+        evidence_ids = row.get("evidence_ids") or row.get("evidence_id") or []
+        if isinstance(evidence_ids, str):
+            evidence_ids = [evidence_ids]
+        if not isinstance(evidence_ids, list):
+            evidence_ids = []
+        source_lineage = {
+            "source": "audited_reviewer_feedback",
+            "feedback_id": compact_text(row.get("feedback_id") or ""),
+            "reviewer_id": compact_text(row.get("reviewer_id") or row.get("reviewer") or ""),
+            "review_task_id": compact_text(row.get("review_task_id") or ""),
+            "review_status": compact_text(row.get("review_status") or row.get("audit_status") or ""),
+            "region_code": compact_text(row.get("region_code") or ""),
+            "rule_version": compact_text(row.get("rule_version") or row.get("rule_set_id") or ""),
+            "action_type": compact_text(row.get("action_type") or ""),
+            "evidence_ids": [compact_text(item) for item in evidence_ids if compact_text(item)],
+        }
+        return {
+            "case_id": case_id,
+            "case_type": "reviewer_feedback",
+            "loss_type": self._reviewer_feedback_loss_type(row),
+            "risk_level": compact_text(row.get("risk_level") or row.get("severity") or "review"),
+            "source_lineage": source_lineage,
+            "replay_payload": {
+                "model_decision": self._payload_mapping(row.get("model_decision") or row.get("candidate_decision") or row.get("twm_decision")),
+                "corrected_decision": self._payload_mapping(row.get("corrected_decision") or row.get("target_decision") or row.get("human_decision")),
+            },
+            "not_for_training_ground_truth": True,
+            "activation_status": "proposal_only_requires_human_acceptance",
+        }
+
+    def dynamics_accepted_feedback_suite_update_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        manifest = self._active_regression_suite_manifest(payload)
+        feedback_report = self._payload_mapping(
+            payload.get("dynamics_reviewer_feedback_ingestion_report")
+            or payload.get("reviewer_feedback_ingestion_report")
+            or payload.get("feedback_ingestion_report")
+        )
+        if not feedback_report and payload.get("reviewer_feedback"):
+            feedback_report = self.dynamics_reviewer_feedback_ingestion_report(
+                state_version_id,
+                {
+                    "dynamics_regression_suite_manifest": manifest,
+                    "reviewer_feedback": payload.get("reviewer_feedback"),
+                },
+            )
+        acceptance_review = self._payload_mapping(payload.get("acceptance_review") or payload.get("human_acceptance"))
+        accepted_ids = set(self._accepted_feedback_proposal_ids(payload))
+        proposed_cases = [
+            self._payload_mapping(item)
+            for item in feedback_report.get("proposed_regression_cases") or []
+            if isinstance(item, dict)
+        ]
+        proposed_case_ids = [self._regression_suite_case_id(item) for item in proposed_cases if self._regression_suite_case_id(item)]
+        existing_cases = self._accepted_feedback_existing_cases(manifest)
+        existing_case_ids = {
+            self._regression_suite_case_id(item)
+            for item in existing_cases
+            if self._regression_suite_case_id(item)
+        }
+        accepted_cases: list[dict[str, Any]] = []
+        duplicate_case_ids: list[str] = []
+        for case in proposed_cases:
+            case_id = self._regression_suite_case_id(case)
+            if not case_id or case_id not in accepted_ids:
+                continue
+            if case_id in existing_case_ids:
+                duplicate_case_ids.append(case_id)
+                continue
+            accepted_cases.append(self._accepted_feedback_suite_case(case, acceptance_review))
+        previous_suite_id = compact_text(manifest.get("suite_id") or "")
+        next_suite_id = compact_text(payload.get("next_suite_id") or self._accepted_feedback_next_suite_id(previous_suite_id, accepted_cases))
+        package_binding = self._payload_mapping(manifest.get("package_binding"))
+        updated_manifest = {
+            "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+            "status": "active_review_suite_proposal",
+            "suite_id": next_suite_id,
+            "previous_suite_id": previous_suite_id,
+            "package_binding": package_binding,
+            "cases": existing_cases + accepted_cases,
+            "version_lineage": {
+                "source_suite_id": previous_suite_id,
+                "feedback_ingestion_schema": compact_text(feedback_report.get("schema") or ""),
+                "accepted_proposal_ids": sorted(accepted_ids),
+                "accepted_by": compact_text(acceptance_review.get("accepted_by") or acceptance_review.get("reviewer_id") or ""),
+                "approval_ticket": compact_text(acceptance_review.get("approval_ticket") or acceptance_review.get("ticket_id") or ""),
+            },
+        }
+        unaccepted = sorted(set(proposed_case_ids) - accepted_ids)
+        status = "review" if accepted_cases else "blocked"
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_accepted_feedback_suite_update_report.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "suite_lineage": {
+                "previous_suite_id": previous_suite_id,
+                "next_suite_id": next_suite_id,
+                "previous_case_count": len(existing_cases),
+                "next_case_count": len(updated_manifest["cases"]),
+                "accepted_case_count": len(accepted_cases),
+            },
+            "updated_suite_manifest": updated_manifest,
+            "acceptance_gate": {
+                "status": "review" if accepted_cases else "blocked",
+                "accepted_case_count": len(accepted_cases),
+                "accepted_proposal_ids": [case.get("case_id") for case in accepted_cases],
+                "unaccepted_proposal_ids": unaccepted,
+                "duplicate_case_ids": sorted(set(duplicate_case_ids)),
+                "missing": [] if accepted_cases else ["accepted_proposal_ids"],
+            },
+            "activation_policy": {
+                "automatic_suite_activation_allowed": False,
+                "automatic_training_ground_truth_allowed": False,
+                "automatic_model_activation_allowed": False,
+                "required_next_step": "human_review_to_activate_new_suite_manifest_version",
+            },
+            "claim_boundary": {
+                "status": "accepted_feedback_suite_update_is_human_accepted_memory_not_training_ground_truth",
+                "non_goals": [
+                    "automatic_training_label_creation",
+                    "automatic_suite_activation",
+                    "production_activation",
+                    "autonomous_l3_self_evolution",
+                ],
+            },
+        }))
+
+    def _accepted_feedback_proposal_ids(self, payload: dict[str, Any]) -> list[str]:
+        raw = (
+            payload.get("accepted_proposal_ids")
+            or payload.get("accepted_case_ids")
+            or payload.get("accepted_feedback_ids")
+            or []
+        )
+        if isinstance(raw, str):
+            raw = [item.strip() for item in raw.split(",")]
+        if not isinstance(raw, list):
+            return []
+        return [compact_text(item) for item in raw if compact_text(item)]
+
+    def _accepted_feedback_existing_cases(self, manifest: dict[str, Any]) -> list[dict[str, Any]]:
+        raw_cases = manifest.get("cases") or []
+        if isinstance(raw_cases, dict):
+            raw_cases = [raw_cases]
+        if not isinstance(raw_cases, list):
+            return []
+        return [json.loads(_json(item)) for item in raw_cases if isinstance(item, dict)]
+
+    def _accepted_feedback_next_suite_id(self, previous_suite_id: str, accepted_cases: list[dict[str, Any]]) -> str:
+        base = previous_suite_id or "accepted-feedback-suite"
+        version_hash = _stable_sha256({
+            "previous_suite_id": previous_suite_id,
+            "accepted_case_ids": [case.get("case_id") for case in accepted_cases],
+        })[7:19]
+        return f"{base}:accepted:{version_hash}"
+
+    def _accepted_feedback_suite_case(self, case: dict[str, Any], acceptance_review: dict[str, Any]) -> dict[str, Any]:
+        accepted = json.loads(_json(case))
+        lineage = self._payload_mapping(accepted.get("source_lineage"))
+        lineage.update({
+            "accepted_by": compact_text(acceptance_review.get("accepted_by") or acceptance_review.get("reviewer_id") or ""),
+            "approval_ticket": compact_text(acceptance_review.get("approval_ticket") or acceptance_review.get("ticket_id") or ""),
+            "acceptance_reason": compact_text(acceptance_review.get("acceptance_reason") or acceptance_review.get("reason") or ""),
+            "acceptance_status": "human_accepted_for_failure_memory_suite",
+        })
+        accepted["source_lineage"] = lineage
+        accepted["not_for_training_ground_truth"] = True
+        accepted["activation_status"] = "accepted_proposal_pending_suite_activation"
+        return accepted
+
+    def dynamics_canary_replay_execution_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        protocol = self._payload_mapping(
+            payload.get("dynamics_canary_failure_memory_protocol")
+            or payload.get("canary_failure_memory_protocol")
+            or payload.get("failure_memory_protocol")
+        )
+        schedule = self._payload_mapping(
+            payload.get("dynamics_hard_negative_replay_scheduler_report")
+            or payload.get("hard_negative_replay_scheduler_report")
+            or payload.get("replay_scheduler_report")
+        )
+        candidate_bundle = self._payload_mapping(payload.get("candidate_bundle") or payload.get("candidate") or payload.get("bundle"))
+        rollback_evidence = self._payload_mapping(
+            payload.get("rollback_evidence")
+            or candidate_bundle.get("rollback_evidence")
+            or candidate_bundle.get("rollback")
+        )
+        failure_memory_version = self._payload_mapping(protocol.get("failure_memory_version"))
+        schedule_binding = self._payload_mapping(schedule.get("schedule_binding"))
+        scheduled_cases = [
+            self._payload_mapping(item)
+            for item in schedule.get("replay_schedule") or []
+            if isinstance(item, dict)
+        ]
+        replay_by_case = {
+            self._regression_suite_case_id(item): item
+            for item in self._canary_replay_observations(payload)
+            if self._regression_suite_case_id(item)
+        }
+        replay_results = [
+            self._canary_replay_case_result(item, replay_by_case.get(compact_text(item.get("case_id") or "")))
+            for item in scheduled_cases
+        ]
+        replayed_results = [item for item in replay_results if item.get("observed")]
+        failed_results = [item for item in replayed_results if not item.get("passed")]
+        false_allow_count = sum(1 for item in failed_results if item.get("loss_type") == "false_allow")
+        false_block_count = sum(1 for item in failed_results if item.get("loss_type") == "false_block")
+        cluster_failure_counts: dict[str, int] = {}
+        risk_level_failure_counts: dict[str, int] = {}
+        for item in failed_results:
+            for cluster_id in item.get("cluster_ids") or []:
+                cluster_failure_counts[cluster_id] = cluster_failure_counts.get(cluster_id, 0) + 1
+            risk_level = compact_text(item.get("risk_level") or "review")
+            risk_level_failure_counts[risk_level] = risk_level_failure_counts.get(risk_level, 0) + 1
+        promotion_status = "blocked" if failed_results else "controlled_pilot_review"
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_canary_replay_execution_report.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": "controlled_pilot_review" if scheduled_cases and protocol and schedule else "blocked",
+            "execution_binding": {
+                "failure_memory_version_id": compact_text(
+                    failure_memory_version.get("version_id")
+                    or schedule_binding.get("failure_memory_version_id")
+                    or ""
+                ),
+                "suite_id": compact_text(failure_memory_version.get("suite_id") or schedule_binding.get("suite_id") or ""),
+                "dataset_snapshot_hash": compact_text(
+                    failure_memory_version.get("dataset_snapshot_hash")
+                    or schedule_binding.get("dataset_snapshot_hash")
+                    or ""
+                ),
+                "package_id": compact_text(failure_memory_version.get("package_id") or schedule_binding.get("package_id") or ""),
+                "schedule_id": compact_text(schedule_binding.get("schedule_id") or ""),
+                "candidate_id": compact_text(candidate_bundle.get("candidate_id") or candidate_bundle.get("model_id") or candidate_bundle.get("id") or ""),
+            },
+            "rollback_evidence": rollback_evidence,
+            "replay_results": replay_results,
+            "replay_summary": {
+                "scheduled_case_count": len(scheduled_cases),
+                "replayed_case_count": len(replayed_results),
+                "failed_case_count": len(failed_results),
+                "false_allow_count": false_allow_count,
+                "false_block_count": false_block_count,
+                "missing_case_count": len(scheduled_cases) - len(replayed_results),
+            },
+            "drift_dashboard_inputs": {
+                "cluster_failure_counts": cluster_failure_counts,
+                "risk_level_failure_counts": risk_level_failure_counts,
+                "case_loss_table": [
+                    {
+                        "case_id": item.get("case_id"),
+                        "loss_type": item.get("loss_type"),
+                        "cluster_ids": item.get("cluster_ids"),
+                        "risk_level": item.get("risk_level"),
+                    }
+                    for item in failed_results
+                ],
+            },
+            "promotion_gate": {
+                "status": promotion_status,
+                "automatic_model_activation_allowed": False,
+                "automatic_registry_activation_allowed": False,
+                "required_next_step": (
+                    "resolve_canary_replay_failures_before_candidate_promotion"
+                    if failed_results
+                    else "human_review_canary_dashboard_before_controlled_pilot_promotion"
+                ),
+            },
+            "claim_boundary": {
+                "status": "canary_replay_execution_is_controlled_pilot_review_not_autonomous_activation",
+                "non_goals": [
+                    "production_activation",
+                    "automatic_model_registry_activation",
+                    "synthetic_training_ground_truth_creation",
+                    "autonomous_l3_self_evolution",
+                ],
+            },
+        }))
+
+    def _canary_replay_observations(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
+        raw = payload.get("replay_results") or payload.get("case_results") or payload.get("canary_replay_results") or []
+        if isinstance(raw, dict):
+            raw = [raw]
+        if not isinstance(raw, list):
+            return []
+        return [self._payload_mapping(item) for item in raw if isinstance(item, dict)]
+
+    def _canary_replay_case_result(self, scheduled_case: dict[str, Any], observation: dict[str, Any] | None) -> dict[str, Any]:
+        case_id = compact_text(scheduled_case.get("case_id") or "")
+        observed = self._payload_mapping(observation)
+        candidate_decision = self._payload_mapping(
+            observed.get("candidate_decision")
+            or observed.get("model_decision")
+            or observed.get("predicted_decision")
+        )
+        target_decision = self._payload_mapping(
+            observed.get("target_decision")
+            or observed.get("corrected_decision")
+            or observed.get("expected_decision")
+        )
+        candidate_allowed = self._same_case_replay_allowed(candidate_decision)
+        target_allowed = self._same_case_replay_allowed(target_decision)
+        has_observation = bool(observed)
+        passed = bool(has_observation and candidate_allowed == target_allowed)
+        loss_type = "missing_replay"
+        if has_observation:
+            if candidate_allowed is True and target_allowed is False:
+                loss_type = "false_allow"
+            elif candidate_allowed is False and target_allowed is True:
+                loss_type = "false_block"
+            elif passed:
+                loss_type = "pass"
+            else:
+                loss_type = compact_text(observed.get("loss_type") or "decision_mismatch")
+        risk_level = compact_text(
+            observed.get("risk_level")
+            or scheduled_case.get("risk_level")
+            or ("critical" if loss_type == "false_allow" else "review")
+        )
+        return {
+            "case_id": case_id,
+            "observed": has_observation,
+            "passed": passed,
+            "loss_type": loss_type,
+            "risk_level": risk_level,
+            "cluster_ids": list(scheduled_case.get("cluster_ids") or []),
+            "candidate_allowed": candidate_allowed,
+            "target_allowed": target_allowed,
+            "sampling_weight": scheduled_case.get("sampling_weight"),
+            "review_only": True,
+        }
+
+    def dynamics_failure_memory_registration_plan(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        materialization = self._payload_mapping(
+            payload.get("dynamics_failure_memory_materialization")
+            or payload.get("failure_memory_materialization")
+            or payload.get("materialization")
+        )
+        canary_report = self._payload_mapping(
+            payload.get("dynamics_canary_replay_execution_report")
+            or payload.get("canary_replay_execution_report")
+            or payload.get("canary_report")
+        )
+        binding = self._failure_memory_registration_binding(materialization, canary_report)
+        artifacts = self._payload_mapping(materialization.get("artifacts"))
+        catalog = compact_text(payload.get("catalog") or "prod")
+        postgis_schema = compact_text(
+            payload.get("postgis_schema")
+            or self._payload_mapping(materialization.get("lakehouse")).get("namespace")
+            or binding.get("suite_id")
+            or "twm_failure_memory"
+        )
+        iceberg_tables = [
+            self._failure_memory_iceberg_table_spec(
+                artifact_name,
+                self._payload_mapping(artifact),
+                binding,
+                catalog,
+            )
+            for artifact_name, artifact in artifacts.items()
+            if isinstance(artifact, dict)
+        ]
+        postgis_indexes = self._failure_memory_postgis_index_specs(artifacts, binding, postgis_schema)
+        rollback_evidence = self._payload_mapping(canary_report.get("rollback_evidence"))
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_failure_memory_registration_plan.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": "review" if iceberg_tables else "blocked",
+            "registration_binding": binding,
+            "iceberg_tables": iceberg_tables,
+            "postgis_indexes": postgis_indexes,
+            "registry_commit_preconditions": {
+                "failure_memory_version_id": binding.get("failure_memory_version_id"),
+                "dataset_snapshot_hash": binding.get("dataset_snapshot_hash"),
+                "canary_replay_status": compact_text(canary_report.get("status") or ""),
+                "rollback_evidence": rollback_evidence,
+                "rollback_evidence_required": True,
+                "all_tables_require_failure_memory_version_id": all(
+                    "failure_memory_version_id" in table.get("required_columns", [])
+                    for table in iceberg_tables
+                ),
+                "automatic_registry_commit_allowed": False,
+                "automatic_model_activation_allowed": False,
+            },
+            "execution_boundary": {
+                "ddl_execution_allowed": False,
+                "postgis_index_execution_allowed": False,
+                "registry_commit_allowed": False,
+                "review_only": True,
+            },
+            "claim_boundary": {
+                "status": "failure_memory_registration_plan_is_query_contract_not_activation",
+                "non_goals": [
+                    "execute_iceberg_ddl",
+                    "create_postgis_indexes",
+                    "automatic_registry_commit",
+                    "automatic_model_activation",
+                    "autonomous_l3_self_evolution",
+                ],
+            },
+        }))
+
+    def _failure_memory_registration_binding(self, materialization: dict[str, Any], canary_report: dict[str, Any]) -> dict[str, Any]:
+        materialization_binding = self._payload_mapping(materialization.get("failure_memory_binding"))
+        execution_binding = self._payload_mapping(canary_report.get("execution_binding"))
+        return {
+            "failure_memory_version_id": compact_text(
+                materialization_binding.get("failure_memory_version_id")
+                or execution_binding.get("failure_memory_version_id")
+                or ""
+            ),
+            "suite_id": compact_text(materialization_binding.get("suite_id") or execution_binding.get("suite_id") or ""),
+            "dataset_snapshot_hash": compact_text(
+                materialization_binding.get("dataset_snapshot_hash")
+                or execution_binding.get("dataset_snapshot_hash")
+                or ""
+            ),
+            "package_id": compact_text(materialization_binding.get("package_id") or execution_binding.get("package_id") or ""),
+            "schedule_id": compact_text(execution_binding.get("schedule_id") or ""),
+        }
+
+    def _failure_memory_iceberg_table_spec(
+        self,
+        artifact_name: str,
+        artifact: dict[str, Any],
+        binding: dict[str, Any],
+        catalog: str,
+    ) -> dict[str, Any]:
+        table = compact_text(artifact.get("table") or artifact_name)
+        iceberg_table = f"{catalog}.{table}" if not table.startswith(f"{catalog}.") else table
+        required_columns = ["failure_memory_version_id", "suite_id", "dataset_snapshot_hash", "state_version_id"]
+        source_uri = compact_text(artifact.get("local_uri") or artifact.get("target_uri") or "")
+        ddl = (
+            f"CREATE TABLE IF NOT EXISTS {iceberg_table} "
+            "(failure_memory_version_id STRING, suite_id STRING, dataset_snapshot_hash STRING, state_version_id STRING) "
+            "USING iceberg "
+            f"LOCATION '{source_uri}' "
+            f"TBLPROPERTIES ('twm.failure_memory_version_id'='{binding.get('failure_memory_version_id')}', "
+            f"'twm.dataset_snapshot_hash'='{binding.get('dataset_snapshot_hash')}')"
+        )
+        return {
+            "artifact": artifact_name,
+            "iceberg_table": iceberg_table,
+            "source_uri": source_uri,
+            "ddl": ddl,
+            "required_columns": required_columns,
+            "version_resolution": {
+                "failure_memory_version_id": binding.get("failure_memory_version_id"),
+                "suite_id": binding.get("suite_id"),
+                "dataset_snapshot_hash": binding.get("dataset_snapshot_hash"),
+            },
+            "record_count": safe_int(artifact.get("record_count"), 0),
+            "execute": False,
+        }
+
+    def _failure_memory_postgis_index_specs(
+        self,
+        artifacts: dict[str, Any],
+        binding: dict[str, Any],
+        postgis_schema: str,
+    ) -> list[dict[str, Any]]:
+        columns_by_artifact = {
+            "regression_suite_cases": ["failure_memory_version_id", "region_code", "rule_version", "evidence_gap", "action_type"],
+            "hard_negative_clusters": ["failure_memory_version_id", "axis", "value"],
+            "canary_scopes": ["failure_memory_version_id"],
+            "replay_schedules": ["failure_memory_version_id", "case_id"],
+            "registry_pointers": ["failure_memory_version_id", "registry_key"],
+        }
+        indexes: list[dict[str, Any]] = []
+        for artifact_name in artifacts:
+            columns = columns_by_artifact.get(artifact_name, ["failure_memory_version_id"])
+            indexes.append({
+                "artifact": artifact_name,
+                "postgis_table": f"{postgis_schema}.{artifact_name}",
+                "index_name": f"idx_{postgis_schema}_{artifact_name}_failure_memory".replace(".", "_"),
+                "columns": columns,
+                "where": f"failure_memory_version_id = '{binding.get('failure_memory_version_id')}'",
+                "execute": False,
+            })
+        return indexes
+
+    def _dynamics_shootout_candidate_reports(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
+        candidates = payload.get("candidate_reports") or payload.get("candidates") or []
+        if isinstance(candidates, dict):
+            candidates = [candidates]
+        if not isinstance(candidates, list):
+            candidates = []
+        single = payload.get("candidate_report")
+        if isinstance(single, dict):
+            candidates.append(single)
+        return [self._payload_mapping(item) for item in candidates if isinstance(item, dict)]
+
+    def _dynamics_shootout_auto_fov_stress_candidate_reports(
+        self,
+        *,
+        payload: dict[str, Any],
+        candidate_reports: list[dict[str, Any]],
+        package_integrity: dict[str, Any],
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        if not (
+            truthy(payload.get("auto_fov_stress"))
+            or truthy(payload.get("generate_fov_stress"))
+            or truthy(payload.get("auto_fov_stress_generation"))
+            or truthy(payload.get("generate_fov_stress_tests"))
+        ):
+            return candidate_reports, {
+                "schema": "territory_world_model.auto_fov_stress_generation.v1",
+                "status": "not_requested",
+                "requested": False,
+                "factor_count": 0,
+                "factors": [],
+                "generated_stress_row_count": 0,
+                "metric_enriched_stress_row_count": 0,
+                "tail_case_count": 0,
+                "loss_case_count": 0,
+                "action_mask_loss_case_count": 0,
+                "candidate_count_injected": 0,
+                "candidate_count_with_existing_fov": 0,
+                "candidate_count_metric_enriched": 0,
+                "missing": [],
+            }
+        dataset_payload = payload.get("dataset") or payload.get("training_dataset")
+        dataset = dict(dataset_payload) if isinstance(dataset_payload, dict) else {}
+        factors = self._dynamics_shootout_auto_fov_factors(payload)
+        missing: list[str] = []
+        if not dataset:
+            missing.append("dataset")
+        if not factors:
+            missing.append("fov_factors")
+        dataset_summary = self._payload_mapping(dataset.get("summary")) if dataset else {}
+        dataset_mrep = self._payload_mapping(dataset_summary.get("mrep_trace"))
+        dataset_hash = compact_text(dataset_mrep.get("dataset_snapshot_hash") or "")
+        package_hash = compact_text(package_integrity.get("dataset_snapshot_hash") or "")
+        if package_hash and dataset_hash and package_hash != dataset_hash:
+            missing.append("dataset_snapshot_hash_mismatch")
+        elif package_hash and dataset and not dataset_hash:
+            missing.append("dataset_snapshot_hash")
+        if missing:
+            return candidate_reports, {
+                "schema": "territory_world_model.auto_fov_stress_generation.v1",
+                "status": "blocked",
+                "requested": True,
+                "factor_count": len(factors),
+                "factors": factors,
+                "dataset_snapshot_hash": dataset_hash,
+                "package_dataset_snapshot_hash": package_hash,
+                "generated_stress_row_count": 0,
+                "metric_enriched_stress_row_count": 0,
+                "tail_case_count": 0,
+                "loss_case_count": 0,
+                "action_mask_loss_case_count": 0,
+                "candidate_count_injected": 0,
+                "candidate_count_with_existing_fov": 0,
+                "candidate_count_metric_enriched": 0,
+                "missing": sorted(set(missing)),
+            }
+
+        auto_rows, missing_factors = self._dynamics_shootout_auto_fov_stress_rows(dataset, factors)
+        enriched_reports: list[dict[str, Any]] = []
+        injected_candidate_count = 0
+        existing_fov_count = 0
+        generated_stress_row_count = 0
+        metric_enriched_stress_row_count = 0
+        tail_case_count = 0
+        loss_case_count = 0
+        action_mask_loss_case_count = 0
+        candidate_count_metric_enriched = 0
+        generated_row_statuses: set[str] = set()
+        for report in candidate_reports:
+            if self._dynamics_shootout_candidate_has_fov_stress(report):
+                existing_fov_count += 1
+                enriched_reports.append(report)
+                continue
+            enriched = dict(report)
+            if auto_rows:
+                candidate_rows = self._dynamics_shootout_auto_fov_rows_for_candidate(
+                    dataset=dataset,
+                    template_rows=auto_rows,
+                    report=report,
+                    payload=payload,
+                )
+                enriched["fov_stress_tests"] = candidate_rows
+                injected_candidate_count += 1
+                generated_stress_row_count += len(candidate_rows)
+                candidate_metric_rows = sum(1 for row in candidate_rows if row.get("metric_summary"))
+                metric_enriched_stress_row_count += candidate_metric_rows
+                tail_examples = [
+                    example
+                    for row in candidate_rows
+                    for example in list(row.get("tail_examples") or [])
+                    if isinstance(example, dict)
+                ]
+                tail_case_count += len(tail_examples)
+                loss_case_count += sum(1 for example in tail_examples if example.get("loss_case"))
+                action_mask_loss_case_count += sum(1 for example in tail_examples if example.get("action_mask_error"))
+                if candidate_metric_rows:
+                    candidate_count_metric_enriched += 1
+                generated_row_statuses.update(compact_text(row.get("status") or "review") for row in candidate_rows)
+            enriched_reports.append(enriched)
+
+        row_statuses = generated_row_statuses or {compact_text(row.get("status") or "review") for row in auto_rows}
+        status = "pass"
+        if not auto_rows:
+            status = "blocked"
+        elif row_statuses & {"blocked", "fail", "failed"}:
+            status = "blocked"
+        elif row_statuses - {"pass"} or missing_factors:
+            status = "review"
+        return enriched_reports, {
+            "schema": "territory_world_model.auto_fov_stress_generation.v1",
+            "status": status,
+            "requested": True,
+            "factor_count": len(factors),
+            "factors": factors,
+            "dataset_snapshot_hash": dataset_hash,
+            "package_dataset_snapshot_hash": package_hash,
+            "template_stress_row_count": len(auto_rows),
+            "generated_stress_row_count": generated_stress_row_count,
+            "metric_enriched_stress_row_count": metric_enriched_stress_row_count,
+            "tail_case_count": tail_case_count,
+            "loss_case_count": loss_case_count,
+            "action_mask_loss_case_count": action_mask_loss_case_count,
+            "candidate_count": len(candidate_reports),
+            "candidate_count_injected": injected_candidate_count,
+            "candidate_count_with_existing_fov": existing_fov_count,
+            "candidate_count_metric_enriched": candidate_count_metric_enriched,
+            "missing_factors": missing_factors,
+            "missing": sorted(set(["fov_partitions"] if not auto_rows else [])),
+        }
+
+    def _dynamics_shootout_auto_fov_factors(self, payload: dict[str, Any]) -> list[str]:
+        raw = payload.get("fov_factors") or payload.get("auto_fov_factors") or [
+            "region",
+            "year",
+            "rule_version",
+            "evidence_completeness",
+        ]
+        if isinstance(raw, str):
+            raw = raw.replace(",", " ").split()
+        if isinstance(raw, dict):
+            raw = raw.keys()
+        if not isinstance(raw, Iterable):
+            return []
+        aliases = {
+            "admin_region": "region",
+            "administrative_region": "region",
+            "region_code": "region",
+            "spatial_unit": "region",
+            "policy_year": "year",
+            "planning_year": "year",
+            "current_year": "year",
+            "control_rule_version": "rule_version",
+            "rules": "rule_version",
+            "rule": "rule_version",
+            "evidence": "evidence_completeness",
+            "evidence_supported": "evidence_completeness",
+            "evidence_coverage": "evidence_completeness",
+        }
+        factors: list[str] = []
+        for item in raw:
+            key = compact_text(item).lower().replace("-", "_")
+            if not key:
+                continue
+            factor = aliases.get(key, key)
+            if factor not in factors:
+                factors.append(factor)
+        return factors
+
+    def _dynamics_shootout_auto_fov_stress_rows(
+        self,
+        dataset: dict[str, Any],
+        factors: list[str],
+    ) -> tuple[list[dict[str, Any]], list[str]]:
+        examples = [item for item in dataset.get("examples") or [] if isinstance(item, dict)]
+        dataset_summary = self._payload_mapping(dataset.get("summary"))
+        dataset_mrep = self._payload_mapping(dataset_summary.get("mrep_trace"))
+        rows: list[dict[str, Any]] = []
+        missing_factors: list[str] = []
+        for factor in factors:
+            partitions: dict[str, dict[str, Any]] = {}
+            for item in examples:
+                partition_value = self._dynamics_shootout_auto_fov_partition_value(item, factor, dataset_mrep)
+                if not partition_value:
+                    continue
+                partition = partitions.setdefault(
+                    partition_value,
+                    {
+                        "value": partition_value,
+                        "example_count": 0,
+                        "holdout_count": 0,
+                        "not_for_production_count": 0,
+                    },
+                )
+                partition["example_count"] += 1
+                if compact_text(item.get("split") or "unknown") == "holdout":
+                    partition["holdout_count"] += 1
+                if self._dynamics_shootout_auto_fov_not_for_production(item):
+                    partition["not_for_production_count"] += 1
+            if not partitions:
+                missing_factors.append(factor)
+                continue
+            partition_rows = sorted(partitions.values(), key=lambda row: str(row.get("value") or ""))
+            example_count = sum(int(row.get("example_count") or 0) for row in partition_rows)
+            partition_count = len(partition_rows)
+            not_for_production_count = sum(int(row.get("not_for_production_count") or 0) for row in partition_rows)
+            review_reasons: list[str] = []
+            if partition_count < 2:
+                review_reasons.append("single_partition")
+            if example_count < 2:
+                review_reasons.append("insufficient_examples")
+            if not_for_production_count >= example_count and example_count > 0:
+                review_reasons.append("not_for_production_only")
+            row = {
+                "factor": factor,
+                "status": "review" if review_reasons else "pass",
+                "partition_count": partition_count,
+                "example_count": example_count,
+                "partitions": partition_rows,
+                "source": "dataset_partition_auto_fov",
+            }
+            if review_reasons:
+                row["review_reasons"] = review_reasons
+            if "not_for_production_only" in review_reasons:
+                row["not_for_production"] = True
+            rows.append(row)
+        return rows, missing_factors
+
+    def _dynamics_shootout_auto_fov_rows_for_candidate(
+        self,
+        *,
+        dataset: dict[str, Any],
+        template_rows: list[dict[str, Any]],
+        report: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        rows = deepcopy(template_rows)
+        predictions = self._dynamics_shootout_candidate_prediction_map(report)
+        if not predictions:
+            return rows
+        dataset_summary = self._payload_mapping(dataset.get("summary"))
+        dataset_mrep = self._payload_mapping(dataset_summary.get("mrep_trace"))
+        partition_metrics_by_factor = {
+            compact_text(row.get("factor") or ""): self._dynamics_shootout_fov_partition_metrics(
+                dataset=dataset,
+                predictions=predictions,
+                factor=compact_text(row.get("factor") or ""),
+                dataset_mrep=dataset_mrep,
+            )
+            for row in rows
+            if compact_text(row.get("factor") or "")
+        }
+        thresholds = self._payload_mapping(payload.get("fov_metric_thresholds") or payload.get("auto_fov_metric_thresholds"))
+        max_tail_examples = max(0, safe_int(payload.get("max_fov_tail_examples"), 5))
+        for row in rows:
+            factor = compact_text(row.get("factor") or "")
+            metrics_by_partition = partition_metrics_by_factor.get(factor) or {}
+            if not metrics_by_partition:
+                continue
+            partitions = [self._payload_mapping(item) for item in row.get("partitions") or [] if isinstance(item, dict)]
+            for partition in partitions:
+                value = compact_text(partition.get("value") or "")
+                metrics = metrics_by_partition.get(value)
+                if metrics:
+                    partition["metrics"] = metrics
+            metric_summary = self._dynamics_shootout_fov_partition_metric_summary(partitions)
+            if not metric_summary:
+                row["partitions"] = partitions
+                continue
+            row["partitions"] = partitions
+            row["metric_summary"] = metric_summary
+            review_reasons = list(row.get("review_reasons") or [])
+            transition_threshold = float(safe_float(thresholds.get("max_transition_error_delta"), 0.1) or 0.1)
+            constraint_threshold = float(safe_float(thresholds.get("max_constraint_error_delta"), 0.1) or 0.1)
+            utility_threshold = float(safe_float(thresholds.get("max_utility_error_delta"), 0.1) or 0.1)
+            if float(safe_float(metric_summary.get("max_transition_error_delta"), 0.0) or 0.0) > transition_threshold:
+                review_reasons.append("partition_transition_error_delta")
+            if float(safe_float(metric_summary.get("max_constraint_error_delta"), 0.0) or 0.0) > constraint_threshold:
+                review_reasons.append("partition_constraint_error_delta")
+            if float(safe_float(metric_summary.get("max_utility_error_delta"), 0.0) or 0.0) > utility_threshold:
+                review_reasons.append("partition_utility_error_delta")
+            if review_reasons:
+                row["review_reasons"] = sorted(set(review_reasons))
+                row["status"] = "review"
+                tail_examples = self._dynamics_shootout_fov_tail_examples(
+                    dataset=dataset,
+                    predictions=predictions,
+                    factor=factor,
+                    dataset_mrep=dataset_mrep,
+                    max_examples=max_tail_examples,
+                )
+                if tail_examples:
+                    row["tail_examples"] = tail_examples
+        return rows
+
+    def _dynamics_shootout_candidate_prediction_map(self, report: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        evaluation = self._payload_mapping(report.get("evaluation"))
+        prediction_trace = self._payload_mapping(report.get("prediction_trace"))
+        raw_predictions = report.get("predictions") or evaluation.get("predictions") or prediction_trace.get("predictions")
+        if not raw_predictions:
+            return {}
+        return self._dynamics_predictions_for_evaluation({"examples": []}, {"predictions": raw_predictions})
+
+    def _dynamics_shootout_fov_partition_metrics(
+        self,
+        *,
+        dataset: dict[str, Any],
+        predictions: dict[str, dict[str, Any]],
+        factor: str,
+        dataset_mrep: dict[str, Any],
+    ) -> dict[str, dict[str, Any]]:
+        accumulators: dict[str, dict[str, Any]] = {}
+        for item in dataset.get("examples") or []:
+            if not isinstance(item, dict):
+                continue
+            example_id = compact_text(item.get("id") or item.get("example_id") or "")
+            prediction = self._payload_mapping(predictions.get(example_id))
+            if not example_id or not prediction:
+                continue
+            partition_value = self._dynamics_shootout_auto_fov_partition_value(item, factor, dataset_mrep)
+            if not partition_value:
+                continue
+            targets = self._payload_mapping(item.get("targets"))
+            bucket = accumulators.setdefault(
+                partition_value,
+                {
+                    "evaluated_example_count": 0,
+                    "transition_errors": [],
+                    "constraint_errors": [],
+                    "utility_errors": [],
+                },
+            )
+            metric_seen = False
+            transition_error = self._latent_transition_error(
+                predicted=self._payload_mapping(prediction.get("future_latent_state")),
+                target=self._payload_mapping(targets.get("future_latent_state")),
+            )
+            if transition_error is not None:
+                bucket["transition_errors"].append(float(transition_error))
+                metric_seen = True
+            predicted_constraint = safe_float(prediction.get("constraint_violation_probability"), None)
+            target_constraint = safe_float(targets.get("constraint_violation_probability"), None)
+            if predicted_constraint is not None and target_constraint is not None:
+                bucket["constraint_errors"].append(abs(float(predicted_constraint) - float(target_constraint)))
+                metric_seen = True
+            predicted_utility = safe_float(prediction.get("planning_utility_delta"), None)
+            target_utility = safe_float(targets.get("planning_utility_delta"), None)
+            if predicted_utility is not None and target_utility is not None:
+                bucket["utility_errors"].append(abs(float(predicted_utility) - float(target_utility)))
+                metric_seen = True
+            if metric_seen:
+                bucket["evaluated_example_count"] += 1
+        metrics_by_partition: dict[str, dict[str, Any]] = {}
+        for value, bucket in accumulators.items():
+            evaluated = int(bucket.get("evaluated_example_count") or 0)
+            if not evaluated:
+                continue
+            metrics = {"evaluated_example_count": evaluated}
+            transition_mean = self._mean(bucket.get("transition_errors") or [])
+            constraint_mean = self._mean(bucket.get("constraint_errors") or [])
+            utility_mean = self._mean(bucket.get("utility_errors") or [])
+            if transition_mean is not None:
+                metrics["mean_transition_error"] = transition_mean
+            if constraint_mean is not None:
+                metrics["mean_constraint_error"] = constraint_mean
+            if utility_mean is not None:
+                metrics["mean_utility_error"] = utility_mean
+            metrics_by_partition[value] = metrics
+        return metrics_by_partition
+
+    def _dynamics_shootout_fov_tail_examples(
+        self,
+        *,
+        dataset: dict[str, Any],
+        predictions: dict[str, dict[str, Any]],
+        factor: str,
+        dataset_mrep: dict[str, Any],
+        max_examples: int,
+    ) -> list[dict[str, Any]]:
+        if max_examples <= 0:
+            return []
+        rows: list[dict[str, Any]] = []
+        for item in dataset.get("examples") or []:
+            if not isinstance(item, dict):
+                continue
+            example_id = compact_text(item.get("id") or item.get("example_id") or "")
+            prediction = self._payload_mapping(predictions.get(example_id))
+            if not example_id or not prediction:
+                continue
+            partition_value = self._dynamics_shootout_auto_fov_partition_value(item, factor, dataset_mrep)
+            if not partition_value:
+                continue
+            targets = self._payload_mapping(item.get("targets"))
+            metrics = self._dynamics_shootout_example_prediction_errors(targets=targets, prediction=prediction)
+            if not metrics:
+                continue
+            score = max(float(value) for value in metrics.values() if value is not None)
+            if score <= 0:
+                continue
+            provenance = self._payload_mapping(item.get("provenance"))
+            action_mask_error = self._dynamics_shootout_action_mask_error(targets=targets, prediction=prediction)
+            delta = self._dynamics_shootout_target_prediction_delta(targets=targets, prediction=prediction)
+            if action_mask_error:
+                delta["action_mask_error_class"] = action_mask_error["class"]
+            rows.append({
+                "example_id": example_id,
+                "factor": factor,
+                "partition_value": partition_value,
+                "split": compact_text(item.get("split") or "unknown"),
+                "metrics": metrics,
+                "loss_score": round(score, 6),
+                "loss_case": True,
+                "action_mask_error": action_mask_error,
+                "not_for_production": self._dynamics_shootout_auto_fov_not_for_production(item),
+                "source_lineage": self._dynamics_shootout_tail_source_lineage(provenance),
+                "target_vs_prediction_delta": delta,
+            })
+        rows.sort(key=lambda row: (-float(row.get("loss_score") or 0.0), str(row.get("example_id") or "")))
+        return rows[:max_examples]
+
+    def _dynamics_shootout_example_prediction_errors(
+        self,
+        *,
+        targets: dict[str, Any],
+        prediction: dict[str, Any],
+    ) -> dict[str, float]:
+        metrics: dict[str, float] = {}
+        transition_error = self._latent_transition_error(
+            predicted=self._payload_mapping(prediction.get("future_latent_state")),
+            target=self._payload_mapping(targets.get("future_latent_state")),
+        )
+        if transition_error is not None:
+            metrics["transition_error"] = round(float(transition_error), 6)
+        predicted_constraint = safe_float(prediction.get("constraint_violation_probability"), None)
+        target_constraint = safe_float(targets.get("constraint_violation_probability"), None)
+        if predicted_constraint is not None and target_constraint is not None:
+            metrics["constraint_error"] = round(abs(float(predicted_constraint) - float(target_constraint)), 6)
+        predicted_utility = safe_float(prediction.get("planning_utility_delta"), None)
+        target_utility = safe_float(targets.get("planning_utility_delta"), None)
+        if predicted_utility is not None and target_utility is not None:
+            metrics["utility_error"] = round(abs(float(predicted_utility) - float(target_utility)), 6)
+        if self._dynamics_shootout_action_mask_error(targets=targets, prediction=prediction):
+            metrics["action_mask_error"] = 1.0
+        return metrics
+
+    def _dynamics_shootout_action_mask_error(
+        self,
+        *,
+        targets: dict[str, Any],
+        prediction: dict[str, Any],
+    ) -> dict[str, Any]:
+        target_mask = self._payload_mapping(targets.get("action_mask"))
+        predicted_mask = self._payload_mapping(prediction.get("action_mask"))
+        if not target_mask and not predicted_mask:
+            return {}
+        target_allowed = bool(target_mask.get("allowed", True))
+        predicted_allowed = bool(predicted_mask.get("allowed", True))
+        if predicted_allowed == target_allowed:
+            return {}
+        error_class = "false_allow" if predicted_allowed and not target_allowed else "false_block"
+        result = {
+            "class": error_class,
+            "target_allowed": target_allowed,
+            "predicted_allowed": predicted_allowed,
+        }
+        target_reason = compact_text(target_mask.get("reason") or target_mask.get("block_reason") or "")
+        predicted_reason = compact_text(predicted_mask.get("reason") or predicted_mask.get("block_reason") or "")
+        if target_reason:
+            result["target_reason"] = target_reason
+        if predicted_reason:
+            result["predicted_reason"] = predicted_reason
+        return result
+
+    def _dynamics_shootout_target_prediction_delta(
+        self,
+        *,
+        targets: dict[str, Any],
+        prediction: dict[str, Any],
+    ) -> dict[str, Any]:
+        target_latent = self._payload_mapping(targets.get("future_latent_state"))
+        predicted_latent = self._payload_mapping(prediction.get("future_latent_state"))
+        target_state = self._payload_mapping(
+            target_latent.get("observed_next")
+            or target_latent.get("projected")
+            or target_latent.get("decoded_state")
+        )
+        predicted_state = self._payload_mapping(
+            predicted_latent.get("decoded_state")
+            or predicted_latent.get("observed_next")
+            or predicted_latent.get("projected")
+        )
+        delta: dict[str, Any] = {}
+        target_area = safe_float(target_state.get("total_area_m2"), None)
+        predicted_area = safe_float(predicted_state.get("total_area_m2"), None)
+        if target_area is not None and predicted_area is not None:
+            delta["total_area_m2_delta"] = round(float(predicted_area) - float(target_area), 6)
+        target_constraint = safe_float(targets.get("constraint_violation_probability"), None)
+        predicted_constraint = safe_float(prediction.get("constraint_violation_probability"), None)
+        if target_constraint is not None and predicted_constraint is not None:
+            delta["constraint_violation_probability_delta"] = round(float(predicted_constraint) - float(target_constraint), 6)
+        target_utility = safe_float(targets.get("planning_utility_delta"), None)
+        predicted_utility = safe_float(prediction.get("planning_utility_delta"), None)
+        if target_utility is not None and predicted_utility is not None:
+            delta["planning_utility_delta_delta"] = round(float(predicted_utility) - float(target_utility), 6)
+        land_type_deltas: dict[str, float] = {}
+        target_types = self._payload_mapping(target_state.get("land_space_types"))
+        predicted_types = self._payload_mapping(predicted_state.get("land_space_types"))
+        for land_type in sorted(set(target_types) | set(predicted_types)):
+            target_payload = self._payload_mapping(target_types.get(land_type))
+            predicted_payload = self._payload_mapping(predicted_types.get(land_type))
+            target_type_area = safe_float(target_payload.get("area_m2"), None)
+            predicted_type_area = safe_float(predicted_payload.get("area_m2"), None)
+            if target_type_area is not None and predicted_type_area is not None:
+                land_type_deltas[str(land_type)] = round(float(predicted_type_area) - float(target_type_area), 6)
+        if land_type_deltas:
+            delta["land_type_area_m2_delta"] = land_type_deltas
+        return delta
+
+    def _dynamics_shootout_tail_source_lineage(self, provenance: dict[str, Any]) -> dict[str, Any]:
+        keys = ("source", "source_table", "source_dataset", "baseline_version", "rule_version", "region_code", "current_year")
+        return {
+            key: provenance.get(key)
+            for key in keys
+            if provenance.get(key) not in (None, "")
+        }
+
+    def _dynamics_shootout_fov_partition_metric_summary(self, partitions: list[dict[str, Any]]) -> dict[str, Any]:
+        metric_rows = [
+            (compact_text(partition.get("value") or ""), self._payload_mapping(partition.get("metrics")))
+            for partition in partitions
+            if self._payload_mapping(partition.get("metrics"))
+        ]
+        if not metric_rows:
+            return {}
+        metric_keys = {
+            "mean_transition_error": "max_transition_error_delta",
+            "mean_constraint_error": "max_constraint_error_delta",
+            "mean_utility_error": "max_utility_error_delta",
+        }
+        summary: dict[str, Any] = {
+            "source": "candidate_predictions",
+            "evaluated_example_count": sum(int(metrics.get("evaluated_example_count") or 0) for _value, metrics in metric_rows),
+            "metric_count": 0,
+        }
+        worst_partition: dict[str, Any] = {}
+        for metric_key, delta_key in metric_keys.items():
+            values = [
+                (value, float(metrics[metric_key]))
+                for value, metrics in metric_rows
+                if metrics.get(metric_key) is not None
+            ]
+            if not values:
+                continue
+            summary["metric_count"] += 1
+            max_value = max(metric_value for _value, metric_value in values)
+            min_value = min(metric_value for _value, metric_value in values)
+            summary[delta_key] = round(max_value - min_value, 6)
+            if not worst_partition and metric_key == "mean_transition_error":
+                worst_value, worst_metric = max(values, key=lambda item: item[1])
+                worst_partition = {
+                    "value": worst_value,
+                    "metric": metric_key,
+                    "metric_value": round(worst_metric, 6),
+                }
+        if not worst_partition:
+            first_metric = next((key for key in metric_keys if any(metrics.get(key) is not None for _value, metrics in metric_rows)), "")
+            if first_metric:
+                values = [
+                    (value, float(metrics[first_metric]))
+                    for value, metrics in metric_rows
+                    if metrics.get(first_metric) is not None
+                ]
+                worst_value, worst_metric = max(values, key=lambda item: item[1])
+                worst_partition = {
+                    "value": worst_value,
+                    "metric": first_metric,
+                    "metric_value": round(worst_metric, 6),
+                }
+        if worst_partition:
+            summary["worst_partition"] = worst_partition
+        return summary
+
+    def _dynamics_shootout_auto_fov_partition_value(
+        self,
+        item: dict[str, Any],
+        factor: str,
+        dataset_mrep: dict[str, Any],
+    ) -> str:
+        provenance = self._payload_mapping(item.get("provenance"))
+        labels = self._payload_mapping(item.get("labels"))
+        if factor == "region":
+            return self._dynamics_shootout_partition_text(
+                provenance.get("region_code"),
+                provenance.get("region"),
+                item.get("region_code"),
+                item.get("spatial_unit"),
+                provenance.get("spatial_unit"),
+                provenance.get("admin_code"),
+            )
+        if factor == "year":
+            return self._dynamics_shootout_partition_text(
+                provenance.get("current_year"),
+                provenance.get("year"),
+                provenance.get("next_year"),
+                item.get("current_year"),
+                item.get("year"),
+            )
+        if factor == "rule_version":
+            return self._dynamics_shootout_partition_text(
+                provenance.get("rule_version"),
+                item.get("rule_version"),
+                dataset_mrep.get("rule_version"),
+            )
+        if factor == "evidence_completeness":
+            value = (
+                labels.get("evidence_completeness")
+                if labels.get("evidence_completeness") is not None
+                else labels.get("evidence_supported")
+            )
+            if value is None:
+                value = provenance.get("evidence_completeness")
+            if isinstance(value, bool):
+                return "complete" if value else "incomplete"
+            numeric = safe_float(value, None)
+            if numeric is not None and compact_text(value):
+                if numeric >= 0.8:
+                    return "high"
+                if numeric >= 0.5:
+                    return "medium"
+                return "low"
+            return self._dynamics_shootout_partition_text(value)
+        return self._dynamics_shootout_partition_text(
+            provenance.get(factor),
+            labels.get(factor),
+            item.get(factor),
+            dataset_mrep.get(factor),
+        )
+
+    def _dynamics_shootout_partition_text(self, *values: Any) -> str:
+        for value in values:
+            if isinstance(value, bool):
+                return "true" if value else "false"
+            text = compact_text(value)
+            if text:
+                return text
+        return ""
+
+    def _dynamics_shootout_auto_fov_not_for_production(self, item: dict[str, Any]) -> bool:
+        provenance = self._payload_mapping(item.get("provenance"))
+        reasons = item.get("not_for_training_reasons") or []
+        if isinstance(reasons, str):
+            reasons = [reasons]
+        reason_text = " ".join(str(reason).lower() for reason in reasons if reason is not None)
+        return bool(
+            item.get("not_for_production")
+            or item.get("synthetic")
+            or provenance.get("not_for_production")
+            or provenance.get("synthetic")
+            or "not_for_production" in reason_text
+            or "synthetic" in reason_text
+        )
+
+    def _dynamics_shootout_candidate_has_fov_stress(self, report: dict[str, Any]) -> bool:
+        evaluation = self._payload_mapping(report.get("evaluation"))
+        raw_tests = (
+            report.get("fov_stress_tests")
+            or report.get("fov_stress_results")
+            or report.get("factors_of_variation")
+            or evaluation.get("fov_stress_tests")
+            or []
+        )
+        if isinstance(raw_tests, dict):
+            return bool(raw_tests)
+        if isinstance(raw_tests, list):
+            return any(isinstance(item, dict) and bool(item) for item in raw_tests)
+        return False
+
+    def _dynamics_shootout_auto_baseline_candidate_reports(
+        self,
+        *,
+        state_version_id: str,
+        payload: dict[str, Any],
+        package_integrity: dict[str, Any],
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        baseline_specs = self._dynamics_shootout_baseline_specs(payload)
+        dataset_payload = payload.get("dataset") or payload.get("training_dataset")
+        dataset = dict(dataset_payload) if isinstance(dataset_payload, dict) else {}
+        dataset_summary = self._payload_mapping(dataset.get("summary"))
+        dataset_mrep = self._payload_mapping(dataset_summary.get("mrep_trace"))
+        dataset_hash = compact_text(dataset_mrep.get("dataset_snapshot_hash") or "")
+        package_hash = compact_text(package_integrity.get("dataset_snapshot_hash") or "")
+        if not baseline_specs:
+            return [], {
+                "requested_baseline_count": 0,
+                "generated_candidate_count": 0,
+                "status": "not_requested",
+                "missing": [],
+            }
+        if not dataset:
+            return [], {
+                "requested_baseline_count": len(baseline_specs),
+                "generated_candidate_count": 0,
+                "status": "blocked",
+                "missing": ["dataset"],
+            }
+        generated: list[dict[str, Any]] = []
+        failures: list[dict[str, Any]] = []
+        for spec in baseline_specs:
+            baseline_id = compact_text(spec.get("baseline_id") or spec.get("id") or spec.get("type") or "")
+            try:
+                generated.append(
+                    self._dynamics_shootout_baseline_candidate_report(
+                        state_version_id=state_version_id,
+                        dataset=dataset,
+                        dataset_hash=dataset_hash,
+                        package_integrity=package_integrity,
+                        baseline_spec=spec,
+                        payload=payload,
+                    )
+                )
+            except Exception as exc:
+                failures.append({"baseline_id": baseline_id or "unknown_baseline", "error": str(exc)})
+        missing: list[str] = []
+        if package_hash and dataset_hash and package_hash != dataset_hash:
+            missing.append("dataset_snapshot_hash_mismatch")
+        if package_hash and not dataset_hash:
+            missing.append("dataset_snapshot_hash")
+        if failures:
+            missing.append("auto_baseline_failures")
+        status = "pass" if generated and not missing else "blocked" if not generated else "review"
+        return generated, {
+            "requested_baseline_count": len(baseline_specs),
+            "generated_candidate_count": len(generated),
+            "status": status,
+            "dataset_snapshot_hash": dataset_hash,
+            "package_dataset_snapshot_hash": package_hash,
+            "missing": sorted(set(missing)),
+            "failures": failures,
+        }
+
+    def _dynamics_shootout_baseline_specs(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
+        raw = payload.get("include_baselines") or payload.get("auto_baselines") or []
+        if raw is True:
+            raw = ["deterministic_rule", "persistence", "markov"]
+        if isinstance(raw, str):
+            raw = [raw]
+        if isinstance(raw, dict):
+            raw = [raw]
+        if not isinstance(raw, list):
+            return []
+        specs: list[dict[str, Any]] = []
+        for item in raw:
+            if isinstance(item, dict):
+                spec = self._payload_mapping(item)
+                baseline_id = compact_text(spec.get("baseline_id") or spec.get("id") or spec.get("type") or "")
+            else:
+                baseline_id = compact_text(item)
+                spec = {"baseline_id": baseline_id}
+            canonical = self._dynamics_shootout_canonical_baseline_id(baseline_id)
+            if not canonical:
+                continue
+            spec["baseline_id"] = canonical
+            specs.append(spec)
+        return specs
+
+    def _dynamics_shootout_canonical_baseline_id(self, value: str) -> str:
+        key = compact_text(value).lower().replace("-", "_")
+        aliases = {
+            "deterministic": "deterministic_rule",
+            "deterministic_rule": "deterministic_rule",
+            "deterministic_rule_baseline": "deterministic_rule",
+            "rule": "deterministic_rule",
+            "rule_only": "deterministic_rule",
+            "persistence": "persistence",
+            "persistence_baseline": "persistence",
+            "markov": "markov",
+            "markov_baseline": "markov",
+            "markov_transition": "markov",
+            "persistence_markov": "markov",
+        }
+        return aliases.get(key, "")
+
+    def _dynamics_shootout_baseline_candidate_report(
+        self,
+        *,
+        state_version_id: str,
+        dataset: dict[str, Any],
+        dataset_hash: str,
+        package_integrity: dict[str, Any],
+        baseline_spec: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        baseline_id = compact_text(baseline_spec.get("baseline_id") or "")
+        candidate = self._dynamics_shootout_baseline_candidate_descriptor(baseline_id)
+        predictions = self._dynamics_shootout_baseline_predictions(dataset, baseline_id)
+        prediction_trace_mode = self._dynamics_shootout_prediction_trace_mode(payload, baseline_spec)
+        prediction_trace = self._dynamics_shootout_prediction_trace(predictions, prediction_trace_mode)
+        evaluation = self.dynamics_evaluation_report(
+            state_version_id,
+            {
+                "dataset": dataset,
+                "predictions": predictions,
+                "candidate": candidate,
+                "thresholds": dict(payload.get("evaluation_thresholds") or payload.get("thresholds") or {}),
+            },
+        )
+        return {
+            "schema": "territory_world_model.shootout_baseline_candidate_report.v1",
+            "candidate_id": baseline_id,
+            "package_id": compact_text(package_integrity.get("package_id") or ""),
+            "dataset_snapshot_hash": dataset_hash,
+            "split_summary": self._payload_mapping(package_integrity.get("split_summary")),
+            "baseline_version": compact_text(package_integrity.get("baseline_version") or ""),
+            "status": evaluation.get("status", "review"),
+            "candidate": candidate,
+            "target_head_metrics": evaluation.get("target_head_metrics") or {},
+            "evaluation": evaluation,
+            "evidence_gate": evaluation.get("evidence_gate") or {},
+            "prediction_trace": prediction_trace,
+        }
+
+    def _dynamics_shootout_prediction_trace_mode(self, payload: dict[str, Any], spec: dict[str, Any] | None = None) -> str:
+        raw = (
+            self._payload_mapping(spec).get("prediction_trace_mode")
+            or payload.get("prediction_trace_mode")
+            or payload.get("baseline_prediction_trace_mode")
+            or "compact"
+        )
+        mode = compact_text(raw).lower()
+        return mode if mode in {"compact", "full", "none"} else "compact"
+
+    def _dynamics_shootout_prediction_trace(
+        self,
+        predictions: dict[str, dict[str, Any]],
+        mode: str,
+    ) -> dict[str, Any]:
+        mode = compact_text(mode).lower() or "compact"
+        if mode == "none":
+            return {
+                "schema": "territory_world_model.prediction_trace.v1",
+                "mode": "none",
+                "prediction_count": len(predictions),
+            }
+        if mode == "full":
+            return {
+                "schema": "territory_world_model.prediction_trace.v1",
+                "mode": "full",
+                "prediction_count": len(predictions),
+                "predictions": deepcopy(predictions),
+            }
+        return {
+            "schema": "territory_world_model.prediction_trace.v1",
+            "mode": "compact",
+            "prediction_count": len(predictions),
+            "predictions": {
+                str(example_id): self._dynamics_shootout_compact_prediction_trace_row(prediction)
+                for example_id, prediction in predictions.items()
+                if isinstance(prediction, dict)
+            },
+        }
+
+    def _dynamics_shootout_compact_prediction_trace_row(self, prediction: dict[str, Any]) -> dict[str, Any]:
+        row: dict[str, Any] = {}
+        for key in (
+            "future_latent_state",
+            "constraint_violation_probability",
+            "planning_utility_delta",
+            "action_mask",
+        ):
+            if key in prediction:
+                row[key] = deepcopy(prediction.get(key))
+        return row
+
+    def _dynamics_shootout_baseline_candidate_descriptor(self, baseline_id: str) -> dict[str, Any]:
+        if baseline_id == "persistence":
+            return {
+                "model_name": "persistence_baseline",
+                "model_version": "shootout_v1",
+                "model_family": "persistence_baseline",
+                "is_scaffold_baseline": True,
+            }
+        if baseline_id == "markov":
+            return {
+                "model_name": "markov_transition_baseline",
+                "model_version": "shootout_v1",
+                "model_family": "markov_transition_baseline",
+                "is_scaffold_baseline": True,
+            }
+        return {
+            "model_name": "deterministic_rule_baseline",
+            "model_version": "shootout_v1",
+            "model_family": "deterministic_rule_baseline",
+            "is_scaffold_baseline": True,
+        }
+
+    def _dynamics_shootout_baseline_predictions(self, dataset: dict[str, Any], baseline_id: str) -> dict[str, dict[str, Any]]:
+        if baseline_id == "persistence":
+            return self._dynamics_shootout_persistence_predictions(dataset)
+        if baseline_id == "markov":
+            return self._dynamics_shootout_markov_predictions(dataset)
+        params = self._fit_baseline_dynamics_parameters(dataset)
+        return self._predict_with_baseline_dynamics(dataset, params)
+
+    def _dynamics_shootout_persistence_predictions(self, dataset: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        predictions: dict[str, dict[str, Any]] = {}
+        for item in dataset.get("examples") or []:
+            if not isinstance(item, dict):
+                continue
+            example_id = compact_text(item.get("id") or item.get("example_id") or "")
+            if not example_id:
+                continue
+            targets = self._payload_mapping(item.get("targets"))
+            labels = self._payload_mapping(item.get("labels"))
+            predictions[example_id] = {
+                "future_latent_state": self._dynamics_shootout_persistence_latent(targets),
+                "constraint_violation_probability": safe_float(targets.get("constraint_violation_probability"), 0.0) or 0.0,
+                "planning_utility_delta": safe_float(targets.get("planning_utility_delta") or labels.get("ranking_score"), 0.0) or 0.0,
+                "uncertainty": {"confidence": 0.5, "source": "persistence_baseline"},
+                "calibration": {"source": "persistence_baseline"},
+                "action_mask": dict(targets.get("action_mask") or {}),
+            }
+        return predictions
+
+    def _dynamics_shootout_persistence_latent(self, targets: dict[str, Any]) -> dict[str, Any]:
+        latent = self._payload_mapping(targets.get("future_latent_state"))
+        observed = self._payload_mapping(latent.get("observed_next") or latent.get("projected"))
+        if observed:
+            return {
+                "schema": "territory_world_model.predicted_latent_state.v1",
+                "observed_next": json.loads(json.dumps(observed)),
+                "transition_delta": {},
+            }
+        return dict(latent)
+
+    def _dynamics_shootout_markov_predictions(self, dataset: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        transition_profile = self._dynamics_shootout_markov_transition_profile(dataset)
+        predictions: dict[str, dict[str, Any]] = {}
+        for item in dataset.get("examples") or []:
+            if not isinstance(item, dict):
+                continue
+            example_id = compact_text(item.get("id") or item.get("example_id") or "")
+            if not example_id:
+                continue
+            targets = self._payload_mapping(item.get("targets"))
+            labels = self._payload_mapping(item.get("labels"))
+            predictions[example_id] = {
+                "future_latent_state": self._dynamics_shootout_markov_latent(targets, transition_profile),
+                "constraint_violation_probability": transition_profile.get("constraint_mean", 0.0),
+                "planning_utility_delta": transition_profile.get("utility_mean", safe_float(labels.get("ranking_score"), 0.0) or 0.0),
+                "uncertainty": {"confidence": transition_profile.get("confidence_mean", 0.5), "source": "markov_transition_baseline"},
+                "calibration": {"source": "markov_transition_baseline"},
+                "action_mask": dict(targets.get("action_mask") or {}),
+            }
+        return predictions
+
+    def _dynamics_shootout_markov_transition_profile(self, dataset: dict[str, Any]) -> dict[str, Any]:
+        total_area_values: list[float] = []
+        utility_values: list[float] = []
+        constraint_values: list[float] = []
+        confidence_values: list[float] = []
+        land_type_area_means: dict[str, list[float]] = {}
+        for item in dataset.get("examples") or []:
+            if not isinstance(item, dict) or item.get("not_for_training_reasons"):
+                continue
+            targets = self._payload_mapping(item.get("targets"))
+            latent = self._payload_mapping(targets.get("future_latent_state"))
+            observed = self._payload_mapping(latent.get("observed_next") or latent.get("projected"))
+            area = safe_float(observed.get("total_area_m2"), None)
+            if area is not None:
+                total_area_values.append(float(area))
+            for land_type, land_payload in self._payload_mapping(observed.get("land_space_types")).items():
+                value = safe_float(self._payload_mapping(land_payload).get("area_m2"), None)
+                if value is not None:
+                    land_type_area_means.setdefault(str(land_type), []).append(float(value))
+            utility_values.append(float(safe_float(targets.get("planning_utility_delta"), 0.0) or 0.0))
+            constraint_values.append(float(safe_float(targets.get("constraint_violation_probability"), 0.0) or 0.0))
+            confidence_values.append(float(safe_float(self._payload_mapping(targets.get("uncertainty")).get("confidence"), 0.5) or 0.5))
+        return {
+            "total_area_mean": self._mean(total_area_values),
+            "land_type_area_means": {
+                key: self._mean(values)
+                for key, values in land_type_area_means.items()
+            },
+            "utility_mean": self._mean(utility_values) or 0.0,
+            "constraint_mean": self._mean(constraint_values) or 0.0,
+            "confidence_mean": self._mean(confidence_values) or 0.5,
+        }
+
+    def _dynamics_shootout_markov_latent(self, targets: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
+        latent = self._payload_mapping(targets.get("future_latent_state"))
+        observed = self._payload_mapping(latent.get("observed_next") or latent.get("projected"))
+        predicted = json.loads(json.dumps(observed)) if observed else {}
+        total_area = profile.get("total_area_mean")
+        if total_area is not None and "total_area_m2" in predicted:
+            predicted["total_area_m2"] = round(float(total_area), 6)
+        land_type_means = self._payload_mapping(profile.get("land_type_area_means"))
+        if isinstance(predicted.get("land_space_types"), dict):
+            for land_type, mean_area in land_type_means.items():
+                if land_type in predicted["land_space_types"] and mean_area is not None:
+                    predicted["land_space_types"][land_type]["area_m2"] = round(float(mean_area), 6)
+        return {
+            "schema": "territory_world_model.predicted_latent_state.v1",
+            "observed_next": predicted,
+            "transition_delta": latent.get("delta") or {},
+        }
+
+    def _dynamics_shootout_auto_train_candidate_reports(
+        self,
+        *,
+        state_version_id: str,
+        payload: dict[str, Any],
+        package_integrity: dict[str, Any],
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        trainer_specs = self._dynamics_shootout_auto_trainer_specs(payload)
+        dataset_payload = payload.get("dataset") or payload.get("training_dataset")
+        dataset = dict(dataset_payload) if isinstance(dataset_payload, dict) else {}
+        dataset_summary = self._payload_mapping(dataset.get("summary"))
+        dataset_mrep = self._payload_mapping(dataset_summary.get("mrep_trace"))
+        dataset_hash = compact_text(dataset_mrep.get("dataset_snapshot_hash") or "")
+        package_hash = compact_text(package_integrity.get("dataset_snapshot_hash") or "")
+        if not trainer_specs:
+            return [], {
+                "requested_trainer_count": 0,
+                "generated_candidate_count": 0,
+                "status": "not_requested",
+                "missing": [],
+            }
+        if not dataset:
+            return [], {
+                "requested_trainer_count": len(trainer_specs),
+                "generated_candidate_count": 0,
+                "status": "blocked",
+                "missing": ["dataset"],
+            }
+        generated: list[dict[str, Any]] = []
+        failures: list[dict[str, Any]] = []
+        for index, trainer_spec in enumerate(trainer_specs):
+            trainer = self._payload_mapping(trainer_spec)
+            try:
+                train_payload = self._dynamics_shootout_train_payload(payload, dataset, trainer)
+                train_report = self.train_dynamics_candidate(state_version_id, train_payload)
+                generated.append(
+                    self._dynamics_shootout_candidate_from_train_report(
+                        train_report=train_report,
+                        state_version_id=state_version_id,
+                        dataset=dataset,
+                        dataset_hash=dataset_hash,
+                        package_integrity=package_integrity,
+                        trainer=trainer,
+                        index=index,
+                        payload=payload,
+                    )
+                )
+            except Exception as exc:
+                failures.append({
+                    "trainer_id": compact_text(trainer.get("trainer_id") or trainer.get("id") or f"auto-trainer-{index + 1}"),
+                    "error": str(exc),
+                })
+        missing: list[str] = []
+        if package_hash and dataset_hash and package_hash != dataset_hash:
+            missing.append("dataset_snapshot_hash_mismatch")
+        if package_hash and not dataset_hash:
+            missing.append("dataset_snapshot_hash")
+        if failures:
+            missing.append("auto_trainer_failures")
+        status = "pass" if generated and not missing else "blocked" if not generated else "review"
+        return generated, {
+            "requested_trainer_count": len(trainer_specs),
+            "generated_candidate_count": len(generated),
+            "status": status,
+            "dataset_snapshot_hash": dataset_hash,
+            "package_dataset_snapshot_hash": package_hash,
+            "missing": sorted(set(missing)),
+            "failures": failures,
+        }
+
+    def _dynamics_shootout_auto_trainer_specs(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
+        raw = (
+            payload.get("auto_trainers")
+            or payload.get("candidate_trainers")
+            or payload.get("auto_train_candidate_trainers")
+            or []
+        )
+        if isinstance(raw, dict):
+            raw = [raw]
+        if not isinstance(raw, list):
+            raw = []
+        specs = [self._payload_mapping(item) for item in raw if isinstance(item, dict)]
+        if specs:
+            return specs
+        if truthy(payload.get("auto_train_candidates")) and isinstance(payload.get("trainer"), dict):
+            return [self._payload_mapping(payload.get("trainer"))]
+        return []
+
+    def _dynamics_shootout_train_payload(
+        self,
+        payload: dict[str, Any],
+        dataset: dict[str, Any],
+        trainer: dict[str, Any],
+    ) -> dict[str, Any]:
+        train_payload = {
+            "dataset": dataset,
+            "trainer": trainer,
+            "training_config": dict(payload.get("training_config") or {}),
+            "thresholds": dict(payload.get("thresholds") or {}),
+            "evaluation_thresholds": dict(payload.get("evaluation_thresholds") or {}),
+            "registry_metadata": dict(payload.get("registry_metadata") or payload.get("metadata") or {}),
+            "production_data_gate": dict(payload.get("production_data_gate") or payload.get("production_gate") or {}),
+            "geofm_gate_report": dict(payload.get("geofm_gate_report") or {}),
+            "causal_calibration_report": dict(payload.get("causal_calibration_report") or {}),
+        }
+        return train_payload
+
+    def _dynamics_shootout_candidate_from_train_report(
+        self,
+        *,
+        train_report: dict[str, Any],
+        state_version_id: str,
+        dataset: dict[str, Any],
+        dataset_hash: str,
+        package_integrity: dict[str, Any],
+        trainer: dict[str, Any],
+        index: int,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        candidate_report = self._payload_mapping(train_report.get("candidate_report"))
+        candidate = self._payload_mapping(candidate_report.get("candidate") or train_report.get("trainer") or trainer)
+        predictions = self._payload_mapping(train_report.get("predictions"))
+        prediction_trace_mode = self._dynamics_shootout_prediction_trace_mode(payload, trainer)
+        prediction_trace = self._dynamics_shootout_prediction_trace(predictions, prediction_trace_mode)
+        evaluation = self.dynamics_evaluation_report(
+            state_version_id,
+            {
+                "dataset": dataset,
+                "predictions": predictions,
+                "candidate": candidate,
+                "thresholds": dict(payload.get("evaluation_thresholds") or payload.get("thresholds") or {}),
+            },
+        )
+        trainer_id = compact_text(
+            trainer.get("trainer_id")
+            or self._payload_mapping(train_report.get("trainer")).get("trainer_id")
+            or f"auto-trainer-{index + 1}"
+        )
+        return {
+            "schema": "territory_world_model.shootout_auto_trained_candidate_report.v1",
+            "candidate_id": trainer_id,
+            "package_id": compact_text(package_integrity.get("package_id") or ""),
+            "dataset_snapshot_hash": dataset_hash,
+            "split_summary": self._payload_mapping(package_integrity.get("split_summary")),
+            "baseline_version": compact_text(package_integrity.get("baseline_version") or ""),
+            "status": train_report.get("status", "review"),
+            "candidate": candidate,
+            "target_head_metrics": evaluation.get("target_head_metrics") or {},
+            "evaluation": evaluation,
+            "train_report": {
+                "schema": train_report.get("schema"),
+                "status": train_report.get("status"),
+                "trainer": train_report.get("trainer"),
+                "evidence_gate": train_report.get("evidence_gate"),
+                "registry_report": train_report.get("registry_report"),
+            },
+            "evidence_gate": train_report.get("evidence_gate") or {},
+            "prediction_trace": prediction_trace,
+        }
+
+    def _dynamics_shootout_package_integrity(self, pilot_package: dict[str, Any]) -> dict[str, Any]:
+        mrep_trace = self._payload_mapping(pilot_package.get("mrep_trace"))
+        trajectory_manifest = self._payload_mapping(pilot_package.get("trajectory_dataset_manifest"))
+        split_summary = self._payload_mapping(pilot_package.get("split_summary"))
+        package_gates = self._payload_mapping(pilot_package.get("package_gates"))
+        evidence_summary = self._payload_mapping(pilot_package.get("evidence_summary"))
+        source_lineage = self._payload_mapping(trajectory_manifest.get("source_lineage"))
+        package_id = compact_text(pilot_package.get("package_id") or evidence_summary.get("package_id") or "")
+        dataset_hash = compact_text(
+            mrep_trace.get("dataset_snapshot_hash")
+            or trajectory_manifest.get("dataset_snapshot_hash")
+            or evidence_summary.get("dataset_snapshot_hash")
+            or ""
+        )
+        baseline_version = compact_text(source_lineage.get("baseline_version") or mrep_trace.get("baseline_version") or "")
+        blockers = list(pilot_package.get("promotion_blockers") or [])
+        return {
+            "package_id": package_id,
+            "dataset_snapshot_hash": dataset_hash,
+            "split_summary": split_summary,
+            "baseline_version": baseline_version,
+            "package_status": pilot_package.get("status", "review"),
+            "production_data_status": self._payload_mapping(package_gates.get("production_data")).get("status", "not_provided"),
+            "same_case_baseline_status": self._payload_mapping(package_gates.get("same_case_baseline")).get("status", "not_provided"),
+            "package_blockers": sorted(str(item) for item in blockers),
+        }
+
+    def _dynamics_shootout_candidate_summary(
+        self,
+        report: dict[str, Any],
+        *,
+        index: int,
+        package_integrity: dict[str, Any],
+    ) -> dict[str, Any]:
+        candidate = self._payload_mapping(report.get("candidate") or report.get("trainer") or {})
+        evaluation = self._payload_mapping(report.get("evaluation"))
+        target_head_metrics = self._payload_mapping(
+            report.get("target_head_metrics")
+            or evaluation.get("target_head_metrics")
+            or self._payload_mapping(report.get("backend_report")).get("target_head_metrics")
+        )
+        holdout_metrics = self._payload_mapping(report.get("holdout_metrics") or evaluation.get("holdout_metrics"))
+        seed_stability = self._payload_mapping(report.get("seed_stability") or evaluation.get("seed_stability"))
+        same_case_replay = self._payload_mapping(report.get("same_case_replay") or report.get("planner_replay") or evaluation.get("same_case_replay"))
+        fov_stress = self._dynamics_shootout_candidate_fov_stress(report, evaluation)
+        family = compact_text(candidate.get("model_family") or report.get("model_family") or "unknown_model_family")
+        model_name = compact_text(candidate.get("model_name") or report.get("model_name") or family)
+        model_version = compact_text(candidate.get("model_version") or report.get("model_version") or "")
+        candidate_id = compact_text(
+            report.get("candidate_id")
+            or report.get("registry_key")
+            or (f"{model_name}:{model_version}" if model_version else model_name)
+            or f"candidate-{index + 1}"
+        )
+        candidate_package_id = compact_text(report.get("package_id") or self._payload_mapping(report.get("metadata")).get("package_id") or "")
+        candidate_dataset_hash = compact_text(
+            report.get("dataset_snapshot_hash")
+            or self._payload_mapping(report.get("mrep_trace")).get("dataset_snapshot_hash")
+            or self._payload_mapping(self._payload_mapping(report.get("dataset")).get("mrep_trace")).get("dataset_snapshot_hash")
+            or self._payload_mapping(report.get("registry")).get("training_dataset_snapshot")
+            or ""
+        )
+        candidate_split = self._payload_mapping(report.get("split_summary") or evaluation.get("split_summary"))
+        candidate_baseline_version = compact_text(
+            report.get("baseline_version")
+            or self._payload_mapping(report.get("mrep_trace")).get("baseline_version")
+            or ""
+        )
+        blockers = self._dynamics_shootout_candidate_blockers(
+            report=report,
+            package_integrity=package_integrity,
+            candidate_package_id=candidate_package_id,
+            candidate_dataset_hash=candidate_dataset_hash,
+            candidate_split=candidate_split,
+            candidate_baseline_version=candidate_baseline_version,
+            target_head_metrics=target_head_metrics,
+            same_case_replay=same_case_replay,
+        )
+        metrics = self._dynamics_shootout_candidate_metrics(
+            target_head_metrics=target_head_metrics,
+            holdout_metrics=holdout_metrics,
+            seed_stability=seed_stability,
+            same_case_replay=same_case_replay,
+        )
+        shootout_score = self._dynamics_shootout_score(metrics)
+        promotion_limits = self._dynamics_shootout_candidate_promotion_limits(fov_stress)
+        recommendation = self._dynamics_shootout_candidate_recommendation(blockers, same_case_replay, package_integrity, promotion_limits)
+        return {
+            "candidate_id": candidate_id,
+            "model_family": family,
+            "model_name": model_name,
+            "model_version": model_version,
+            "status": report.get("status") or evaluation.get("status") or "review",
+            "recommendation": recommendation,
+            "shootout_score": shootout_score,
+            "blockers": blockers,
+            "promotion_limits": promotion_limits,
+            "package_binding": {
+                "package_id": candidate_package_id,
+                "dataset_snapshot_hash": candidate_dataset_hash,
+                "baseline_version": candidate_baseline_version,
+            },
+            "metrics": metrics,
+            "same_case_replay": same_case_replay,
+            "fov_stress": fov_stress,
+            "regression_suite_case_ids": self._active_regression_suite_covered_case_ids(report),
+        }
+
+    def _dynamics_shootout_candidate_fov_stress(self, report: dict[str, Any], evaluation: dict[str, Any]) -> dict[str, Any]:
+        raw_tests = (
+            report.get("fov_stress_tests")
+            or report.get("fov_stress_results")
+            or report.get("factors_of_variation")
+            or evaluation.get("fov_stress_tests")
+            or []
+        )
+        if isinstance(raw_tests, dict):
+            raw_tests = [raw_tests]
+        if not isinstance(raw_tests, list):
+            raw_tests = []
+        tests = [self._payload_mapping(item) for item in raw_tests if isinstance(item, dict)]
+        if not tests:
+            return {
+                "schema": "territory_world_model.candidate_fov_stress.v1",
+                "status": "missing",
+                "stress_test_count": 0,
+                "factors": [],
+                "tests": [],
+            }
+        statuses = {compact_text(item.get("status") or "review") for item in tests}
+        factors = sorted({compact_text(item.get("factor") or item.get("fov") or item.get("dimension") or "unknown") for item in tests})
+        status = "pass"
+        if statuses & {"blocked", "fail", "failed"}:
+            status = "blocked"
+        elif statuses - {"pass"}:
+            status = "review"
+        synthetic_only = all(bool(item.get("synthetic") or item.get("not_for_production")) for item in tests)
+        if synthetic_only and status == "pass":
+            status = "review"
+        return {
+            "schema": "territory_world_model.candidate_fov_stress.v1",
+            "status": status,
+            "stress_test_count": len(tests),
+            "factors": factors,
+            "synthetic_only": synthetic_only,
+            "tests": tests,
+        }
+
+    def _dynamics_shootout_candidate_promotion_limits(self, fov_stress: dict[str, Any]) -> list[str]:
+        limits: list[str] = []
+        status = compact_text(fov_stress.get("status") or "missing")
+        if status == "missing":
+            limits.append("fov_stress_tests")
+        elif status == "blocked":
+            limits.append("fov_stress_blocked")
+        if fov_stress.get("synthetic_only"):
+            limits.append("fov_synthetic_only")
+        return sorted(set(limits))
+
+    def _dynamics_shootout_fov_stress_summary(self, candidate_summaries: list[dict[str, Any]]) -> dict[str, Any]:
+        fov_rows = [self._payload_mapping(item.get("fov_stress")) for item in candidate_summaries]
+        with_fov = [row for row in fov_rows if row.get("status") != "missing"]
+        missing = [row for row in fov_rows if row.get("status") == "missing"]
+        factors = sorted({factor for row in with_fov for factor in row.get("factors", [])})
+        statuses = {compact_text(row.get("status") or "missing") for row in with_fov}
+        status = "missing" if not with_fov else "pass"
+        if statuses & {"blocked"}:
+            status = "blocked"
+        elif statuses - {"pass"} or missing:
+            status = "review"
+        return {
+            "schema": "territory_world_model.fov_stress_summary.v1",
+            "status": status,
+            "candidate_count": len(candidate_summaries),
+            "candidate_count_with_fov": len(with_fov),
+            "candidate_count_missing_fov": len(missing),
+            "factors": factors,
+        }
+
+    def _dynamics_shootout_complexity_gain_gate(self, candidate_summaries: list[dict[str, Any]]) -> dict[str, Any]:
+        candidate_gates = [
+            self._dynamics_shootout_complex_candidate_gain_gate(candidate, candidate_summaries)
+            for candidate in candidate_summaries
+            if self._dynamics_shootout_complex_model_family(candidate.get("model_family"))
+        ]
+        if not candidate_gates:
+            status = "not_applicable"
+        elif any(item.get("status") != "pass" for item in candidate_gates):
+            status = "review"
+        else:
+            status = "pass"
+        return {
+            "schema": "territory_world_model.complexity_gain_gate.v1",
+            "status": status,
+            "candidate_gate_count": len(candidate_gates),
+            "required_gain_axes": [
+                "temporal_holdout_gain",
+                "spatial_or_fov_gain",
+                "decision_metric_gain",
+            ],
+            "candidate_gates": candidate_gates,
+        }
+
+    def _dynamics_shootout_apply_complexity_gain_gate(
+        self,
+        *,
+        candidate_summaries: list[dict[str, Any]],
+        complexity_gain_gate: dict[str, Any],
+        package_integrity: dict[str, Any],
+    ) -> None:
+        gate_by_id = {
+            compact_text(item.get("candidate_id") or ""): item
+            for item in complexity_gain_gate.get("candidate_gates") or []
+            if item.get("status") != "pass"
+        }
+        for candidate in candidate_summaries:
+            candidate_id = compact_text(candidate.get("candidate_id") or "")
+            if candidate_id not in gate_by_id:
+                continue
+            promotion_limits = list(candidate.get("promotion_limits") or [])
+            promotion_limits.append("complexity_gain_gate")
+            candidate["promotion_limits"] = sorted(set(promotion_limits))
+            candidate["recommendation"] = self._dynamics_shootout_candidate_recommendation(
+                list(candidate.get("blockers") or []),
+                self._payload_mapping(candidate.get("same_case_replay")),
+                package_integrity,
+                candidate["promotion_limits"],
+            )
+
+    def _dynamics_shootout_apply_active_regression_suite_gate(
+        self,
+        *,
+        candidate_summaries: list[dict[str, Any]],
+        active_regression_suite_manifest: dict[str, Any],
+        package_binding: dict[str, Any],
+    ) -> dict[str, Any]:
+        if not active_regression_suite_manifest:
+            return self._active_regression_suite_gate(
+                manifest={},
+                covered_case_ids=[],
+                package_binding=package_binding,
+            )
+        candidate_gates: list[dict[str, Any]] = []
+        for candidate in candidate_summaries:
+            gate = self._active_regression_suite_gate(
+                manifest=active_regression_suite_manifest,
+                covered_case_ids=list(candidate.get("regression_suite_case_ids") or []),
+                package_binding=package_binding,
+            )
+            candidate["active_regression_suite_gate"] = gate
+            candidate_gates.append({
+                "candidate_id": candidate.get("candidate_id"),
+                **gate,
+            })
+            if gate.get("status") != "blocked":
+                continue
+            promotion_limits = list(candidate.get("promotion_limits") or [])
+            promotion_limits.append("active_regression_suite")
+            candidate["promotion_limits"] = sorted(set(promotion_limits))
+            candidate["recommendation"] = self._dynamics_shootout_candidate_recommendation(
+                list(candidate.get("blockers") or []),
+                self._payload_mapping(candidate.get("same_case_replay")),
+                package_binding,
+                candidate["promotion_limits"],
+            )
+        blocked = [item for item in candidate_gates if item.get("status") == "blocked"]
+        manifest_gate = self._active_regression_suite_gate(
+            manifest=active_regression_suite_manifest,
+            covered_case_ids=self._active_regression_suite_required_case_ids(active_regression_suite_manifest),
+            package_binding=package_binding,
+        )
+        return {
+            **manifest_gate,
+            "schema": "territory_world_model.active_regression_suite_gate.v1",
+            "status": "blocked" if blocked or manifest_gate.get("status") == "blocked" else manifest_gate.get("status"),
+            "candidate_gate_count": len(candidate_gates),
+            "blocked_candidate_count": len(blocked),
+            "candidate_gates": candidate_gates,
+        }
+
+    def _dynamics_shootout_complex_candidate_gain_gate(
+        self,
+        candidate: dict[str, Any],
+        candidate_summaries: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        required_gain_axes = [
+            "temporal_holdout_gain",
+            "spatial_or_fov_gain",
+            "decision_metric_gain",
+        ]
+        references = self._dynamics_shootout_complexity_reference_candidates(candidate, candidate_summaries)
+        if candidate.get("blockers"):
+            return {
+                "candidate_id": candidate.get("candidate_id"),
+                "model_family": candidate.get("model_family"),
+                "status": "review",
+                "reference_candidate_id": None,
+                "reference_candidate_ids": [],
+                "required_gain_axes": required_gain_axes,
+                "passed": [],
+                "missing": ["candidate_blockers"],
+                "metric_deltas": {},
+            }
+        if not references:
+            return {
+                "candidate_id": candidate.get("candidate_id"),
+                "model_family": candidate.get("model_family"),
+                "status": "review",
+                "reference_candidate_id": None,
+                "reference_candidate_ids": [],
+                "required_gain_axes": required_gain_axes,
+                "passed": [],
+                "missing": ["simpler_reference_candidate"],
+                "metric_deltas": {},
+            }
+
+        metrics = self._payload_mapping(candidate.get("metrics"))
+        future_gain = self._dynamics_shootout_complexity_metric_gain(
+            candidate_metrics=metrics,
+            references=references,
+            metric_key="future_transition_error",
+            higher_is_better=False,
+        )
+        temporal_gain = self._dynamics_shootout_complexity_metric_gain(
+            candidate_metrics=metrics,
+            references=references,
+            metric_key="temporal_holdout_error",
+            higher_is_better=False,
+        )
+        spatial_gain = self._dynamics_shootout_complexity_metric_gain(
+            candidate_metrics=metrics,
+            references=references,
+            metric_key="spatial_holdout_error",
+            higher_is_better=False,
+        )
+        fov_gain = self._dynamics_shootout_complexity_fov_gain(candidate, references)
+        planner_gain = self._dynamics_shootout_complexity_metric_gain(
+            candidate_metrics=metrics,
+            references=references,
+            metric_key="planner_lift",
+            higher_is_better=True,
+        )
+        utility_gain = self._dynamics_shootout_complexity_metric_gain(
+            candidate_metrics=metrics,
+            references=references,
+            metric_key="utility_ranking_score",
+            higher_is_better=True,
+        )
+        false_allow_gain = self._dynamics_shootout_complexity_metric_gain(
+            candidate_metrics=metrics,
+            references=references,
+            metric_key="action_mask_false_allow_rate",
+            higher_is_better=False,
+        )
+        false_block_gain = self._dynamics_shootout_complexity_metric_gain(
+            candidate_metrics=metrics,
+            references=references,
+            metric_key="action_mask_false_block_rate",
+            higher_is_better=False,
+        )
+
+        passed: list[str] = []
+        missing: list[str] = []
+        if temporal_gain.get("passed"):
+            passed.append("temporal_holdout_gain")
+        else:
+            missing.append("temporal_holdout_gain")
+        spatial_or_fov_passed = bool(spatial_gain.get("passed") or fov_gain.get("passed"))
+        if spatial_or_fov_passed:
+            passed.append("spatial_or_fov_gain")
+        else:
+            missing.append("spatial_or_fov_gain")
+        decision_gain = planner_gain if planner_gain.get("status") != "missing" else utility_gain
+        if decision_gain.get("passed"):
+            passed.append("decision_metric_gain")
+        else:
+            missing.append("decision_metric_gain")
+
+        status = "pass" if not missing else "review"
+        primary_reference = references[0]
+        return {
+            "candidate_id": candidate.get("candidate_id"),
+            "model_family": candidate.get("model_family"),
+            "status": status,
+            "reference_candidate_id": primary_reference.get("candidate_id"),
+            "reference_candidate_ids": [item.get("candidate_id") for item in references],
+            "required_gain_axes": required_gain_axes,
+            "passed": passed,
+            "missing": missing,
+            "decision_metric_source": "planner_lift" if planner_gain.get("status") != "missing" else "utility_ranking_score",
+            "metric_deltas": {
+                "future_transition_error_gain": future_gain,
+                "temporal_holdout_gain": temporal_gain,
+                "spatial_holdout_gain": spatial_gain,
+                "fov_partition_degradation_gain": fov_gain,
+                "planner_lift_gain": planner_gain,
+                "utility_ranking_gain": utility_gain,
+                "action_mask_false_allow_gain": false_allow_gain,
+                "action_mask_false_block_gain": false_block_gain,
+                "spatial_or_fov_gain": {
+                    "passed": spatial_or_fov_passed,
+                    "components": {
+                        "spatial_holdout_gain": bool(spatial_gain.get("passed")),
+                        "fov_partition_degradation_gain": bool(fov_gain.get("passed")),
+                    },
+                },
+                "decision_metric_gain": {
+                    "passed": bool(decision_gain.get("passed")),
+                    "source": "planner_lift" if planner_gain.get("status") != "missing" else "utility_ranking_score",
+                },
+            },
+        }
+
+    def _dynamics_shootout_complexity_reference_candidates(
+        self,
+        candidate: dict[str, Any],
+        candidate_summaries: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        candidate_id = compact_text(candidate.get("candidate_id") or "")
+        candidate_rank = self._dynamics_shootout_model_complexity_rank(candidate.get("model_family"))
+        references = [
+            item
+            for item in candidate_summaries
+            if compact_text(item.get("candidate_id") or "") != candidate_id
+            and not item.get("blockers")
+            and self._dynamics_shootout_model_complexity_rank(item.get("model_family")) < candidate_rank
+        ]
+        return sorted(
+            references,
+            key=lambda item: (
+                -float(item.get("shootout_score") or 0.0),
+                str(item.get("candidate_id") or ""),
+            ),
+        )
+
+    def _dynamics_shootout_complexity_metric_gain(
+        self,
+        *,
+        candidate_metrics: dict[str, Any],
+        references: list[dict[str, Any]],
+        metric_key: str,
+        higher_is_better: bool,
+    ) -> dict[str, Any]:
+        candidate_value = safe_float(candidate_metrics.get(metric_key), None)
+        reference_values: list[tuple[str, float]] = []
+        for reference in references:
+            value = safe_float(self._payload_mapping(reference.get("metrics")).get(metric_key), None)
+            if value is not None:
+                reference_values.append((compact_text(reference.get("candidate_id") or ""), float(value)))
+        if candidate_value is None or not reference_values:
+            return {
+                "status": "missing",
+                "metric": metric_key,
+                "candidate_value": candidate_value,
+                "reference_candidate_id": None,
+                "reference_value": None,
+                "gain": None,
+                "passed": False,
+                "direction": "higher_is_better" if higher_is_better else "lower_is_better",
+            }
+        reference_id, reference_value = (
+            max(reference_values, key=lambda item: item[1])
+            if higher_is_better
+            else min(reference_values, key=lambda item: item[1])
+        )
+        gain = float(candidate_value) - reference_value if higher_is_better else reference_value - float(candidate_value)
+        return {
+            "status": "pass" if gain > 1e-9 else "review",
+            "metric": metric_key,
+            "candidate_value": round(float(candidate_value), 6),
+            "reference_candidate_id": reference_id,
+            "reference_value": round(reference_value, 6),
+            "gain": round(gain, 6),
+            "passed": gain > 1e-9,
+            "direction": "higher_is_better" if higher_is_better else "lower_is_better",
+        }
+
+    def _dynamics_shootout_complexity_fov_gain(
+        self,
+        candidate: dict[str, Any],
+        references: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        candidate_value = self._dynamics_shootout_fov_degradation_score(candidate)
+        reference_values = [
+            (compact_text(reference.get("candidate_id") or ""), value)
+            for reference in references
+            for value in [self._dynamics_shootout_fov_degradation_score(reference)]
+            if value is not None
+        ]
+        if candidate_value is None or not reference_values:
+            return {
+                "status": "missing",
+                "metric": "fov_partition_degradation",
+                "candidate_value": candidate_value,
+                "reference_candidate_id": None,
+                "reference_value": None,
+                "gain": None,
+                "passed": False,
+                "direction": "lower_is_better",
+            }
+        reference_id, reference_value = min(reference_values, key=lambda item: item[1])
+        gain = reference_value - candidate_value
+        return {
+            "status": "pass" if gain > 1e-9 else "review",
+            "metric": "fov_partition_degradation",
+            "candidate_value": round(candidate_value, 6),
+            "reference_candidate_id": reference_id,
+            "reference_value": round(reference_value, 6),
+            "gain": round(gain, 6),
+            "passed": gain > 1e-9,
+            "direction": "lower_is_better",
+        }
+
+    def _dynamics_shootout_fov_degradation_score(self, candidate: dict[str, Any]) -> float | None:
+        scores: list[float] = []
+        fov_stress = self._payload_mapping(candidate.get("fov_stress"))
+        for row in fov_stress.get("tests") or []:
+            metric_summary = self._payload_mapping(self._payload_mapping(row).get("metric_summary"))
+            for key in ["max_transition_error_delta", "max_constraint_error_delta", "max_utility_error_delta"]:
+                value = safe_float(metric_summary.get(key), None)
+                if value is not None:
+                    scores.append(float(value))
+        return max(scores) if scores else None
+
+    def _dynamics_shootout_complex_model_family(self, family: Any) -> bool:
+        normalized = compact_text(family or "").lower()
+        return self._dynamics_shootout_model_complexity_rank(normalized) >= 3 or "graph" in normalized or "transformer" in normalized
+
+    def _dynamics_shootout_model_complexity_rank(self, family: Any) -> int:
+        normalized = compact_text(family or "").lower()
+        explicit = {
+            "deterministic_rule_baseline": 0,
+            "rule_baseline": 0,
+            "persistence_baseline": 1,
+            "markov_transition_baseline": 1,
+            "persistence_markov_baseline": 1,
+            "mlp_multi_head_dynamics": 2,
+            "hierarchical_graph_dynamics": 3,
+            "spatiotemporal_transformer_dynamics": 4,
+            "geofm_augmented_dynamics": 4,
+        }
+        if normalized in explicit:
+            return explicit[normalized]
+        if "transformer" in normalized or "geofm" in normalized:
+            return 4
+        if "graph" in normalized:
+            return 3
+        if "mlp" in normalized or "neural" in normalized:
+            return 2
+        if "markov" in normalized or "persistence" in normalized:
+            return 1
+        if "rule" in normalized or "deterministic" in normalized:
+            return 0
+        return 2
+
+    def _dynamics_shootout_candidate_blockers(
+        self,
+        *,
+        report: dict[str, Any],
+        package_integrity: dict[str, Any],
+        candidate_package_id: str,
+        candidate_dataset_hash: str,
+        candidate_split: dict[str, Any],
+        candidate_baseline_version: str,
+        target_head_metrics: dict[str, Any],
+        same_case_replay: dict[str, Any],
+    ) -> list[str]:
+        blockers: list[str] = []
+        expected_package_id = compact_text(package_integrity.get("package_id") or "")
+        expected_hash = compact_text(package_integrity.get("dataset_snapshot_hash") or "")
+        expected_baseline = compact_text(package_integrity.get("baseline_version") or "")
+        expected_split = self._payload_mapping(package_integrity.get("split_summary"))
+        if expected_package_id and not candidate_package_id:
+            blockers.append("package_id_missing")
+        elif expected_package_id and candidate_package_id != expected_package_id:
+            blockers.append("package_id_mismatch")
+        if expected_hash and not candidate_dataset_hash:
+            blockers.append("dataset_snapshot_hash_missing")
+        elif expected_hash and candidate_dataset_hash != expected_hash:
+            blockers.append("dataset_snapshot_hash_mismatch")
+        if expected_split and not candidate_split:
+            blockers.append("split_summary_missing")
+        elif expected_split and _stable_sha256(candidate_split) != _stable_sha256(expected_split):
+            blockers.append("split_summary_mismatch")
+        if expected_baseline and candidate_baseline_version and candidate_baseline_version != expected_baseline:
+            blockers.append("baseline_version_mismatch")
+        if report.get("status") == "blocked" or self._payload_mapping(report.get("evidence_gate")).get("status") == "blocked":
+            blockers.append("candidate_status_blocked")
+        if not target_head_metrics:
+            blockers.append("target_head_metrics_missing")
+        return sorted(set(blockers))
+
+    def _dynamics_shootout_candidate_metrics(
+        self,
+        *,
+        target_head_metrics: dict[str, Any],
+        holdout_metrics: dict[str, Any],
+        seed_stability: dict[str, Any],
+        same_case_replay: dict[str, Any],
+    ) -> dict[str, Any]:
+        future = self._payload_mapping(target_head_metrics.get("future_latent_state"))
+        utility = self._payload_mapping(target_head_metrics.get("planning_utility_delta"))
+        constraint = self._payload_mapping(target_head_metrics.get("constraint_violation_probability"))
+        uncertainty = self._payload_mapping(target_head_metrics.get("uncertainty"))
+        action_mask = self._payload_mapping(target_head_metrics.get("action_mask"))
+        temporal = self._payload_mapping(holdout_metrics.get("temporal"))
+        spatial = self._payload_mapping(holdout_metrics.get("spatial"))
+        return {
+            "future_transition_error": safe_float(
+                future.get("mean_transition_error")
+                or future.get("mean_latent_transition_error")
+                or target_head_metrics.get("mean_transition_error"),
+                None,
+            ),
+            "utility_ranking_score": safe_float(
+                utility.get("ranking_correlation_proxy")
+                or utility.get("ranking_score")
+                or utility.get("planner_lift"),
+                None,
+            ),
+            "constraint_error": safe_float(
+                constraint.get("mean_constraint_error")
+                or constraint.get("brier_score")
+                or constraint.get("error"),
+                None,
+            ),
+            "uncertainty_calibration_error": safe_float(
+                uncertainty.get("calibration_error")
+                or uncertainty.get("expected_calibration_error")
+                or uncertainty.get("ece"),
+                None,
+            ),
+            "action_mask_false_allow_rate": safe_float(action_mask.get("false_allow_rate"), None),
+            "action_mask_false_block_rate": safe_float(action_mask.get("false_block_rate"), None),
+            "temporal_holdout_error": safe_float(temporal.get("mean_transition_error") or temporal.get("error"), None),
+            "spatial_holdout_error": safe_float(spatial.get("mean_transition_error") or spatial.get("error"), None),
+            "seed_stability_stddev": safe_float(seed_stability.get("stddev_score") or seed_stability.get("score_stddev"), None),
+            "planner_lift": safe_float(same_case_replay.get("planner_lift") or same_case_replay.get("ranking_lift"), None),
+        }
+
+    def _dynamics_shootout_score(self, metrics: dict[str, Any]) -> float:
+        score = 0.0
+        weights = {
+            "future_transition_error": 0.3,
+            "utility_ranking_score": 0.2,
+            "constraint_error": 0.15,
+            "uncertainty_calibration_error": 0.1,
+            "action_mask_false_allow_rate": 0.08,
+            "action_mask_false_block_rate": 0.06,
+            "temporal_holdout_error": 0.05,
+            "spatial_holdout_error": 0.05,
+            "seed_stability_stddev": 0.04,
+            "planner_lift": 0.07,
+        }
+        for key, weight in weights.items():
+            value = metrics.get(key)
+            if value is None:
+                continue
+            numeric = max(0.0, min(1.0, float(value)))
+            if key in {"utility_ranking_score", "planner_lift"}:
+                score += weight * numeric
+            else:
+                score += weight * (1.0 - numeric)
+        return round(score, 6)
+
+    def _dynamics_shootout_candidate_recommendation(
+        self,
+        blockers: list[str],
+        same_case_replay: dict[str, Any],
+        package_integrity: dict[str, Any],
+        promotion_limits: list[str] | None = None,
+    ) -> str:
+        if blockers:
+            return "blocked"
+        if package_integrity.get("production_data_status") != "pass" or package_integrity.get("same_case_baseline_status") != "pass":
+            return "diagnostic_only"
+        if promotion_limits:
+            return "replay_ready"
+        if same_case_replay.get("status") == "pass":
+            return "promotion_candidate_review"
+        return "replay_ready"
+
+    def _dynamics_shootout_recommendations(
+        self,
+        package_integrity: dict[str, Any],
+        candidate_summaries: list[dict[str, Any]],
+        eligible_candidates: list[dict[str, Any]],
+    ) -> list[str]:
+        recommendations = [
+            "use this shootout report as the P2B model-family comparison packet",
+            "only compare candidates bound to the same package_id, dataset hash and split summary",
+        ]
+        if not eligible_candidates:
+            recommendations.append("resolve package binding blockers before interpreting model-family rankings")
+        if package_integrity.get("production_data_status") != "pass":
+            recommendations.append("keep shootout diagnostic-only until production data gate passes")
+        if package_integrity.get("same_case_baseline_status") != "pass":
+            recommendations.append("run same-case baseline validation before claiming decision-support lift")
+        if any(item.get("recommendation") == "promotion_candidate_review" for item in candidate_summaries):
+            recommendations.append("send the top candidate to same-case replay, registry and rollback evidence review before promotion")
+        return recommendations
+
+    def _pilot_package_trajectory_dataset_manifest(
+        self,
+        dataset: dict[str, Any],
+        mrep_trace: dict[str, Any],
+    ) -> dict[str, Any]:
+        examples = [self._payload_mapping(item) for item in dataset.get("examples") or []]
+        split_counts: dict[str, int] = {}
+        source_counts: dict[str, int] = {}
+        target_heads: set[str] = set()
+        row_refs: list[dict[str, Any]] = []
+        for item in examples:
+            split = compact_text(item.get("split") or "unknown")
+            split_counts[split] = split_counts.get(split, 0) + 1
+            labels = self._payload_mapping(item.get("labels"))
+            source = compact_text(labels.get("supervision_source") or "unknown")
+            source_counts[source] = source_counts.get(source, 0) + 1
+            targets = self._payload_mapping(item.get("targets"))
+            target_heads.update(str(key) for key in targets.keys())
+            if len(row_refs) < 5:
+                action = self._payload_mapping(item.get("action"))
+                provenance = self._payload_mapping(item.get("provenance"))
+                row_refs.append(
+                    {
+                        "example_id": compact_text(item.get("id") or item.get("example_id") or ""),
+                        "state_t_ref": compact_text(item.get("state_version_id") or provenance.get("state_version_id") or ""),
+                        "state_t_plus_1_ref": "targets.future_latent_state.observed_next",
+                        "action_ref": compact_text(action.get("action_id") or action.get("action_type") or ""),
+                        "split": split,
+                    }
+                )
+        mrep_target_heads = [
+            str(item)
+            for item in mrep_trace.get("target_heads") or []
+            if str(item)
+        ]
+        if mrep_target_heads:
+            target_heads.update(mrep_target_heads)
+        return {
+            "schema": "territory_world_model.trajectory_dataset_manifest.v1",
+            "dataset_schema": dataset.get("schema"),
+            "dataset_snapshot_hash": mrep_trace.get("dataset_snapshot_hash"),
+            "state_contract_version": mrep_trace.get("state_contract_version"),
+            "example_count": len(examples),
+            "target_heads": sorted(target_heads),
+            "split_counts": split_counts,
+            "source_lineage": {
+                "supervision_sources": source_counts,
+                "rule_version": mrep_trace.get("rule_version"),
+                "policy_version": mrep_trace.get("policy_version"),
+                "model_version": mrep_trace.get("model_version"),
+                "baseline_version": mrep_trace.get("baseline_version"),
+            },
+            "row_contract": {
+                "required_fields": [
+                    "state_t_ref",
+                    "state_t_plus_1_ref",
+                    "action_ref",
+                    "scenario_context",
+                    "evidence_context",
+                    "constraint_outcome",
+                    "utility_outcome",
+                    "review_outcome",
+                    "dataset_snapshot_hash",
+                    "split",
+                    "source_lineage",
+                ],
+                "optional_sidecar_fields": ["vector_feature_ref", "trajectory_lance_ref"],
+            },
+            "row_reference_examples": row_refs,
+            "storage_boundary": "manifest_only_no_authoritative_rows_written",
+        }
+
+    def _pilot_package_gate_summary(
+        self,
+        *,
+        state_contract: dict[str, Any],
+        mrep_trace: dict[str, Any],
+        dynamics_bundle: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        mrep_status = (
+            "pass"
+            if mrep_trace.get("schema") == "territory_world_model.mrep_trace.v1"
+            and compact_text(mrep_trace.get("dataset_snapshot_hash"))
+            else "missing"
+        )
+        state_status = compact_text(state_contract.get("status") or "review")
+        dynamics_status = compact_text(dynamics_bundle.get("status") or "review")
+        return {
+            "mrep_trace": {
+                "status": mrep_status,
+                "passed": mrep_status == "pass",
+                "required": True,
+                "dataset_snapshot_hash": mrep_trace.get("dataset_snapshot_hash"),
+            },
+            "state_contract": {
+                "status": state_status,
+                "passed": state_status == "pass",
+                "required": False,
+            },
+            "dynamics_evaluation_bundle": {
+                "status": dynamics_status,
+                "passed": dynamics_status == "pass",
+                "required": False,
+                "promotion_decision": self._payload_mapping(dynamics_bundle.get("registry")).get("promotion_decision"),
+            },
+            "production_data": self._pilot_package_production_gate(payload),
+            "same_case_baseline": self._pilot_package_same_case_gate(payload),
+        }
+
+    def _pilot_package_production_gate(self, payload: dict[str, Any]) -> dict[str, Any]:
+        required = truthy(payload.get("require_production_onboarding") or payload.get("require_production_gate"))
+        gate = self._payload_mapping(
+            payload.get("production_data_gate")
+            or payload.get("production_gate")
+            or payload.get("production_onboarding_report")
+        )
+        if not gate:
+            return {
+                "status": "missing" if required else "not_provided",
+                "passed": False,
+                "required": required,
+                "missing": ["production_data_gate"] if required else [],
+                "source": "missing",
+            }
+        status = compact_text(gate.get("status") or gate.get("overall_status") or gate.get("gate_status") or "review")
+        return {
+            "status": status,
+            "passed": status == "pass",
+            "required": required,
+            "missing": [] if status == "pass" else ["production_data_gate_pass"],
+            "source": compact_text(gate.get("source") or "payload"),
+        }
+
+    def _pilot_package_same_case_gate(self, payload: dict[str, Any]) -> dict[str, Any]:
+        required = truthy(payload.get("require_same_case_baseline") or payload.get("require_same_case_baseline_gate"))
+        pipeline = self._payload_mapping(payload.get("baseline_evidence_pipeline_report"))
+        validation = self._payload_mapping(payload.get("baseline_export_validation_report") or pipeline.get("export_validation"))
+        if not validation:
+            return {
+                "status": "missing" if required else "not_provided",
+                "passed": False,
+                "required": required,
+                "missing": ["baseline_export_validation_report"] if required else [],
+                "source": "missing",
+                "baseline_reference": {},
+            }
+        missing: list[str] = []
+        if validation.get("schema") != "territory_world_model.baseline_export_validation_report.v1":
+            missing.append("baseline_export_validation_schema")
+        blocking_errors = validation.get("blocking_errors")
+        if not isinstance(blocking_errors, list):
+            missing.append("baseline_export_validation_blocking_errors_shape")
+            blocking_errors = []
+        if blocking_errors:
+            missing.append("baseline_export_validation_blocking_errors")
+        coverage = self._payload_mapping(validation.get("coverage"))
+        overlap_count = safe_int(coverage.get("overlap_count"), 0)
+        if overlap_count <= 0:
+            missing.append("same_case_overlap_count")
+        validation_status = compact_text(validation.get("status") or "review")
+        if validation_status != "pass":
+            missing.append("baseline_export_validation_pass")
+        claim = self._payload_mapping(validation.get("claim"))
+        status = "pass" if not missing else "blocked" if required else "review"
+        return {
+            "status": status,
+            "passed": status == "pass",
+            "required": required,
+            "missing": sorted(set(missing)),
+            "source": "baseline_export_validation_report",
+            "coverage": coverage,
+            "baseline_reference": {
+                "claim_id": claim.get("claim_id"),
+                "baseline_id": claim.get("baseline_id"),
+            },
+        }
+
+    def _pilot_package_promotion_blockers(
+        self,
+        gates: dict[str, dict[str, Any]],
+        trajectory_manifest: dict[str, Any],
+    ) -> list[str]:
+        blockers: list[str] = []
+        if not compact_text(trajectory_manifest.get("dataset_snapshot_hash")):
+            blockers.append("trajectory_dataset_manifest")
+        if gates["mrep_trace"].get("status") != "pass":
+            blockers.append("mrep_trace")
+        if gates["state_contract"].get("status") != "pass":
+            blockers.append("state_contract_pass")
+        if gates["dynamics_evaluation_bundle"].get("status") != "pass":
+            blockers.append("dynamics_evaluation_bundle_pass")
+        if gates["production_data"].get("status") != "pass":
+            blockers.append("production_observed_history_gate")
+        if gates["same_case_baseline"].get("status") != "pass":
+            blockers.append("same_case_baseline_evidence")
+        return sorted(set(blockers))
+
+    def _pilot_package_lance_sidecar_manifest(
+        self,
+        package_id: str,
+        trajectory_manifest: dict[str, Any],
+    ) -> dict[str, Any]:
+        dataset_hash = compact_text(trajectory_manifest.get("dataset_snapshot_hash") or "")
+        return {
+            "schema": "territory_world_model.lance_sidecar_manifest.v1",
+            "package_id": package_id,
+            "dataset_snapshot_hash": dataset_hash,
+            "status": "declared",
+            "storage_boundary": "derived_sidecar_not_authoritative",
+            "authoritative_store": "Iceberg + PostGIS + MinIO + Sedona",
+            "sidecar_role": "derived vectors, latent tensors, evidence embeddings and random-access trajectory windows",
+            "required_link_keys": [
+                "state_snapshot_id",
+                "object_id",
+                "evidence_id",
+                "dataset_snapshot_hash",
+                "feature_version",
+            ],
+            "trajectory_row_count": trajectory_manifest.get("example_count", 0),
+        }
+
+    def _pilot_package_recommendations(self, status: str, promotion_blockers: list[str]) -> list[str]:
+        if status == "pass":
+            return [
+                "use this pilot package as the fixed dataset unit for P2B model-family comparisons",
+                "pin package_id and dataset_snapshot_hash in every candidate registry report",
+            ]
+        recommendations = [
+            "keep model comparisons review-only until pilot package blockers are resolved",
+            "run every dynamics candidate against the same package_id and dataset_snapshot_hash",
+        ]
+        if "same_case_baseline_evidence" in promotion_blockers:
+            recommendations.append("attach a passing baseline_export_validation_report before planner or model promotion claims")
+        if "production_observed_history_gate" in promotion_blockers:
+            recommendations.append("attach production observed-history onboarding evidence before controlled pilot promotion")
+        return recommendations
+
+    def dynamics_model_registry_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        candidate_report = self._payload_mapping(payload.get("candidate_report") or payload.get("dynamics_candidate_report"))
+        readiness_report = self._payload_mapping(payload.get("readiness_report") or payload.get("dynamics_readiness_report"))
+        evaluation_report = self._payload_mapping(payload.get("evaluation_report") or payload.get("dynamics_evaluation_report"))
+        registry_metadata = self._payload_mapping(payload.get("registry_metadata") or payload.get("metadata"))
+        training_dataset = self._payload_mapping(payload.get("dynamics_training_dataset") or payload.get("dataset"))
+        candidate = self._payload_mapping(candidate_report.get("candidate") or payload.get("candidate"))
+        if not candidate:
+            candidate = self._dynamics_candidate_descriptor(payload)
+        model_name = compact_text(candidate.get("model_name") or payload.get("model_name") or "unnamed_dynamics_candidate")
+        model_version = compact_text(candidate.get("model_version") or payload.get("model_version") or "unversioned")
+        model_family = compact_text(candidate.get("model_family") or payload.get("model_family") or "twm_dynamics")
+        registry_key = f"{model_name}:{model_version}"
+
+        candidate_gate = self._payload_mapping(candidate_report.get("evidence_gate"))
+        candidate_gate_status = compact_text(candidate_gate.get("status") or candidate_report.get("status") or "review")
+        readiness_status = compact_text(readiness_report.get("status") or "review")
+        evaluation_gate = self._payload_mapping(evaluation_report.get("evidence_gate"))
+        evaluation_status = compact_text(evaluation_gate.get("status") or evaluation_report.get("status") or "review")
+        production_gate = self._payload_mapping(payload.get("production_data_gate") or payload.get("production_gate"))
+        production_status = compact_text(production_gate.get("status") or "blocked")
+        target_head_metrics = self._payload_mapping(evaluation_report.get("target_head_metrics"))
+        future_latent_metrics = self._payload_mapping(target_head_metrics.get("future_latent_state"))
+        candidate_evaluation = self._payload_mapping(candidate_report.get("evaluation"))
+        candidate_eval_head_metrics = self._payload_mapping(candidate_evaluation.get("target_head_metrics"))
+        candidate_eval_future_latent_metrics = self._payload_mapping(candidate_eval_head_metrics.get("future_latent_state"))
+        latent_v2_quality = self._payload_mapping(
+            future_latent_metrics.get("latent_v2_quality")
+            or evaluation_report.get("latent_v2_quality")
+            or candidate_eval_future_latent_metrics.get("latent_v2_quality")
+        )
+        if not latent_v2_quality:
+            latent_v2_quality = {
+                "schema": "territory_world_model.future_latent_state_v2_quality.v1",
+                "status": "review",
+                "missing": ["latent_v2_quality_report"],
+            }
+        latent_v2_quality_status = compact_text(latent_v2_quality.get("status") or "review")
+
+        missing_for_promotion: list[str] = []
+        if candidate_gate_status != "pass":
+            missing_for_promotion.append("candidate_evidence_gate_pass")
+        if readiness_status != "pass":
+            missing_for_promotion.append("readiness_pass")
+        if evaluation_status != "pass":
+            missing_for_promotion.append("evaluation_pass")
+        if production_status != "pass":
+            missing_for_promotion.append("production_observed_history")
+        if bool(candidate.get("is_scaffold_baseline")) or bool(candidate.get("is_scaffold_trainer")):
+            missing_for_promotion.append("non_scaffold_candidate")
+        if latent_v2_quality_status != "pass":
+            missing_for_promotion.append("latent_v2_quality_pass")
+
+        learned_metadata = self._payload_mapping(self._payload_mapping(candidate_report.get("learned_parameters")).get("metadata"))
+        combined_metadata = {
+            **self._payload_mapping(candidate.get("metadata")),
+            **learned_metadata,
+            **registry_metadata,
+        }
+        if training_dataset and not compact_text(combined_metadata.get("training_dataset_hash")):
+            combined_metadata["training_dataset_hash"] = _stable_sha256(training_dataset)
+        required_registry_metadata = [
+            "state_contract_version",
+            "training_dataset_hash",
+            "training_dataset_snapshot",
+            "training_run_id",
+            "model_artifact_uri",
+            "evaluation_report_id",
+        ]
+        missing_registry_metadata = [
+            name for name in required_registry_metadata
+            if not compact_text(combined_metadata.get(name))
+        ]
+
+        if not missing_for_promotion and not missing_registry_metadata:
+            promotion_decision = "candidate_for_registry_promotion"
+        elif "non_scaffold_candidate" in missing_for_promotion:
+            promotion_decision = "blocked_scaffold_not_promoted"
+        else:
+            promotion_decision = "review_only_not_promoted"
+        current_registry_key = compact_text(payload.get("current_registry_key") or payload.get("production_registry_key") or "")
+        lineage_keys = [
+            "state_contract_version",
+            "training_dataset_hash",
+            "training_dataset_snapshot",
+            "training_run_id",
+            "model_artifact_uri",
+            "evaluation_report_id",
+        ]
+        registry_lineage = {
+            key: combined_metadata.get(key)
+            for key in lineage_keys
+            if compact_text(combined_metadata.get(key))
+        }
+        rollback_plan = {
+            "action": "pin_candidate_with_previous_version_rollback" if promotion_decision == "candidate_for_registry_promotion" else "keep_current_production_version",
+            "current_registry_key": current_registry_key,
+            "candidate_registry_key": registry_key,
+            "rollback_available": bool(current_registry_key),
+            "reason": (
+                "all registry gates and required metadata passed"
+                if promotion_decision == "candidate_for_registry_promotion"
+                else "candidate remains review-only until gates and registry metadata pass"
+            ),
+        }
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_model_registry_report.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "registry_entry": {
+                "registry_key": registry_key,
+                "model_name": model_name,
+                "model_version": model_version,
+                "model_family": model_family,
+                "candidate_status": candidate_report.get("status", "review"),
+                "version_pin_policy": "immutable_model_name_version_plus_training_dataset_hash",
+                "metadata": combined_metadata,
+                "lineage": registry_lineage,
+                "latent_v2_quality": latent_v2_quality,
+            },
+            "gates": {
+                "candidate_gate": {
+                    "status": candidate_gate_status,
+                    "passed": candidate_gate_status == "pass",
+                },
+                "readiness_gate": {
+                    "status": readiness_status,
+                    "passed": readiness_status == "pass",
+                    "blocked_gates": list(((readiness_report.get("gates") or {}).get("summary") or {}).get("blocked_gates") or []),
+                },
+                "evaluation_gate": {
+                    "status": evaluation_status,
+                    "passed": evaluation_status == "pass",
+                },
+                "production_data_gate": {
+                    "status": production_status,
+                    "passed": production_status == "pass",
+                },
+                "latent_v2_quality_gate": {
+                    "status": latent_v2_quality_status,
+                    "passed": latent_v2_quality_status == "pass",
+                    "missing": list(latent_v2_quality.get("missing") or []),
+                },
+            },
+            "required_registry_metadata": required_registry_metadata,
+            "missing_registry_metadata": missing_registry_metadata,
+            "missing_for_promotion": sorted(set(missing_for_promotion)),
+            "promotion_decision": promotion_decision,
+            "rollback_plan": rollback_plan,
+            "recommendations": [
+                "pin model_name, model_version, training dataset hash, state contract version and evaluation report id before promotion",
+                "keep review-only candidates out of production forecast defaults until readiness, evaluation and production data gates pass",
+                "retain the previous production registry key for rollback before switching forecast consumers",
+            ],
+            "claim_boundary": (
+                "This registry report is a release gate for TWM dynamics candidates. "
+                "A review-only candidate may be used for experiments or demos, but must not become the production default until all registry, readiness, evaluation and production-data gates pass."
+            ),
+        }))
+
+    def activate_dynamics_model_registry_entry(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        report = self.dynamics_model_registry_report(state_version_id, payload)
+        entry = self._dynamics_model_registry_entry_from_report(state_version_id, report)
+        previous_active = self.repository.get_active_dynamics_model_registry_entry(state_version_id)
+        previous_active_payload = previous_active.to_dict() if previous_active else None
+        if report.get("promotion_decision") == "candidate_for_registry_promotion":
+            if previous_active and previous_active.registry_key != entry.registry_key:
+                previous_active.status = "superseded"
+                previous_active.updated_at = now_utc_iso()
+                self.repository.save_dynamics_model_registry_entry(previous_active)
+            entry.status = "active"
+            entry.previous_active_registry_key = previous_active.registry_key if previous_active else ""
+            entry.activated_at = now_utc_iso()
+        else:
+            entry.status = "review_only"
+        saved = self.repository.save_dynamics_model_registry_entry(entry)
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_model_registry_activation.v1",
+            "state_version_id": state_version_id,
+            "status": "active" if saved.status == "active" else "review_only",
+            "active_entry": saved.to_dict() if saved.status == "active" else None,
+            "saved_entry": saved.to_dict(),
+            "previous_active_entry": previous_active_payload,
+            "registry_report": report,
+            "claim_boundary": "Only entries with candidate_for_registry_promotion are activated; review-only entries are saved for audit but not used as production defaults.",
+        }))
+
+    def list_dynamics_model_registry_entries(self, state_version_id: str | None = None, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        status = compact_text(payload.get("status") or "")
+        entries = self.repository.list_dynamics_model_registry_entries(state_version_id, status=status or None)
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_model_registry_entries.v1",
+            "state_version_id": state_version_id or "",
+            "status_filter": status,
+            "entry_count": len(entries),
+            "entries": [entry.to_dict() for entry in entries],
+        }))
+
+    def rollback_dynamics_model_registry(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        current = self.repository.get_active_dynamics_model_registry_entry(state_version_id)
+        if current is None:
+            return {
+                "schema": "territory_world_model.dynamics_model_registry_rollback.v1",
+                "state_version_id": state_version_id,
+                "status": "blocked",
+                "missing": ["active_registry_entry"],
+            }
+        target_key = compact_text(payload.get("target_registry_key") or current.previous_active_registry_key)
+        candidates = self.repository.list_dynamics_model_registry_entries(state_version_id)
+        target = next((entry for entry in candidates if entry.registry_key == target_key), None)
+        if target is None:
+            return {
+                "schema": "territory_world_model.dynamics_model_registry_rollback.v1",
+                "state_version_id": state_version_id,
+                "status": "blocked",
+                "missing": ["rollback_target_registry_entry"],
+                "rolled_back_entry": current.to_dict(),
+                "target_registry_key": target_key,
+            }
+        current.status = "rolled_back"
+        current.updated_at = now_utc_iso()
+        self.repository.save_dynamics_model_registry_entry(current)
+        target.status = "active"
+        target.previous_active_registry_key = current.registry_key
+        target.activated_at = now_utc_iso()
+        target.updated_at = now_utc_iso()
+        restored = self.repository.save_dynamics_model_registry_entry(target)
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_model_registry_rollback.v1",
+            "state_version_id": state_version_id,
+            "status": "pass",
+            "restored_entry": restored.to_dict(),
+            "rolled_back_entry": current.to_dict(),
+            "claim_boundary": "Rollback only changes the active registry pointer; it does not retrain, alter model artifacts, or bypass registry gates.",
+        }))
+
+    def _dynamics_model_registry_entry_from_report(self, state_version_id: str, report: dict[str, Any]) -> TwmDynamicsModelRegistryEntry:
+        state = self.repository.get_state_version(state_version_id)
+        registry_entry = self._payload_mapping(report.get("registry_entry"))
+        return TwmDynamicsModelRegistryEntry(
+            state_version_id=state_version_id,
+            project_id=state.project_id if state else compact_text(report.get("project_id") or ""),
+            registry_key=compact_text(registry_entry.get("registry_key") or ""),
+            model_name=compact_text(registry_entry.get("model_name") or ""),
+            model_version=compact_text(registry_entry.get("model_version") or ""),
+            model_family=compact_text(registry_entry.get("model_family") or ""),
+            status="candidate",
+            promotion_decision=compact_text(report.get("promotion_decision") or "review_only_not_promoted"),
+            registry_report=report,
+            lineage=self._payload_mapping(registry_entry.get("lineage")),
+            metadata=self._payload_mapping(registry_entry.get("metadata")),
+        )
 
     def fit_dynamics_candidate(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
@@ -4815,57 +13782,70 @@ class TerritoryWorldModelService:
         outcome_name = str(payload.get("outcome") or payload.get("outcome_name") or "planning_utility_delta")
         records, record_source = self._causal_records_for_calibration(state_version_id, payload)
         thresholds = self._causal_calibration_thresholds(payload)
-        estimate = self._estimate_observational_treatment_effect(records, thresholds=thresholds)
-        model_effect = safe_float(payload.get("model_effect"), None)
-        if model_effect is None:
-            model_effect = self._model_effect_from_rollout(state_version_id, payload)
-        calibration = self._causal_calibration_from_estimate(estimate, model_effect)
-        scca_report = self._payload_scca_causal_evidence_report(payload)
-        evidence_gate = self._causal_evidence_gate(
-            records=records,
-            estimate=estimate,
-            calibration=calibration,
-            thresholds=thresholds,
-            record_source=record_source,
-            scca_report=scca_report,
-        )
-        recommendations = self._causal_calibration_recommendations(evidence_gate, estimate, calibration, record_source)
-        if scca_report:
-            recommendations.extend(self._scca_causal_evidence_recommendations(scca_report))
-        status = "pass" if evidence_gate.get("status") == "pass" else "review"
-        if evidence_gate.get("blocked"):
-            status = "blocked"
-
-        report = TwmCausalCalibrationReport(
+        with trace_twm_operation(
+            "estimate_observational_treatment_effect",
             state_version_id=state_version_id,
-            project_id=state.project_id,
-            status=status,
-            treatment={
-                "name": treatment_name,
-                "positive_label": payload.get("positive_label", 1),
-                "assignment": "observational",
-            },
-            outcome={
-                "name": outcome_name,
-                "direction": str(payload.get("outcome_direction") or "higher_better"),
-            },
-            estimate=estimate,
-            calibration=calibration,
-            evidence_gate=evidence_gate,
-            provenance={
-                "state_version_id": state_version_id,
-                "record_source": record_source,
-                "record_count": len(records),
-                "rule_hit_count": len(self.repository.list_rule_hits(state_version_id=state_version_id)),
-                "record_inventory": self._causal_record_inventory(records),
-                "scca_causal_evidence_report": scca_report or None,
-                "method_note": "primary estimator comes from the local causal calibration backend and remains observational rather than randomized identification",
-            },
-            recommendations=recommendations,
-        )
-        result = report.to_dict()
-        self._cache_set(self._causal_calibration_cache, cache_key, result)
-        return deepcopy(result)
+            backend="observational_causal_calibration",
+            sample_count=len(records),
+            gate_status="pending",
+        ) as trace_ctx:
+            estimate = self._estimate_observational_treatment_effect(records, thresholds=thresholds)
+            model_effect = safe_float(payload.get("model_effect"), None)
+            if model_effect is None:
+                model_effect = self._model_effect_from_rollout(state_version_id, payload)
+            calibration = self._causal_calibration_from_estimate(estimate, model_effect)
+            scca_report = self._payload_scca_causal_evidence_report(payload)
+            evidence_gate = self._causal_evidence_gate(
+                records=records,
+                estimate=estimate,
+                calibration=calibration,
+                thresholds=thresholds,
+                record_source=record_source,
+                scca_report=scca_report,
+            )
+            recommendations = self._causal_calibration_recommendations(evidence_gate, estimate, calibration, record_source)
+            if scca_report:
+                recommendations.extend(self._scca_causal_evidence_recommendations(scca_report))
+            status = "pass" if evidence_gate.get("status") == "pass" else "review"
+            if evidence_gate.get("blocked"):
+                status = "blocked"
+
+            report = TwmCausalCalibrationReport(
+                state_version_id=state_version_id,
+                project_id=state.project_id,
+                status=status,
+                identification_strength="observational",
+                identification_note=(
+                    "local TWM calibration estimates observational treatment effects from "
+                    "approved/reviewed histories; it is not randomized or do-intervention identification"
+                ),
+                treatment={
+                    "name": treatment_name,
+                    "positive_label": payload.get("positive_label", 1),
+                    "assignment": "observational",
+                },
+                outcome={
+                    "name": outcome_name,
+                    "direction": str(payload.get("outcome_direction") or "higher_better"),
+                },
+                estimate=estimate,
+                calibration=calibration,
+                evidence_gate=evidence_gate,
+                provenance={
+                    "state_version_id": state_version_id,
+                    "record_source": record_source,
+                    "record_count": len(records),
+                    "rule_hit_count": len(self.repository.list_rule_hits(state_version_id=state_version_id)),
+                    "record_inventory": self._causal_record_inventory(records),
+                    "scca_causal_evidence_report": scca_report or None,
+                    "method_note": "primary estimator comes from the local causal calibration backend and remains observational rather than randomized identification",
+                },
+                recommendations=recommendations,
+            )
+            result = report.to_dict()
+            _set_trace_attribute(trace_ctx, "twm.gate_status", result.get("evidence_gate", {}).get("status", result.get("status", "review")))
+            self._cache_set(self._causal_calibration_cache, cache_key, result)
+            return deepcopy(result)
 
     def scca_causal_evidence_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
@@ -5906,8 +14886,14 @@ class TerritoryWorldModelService:
                 "action_type": action_payload.get("action_type") or "inspect",
                 "target_role": action_payload.get("target_role") or "project",
                 "target_objects": list(action_payload.get("target_objects") or []),
+                "spatial_scope": dict(action_payload.get("spatial_scope") or {}),
                 "magnitude": action_payload.get("magnitude") or 1.0,
                 "scenario": action_payload.get("scenario") or "beam_plan",
+                "description": action_payload.get("description") or "",
+                "legal_intent": action_payload.get("legal_intent") or "",
+                "execution_mask": dict(action_payload.get("execution_mask") or {}),
+                "parameters": dict(action_payload.get("parameters") or {}),
+                "treatment": action_payload.get("treatment") or "",
             },
             "forecast": forecast,
             "utility": round(utility, 6),
@@ -6085,7 +15071,7 @@ class TerritoryWorldModelService:
             "evidence_coverage": payload.get("evidence_coverage"),
             "baseline_action": baseline_action,
             "intervention_actions": [intervention],
-            "scenario_context": dict(payload.get("scenario_context") or {}),
+            "scenario_context": _mapping_payload(payload.get("scenario_context")),
         }
         self._copy_dynamics_candidate_payload(payload, rollout_payload)
         if payload.get("causal_calibration"):
@@ -6109,7 +15095,7 @@ class TerritoryWorldModelService:
             "magnitude": selected_action.get("magnitude") or payload.get("magnitude") or 1.0,
             "baseline_action": rollout_payload.get("baseline_action"),
             "intervention_actions": rollout_payload.get("intervention_actions"),
-            "scenario_context": dict(payload.get("scenario_context") or {}),
+            "scenario_context": _mapping_payload(payload.get("scenario_context")),
             "parameters": dict(selected_action.get("parameters") or payload.get("parameters") or {}),
         }
         for key in (
@@ -6961,6 +15947,7 @@ class TerritoryWorldModelService:
         evidence_gate = dict(candidate_report.get("evidence_gate") or {})
         evaluation = dict(candidate_report.get("evaluation") or {})
         evaluation_gate = dict(evaluation.get("evidence_gate") or {})
+        candidate = dict(candidate_report.get("candidate") or {})
         missing: list[str] = []
         if required_status == "pass" and report_status != "pass":
             missing.append("dynamics_candidate_pass")
@@ -6970,15 +15957,31 @@ class TerritoryWorldModelService:
             missing.append("dynamics_candidate_evaluation")
         if evaluation_gate and evaluation_gate.get("status") != "pass":
             missing.append("dynamics_candidate_evaluation_gate")
+        active_registry: dict[str, Any] | None = None
+        registry_required = truthy(payload.get("require_active_dynamics_registry"))
+        if registry_required:
+            state_version_id = compact_text(payload.get("_state_version_id") or payload.get("state_version_id") or "")
+            active_entry = self.repository.get_active_dynamics_model_registry_entry(state_version_id) if state_version_id else None
+            if active_entry is None:
+                missing.append("active_dynamics_model_registry")
+            else:
+                active_registry = active_entry.to_dict()
+                candidate_key = f"{compact_text(candidate.get('model_name') or '')}:{compact_text(candidate.get('model_version') or '')}"
+                if candidate_key != active_entry.registry_key:
+                    missing.append("dynamics_candidate_active_registry_match")
         allow_review = bool(payload.get("allow_review_dynamics_candidate", False))
         passed = not missing or (allow_review and report_status in {"review", "pass"})
-        return {
+        gate = {
             "passed": passed,
             "status": "pass" if passed else "review",
             "missing": [] if passed else missing,
             "required_status": required_status,
             "report_status": report_status,
+            "registry_required": registry_required,
         }
+        if active_registry is not None:
+            gate["active_registry_entry"] = active_registry
+        return gate
 
     def _select_candidate_prediction(self, candidate_report: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         explicit = payload.get("dynamics_candidate_prediction")
@@ -7902,7 +16905,7 @@ class TerritoryWorldModelService:
                         "parameters": dict(payload.get("parameters") or {}),
                     }
                 ],
-                "scenario_context": dict(payload.get("scenario_context") or {}),
+                "scenario_context": _mapping_payload(payload.get("scenario_context")),
             },
         )
         return safe_float(((rollout.get("deltas") or {}).get("final") or {}).get("utility_delta_lift"), None)
@@ -8016,9 +17019,9 @@ class TerritoryWorldModelService:
             scenario=scenario,
             rule_hits=rule_hits,
             evidence_coverage=evidence_coverage,
-            scenario_context=dict(payload.get("scenario_context") or {}),
+            scenario_context=_mapping_payload(payload.get("scenario_context")),
         )
-        geofm_context = dict(payload.get("scenario_context") or {})
+        geofm_context = _mapping_payload(payload.get("scenario_context"))
         # Availability alone gives only a small candidate prior; explicit downstream
         # metrics are still required before the gate can retain GeoFM.
         if vector_inventory.get("available"):
@@ -8648,7 +17651,7 @@ class TerritoryWorldModelService:
     def _geofm_example_region(self, example: dict[str, Any]) -> str:
         labels = dict(example.get("labels") or {})
         provenance = dict(example.get("provenance") or {})
-        scenario_context = dict(example.get("scenario_context") or {})
+        scenario_context = _mapping_payload(example.get("scenario_context"))
         spatial_scope = dict(scenario_context.get("spatial_scope") or {}) if isinstance(scenario_context.get("spatial_scope"), dict) else {}
         current_state = dict(example.get("current_state_summary") or {})
         for source in (labels, provenance, spatial_scope, scenario_context, current_state):
@@ -9371,6 +18374,13 @@ class TerritoryWorldModelService:
 
     def _dynamics_readiness_thresholds(self, payload: dict[str, Any]) -> dict[str, Any]:
         raw = dict(payload.get("thresholds") or {})
+        min_same_case_overlap_ratio_raw = safe_float(
+            raw.get("min_same_case_overlap_ratio", payload.get("min_same_case_overlap_ratio")),
+            0.8,
+        )
+        min_same_case_overlap_ratio = float(min_same_case_overlap_ratio_raw or 0.8)
+        if not math.isfinite(min_same_case_overlap_ratio) or min_same_case_overlap_ratio <= 0:
+            min_same_case_overlap_ratio = 0.8
         return {
             "min_total_examples": safe_int(raw.get("min_total_examples"), 6) or 6,
             "min_usable_examples": safe_int(raw.get("min_usable_examples"), 4) or 4,
@@ -9380,6 +18390,30 @@ class TerritoryWorldModelService:
             "max_review_ratio": float(safe_float(raw.get("max_review_ratio"), 0.35) or 0.35),
             "require_geofm_pass": truthy(raw.get("require_geofm_pass")) or truthy(payload.get("require_geofm_pass")),
             "require_causal_pass": truthy(raw.get("require_causal_pass")) or truthy(payload.get("require_causal_pass")),
+            "require_production_observed_history": (
+                truthy(raw.get("require_production_observed_history"))
+                or truthy(raw.get("require_production_readiness"))
+                or truthy(payload.get("require_production_observed_history"))
+                or truthy(payload.get("require_production_readiness"))
+            ),
+            "require_same_case_baseline": (
+                truthy(raw.get("require_same_case_baseline"))
+                or truthy(raw.get("require_production_readiness"))
+                or truthy(payload.get("require_same_case_baseline"))
+                or truthy(payload.get("require_production_readiness"))
+            ),
+            "min_production_ready_observed_history_rows": max(
+                1,
+                safe_int(
+                    raw.get(
+                        "min_production_ready_observed_history_rows",
+                        payload.get("min_production_ready_observed_history_rows"),
+                    ),
+                    1,
+                )
+                or 1,
+            ),
+            "min_same_case_overlap_ratio": min(1.0, min_same_case_overlap_ratio),
         }
 
     def _dynamics_payload_value_provided(self, value: Any) -> bool:
@@ -9484,6 +18518,314 @@ class TerritoryWorldModelService:
             "scca_manifest_path",
         )
         return any(self._dynamics_payload_value_provided(payload.get(key)) for key in evidence_keys)
+
+    def _dynamics_production_observed_history_gate(
+        self,
+        payload: dict[str, Any],
+        thresholds: dict[str, Any],
+    ) -> dict[str, Any]:
+        required = bool(thresholds.get("require_production_observed_history"))
+        preflight = self._payload_mapping(
+            payload.get("production_observed_history_preflight")
+            or payload.get("observed_history_preflight")
+            or payload.get("production_history_preflight")
+        )
+        if not preflight:
+            return {
+                "passed": not required,
+                "required": required,
+                "status": "missing" if required else "not_required",
+                "source": "payload",
+                "missing": ["production_observed_history_preflight"] if required else [],
+                "production_ready_observed_history_rows": 0,
+            }
+
+        schema_audit = self._payload_mapping(preflight.get("schema_audit") or preflight.get("audit"))
+        row_quality = self._payload_mapping(schema_audit.get("row_quality"))
+        temporal_quality = self._payload_mapping(schema_audit.get("temporal_validation_quality"))
+        policy_quality = self._payload_mapping(schema_audit.get("policy_history_quality"))
+        production_rows = safe_int(row_quality.get("production_candidate_row_count"), 0)
+        missing: list[str] = []
+        if preflight.get("schema") != "territory_world_model.production_observed_history_preflight.v1":
+            missing.append("production_observed_history_preflight_schema")
+        if preflight.get("status") != "pass" or schema_audit.get("status") != "pass":
+            missing.append("preflight_pass")
+        if production_rows < safe_int(thresholds.get("min_production_ready_observed_history_rows"), 1):
+            missing.append("production_ready_observed_history_rows")
+        if safe_int(row_quality.get("production_treated_count"), 0) <= 0:
+            missing.append("production_treated_rows")
+        if safe_int(row_quality.get("production_control_count"), 0) <= 0:
+            missing.append("production_control_rows")
+        if temporal_quality.get("status") != "pass":
+            missing.append("temporal_holdout_support")
+        if policy_quality.get("status") != "pass":
+            missing.append("policy_action_history")
+        status = "pass" if not missing else "blocked"
+        return {
+            "passed": status == "pass",
+            "required": required,
+            "status": status,
+            "source": "payload",
+            "missing": missing,
+            "production_ready_observed_history_rows": production_rows,
+            "policy_history_status": policy_quality.get("status", "not_provided"),
+            "temporal_validation_status": temporal_quality.get("status", "not_provided"),
+        }
+
+    def _dynamics_same_case_baseline_gate(self, payload: dict[str, Any], thresholds: dict[str, Any]) -> dict[str, Any]:
+        required = bool(thresholds.get("require_same_case_baseline"))
+        pipeline = self._payload_mapping(payload.get("baseline_evidence_pipeline_report"))
+        validation = self._payload_mapping(payload.get("baseline_export_validation_report") or pipeline.get("export_validation"))
+        if not validation:
+            return {
+                "passed": not required,
+                "required": required,
+                "status": "missing" if required else "not_required",
+                "source": "payload",
+                "missing": ["baseline_evidence_pipeline_report"] if required else [],
+                "coverage_ratio": 0.0,
+                "overlap_count": 0,
+        }
+        claim = self._payload_mapping(validation.get("claim"))
+        coverage = self._payload_mapping(validation.get("coverage"))
+        raw_blocking_errors = validation.get("blocking_errors")
+        blocking_error_shape_invalid = False
+        if raw_blocking_errors is None:
+            blocking_errors: list[str] = []
+        elif isinstance(raw_blocking_errors, str):
+            blocking_errors = [raw_blocking_errors]
+        elif isinstance(raw_blocking_errors, (list, tuple, set)):
+            blocking_errors = [str(item) for item in raw_blocking_errors]
+        else:
+            blocking_errors = []
+            blocking_error_shape_invalid = True
+        raw_coverage_ratio = safe_float(coverage.get("coverage_ratio"), 0.0)
+        coverage_ratio = float(raw_coverage_ratio or 0.0)
+        overlap_count = safe_int(coverage.get("overlap_count"), 0)
+        missing: list[str] = []
+        if validation.get("schema") != "territory_world_model.baseline_export_validation_report.v1":
+            missing.append("baseline_export_validation_schema")
+        if validation.get("status") != "pass":
+            missing.append("same_case_validation_pass")
+        if blocking_error_shape_invalid:
+            missing.append("baseline_export_validation_blocking_errors_shape")
+        if blocking_errors:
+            missing.extend(str(item) for item in blocking_errors)
+        if not math.isfinite(coverage_ratio):
+            missing.append("same_case_coverage_ratio_finite")
+        elif coverage_ratio < 0.0 or coverage_ratio > 1.0:
+            missing.append("same_case_coverage_ratio_range")
+        if overlap_count <= 0:
+            missing.append("same_case_overlap_count")
+        if (
+            math.isfinite(coverage_ratio)
+            and 0.0 <= coverage_ratio <= 1.0
+            and coverage_ratio < float(thresholds.get("min_same_case_overlap_ratio") or 0.8)
+        ):
+            missing.append("same_case_overlap_ratio")
+        status = "pass" if not missing else "blocked"
+        return {
+            "passed": status == "pass",
+            "required": required,
+            "status": status,
+            "source": "payload",
+            "missing": sorted(set(missing)),
+            "coverage_ratio": coverage_ratio,
+            "overlap_count": overlap_count,
+            "claim_id": claim.get("claim_id") or pipeline.get("claim_id"),
+            "baseline_id": claim.get("baseline_id") or pipeline.get("baseline_id"),
+        }
+
+    def _dynamics_dataset_mrep_trace(
+        self,
+        *,
+        state: TwmStateVersion,
+        payload: dict[str, Any],
+        examples: list[TwmDynamicsTrainingExample],
+        state_contract: dict[str, Any],
+    ) -> dict[str, Any]:
+        examples_payload = [self._dynamics_training_example_semantic_payload(item) for item in examples]
+        review_only_count = sum(1 for item in examples if item.not_for_training_reasons)
+        synthetic_or_not_for_production = sum(
+            1
+            for item in examples
+            if item.provenance.get("synthetic") or item.provenance.get("not_for_production")
+        )
+        holdout_count = sum(1 for item in examples if item.split == "holdout")
+        target_heads = sorted(
+            {
+                head
+                for item in examples
+                for head in item.targets.keys()
+            }
+        )
+        source_counts: dict[str, int] = {}
+        for item in examples:
+            source = str(item.labels.get("supervision_source") or "unknown")
+            source_counts[source] = source_counts.get(source, 0) + 1
+        return {
+            "schema": "territory_world_model.mrep_trace.v1",
+            "state_version_id": state.id,
+            "project_id": state.project_id,
+            "dataset_snapshot_hash": _stable_sha256(examples_payload),
+            "state_contract_version": state_contract.get("schema", ""),
+            "state_contract_status": state_contract.get("status", "review"),
+            "rule_version": str(payload.get("rule_version") or "current_repository_rules"),
+            "policy_version": str(payload.get("policy_version") or "current_policy"),
+            "model_version": str(payload.get("model_version") or "deterministic_twm_scaffold_current"),
+            "baseline_version": str(payload.get("baseline_version") or "deterministic_twm_scaffold_current"),
+            "random_seed": payload.get("random_seed"),
+            "split_definition": {
+                "split": str(payload.get("split") or "default"),
+                "temporal_holdout": self._temporal_holdout_policy(payload),
+                "holdout_example_count": holdout_count,
+            },
+            "target_heads": target_heads,
+            "source_counts": source_counts,
+            "failure_taxonomy": {
+                "review_only_examples": review_only_count,
+                "not_for_training_reasons": sorted(
+                    {
+                        str(reason)
+                        for item in examples
+                        for reason in item.not_for_training_reasons
+                    }
+                ),
+            },
+            "tail_statistics": {
+                "example_count": len(examples),
+                "holdout_example_count": holdout_count,
+                "review_only_example_count": review_only_count,
+            },
+            "boundary_conditions": {
+                "synthetic_or_not_for_production_rows": synthetic_or_not_for_production,
+                "claim_boundary": "dataset trace supports reproducibility; it does not certify production accuracy",
+            },
+        }
+
+    def _dynamics_training_example_semantic_payload(self, item: TwmDynamicsTrainingExample) -> dict[str, Any]:
+        action_payload = item.action.to_dict()
+        semantic_target_objects = self._dynamics_semantic_action_target_objects(item)
+        action_payload["target_objects"] = semantic_target_objects
+        targets_payload = deepcopy(item.targets)
+        future_latent_state = targets_payload.get("future_latent_state")
+        if isinstance(future_latent_state, dict):
+            action_signature = future_latent_state.get("action_signature")
+            if isinstance(action_signature, dict) and "target_objects" in action_signature:
+                action_signature["target_objects"] = semantic_target_objects
+        payload = {
+            "state_version_id": item.state_version_id,
+            "project_id": item.project_id,
+            "split": item.split,
+            "sample_type": item.sample_type,
+            "current_state_summary": item.current_state_summary,
+            "action": action_payload,
+            "scenario_context": item.scenario_context,
+            "targets": targets_payload,
+            "labels": item.labels,
+            "losses": item.losses,
+            "evidence_gate": item.evidence_gate,
+            "provenance": item.provenance,
+            "not_for_training_reasons": item.not_for_training_reasons,
+        }
+        return self._strip_dynamics_generated_semantic_keys(payload)
+
+    def _dynamics_semantic_action_target_objects(self, item: TwmDynamicsTrainingExample) -> list[str]:
+        targets = [str(target) for target in item.action.target_objects or [] if str(target)]
+        provenance_targets = item.provenance.get("action_target_objects")
+        if not isinstance(provenance_targets, list):
+            return targets
+        semantic_by_id: dict[str, str] = {}
+        ordered_semantic: list[str] = []
+        for raw_target in provenance_targets:
+            if not isinstance(raw_target, dict):
+                continue
+            semantic_id = self._dynamics_semantic_action_target_reference(raw_target)
+            if not semantic_id:
+                continue
+            generated_id = raw_target.get("id")
+            if generated_id:
+                semantic_by_id[str(generated_id)] = semantic_id
+            ordered_semantic.append(semantic_id)
+        if not targets:
+            return ordered_semantic
+        if len(targets) == len(ordered_semantic):
+            return ordered_semantic
+        return [
+            semantic_by_id.get(target, target)
+            for target in targets
+        ]
+
+    def _dynamics_action_target_object_provenance(
+        self,
+        action: TerritoryWorldModelAction,
+        objects: list[TwmStateObject],
+    ) -> list[dict[str, Any]]:
+        requested = [str(item) for item in action.target_objects or [] if str(item)]
+        if not requested:
+            return []
+        role = action.target_role or ""
+        index: dict[str, TwmStateObject] = {}
+        for obj in objects:
+            for key in (obj.id, obj.object_code, obj.source_feature_id):
+                if key:
+                    index[str(key)] = obj
+        matched: list[dict[str, Any]] = []
+        for key in requested:
+            obj = index.get(key)
+            if obj is None:
+                continue
+            if role and role not in {obj.canonical_role, obj.source_role, obj.object_type}:
+                continue
+            matched.append(
+                {
+                    "id": obj.id,
+                    "object_code": obj.object_code,
+                    "source_feature_id": obj.source_feature_id,
+                    "canonical_role": obj.canonical_role,
+                    "source_role": obj.source_role,
+                    "object_type": obj.object_type,
+                }
+            )
+        return matched
+
+    def _dynamics_semantic_action_target_reference(self, target: dict[str, Any]) -> str:
+        for key in (
+            "object_code",
+            "source_feature_id",
+            "reference_id",
+            "source_ref",
+            "code",
+            "semantic_id",
+        ):
+            value = target.get(key)
+            if value:
+                return str(value)
+        return ""
+
+    def _dynamics_generated_action_target_reference(self, value: str) -> bool:
+        return bool(_UUID_REFERENCE_RE.fullmatch(str(value).strip()))
+
+    def _strip_dynamics_generated_semantic_keys(self, value: Any, *, _path: tuple[str, ...] = ()) -> Any:
+        normalized = jsonable(value)
+        if isinstance(normalized, dict):
+            return {
+                key: self._strip_dynamics_generated_semantic_keys(item, _path=(*_path, str(key)))
+                for key, item in normalized.items()
+                if not self._dynamics_generated_semantic_key(str(key), _path)
+            }
+        if isinstance(normalized, list):
+            return [self._strip_dynamics_generated_semantic_keys(item, _path=_path) for item in normalized]
+        return normalized
+
+    def _dynamics_generated_semantic_key(self, key: str, path: tuple[str, ...]) -> bool:
+        if not path and key in _DYNAMICS_TOP_LEVEL_GENERATED_SEMANTIC_KEYS:
+            return True
+        if path == ("provenance",) and key in _DYNAMICS_FLAT_PROVENANCE_GENERATED_SEMANTIC_KEYS:
+            return True
+        if path == ("provenance", "action_target_objects") and key == "id":
+            return True
+        return path == ("targets", "future_latent_state") and key in _DYNAMICS_GENERATED_FUTURE_LATENT_STATE_KEYS
 
     def _dynamics_sample_inventory(self, dataset: dict[str, Any]) -> dict[str, Any]:
         examples = [dict(item) for item in dataset.get("examples") or [] if isinstance(item, dict)]
@@ -9681,6 +19023,8 @@ class TerritoryWorldModelService:
             "method": causal_gate.get("method", ""),
             "source": causal_source,
         }
+        gates["production_observed_history"] = self._dynamics_production_observed_history_gate(payload, thresholds)
+        gates["same_case_baseline"] = self._dynamics_same_case_baseline_gate(payload, thresholds)
         trainable_gates = [
             "sample_volume",
             "usable_volume",
@@ -9695,6 +19039,10 @@ class TerritoryWorldModelService:
             trainable_gates.append("geofm_gate")
         if thresholds["require_causal_pass"]:
             trainable_gates.append("causal_calibration")
+        if thresholds["require_production_observed_history"]:
+            trainable_gates.append("production_observed_history")
+        if thresholds["require_same_case_baseline"]:
+            trainable_gates.append("same_case_baseline")
         blocked = [name for name in trainable_gates if not gates[name].get("passed")]
         review_only = [item.get("id") for item in examples if item.get("not_for_training_reasons")]
         gates["summary"] = {
@@ -9708,7 +19056,14 @@ class TerritoryWorldModelService:
         blocked = list((gate_results.get("summary") or {}).get("blocked_gates") or [])
         if not blocked:
             return "pass"
-        hard = {"sample_volume", "usable_volume", "multi_head_targets", "loss_contract"}
+        hard = {
+            "sample_volume",
+            "usable_volume",
+            "multi_head_targets",
+            "loss_contract",
+            "production_observed_history",
+            "same_case_baseline",
+        }
         return "blocked" if any(item in hard for item in blocked) else "review"
 
     def _dynamics_training_scope(self, gate_results: dict[str, Any]) -> str:
@@ -9778,6 +19133,13 @@ class TerritoryWorldModelService:
             recommendations.append("keep GeoFM gated out of the trainable core until B0/B1 downstream planning lift passes")
         if "causal_calibration" in blocked:
             recommendations.append("use balanced treated/control observations or a causal backend before upgrading counterfactual utility claims")
+        if "production_observed_history" in blocked:
+            recommendations.append(
+                "provide production observed-history preflight with real treated/control rows, temporal holdout "
+                "and policy-action labels before strict model promotion"
+            )
+        if "same_case_baseline" in blocked:
+            recommendations.append("provide same-case baseline export validation with sufficient overlap before strict model promotion")
         if not recommendations:
             recommendations.append("start with a small train/holdout dynamics run and report planning lift separately from one-step fit")
         recommendations.append(
@@ -10158,6 +19520,8 @@ class TerritoryWorldModelService:
         examples = [dict(item) for item in dataset.get("examples") or [] if isinstance(item, dict)]
         scored_examples = []
         transition_errors: list[float] = []
+        transition_component_rows: list[dict[str, Any]] = []
+        latent_quality_rows: list[tuple[dict[str, Any], dict[str, Any]]] = []
         constraint_errors: list[float] = []
         utility_errors: list[float] = []
         uncertainty_confidences: list[float] = []
@@ -10181,12 +19545,18 @@ class TerritoryWorldModelService:
                 holdout_count += 1
             if provenance.get("ground_truth"):
                 ground_truth_count += 1
-            transition_error = self._latent_transition_error(
-                predicted=dict(prediction.get("future_latent_state") or {}),
-                target=dict(targets.get("future_latent_state") or {}),
+            predicted_latent = dict(prediction.get("future_latent_state") or {})
+            target_latent = dict(targets.get("future_latent_state") or {})
+            if predicted_latent or target_latent:
+                latent_quality_rows.append((predicted_latent, target_latent))
+            transition_components = self._latent_transition_error_components(
+                predicted=predicted_latent,
+                target=target_latent,
             )
+            transition_error = transition_components.get("aggregate_error")
             if transition_error is not None:
-                transition_errors.append(transition_error)
+                transition_errors.append(float(transition_error))
+                transition_component_rows.append(transition_components)
             if "constraint_violation_probability" in prediction and "constraint_violation_probability" in targets:
                 constraint_errors.append(abs(float(safe_float(prediction.get("constraint_violation_probability"), 0.0) or 0.0) - float(safe_float(targets.get("constraint_violation_probability"), 0.0) or 0.0)))
             if "planning_utility_delta" in prediction and "planning_utility_delta" in targets:
@@ -10213,8 +19583,17 @@ class TerritoryWorldModelService:
             "mean_confidence": self._mean(uncertainty_confidences),
             "action_mask_accuracy": round(action_mask_matches / max(1, action_mask_count), 4) if action_mask_count else None,
         }
+        transition_component_metrics = {}
+        for key in sorted({key for row in transition_component_rows for key in row if key != "aggregate_error"}):
+            values = [float(row[key]) for row in transition_component_rows if row.get(key) is not None]
+            transition_component_metrics[key] = self._mean(values)
         head_metrics = {
-            "future_latent_state": {"count": len(transition_errors), "mean_error": metrics["mean_transition_error"]},
+            "future_latent_state": {
+                "count": len(transition_errors),
+                "mean_error": metrics["mean_transition_error"],
+                "components": transition_component_metrics,
+                "latent_v2_quality": self._future_latent_state_v2_quality_report(latent_quality_rows),
+            },
             "constraint_violation_probability": {"count": len(constraint_errors), "mae": metrics["mean_constraint_error"]},
             "planning_utility_delta": {"count": len(utility_errors), "mae": metrics["mean_utility_error"], "ranking_correlation_proxy": metrics["ranking_correlation_proxy"]},
             "uncertainty": {"count": len(uncertainty_confidences), "mean_confidence": metrics["mean_confidence"]},
@@ -10229,23 +19608,154 @@ class TerritoryWorldModelService:
         }
         return metrics, head_metrics, inventory
 
-    def _latent_transition_error(self, *, predicted: dict[str, Any], target: dict[str, Any]) -> float | None:
-        observed = dict(target.get("observed_next") or target.get("projected") or {})
-        pred = dict(predicted.get("observed_next") or predicted.get("projected") or predicted)
+    def _latent_transition_error_components(self, *, predicted: dict[str, Any], target: dict[str, Any]) -> dict[str, Any]:
+        observed = dict(target.get("observed_next") or target.get("projected") or target.get("decoded_state") or {})
+        pred = dict(predicted.get("decoded_state") or predicted.get("observed_next") or predicted.get("projected") or predicted)
+        observed_delta = dict(target.get("delta") or {})
+        pred_delta = dict(predicted.get("transition_delta") or predicted.get("delta") or {})
+        components: dict[str, Any] = {}
+
         observed_area = safe_float(observed.get("total_area_m2"), None)
         pred_area = safe_float(pred.get("total_area_m2"), None)
         if observed_area is not None and pred_area is not None:
-            return round(abs(float(pred_area) - float(observed_area)) / max(abs(float(observed_area)), 1.0), 6)
+            components["total_area_error"] = round(abs(float(pred_area) - float(observed_area)) / max(abs(float(observed_area)), 1.0), 6)
+
         observed_types = dict(observed.get("land_space_types") or {})
         pred_types = dict(pred.get("land_space_types") or {})
-        if observed_types and pred_types:
-            errors = []
-            for key in sorted(set(observed_types) | set(pred_types)):
-                target_area = float(safe_float((observed_types.get(key) or {}).get("area_m2"), 0.0) or 0.0)
-                pred_area_value = float(safe_float((pred_types.get(key) or {}).get("area_m2"), 0.0) or 0.0)
-                errors.append(abs(pred_area_value - target_area) / max(abs(target_area), 1.0))
-            return self._mean(errors)
-        return None
+        area_errors = []
+        count_errors = []
+        delta_errors = []
+        for key in sorted(set(observed_types) | set(pred_types)):
+            target_payload = dict(observed_types.get(key) or {})
+            pred_payload = dict(pred_types.get(key) or {})
+            target_area = float(safe_float(target_payload.get("area_m2"), 0.0) or 0.0)
+            pred_area_value = float(safe_float(pred_payload.get("area_m2"), 0.0) or 0.0)
+            area_errors.append(abs(pred_area_value - target_area) / max(abs(target_area), 1.0))
+            target_count = float(safe_float(target_payload.get("feature_count"), 0.0) or 0.0)
+            pred_count = float(safe_float(pred_payload.get("feature_count"), 0.0) or 0.0)
+            count_errors.append(abs(pred_count - target_count) / max(abs(target_count), 1.0))
+            target_delta = float(safe_float(target_payload.get("area_delta_m2"), 0.0) or 0.0)
+            pred_delta_value = float(safe_float(pred_payload.get("area_delta_m2"), 0.0) or 0.0)
+            delta_errors.append(abs(pred_delta_value - target_delta) / max(abs(target_delta), 1.0))
+        if area_errors:
+            components["land_type_area_mae"] = self._mean(area_errors)
+        if count_errors:
+            components["land_type_feature_count_mae"] = self._mean(count_errors)
+        if delta_errors:
+            components["land_type_delta_mae"] = self._mean(delta_errors)
+
+        delta_component_errors = []
+        for key in ("total_area_delta_m2", "total_abs_area_delta_m2", "change_intensity"):
+            target_value = safe_float(observed_delta.get(key), None)
+            pred_value = safe_float(pred_delta.get(key), None)
+            if target_value is not None and pred_value is not None:
+                delta_component_errors.append(abs(float(pred_value) - float(target_value)) / max(abs(float(target_value)), 1.0))
+        if delta_component_errors:
+            components["delta_mae"] = self._mean(delta_component_errors)
+
+        observed_vector = dict(target.get("latent_vector") or {})
+        pred_vector = dict(predicted.get("latent_vector") or {})
+        if observed_vector and pred_vector:
+            vector_errors = []
+            for key in sorted(set(observed_vector) | set(pred_vector)):
+                target_value = float(safe_float(observed_vector.get(key), 0.0) or 0.0)
+                pred_value = float(safe_float(pred_vector.get(key), 0.0) or 0.0)
+                vector_errors.append(abs(pred_value - target_value) / max(abs(target_value), 1.0))
+            components["latent_vector_mae"] = self._mean(vector_errors)
+
+        numeric = [float(value) for key, value in components.items() if key.endswith("_error") or key.endswith("_mae")]
+        components["aggregate_error"] = self._mean(numeric) if numeric else None
+        return components
+
+    def _future_latent_state_v2_quality_report(
+        self,
+        rows: list[tuple[dict[str, Any], dict[str, Any]]],
+    ) -> dict[str, Any]:
+        expected_schema = "territory_world_model.predicted_latent_state.v2"
+        expected_boundary = "multi_dimensional_hierarchical_state_latent_not_full_geometry"
+        prediction_count = 0
+        target_count = 0
+        v2_prediction_count = 0
+        decoded_state_count = 0
+        transition_delta_count = 0
+        latent_vector_count = 0
+        boundary_count = 0
+        predicted_dimensions: set[str] = set()
+        target_dimensions: set[str] = set()
+        for predicted, target in rows:
+            predicted = dict(predicted or {})
+            target = dict(target or {})
+            if predicted:
+                prediction_count += 1
+                if predicted.get("schema") == expected_schema:
+                    v2_prediction_count += 1
+                if isinstance(predicted.get("decoded_state"), dict) and predicted.get("decoded_state"):
+                    decoded_state_count += 1
+                if isinstance(predicted.get("transition_delta"), dict) and predicted.get("transition_delta"):
+                    transition_delta_count += 1
+                pred_vector = dict(predicted.get("latent_vector") or {})
+                if pred_vector:
+                    latent_vector_count += 1
+                    predicted_dimensions.update(str(key) for key in pred_vector)
+                predicted_dimensions.update(str(key) for key in list(predicted.get("dimensions") or []) if str(key))
+                if predicted.get("representation_boundary") == expected_boundary:
+                    boundary_count += 1
+            if target:
+                target_count += 1
+                target_vector = dict(target.get("latent_vector") or {})
+                target_dimensions.update(str(key) for key in target_vector)
+                target_dimensions.update(str(key) for key in list(target.get("dimensions") or []) if str(key))
+
+        missing: list[str] = []
+        if prediction_count == 0:
+            missing.append("future_latent_state_predictions")
+        if prediction_count and v2_prediction_count < prediction_count:
+            missing.append("predicted_latent_state_v2_schema")
+        if prediction_count and decoded_state_count < prediction_count:
+            missing.append("decoded_state")
+        if prediction_count and transition_delta_count < prediction_count:
+            missing.append("transition_delta")
+        if prediction_count and latent_vector_count < prediction_count:
+            missing.append("latent_vector")
+        if v2_prediction_count and boundary_count < v2_prediction_count:
+            missing.append("representation_boundary")
+
+        missing_target_dimensions = sorted(target_dimensions - predicted_dimensions)
+        extra_predicted_dimensions = sorted(predicted_dimensions - target_dimensions)
+        if missing_target_dimensions:
+            missing.append("target_dimension_coverage")
+
+        return {
+            "schema": "territory_world_model.future_latent_state_v2_quality.v1",
+            "status": "pass" if not missing else "review",
+            "coverage": {
+                "prediction_count": prediction_count,
+                "target_count": target_count,
+                "v2_prediction_count": v2_prediction_count,
+                "decoded_state_count": decoded_state_count,
+                "transition_delta_count": transition_delta_count,
+                "latent_vector_count": latent_vector_count,
+                "representation_boundary_count": boundary_count,
+                "v2_prediction_ratio": round(v2_prediction_count / max(1, prediction_count), 4),
+                "decoded_state_ratio": round(decoded_state_count / max(1, prediction_count), 4),
+                "transition_delta_ratio": round(transition_delta_count / max(1, prediction_count), 4),
+                "latent_vector_ratio": round(latent_vector_count / max(1, prediction_count), 4),
+            },
+            "dimension_coverage": {
+                "target_dimension_count": len(target_dimensions),
+                "predicted_dimension_count": len(predicted_dimensions),
+                "shared_dimension_count": len(target_dimensions & predicted_dimensions),
+                "missing_target_dimensions": missing_target_dimensions,
+                "extra_predicted_dimensions": extra_predicted_dimensions[:50],
+            },
+            "missing": missing,
+            "claim_boundary": "quality gate for decoded multi-dimensional future latent summaries; it does not prove full parcel geometry generation or production accuracy",
+        }
+
+    def _latent_transition_error(self, *, predicted: dict[str, Any], target: dict[str, Any]) -> float | None:
+        components = self._latent_transition_error_components(predicted=predicted, target=target)
+        aggregate = components.get("aggregate_error")
+        return float(aggregate) if aggregate is not None else None
 
     def _dynamics_evaluation_gate(
         self,

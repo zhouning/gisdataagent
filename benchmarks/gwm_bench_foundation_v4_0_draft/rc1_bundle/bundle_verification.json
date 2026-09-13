@@ -1,0 +1,61 @@
+{
+  "schema": "gwm_bench.foundation_v4_rc1_bundle_verification.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V4.0-DRAFT1",
+  "generated_at": "2026-07-23T14:34:01.447241+00:00",
+  "status": "PASS_V4_RC1_DATA_VERIFIED",
+  "manifest_sha256": "dfe3fd7ae490ac2b8a2522ba77df4a111017302eabd579544b1a3300f1020acd",
+  "protocol_sha256": "54152f65433440fb28fb8d9aeb605685b7e81bbade11bed229ce50dd7abb9950",
+  "check_count": 22,
+  "checks": {
+    "manifest_status_is_rc1_materialized": true,
+    "manifest_protocol_hash_matches": true,
+    "all_artifact_hashes_and_sizes_match": true,
+    "development_row_count_is_33664": true,
+    "development_has_two_events": true,
+    "development_has_exact_52_pre_and_12_post_weeks": true,
+    "development_contains_no_2025_post_action_rows": true,
+    "development_pre_actions_are_zero": true,
+    "development_post_actions_are_present": true,
+    "test_history_is_52_pre_action_weeks": true,
+    "test_history_actions_are_zero": true,
+    "test_action_has_3156_keys_and_all_horizons": true,
+    "test_action_component_sum_contract_holds": true,
+    "test_action_has_frozen_spatial_variation": true,
+    "test_targets_have_3156_keys_and_four_targets": true,
+    "submission_keys_are_exact_and_unique": true,
+    "zone_metadata_has_263_unique_zones": true,
+    "cbd_exposure_has_38_zones": true,
+    "spatial_graph_has_expected_relation_counts": true,
+    "spatial_graph_node_ids_are_valid": true,
+    "runtime_cannot_read_test_target_path": true,
+    "claim_boundary_is_nonblind_and_noncausal": true
+  },
+  "artifact_hash_checks": {
+    "development": true,
+    "training_row_manifest": true,
+    "test_history": true,
+    "test_action": true,
+    "submission_keys": true,
+    "test_targets": true,
+    "zone_metadata": true,
+    "spatial_edges": true
+  },
+  "counts": {
+    "development_rows": 33664,
+    "test_history_rows": 13676,
+    "test_action_rows": 3156,
+    "test_target_rows": 3156,
+    "submission_key_rows": 3156,
+    "zone_metadata_rows": 263,
+    "graph_edge_rows": 3009
+  },
+  "firewall": {
+    "test_targets_written_to_separate_directory": true,
+    "test_target_path_permitted_for_model_runtime": false,
+    "development_max_date": "2023-03-12",
+    "test_history_max_date": "2025-01-04",
+    "test_target_min_date": "2025-01-05",
+    "analyst_blindness_claimed": false
+  },
+  "next_permitted_action": "Freeze Runtime-R3, submission and evaluator contracts before running candidate models."
+}

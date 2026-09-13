@@ -1,0 +1,2 @@
+unit_id,unit_name,unit_type,parent_unit_id,admin_code,area_m2,geometry_reference,crs,snapshot_date,source_system,source_version,sensitivity_level,raw_geometry_export_allowed,synthetic,not_for_production,notes
+SH-U-001,脱敏空间单元001,subdistrict,SH-D-001,310000,1250000,inner-network-reference,EPSG:4490,2026-01-01,authoritative_spatial_unit_system,2026-v1,internal,false,false,false,raw geometry stays in Shanghai authorized environment

@@ -1,0 +1,1 @@
+{"bundle_id":"dependency-roadmap-864c6f302e088dbb49ac","gates":{"automatic_in_progress":false,"language_model_status_promotion":false,"phase4_requires_verified_phase3":true,"status_machine":["blocked","ready","in_progress","verification_required","verified","deferred"]},"schema":"uwm.implementation_roadmap_gates.v1"}
