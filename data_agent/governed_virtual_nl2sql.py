@@ -6081,6 +6081,21 @@ def _normalize_semantic_ir_model_candidate(
                 query["semantic_entity"] = str(entity_plans[0]["semantic_entity"])
                 query.pop("semantic_entities", None)
                 corrections.append("semantic_ir_flattened_semantic_entities_container")
+    # Some instruction-tuned providers label the complete canonical projection
+    # array ``field_projections``. This is a container spelling only, so it is
+    # lossless to rename when it is the sole projection collection. If a
+    # canonical collection is also present, remove the alias only for an exact
+    # duplicate; conflicting collections remain visible for strict validation
+    # rather than choosing which fields the user meant.
+    if "field_projections" in query:
+        provider_projections = query.get("field_projections")
+        if "projections" not in query and isinstance(provider_projections, list):
+            query["projections"] = query.pop("field_projections")
+            corrections.append("semantic_ir_normalized_field_projections_projection_array")
+        elif query.get("projections") == provider_projections:
+            query.pop("field_projections")
+            corrections.append("semantic_ir_removed_redundant_field_projections")
+
     # ``semantic_fields`` is occasionally used as a synonym for the complete
     # projection array.  Accept only items that already have the minimum
     # public projection shape.  A list of bare field names is intentionally
@@ -14126,6 +14141,19 @@ def _semantic_ir_retry_guidance(error: str) -> str:
             "Never emit group_by. Grouped results are defined by the existing "
             "role=dimension projections; keep each grouping field as one complete "
             "dimension projection with field_ref and remove the group_by member."
+        )
+    if "field_projections" in value:
+        hints.append(
+            "Use projections as the only top-level projection array; never emit "
+            "field_projections. Preserve every complete projection object, including "
+            "its output_name, role, field_ref, and aggregate when applicable."
+        )
+    if "extra_forbidden@semantic_query.band_summary.bands" in value:
+        hints.append(
+            "Each band object may contain only key, label, lower, upper, "
+            "lower_inclusive, and upper_inclusive. Put the selected band key only "
+            "in band_summary.member_band; express boundaries with lower or upper, "
+            "not threshold or operator members."
         )
     if (
         ".values." in value

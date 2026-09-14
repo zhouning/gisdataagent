@@ -1725,6 +1725,76 @@ def test_semantic_ir_normalization_unwraps_only_a_unique_primary_entity_alias():
     } <= set(corrections)
 
 
+def test_semantic_ir_normalization_accepts_field_projections_container_alias():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.facility",
+            "field_projections": [
+                {
+                    "output_name": "facility_type",
+                    "role": "dimension",
+                    "field_ref": "liveability.facility.facility_type",
+                },
+                {
+                    "output_name": "facility_count",
+                    "role": "metric",
+                    "field_ref": "liveability.facility.facility_id",
+                    "aggregate": "count",
+                },
+            ],
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    proposal = GovernedSemanticIRProposal.model_validate_json(normalized)
+    query = json.loads(normalized)["semantic_query"]
+
+    assert proposal.semantic_query is not None
+    assert "field_projections" not in query
+    assert [item["output_name"] for item in query["projections"]] == [
+        "facility_type",
+        "facility_count",
+    ]
+    assert "semantic_ir_normalized_field_projections_projection_array" in corrections
+
+
+def test_semantic_ir_normalization_keeps_conflicting_field_projections_visible():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.facility",
+            "projections": [
+                {
+                    "output_name": "facility_type",
+                    "role": "attribute",
+                    "field_ref": "liveability.facility.facility_type",
+                }
+            ],
+            "field_projections": [
+                {
+                    "output_name": "facility_name",
+                    "role": "attribute",
+                    "field_ref": "liveability.facility.facility_name",
+                }
+            ],
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    query = json.loads(normalized)["semantic_query"]
+
+    assert "field_projections" in query
+    assert "semantic_ir_normalized_field_projections_projection_array" not in corrections
+    assert "semantic_ir_removed_redundant_field_projections" not in corrections
+
+
 def test_semantic_ir_normalization_flattens_multi_entity_field_container():
     raw = {
         "language": "en",
@@ -4415,6 +4485,24 @@ def test_semantic_ir_retry_guidance_uses_dimensions_instead_of_group_by_member()
 
     assert "Never emit group_by" in guidance
     assert "role=dimension" in guidance
+
+
+def test_semantic_ir_retry_guidance_uses_canonical_projection_and_band_shapes():
+    projection_guidance = _semantic_ir_retry_guidance(
+        "model_structured_output_schema_invalid:"
+        "extra_forbidden@semantic_query.field_projections:Extra inputs are not permitted;"
+        "missing@semantic_query.projections:Field required"
+    )
+    band_guidance = _semantic_ir_retry_guidance(
+        "model_structured_output_schema_invalid:"
+        "extra_forbidden@semantic_query.band_summary.bands.0.threshold:"
+        "Extra inputs are not permitted"
+    )
+
+    assert "never emit field_projections" in projection_guidance
+    assert "projections as the only top-level" in projection_guidance
+    assert "member_band" in band_guidance
+    assert "lower or upper" in band_guidance
 
 
 def test_semantic_ir_retry_guidance_restores_governed_row_scope():
