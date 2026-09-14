@@ -164,8 +164,8 @@ profile_fingerprint（可只记前 12 位）：
 
 ## 8. 评测结果边界
 
-当前 source 12、Gemma4 26B（digest `2bf53d3d…`）的完整 76 题评测为：baseline SQL `70/76 = 92.11%`，业务 Gold 等价 `23/28 = 82.14%`；semantic IR experimental candidate `73/76 = 96.05%`，业务 Gold 等价 `25/28 = 89.29%`。baseline 的查询执行成功率为 `28/28 = 100%`，拒答 precision/recall 为 `100%/97.92%`；candidate 的查询执行成功率为 `27/28 = 96.43%`，拒答 precision/recall 为 `100%/100%`。candidate 仍是 `release_gate=false`，当前生产候选仍为 baseline SQL，不能把 candidate 数字当作生产准确率。
+最后一次冻结完整运行（run5）在 source 12、Gemma4 26B（digest `2bf53d3d…`）上的 76 题结果为：baseline SQL `70/76 = 92.11%`，业务 Gold 等价 `23/28 = 82.14%`，平均/P95 生成延迟 `6.91/21.43 s`；semantic IR experimental candidate `73/76 = 96.05%`，业务 Gold 等价 `26/28 = 92.86%`，平均/P95 `15.22/26.59 s`。baseline 的查询执行成功率为 `28/28 = 100%`，拒答 precision/recall 为 `100%/97.92%`；candidate 的查询执行成功率为 `27/28 = 96.43%`，拒答 precision/recall 为 `100%/97.92%`。两条路线均无基础设施失败，Gold 当前性为 `28/28`。candidate 仍是 `release_gate=false`，当前生产路线仍为 baseline SQL，不能把 candidate 数字当作生产准确率。
 
 针对 F056、F015 和 targeted7（F100、F052、F062、F098、F073、F059、F033）的 9 题隔离回归：baseline 与 semantic IR 均为 `8/9` 总通过，`7` 个业务查询中 `6` 个 Gold 等价通过，`2/2` 个澄清/拒答通过；baseline 失败 F059，candidate 失败 F098。该回归用于定位稳定性，不替代完整 76 题评测。
 
-晋级前仍需修复当前失败案例（baseline：F016、F019、F024、F030、F059、F075；candidate：F024、F030、F098），并完成独立 holdout、重复稳定性、对抗测试和人工页面验收。
+晋级前仍需修复当前失败案例（baseline：F016、F019、F024、F030、F059、F075；candidate：F030、F075、F098），并完成独立 holdout、重复稳定性、对抗测试和人工页面验收。

@@ -52,6 +52,24 @@ def _normalize_entry_type(value: Any) -> str:
     return _ENTRY_TYPE_ALIASES.get(str(value or "").strip().casefold(), "")
 
 
+def _request_entry_type(request: Request) -> str:
+    """Resolve entry type from parameterized and literal compatibility routes.
+
+    The generic governance aliases intentionally use literal paths such as
+    ``/metric-contracts`` for backwards-compatible clients, so Starlette does
+    not populate an ``entry_type`` path parameter for those requests.
+    """
+
+    entry_type = _normalize_entry_type(request.path_params.get("entry_type"))
+    if entry_type:
+        return entry_type
+    for segment in reversed(str(request.url.path or "").strip("/").split("/")):
+        entry_type = _normalize_entry_type(segment)
+        if entry_type:
+            return entry_type
+    return ""
+
+
 def _jsonable(value: Any) -> Any:
     if isinstance(value, dict):
         return {str(k): _jsonable(v) for k, v in value.items()}
@@ -770,7 +788,7 @@ async def semantic_admin_entries(request: Request) -> JSONResponse:
     if error:
         return error
     scope = str(request.query_params.get("scope") or "").strip()
-    entry_type = _normalize_entry_type(request.path_params.get("entry_type"))
+    entry_type = _request_entry_type(request)
     if not _valid_scope(scope) or not entry_type:
         return JSONResponse({"error": "unsupported scope or entry_type"}, status_code=400)
     try:
@@ -1311,7 +1329,7 @@ async def semantic_admin_create(request: Request) -> JSONResponse:
     if error:
         return error
     scope = str(request.query_params.get("scope") or "").strip()
-    entry_type = _normalize_entry_type(request.path_params.get("entry_type"))
+    entry_type = _request_entry_type(request)
     if not _valid_scope(scope) or not entry_type:
         return JSONResponse({"error": "unsupported scope or entry_type"}, status_code=400)
     try:
@@ -1387,7 +1405,7 @@ async def semantic_admin_update(request: Request) -> JSONResponse:
     if error:
         return error
     entry_id = str(request.path_params.get("entry_id") or "")
-    entry_type = _normalize_entry_type(request.path_params.get("entry_type"))
+    entry_type = _request_entry_type(request)
     scope = str(request.query_params.get("scope") or "")
     if not _valid_scope(scope) or not entry_type or not entry_id:
         return JSONResponse(

@@ -14,7 +14,14 @@ async def _receive():
     return {"type": "http.request", "body": b"", "more_body": False}
 
 
-def _request(*, query: str = "", path_params: dict | None = None, method: str = "GET", body: bytes = b"") -> Request:
+def _request(
+    *,
+    query: str = "",
+    path_params: dict | None = None,
+    method: str = "GET",
+    body: bytes = b"",
+    path: str = "/",
+) -> Request:
     async def receive():
         return {"type": "http.request", "body": body, "more_body": False}
 
@@ -22,7 +29,7 @@ def _request(*, query: str = "", path_params: dict | None = None, method: str = 
         {
             "type": "http",
             "method": method,
-            "path": "/",
+            "path": path,
             "headers": [],
             "query_string": query.encode(),
             "path_params": path_params or {},
@@ -172,6 +179,35 @@ async def test_metric_contract_alias_does_not_bypass_scope_validation(monkeypatc
 
     assert response.status_code == 400
     assert json.loads(response.body)["error"] == "unsupported scope or entry_type"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("path", "expected_entry_type"),
+    [
+        ("/api/semantic/governance/assets", "assets"),
+        ("/api/semantic/governance/fields", "fields"),
+        ("/api/semantic/governance/relationships", "relationships"),
+        ("/api/semantic/governance/metric_contracts", "metric_contracts"),
+        ("/api/semantic/governance/metric-contracts", "metric_contracts"),
+    ],
+)
+async def test_literal_governance_routes_resolve_entry_type_from_request_path(
+    monkeypatch, path, expected_entry_type
+):
+    user = SimpleNamespace(identifier="analyst", metadata={"role": "analyst"})
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda request: user)
+    monkeypatch.setattr(routes, "_set_user_context", lambda value: ("analyst", "analyst"))
+    monkeypatch.setattr(routes, "_engine", lambda: None)
+
+    response = await routes.semantic_admin_entries(
+        _request(query="scope=liveability", path=path)
+    )
+    payload = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert payload["entry_type"] == expected_entry_type
+    assert payload["total"] == len(routes._baseline_entries("liveability", expected_entry_type))
 
 
 @pytest.mark.asyncio

@@ -13,6 +13,7 @@ from data_agent.abu_dhabi_artifact_registry import (
     current_artifact_manifest,
     current_artifact_path,
 )
+from data_agent.free_form_nl2sql_benchmark import _validate_benchmark
 from data_agent.migration_runner import verify_schema_state
 from data_agent.virtual_source_operator import _load_environment
 from data_agent.virtual_sources import (
@@ -109,12 +110,14 @@ async def run(*, source_id: int, owner: str, expected_port: int) -> dict:
         "semantic",
         "ontology",
         "catalog",
+        "benchmark",
         "plot_relationship_source_audit",
         "plot_detail_audited_relationships_publication_audit",
     )
     paths = {role: current_artifact_path("liveability", role) for role in roles}
     semantic = _load_artifact(paths["semantic"])
     ontology = _load_artifact(paths["ontology"])
+    benchmark = _load_artifact(paths["benchmark"])
     source_audit = _load_artifact(paths["plot_relationship_source_audit"])
     publication = _load_artifact(
         paths["plot_detail_audited_relationships_publication_audit"]
@@ -129,6 +132,17 @@ async def run(*, source_id: int, owner: str, expected_port: int) -> dict:
         raise ValueError("plot_publication_audit_incomplete")
     if source_audit.get("claim_boundary", {}).get("source_rows_persisted") is not False:
         raise ValueError("plot_audit_source_row_boundary_invalid")
+    _validate_benchmark(
+        benchmark,
+        semantic,
+        source_id=source_id,
+        benchmark_path=paths["benchmark"],
+    )
+    private_gold_descriptor = (manifest.get("artifacts") or {}).get(
+        "benchmark_private_gold"
+    ) or {}
+    if private_gold_descriptor.get("runtime_usage_prohibited") is not True:
+        raise ValueError("benchmark_private_gold_runtime_boundary_missing")
     _walk_runtime_artifact(semantic)
     _walk_runtime_artifact(ontology)
 
@@ -152,6 +166,8 @@ async def run(*, source_id: int, owner: str, expected_port: int) -> dict:
             for item in semantic.get("semantic_assets") or []
         ),
         "relationship_count": len(semantic.get("relationships") or []),
+        "benchmark_id": benchmark.get("benchmark_id"),
+        "benchmark_case_count": len(benchmark.get("cases") or []),
         "source_rows_persisted": False,
         "gold_sql_runtime_accessible": False,
     }
