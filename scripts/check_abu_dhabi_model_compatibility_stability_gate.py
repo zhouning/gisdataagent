@@ -100,6 +100,17 @@ def evaluate_repeated(
         raise CompatibilityStabilityConfigurationError("minimum_runs_must_be_at_least_two")
     if not analyses:
         raise CompatibilityStabilityConfigurationError("at_least_one_analysis_required")
+    incomplete_full_reports = [
+        index
+        for index, analysis in enumerate(analyses)
+        if analysis.get("schema") == "gda.abu-dhabi-local-full-analysis.v1"
+        and not ((analysis.get("stability_identity") or {}).get("complete") is True)
+    ]
+    if incomplete_full_reports:
+        raise CompatibilityStabilityConfigurationError(
+            "full_run_stability_identity_incomplete:"
+            + ",".join(str(index) for index in incomplete_full_reports)
+        )
 
     identities = [_model_identity(analysis) for analysis in analyses]
     reference_identity = identities[0]

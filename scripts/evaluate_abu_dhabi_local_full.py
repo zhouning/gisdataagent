@@ -291,7 +291,7 @@ async def evaluate(args: argparse.Namespace) -> dict:
                     source_id=source["source_id"],
                     owner=args.owner,
                     model_name=args.model,
-                    reasoning_effort="medium",
+                    reasoning_effort=model_profile.reasoning_effort,
                     timeout_seconds=args.timeout,
                     max_concurrency=args.concurrency,
                     execution_profile=profile,

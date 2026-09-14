@@ -284,3 +284,15 @@ def test_repeated_gate_cli_reports_incomplete_identity_without_traceback(tmp_pat
     assert result["status"] == "configuration_invalid"
     assert result["decision"] == "canary_or_rollback"
     assert result["reason"] == "configuration_identity_missing:model_digest"
+
+
+def test_repeated_gate_rejects_full_report_with_runtime_profile_mismatch():
+    analysis = _stable_analysis()
+    analysis["schema"] = "gda.abu-dhabi-local-full-analysis.v1"
+    analysis["stability_identity"] = {"complete": False}
+
+    with pytest.raises(
+        CompatibilityStabilityConfigurationError,
+        match="full_run_stability_identity_incomplete:0",
+    ):
+        evaluate_repeated([analysis])

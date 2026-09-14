@@ -262,6 +262,13 @@ def analyze(directory: Path) -> dict:
         "cohort_sha256": bool(manifest.get("cohort_sha256")),
         "runtime_code_sha256": bool(manifest.get("code_sha256")),
     }
+    expected_reasoning_effort = str(
+        ((manifest.get("model") or {}).get("compatibility_profile") or {}).get(
+            "reasoning_effort"
+        )
+        or ""
+    )
+    observed_runtime_profiles = []
     all_rows = []
     populations = {}
     run_metrics = {}
@@ -302,6 +309,12 @@ def analyze(directory: Path) -> dict:
                 raise ValueError("report profile mismatch")
             if report["model"]["requested"] != manifest["model"]["name"]:
                 raise ValueError("report requested model mismatch")
+            observed_runtime_profiles.append(
+                {
+                    "run_id": run_id,
+                    "reasoning_effort": (report.get("model") or {}).get("reasoning_effort"),
+                }
+            )
             population = validate_population(report, descriptor["case_ids"])
             if not population["all_cases_attempted"] or population["infrastructure_failures"]:
                 raise ValueError("full report contains infrastructure failures")
@@ -334,6 +347,10 @@ def analyze(directory: Path) -> dict:
                 )
     if len(all_rows) != manifest["expected_executions"]:
         raise ValueError("execution count differs from frozen full scope")
+    stability_identity["runtime_profile"] = bool(expected_reasoning_effort) and all(
+        item["reasoning_effort"] == expected_reasoning_effort
+        for item in observed_runtime_profiles
+    )
     groups = defaultdict(list)
     for row in all_rows:
         groups[(row["source_key"], row["execution_profile"], row["actual_route"])].append(row)
@@ -382,6 +399,10 @@ def analyze(directory: Path) -> dict:
         "stability_identity": {
             **stability_identity,
             "complete": all(stability_identity.values()),
+        },
+        "runtime_profile": {
+            "expected_reasoning_effort": expected_reasoning_effort or None,
+            "runs": observed_runtime_profiles,
         },
         "claim_boundary": {**manifest["claim_boundary"], "presentation_scored": False},
         "population": populations,
