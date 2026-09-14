@@ -6288,6 +6288,77 @@ def _normalize_semantic_ir_model_candidate(
                                 f"semantic_ir_normalized_band_{index}_{alias}"
                             )
                             break
+                # A number of instruction-tuned providers represent a one-sided
+                # band boundary as ``operator`` plus ``threshold``. Convert only
+                # a finite numeric threshold with an exact comparison operator;
+                # a range, text comparator, or conflicting canonical bound stays
+                # visible for strict schema validation rather than being guessed.
+                threshold = item.get("threshold")
+                raw_operator = item.get("operator")
+                if (
+                    isinstance(threshold, (int, float))
+                    and not isinstance(threshold, bool)
+                    and math.isfinite(float(threshold))
+                    and isinstance(raw_operator, str)
+                ):
+                    operator_to_bound = {
+                        "gt": ("lower", "lower_inclusive", False),
+                        ">": ("lower", "lower_inclusive", False),
+                        "greater_than": ("lower", "lower_inclusive", False),
+                        "more_than": ("lower", "lower_inclusive", False),
+                        "gte": ("lower", "lower_inclusive", True),
+                        "ge": ("lower", "lower_inclusive", True),
+                        ">=": ("lower", "lower_inclusive", True),
+                        "greater_than_or_equal": ("lower", "lower_inclusive", True),
+                        "at_least": ("lower", "lower_inclusive", True),
+                        "lt": ("upper", "upper_inclusive", False),
+                        "<": ("upper", "upper_inclusive", False),
+                        "less_than": ("upper", "upper_inclusive", False),
+                        "below": ("upper", "upper_inclusive", False),
+                        "lte": ("upper", "upper_inclusive", True),
+                        "le": ("upper", "upper_inclusive", True),
+                        "<=": ("upper", "upper_inclusive", True),
+                        "less_than_or_equal": ("upper", "upper_inclusive", True),
+                        "at_most": ("upper", "upper_inclusive", True),
+                    }
+                    bound_spec = operator_to_bound.get(raw_operator.casefold().strip())
+                    if bound_spec is not None:
+                        bound_key, inclusive_key, inclusive_value = bound_spec
+                        bound_matches = (
+                            bound_key not in item or item.get(bound_key) == threshold
+                        )
+                        inclusive_matches = (
+                            inclusive_key not in item
+                            or item.get(inclusive_key) is inclusive_value
+                        )
+                        if bound_matches and inclusive_matches:
+                            item[bound_key] = threshold
+                            item[inclusive_key] = inclusive_value
+                            item.pop("operator")
+                            item.pop("threshold")
+                            corrections.append(
+                                f"semantic_ir_normalized_band_{index}_operator_threshold"
+                            )
+
+            # ``member_band`` belongs to the summary, not a band item. Drop
+            # nested copies only when every band repeats exactly the current
+            # parent selection, so no per-band selector or meaning is lost.
+            parent_member_band = band_summary.get("member_band")
+            if (
+                isinstance(parent_member_band, str)
+                and parent_member_band.strip()
+                and all(isinstance(item, dict) for item in bands)
+                and all("member_band" in item for item in bands)
+                and all(
+                    isinstance(item.get("member_band"), str)
+                    and item["member_band"].casefold().strip()
+                    == parent_member_band.casefold().strip()
+                    for item in bands
+                )
+            ):
+                for item in bands:
+                    item.pop("member_band")
+                corrections.append("semantic_ir_removed_redundant_band_member_band")
 
     # Gemini occasionally copies the stable executable/shadow IR schema id
     # instead of the model-facing ad-hoc IR id. These ids describe adjacent

@@ -1795,6 +1795,92 @@ def test_semantic_ir_normalization_keeps_conflicting_field_projections_visible()
     assert "semantic_ir_removed_redundant_field_projections" not in corrections
 
 
+def test_semantic_ir_normalization_recovers_unambiguous_operator_threshold_bands():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "catalog.asset",
+            "band_summary": {
+                "score_field_ref": {
+                    "semantic_entity": "catalog.asset",
+                    "semantic_field": "score",
+                },
+                "member_field_ref": {
+                    "semantic_entity": "catalog.asset",
+                    "semantic_field": "name",
+                },
+                "member_band": "high",
+                "bands": [
+                    {
+                        "key": "low",
+                        "operator": "lte",
+                        "threshold": 50,
+                        "member_band": "high",
+                    },
+                    {
+                        "key": "high",
+                        "operator": "gt",
+                        "threshold": 50,
+                        "member_band": "high",
+                    },
+                ],
+            },
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    proposal = GovernedSemanticIRProposal.model_validate_json(normalized)
+    band_summary = json.loads(normalized)["semantic_query"]["band_summary"]
+
+    assert proposal.semantic_query is not None
+    assert band_summary["bands"] == [
+        {"key": "low", "upper": 50, "upper_inclusive": True},
+        {"key": "high", "lower": 50, "lower_inclusive": False},
+    ]
+    assert {
+        "semantic_ir_normalized_band_0_operator_threshold",
+        "semantic_ir_normalized_band_1_operator_threshold",
+        "semantic_ir_removed_redundant_band_member_band",
+    } <= set(corrections)
+
+
+def test_semantic_ir_normalization_keeps_ambiguous_operator_threshold_band_visible():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "catalog.asset",
+            "band_summary": {
+                "score_field_ref": {
+                    "semantic_entity": "catalog.asset",
+                    "semantic_field": "score",
+                },
+                "member_field_ref": {
+                    "semantic_entity": "catalog.asset",
+                    "semantic_field": "name",
+                },
+                "member_band": "high",
+                "bands": [
+                    {"key": "low", "operator": "around", "threshold": 50},
+                    {"key": "high", "lower": 50},
+                ],
+            },
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    band = json.loads(normalized)["semantic_query"]["band_summary"]["bands"][0]
+
+    assert band["operator"] == "around"
+    assert band["threshold"] == 50
+    assert "semantic_ir_normalized_band_0_operator_threshold" not in corrections
+
+
 def test_semantic_ir_normalization_flattens_multi_entity_field_container():
     raw = {
         "language": "en",
