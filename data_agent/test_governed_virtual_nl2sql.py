@@ -1881,6 +1881,123 @@ def test_semantic_ir_normalization_keeps_ambiguous_operator_threshold_band_visib
     assert "semantic_ir_normalized_band_0_operator_threshold" not in corrections
 
 
+def test_semantic_ir_normalization_restores_primary_entity_from_band_field_refs():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "band_summary": {
+                "score_field_ref": {
+                    "semantic_entity": "catalog.asset",
+                    "semantic_field": "score",
+                },
+                "member_field_ref": {
+                    "semantic_entity": "catalog.asset",
+                    "semantic_field": "name",
+                },
+                "member_band": "high",
+                "bands": [
+                    {"key": "low", "upper": 50},
+                    {"key": "high", "lower": 50},
+                ],
+            },
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    proposal = GovernedSemanticIRProposal.model_validate_json(normalized)
+    query = json.loads(normalized)["semantic_query"]
+
+    assert proposal.semantic_query is not None
+    assert query["semantic_entity"] == "catalog.asset"
+    assert query["projections"] == []
+    assert "semantic_ir_restored_unique_primary_entity" in corrections
+
+
+def test_semantic_ir_normalization_unfolds_complete_band_output_aliases():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "catalog.asset",
+            "band_summary": {
+                "score_field_ref": {
+                    "semantic_entity": "catalog.asset",
+                    "semantic_field": "score",
+                },
+                "member_field_ref": {
+                    "semantic_entity": "catalog.asset",
+                    "semantic_field": "name",
+                },
+                "member_band": "high",
+                "bands": [
+                    {"key": "low", "upper": 50},
+                    {"key": "high", "lower": 50},
+                ],
+                "output_aliases": {
+                    "band": "score_band",
+                    "count": "asset_count",
+                    "members": "asset_names",
+                },
+            },
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    proposal = GovernedSemanticIRProposal.model_validate_json(normalized)
+    band_summary = json.loads(normalized)["semantic_query"]["band_summary"]
+
+    assert proposal.semantic_query is not None
+    assert "output_aliases" not in band_summary
+    assert {
+        "band_output_name": "score_band",
+        "count_output_name": "asset_count",
+        "member_output_name": "asset_names",
+    }.items() <= band_summary.items()
+    assert "semantic_ir_unfolded_band_summary_output_aliases" in corrections
+
+
+def test_semantic_ir_normalization_keeps_unknown_band_output_alias_visible():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "catalog.asset",
+            "band_summary": {
+                "score_field_ref": {
+                    "semantic_entity": "catalog.asset",
+                    "semantic_field": "score",
+                },
+                "member_field_ref": {
+                    "semantic_entity": "catalog.asset",
+                    "semantic_field": "name",
+                },
+                "member_band": "high",
+                "bands": [
+                    {"key": "low", "upper": 50},
+                    {"key": "high", "lower": 50},
+                ],
+                "output_aliases": {"band": "score_band", "unknown": "value"},
+            },
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    band_summary = json.loads(normalized)["semantic_query"]["band_summary"]
+
+    assert band_summary["output_aliases"] == {
+        "band": "score_band",
+        "unknown": "value",
+    }
+    assert "semantic_ir_unfolded_band_summary_output_aliases" not in corrections
+
+
 def test_semantic_ir_normalization_flattens_multi_entity_field_container():
     raw = {
         "language": "en",
@@ -4589,6 +4706,19 @@ def test_semantic_ir_retry_guidance_uses_canonical_projection_and_band_shapes():
     assert "projections as the only top-level" in projection_guidance
     assert "member_band" in band_guidance
     assert "lower or upper" in band_guidance
+
+
+def test_semantic_ir_retry_guidance_requires_complete_band_summary_protocol():
+    guidance = _semantic_ir_retry_guidance(
+        "model_structured_output_schema_invalid:"
+        "extra_forbidden@semantic_query.band_summary.output_aliases:Extra inputs are not permitted;"
+        "missing@semantic_query.band_summary.member_field_ref:Field required;"
+        "missing@semantic_query.semantic_entity:Field required"
+    )
+
+    assert "semantic_query.semantic_entity" in guidance
+    assert "Do not emit an output_aliases object" in guidance
+    assert "requires member_field_ref" in guidance
 
 
 def test_semantic_ir_retry_guidance_restores_governed_row_scope():

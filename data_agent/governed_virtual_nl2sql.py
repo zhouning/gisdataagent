@@ -5439,7 +5439,7 @@ LOCAL STRUCTURED-OUTPUT CHECKLIST:
 - A universal_conditions entry has exactly policy_id, field_ref, operator, and values. All four are required: operator is never inferred or omitted, and values contains exactly one raw scalar. Do not copy policy explanation fields such as group_field, scope_field, rule, or validity into the entry.
 - Use a universal_conditions entry for every/all semantics, never inside having_filters. A separate having filter is valid only when the question independently asks for a post-group aggregate condition; it must include field_ref, aggregate, operator, and values.
 - Put OR alternatives only in top-level any_filter_groups as objects containing filters. Do not nest any_filter_groups inside an ordinary filter.
-- For explicit numeric bands plus a request for members of one band, use band_summary rather than ordinary filters or OR groups. Its score_field_ref, member_field_ref, bands, member_band, and output aliases define the complete result; omit ordinary projections and ordering.
+- For explicit numeric bands plus a request for members of one band, use band_summary rather than ordinary filters or OR groups. Still set semantic_entity and projections=[]; band_summary requires score_field_ref, member_field_ref, bands, member_band, and individual output aliases. Each band uses key with lower/upper bounds only, never threshold/operator; omit ordinary projections and ordering.
 - Use is_null/not_null only when the user explicitly asks about missing/null values. Do not add a nullable-field filter just because a field is nullable.
 - For a dual extreme request (highest and lowest), use extreme_order_by only; do not also emit order_by for the same metric.
 - For a data-quality or definition question, query the governed field when the context supplies one; refuse only when no reviewed semantic field or answerability policy covers the request.
@@ -6244,6 +6244,49 @@ def _normalize_semantic_ir_model_candidate(
                     band_summary[canonical] = band_summary.pop(alias)
                     corrections.append(f"semantic_ir_normalized_band_summary_{alias}")
                     break
+        # A provider may group the three otherwise scalar output aliases below
+        # ``output_aliases``. This container has no query semantics, so unfold
+        # it only when every key and value is recognized and it agrees with any
+        # canonical aliases already present. Unknown keys or conflicts remain
+        # visible for the strict schema to reject.
+        output_aliases = band_summary.get("output_aliases")
+        if isinstance(output_aliases, dict) and output_aliases:
+            alias_keys = {
+                "band": "band_output_name",
+                "band_label": "band_output_name",
+                "band_output_name": "band_output_name",
+                "count": "count_output_name",
+                "band_count": "count_output_name",
+                "count_output_name": "count_output_name",
+                "member": "member_output_name",
+                "members": "member_output_name",
+                "member_list": "member_output_name",
+                "member_output_name": "member_output_name",
+            }
+            unfolded_aliases: dict[str, str] = {}
+            aliases_convertible = True
+            for alias_key, alias_value in output_aliases.items():
+                canonical_key = alias_keys.get(str(alias_key).casefold())
+                if (
+                    canonical_key is None
+                    or not isinstance(alias_value, str)
+                    or not alias_value.strip()
+                    or (
+                        canonical_key in unfolded_aliases
+                        and unfolded_aliases[canonical_key] != alias_value
+                    )
+                    or (
+                        canonical_key in band_summary
+                        and band_summary[canonical_key] != alias_value
+                    )
+                ):
+                    aliases_convertible = False
+                    break
+                unfolded_aliases[canonical_key] = alias_value
+            if aliases_convertible:
+                band_summary.update(unfolded_aliases)
+                band_summary.pop("output_aliases")
+                corrections.append("semantic_ir_unfolded_band_summary_output_aliases")
         bands = band_summary.get("bands")
         if isinstance(bands, list):
             for index, item in enumerate(bands):
@@ -8868,6 +8911,11 @@ def _normalize_semantic_ir_model_candidate(
             for filter_spec in group.get("filters") or []:
                 if isinstance(filter_spec, dict) and filter_spec.get("field_ref") is not None:
                     add_qualified_reference(filter_spec.get("field_ref"))
+        band_summary = query.get("band_summary")
+        if isinstance(band_summary, dict):
+            for reference_key in ("score_field_ref", "member_field_ref"):
+                if band_summary.get(reference_key) is not None:
+                    add_qualified_reference(band_summary.get(reference_key))
         if not query.get("joins") and candidate_complete and len(entity_candidates) == 1:
             query["semantic_entity"] = next(iter(entity_candidates))
             corrections.append("semantic_ir_restored_unique_primary_entity")
@@ -14218,6 +14266,24 @@ def _semantic_ir_retry_guidance(error: str) -> str:
             "Use projections as the only top-level projection array; never emit "
             "field_projections. Preserve every complete projection object, including "
             "its output_name, role, field_ref, and aggregate when applicable."
+        )
+    if "missing@semantic_query.semantic_entity" in value:
+        hints.append(
+            "Set semantic_query.semantic_entity to the one reviewed logical entity "
+            "that owns the query's primary field references; do not omit the root "
+            "entity even when all fields are fully qualified."
+        )
+    if "output_aliases" in value and "band_summary" in value:
+        hints.append(
+            "Do not emit an output_aliases object. Put each alias directly in "
+            "band_summary as band_output_name, count_output_name, or "
+            "member_output_name."
+        )
+    if "missing@semantic_query.band_summary.member_field_ref" in value:
+        hints.append(
+            "A band summary always requires member_field_ref as well as "
+            "score_field_ref. Use each as a complete logical field reference; "
+            "do not replace either with an output alias."
         )
     if "extra_forbidden@semantic_query.band_summary.bands" in value:
         hints.append(
