@@ -1164,6 +1164,44 @@ def test_semantic_ir_normalization_removes_redundant_universal_policy_metadata()
     assert "semantic_ir_normalized_universal_condition_field" in corrections
 
 
+def test_semantic_ir_normalization_does_not_complete_universal_condition():
+    """Policy explanation metadata may be removed but semantics cannot be filled in."""
+
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "semantic_entity": "liveability.facility_provision",
+            "projections": [],
+            "universal_conditions": {
+                "policy_id": "reviewed-policy",
+                "condition_field": "fpp_score",
+                "values": [100],
+                "group_field": "facility_type",
+                "scope_field": "district_id",
+                "rule": "every assessed district",
+            },
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    condition = json.loads(normalized)["semantic_query"]["universal_conditions"][0]
+
+    assert condition == {
+        "policy_id": "reviewed-policy",
+        "field_ref": {
+            "semantic_entity": "liveability.facility_provision",
+            "semantic_field": "fpp_score",
+        },
+        "values": [100],
+    }
+    assert "semantic_ir_removed_universal_policy_metadata" in corrections
+    with pytest.raises(ValueError, match="operator"):
+        GovernedSemanticIRProposal.model_validate_json(normalized)
+
+
 def test_semantic_ir_normalization_removes_duplicate_projection_field_leaf():
     """A duplicate leaf is removed only when it restates field_ref exactly."""
 
@@ -4242,6 +4280,20 @@ def test_semantic_ir_instruction_pins_provider_protocol_shape():
     assert "never put `field_ref` inside an order item" in instruction
 
 
+def test_compact_semantic_ir_instruction_requires_complete_universal_condition():
+    from data_agent.governed_virtual_nl2sql import _build_instruction
+
+    instruction = _build_instruction(
+        "REVIEWED LOGICAL METRIC PATTERNS:\n  - none",
+        execution_profile="semantic_ir_experimental",
+        prompt_variant="compact_local",
+    )
+
+    assert "exactly policy_id, field_ref, operator, and values" in instruction
+    assert "operator is never inferred or omitted" in instruction
+    assert "group_field, scope_field, rule, or validity" in instruction
+
+
 def test_semantic_ir_retry_guidance_restates_schema_without_semantic_authority():
     guidance = _semantic_ir_retry_guidance(
         "model_structured_output_schema_invalid:"
@@ -4330,6 +4382,7 @@ def test_semantic_ir_retry_guidance_limits_universal_conditions_to_universal_que
 
     assert "explicitly asks every, all" in guidance
     assert "otherwise omit it" in guidance
+    assert "do not omit operator" in guidance
 
 
 def test_semantic_ir_retry_guidance_requires_json_array_projection_shape():

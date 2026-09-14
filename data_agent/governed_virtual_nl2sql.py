@@ -5435,6 +5435,7 @@ LOCAL STRUCTURED-OUTPUT CHECKLIST:
 - For every non-count metric, include field_ref (or the explicitly governed derived/json shape) together with aggregate. Only COUNT(*) has field_ref=null.
 - Use role=dimension for grouped fields and role=attribute for detail fields; use role=metric only with an aggregate.
 - For a spatial question, preserve the reviewed spatial join and exact spatial operator from the supplied context. The only no-join exception is a listed reviewed source-recorded categorical scope: use its declared logical filter and spatial intent, and never describe it as a geometric intersection.
+- A universal_conditions entry has exactly policy_id, field_ref, operator, and values. All four are required: operator is never inferred or omitted, and values contains exactly one raw scalar. Do not copy policy explanation fields such as group_field, scope_field, rule, or validity into the entry.
 - Use is_null/not_null only when the user explicitly asks about missing/null values. Do not add a nullable-field filter just because a field is nullable.
 - For a dual extreme request (highest and lowest), use extreme_order_by only; do not also emit order_by for the same metric.
 - For a data-quality or definition question, query the governed field when the context supplies one; refuse only when no reviewed semantic field or answerability policy covers the request.
@@ -6837,29 +6838,37 @@ def _normalize_semantic_ir_model_candidate(
                 corrections.append("semantic_ir_normalized_universal_field_ref")
 
         # Prompt context describes a reviewed universal policy with fields
-        # such as entity, group_field, and scope_field. Some instruction-
-        # tuned models copy those explanatory fields alongside a complete
-        # protocol condition. They are not executable inputs, so discard them
-        # only after every canonical condition member is present. Missing or
-        # conflicting canonical inputs still fail strict schema and semantic-
-        # policy validation below.
+        # such as group_field and scope_field. Those fields are explanation
+        # metadata, never executable IR inputs, so their presence is safe to
+        # remove even when the model's actual condition is incomplete. This
+        # never supplies a policy, field, operator, or threshold: all four
+        # canonical members still undergo strict schema and policy validation.
+        removed_metadata = False
+        for key in (
+            "group_field",
+            "scope_field",
+            "validity",
+            "rule",
+            "description",
+        ):
+            if key in condition:
+                condition.pop(key)
+                removed_metadata = True
+
+        # Entity and condition-field aliases can help construct field_ref
+        # above, so discard them only once every canonical member is present.
+        # A missing or conflicting canonical member remains fail-closed.
         if {"policy_id", "field_ref", "operator", "values"}.issubset(condition):
-            removed_metadata = False
             for key in (
                 "entity",
                 "semantic_entity",
-                "group_field",
-                "scope_field",
                 "condition_field",
-                "validity",
-                "rule",
-                "description",
             ):
                 if key in condition:
                     condition.pop(key)
                     removed_metadata = True
-            if removed_metadata:
-                corrections.append("semantic_ir_removed_universal_policy_metadata")
+        if removed_metadata:
+            corrections.append("semantic_ir_removed_universal_policy_metadata")
 
     # Some providers emit the projection collection as three role-specific
     # arrays.  Convert those arrays only when the canonical collection is
@@ -14051,8 +14060,9 @@ def _semantic_ir_retry_guidance(error: str) -> str:
         hints.append(
             "Use universal_conditions only when the user explicitly asks every, all, "
             "or an equivalent complete-population condition; otherwise omit it. When "
-            "it applies, every condition needs logical field_ref, reviewed policy_id, "
-            "one comparison operator, and one scalar value inside values."
+            "it applies, every condition has exactly policy_id, logical field_ref, "
+            "operator, and values. All four are required: do not omit operator, and "
+            "values contains one raw scalar."
         )
     if "bool_type@semantic_query.distinct_rows" in value or "bool_type@semantic_query.include_result_count" in value:
         hints.append(
@@ -14062,8 +14072,9 @@ def _semantic_ir_retry_guidance(error: str) -> str:
     if "extra_forbidden@semantic_query.universal_conditions" in value:
         hints.append(
             "Universal conditions accept only policy_id, field_ref, operator, "
-            "and values; remove provider-only names such as policy_name or "
-            "threshold and regenerate the complete condition."
+            "and values; remove policy explanation names such as group_field, "
+            "scope_field, rule, validity, policy_name, or threshold and regenerate "
+            "the complete condition."
         )
     if (
         ".values." in value
