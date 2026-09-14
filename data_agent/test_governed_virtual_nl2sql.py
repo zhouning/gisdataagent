@@ -4292,6 +4292,9 @@ def test_compact_semantic_ir_instruction_requires_complete_universal_condition()
     assert "exactly policy_id, field_ref, operator, and values" in instruction
     assert "operator is never inferred or omitted" in instruction
     assert "group_field, scope_field, rule, or validity" in instruction
+    assert "never inside having_filters" in instruction
+    assert "top-level any_filter_groups" in instruction
+    assert "use band_summary rather than ordinary filters or OR groups" in instruction
 
 
 def test_semantic_ir_retry_guidance_restates_schema_without_semantic_authority():

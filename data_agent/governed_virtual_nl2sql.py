@@ -5436,6 +5436,9 @@ LOCAL STRUCTURED-OUTPUT CHECKLIST:
 - Use role=dimension for grouped fields and role=attribute for detail fields; use role=metric only with an aggregate.
 - For a spatial question, preserve the reviewed spatial join and exact spatial operator from the supplied context. The only no-join exception is a listed reviewed source-recorded categorical scope: use its declared logical filter and spatial intent, and never describe it as a geometric intersection.
 - A universal_conditions entry has exactly policy_id, field_ref, operator, and values. All four are required: operator is never inferred or omitted, and values contains exactly one raw scalar. Do not copy policy explanation fields such as group_field, scope_field, rule, or validity into the entry.
+- Use a universal_conditions entry for every/all semantics, never inside having_filters. A separate having filter is valid only when the question independently asks for a post-group aggregate condition; it must include field_ref, aggregate, operator, and values.
+- Put OR alternatives only in top-level any_filter_groups as objects containing filters. Do not nest any_filter_groups inside an ordinary filter.
+- For explicit numeric bands plus a request for members of one band, use band_summary rather than ordinary filters or OR groups. Its score_field_ref, member_field_ref, bands, member_band, and output aliases define the complete result; omit ordinary projections and ordering.
 - Use is_null/not_null only when the user explicitly asks about missing/null values. Do not add a nullable-field filter just because a field is nullable.
 - For a dual extreme request (highest and lowest), use extreme_order_by only; do not also emit order_by for the same metric.
 - For a data-quality or definition question, query the governed field when the context supplies one; refuse only when no reviewed semantic field or answerability policy covers the request.
