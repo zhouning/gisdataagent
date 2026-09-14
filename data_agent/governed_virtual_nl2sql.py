@@ -5434,6 +5434,7 @@ LOCAL STRUCTURED-OUTPUT CHECKLIST:
 - Do not emit a projection with only output_name and role. For every attribute or dimension, include field_ref with semantic_entity and semantic_field.
 - For every non-count metric, include field_ref (or the explicitly governed derived/json shape) together with aggregate. Only COUNT(*) has field_ref=null.
 - Use role=dimension for grouped fields and role=attribute for detail fields; use role=metric only with an aggregate.
+- Grouping is represented only by role=dimension projections. Never emit a group_by member; the compiler derives grouping from those projections.
 - For a spatial question, preserve the reviewed spatial join and exact spatial operator from the supplied context. The only no-join exception is a listed reviewed source-recorded categorical scope: use its declared logical filter and spatial intent, and never describe it as a geometric intersection.
 - A universal_conditions entry has exactly policy_id, field_ref, operator, and values. All four are required: operator is never inferred or omitted, and values contains exactly one raw scalar. Do not copy policy explanation fields such as group_field, scope_field, rule, or validity into the entry.
 - Use a universal_conditions entry for every/all semantics, never inside having_filters. A separate having filter is valid only when the question independently asks for a post-group aggregate condition; it must include field_ref, aggregate, operator, and values.
@@ -8743,6 +8744,47 @@ def _normalize_semantic_ir_model_candidate(
             promoted_attribute_count += 1
         if promoted_attribute_count:
             corrections.append("semantic_ir_promoted_aggregate_attributes_to_dimensions")
+
+    # The primary entity is a protocol anchor, not an independently chosen
+    # source. If the model omitted it but every already-qualified projection
+    # and filter reference names exactly one logical entity, restore that
+    # identity losslessly. Multiple entities, joins, or unqualified fields
+    # remain invalid: selecting a root from those shapes would change plan
+    # semantics rather than normalize its representation.
+    if not str(query.get("semantic_entity") or "").strip():
+        entity_candidates: set[str] = set()
+        candidate_complete = True
+
+        def add_qualified_reference(value: Any) -> None:
+            nonlocal candidate_complete
+            if value is None:
+                return
+            reference = logical_field_ref(value)
+            if reference is None:
+                candidate_complete = False
+                return
+            entity_candidates.add(reference["semantic_entity"])
+
+        for projection in projections:
+            if projection.get("field_ref") is not None:
+                add_qualified_reference(projection.get("field_ref"))
+        for filter_spec in [
+            *(query.get("filters") or []),
+            *(query.get("having_filters") or []),
+            *(query.get("universal_conditions") or []),
+        ]:
+            if isinstance(filter_spec, dict) and filter_spec.get("field_ref") is not None:
+                add_qualified_reference(filter_spec.get("field_ref"))
+        for group in query.get("any_filter_groups") or []:
+            if not isinstance(group, dict):
+                candidate_complete = False
+                continue
+            for filter_spec in group.get("filters") or []:
+                if isinstance(filter_spec, dict) and filter_spec.get("field_ref") is not None:
+                    add_qualified_reference(filter_spec.get("field_ref"))
+        if not query.get("joins") and candidate_complete and len(entity_candidates) == 1:
+            query["semantic_entity"] = next(iter(entity_candidates))
+            corrections.append("semantic_ir_restored_unique_primary_entity")
 
     # The compiler derives GROUP BY from dimension projections.  Accept an
     # explicit provider ``group_by`` member only when every entry exactly
@@ -14078,6 +14120,12 @@ def _semantic_ir_retry_guidance(error: str) -> str:
             "and values; remove policy explanation names such as group_field, "
             "scope_field, rule, validity, policy_name, or threshold and regenerate "
             "the complete condition."
+        )
+    if "extra_forbidden@semantic_query.group_by" in value:
+        hints.append(
+            "Never emit group_by. Grouped results are defined by the existing "
+            "role=dimension projections; keep each grouping field as one complete "
+            "dimension projection with field_ref and remove the group_by member."
         )
     if (
         ".values." in value

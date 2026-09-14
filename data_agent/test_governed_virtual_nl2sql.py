@@ -1620,6 +1620,72 @@ def test_semantic_ir_normalization_keeps_nonredundant_entity_and_grouping_data_i
     assert "semantic_ir_removed_redundant_group_by" not in corrections
 
 
+def test_semantic_ir_normalization_restores_unique_primary_entity_from_qualified_refs():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "projections": [
+                {
+                    "output_name": "district_name",
+                    "role": "dimension",
+                    "field_ref": "liveability.district.name",
+                },
+                {
+                    "output_name": "district_count",
+                    "role": "metric",
+                    "aggregate": "count",
+                },
+            ],
+            "filters": [
+                {
+                    "field_ref": "liveability.district.is_active",
+                    "operator": "eq",
+                    "values": [True],
+                }
+            ],
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    query = json.loads(normalized)["semantic_query"]
+
+    assert query["semantic_entity"] == "liveability.district"
+    assert "semantic_ir_restored_unique_primary_entity" in corrections
+
+
+def test_semantic_ir_normalization_does_not_choose_primary_entity_from_multiple_refs():
+    raw = {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "language": "en",
+            "status": "query",
+            "projections": [
+                {
+                    "output_name": "district_name",
+                    "role": "dimension",
+                    "field_ref": "liveability.district.name",
+                },
+                {
+                    "output_name": "facility_count",
+                    "role": "metric",
+                    "aggregate": "count",
+                    "field_ref": "liveability.facility.id",
+                },
+            ],
+        },
+    }
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    query = json.loads(normalized)["semantic_query"]
+
+    assert "semantic_entity" not in query
+    assert "semantic_ir_restored_unique_primary_entity" not in corrections
+
+
 def test_semantic_ir_normalization_unwraps_only_a_unique_primary_entity_alias():
     raw = {
         "language": "en",
@@ -4295,6 +4361,7 @@ def test_compact_semantic_ir_instruction_requires_complete_universal_condition()
     assert "never inside having_filters" in instruction
     assert "top-level any_filter_groups" in instruction
     assert "use band_summary rather than ordinary filters or OR groups" in instruction
+    assert "Never emit a group_by member" in instruction
 
 
 def test_semantic_ir_retry_guidance_restates_schema_without_semantic_authority():
@@ -4338,6 +4405,16 @@ def test_semantic_ir_retry_guidance_requires_projection_alias_for_ordering():
     )
     assert "output_name of an existing projection" in guidance
     assert "do not put a logical field_ref" in guidance
+
+
+def test_semantic_ir_retry_guidance_uses_dimensions_instead_of_group_by_member():
+    guidance = _semantic_ir_retry_guidance(
+        "model_structured_output_schema_invalid:"
+        "extra_forbidden@semantic_query.group_by:Extra inputs are not permitted"
+    )
+
+    assert "Never emit group_by" in guidance
+    assert "role=dimension" in guidance
 
 
 def test_semantic_ir_retry_guidance_restores_governed_row_scope():
