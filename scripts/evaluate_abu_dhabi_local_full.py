@@ -61,6 +61,26 @@ def write_json(path: Path, value: dict) -> None:
     temporary.replace(path)
 
 
+def frozen_cohort_sha256(sources: dict[str, dict]) -> str:
+    """Fingerprint the exact benchmark/semantic population before execution.
+
+    Repeated-run promotion is meaningful only if every run used the same
+    source case ids and published semantic version.  The digest deliberately
+    excludes timestamps, Gold-audit outputs, and model results.
+    """
+
+    population = {
+        source: {
+            "benchmark_sha256": descriptor["benchmark_sha256"],
+            "semantic_sha256": descriptor["semantic_sha256"],
+            "case_ids": descriptor["case_ids"],
+        }
+        for source, descriptor in sorted(sources.items())
+    }
+    rendered = json.dumps(population, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(rendered.encode("utf-8")).hexdigest()
+
+
 def emit(stage: str, **values: object) -> None:
     print(json.dumps({"at": datetime.now(UTC).isoformat(), "stage": stage, **values}), flush=True)
 
@@ -128,6 +148,7 @@ async def evaluate(args: argparse.Namespace) -> dict:
         current_artifact_path,
     )
     from data_agent.model_gateway import create_model
+    from data_agent.nl2sql_model_profile import resolve_nl2sql_model_profile
     from data_agent.nl2sql_gold_source_cohort import audit_gold_source_cohort
 
     args.output.mkdir(parents=True, exist_ok=False)
@@ -135,6 +156,7 @@ async def evaluate(args: argparse.Namespace) -> dict:
     if route != f"ollama_chat/{args.model}":
         raise ValueError("effective route differs from the requested Ollama model")
     identity = model_identity(args)
+    model_profile = resolve_nl2sql_model_profile(route, provider="ollama")
     sources = selected_sources(args.source)
     profiles = selected_profiles(args.profile)
     manifest = {
@@ -146,8 +168,14 @@ async def evaluate(args: argparse.Namespace) -> dict:
             "effective_route": route,
             "base_url": args.base_url,
             "thinking": False,
+            "request_timeout_seconds": args.timeout,
+            "generation_budget_seconds": args.timeout,
             "temperature": None,
             "temperature_source": "provider_default_not_overridden_by_query_runtime",
+            "compatibility_profile": {
+                **model_profile.to_dict(),
+                "fingerprint": model_profile.fingerprint,
+            },
         },
         "runtime": {"timeout_seconds": args.timeout, "max_concurrency": args.concurrency},
         "selection": {
@@ -176,6 +204,7 @@ async def evaluate(args: argparse.Namespace) -> dict:
                 ROOT / "data_agent/model_gateway.py",
                 ROOT / "data_agent/abu_dhabi_nl2sql_presentation.py",
                 ROOT / "data_agent/abu_dhabi_nl2sql_map_presentation.py",
+                ROOT / "data_agent/nl2sql_model_profile.py",
             )
         },
         "sources": {},
@@ -209,6 +238,7 @@ async def evaluate(args: argparse.Namespace) -> dict:
         }
         manifest["sources"][key] = descriptor
         frozen.append((key, source, semantic, benchmark, descriptor))
+    manifest["cohort_sha256"] = frozen_cohort_sha256(manifest["sources"])
     manifest["expected_executions"] = sum(item[4]["case_count"] for item in frozen) * len(profiles)
     write_json(args.output / "manifest.json", manifest)
     emit("full_run_frozen", executions=manifest["expected_executions"], model=identity)

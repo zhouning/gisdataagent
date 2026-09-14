@@ -254,6 +254,14 @@ def analyze(directory: Path) -> dict:
     }
     if set(manifest["runs"]) != expected_runs:
         raise ValueError("missing or extra source/profile run")
+    stability_identity = {
+        "model_digest": bool((manifest.get("model") or {}).get("digest")),
+        "model_profile": bool(
+            ((manifest.get("model") or {}).get("compatibility_profile") or {}).get("fingerprint")
+        ),
+        "cohort_sha256": bool(manifest.get("cohort_sha256")),
+        "runtime_code_sha256": bool(manifest.get("code_sha256")),
+    }
     all_rows = []
     populations = {}
     run_metrics = {}
@@ -369,6 +377,12 @@ def analyze(directory: Path) -> dict:
         "generated_at": datetime.now(UTC).isoformat(),
         "manifest_sha256": sha256(manifest_path),
         "model": manifest["model"],
+        "cohort_sha256": manifest.get("cohort_sha256"),
+        "code_sha256": manifest.get("code_sha256"),
+        "stability_identity": {
+            **stability_identity,
+            "complete": all(stability_identity.values()),
+        },
         "claim_boundary": {**manifest["claim_boundary"], "presentation_scored": False},
         "population": populations,
         "execution_count": len(all_rows),

@@ -46,3 +46,18 @@ def test_selected_profiles_rejects_duplicate_or_unknown_scope() -> None:
         MODULE.selected_profiles(["baseline_sql", "baseline_sql"])
     with pytest.raises(ValueError, match="unknown"):
         MODULE.selected_profiles(["unknown"])
+
+
+def test_frozen_cohort_fingerprint_is_stable_and_population_sensitive() -> None:
+    sources = {
+        "liveability": {
+            "benchmark_sha256": "a" * 64,
+            "semantic_sha256": "b" * 64,
+            "case_ids": ["F001", "F002"],
+        }
+    }
+    assert MODULE.frozen_cohort_sha256(sources) == MODULE.frozen_cohort_sha256(
+        {"liveability": dict(sources["liveability"])}
+    )
+    changed = {"liveability": {**sources["liveability"], "case_ids": ["F001"]}}
+    assert MODULE.frozen_cohort_sha256(sources) != MODULE.frozen_cohort_sha256(changed)

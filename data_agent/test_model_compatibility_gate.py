@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from scripts.check_abu_dhabi_model_compatibility_gate import evaluate
@@ -248,3 +250,37 @@ def test_repeated_gate_requires_explicit_model_identity():
         match="configuration_identity_missing:model_digest",
     ):
         evaluate_repeated([incomplete, _stable_analysis()])
+
+
+def test_repeated_gate_accepts_full_run_model_digest_shape():
+    analysis = _stable_analysis()
+    analysis["model"] = {
+        "name": "gemma4:26b",
+        "digest": "digest-a",
+        "effective_route": "ollama_chat/gemma4:26b",
+        "request_timeout_seconds": 180,
+        "generation_budget_seconds": 180,
+        "compatibility_profile": analysis["model"]["compatibility_profile"],
+    }
+
+    report = evaluate_repeated(
+        [{**analysis, "report_sha256": f"full-{index}"} for index in range(3)]
+    )
+
+    assert report["configuration_audit"]["evidence_sufficient"] is True
+    assert report["model"]["model_digest"] == "digest-a"
+
+
+def test_repeated_gate_cli_reports_incomplete_identity_without_traceback(tmp_path, capsys):
+    from scripts.check_abu_dhabi_model_compatibility_stability_gate import main
+
+    analysis = _stable_analysis()
+    analysis["model"]["installed"].pop("digest")
+    path = tmp_path / "analysis.json"
+    path.write_text(json.dumps(analysis), encoding="utf-8")
+
+    assert main([str(path)]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["status"] == "configuration_invalid"
+    assert result["decision"] == "canary_or_rollback"
+    assert result["reason"] == "configuration_identity_missing:model_digest"

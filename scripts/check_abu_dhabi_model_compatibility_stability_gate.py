@@ -65,8 +65,9 @@ def _model_identity(analysis: dict[str, Any]) -> dict[str, Any]:
         "profile_id": compatibility.get("profile_id"),
         "profile_version": compatibility.get("profile_version"),
         "profile_fingerprint": compatibility.get("fingerprint"),
-        "model_digest": installed.get("digest"),
-        "request_timeout_seconds": model.get("timeout_seconds"),
+        "model_digest": installed.get("digest") or model.get("digest"),
+        "request_timeout_seconds": model.get("request_timeout_seconds")
+        or model.get("timeout_seconds"),
         "generation_budget_seconds": model.get("generation_budget_seconds"),
         "cohort_sha256": analysis.get("cohort_sha256"),
         "runtime_code_fingerprint": runtime_code_fingerprint,
@@ -268,11 +269,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
     analyses = [json.loads(path.read_text(encoding="utf-8")) for path in args.analysis]
-    result = evaluate_repeated(
-        analyses,
-        model_name=args.model,
-        minimum_runs=args.minimum_runs,
-    )
+    try:
+        result = evaluate_repeated(
+            analyses,
+            model_name=args.model,
+            minimum_runs=args.minimum_runs,
+        )
+    except CompatibilityStabilityConfigurationError as exc:
+        result = {
+            "schema": STABILITY_SCHEMA,
+            "generated_at": datetime.now(UTC).isoformat(),
+            "status": "configuration_invalid",
+            "promote": False,
+            "decision": "canary_or_rollback",
+            "reason": str(exc),
+        }
     rendered = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
     if args.output:
         args.output.write_text(rendered, encoding="utf-8")
