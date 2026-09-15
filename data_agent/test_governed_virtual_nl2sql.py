@@ -3791,6 +3791,30 @@ def test_semantic_ir_instruction_declares_canonical_provider_representation() ->
     assert "Filter `values` are arrays of raw JSON" in instruction
 
 
+def test_semantic_ir_instruction_keeps_presentation_requests_outside_query_admission() -> None:
+    instruction = _build_instruction(
+        "ENTITY liveability.district",
+        execution_profile="semantic_ir_experimental",
+        question="Show the highest-scoring districts in a bar chart.",
+        language="en",
+    )
+
+    assert "presentation concerns" in instruction
+    assert "keep\nstatus as `query`" in instruction
+    assert "Do not emit presentation metadata" in instruction
+
+
+def test_compact_semantic_ir_instruction_keeps_presentation_requests_outside_query_admission() -> None:
+    instruction = _build_instruction(
+        "ENTITY liveability.district",
+        execution_profile="semantic_ir_experimental",
+        prompt_variant="compact_local",
+    )
+
+    assert "presentation layer" in instruction
+    assert "omit presentation metadata" in instruction
+
+
 def test_semantic_ir_instruction_adds_local_structured_output_checklist() -> None:
     instruction = _build_instruction(
         "ENTITY liveability.facility",

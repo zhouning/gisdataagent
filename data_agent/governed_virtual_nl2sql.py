@@ -56,7 +56,7 @@ from .nl2sql_model_profile import profile_for_model, resolve_nl2sql_model_profil
 
 SUPPORTED_LANGUAGES = ("zh", "en", "ar")
 PROMPT_VERSION = "governed-virtual-nl2semantic2sql-v1.8"
-SEMANTIC_IR_EXPERIMENT_PROMPT_VERSION = "governed-semantic-ir-canary-v1.11"
+SEMANTIC_IR_EXPERIMENT_PROMPT_VERSION = "governed-semantic-ir-canary-v1.12"
 MAX_QUESTION_LENGTH = 4_000
 _ARABIC_RE = re.compile(r"[\u0600-\u06ff]")
 _CJK_RE = re.compile(r"[\u3400-\u9fff]")
@@ -5492,6 +5492,11 @@ unsupported question, set status to `unsupported`, set semantic_query to null,
 and provide a brief reason. For a query, never emit SQL, physical tables, or
 selected_tables.
 
+A requested chart, map, table, title, or other display is handled after the
+query by the presentation layer. Do not mark an otherwise governed data
+question unsupported because of its requested display; emit the data query and
+omit presentation metadata from this object.
+
 For a query, set semantic_query.schema_id exactly to
 `gda.ad_hoc_semantic_query_ir.v1`; use one listed semantic_entity; and use only
 listed logical fields and reviewed joins. Every projection needs output_name
@@ -5522,6 +5527,11 @@ carry SQL or selected physical tables. Set both proposal and semantic-query
 status to `query` only when the question is expressible by the supplied
 logical semantic context; otherwise set both statuses to `unsupported` and
 give a short reason in the question language.
+
+Chart, map, table, title, and formatting requests are presentation concerns,
+not semantic-query operations. When the requested data is expressible, keep
+status as `query` and emit its data IR even if the requested presentation is
+not represented here. Do not emit presentation metadata in this object.
 
 Return exactly one JSON object with no Markdown fences or explanatory text.
 The runtime performs the authoritative schema and semantic validation after
