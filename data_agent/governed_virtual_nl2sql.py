@@ -9925,14 +9925,43 @@ def _validate_metric_contracts(semantic_layer: dict[str, Any]) -> None:
                 raise GovernedVirtualNL2SQLError(
                     f"metric_contract_direct_execution_invalid:{contract_id}"
                 )
+            direct_mode = str(direct_execution.get("mode") or "")
             if enabled and (
-                direct_execution.get("mode") != "canonical_no_parameters"
+                direct_mode not in {"canonical_no_parameters", "canonical_bound_parameters"}
                 or contract.get("review_status") != "reviewed_candidate"
                 or not str(contract.get("canonical_sql_template") or "").strip()
             ):
                 raise GovernedVirtualNL2SQLError(
                     f"metric_contract_direct_execution_invalid:{contract_id}"
                 )
+            parameters = direct_execution.get("parameters") or []
+            if direct_mode == "canonical_no_parameters" and parameters:
+                raise GovernedVirtualNL2SQLError(
+                    f"metric_contract_direct_execution_invalid:{contract_id}"
+                )
+            if direct_mode == "canonical_bound_parameters":
+                if not isinstance(parameters, list) or len(parameters) != 1:
+                    raise GovernedVirtualNL2SQLError(
+                        f"metric_contract_direct_execution_invalid:{contract_id}"
+                    )
+                parameter = parameters[0] if parameters else {}
+                minimum = parameter.get("minimum")
+                maximum = parameter.get("maximum")
+                if (
+                    not isinstance(parameter, dict)
+                    or parameter.get("name") != "limit"
+                    or parameter.get("kind") != "ranking_limit"
+                    or parameter.get("required") is not True
+                    or isinstance(minimum, bool)
+                    or isinstance(maximum, bool)
+                    or not isinstance(minimum, int)
+                    or not isinstance(maximum, int)
+                    or not 1 <= minimum <= maximum <= 1000
+                    or str(contract.get("canonical_sql_template") or "").count("{{limit}}") != 1
+                ):
+                    raise GovernedVirtualNL2SQLError(
+                        f"metric_contract_direct_execution_invalid:{contract_id}"
+                    )
             for policy_key in ("allowed_numeric_literals", "allowed_literal_terms"):
                 values = direct_execution.get(policy_key) or []
                 if not isinstance(values, list) or any(not str(value).strip() for value in values):
@@ -9997,6 +10026,10 @@ def _validate_metric_contracts(semantic_layer: dict[str, Any]) -> None:
                     raise GovernedVirtualNL2SQLError(
                         f"metric_contract_direct_execution_invalid:{contract_id}"
                     )
+            has_bound_ranking_limit = direct_mode == "canonical_bound_parameters" and any(
+                isinstance(parameter, dict) and parameter.get("kind") == "ranking_limit"
+                for parameter in parameters
+            )
             if "ranked_top_n" in {
                 str(value).casefold() for value in allowed_result_shapes
             } and (
@@ -10009,6 +10042,7 @@ def _validate_metric_contracts(semantic_layer: dict[str, Any]) -> None:
                     )
                     for value in direct_execution.get(policy_key) or []
                 )
+                and not has_bound_ranking_limit
             ):
                 raise GovernedVirtualNL2SQLError(
                     f"metric_contract_direct_execution_invalid:{contract_id}"
@@ -10381,6 +10415,209 @@ _DIRECT_NUMBER_WORDS: dict[str, tuple[str, ...]] = {
     "ar": ("واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة", "عشرة"),
 }
 
+_DIRECT_NUMBER_WORD_VALUES: dict[str, dict[str, int]] = {
+    "zh": {
+        "一": 1,
+        "二": 2,
+        "三": 3,
+        "四": 4,
+        "五": 5,
+        "六": 6,
+        "七": 7,
+        "八": 8,
+        "九": 9,
+        "十": 10,
+        "十一": 11,
+        "十二": 12,
+    },
+    "en": {
+        "one": 1,
+        "two": 2,
+        "three": 3,
+        "four": 4,
+        "five": 5,
+        "six": 6,
+        "seven": 7,
+        "eight": 8,
+        "nine": 9,
+        "ten": 10,
+        "eleven": 11,
+        "twelve": 12,
+    },
+    "ar": {
+        "واحد": 1,
+        "اثنان": 2,
+        "ثلاثة": 3,
+        "أربعة": 4,
+        "خمسة": 5,
+        "ستة": 6,
+        "سبعة": 7,
+        "ثمانية": 8,
+        "تسعة": 9,
+        "عشرة": 10,
+    },
+}
+
+
+def _bound_ranking_limit(
+    question: str,
+    language: str,
+    *,
+    minimum: int,
+    maximum: int,
+) -> tuple[int, set[str], set[str]] | None:
+    """Extract a bounded Top-N request without accepting arbitrary numerics.
+
+    The scope is deliberately limited to a numeric or spelled-out value adjacent
+    to a ranking phrase. It is a contract parameter, not a general SQL literal
+    parser, so a threshold such as ``above 90`` cannot be mistaken for a limit.
+    """
+
+    patterns = {
+        "zh": r"(?:前|后|top|bottom)\s*(\d{1,4})",
+        "en": r"\b(?:top|bottom|first|last)\s+(\d{1,4})\b",
+        "ar": r"(?:أعلى|اعلى|الأكثر|الاكثر|أدنى|الادنى|الأقل|الاقل)\s*(\d{1,4})",
+    }
+    numeric_match = re.search(patterns.get(language, ""), question, re.IGNORECASE)
+    if numeric_match:
+        raw = numeric_match.group(1)
+        value = int(raw)
+        if minimum <= value <= maximum:
+            return value, {raw}, set()
+        return None
+
+    # Natural questions also commonly say "five districts with the highest"
+    # rather than "top five districts". Keep the grammar narrow: a value is
+    # accepted only when it immediately qualifies an explicit ranked entity
+    # and the question separately carries a ranking direction.
+    entity_patterns = {
+        "zh": r"(\d{1,4})\s*(?:个)?(?:行政区|片区|区域)",
+        "en": r"\b(\d{1,4})\s+(?:districts?|areas?|regions?)\b",
+        "ar": r"(\d{1,4})\s+(?:منطقة|مناطق)",
+    }
+    entity_match = re.search(entity_patterns.get(language, ""), question, re.IGNORECASE)
+    if entity_match and _requested_ranking_directions(question, language):
+        raw = entity_match.group(1)
+        value = int(raw)
+        if minimum <= value <= maximum:
+            return value, {raw}, set()
+        return None
+
+    terms = _DIRECT_NUMBER_WORD_VALUES.get(language) or {}
+    ranking_patterns = {
+        "zh": r"(?:前|后|top|bottom)\s*({term})",
+        "en": r"\b(?:top|bottom|first|last)\s+({term})\b",
+        "ar": r"(?:أعلى|اعلى|الأكثر|الاكثر|أدنى|الادنى|الأقل|الاقل)\s*({term})",
+    }
+    for word, value in terms.items():
+        if not minimum <= value <= maximum:
+            continue
+        pattern = ranking_patterns.get(language, "").format(term=re.escape(word))
+        if re.search(pattern, question, re.IGNORECASE):
+            return value, set(), {_normalized_match_text(word)}
+        entity_word_patterns = {
+            "zh": r"{term}\s*(?:个)?(?:行政区|片区|区域)",
+            "en": r"\b{term}\s+(?:districts?|areas?|regions?)\b",
+            "ar": r"{term}\s+(?:منطقة|مناطق)",
+        }
+        entity_pattern = entity_word_patterns.get(language, "").format(term=re.escape(word))
+        if re.search(entity_pattern, question, re.IGNORECASE) and _requested_ranking_directions(question, language):
+            return value, set(), {_normalized_match_text(word)}
+    return None
+
+
+def _resolve_direct_metric_parameters(
+    question: str,
+    language: str,
+    contract: dict[str, Any],
+) -> dict[str, Any]:
+    """Resolve values only for the reviewed parameter grammar of a contract."""
+
+    policy = contract.get("direct_execution") or {}
+    mode = str(policy.get("mode") or "")
+    if mode == "canonical_no_parameters":
+        return {
+            "status": "matched",
+            "values": {},
+            "numeric_literals": set(),
+            "literal_terms": set(),
+            "missing_parameter": None,
+        }
+    if mode != "canonical_bound_parameters":
+        return {
+            "status": "invalid",
+            "values": {},
+            "numeric_literals": set(),
+            "literal_terms": set(),
+            "missing_parameter": None,
+        }
+    parameter = next(
+        (
+            item
+            for item in policy.get("parameters") or []
+            if isinstance(item, dict) and item.get("kind") == "ranking_limit"
+        ),
+        None,
+    )
+    if not isinstance(parameter, dict):
+        return {
+            "status": "invalid",
+            "values": {},
+            "numeric_literals": set(),
+            "literal_terms": set(),
+            "missing_parameter": None,
+        }
+    found = _bound_ranking_limit(
+        question,
+        language,
+        minimum=int(parameter["minimum"]),
+        maximum=int(parameter["maximum"]),
+    )
+    if found is None:
+        return {
+            "status": "missing",
+            "values": {},
+            "numeric_literals": set(),
+            "literal_terms": set(),
+            "missing_parameter": str(parameter.get("name") or "parameter"),
+        }
+    value, numeric_literals, literal_terms = found
+    return {
+        "status": "matched",
+        "values": {str(parameter["name"]): value},
+        "numeric_literals": numeric_literals,
+        "literal_terms": literal_terms,
+        "missing_parameter": None,
+    }
+
+
+def _render_direct_metric_contract_sql(
+    contract: dict[str, Any],
+    parameters: Mapping[str, Any],
+) -> str:
+    """Render a canonical contract from typed values, never raw question text."""
+
+    template = str(contract.get("canonical_sql_template") or "").strip().rstrip(";")
+    policy = contract.get("direct_execution") or {}
+    if policy.get("mode") == "canonical_no_parameters":
+        return template
+    if policy.get("mode") != "canonical_bound_parameters":
+        raise GovernedVirtualNL2SQLError("metric_contract_parameter_mode_invalid")
+    value = parameters.get("limit")
+    parameter = next(
+        (item for item in policy.get("parameters") or [] if isinstance(item, dict) and item.get("name") == "limit"),
+        None,
+    )
+    if (
+        not isinstance(parameter, dict)
+        or isinstance(value, bool)
+        or not isinstance(value, int)
+        or not int(parameter["minimum"]) <= value <= int(parameter["maximum"])
+        or template.count("{{limit}}") != 1
+    ):
+        raise GovernedVirtualNL2SQLError("metric_contract_parameter_invalid")
+    return template.replace("{{limit}}", str(value))
+
 _DIRECT_RANKING_DIRECTION_PATTERNS: dict[str, dict[str, str]] = {
     "zh": {
         "desc": r"(?:最高|最多|最大|前列|排名靠前|前\s*\d*)",
@@ -10611,6 +10848,9 @@ def _direct_metric_unbound_modifier(
     question: str,
     language: str,
     contract: dict[str, Any],
+    *,
+    bound_numeric_literals: set[str] | None = None,
+    bound_literal_terms: set[str] | None = None,
 ) -> str | None:
     policy = contract.get("direct_execution") or {}
     # A reviewed canonical contract may intentionally encode a modifier (for
@@ -10634,6 +10874,7 @@ def _direct_metric_unbound_modifier(
         str(value).replace(",", "").strip()
         for value in policy.get("allowed_numeric_literals") or []
     }
+    allowed_numeric_literals.update(bound_numeric_literals or set())
     # Use ASCII identifier boundaries rather than Unicode ``\w`` boundaries:
     # in Chinese/Arabic text a year such as ``2025年`` or ``2025عام`` is still
     # a user-supplied numeric literal, while ``metric2025`` remains an
@@ -10649,6 +10890,7 @@ def _direct_metric_unbound_modifier(
     allowed_literal_terms = {
         _normalized_match_text(str(value)) for value in policy.get("allowed_literal_terms") or []
     }
+    allowed_literal_terms.update(bound_literal_terms or set())
     for number_word in _DIRECT_NUMBER_WORDS.get(language, ()):
         if isinstance(contract.get("direct_execution"), dict) and (
             _contains_match_term(question, number_word)
@@ -10845,7 +11087,32 @@ def resolve_direct_metric_contract(
             "candidate_contract_ids": candidate_ids,
             "fallback_reason": "stronger_metric_requires_free_form_planning",
         }
-    modifier = _direct_metric_unbound_modifier(question, language, contract)
+    parameter_resolution = _resolve_direct_metric_parameters(question, language, contract)
+    if parameter_resolution["status"] == "missing":
+        return {
+            "status": "fallback",
+            "contract": None,
+            "contract_id": str(contract.get("contract_id") or ""),
+            "candidate_contract_ids": candidate_ids,
+            "fallback_reason": (
+                "unbound_parameter:" + str(parameter_resolution["missing_parameter"])
+            ),
+        }
+    if parameter_resolution["status"] != "matched":
+        return {
+            "status": "fallback",
+            "contract": None,
+            "contract_id": str(contract.get("contract_id") or ""),
+            "candidate_contract_ids": candidate_ids,
+            "fallback_reason": "direct_parameter_contract_invalid",
+        }
+    modifier = _direct_metric_unbound_modifier(
+        question,
+        language,
+        contract,
+        bound_numeric_literals=parameter_resolution["numeric_literals"],
+        bound_literal_terms=parameter_resolution["literal_terms"],
+    )
     if modifier:
         return {
             "status": "fallback",
@@ -10873,6 +11140,7 @@ def resolve_direct_metric_contract(
         "contract_id": str(contract.get("contract_id") or ""),
         "candidate_contract_ids": candidate_ids,
         "fallback_reason": None,
+        "resolved_parameters": parameter_resolution["values"],
     }
 
 
@@ -14499,11 +14767,23 @@ async def run_governed_metric_contract(
     canonical_sql = str(contract.get("canonical_sql_template") or "").strip().rstrip(";")
     if not canonical_sql:
         raise GovernedVirtualNL2SQLError("metric_contract_canonical_sql_missing")
+    parameter_resolution = _resolve_direct_metric_parameters(
+        question_context,
+        language,
+        contract,
+    )
+    if parameter_resolution["status"] != "matched":
+        raise GovernedVirtualNL2SQLError("metric_contract_parameter_unresolved")
+    rendered_contract = copy.deepcopy(contract)
+    rendered_contract["canonical_sql_template"] = _render_direct_metric_contract_sql(
+        contract,
+        parameter_resolution["values"],
+    )
     tables = [str(value) for value in contract.get("tables") or []]
     sql, extreme_evidence = _compile_direct_metric_extreme_sql(
         question=question_context,
         language=language,
-        contract=contract,
+        contract=rendered_contract,
     )
     semantic_evidence = validate_semantic_sql(
         sql,
@@ -14545,6 +14825,8 @@ async def run_governed_metric_contract(
         "tables": tables,
         "canonical_sql_sha256": hashlib.sha256(sql.encode("utf-8")).hexdigest(),
     }
+    if parameter_resolution["values"]:
+        metric_evidence["bound_parameters"] = dict(parameter_resolution["values"])
     if extreme_evidence:
         metric_evidence.update(extreme_evidence)
     if contract.get("data_quality_profile") is not None:
