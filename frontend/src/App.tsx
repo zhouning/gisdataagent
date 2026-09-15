@@ -11,6 +11,7 @@ import DataPanel from './components/DataPanel';
 import AdminDashboard from './components/AdminDashboard';
 import UserSettings from './components/UserSettings';
 import StandaloneOntologyPage from './components/StandaloneOntologyPage';
+import StandaloneMetricManagementPage from './components/StandaloneMetricManagementPage';
 import LanguageSwitcher from './components/LanguageSwitcher';
 import { usePlatformBranding } from './platformBranding';
 import i18n, { getLocale } from './i18n';
@@ -367,5 +368,6 @@ function GisDataAgentApp() {
 export default function App() {
   const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
   if (pathname.endsWith('/ontology-model')) return <StandaloneOntologyPage />;
+  if (pathname.endsWith('/metric-management')) return <StandaloneMetricManagementPage />;
   return <GisDataAgentApp />;
 }

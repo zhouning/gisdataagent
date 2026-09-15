@@ -138,7 +138,9 @@ const EMPTY_COL_FORM = {
   semantic_domain: '', aliases: '', unit: '', description: '',
 };
 
-export default function SemanticLayerTab({ userRole, requestedTarget }: { userRole?: string; requestedTarget?: { sourceKey?: string; tableName?: string } | null }) {
+type SemanticWorkspaceView = 'catalog' | 'model' | 'metrics' | 'preview';
+
+export default function SemanticLayerTab({ userRole, requestedTarget, initialView = 'catalog' }: { userRole?: string; requestedTarget?: { sourceKey?: string; tableName?: string } | null; initialView?: SemanticWorkspaceView }) {
   const canEdit = userRole === 'admin' || userRole === 'analyst';
 
   const [sources, setSources] = useState<SourceMeta[]>([]);
@@ -155,7 +157,7 @@ export default function SemanticLayerTab({ userRole, requestedTarget }: { userRo
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>('');
   const [info, setInfo] = useState<string>('');
-  const [activeView, setActiveView] = useState<'catalog' | 'model' | 'preview'>('catalog');
+  const [activeView, setActiveView] = useState<SemanticWorkspaceView>(initialView);
   const [governanceRefreshToken, setGovernanceRefreshToken] = useState(0);
   const [pendingFocus, setPendingFocus] = useState<{ sourceKey?: string; tableName: string } | null>(null);
 
@@ -468,14 +470,15 @@ export default function SemanticLayerTab({ userRole, requestedTarget }: { userRo
         <div>
           <span className="semantic-workspace-kicker">SEMANTIC WORKSPACE</span>
           <h3>统一语义层工作区</h3>
-          <p>从同一语义工作区切换目录语义、业务模型和解析验证；数据源、表和字段均来自统一目录。</p>
+          <p>从同一语义工作区切换目录语义、业务模型、指标管理和解析验证；数据源、表和字段均来自统一目录。</p>
         </div>
         <div className="semantic-workspace-stats"><strong>{catalogSources.length || sourceProfiles.length}</strong><span>数据源</span><strong>{catalogTables.length}</strong><span>目录表</span><strong>{sources.length}</strong><span>已注册表</span></div>
       </section>
 
       <nav className="semantic-view-tabs" aria-label="语义工作区视图">
         <button type="button" className={activeView === 'catalog' ? 'active' : ''} onClick={() => setActiveView('catalog')}><strong>目录语义</strong><span>全库表、字段与语义标注</span></button>
-        <button type="button" className={activeView === 'model' ? 'active' : ''} onClick={() => setActiveView('model')}><strong>业务模型</strong><span>资产、关系与指标合同</span></button>
+        <button type="button" className={activeView === 'model' ? 'active' : ''} onClick={() => setActiveView('model')}><strong>业务模型</strong><span>业务资产、字段与审核关系</span></button>
+        <button type="button" className={activeView === 'metrics' ? 'active' : ''} onClick={() => setActiveView('metrics')}><strong>指标管理</strong><span>指标合同、组合与发布摘要</span></button>
         <button type="button" className={activeView === 'preview' ? 'active' : ''} onClick={() => setActiveView('preview')}><strong>解析验证</strong><span>检查语义如何参与问数</span></button>
       </nav>
 
@@ -536,11 +539,13 @@ export default function SemanticLayerTab({ userRole, requestedTarget }: { userRo
         {selectedSourceKey && (() => { const profile = sourceProfiles.find(item => item.key === selectedSourceKey); const semantic = profile?.semantic?.semantic_layer || {}; const semanticAssets = semantic.semantic_assets || semantic.assets || []; const queue = profile?.semantic?.business_semantic_review_queue?.coverage || {}; const freeze = profile?.semantic?.technical_freeze_coverage?.metrics || {}; const dictionary = profile?.semantic?.dictionary_evidence || {}; return profile?.semantic ? <div className="semantic-source-evidence"><div><strong>{profile.semantic.label || profile.label}</strong><span>{profile.semantic.source?.database_name || '已绑定数据源'} · 版本 {semantic.version || '-'}</span><span>状态：{semantic.status || '已登记'} · {profile.semantic.technical_catalog?.resource_count || 0} 张元数据表 · {profile.semantic.technical_catalog?.field_count || 0} 个元数据字段</span></div><div className="semantic-source-evidence-progress"><span>业务语义：{queue.reviewed_table_count || 0}/{queue.table_task_count || profile.assets.length} 表，{queue.reviewed_field_count || 0}/{queue.field_task_count || 0} 字段已审核</span><span>关系审核：{queue.reviewed_relationship_count || 0}/{queue.relationship_task_count || 0} 已审核，待审核 {queue.review_required_relationship_count || 0}</span><span>技术验证：{freeze.frozen_count || 0}/{freeze.candidate_count || 0} 已冻结，待处理 {freeze.pending_count || 0}，失败 {freeze.failed_count || 0}</span><span>字典证据：{dictionary.compatibility?.mode === 'schema_equivalent_rebind' ? 'schema 等价重绑定' : dictionary.compatibility?.mode === 'exact_fingerprint' ? '精确指纹绑定' : '未登记'}；完整支持 {dictionary.coverage?.dictionary_exact_supported_field_count || 0}，部分支持 {dictionary.coverage?.dictionary_partial_supported_field_count || 0}，无证据 {dictionary.coverage?.no_dictionary_evidence_field_count || 0}</span></div><div className="semantic-source-evidence-assets">{semanticAssets.slice(0, 8).map((asset: any) => <details key={String(asset.asset_id)}><summary>{asset.labels?.zh || asset.labels?.en || asset.asset_id}<span>{(asset.fields || []).length} 个语义字段 · {asset.review_status || '待审核'}</span></summary><div>{(asset.fields || []).slice(0, 12).map((field: any) => <span key={`${asset.asset_id}:${field.semantic_field || field.physical_field}`}><code>{field.physical_field || field.semantic_field}</code> {field.labels?.zh || field.labels?.en || ''}</span>)}</div></details>)}</div></div> : <div className="semantic-source-evidence empty">该数据源已进入统一目录，尚未提供版本化业务语义证据；全库表和字段仍可在上方目录中浏览。</div>; })()}
       </section>}
 
-      {activeView === 'model' && governanceScopes.length > 0 && <section className="semantic-governance-workspace"><div className="semantic-registry-heading"><div><span className="semantic-workspace-kicker">BUSINESS GOVERNANCE</span><h4>业务语义治理</h4><span>业务资产、语义字段、关系和指标合同使用独立版本草稿与审核发布。</span></div></div><SemanticGovernancePanel defaultScope={governanceScopes[0].key} scopeOptions={governanceScopes} refreshToken={governanceRefreshToken} /></section>}
+      {activeView === 'model' && governanceScopes.length > 0 && <section className="semantic-governance-workspace"><div className="semantic-registry-heading"><div><span className="semantic-workspace-kicker">BUSINESS GOVERNANCE</span><h4>业务模型治理</h4><span>业务资产、语义字段和审核关系使用独立版本草稿与审核发布；指标合同与组合在“指标管理”中维护。</span></div></div><SemanticGovernancePanel defaultScope={governanceScopes[0].key} scopeOptions={governanceScopes} refreshToken={governanceRefreshToken} /></section>}
 
       {activeView === 'model' && governanceScopes.length > 0 && <SemanticReviewQueuePanel scopeOptions={governanceScopes} onDraftCreated={() => setGovernanceRefreshToken(value => value + 1)} />}
 
       {activeView === 'model' && governanceScopes.length > 0 && <BenchmarkReviewQueuePanel scopeOptions={governanceScopes} />}
+
+      {activeView === 'metrics' && <section className="semantic-governance-workspace"><div className="semantic-registry-heading"><div><span className="semantic-workspace-kicker">METRIC MANAGEMENT</span><h4>指标管理</h4><span>维护可审计的指标合同与指标组合；草稿经校验、审核和发布后才进入智能问数运行时。</span></div></div>{governanceScopes.length > 0 ? <SemanticGovernancePanel defaultScope={governanceScopes[0].key} defaultEntryType="metric_contracts" scopeOptions={governanceScopes} refreshToken={governanceRefreshToken} /> : <div className="semantic-empty">当前没有已绑定的版本化业务语义范围，无法加载指标合同。</div>}</section>}
 
       {activeView === 'preview' && <section className="semantic-section semantic-preview-section"><div className="semantic-section-header"><div><h4>解析验证</h4><span>验证当前语义配置如何参与解析</span></div></div><div className="semantic-preview"><div><input type="text" placeholder="输入自然语言问题，如：统计水田的真实面积（公顷）" value={previewQ} onChange={e => setPreviewQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && runPreview()} /><button className="btn-primary" disabled={previewLoading} onClick={runPreview}>{previewLoading ? '解析中...' : '解析'}</button></div>{previewRes && <div className="semantic-preview-result">{previewRes.sources && previewRes.sources.length > 0 && <div><b>匹配的表:</b> {previewRes.sources.map((s: any) => s.table_name || s).join(', ')}</div>}{previewRes.sql_filters && previewRes.sql_filters.length > 0 && <div><b>SQL 过滤提示:</b><pre className="semantic-sql-filters">{previewRes.sql_filters.join('\n')}</pre></div>}{previewRes.region_sql && previewRes.region_sql.length > 0 && <div><b>区域过滤:</b><pre>{previewRes.region_sql.join('\n')}</pre></div>}{previewRes.hierarchy_matches && previewRes.hierarchy_matches.length > 0 && <div><b>层级匹配:</b><pre>{JSON.stringify(previewRes.hierarchy_matches, null, 2)}</pre></div>}<details><summary>完整 JSON</summary><pre>{JSON.stringify(previewRes, null, 2)}</pre></details></div>}</div></section>}
     </div>

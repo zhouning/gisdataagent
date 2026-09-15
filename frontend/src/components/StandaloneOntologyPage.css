@@ -47,6 +47,8 @@
 .cim-breadcrumb svg { color: #a7b1ba; }
 .cim-breadcrumb strong { color: #3c4854; font-weight: 600; }
 .cim-breadcrumb-spacer { flex: 1 1 auto; }
+.cim-workbench-link { display: inline-flex; align-items: center; gap: 4px; min-height: 27px; padding: 0 8px; color: #1c6ca7; border: 1px solid #c9ddea; background: #f7fbfe; font-size: 11px; text-decoration: none; }
+.cim-workbench-link:hover { background: #e8f2fb; color: #135a8e; }
 .cim-breadcrumb .language-switcher { color: #52606d; font-size: 11px; }
 .cim-breadcrumb .language-switcher select {
   min-width: 92px;
@@ -79,6 +81,36 @@
   box-shadow: 0 2px 5px rgba(28, 44, 59, .06);
 }
 
+.cim-semantic-viewer {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 14px 18px 18px;
+  padding: 14px;
+  overflow: auto;
+  background: var(--cim-panel);
+  border: 1px solid var(--cim-border);
+  border-radius: 3px;
+  box-shadow: 0 2px 5px rgba(28, 44, 59, .06);
+}
+
+.cim-semantic-viewer .semantic-layer-tab {
+  --primary: #1677c8;
+  --primary-light: #e8f2fb;
+  --text: #25313c;
+  --text-secondary: #70808e;
+  --text-tertiary: #84909b;
+  --bg: #f7f9fa;
+  --surface: #fff;
+  --surface-elevated: #f0f4f7;
+  --surface-hover: #e8f2fb;
+  --border: #dfe5eb;
+  --border-light: #e7edf1;
+  --success: #16875a;
+  --warning: #b16a14;
+  --danger: #ba3d3d;
+  --info: #247fb4;
+}
+
 .standalone-ontology-workbench {
   --primary: #1677c8;
   --primary-light: #e8f2fb;
@@ -108,5 +140,6 @@
 @media (max-width: 760px) {
   .cim-breadcrumb { padding: 0 14px; }
   .cim-ontology-viewer { margin: 0 10px 10px; }
+  .cim-semantic-viewer { margin: 0 10px 10px; padding: 10px; }
   .standalone-ontology-workbench .ontology-custom-minimap { display: none; }
 }

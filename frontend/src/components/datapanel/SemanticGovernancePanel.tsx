@@ -25,6 +25,8 @@ interface MetricGovernanceOverview {
     status_counts?: Record<string, number>;
     direct_execution_count?: number;
     result_shape_counts?: Record<string, number>;
+    composition_count?: number;
+    composition_kind_counts?: Record<string, number>;
   };
   ontology?: { concept_count?: number; relation_count?: number };
   semantic?: { relationship_count?: number; asset_count?: number; catalog_resource_count?: number };
@@ -39,6 +41,80 @@ const ADMIN_ENTRY_LABELS: Record<AdminEntryType, string> = {
   relationships: '审核关系',
   metric_contracts: '指标合同',
 };
+
+const COMPOSITION_KIND_LABELS: Record<string, string> = {
+  wide_stage_unpivot: '宽表阶段列转行',
+  detail_with_partition_total: '明细及分区总数',
+  universal_coverage: '全量覆盖判断',
+};
+
+const COMPOSITION_FIELD_LABELS: Record<string, string> = {
+  kind: '组成类型',
+  business_grain: '业务粒度',
+  axis: '分析轴',
+  aggregation: '聚合方式',
+  stage_semantics: '阶段口径',
+  source_field_pattern: '字段模式',
+  detail_metric: '明细度量',
+  partition_dimension: '分区维度',
+  companion_metric: '伴随度量',
+  row_scope: '行范围',
+  version_scope: '版本范围',
+  compiler_shape: '编译形状',
+  coverage_count_basis: '覆盖计数口径',
+  universe: '总体范围',
+  subject: '统计对象',
+  predicate: '覆盖条件',
+  quantifier: '量词',
+  assets: '资产',
+  stages: '阶段',
+};
+
+function formatCompositionValue(value: unknown): string {
+  if (Array.isArray(value)) return value.map(item => formatCompositionValue(item)).filter(Boolean).join(' · ');
+  if (typeof value === 'boolean') return value ? '是' : '否';
+  if (value === null || value === undefined || value === '') return '—';
+  return String(value);
+}
+
+function sourceReference(value: Record<string, any>, aggregate = false): string {
+  const reference = [value.table, value.field].filter(Boolean).join('.');
+  const aliased = value.alias ? `${reference} -> ${value.alias}` : reference;
+  return aggregate && value.aggregate ? `${value.aggregate}(${aliased})` : aliased;
+}
+
+function MetricCompositionDetails({ payload }: { payload: Record<string, any> }) {
+  const composition = payload.metric_composition && typeof payload.metric_composition === 'object'
+    ? payload.metric_composition as Record<string, any>
+    : null;
+  const dimensions = Array.isArray(payload.dimensions) ? payload.dimensions.filter((item: unknown) => item && typeof item === 'object') as Record<string, any>[] : [];
+  const metrics = Array.isArray(payload.metrics) ? payload.metrics.filter((item: unknown) => item && typeof item === 'object') as Record<string, any>[] : [];
+  const tables = Array.isArray(payload.tables) ? payload.tables.map((item: unknown) => String(item)).filter(Boolean) : [];
+  const directExecution = payload.direct_execution && typeof payload.direct_execution === 'object'
+    ? payload.direct_execution as Record<string, any>
+    : null;
+  const fieldMap = composition?.source_field_map && typeof composition.source_field_map === 'object'
+    ? Object.entries(composition.source_field_map as Record<string, unknown>)
+    : [];
+  const compositionFields = composition
+    ? Object.entries(composition).filter(([key]) => key !== 'source_field_map')
+    : [];
+  const kind = String(composition?.kind || '').trim();
+  const summary = kind
+    ? `${COMPOSITION_KIND_LABELS[kind] || kind}${composition?.business_grain ? ` · ${composition.business_grain}` : ''}`
+    : '标准聚合合同';
+
+  return <details className="abu-metric-composition" open={Boolean(composition)}>
+    <summary><span>指标组成</span><b>{summary}</b></summary>
+    <div className="abu-metric-composition-grid">
+      {compositionFields.length > 0 && <section><h5>组成规则</h5><dl>{compositionFields.map(([key, value]) => <div key={key}><dt>{COMPOSITION_FIELD_LABELS[key] || key.replace(/_/g, ' ')}</dt><dd>{key === 'kind' ? COMPOSITION_KIND_LABELS[String(value)] || formatCompositionValue(value) : formatCompositionValue(value)}</dd></div>)}</dl></section>}
+      {fieldMap.length > 0 && <section><h5>阶段/字段映射</h5><dl>{fieldMap.map(([key, value]) => <div key={key}><dt>{key}</dt><dd><code>{formatCompositionValue(value)}</code></dd></div>)}</dl></section>}
+      {dimensions.length > 0 && <section><h5>维度</h5><ul>{dimensions.map((item, index) => <li key={`${sourceReference(item)}:${index}`}><code>{sourceReference(item)}</code></li>)}</ul></section>}
+      {metrics.length > 0 && <section><h5>度量</h5><ul>{metrics.map((item, index) => <li key={`${sourceReference(item, true)}:${index}`}><code>{sourceReference(item, true)}</code></li>)}</ul></section>}
+      {tables.length > 0 && <section><h5>数据范围</h5><div className="abu-metric-chip-list">{tables.map(table => <code key={table}>{table}</code>)}</div>{directExecution && <small>执行：{directExecution.enabled ? '可直接执行' : '需解析编译'} · {formatCompositionValue(directExecution.mode)}</small>}</section>}
+    </div>
+  </details>;
+}
 
 function AdminField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <label className="abu-admin-field"><span>{label}</span><input value={value} onChange={event => onChange(event.target.value)} /></label>;
@@ -84,9 +160,9 @@ function AdminPayloadForm({ type, payload, onChange }: { type: AdminEntryType; p
   </div>;
 }
 
-export function SemanticGovernancePanel({ defaultScope, scopeOptions, refreshToken = 0 }: { defaultScope: string; scopeOptions: ScopeOption[]; refreshToken?: number }) {
+export function SemanticGovernancePanel({ defaultScope, defaultEntryType = 'assets', scopeOptions, refreshToken = 0 }: { defaultScope: string; defaultEntryType?: AdminEntryType; scopeOptions: ScopeOption[]; refreshToken?: number }) {
   const [scope, setScope] = useState(defaultScope);
-  const [type, setType] = useState<AdminEntryType>('assets');
+  const [type, setType] = useState<AdminEntryType>(defaultEntryType);
   const [items, setItems] = useState<AdminEntryResponse[]>([]);
   const [versions, setVersions] = useState<Array<Record<string, any>>>([]);
   const [editing, setEditing] = useState<AdminEntryResponse | null>(null);
@@ -115,7 +191,7 @@ export function SemanticGovernancePanel({ defaultScope, scopeOptions, refreshTok
   const load = async () => {
     setLoading(true); setError('');
     try {
-      const params = new URLSearchParams({ scope, offset: '0', limit: '50' });
+      const params = new URLSearchParams({ scope, offset: '0', limit: type === 'metric_contracts' ? '200' : '50' });
       if (search.trim()) params.set('search', search.trim());
       const response = await fetch(`/api/semantic/governance/${type}?${params.toString()}`, { credentials: 'include' });
       const payload = await response.json();
@@ -163,6 +239,12 @@ export function SemanticGovernancePanel({ defaultScope, scopeOptions, refreshTok
   const formatLatency = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? `${Math.round(value).toLocaleString()} ms` : '—';
   const observationStatus = overview?.observation?.status || (overviewLoading ? 'loading' : 'not_available');
   const observationLabel = observationStatus === 'connected' ? '已连接' : observationStatus === 'not_connected' ? '未连接' : observationStatus === 'unavailable' ? '不可用' : observationStatus === 'loading' ? '加载中' : '暂无';
+  const displayedItems = type === 'metric_contracts'
+    ? [...items].sort((left, right) => {
+      const compositionOrder = Number(Boolean(right.payload.metric_composition)) - Number(Boolean(left.payload.metric_composition));
+      return compositionOrder || String(left.payload.contract_id || left.id).localeCompare(String(right.payload.contract_id || right.id));
+    })
+    : items;
   return <div className="abu-admin-panel">
     <div className="abu-admin-toolbar"><div className="abu-scope-selector">{scopeOptions.map(item => <button key={item.key} className={scope === item.key ? 'active' : ''} onClick={() => { setScope(item.key); setEditing(null); }}>{item.label}</button>)}</div><select value={type} onChange={event => { setType(event.target.value as AdminEntryType); setEditing(null); }}>{Object.entries(ADMIN_ENTRY_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><div className="abu-config-search"><Search size={13} /><input value={search} onChange={event => setSearch(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void load(); }} placeholder="搜索语义配置" /><button className="btn-secondary btn-sm" onClick={() => void load()}><RefreshCw size={13} /></button></div><button className="btn-primary btn-sm" onClick={() => setEditing({ id: 'new', entry_type: type, state: 'draft', source: 'registry', payload: {} })}><Plus size={13} />新建</button></div>
     <div className="abu-card-note"><ShieldCheck size={14} />{selectedLabel} 的修改只进入版本草稿；校验通过后由审核角色发布。未发布配置不会进入当前问数运行时。</div>
@@ -171,13 +253,13 @@ export function SemanticGovernancePanel({ defaultScope, scopeOptions, refreshTok
       {!overview && !overviewLoading && <div className="abu-governance-empty">当前范围暂无可读取的发布工件摘要。</div>}
       {overview && <>
         <div className="abu-governance-version-row"><span>语义 <b>{overview.versions?.semantic || '—'}</b></span><span>本体 <b>{overview.versions?.ontology || '—'}</b></span><span>指标合同 <b>{overview.versions?.metric_contract || '—'}</b></span><span className={`abu-governance-status ${overview.artifact_status === 'available' ? 'ok' : 'warn'}`}>{overview.artifact_status === 'available' ? '发布工件可用' : '发布工件不可用'}</span></div>
-        <div className="abu-governance-kpis"><div><span>合同总数</span><strong>{formatCount(overview.contracts?.total)}</strong></div><div><span>已审核</span><strong>{formatCount(statusCounts.reviewed)}</strong></div><div><span>直接执行</span><strong>{formatCount(overview.contracts?.direct_execution_count)}</strong></div><div><span>单/双极值</span><strong>{formatCount((shapeCounts.single_extreme || 0) + (shapeCounts.dual_extreme || 0))}</strong></div><div><span>本体概念</span><strong>{formatCount(overview.ontology?.concept_count)}</strong></div><div><span>语义关系</span><strong>{formatCount(overview.semantic?.relationship_count)}</strong></div></div>
+        <div className="abu-governance-kpis"><div><span>合同总数</span><strong>{formatCount(overview.contracts?.total)}</strong></div><div><span>已审核</span><strong>{formatCount(statusCounts.reviewed)}</strong></div><div><span>直接执行</span><strong>{formatCount(overview.contracts?.direct_execution_count)}</strong></div><div><span>指标组合</span><strong>{formatCount(overview.contracts?.composition_count)}</strong></div><div><span>单/双极值</span><strong>{formatCount((shapeCounts.single_extreme || 0) + (shapeCounts.dual_extreme || 0))}</strong></div><div><span>本体概念</span><strong>{formatCount(overview.ontology?.concept_count)}</strong></div><div><span>语义关系</span><strong>{formatCount(overview.semantic?.relationship_count)}</strong></div></div>
         <div className="abu-governance-detail-grid"><div><span>观测状态</span><b className={observationStatus === 'connected' ? 'ok' : 'warn'}>{observationLabel}</b><small>{overview.observation?.scope_binding === 'not_mapped_to_semantic_contract_ids' ? '尚未映射到指标合同 ID' : `观测数 ${formatCount(overview.observation?.observation_count)}`}</small></div><div><span>延迟证据</span><b>{overview.latency?.status === 'observed' ? '当前工件报告' : '暂无'}</b><small>平均 {formatLatency(overview.latency?.mean_generation_latency_ms)} · P95 {formatLatency(overview.latency?.p95_generation_latency_ms)}</small></div><div><span>数据边界</span><b>{overview.claim_boundary?.source_rows_persisted === false ? '只读、无源行持久化' : '需核验'}</b><small>本摘要不代表生产路线准确率</small></div></div>
       </>}
     </section>
     {error && <div className="abu-inline-error">{error}</div>}
     {editing && <div className="abu-admin-editor"><div className="abu-config-heading"><div><span className="abu-kicker">DRAFT EDITOR</span><h4>{editing.id === 'new' ? '新建' : '编辑'}{ADMIN_ENTRY_LABELS[type]}</h4></div><div className="abu-admin-actions"><button className="btn-secondary btn-sm" onClick={() => setEditing(null)}>取消</button><button className="btn-primary btn-sm" onClick={() => void save()} disabled={loading}><Save size={13} />保存草稿</button></div></div><AdminPayloadForm type={type} payload={editing.payload} onChange={payload => setEditing({ ...editing, payload })} /></div>}
-    <div className="abu-admin-list">{loading && !editing ? <div className="abu-loading"><Activity size={14} />正在加载...</div> : items.map(item => <div className="abu-admin-row" key={item.id}><div className="abu-admin-row-main"><strong>{String(item.payload.asset_id || item.payload.contract_id || item.payload.left || item.payload.semantic_field || item.id)}</strong><span>{item.state === 'published_baseline' ? '基线已发布' : item.state === 'published' ? '已发布' : item.state === 'deleted' ? '草稿删除' : '草稿'}</span><small>{String(item.payload.description || item.payload.physical_field || item.payload.right || '')}</small></div><div className="abu-admin-actions"><button className="btn-secondary btn-sm" onClick={() => setEditing(item)} title="编辑"><Pencil size={13} /></button><button className="btn-secondary btn-sm" onClick={() => void remove(item)} title="删除"><Trash2 size={13} /></button></div></div>)}</div>
+    <div className="abu-admin-list">{loading && !editing ? <div className="abu-loading"><Activity size={14} />正在加载...</div> : displayedItems.map(item => <div className="abu-admin-row" key={item.id}><div className="abu-admin-row-main"><strong>{String(item.payload.asset_id || item.payload.contract_id || item.payload.left || item.payload.semantic_field || item.id)}</strong><span>{item.state === 'published_baseline' ? '基线已发布' : item.state === 'published' ? '已发布' : item.state === 'deleted' ? '草稿删除' : '草稿'}</span><small>{String(item.payload.description || item.payload.physical_field || item.payload.right || '')}</small></div><div className="abu-admin-actions"><button className="btn-secondary btn-sm" onClick={() => setEditing(item)} title="编辑"><Pencil size={13} /></button><button className="btn-secondary btn-sm" onClick={() => void remove(item)} title="删除"><Trash2 size={13} /></button></div>{type === 'metric_contracts' && <MetricCompositionDetails payload={item.payload} />}</div>)}</div>
     {versions.length > 0 && <div className="abu-admin-versions"><h4>版本审核</h4>{versions.map(version => <div className="abu-admin-version" key={String(version.id)}><span><b>{version.version_label}</b><em>{version.status}</em></span><span className="abu-admin-actions">{version.status === 'draft' && <button className="btn-secondary btn-sm" onClick={() => void action(Number(version.id), 'validate')} disabled={loading}>校验</button>}{version.status === 'reviewed' && <button className="btn-primary btn-sm" onClick={() => void action(Number(version.id), 'publish')} disabled={loading}><Upload size={13} />发布</button>}</span></div>)}</div>}
   </div>;
 }

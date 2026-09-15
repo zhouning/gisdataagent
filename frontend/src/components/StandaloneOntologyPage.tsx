@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react';
+import { BarChart3, ChevronRight } from 'lucide-react';
 import { useAuth } from '@chainlit/react-client';
 import OntologyTab from './datapanel/OntologyTab';
 import LoginPage from './LoginPage';
@@ -29,6 +29,7 @@ export default function StandaloneOntologyPage() {
           <div className="cim-breadcrumb">
             <span>本体模型中心</span><ChevronRight size={12} /><strong>行业本体模型</strong>
             <span className="cim-breadcrumb-spacer" />
+            <a className="cim-workbench-link" href="/metric-management"><BarChart3 size={13} />指标管理</a>
             <LanguageSwitcher compact />
           </div>
           <h1 className="cim-visually-hidden">行业本体模型</h1>
