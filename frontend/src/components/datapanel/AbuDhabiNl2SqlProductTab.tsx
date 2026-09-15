@@ -10,6 +10,7 @@ interface ProductEvidence {
   benchmark_v2?: Record<string, any>;
   benchmark_v3?: Record<string, any>;
   benchmark_evaluation?: Record<string, any>;
+  liveability_execution_profile_promotion?: Record<string, any>;
 }
 
 interface QueryResult {
@@ -515,6 +516,35 @@ function StabilitySummary({ stability }: { stability?: Record<string, any> }) {
   </article>;
 }
 
+function LiveabilityDefaultRelease({ promotion }: { promotion?: Record<string, any> }) {
+  if (!promotion) return null;
+  const authorization = promotion.authorization || {};
+  const summary = promotion.evidence_summary || {};
+  const latency = summary.paired_generation_latency_tradeoff || {};
+  const boundary = promotion.claim_boundary || {};
+  const defaultProfile = authorization.default_execution_profile;
+  return <section className="abu-section abu-current-release">
+    <div className="abu-section-title"><div><span className="abu-kicker">CURRENT LIVEABILITY RELEASE</span><h3>Liveability 默认执行路线</h3></div><Status ok={promotion.status === 'approved'}>{promotion.status === 'approved' ? '已批准' : fmt(promotion.status)}</Status></div>
+    <article className="abu-detail-card">
+      <div className="abu-card-heading"><div><span className="abu-kicker">SOURCE 12 / {fmt(authorization.model_requested)}</span><h3>{defaultProfile === 'semantic_ir_experimental' ? 'SemanticQueryIR 为默认路线' : fmt(defaultProfile)}</h3></div><Status ok={defaultProfile === 'semantic_ir_experimental'}>{defaultProfile === 'semantic_ir_experimental' ? '准确率优先' : '需检查'}</Status></div>
+      <div className="abu-metric-grid">
+        <Metric label="默认路线" value={defaultProfile} tone="success" />
+        <Metric label="回滚路线" value={authorization.rollback_execution_profile} />
+        <Metric label="评测题数" value={summary.benchmark_case_count} />
+        <Metric label="重复轮次" value={summary.repeated_run_count} />
+        <Metric label="IR 准确率" value={pct(summary.candidate_case_run_pass_rate)} tone="success" />
+        <Metric label="Baseline 准确率" value={pct(summary.baseline_case_run_pass_rate)} />
+        <Metric label="IR 独占通过" value={summary.candidate_only_passed_observation_count} tone="success" />
+        <Metric label="Baseline 独占通过" value={summary.baseline_only_passed_observation_count ?? 0} />
+        <Metric label="IR 平均生成延迟差" value={milliseconds(latency.candidate_minus_baseline_mean_generation_latency_ms)} tone="danger" />
+        <Metric label="IR P95 生成延迟" value={milliseconds(latency.candidate_p95_generation_latency_ms)} />
+      </div>
+      <div className="abu-card-note"><ShieldCheck size={14} />此默认只适用于已登记的 Liveability source 12、当前语义版本和记录的模型配置。前端不提供路线切换；内部可回滚至 Baseline SQL。{boundary.business_ontology_complete === false ? ' 业务本体仍是已审核子集，不代表任意问题均已覆盖。' : ''}</div>
+      <JsonDetails title="当前发布决策与证据边界" value={promotion} />
+    </article>
+  </section>;
+}
+
 function BenchmarkComparison({ evaluation }: { evaluation?: Record<string, any> }) {
   if (!evaluation) return <div className="abu-rejection">尚未发布双路线端到端评测。</div>;
   const baseline = evaluation.routes?.baseline_sql || {};
@@ -527,7 +557,7 @@ function BenchmarkComparison({ evaluation }: { evaluation?: Record<string, any> 
   const freeForm = pairwise.metrics?.by_category?.single_source_free_form_route?.paired_generation || {};
   const mismatch = pairwise.metrics?.by_category?.route_or_contract_mismatch?.paired_generation || {};
   return <div className="abu-evaluation-band">
-    <div className="abu-section-title"><div><span className="abu-kicker">PUBLISHED END-TO-END EVIDENCE</span><h3>双路线真实源执行结果</h3></div><span className="abu-muted">{fmt(evaluation.release_id)}</span></div>
+    <div className="abu-section-title"><div><span className="abu-kicker">HISTORICAL V2 EVIDENCE</span><h3>历史双路线快照</h3></div><span className="abu-muted">{fmt(evaluation.release_id)}</span></div>
     <StabilitySummary stability={evaluation.stability} />
     <div className="abu-section-title abu-snapshot-title"><div><span className="abu-kicker">PUBLISHED SNAPSHOT</span><h3>发布基准单次快照</h3></div></div>
     <div className="abu-source-grid"><BenchmarkRouteCard title="Baseline SQL" route={baseline} /><BenchmarkRouteCard title="SemanticQueryIR 候选路线" route={candidate} /></div>
@@ -545,7 +575,7 @@ function BenchmarkComparison({ evaluation }: { evaluation?: Record<string, any> 
         <Metric label="候选路线晋级" value={interpretation.promotion_supported ? '支持' : '不支持'} tone={interpretation.promotion_supported ? 'success' : 'danger'} />
       </div>
       <div className="abu-comparison-slices"><span>5 个纯自由规划题：IR 平均延迟差 <b>{milliseconds(freeForm.candidate_minus_baseline_mean_latency_ms)}</b></span><span>1 个路线/合同差异题：IR 平均延迟差 <b>{milliseconds(mismatch.candidate_minus_baseline_mean_latency_ms)}</b></span></div>
-      <div className="abu-card-note"><ShieldCheck size={14} />该区只保留发布时的单次快照用于追溯；路线决策以上方三组重复稳定性结果为准。30 个审核合同、准入策略和联邦题是共同控制，不算作 IR 优势证据。</div>
+      <div className="abu-card-note"><ShieldCheck size={14} />该区为历史发布快照，仅用于追溯。当前 Liveability 默认路线及其五轮评测结果显示在本页顶部；审核合同、准入策略和联邦题是共同控制，不算作 IR 优势证据。</div>
       <JsonDetails title="配对指标与结论边界" value={pairwise} />
     </article>
   </div>;
@@ -613,9 +643,10 @@ export default function AbuDhabiNl2SqlProductTab() {
 
   return (
     <div className="abu-product-tab">
-      <div className="abu-hero"><div><span className="abu-kicker">PRODUCT EVIDENCE / ABU DHABI</span><h2>NL2Semantic2SQL 验证工作台</h2><p>真实 PostgreSQL 虚拟来源的语义解析、受治理执行和 benchmark 证据。</p></div><div className="abu-hero-status"><Status ok={evidence.product.source_rows_persisted === false}>只读虚拟入湖</Status><Status ok={evidence.product.benchmark_gold_runtime_accessible === false}>Gold 与运行时隔离</Status><Status ok={evidence.product.execution_paths?.reviewed_metric_contract?.enabled === true}>认证指标编译</Status></div></div>
+      <div className="abu-hero"><div><span className="abu-kicker">PRODUCT EVIDENCE / ABU DHABI</span><h2>NL2Semantic2SQL 验证工作台</h2><p>真实 PostgreSQL 虚拟来源的语义解析、受治理执行和 benchmark 证据。</p></div><div className="abu-hero-status"><Status ok={evidence.product.source_rows_persisted === false}>只读虚拟入湖</Status><Status ok={evidence.product.benchmark_gold_runtime_accessible === false}>Gold 与运行时隔离</Status><Status ok={evidence.product.default_execution_profiles?.liveability?.default === 'semantic_ir_experimental'}>宜居默认 IR</Status><Status ok={evidence.product.execution_paths?.reviewed_metric_contract?.enabled === true}>认证指标编译</Status></div></div>
       <div className="abu-view-tabs">{([['overview', '总览'], ['ontology', '本体模型'], ['semantic', '语义层'], ['benchmark', 'Benchmark']] as const).map(([key, label]) => <button key={key} className={view === key ? 'active' : ''} onClick={() => setView(key)}>{label}</button>)}</div>
       {error && <div className="abu-inline-error">{error}</div>}
+      {view === 'benchmark' && <LiveabilityDefaultRelease promotion={evidence.liveability_execution_profile_promotion} />}
       {view === 'benchmark' && <BenchmarkComparison evaluation={evidence.benchmark_evaluation} />}
       {view === 'benchmark' && <BenchmarkReleaseScorecards sources={evidence.sources} />}
       {view === 'overview' && <>

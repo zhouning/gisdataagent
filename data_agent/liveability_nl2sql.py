@@ -13,6 +13,9 @@ from .governed_virtual_nl2sql import (
     run_governed_virtual_nl2sql,
 )
 from .abu_dhabi_artifact_registry import current_artifact_path
+from .liveability_execution_profile_promotion import (
+    resolve_liveability_default_execution_profile,
+)
 from .model_gateway import resolve_nl2sql_model_name
 
 SOURCE_ID = 12
@@ -82,7 +85,7 @@ async def run_liveability_nl2sql_request(
     owner: str | None = None,
     timeout_seconds: int = 180,
     verify_platform_schema: bool = True,
-    execution_profile: Literal["baseline_sql", "semantic_ir_experimental"] = "baseline_sql",
+    execution_profile: Literal["baseline_sql", "semantic_ir_experimental"] | None = None,
 ) -> dict[str, Any]:
     if not request.accepted:
         raise ValueError(request.error or "invalid_question")
@@ -92,6 +95,9 @@ async def run_liveability_nl2sql_request(
         else os.environ.get("GDA_ABU_DHABI_LIVEABILITY_SOURCE_ID", SOURCE_ID)
     )
     resolved_owner = owner or os.environ.get("GDA_ABU_DHABI_SOURCE_OWNER", SOURCE_OWNER)
+    resolved_execution_profile = (
+        execution_profile or resolve_liveability_default_execution_profile()
+    )
     platform_schema_options = {} if verify_platform_schema else {"verify_platform_schema": False}
     return await run_governed_virtual_nl2sql(
         question=request.question,
@@ -101,7 +107,7 @@ async def run_liveability_nl2sql_request(
         model_name=resolve_nl2sql_model_name(scope="liveability"),
         reasoning_effort=os.environ.get("GDA_LIVEABILITY_NL2SQL_REASONING_EFFORT", "medium"),
         timeout_seconds=timeout_seconds,
-        execution_profile=execution_profile,
+        execution_profile=resolved_execution_profile,
         **platform_schema_options,
     )
 

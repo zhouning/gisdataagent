@@ -297,8 +297,22 @@ async def test_liveability_route_uses_shared_configured_model(monkeypatch):
         model_name="gemini-3.7-flash",
         reasoning_effort="medium",
         timeout_seconds=42,
-        execution_profile="baseline_sql",
+        execution_profile="semantic_ir_experimental",
     )
+
+
+@pytest.mark.asyncio
+async def test_liveability_route_keeps_explicit_baseline_rollback(monkeypatch):
+    request = resolve_liveability_nl2sql_request("@Liveability Count facilities")
+    assert request is not None and request.accepted
+    runner = AsyncMock(return_value={"status": "ok"})
+    with patch(
+        "data_agent.liveability_nl2sql.run_governed_virtual_nl2sql",
+        runner,
+    ):
+        await run_liveability_nl2sql_request(request, execution_profile="baseline_sql")
+
+    assert runner.await_args.kwargs["execution_profile"] == "baseline_sql"
 
 
 @pytest.mark.parametrize("language", ["zh", "en", "ar"])

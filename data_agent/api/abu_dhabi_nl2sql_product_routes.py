@@ -22,6 +22,9 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from .helpers import _get_user_from_request, _set_user_context
+from ..liveability_execution_profile_promotion import (
+    load_liveability_execution_profile_promotion,
+)
 
 logger = logging.getLogger("data_agent.api.abu_dhabi_nl2sql_product")
 
@@ -203,6 +206,12 @@ def _load_published_artifact(descriptor: dict[str, Any], *, expected_schema: str
     if payload.get("schema") != expected_schema:
         raise ValueError(f"published_evaluation_schema_invalid:{relative_path.name}")
     return payload
+
+
+def _liveability_execution_profile_promotion() -> dict[str, Any]:
+    """Load the release decision shared by runtime and product evidence."""
+
+    return load_liveability_execution_profile_promotion()
 
 
 def _route_evaluation_summary(report: dict[str, Any]) -> dict[str, Any]:
@@ -1208,6 +1217,7 @@ def build_product_evidence(username: str) -> dict[str, Any]:
     """Build a customer-facing read model from frozen, non-secret artifacts."""
 
     sources = [_source_evidence(spec, username) for spec in _SOURCE_SPECS]
+    liveability_promotion = _liveability_execution_profile_promotion()
     selection_report = (
         _load_json(_BENCHMARK_V2_SELECTION_REPORT_PATH)
         if _BENCHMARK_V2_SELECTION_REPORT_PATH.exists()
@@ -1264,6 +1274,24 @@ def build_product_evidence(username: str) -> dict[str, Any]:
             "benchmark_gold_runtime_accessible": False,
             "business_ontology_complete": False,
             "business_ontology_scope": "reviewed_asset_subset",
+            "default_execution_profiles": {
+                "liveability": {
+                    "source_id": 12,
+                    "default": "semantic_ir_experimental",
+                    "rollback": "baseline_sql",
+                    "release_id": liveability_promotion.get("release_id"),
+                    "scope": "Liveability registered source only",
+                },
+                "makani": {
+                    "source_id": 13,
+                    "default": "baseline_sql",
+                    "scope": "Makani retains its separately released default",
+                },
+                "federated": {
+                    "default": "federated_governed_route",
+                    "scope": "Federated route does not inherit the Liveability release",
+                },
+            },
             "execution_paths": {
                 "reviewed_metric_contract": {
                     "enabled": True,
@@ -1283,11 +1311,13 @@ def build_product_evidence(username: str) -> dict[str, Any]:
                     "execution_authority": (
                         "governed SQL admission or validated semantic IR PostGIS compiler"
                     ),
-                    "semantic_ir_mode": "executable_restricted_canary",
+                    "semantic_ir_mode": "production_default_for_liveability_source_12",
                     "scope": (
-                        "baseline SQL admission remains default; semantic_ir_experimental "
+                        "Liveability source 12 defaults to semantic_ir_experimental under "
+                        "the published v56 release decision; baseline_sql remains its "
+                        "rollback. Other source scopes retain their own defaults. The route "
                         "accepts only logical AdHocSemanticQueryIR and compiles it "
-                        "deterministically after binding and read-only source admission"
+                        "deterministically after binding and read-only source admission."
                     ),
                 },
                 "semantic_candidate_selection": {
@@ -1320,6 +1350,13 @@ def build_product_evidence(username: str) -> dict[str, Any]:
         "benchmark_v2": benchmark_v2,
         "benchmark_v3": benchmark_v3,
         "benchmark_evaluation": _published_evaluation_summary(),
+        "liveability_execution_profile_promotion": {
+            "release_id": liveability_promotion.get("release_id"),
+            "status": liveability_promotion.get("status"),
+            "authorization": liveability_promotion.get("authorization") or {},
+            "evidence_summary": liveability_promotion.get("evidence_summary") or {},
+            "claim_boundary": liveability_promotion.get("claim_boundary") or {},
+        },
         "federated": _federated_benchmark_evidence(),
     }
     # A few legacy evidence cards retain absolute workstation paths.  Keep
@@ -2033,17 +2070,20 @@ async def _run_scope(
     scope: str,
     question: str,
     *,
-    execution_profile: str = "baseline_sql",
+    execution_profile: str | None = None,
     verify_platform_schema: bool = True,
 ) -> dict[str, Any]:
     """Run an admitted scope using an internal route profile.
 
-    The public endpoint deliberately leaves this argument inaccessible and
-    therefore always uses the baseline. The evaluator imports this internal
-    boundary to apply the same admission checks before comparing routes.
+    The public endpoint deliberately leaves this argument inaccessible. Its
+    Liveability route therefore receives the source-bound published default;
+    evaluators and rollback operators may pass an explicit approved profile.
     """
 
-    if execution_profile not in {"baseline_sql", "semantic_ir_experimental"}:
+    if execution_profile is not None and execution_profile not in {
+        "baseline_sql",
+        "semantic_ir_experimental",
+    }:
         raise ValueError("unsupported execution profile")
     from ..governed_virtual_nl2sql import detect_question_language
 
@@ -2057,13 +2097,21 @@ async def _run_scope(
         return report
 
     if scope == "liveability":
-        from ..liveability_nl2sql import LiveabilityNL2SQLRequest, run_liveability_nl2sql_request
+        from ..liveability_nl2sql import (
+            LiveabilityNL2SQLRequest,
+            run_liveability_nl2sql_request,
+        )
+        from ..liveability_execution_profile_promotion import (
+            resolve_liveability_default_execution_profile,
+        )
 
         report = await run_liveability_nl2sql_request(
             LiveabilityNL2SQLRequest(question, language, True),
             owner=owner,
             verify_platform_schema=verify_platform_schema,
-            execution_profile=execution_profile,
+            execution_profile=(
+                execution_profile or resolve_liveability_default_execution_profile()
+            ),
         )
         return _compact_single_source_report(scope, with_total_timing(report))
     if scope == "makani":
@@ -2073,7 +2121,7 @@ async def _run_scope(
             MakaniNL2SQLRequest(question, language, True),
             owner=owner,
             verify_platform_schema=verify_platform_schema,
-            execution_profile=execution_profile,
+            execution_profile=execution_profile or "baseline_sql",
         )
         return _compact_single_source_report(scope, with_total_timing(report))
     if scope == "federated":
