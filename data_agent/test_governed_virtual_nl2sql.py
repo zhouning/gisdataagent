@@ -4367,6 +4367,57 @@ def test_semantic_ir_model_schema_requires_query_identity_and_allows_compact_pro
     assert proposal.semantic_query is not None
     assert proposal.semantic_query.projections[0].field_ref is None
 
+    advanced = GovernedSemanticIRProposal.model_validate(
+        {
+            "language": "en",
+            "status": "query",
+            "semantic_query": {
+                "language": "en",
+                "status": "query",
+                "semantic_entity": "liveability.indicator",
+                "projections": [
+                    {
+                        "output_name": "baseline",
+                        "role": "metric",
+                        "aggregate": "max",
+                        "field_ref": {
+                            "semantic_entity": "liveability.indicator",
+                            "semantic_field": "baseline",
+                        },
+                    },
+                    {
+                        "output_name": "difference",
+                        "role": "metric",
+                        "aggregate": "max",
+                        "field_ref": {
+                            "semantic_entity": "liveability.indicator",
+                            "semantic_field": "difference",
+                        },
+                    },
+                ],
+                "result_expressions": [
+                    {
+                        "output_name": "rate_pct",
+                        "operator": "divide",
+                        "operands": ["difference", "baseline"],
+                        "scale": 100,
+                    }
+                ],
+            },
+        }
+    )
+    assert advanced.semantic_query is not None
+    assert advanced.semantic_query.result_expressions[0].scale == 100
+    schema_properties = query_schema["properties"]
+    for field in (
+        "partition_statistics",
+        "post_statistic_expressions",
+        "result_filters",
+        "cumulative_windows",
+        "post_window_filters",
+    ):
+        assert field in schema_properties
+
     with pytest.raises(ValueError, match="Field required"):
         GovernedSemanticIRProposal.model_validate(
             {
@@ -4378,6 +4429,37 @@ def test_semantic_ir_model_schema_requires_query_identity_and_allows_compact_pro
                 },
             }
         )
+
+
+def test_semantic_ir_instruction_declares_composable_result_arithmetic_and_group_averages():
+    instruction = _build_instruction(
+        "SEMANTIC CONTEXT",
+        execution_profile="semantic_ir_experimental",
+    )
+
+    assert "These controls are composable" in instruction
+    assert "result_expressions" in instruction
+    assert "group_average_filters" in instruction
+    assert "zero denominators become null" in instruction
+    assert "partition_statistics" in instruction
+    assert "post_statistic_expressions" in instruction
+    assert "result_filters" in instruction
+    assert "cumulative_windows" in instruction
+    assert "post_window_filters" in instruction
+    assert "A contribution-and-cumulative-threshold request is also composable" in instruction
+    assert "derive every adjacent difference" in instruction
+    assert "does not\n  imply or replace the individual transition conditions" in instruction
+
+
+def test_compact_semantic_ir_instruction_requires_each_adjacent_transition_filter():
+    instruction = _build_instruction(
+        "SEMANTIC CONTEXT",
+        execution_profile="semantic_ir_experimental",
+        prompt_variant="compact_local",
+    )
+
+    assert "derive each adjacent difference" in instruction
+    assert "separate result_filter against zero for every transition" in instruction
 
 
 def test_semantic_ir_context_publishes_logical_metric_patterns_without_physical_names():
@@ -4658,6 +4740,7 @@ def test_compact_semantic_ir_instruction_requires_complete_universal_condition()
     assert "never inside having_filters" in instruction
     assert "top-level any_filter_groups" in instruction
     assert "use band_summary rather than ordinary filters or OR groups" in instruction
+    assert "member_disambiguation_field_refs" in instruction
     assert "Never emit a group_by member" in instruction
 
 
@@ -5235,6 +5318,30 @@ def test_dimension_bridge_keeps_only_published_matching_metric_asset():
 
     selected_ids = {item["asset_id"] for item in selected}
     assert selected_ids == {"liveability.district", "liveability.district_score"}
+
+
+def test_chinese_measure_request_keeps_reviewed_score_fact_with_district_dimension():
+    semantic = json.loads(
+        SEMANTIC_PATH.with_name(
+            "liveability_data_20260730_semantic_layer_v57_multilingual_score_lexicon_20260915.json"
+        ).read_text(encoding="utf-8")
+    )
+    question = (
+        "列出 AP50 阶段综合宜居性评分高于 82 分的行政区，显示行政区名称、所属市和综合评分，"
+        "并按评分从高到低排序。"
+    )
+
+    grounded, evidence = _ground_semantic_layer_for_prompt(question, semantic)
+
+    assert {
+        item["physical_table"] for item in grounded["table_bindings"]
+    } >= {"public.dim_districts", "public.fact_district_scores"}
+    assert {
+        item["asset_id"] for item in grounded["semantic_assets"]
+    } >= {"liveability.district", "liveability.district_score"}
+    assert evidence["binding_resolution"]["requested_tables"] == [
+        "public.fact_district_scores"
+    ]
 
 
 def test_semantic_binding_resolution_fails_closed_for_unpublished_sibling():
@@ -5853,8 +5960,10 @@ def test_prompt_grounding_propagates_field_disambiguation_to_asset_retrieval():
 
 
 @pytest.mark.asyncio
-async def test_v4_binding_gate_rejects_unpublished_asset_before_llm():
-    path = SEMANTIC_PATH.with_name("makani_sync_full_semantic_layer_v4_full_coverage.json")
+async def test_ontology_binding_gate_rejects_unpublished_asset_before_llm():
+    path = SEMANTIC_PATH.with_name(
+        "makani_sync_full_semantic_layer_v18_stop_shelter_answerability_20260910.json"
+    )
     semantic = json.loads(path.read_text(encoding="utf-8"))
     source = {
         "source_name": "makani-test",
@@ -5892,8 +6001,10 @@ async def test_v4_binding_gate_rejects_unpublished_asset_before_llm():
 
 
 @pytest.mark.asyncio
-async def test_technical_only_binding_cannot_be_rewritten_by_reviewed_business_metric():
-    path = SEMANTIC_PATH.with_name("makani_sync_full_semantic_layer_v4_full_coverage.json")
+async def test_technical_source_representation_is_rejected_before_llm_or_source_query():
+    path = SEMANTIC_PATH.with_name(
+        "makani_sync_full_semantic_layer_v18_stop_shelter_answerability_20260910.json"
+    )
     semantic = json.loads(path.read_text(encoding="utf-8"))
     source = {
         "source_name": "makani-test",
@@ -5951,17 +6062,13 @@ async def test_technical_only_binding_cannot_be_rewritten_by_reviewed_business_m
             verify_platform_schema=False,
         )
 
-    assert report["status"] == "ok", report.get("error")
-    assert report["answer_scope"]["mode"] == "technical_metadata_only"
-    assert report["answer_scope"]["technical_tables"] == [
+    assert report["status"] == "rejected"
+    assert report["reason"] == "semantic_binding_gate:ontology_business_mapping_required"
+    assert report["prompt"]["grounding"]["binding_resolution"]["requested_tables"] == [
         "public.staging_ud_building"
     ]
-    assert report["planner"]["direct_metric_resolution"]["fallback_reason"] == (
-        "technical_metadata_binding_selected"
-    )
-    assert generated.await_count == 1
-    query.assert_awaited_once()
-    assert "public.staging_ud_building" in query.await_args.kwargs["extra_params"]["sql"]
+    generated.assert_not_awaited()
+    query.assert_not_awaited()
 
 
 def test_named_entity_phrases_are_generic_and_exclude_source_scope_names():
@@ -6178,7 +6285,7 @@ def test_v4_execution_gate_rejects_technical_only_table():
         )
 
 
-def test_v4_technical_query_route_is_explicit_and_does_not_add_business_authority():
+def test_v4_technical_catalog_view_cannot_become_an_execution_scope():
     semantic = json.loads(
         SEMANTIC_PATH.with_name(
             "liveability_data_20260730_semantic_layer_v4_full_coverage.json"
@@ -6195,22 +6302,23 @@ def test_v4_technical_query_route_is_explicit_and_does_not_add_business_authorit
     binding = next(
         item for item in scoped["table_bindings"] if item["physical_table"] == "public.dim_calc_versions"
     )
-    assert binding["execution_eligible"] is True
+    assert binding["execution_eligible"] is False
     assert scoped["semantic_assets"] == []
     assert scoped["relationships"] == []
-    assert [item["contract_id"] for item in scoped["metric_contracts"]] == [
-        "LIVEABILITY_INVENTORY_DIM_CALC_VERSIONS_V3"
-    ]
+    assert scoped["metric_contracts"] == []
 
-    evidence = validate_semantic_sql(
-        "SELECT COUNT(*) AS row_count FROM public.dim_calc_versions",
-        ["public.dim_calc_versions"],
-        scoped,
-    )
-    assert evidence["tables"] == ["public.dim_calc_versions"]
+    with pytest.raises(
+        GovernedVirtualNL2SQLError,
+        match="semantic_table_rejected:public.dim_calc_versions",
+    ):
+        validate_semantic_sql(
+            "SELECT COUNT(*) AS row_count FROM public.dim_calc_versions",
+            ["public.dim_calc_versions"],
+            scoped,
+        )
 
 
-def test_technical_inventory_contract_compiles_declared_dimensions_and_ignores_model_filter():
+def test_technical_inventory_contract_is_catalog_only_until_ontology_mapping_exists():
     semantic = json.loads(
         SEMANTIC_PATH.with_name(
             "liveability_data_20260730_semantic_layer_current_20260826.json"
@@ -6220,28 +6328,16 @@ def test_technical_inventory_contract_compiles_declared_dimensions_and_ignores_m
         semantic,
         ["public.liv_import_job"],
     )
-    contract = next(
-        item
-        for item in scoped["metric_contracts"]
-        if item["contract_id"] == "LIVEABILITY_INVENTORY_LIV_IMPORT_JOB_V3"
-    )
-    assert 'COUNT(*) AS "row_count"' in contract["canonical_sql_template"]
-    rewritten, evidence = apply_metric_projection_contract(
-        question=(
-            "Show the inventory record count for Liveability table liv import job "
-            "grouped by status."
-        ),
-        language="en",
-        sql=(
-            "SELECT status, COUNT(*) AS record_count "
-            "FROM public.liv_import_job WHERE status = 'failed' GROUP BY status"
-        ),
-        proposal_tables=["public.liv_import_job"],
-        semantic_layer=scoped,
-    )
-    assert evidence["contract_id"] == "LIVEABILITY_INVENTORY_LIV_IMPORT_JOB_V3"
-    assert "WHERE" not in rewritten.upper()
-    assert 'COUNT(*) AS "row_count"' in rewritten
+    assert scoped["metric_contracts"] == []
+    with pytest.raises(
+        GovernedVirtualNL2SQLError,
+        match="semantic_table_rejected:public.liv_import_job",
+    ):
+        validate_semantic_sql(
+            "SELECT COUNT(*) AS row_count FROM public.liv_import_job",
+            ["public.liv_import_job"],
+            scoped,
+        )
 
 
 def test_v4_technical_query_route_accepts_unique_catalog_identity_with_table_wording():
@@ -8417,7 +8513,8 @@ def test_semantic_ir_model_candidate_keeps_conflicting_joined_entity_invalid():
 
 @pytest.mark.asyncio
 async def test_product_path_uses_adk_model_and_registered_virtual_source():
-    semantic = _semantic_layer()
+    semantic_path = current_artifact_path("liveability", "semantic")
+    semantic = json.loads(semantic_path.read_text(encoding="utf-8"))
     source = {
         "source_name": "abu-dhabi-liveability-dev",
         "source_type": "database",
@@ -8468,10 +8565,19 @@ async def test_product_path_uses_adk_model_and_registered_virtual_source():
             "data_agent.governed_virtual_nl2sql._generate_proposal",
             return_value=generated,
         ),
+        patch(
+            "data_agent.governed_virtual_nl2sql.resolve_direct_metric_contract",
+            return_value={
+                "status": "unmatched",
+                "contract_id": None,
+                "candidate_contract_ids": [],
+                "fallback_reason": "no_unique_reviewed_metric_contract",
+            },
+        ),
     ):
         report = await run_governed_virtual_nl2sql(
             question="按设施类型统计设施数量",
-            semantic_layer_path=SEMANTIC_PATH,
+            semantic_layer_path=semantic_path,
             source_id=12,
             owner="abu-dhabi-site-operator",
             model_name="gpt-5.1",
@@ -8489,7 +8595,7 @@ async def test_product_path_uses_adk_model_and_registered_virtual_source():
         "semantic_table_and_field_whitelist": True,
         "declared_relationships_only": True,
         "raw_geometry_projection_blocked": True,
-        "metric_projection_contract_applied": False,
+        "metric_projection_contract_applied": True,
         "bounded_max_rows": 1000,
     }
     create_model.assert_called_once_with("gpt-5.1")
@@ -8502,9 +8608,7 @@ async def test_product_path_uses_adk_model_and_registered_virtual_source():
 
 @pytest.mark.asyncio
 async def test_semantic_ir_experiment_compiles_logical_plan_without_model_sql():
-    semantic_path = SEMANTIC_PATH.with_name(
-        "makani_sync_full_semantic_layer_v3.json"
-    )
+    semantic_path = current_artifact_path("makani", "semantic")
     semantic = json.loads(semantic_path.read_text(encoding="utf-8"))
     source = {
         "source_name": "abu-dhabi-makani-dev-v3",
@@ -8630,8 +8734,8 @@ async def test_semantic_ir_experiment_compiles_logical_plan_without_model_sql():
 
 
 @pytest.mark.asyncio
-async def test_reviewed_explicit_metric_contract_retries_false_refusal():
-    semantic_path = SEMANTIC_PATH.with_name("liveability_semantic_layer_v2.json")
+async def test_raw_technical_inventory_cannot_retry_into_business_execution():
+    semantic_path = current_artifact_path("liveability", "semantic")
     semantic = json.loads(semantic_path.read_text(encoding="utf-8"))
     source = {
         "source_name": "abu-dhabi-liveability-dev",
@@ -8644,31 +8748,8 @@ async def test_reviewed_explicit_metric_contract_retries_false_refusal():
             "max_rows": 1000,
         },
     }
-    generated = AsyncMock(
-        side_effect=[
-            {
-                "proposal": GovernedVirtualNL2SQLProposal(
-                    language="en",
-                    status="unsupported",
-                    reason="Cannot answer after a SQL validation failure.",
-                ),
-                "latency_ms": 10.0,
-                "usage": {"input_tokens": 5, "output_tokens": 2, "reasoning_tokens": 1},
-                "model_versions": ["gpt-5.1-2025-11-13"],
-            },
-            {
-                "proposal": GovernedVirtualNL2SQLProposal(
-                    language="en",
-                    status="query",
-                    selected_tables=["public.fact_adeo_kpi"],
-                    sql="SELECT COUNT(*) AS total FROM public.fact_adeo_kpi",
-                ),
-                "latency_ms": 11.0,
-                "usage": {"input_tokens": 6, "output_tokens": 3, "reasoning_tokens": 1},
-                "model_versions": ["gpt-5.1-2025-11-13"],
-            },
-        ]
-    )
+    generated = AsyncMock()
+    query = AsyncMock(return_value=pd.DataFrame([{"row_count": 7}]))
 
     with (
         patch("data_agent.migration_runner.verify_runtime_schema_state"),
@@ -8683,7 +8764,7 @@ async def test_reviewed_explicit_metric_contract_retries_false_refusal():
         ),
         patch(
             "data_agent.virtual_sources.query_virtual_source",
-            AsyncMock(return_value=pd.DataFrame([{"row_count": 7}])),
+            query,
         ),
         patch(
             "data_agent.governed_virtual_nl2sql._generate_proposal",
@@ -8698,15 +8779,11 @@ async def test_reviewed_explicit_metric_contract_retries_false_refusal():
             model_name="gpt-5.1",
         )
 
-    assert report["status"] == "ok", report
-    assert report["generation"]["attempt"] == 2
-    assert report["query"]["semantic_metric_contract"]["contract_id"] == (
-        "LIVEABILITY_INVENTORY_FACT_ADEO_KPI_V2"
-    )
-    assert generated.await_count == 2
-    retry_instruction = generated.await_args_list[1].kwargs["instruction"]
-    assert "reviewed_metric_contract_requires_query" in retry_instruction
-    assert "Keep status as `query`" in retry_instruction
+    assert report["status"] == "rejected"
+    assert report["reason"] == "semantic_binding_gate:ontology_business_mapping_required"
+    assert report["planner"]["llm_invoked"] is False
+    generated.assert_not_awaited()
+    query.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -8789,7 +8866,9 @@ async def test_answerability_contract_rejects_before_model_or_source_access(
     tmp_path,
     execution_profile,
 ):
-    semantic = _semantic_layer()
+    semantic = json.loads(
+        current_artifact_path("liveability", "semantic").read_text(encoding="utf-8")
+    )
     semantic["semantic_answerability_contracts"] = [_answerability_contract()]
     semantic_path = tmp_path / "semantic.json"
     semantic_path.write_text(json.dumps(semantic), encoding="utf-8")
@@ -8830,9 +8909,7 @@ async def test_answerability_contract_rejects_before_model_or_source_access(
 
 @pytest.mark.asyncio
 async def test_reviewed_metric_contract_executes_without_llm_generation():
-    semantic_path = SEMANTIC_PATH.with_name(
-        "liveability_data_20260730_semantic_layer_v3.json"
-    )
+    semantic_path = current_artifact_path("liveability", "semantic")
     semantic = json.loads(semantic_path.read_text(encoding="utf-8"))
     source = {
         "source_name": "abu-dhabi-liveability-dev-v3",
@@ -8895,9 +8972,7 @@ async def test_reviewed_metric_contract_executes_without_llm_generation():
 
 @pytest.mark.asyncio
 async def test_reviewed_metric_contract_classifies_unavailable_registered_source(monkeypatch):
-    semantic_path = SEMANTIC_PATH.with_name(
-        "liveability_data_20260730_semantic_layer_v3.json"
-    )
+    semantic_path = current_artifact_path("liveability", "semantic")
     semantic = json.loads(semantic_path.read_text(encoding="utf-8"))
     source = {
         "source_name": "abu-dhabi-liveability-dev-v3",
@@ -8941,9 +9016,7 @@ async def test_reviewed_metric_contract_classifies_unavailable_registered_source
 
 @pytest.mark.asyncio
 async def test_product_route_selectively_executes_direct_metric_without_llm():
-    semantic_path = SEMANTIC_PATH.with_name(
-        "liveability_data_20260730_semantic_layer_v3.json"
-    )
+    semantic_path = current_artifact_path("liveability", "semantic")
     semantic = json.loads(semantic_path.read_text(encoding="utf-8"))
     source = {
         "source_name": "abu-dhabi-liveability-dev-v3",
@@ -9323,3 +9396,154 @@ def test_semantic_ir_normalization_keeps_multiple_provider_entity_plans_invalid(
         {"semantic_entity": "second"},
     ]
     assert "semantic_ir_flattened_single_semantic_entity_plan" not in corrections
+
+
+def _reviewed_masterplan_district_spatial_semantic() -> dict:
+    """Minimal reviewed metadata for the Makani v20 masterplan relation."""
+
+    return {
+        "table_bindings": [
+            {
+                "physical_table": "public.ud_masterplan_boundary",
+                "semantic_entity": "dmt_utility.ud_masterplan_boundary",
+                "execution_eligible": True,
+                "fields": [
+                    {
+                        "physical_field": "project_name",
+                        "semantic_field": "project_name",
+                    },
+                    {"physical_field": "shape", "semantic_field": "shape"},
+                ],
+            },
+            {
+                "physical_table": "public.udm_district",
+                "semantic_entity": "dmt_utility.udm_district",
+                "execution_eligible": True,
+                "fields": [
+                    {
+                        "physical_field": "nameenglish",
+                        "semantic_field": "nameenglish",
+                    },
+                    {"physical_field": "shape", "semantic_field": "shape"},
+                ],
+            },
+        ],
+        "relationships": [
+            {
+                "relation_id": (
+                    "makani.district_intersects_authoritative_masterplan_boundary"
+                ),
+                "left": "public.udm_district.shape",
+                "right": "public.ud_masterplan_boundary.shape",
+                "kind": "spatial",
+                "operator": "ST_Intersects",
+                "review_status": "reviewed_runtime_validated",
+                "execution_authorized": True,
+            }
+        ],
+    }
+
+
+def _masterplan_candidate_without_spatial_join() -> dict:
+    return {
+        "language": "en",
+        "status": "query",
+        "semantic_query": {
+            "semantic_entity": "dmt_utility.ud_masterplan_boundary",
+            "spatial_intent": "none",
+            "projections": [
+                {
+                    "output_name": "project_name",
+                    "role": "attribute",
+                    "field_ref": {
+                        "semantic_entity": "dmt_utility.ud_masterplan_boundary",
+                        "semantic_field": "project_name",
+                    },
+                }
+            ],
+            "filters": [
+                {
+                    "field_ref": {
+                        "semantic_entity": "dmt_utility.udm_district",
+                        "semantic_field": "nameenglish",
+                    },
+                    "operator": "eq",
+                    "values": ["Al Saadiyat Island"],
+                }
+            ],
+        },
+    }
+
+
+def test_semantic_ir_normalization_repairs_unambiguous_semantic_flag_typo() -> None:
+    raw = _masterplan_candidate_without_spatial_join()
+    field_ref = raw["semantic_query"]["filters"][0]["field_ref"]
+    field_ref["semantic_flag"] = field_ref.pop("semantic_field")
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(json.dumps(raw))
+    normalized_ref = json.loads(normalized)["semantic_query"]["filters"][0][
+        "field_ref"
+    ]
+
+    assert normalized_ref == {
+        "semantic_entity": "dmt_utility.udm_district",
+        "semantic_field": "nameenglish",
+    }
+    assert "semantic_ir_normalized_semantic_flag_field_alias" in corrections
+
+
+def test_semantic_ir_normalization_adds_unique_reviewed_makani_spatial_join() -> None:
+    raw = _masterplan_candidate_without_spatial_join()
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(
+        json.dumps(raw),
+        semantic_layer=_reviewed_masterplan_district_spatial_semantic(),
+        question=(
+            "Which recorded master plan projects overlap Al Saadiyat Island, "
+            "when were they approved, and who are the developers?"
+        ),
+    )
+    query = json.loads(normalized)["semantic_query"]
+
+    assert query["joins"] == [
+        {
+            "left_field_ref": {
+                "semantic_entity": "dmt_utility.udm_district",
+                "semantic_field": "shape",
+            },
+            "right_field_ref": {
+                "semantic_entity": "dmt_utility.ud_masterplan_boundary",
+                "semantic_field": "shape",
+            },
+            "kind": "spatial",
+            "operator": "st_intersects",
+        }
+    ]
+    assert query["spatial_intent"] == "intersects"
+    assert "semantic_ir_added_unique_reviewed_spatial_join" in corrections
+    assert "semantic_ir_aligned_spatial_intent_to_reviewed_join" in corrections
+
+
+@pytest.mark.parametrize("relation_variant", ["ambiguous", "incompatible"])
+def test_semantic_ir_normalization_does_not_invent_nonunique_spatial_join(
+    relation_variant: str,
+) -> None:
+    raw = _masterplan_candidate_without_spatial_join()
+    semantic = _reviewed_masterplan_district_spatial_semantic()
+    if relation_variant == "ambiguous":
+        duplicate = dict(semantic["relationships"][0])
+        duplicate["relation_id"] = "makani.second_reviewed_intersection"
+        semantic["relationships"].append(duplicate)
+    else:
+        semantic["relationships"][0]["operator"] = "ST_Within"
+
+    normalized, corrections = _normalize_semantic_ir_model_candidate(
+        json.dumps(raw),
+        semantic_layer=semantic,
+        question="Which master plan projects overlap Al Saadiyat Island?",
+    )
+    query = json.loads(normalized)["semantic_query"]
+
+    assert not query.get("joins")
+    assert query["spatial_intent"] == "none"
+    assert "semantic_ir_added_unique_reviewed_spatial_join" not in corrections

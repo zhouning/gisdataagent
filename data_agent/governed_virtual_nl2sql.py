@@ -43,7 +43,10 @@ from .semantic_query_ir import (
     SpatialIntent,
     build_compiled_ad_hoc_semantic_plan,
     infer_spatial_intent,
+    validate_aggregate_identity_projection_policies,
+    validate_detail_identity_projection_policies,
     validate_derived_projection_policies,
+    validate_two_value_comparison_policies,
 )
 from .semantic_projection_policy import (
     ProjectionCompletenessPolicyError,
@@ -56,7 +59,7 @@ from .nl2sql_model_profile import profile_for_model, resolve_nl2sql_model_profil
 
 SUPPORTED_LANGUAGES = ("zh", "en", "ar")
 PROMPT_VERSION = "governed-virtual-nl2semantic2sql-v1.8"
-SEMANTIC_IR_EXPERIMENT_PROMPT_VERSION = "governed-semantic-ir-canary-v1.12"
+SEMANTIC_IR_EXPERIMENT_PROMPT_VERSION = "governed-semantic-ir-canary-v1.17"
 MAX_QUESTION_LENGTH = 4_000
 _ARABIC_RE = re.compile(r"[\u0600-\u06ff]")
 _CJK_RE = re.compile(r"[\u3400-\u9fff]")
@@ -483,6 +486,9 @@ def _load_semantic_layer(path: Path) -> dict[str, Any]:
         raise GovernedVirtualNL2SQLError(str(exc)) from exc
     try:
         validate_derived_projection_policies(payload)
+        validate_aggregate_identity_projection_policies(payload)
+        validate_detail_identity_projection_policies(payload)
+        validate_two_value_comparison_policies(payload)
     except ValueError as exc:
         raise GovernedVirtualNL2SQLError(str(exc)) from exc
     return payload
@@ -1032,6 +1038,71 @@ def _semantic_search_text(value: Any) -> str:
     return re.sub(r"[\s_\-/:;,|()\[\]{}]+", " ", str(value or "").casefold()).strip()
 
 
+_MEASURE_LANGUAGE_TOKENS = frozenset(
+    {
+        "average",
+        "avg",
+        "count",
+        "demand",
+        "fpp",
+        "gap",
+        "highest",
+        "kpi",
+        "lowest",
+        "maximum",
+        "minimum",
+        "number",
+        "percentage",
+        "rank",
+        "score",
+        "sum",
+        "supply",
+        "total",
+        "平均",
+        "均值",
+        "数量",
+        "总数",
+        "计数",
+        "统计",
+        "得分",
+        "评分",
+        "分数",
+        "排名",
+        "最高",
+        "最低",
+        "指标",
+        "比率",
+        "比例",
+        "百分比",
+        "完成率",
+        "需求",
+        "供给",
+        "缺口",
+        "عدد",
+        "مجموع",
+        "متوسط",
+        "درجة",
+        "نسبة",
+        "معدل",
+        "أعلى",
+        "أدنى",
+        "ترتيب",
+        "مؤشر",
+        "طلب",
+        "عرض",
+        "فجوة",
+    }
+)
+
+
+def _question_requests_measure(question: str) -> bool:
+    """Recognize published quantitative intent across supported query languages."""
+
+    from .abu_dhabi_semantic_candidates import _text_tokens
+
+    return bool(_text_tokens(question).intersection(_MEASURE_LANGUAGE_TOKENS))
+
+
 def _semantic_question_subject(question: str) -> str:
     """Return the entity-bearing portion before a grouping clause.
 
@@ -1115,12 +1186,7 @@ def _semantic_asset_score(question: str, asset: dict[str, Any]) -> float:
     # reviewed asset labels, aliases and field descriptions, while the small
     # generic token set only classifies common measure language.  It does not
     # name a table, benchmark case, or expected answer.
-    measure_language = {
-        "average", "avg", "count", "demand", "fpp", "gap", "highest",
-        "kpi", "lowest", "maximum", "minimum", "number", "percentage",
-        "rank", "score", "sum", "supply", "total",
-    }
-    question_measure_tokens = question_tokens.intersection(measure_language)
+    question_measure_tokens = question_tokens.intersection(_MEASURE_LANGUAGE_TOKENS)
     if question_measure_tokens:
         asset_measure_text = " ".join(
             [
@@ -1140,7 +1206,7 @@ def _semantic_asset_score(question: str, asset: dict[str, Any]) -> float:
             ]
         )
         asset_measure_tokens = _text_tokens(asset_measure_text).intersection(
-            measure_language
+            _MEASURE_LANGUAGE_TOKENS
         )
         indicator_overlap = question_measure_tokens.intersection(asset_measure_tokens)
         if indicator_overlap and roles.intersection({"fact", "measure", "multi_measure"}):
@@ -2666,69 +2732,29 @@ def _technicalize_semantic_layer(
     semantic_layer: dict[str, Any],
     technical_tables: list[str],
 ) -> dict[str, Any]:
-    """Create an execution-scoped technical view of selected bindings.
+    """Return a non-executable catalog view for technical representations.
 
-    The persisted semantic artifact remains unchanged.  The scoped copy only
-    permits the already-discovered fields of the selected table to pass the
-    existing SQL validator; it does not add business assets or relationships.
+    Technical inventory is available to metadata/governance screens, but it
+    cannot be transformed into an NL2SQL execution scope. A source table must
+    obtain a reviewed ontology class/property mapping first.
     """
 
     selected = {str(value).casefold() for value in technical_tables}
     scoped = copy.deepcopy(semantic_layer)
     for binding in scoped.get("table_bindings") or []:
         if str(binding.get("physical_table") or "").casefold() in selected:
-            binding["execution_eligible"] = True
-    # A technical-metadata query is deliberately isolated from every business
-    # asset, including inferred candidates and reviewed assets.  Keeping an
-    # asset in this scoped view would let downstream planning accidentally
-    # treat a raw inventory projection as business semantic authority.
+            binding["execution_eligible"] = False
+    # Keep this view incapable of compiling SQL even if a future caller
+    # mistakenly routes it through the normal planner.
     scoped["semantic_assets"] = []
     scoped["relationships"] = []
     scoped["row_scope_policies"] = []
-    # Keep only table-local inventory contracts. They define bounded source
-    # projections such as categorical dimensions plus COUNT(*), and therefore
-    # improve technical-query determinism without granting business metrics,
-    # joins, or inferred definitions.
-    technical_contracts: list[dict[str, Any]] = []
-    for original in scoped.get("metric_contracts") or []:
-        contract = copy.deepcopy(original)
-        if str((contract.get("match") or {}).get("qualifier_class") or "") != "inventory":
-            continue
-        contract_tables = {
-            str(table).casefold() for table in contract.get("tables") or []
-        }
-        if not contract_tables <= selected or len(contract_tables) != 1:
-            continue
-        # Technical inventory contracts are intentionally table-local. Compile
-        # their declared dimensions and COUNT(*) into a canonical statement so
-        # model-generated WHERE clauses or projection aliases cannot change a
-        # source-level grouped record count.
-        dimensions = [
-            item
-            for item in contract.get("dimensions") or []
-            if isinstance(item, dict)
-            and str(item.get("field") or "")
-            and str(item.get("table") or "").casefold() in contract_tables
-        ]
-        metrics = contract.get("metrics") or []
-        if dimensions and len(metrics) == 1 and str(metrics[0].get("aggregate") or "").casefold() == "count" and metrics[0].get("field") == "*":
-            table = str(contract.get("tables")[0])
-            table_alias = "technical_inventory"
-            projection = [
-                f'{table_alias}."{str(item["field"]).replace(chr(34), chr(34) * 2)}" AS "{str(item["alias"]).replace(chr(34), chr(34) * 2)}"'
-                for item in dimensions
-            ]
-            projection.append('COUNT(*) AS "row_count"')
-            dimension_sql = ", ".join(
-                f'{table_alias}."{str(item["field"]).replace(chr(34), chr(34) * 2)}"'
-                for item in dimensions
-            )
-            contract["canonical_sql_template"] = (
-                f'SELECT {", ".join(projection)} FROM {table} AS {table_alias} '
-                f"GROUP BY {dimension_sql} ORDER BY {dimension_sql} LIMIT 1000"
-            )
-        technical_contracts.append(contract)
-    scoped["metric_contracts"] = technical_contracts
+    scoped["metric_contracts"] = []
+    scoped["technical_metric_contracts"] = []
+    scoped["ontology_semantic_execution"] = {
+        **dict(scoped.get("ontology_semantic_execution") or {}),
+        "technical_catalog_execution": "disabled_requires_reviewed_business_mapping",
+    }
     return scoped
 
 
@@ -2940,14 +2966,7 @@ def _retrieve_reviewed_assets(
             # requests a quantitative result.  The expansion is driven by
             # reviewed relationships and asset metadata, not question IDs or
             # physical-table names.
-            asks_for_measure = bool(
-                re.search(
-                    r"\b(?:average|avg|count|number|sum|total|score|highest|lowest|top|"
-                    r"rate|percentage|completion|demand|supply|gap|measure|metric)\b",
-                    question,
-                    re.IGNORECASE,
-                )
-            )
+            asks_for_measure = _question_requests_measure(question)
             if asks_for_measure:
                 preferred_tables_lower = {
                     str(table).casefold() for asset in preferred_assets
@@ -3602,6 +3621,12 @@ def _row_scope_prompt_dependency_tables(
     normalized_selected = {
         _normalize_table_name(value) for value in selected_tables if str(value).strip()
     }
+    compiler_governance_tables = {
+        _normalize_table_name(binding.get("physical_table") or "")
+        for binding in semantic_layer.get("table_bindings") or []
+        if isinstance(binding, dict)
+        and binding.get("compiler_governance_support") is True
+    }
     language = detect_question_language(question)
     dependencies: set[str] = set()
     for policy in semantic_layer.get("row_scope_policies") or []:
@@ -3617,7 +3642,11 @@ def _row_scope_prompt_dependency_tables(
         predicate_table = str(
             (policy.get("required_predicate") or {}).get("table") or ""
         ).strip()
-        if predicate_table:
+        if (
+            predicate_table
+            and _normalize_table_name(predicate_table)
+            not in compiler_governance_tables
+        ):
             dependencies.add(predicate_table)
     return dependencies
 
@@ -4270,8 +4299,26 @@ def _runtime_metadata(
     dict[str, dict[str, Any]],
 ]:
     from .virtual_sources import get_virtual_source, get_virtual_source_discovery
+    from .ontology.semantic_execution import (
+        SemanticExecutionContractError,
+        scope_virtual_semantic_layer_to_ontology,
+        validate_virtual_ontology_semantic_gate,
+    )
 
     semantic_layer = _load_semantic_layer(semantic_layer_path)
+    try:
+        ontology_gate = validate_virtual_ontology_semantic_gate(
+            semantic_layer,
+            semantic_layer_path,
+        )
+        semantic_layer = scope_virtual_semantic_layer_to_ontology(
+            semantic_layer,
+            ontology_gate,
+        )
+    except SemanticExecutionContractError as exc:
+        raise GovernedVirtualNL2SQLError(
+            "ontology_semantic_execution_gate_failed:" + str(exc)
+        ) from exc
     binding = semantic_layer.get("source_binding") or {}
     if int(binding.get("source_id") or -1) != int(source_id):
         raise GovernedVirtualNL2SQLError("semantic_source_id_mismatch")
@@ -4341,7 +4388,21 @@ def _semantic_contract(
         "## Governed virtual semantic context",
         "Only the following physical tables and fields are available.",
     ]
-    semantic_assets = semantic_layer.get("semantic_assets") or []
+    compiler_governance_tables = {
+        str(binding.get("physical_table") or "").casefold()
+        for binding in semantic_layer.get("table_bindings") or []
+        if isinstance(binding, dict)
+        and binding.get("compiler_governance_support") is True
+    }
+    semantic_assets = [
+        asset
+        for asset in semantic_layer.get("semantic_assets") or []
+        if isinstance(asset, dict)
+        and not any(
+            str(table).casefold() in compiler_governance_tables
+            for table in asset.get("physical_tables") or []
+        )
+    ]
     if semantic_assets:
         lines.append("\nREVIEWED BUSINESS ASSETS:")
         for asset in semantic_assets:
@@ -4362,6 +4423,8 @@ def _semantic_contract(
                     "    capabilities: " + ", ".join(str(value) for value in asset["capabilities"])
                 )
     for table in semantic_layer.get("table_bindings") or []:
+        if table.get("compiler_governance_support") is True:
+            continue
         table_name = str(table["physical_table"])
         labels = table.get("labels") or {}
         aliases = ", ".join(str(value) for value in table.get("aliases") or [])
@@ -4377,6 +4440,8 @@ def _semantic_contract(
             for field in _resource_fields(resource_map[table_name])
         }
         for field in table.get("fields") or []:
+            if field.get("compiler_governance_support") is True:
+                continue
             physical = str(field["physical_field"])
             labels = field.get("labels") or {}
             notes = []
@@ -4604,11 +4669,21 @@ def _semantic_contract(
     if row_scope_policies:
         for policy in row_scope_policies:
             predicate = policy.get("required_predicate") or {}
+            predicate_table = str(predicate.get("table") or "")
+            if predicate_table.casefold() in available_tables:
+                requirement = (
+                    f"{predicate_table}.{predicate.get('field', '')} "
+                    + str(predicate.get("operator") or "")
+                )
+            else:
+                requirement = (
+                    "compiler_enforced_governance_scope "
+                    "(do not reference or project its source table)"
+                )
             lines.append(
                 f"  - {policy.get('policy_id', '')} | applies_to="
                 + ", ".join(str(value) for value in policy.get("applies_to_tables") or [])
-                + f" | required={predicate.get('table', '')}.{predicate.get('field', '')} "
-                + str(predicate.get("operator") or "")
+                + f" | required={requirement}"
             )
             if policy.get("description"):
                 lines.append(f"    rule: {str(policy['description']).strip()[:1200]}")
@@ -4800,6 +4875,8 @@ def _semantic_ir_contract(
     for binding in semantic_layer.get("table_bindings") or []:
         if not isinstance(binding, dict):
             continue
+        if binding.get("compiler_governance_support") is True:
+            continue
         entity = str(binding.get("semantic_entity") or "")
         if not entity:
             continue
@@ -4853,6 +4930,8 @@ def _semantic_ir_contract(
             lines.append(f"  business aliases: {aliases}")
         for field in binding.get("fields") or []:
             if not isinstance(field, dict):
+                continue
+            if field.get("compiler_governance_support") is True:
                 continue
             semantic_field = str(field.get("semantic_field") or "")
             if not semantic_field:
@@ -5148,6 +5227,70 @@ def _semantic_ir_contract(
         )
     else:
         lines.append("  - none")
+    comparison_policies = semantic_layer.get("two_value_comparison_policies") or []
+    lines.append("\nREVIEWED TWO-VALUE COMPARISON POLICIES:")
+    comparison_policy_count = 0
+    for policy in comparison_policies:
+        if (
+            not isinstance(policy, dict)
+            or policy.get("review_status") != "reviewed"
+            or policy.get("operation") != "same_entity_two_value_subtract"
+        ):
+            continue
+        scope = policy.get("scope_field_ref") or {}
+        measure = policy.get("measure_field_ref") or {}
+        required_join = policy.get("required_join") or {}
+        dimensions = policy.get("required_dimension_field_refs") or []
+        if not isinstance(scope, dict) or not isinstance(measure, dict):
+            continue
+        scope_ref = f"{scope.get('semantic_entity', '')}.{scope.get('semantic_field', '')}"
+        measure_ref = f"{measure.get('semantic_entity', '')}.{measure.get('semantic_field', '')}"
+        dimension_refs = ", ".join(
+            f"{item.get('semantic_entity', '')}.{item.get('semantic_field', '')}"
+            for item in dimensions
+            if isinstance(item, dict)
+        )
+        left = required_join.get("left_field_ref") or {}
+        right = required_join.get("right_field_ref") or {}
+        join_ref = (
+            f"{left.get('semantic_entity', '')}.{left.get('semantic_field', '')} eq "
+            f"{right.get('semantic_entity', '')}.{right.get('semantic_field', '')}"
+            if isinstance(left, dict) and isinstance(right, dict)
+            else ""
+        )
+        lines.append(
+            "  - policy="
+            + str(policy.get("policy_id") or "")
+            + " | primary_entity="
+            + str(policy.get("semantic_entity") or "")
+            + " | scope="
+            + scope_ref
+            + " | measure="
+            + measure_ref
+            + " | allowed_values="
+            + ", ".join(str(value) for value in policy.get("allowed_scope_values") or [])
+            + " | aggregate=max | required_join="
+            + join_ref
+            + " | required_dimensions="
+            + dimension_refs
+        )
+        comparison_policy_count += 1
+    if comparison_policy_count:
+        lines.append(
+            "  - For a same-entity comparison across two listed categorical values, "
+            "use two_value_comparison with exactly the policy id, logical scope and "
+            "measure refs, baseline_value, comparison_value, and three output aliases. "
+            "Keep the required join and dimensions. Do not use a self-join, stage filter, "
+            "derived_expression, or model-authored aggregate SQL."
+        )
+        lines.append(
+            "  - For three or more listed categorical values of the same measure, "
+            "use categorical_pivot with the same reviewed policy id, scope and measure "
+            "refs, plus one audited value/output_name item per requested value. Keep "
+            "the required join and dimensions. The compiler owns conditional aggregation."
+        )
+    else:
+        lines.append("  - none")
     lines.append("\nREVIEWED LOGICAL METRIC PATTERNS:")
 
     def logical_ref(item: dict[str, Any]) -> str | None:
@@ -5328,10 +5471,17 @@ def _semantic_ir_contract(
                     )
                 )
     configured_semantic_rules = semantic_layer.get("business_semantic_rules") or []
+    compiler_governance_tables = {
+        str(binding.get("physical_table") or "").casefold()
+        for binding in semantic_layer.get("table_bindings") or []
+        if isinstance(binding, dict)
+        and binding.get("compiler_governance_support") is True
+    }
     logical_tables = {
         str(binding.get("physical_table") or "").casefold()
         for binding in semantic_layer.get("table_bindings") or []
         if str(binding.get("semantic_entity") or "").strip()
+        and binding.get("compiler_governance_support") is not True
     }
     logical_row_policies = [
         policy
@@ -5356,6 +5506,7 @@ def _semantic_ir_contract(
                 {
                     str(binding.get("semantic_entity") or "")
                     for binding in semantic_layer.get("table_bindings") or []
+                    if binding.get("compiler_governance_support") is not True
                     if _normalize_table_name(binding.get("physical_table") or "")
                     in {
                         _normalize_table_name(value)
@@ -5364,10 +5515,17 @@ def _semantic_ir_contract(
                     and str(binding.get("semantic_entity") or "").strip()
                 }
             )
+            if table.casefold() in compiler_governance_tables:
+                required_filter = (
+                    "compiler_enforced_governance_scope "
+                    "(do not reference or project the governance source)"
+                )
+            else:
+                required_filter = f"{logical_predicate_ref} is true"
             lines.append(
                 f"  - {policy.get('policy_id', '')} | applies_to="
                 + ", ".join(applicable_entities)
-                + f" | required_filter={logical_predicate_ref} is true"
+                + f" | required_filter={required_filter}"
             )
             if policy.get("description"):
                 lines.append(f"    rule: {str(policy['description']).strip()[:1200]}")
@@ -5438,8 +5596,17 @@ LOCAL STRUCTURED-OUTPUT CHECKLIST:
 - For a spatial question, preserve the reviewed spatial join and exact spatial operator from the supplied context. The only no-join exception is a listed reviewed source-recorded categorical scope: use its declared logical filter and spatial intent, and never describe it as a geometric intersection.
 - A universal_conditions entry has exactly policy_id, field_ref, operator, and values. All four are required: operator is never inferred or omitted, and values contains exactly one raw scalar. Do not copy policy explanation fields such as group_field, scope_field, rule, or validity into the entry.
 - Use a universal_conditions entry for every/all semantics, never inside having_filters. A separate having filter is valid only when the question independently asks for a post-group aggregate condition; it must include field_ref, aggregate, operator, and values.
+- For a same-entity comparison between two reviewed categorical values, use one two_value_comparison object. It has exactly policy_id, scope_field_ref, measure_field_ref, baseline_value, comparison_value, baseline_output_name, comparison_output_name, and difference_output_name. Keep the policy's required dimensions and reviewed join. Never use a self-join, a scope-field filter, ordinary metric projections, or a derived_expression for this operation.
+- For three or more audited values of one reviewed categorical scope and measure, use categorical_pivot with policy_id, scope_field_ref, measure_field_ref, and values. Every values item contains only value and output_name. Keep the required dimensions and join; never add a scope-field filter or self-join.
+- When the question requires every adjacent transition in an ordered categorical sequence to increase or decrease, derive each adjacent difference with result_expressions and add a separate result_filter against zero for every transition. A positive or negative overall change, rate, or acceleration does not replace these per-transition conditions.
+- Use result_expressions only for arithmetic over validated numeric output aliases. Each entry has output_name, operator, operands, and optional scale. Use divide with scale=100 for a percentage such as difference divided by baseline times 100; the compiler owns safe zero-denominator handling. Never put SQL, functions, field_ref, or constants in operands.
+- For one request comparing a projected numeric result with its average within each group, use group_average_filter. When the question has multiple such conditions, omit group_average_filter and use group_average_filters with one entry per condition. Every entry has value_output_name, partition_by, operator, and average_output_name; every value must be a projected numeric output alias, including result_expressions. Never emit AVG or window SQL.
+- Use partition_statistics for a displayed sum, average, or percentile over a partition when later calculations need that statistic. Each entry has value_output_name, partition_by, aggregate, and output_name. For aggregate=percentile, include percentile as a fraction strictly between 0 and 1. For a positive-only or threshold-qualified sum/average denominator, also set value_filter_operator and value_filter_value; this filter belongs to the statistic and does not remove result rows.
+- Use post_statistic_expressions for arithmetic that depends on partition_statistics, with the same safe alias-only arithmetic contract as result_expressions. Use result_filters only after partition statistics and post-statistic expressions have been computed; each filter has left_output_name, operator, and exactly one of right_output_name or a one-item numeric values array.
+- Use cumulative_windows for a requested partitioned cumulative total. Each entry has value_output_name, partition_by, order_by, and output_name. Use post_window_filters for a threshold on that cumulative result. Never emit SUM, OVER, window frames, SQL, or physical identifiers.
+- When the user explicitly requests the rank within each group, set partition_rank_output_name together with partition_by and order_by. Add partition_limit only for an explicit Top-N request; cumulative-threshold requests do not require a fixed Top-N. Omit the rank alias when rank is not requested.
 - Put OR alternatives only in top-level any_filter_groups as objects containing filters. Do not nest any_filter_groups inside an ordinary filter.
-- For explicit numeric bands plus a request for members of one band, use band_summary rather than ordinary filters or OR groups. Still set semantic_entity and projections=[]; band_summary requires score_field_ref, member_field_ref, bands, member_band, and individual output aliases. Each band uses key with lower/upper bounds only, never threshold/operator; omit ordinary projections and ordering.
+- For explicit numeric bands plus a request for members of one band, use band_summary rather than ordinary filters or OR groups. Still set semantic_entity and projections=[]; band_summary requires score_field_ref, member_field_ref, bands, member_band, and individual output aliases. Use optional member_disambiguation_field_refs only for reviewed context fields needed to distinguish repeated member labels; the compiler appends that context only when a duplicate occurs in the selected band. Each band uses key with lower/upper bounds only, never threshold/operator; omit ordinary projections and ordering.
 - Use is_null/not_null only when the user explicitly asks about missing/null values. Do not add a nullable-field filter just because a field is nullable.
 - For a dual extreme request (highest and lowest), use extreme_order_by only; do not also emit order_by for the same metric.
 - For a data-quality or definition question, query the governed field when the context supplies one; refuse only when no reviewed semantic field or answerability policy covers the request.
@@ -5541,9 +5708,10 @@ Canonical representation rules:
 - The top-level object may contain only `language`, `status`, `semantic_query`,
   and `reason`. Do not emit aliases such as `proposal_status`.
 - A query `semantic_query` may contain only `schema_id`, `language`, `status`,
-  `semantic_entity`, `spatial_intent`, `band_summary`, `projections`, `filters`,
+  `semantic_entity`, `spatial_intent`, `band_summary`, `two_value_comparison`, `categorical_pivot`, `projections`, `result_expressions`, `partition_statistics`, `post_statistic_expressions`, `result_filters`, `cumulative_windows`, `post_window_filters`, `filters`,
   `having_filters`, `any_filter_groups`, `joins`, `order_by`,
-            `extreme_order_by`, `universal_conditions`, `partition_by`, `partition_limit`,
+            `extreme_order_by`, `group_average_filter`, `group_average_filters`, `universal_conditions`,
+            `partition_by`, `partition_limit`, `partition_rank_output_name`, `map_value_output_name`,
             `distinct_rows`, `include_result_count`, `result_count_alias`,
             `limit`, and `reason`.
 - Set `semantic_query.schema_id` exactly to
@@ -5555,6 +5723,44 @@ Canonical representation rules:
   `json_array`; a count metric needs `aggregate=count`; an attribute or
   dimension needs `field_ref`. Omit inapplicable optional properties rather
   than emitting JSON nulls, empty objects, or empty arrays.
+- When a reviewed two-value comparison policy covers an explicitly requested
+  baseline-to-comparison calculation, set `two_value_comparison` and keep the
+  listed dimensions as projections. Its three aliases are compiler-owned
+  metric outputs and can be used in `order_by`; do not put any ordinary metric
+  projection, filter on its scope field, self-join, or SQL expression in that
+  query.
+- When one reviewed comparison policy covers three or more explicitly
+  requested categorical values of the same measure, use `categorical_pivot`
+  with its exact policy/scope/measure refs and one value/output alias pair per
+  requested audited value. The compiler owns the conditional aggregation.
+- When the wording requires every adjacent transition in the requested order
+  to increase or decrease, derive every adjacent difference in
+  `result_expressions` and add one `result_filters` condition against zero for
+  each difference. An overall change, rate, or acceleration condition does not
+  imply or replace the individual transition conditions.
+- Arithmetic over compiler-validated numeric output aliases uses
+  `result_expressions`. Each entry has `output_name`, `operator`, `operands`,
+  and optional `scale`. A percentage such as `(comparison - baseline) /
+  baseline * 100` uses `divide`, operands containing the difference and
+  baseline aliases, and `scale=100`; zero denominators become null.
+- A partition statistic needed by later arithmetic uses
+  `partition_statistics`. Each item names one numeric `value_output_name`,
+  projected dimension aliases in `partition_by`, `aggregate` as `sum`,
+  `average`, or `percentile`, and an `output_name`. A percentile requires a
+  `percentile` fraction strictly between 0 and 1. Optional `value_filter_operator` plus
+  `value_filter_value` restrict only the statistic input, not output rows.
+- Arithmetic that depends on a partition statistic uses
+  `post_statistic_expressions`; it has the same alias-only arithmetic shape
+  and safe division behavior as `result_expressions`.
+- Conditions evaluated after those statistics use `result_filters`. Each has
+  `left_output_name`, `operator`, and exactly one of `right_output_name` or a
+  one-item numeric `values` array. Do not confuse these with source-row
+  `filters` or aggregate `having_filters`.
+- A partitioned running total uses `cumulative_windows` with
+  `value_output_name`, projected dimension aliases in `partition_by`, one or
+  more alias-only `order_by` items, and `output_name`. A threshold on that
+  running total uses `post_window_filters`. The compiler owns deterministic
+  tie-breaking and the explicit cumulative row frame.
 - A direct row value uses role `attribute` (or `dimension` when it groups an
   aggregate). Role `metric` always requires an explicit aggregate; never add
   an aggregate merely to satisfy the schema.
@@ -5564,6 +5770,35 @@ Canonical representation rules:
   each settlement context) uses `partition_by` with projected dimension
   aliases, `partition_limit` with the requested N, and `order_by` on the
   requested score. Do not use `extreme_order_by` for this operation.
+- A request for a value above or below the average of the same value within
+  each group uses `group_average_filter`. Its `value_output_name` must be a
+  projected metric alias (including a two-value comparison output), its
+  `partition_by` values must be projected dimension aliases, and its
+  `average_output_name` is the requested displayed average. Never approximate
+  this with a row filter or a global average.
+- When the request contains multiple independent within-group average
+  comparisons, use `group_average_filters` with one complete entry per
+  condition and omit singular `group_average_filter`.
+- These controls are composable. A request may use one reviewed
+  `two_value_comparison`, derive a percentage from its difference and baseline
+  aliases in `result_expressions`, compare both that derived percentage and a
+  comparison output with their respective partition averages in
+  `group_average_filters`, and finally apply `partition_by`, `partition_limit`,
+  `partition_rank_output_name`, and `order_by`. This complete shape is
+  expressible; do not mark it unsupported merely because it combines those
+  stages.
+- A contribution-and-cumulative-threshold request is also composable: compute
+  the partition denominator in `partition_statistics`, derive the row share in
+  `post_statistic_expressions`, apply eligibility conditions through
+  `group_average_filters` and/or `result_filters`, rank with `partition_by`
+  plus `order_by`, compute the running share in `cumulative_windows`, and
+  apply its threshold in `post_window_filters`. Do not refuse this shape.
+- A reviewed categorical pivot can feed multiple alias-only result expressions,
+  partition percentiles/averages, result filters, contribution statistics,
+  ranking, cumulative windows, and post-window filters in the same way.
+- For a map request whose coloring metric differs from rank/order, set
+  `map_value_output_name` to the validated numeric output alias requested for
+  coloring. Omit it when the map should use the primary order metric.
 - Every join uses only `left_field_ref`, `right_field_ref`, `kind`, `operator`,
   and `distance_metres`; do not emit `join_type`, `join_kind`, or entity labels.
 - Filter `values` are arrays of raw JSON strings, numbers, or booleans. Do not
@@ -5615,14 +5850,21 @@ SemanticQueryIR v1 rules for `query` proposals:
   set the query to `unsupported`.
 - For per-partition ranking, project the partition dimensions and requested
   score, set `partition_by` to the dimension output aliases, and set
-  `partition_limit` to the requested N. The compiler applies a bounded
-  `ROW_NUMBER` window; never emit SQL window text.
+  `partition_limit` only when the request gives a Top-N bound. Set
+  `partition_rank_output_name` when the question asks to display the
+  within-group rank; ranking without a fixed Top-N is allowed when a later
+  cumulative threshold bounds the result. The compiler
+  applies a bounded `ROW_NUMBER` window; never emit SQL window text.
 - For a request that defines explicit numeric bands and asks for one count per
   band plus the members of a named band, use `band_summary`. Provide governed
   score and member field references, non-overlapping open-ended bands, the
-  `member_band`, and the three output aliases. Do not emit a CASE expression,
-  SQL function, or ordinary projections for this capability; the compiler
-  owns classification, counts, and conditional member aggregation.
+  `member_band`, and the three output aliases. When a primary member label is
+  known to be non-unique, optionally provide one to three reviewed
+  `member_disambiguation_field_refs` (such as municipality). The compiler
+  keeps ordinary labels unchanged and appends this context only to duplicate
+  labels in the selected band. Do not emit a CASE expression, SQL function,
+  or ordinary projections for this capability; the compiler owns
+  classification, counts, conditional member aggregation, and formatting.
 - For a requested arithmetic value derived from reviewed numeric fields (for
   example current/post-pipeline completion), use `derived_expression` with
   only `add`, `subtract`, `multiply`, or `divide` and two to four logical
@@ -6245,6 +6487,14 @@ def _normalize_semantic_ir_model_candidate(
             ("member_band", ("member_band_key", "list_band")),
             ("score_field_ref", ("score_field", "measure_field_ref")),
             ("member_field_ref", ("member_field", "label_field_ref")),
+            (
+                "member_disambiguation_field_refs",
+                (
+                    "member_context_field_refs",
+                    "member_identity_field_refs",
+                    "member_disambiguators",
+                ),
+            ),
             ("member_output_name", ("members_alias",)),
         ):
             if canonical in band_summary:
@@ -6799,6 +7049,30 @@ def _normalize_semantic_ir_model_candidate(
                 return None
             field = normalized_field
         return {"semantic_entity": entity, "semantic_field": field}
+
+    # A local structured-output model may mistype the canonical leaf key as
+    # ``semantic_flag`` while still supplying the exact logical field value.
+    # Rename only that one-key typo inside a complete entity-qualified field
+    # reference.  No entity or field is selected by this representation fix;
+    # the normal semantic whitelist remains authoritative.
+    pending_field_ref_values: list[Any] = [query]
+    while pending_field_ref_values:
+        value = pending_field_ref_values.pop()
+        if isinstance(value, dict):
+            if (
+                "semantic_field" not in value
+                and isinstance(value.get("semantic_entity"), str)
+                and isinstance(value.get("semantic_flag"), str)
+                and re.fullmatch(
+                    r"[A-Za-z][A-Za-z0-9_]*",
+                    str(value.get("semantic_flag") or "").strip(),
+                )
+            ):
+                value["semantic_field"] = value.pop("semantic_flag")
+                corrections.append("semantic_ir_normalized_semantic_flag_field_alias")
+            pending_field_ref_values.extend(value.values())
+        elif isinstance(value, list):
+            pending_field_ref_values.extend(value)
 
     def move_field_alias(container: dict[str, Any], alias: str, label: str) -> None:
         """Move a field alias only when it can be represented losslessly."""
@@ -8589,6 +8863,189 @@ def _normalize_semantic_ir_model_candidate(
                 # endpoint and reviewed-relationship validation still apply.
                 join["kind"] = "equality"
                 corrections.append("semantic_ir_inferred_equality_join_kind_from_operator")
+
+    # Spatial wording and a unique reviewed relationship can deterministically
+    # close an otherwise incomplete logical graph.  This is deliberately
+    # narrower than free-form join inference: it applies only when the model
+    # already referenced exactly two governed entities, the question has an
+    # explicit spatial intent, and one reviewed spatial relation is the sole
+    # compatible connector.  No benchmark identity, source value, or result is
+    # consulted, and the strict compiler revalidates the injected relation.
+    expected_spatial_intent = infer_spatial_intent(str(question or ""))
+    if semantic_layer is not None and expected_spatial_intent is not SpatialIntent.NONE:
+        explicit_gate = _semantic_layer_has_execution_gate(semantic_layer)
+        logical_by_physical_endpoint: dict[tuple[str, str], dict[str, str]] = {}
+        for binding in semantic_layer.get("table_bindings") or []:
+            if (
+                not isinstance(binding, dict)
+                or not _binding_execution_eligible(
+                    binding,
+                    explicit_gate=explicit_gate,
+                )
+                or binding.get("compiler_governance_support") is True
+            ):
+                continue
+            table = str(binding.get("physical_table") or "").casefold()
+            entity = str(binding.get("semantic_entity") or "")
+            if not table or not entity:
+                continue
+            for field in binding.get("fields") or []:
+                if not isinstance(field, dict) or field.get(
+                    "compiler_governance_support"
+                ) is True:
+                    continue
+                physical = str(field.get("physical_field") or "").casefold()
+                semantic = str(field.get("semantic_field") or "")
+                if physical and semantic:
+                    logical_by_physical_endpoint[(table, physical)] = {
+                        "semantic_entity": entity,
+                        "semantic_field": semantic,
+                    }
+
+        operator_intents = {
+            "st_intersects": SpatialIntent.INTERSECTS,
+            "st_dwithin": SpatialIntent.DISTANCE,
+            "st_within": SpatialIntent.WITHIN,
+            "st_contains": SpatialIntent.CONTAINS,
+            "st_covers": SpatialIntent.CONTAINS,
+        }
+        reviewed_spatial_relations: list[
+            tuple[dict[str, str], dict[str, str], str]
+        ] = []
+        for relation in semantic_layer.get("relationships") or []:
+            if (
+                not isinstance(relation, dict)
+                or not str(relation.get("review_status") or "")
+                .casefold()
+                .startswith("reviewed")
+                or relation.get("execution_authorized") is False
+                or str(relation.get("kind") or "").casefold() != "spatial"
+            ):
+                continue
+            left_table, separator, left_field = str(
+                relation.get("left") or ""
+            ).casefold().rpartition(".")
+            right_table, right_separator, right_field = str(
+                relation.get("right") or ""
+            ).casefold().rpartition(".")
+            operator = str(relation.get("operator") or "").casefold()
+            left_ref = logical_by_physical_endpoint.get((left_table, left_field))
+            right_ref = logical_by_physical_endpoint.get((right_table, right_field))
+            if (
+                separator
+                and right_separator
+                and left_ref is not None
+                and right_ref is not None
+                and operator_intents.get(operator) is expected_spatial_intent
+            ):
+                reviewed_spatial_relations.append((left_ref, right_ref, operator))
+
+        referenced_entities = {
+            str(query.get("semantic_entity") or "")
+        }
+        pending_references: list[Any] = [
+            value for key, value in query.items() if key != "joins"
+        ]
+        while pending_references:
+            value = pending_references.pop()
+            if isinstance(value, dict):
+                ref = logical_field_ref(value)
+                if ref is not None and set(value).issubset(
+                    {"semantic_entity", "semantic_field"}
+                ):
+                    referenced_entities.add(ref["semantic_entity"])
+                else:
+                    pending_references.extend(value.values())
+            elif isinstance(value, list):
+                pending_references.extend(value)
+        referenced_entities.discard("")
+
+        existing_join_pairs: set[frozenset[str]] = set()
+        for join in query.get("joins") or []:
+            if not isinstance(join, dict):
+                continue
+            left_ref = logical_field_ref(join.get("left_field_ref"))
+            right_ref = logical_field_ref(join.get("right_field_ref"))
+            if left_ref is not None and right_ref is not None:
+                existing_join_pairs.add(
+                    frozenset(
+                        (
+                            left_ref["semantic_entity"],
+                            right_ref["semantic_entity"],
+                        )
+                    )
+                )
+
+        candidate_relations = [
+            item
+            for item in reviewed_spatial_relations
+            if {
+                item[0]["semantic_entity"],
+                item[1]["semantic_entity"],
+            }
+            == referenced_entities
+        ]
+        referenced_pair = frozenset(referenced_entities)
+        if (
+            len(referenced_entities) == 2
+            and referenced_pair not in existing_join_pairs
+            and len(candidate_relations) == 1
+            and expected_spatial_intent
+            in {SpatialIntent.INTERSECTS, SpatialIntent.DISTANCE}
+        ):
+            left_ref, right_ref, operator = candidate_relations[0]
+            query.setdefault("joins", []).append(
+                {
+                    "left_field_ref": left_ref,
+                    "right_field_ref": right_ref,
+                    "kind": "spatial",
+                    "operator": operator,
+                }
+            )
+            corrections.append("semantic_ir_added_unique_reviewed_spatial_join")
+
+        reviewed_signatures = {
+            (
+                frozenset(
+                    (
+                        (left_ref["semantic_entity"], left_ref["semantic_field"]),
+                        (right_ref["semantic_entity"], right_ref["semantic_field"]),
+                    )
+                ),
+                operator,
+            )
+            for left_ref, right_ref, operator in reviewed_spatial_relations
+        }
+        has_matching_reviewed_join = False
+        for join in query.get("joins") or []:
+            if not isinstance(join, dict):
+                continue
+            left_ref = logical_field_ref(join.get("left_field_ref"))
+            right_ref = logical_field_ref(join.get("right_field_ref"))
+            operator = str(join.get("operator") or "").casefold()
+            if left_ref is None or right_ref is None:
+                continue
+            signature = (
+                frozenset(
+                    (
+                        (left_ref["semantic_entity"], left_ref["semantic_field"]),
+                        (right_ref["semantic_entity"], right_ref["semantic_field"]),
+                    )
+                ),
+                operator,
+            )
+            if signature in reviewed_signatures:
+                has_matching_reviewed_join = True
+                break
+        if (
+            has_matching_reviewed_join
+            and str(query.get("spatial_intent") or "").casefold()
+            != expected_spatial_intent.value
+        ):
+            query["spatial_intent"] = expected_spatial_intent.value
+            corrections.append(
+                "semantic_ir_aligned_spatial_intent_to_reviewed_join"
+            )
     spatial_intent = str(query.get("spatial_intent") or "").casefold().strip()
     if spatial_intent and spatial_intent not in {
         "none",
@@ -8926,6 +9383,8 @@ def _normalize_semantic_ir_model_candidate(
             for reference_key in ("score_field_ref", "member_field_ref"):
                 if band_summary.get(reference_key) is not None:
                     add_qualified_reference(band_summary.get(reference_key))
+            for reference in band_summary.get("member_disambiguation_field_refs") or []:
+                add_qualified_reference(reference)
         if not query.get("joins") and candidate_complete and len(entity_candidates) == 1:
             query["semantic_entity"] = next(iter(entity_candidates))
             corrections.append("semantic_ir_restored_unique_primary_entity")
@@ -9494,6 +9953,54 @@ def _native_gemini_provider_schema(
             "required": ["policy_id", "field_ref", "operator", "values"],
             "additionalProperties": False,
         }
+        two_value_comparison = {
+            "type": "object",
+            "properties": {
+                "policy_id": {"type": "string"},
+                "scope_field_ref": field_ref,
+                "measure_field_ref": field_ref,
+                "baseline_value": {"type": "string"},
+                "comparison_value": {"type": "string"},
+                "baseline_output_name": {"type": "string"},
+                "comparison_output_name": {"type": "string"},
+                "difference_output_name": {"type": "string"},
+            },
+            "required": [
+                "policy_id",
+                "scope_field_ref",
+                "measure_field_ref",
+                "baseline_value",
+                "comparison_value",
+                "baseline_output_name",
+                "comparison_output_name",
+                "difference_output_name",
+            ],
+            "additionalProperties": False,
+        }
+        categorical_pivot = {
+            "type": "object",
+            "properties": {
+                "policy_id": {"type": "string"},
+                "scope_field_ref": field_ref,
+                "measure_field_ref": field_ref,
+                "values": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "value": {"type": "string"},
+                            "output_name": {"type": "string"},
+                        },
+                        "required": ["value", "output_name"],
+                        "additionalProperties": False,
+                    },
+                    "minItems": 2,
+                    "maxItems": 8,
+                },
+            },
+            "required": ["policy_id", "scope_field_ref", "measure_field_ref", "values"],
+            "additionalProperties": False,
+        }
         order_by = {
             "type": "object",
             "properties": {
@@ -9501,6 +10008,128 @@ def _native_gemini_provider_schema(
                 "direction": {"type": "string", "enum": ["asc", "desc"]},
             },
             "required": ["output_name", "direction"],
+            "additionalProperties": False,
+        }
+        group_average_filter = {
+            "type": "object",
+            "properties": {
+                "value_output_name": {"type": "string"},
+                "partition_by": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 1,
+                    "maxItems": 8,
+                },
+                "operator": {
+                    "type": "string",
+                    "enum": ["gt", "gte", "lt", "lte"],
+                },
+                "average_output_name": {"type": "string"},
+            },
+            "required": [
+                "value_output_name",
+                "partition_by",
+                "operator",
+                "average_output_name",
+            ],
+            "additionalProperties": False,
+        }
+        result_expression = {
+            "type": "object",
+            "properties": {
+                "output_name": {"type": "string"},
+                "operator": {
+                    "type": "string",
+                    "enum": ["add", "subtract", "multiply", "divide"],
+                },
+                "operands": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 2,
+                    "maxItems": 4,
+                },
+                "scale": {
+                    "type": "number",
+                    "minimum": -1000000,
+                    "maximum": 1000000,
+                },
+            },
+            "required": ["output_name", "operator", "operands"],
+            "additionalProperties": False,
+        }
+        result_filter = {
+            "type": "object",
+            "properties": {
+                "left_output_name": {"type": "string"},
+                "operator": {
+                    "type": "string",
+                    "enum": ["eq", "neq", "gt", "gte", "lt", "lte"],
+                },
+                "right_output_name": {"type": "string"},
+                "values": {
+                    "type": "array",
+                    "items": {"type": "number"},
+                    "maxItems": 1,
+                },
+            },
+            "required": ["left_output_name", "operator"],
+            "additionalProperties": False,
+        }
+        partition_statistic = {
+            "type": "object",
+            "properties": {
+                "value_output_name": {"type": "string"},
+                "partition_by": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 1,
+                    "maxItems": 8,
+                },
+                "aggregate": {"type": "string", "enum": ["sum", "average", "percentile"]},
+                "output_name": {"type": "string"},
+                "value_filter_operator": {
+                    "type": "string",
+                    "enum": ["gt", "gte", "lt", "lte"],
+                },
+                "value_filter_value": {"type": "number"},
+                "percentile": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "exclusiveMaximum": 1,
+                },
+            },
+            "required": [
+                "value_output_name",
+                "partition_by",
+                "aggregate",
+                "output_name",
+            ],
+            "additionalProperties": False,
+        }
+        cumulative_window = {
+            "type": "object",
+            "properties": {
+                "value_output_name": {"type": "string"},
+                "partition_by": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 1,
+                    "maxItems": 8,
+                },
+                "order_by": {
+                    "type": "array",
+                    "items": order_by,
+                    "minItems": 1,
+                    "maxItems": 8,
+                },
+                "output_name": {"type": "string"},
+            },
+            "required": [
+                "value_output_name",
+                "partition_by",
+                "order_by",
+                "output_name",
+            ],
             "additionalProperties": False,
         }
         join = {
@@ -9547,6 +10176,11 @@ def _native_gemini_provider_schema(
             "properties": {
                 "score_field_ref": field_ref,
                 "member_field_ref": field_ref,
+                "member_disambiguation_field_refs": {
+                    "type": "array",
+                    "items": field_ref,
+                    "maxItems": 3,
+                },
                 "bands": {
                     "type": "array",
                     "items": band,
@@ -9577,7 +10211,39 @@ def _native_gemini_provider_schema(
                     "enum": ["none", "contains", "within", "intersects", "distance"],
                 },
                 "band_summary": band_summary,
+                "two_value_comparison": two_value_comparison,
+                "categorical_pivot": categorical_pivot,
                 "projections": {"type": "array", "items": projection, "maxItems": 32},
+                "result_expressions": {
+                    "type": "array",
+                    "items": result_expression,
+                    "maxItems": 8,
+                },
+                "partition_statistics": {
+                    "type": "array",
+                    "items": partition_statistic,
+                    "maxItems": 8,
+                },
+                "post_statistic_expressions": {
+                    "type": "array",
+                    "items": result_expression,
+                    "maxItems": 8,
+                },
+                "result_filters": {
+                    "type": "array",
+                    "items": result_filter,
+                    "maxItems": 16,
+                },
+                "cumulative_windows": {
+                    "type": "array",
+                    "items": cumulative_window,
+                    "maxItems": 4,
+                },
+                "post_window_filters": {
+                    "type": "array",
+                    "items": result_filter,
+                    "maxItems": 8,
+                },
                 "filters": {"type": "array", "items": filter_spec, "maxItems": 24},
                 "any_filter_groups": {
                     "type": "array",
@@ -9603,8 +10269,16 @@ def _native_gemini_provider_schema(
                 "joins": {"type": "array", "items": join, "maxItems": 4},
                 "order_by": {"type": "array", "items": order_by, "maxItems": 8},
                 "extreme_order_by": {"type": "array", "items": order_by, "maxItems": 2},
+                "group_average_filter": group_average_filter,
+                "group_average_filters": {
+                    "type": "array",
+                    "items": group_average_filter,
+                    "maxItems": 8,
+                },
                 "partition_by": {"type": "array", "items": {"type": "string"}, "maxItems": 8},
                 "partition_limit": {"type": "integer", "minimum": 1, "maximum": 1000},
+                "partition_rank_output_name": {"type": "string"},
+                "map_value_output_name": {"type": "string"},
                 "distinct_rows": {"type": "boolean"},
                 "include_result_count": {"type": "boolean"},
                 "result_count_alias": {"type": "string"},
@@ -9669,7 +10343,9 @@ def _table_field_contract(
         # bindings with an explicit execution gate may authorize SQL. Older
         # reviewed fixtures predate the flag and remain compatible; an
         # explicit false is always authoritative.
-        if not _binding_execution_eligible(table, explicit_gate=explicit_gate):
+        if not _binding_execution_eligible(
+            table, explicit_gate=explicit_gate
+        ) and table.get("compiler_governance_support") is not True:
             continue
         table_name = str(table["physical_table"])
         fields[table_name] = {str(field["physical_field"]) for field in table.get("fields") or []}
@@ -13981,6 +14657,170 @@ def validate_semantic_sql(
                 f"row_scope_required_predicate_missing:{policy_id}"
             )
         applied_row_scope_policies.append(policy_id)
+
+    # A governance-support representation is not a business ontology class
+    # and must never become a user-query surface.  It is admitted only for the
+    # exact reviewed join key and mandatory true predicate of an applied row
+    # scope.  This keeps provenance/control dimensions usable by the compiler
+    # without allowing their fields to be projected, filtered ad hoc, grouped,
+    # or otherwise treated as business semantics.
+    governance_support_tables = {
+        _normalize_table_name(binding.get("physical_table") or ""): binding
+        for binding in semantic_layer.get("table_bindings") or []
+        if isinstance(binding, dict)
+        and binding.get("compiler_governance_support") is True
+    }
+    used_governance_support = actual & set(governance_support_tables)
+
+    def enclosing_comparison(column: Any) -> Any | None:
+        parent = getattr(column, "parent", None)
+        while parent is not None and not isinstance(parent, exp.Select):
+            if isinstance(parent, (exp.EQ, exp.Is)):
+                return parent
+            parent = getattr(parent, "parent", None)
+        return None
+
+    if used_governance_support:
+        applied_policy_ids = set(applied_row_scope_policies)
+        support_policies: dict[str, list[dict[str, Any]]] = {
+            table: [] for table in used_governance_support
+        }
+        for policy in semantic_layer.get("row_scope_policies") or []:
+            if not isinstance(policy, dict):
+                continue
+            policy_id = str(policy.get("policy_id") or "unknown")
+            predicate_table = _normalize_table_name(
+                (policy.get("required_predicate") or {}).get("table") or ""
+            )
+            if (
+                policy_id in applied_policy_ids
+                and predicate_table in support_policies
+            ):
+                support_policies[predicate_table].append(policy)
+        if any(not policies for policies in support_policies.values()):
+            raise GovernedVirtualNL2SQLError(
+                "compiler_governance_support_without_applied_policy"
+            )
+
+        for column in expression.find_all(exp.Column):
+            resolved = resolved_columns.get(id(column))
+            if resolved is None:
+                continue
+            table_name = _normalize_table_name(resolved[0])
+            field_name = str(resolved[1]).casefold()
+            policies = support_policies.get(table_name)
+            if not policies:
+                continue
+            comparison = enclosing_comparison(column)
+            admitted = False
+            for policy in policies:
+                predicate = policy.get("required_predicate") or {}
+                required_join = policy.get("required_join") or {}
+                predicate_field = str(predicate.get("field") or "").casefold()
+                support_field = str(
+                    required_join.get("dimension_field") or ""
+                ).casefold()
+                target_field = str(required_join.get("fact_field") or "").casefold()
+                target_tables = {
+                    _normalize_table_name(value)
+                    for value in policy.get("applies_to_tables") or []
+                } & actual
+                if field_name == predicate_field and isinstance(
+                    comparison, (exp.EQ, exp.Is)
+                ):
+                    other = (
+                        comparison.right
+                        if comparison.left is column
+                        else comparison.left
+                    )
+                    if expression_is_true(other):
+                        admitted = True
+                        break
+                if field_name == support_field and isinstance(comparison, exp.EQ):
+                    other = (
+                        comparison.right
+                        if comparison.left is column
+                        else comparison.left
+                    )
+                    if isinstance(other, exp.Column):
+                        other_resolved = resolved_columns.get(id(other))
+                        if (
+                            other_resolved is not None
+                            and _normalize_table_name(other_resolved[0])
+                            in target_tables
+                            and str(other_resolved[1]).casefold() == target_field
+                        ):
+                            admitted = True
+                            break
+            if not admitted:
+                raise GovernedVirtualNL2SQLError(
+                    "compiler_governance_support_usage_rejected"
+                )
+
+    governance_target_fields = {
+        (
+            _normalize_table_name(binding.get("physical_table") or ""),
+            str(field.get("physical_field") or "").casefold(),
+        ): list(field.get("governance_support_roles") or [])
+        for binding in semantic_layer.get("table_bindings") or []
+        if isinstance(binding, dict)
+        and binding.get("compiler_governance_support") is not True
+        for field in binding.get("fields") or []
+        if isinstance(field, dict)
+        and field.get("compiler_governance_support") is True
+    }
+    if governance_target_fields:
+        policies_by_id = {
+            str(policy.get("policy_id") or "unknown"): policy
+            for policy in semantic_layer.get("row_scope_policies") or []
+            if isinstance(policy, dict)
+        }
+        applied_policy_ids = set(applied_row_scope_policies)
+        for column in expression.find_all(exp.Column):
+            resolved = resolved_columns.get(id(column))
+            if resolved is None:
+                continue
+            field_key = (
+                _normalize_table_name(resolved[0]),
+                str(resolved[1]).casefold(),
+            )
+            roles = governance_target_fields.get(field_key)
+            if not roles:
+                continue
+            comparison = enclosing_comparison(column)
+            admitted = False
+            for role in roles:
+                if not isinstance(role, dict) or role.get("role") != "target_join":
+                    continue
+                policy_id = str(role.get("policy_id") or "")
+                policy = policies_by_id.get(policy_id)
+                if policy_id not in applied_policy_ids or policy is None:
+                    continue
+                required_join = policy.get("required_join") or {}
+                predicate = policy.get("required_predicate") or {}
+                if not isinstance(comparison, exp.EQ):
+                    continue
+                other = (
+                    comparison.right
+                    if comparison.left is column
+                    else comparison.left
+                )
+                if not isinstance(other, exp.Column):
+                    continue
+                other_resolved = resolved_columns.get(id(other))
+                if (
+                    other_resolved is not None
+                    and _normalize_table_name(other_resolved[0])
+                    == _normalize_table_name(predicate.get("table") or "")
+                    and str(other_resolved[1]).casefold()
+                    == str(required_join.get("dimension_field") or "").casefold()
+                ):
+                    admitted = True
+                    break
+            if not admitted:
+                raise GovernedVirtualNL2SQLError(
+                    "compiler_governance_support_usage_rejected"
+                )
     resolved_field_values = [value for value in resolved_columns.values() if value is not None]
     return {
         "tables": sorted(referenced),
@@ -14445,7 +15285,11 @@ def _generation_attempt_timeout_seconds(
     return min(candidates)
 
 
-def _semantic_ir_retry_guidance(error: str) -> str:
+def _semantic_ir_retry_guidance(
+    error: str,
+    *,
+    expected_spatial_intent: SpatialIntent = SpatialIntent.NONE,
+) -> str:
     """Turn strict IR diagnostics into short, provider-neutral repair hints.
 
     The hint only restates the public schema contract. It never supplies a
@@ -14497,6 +15341,14 @@ def _semantic_ir_retry_guidance(error: str) -> str:
         hints.append(
             "Keep every referenced entity in one connected reviewed join graph rooted at semantic_entity; remove unconnected projections."
         )
+        if expected_spatial_intent is not SpatialIntent.NONE:
+            hints.append(
+                "This is a spatial question: use the runtime matched named-entity "
+                "binding as the location filter, connect that entity to the "
+                "primary result entity with the exact reviewed spatial relation, "
+                f"and set spatial_intent={expected_spatial_intent.value}. Do not "
+                "put the location name on an unrelated result-entity label."
+            )
     if "metric projection requires an aggregate" in value:
         hints.append(
             "Use role=attribute or role=dimension for a direct row value. "
@@ -14622,6 +15474,12 @@ def _semantic_ir_retry_guidance(error: str) -> str:
             "For spatial wording, preserve the reviewed spatial join and its "
             "exact operator; never replace it with equality."
         )
+        if expected_spatial_intent is not SpatialIntent.NONE:
+            hints.append(
+                "Set the top-level semantic_query.spatial_intent exactly to "
+                f"{expected_spatial_intent.value} and keep the matching reviewed "
+                "spatial join in the same complete proposal."
+            )
     if "row_scope_required_predicate_missing" in value:
         hints.append(
             "Restore every required row-scope predicate declared in the "
@@ -14877,6 +15735,7 @@ async def run_governed_metric_contract(
         },
         "source": source_evidence,
         "source_rows_persisted": False,
+        "ontology_semantic_execution": semantic_layer.get("ontology_semantic_execution"),
     }
     report["query"] = {
         "sql": sql,
@@ -14976,6 +15835,10 @@ async def run_governed_virtual_nl2sql(
         raise GovernedVirtualNL2SQLError("execution_profile_unsupported")
     language = detect_question_language(question)
     resolution_semantic_layer = _load_semantic_layer(semantic_layer_path)
+    # A request rejected by the read-only policy never reaches planning or a
+    # source. It is therefore safe, and preferable, to reject it before an
+    # ontology artifact is compiled. Every request that can proceed to
+    # semantic interpretation or SQL still passes the ontology gate below.
     request_policy_reason = classify_read_only_request(
         question,
         semantic_layer=resolution_semantic_layer,
@@ -14991,6 +15854,28 @@ async def run_governed_virtual_nl2sql(
             execution_profile=execution_profile,
             reason=request_policy_reason,
         )
+    # Resolve policies from the same ontology-scoped view that will later
+    # generate and execute SQL. This prevents a direct metric match from
+    # selecting an artifact-only field before the runtime gate narrows it.
+    from .ontology.semantic_execution import (
+        SemanticExecutionContractError,
+        scope_virtual_semantic_layer_to_ontology,
+        validate_virtual_ontology_semantic_gate,
+    )
+
+    try:
+        resolution_ontology_gate = validate_virtual_ontology_semantic_gate(
+            resolution_semantic_layer,
+            semantic_layer_path,
+        )
+        resolution_semantic_layer = scope_virtual_semantic_layer_to_ontology(
+            resolution_semantic_layer,
+            resolution_ontology_gate,
+        )
+    except SemanticExecutionContractError as exc:
+        raise GovernedVirtualNL2SQLError(
+            "ontology_semantic_execution_gate_failed:" + str(exc)
+        ) from exc
     sensitive_policy_reason = classify_sensitive_data_request(question)
     if sensitive_policy_reason:
         return _read_only_policy_rejection_report(
@@ -15028,11 +15913,30 @@ async def run_governed_virtual_nl2sql(
         resolution_semantic_layer,
     )
     technical_tables = list(technical_resolution.get("requested_tables") or []) if technical_resolution.get("status") == "resolved" and technical_resolution.get("technical_metadata_only") else []
-    # v4 layers publish technical metadata for every table, while only
-    # reviewed bindings may execute. If the question names a strong semantic
-    # identity that is unpublished or ambiguous, stop before the LLM can pick
-    # a similarly named sibling table. Older v1-v3 fixtures have no explicit
-    # gate and retain their compatibility behavior.
+    # Source inventory remains visible through the catalog and governance
+    # pages, but it is not a semantic query surface.  A raw table/field must
+    # first be promoted through a reviewed business class and property mapping
+    # before any NL2SQL route, model call, or source query can use it.
+    if technical_tables:
+        return _semantic_binding_gate_rejection_report(
+            question=question,
+            language=language,
+            semantic_layer=resolution_semantic_layer,
+            source_id=source_id,
+            model_name=model_name,
+            reasoning_effort=reasoning_effort,
+            execution_profile=execution_profile,
+            resolution={
+                "status": "unavailable",
+                "reason_code": "ontology_business_mapping_required",
+                "requested_tables": technical_tables,
+                "candidates": list(technical_resolution.get("candidates") or []),
+            },
+        )
+    # If the question explicitly names a physical representation outside the
+    # ontology-authorized business scope, stop even when generic words in the
+    # same question also match a reviewed KPI or entity alias.  Catalogue
+    # inspectability never grants NL2SQL authority.
     if _semantic_layer_has_execution_gate(resolution_semantic_layer):
         explicit_tables = _explicit_physical_tables(question, resolution_semantic_layer)
         bindings = {
@@ -15044,7 +15948,6 @@ async def run_governed_virtual_nl2sql(
             for table in explicit_tables
             if table in bindings
             and bindings[table].get("execution_eligible") is not True
-            and not _technical_binding_is_queryable(bindings[table])
         ]
         if blocked_tables:
             return _semantic_binding_gate_rejection_report(
@@ -15057,13 +15960,13 @@ async def run_governed_virtual_nl2sql(
                 execution_profile=execution_profile,
                 resolution={
                     "status": "unavailable",
-                    "reason_code": "explicit_table_not_queryable",
+                    "reason_code": "ontology_business_mapping_required",
                     "requested_tables": blocked_tables,
                     "candidates": [],
                 },
             )
         binding_resolution = _semantic_asset_resolution(question, resolution_semantic_layer)
-        if _semantic_binding_resolution_requires_gate(binding_resolution) and not technical_tables:
+        if _semantic_binding_resolution_requires_gate(binding_resolution):
             return _semantic_binding_gate_rejection_report(
                 question=question,
                 language=language,
@@ -15075,26 +15978,11 @@ async def run_governed_virtual_nl2sql(
                 resolution=binding_resolution,
             )
     apply_llm_proxy_policy()
-    # An explicitly resolved technical-only table has a narrower authority
-    # than reviewed business metrics.  Keep it on the technical route even
-    # when generic words such as "building", "count", or "status" also
-    # happen to match a reviewed metric contract for another physical table.
-    # Otherwise a metadata-only request can be silently rewritten to a
-    # business asset and return a plausible but unrelated answer.
-    if technical_tables:
-        direct_resolution = {
-            "status": "fallback",
-            "contract": None,
-            "contract_id": None,
-            "candidate_contract_ids": [],
-            "fallback_reason": "technical_metadata_binding_selected",
-        }
-    else:
-        direct_resolution = resolve_direct_metric_contract(
-            question,
-            language,
-            resolution_semantic_layer,
-        )
+    direct_resolution = resolve_direct_metric_contract(
+        question,
+        language,
+        resolution_semantic_layer,
+    )
     if direct_resolution["status"] == "matched":
         direct_report = await run_governed_metric_contract(
             contract_id=str(direct_resolution["contract_id"]),
@@ -15142,28 +16030,17 @@ async def run_governed_virtual_nl2sql(
         owner,
         reuse_runtime_metadata=reuse_runtime_metadata,
     )
-    if technical_tables:
-        semantic_layer = _technicalize_semantic_layer(semantic_layer, technical_tables)
-
     prompt_semantic_layer, prompt_grounding = _ground_semantic_layer_for_prompt(
         question,
         semantic_layer,
-        technical_tables=technical_tables,
     )
-    if technical_tables:
-        # Physical table/field identity is already explicit on the technical
-        # route.  Do not perform value/entity lookups against the source: that
-        # would add a second source query and, more importantly, blur the
-        # boundary between raw metadata inspection and business semantics.
-        entity_resolution = []
-    else:
-        prompt_semantic_layer, entity_resolution = await _resolve_named_entity_assets(
-            question=question,
-            grounded=prompt_semantic_layer,
-            semantic_layer=semantic_layer,
-            resource_map=resource_map,
-            source=source,
-        )
+    prompt_semantic_layer, entity_resolution = await _resolve_named_entity_assets(
+        question=question,
+        grounded=prompt_semantic_layer,
+        semantic_layer=semantic_layer,
+        resource_map=resource_map,
+        source=source,
+    )
     prompt_grounding["candidate_counts_after_entity_resolution"] = _prompt_asset_counts(
         prompt_semantic_layer
     )
@@ -15280,10 +16157,11 @@ async def run_governed_virtual_nl2sql(
             "default_production_route": execution_profile == "baseline_sql",
         },
         "answer_scope": {
-            "mode": "technical_metadata_only" if technical_tables else "reviewed_business_semantics",
-            "technical_tables": technical_tables,
-            "business_semantic_authority": not bool(technical_tables),
+            "mode": "reviewed_business_semantics",
+            "technical_tables": [],
+            "business_semantic_authority": True,
         },
+        "ontology_semantic_execution": semantic_layer.get("ontology_semantic_execution"),
     }
     retry_feedback = ""
     compatibility_profile = resolve_nl2sql_model_profile(model_name=model_route)
@@ -15335,7 +16213,10 @@ async def run_governed_virtual_nl2sql(
                     "Regenerate the complete proposal and fix this diagnostic: " + retry_feedback
                 )
                 if execution_profile == "semantic_ir_experimental":
-                    retry_guidance = _semantic_ir_retry_guidance(retry_feedback)
+                    retry_guidance = _semantic_ir_retry_guidance(
+                        retry_feedback,
+                        expected_spatial_intent=infer_spatial_intent(question),
+                    )
                     if retry_guidance:
                         attempt_instruction += "\nSchema repair guidance: " + retry_guidance
                 else:
