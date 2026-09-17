@@ -27,7 +27,7 @@ export function normalizeLocale(value: string | null | undefined): Locale | null
 }
 
 export function resolveInitialLocale(storedLocale?: string | null): Locale {
-  return normalizeLocale(storedLocale) || 'zh-CN';
+  return normalizeLocale(storedLocale) || 'en-US';
 }
 
 function getInitialLocale(): Locale {
@@ -54,7 +54,7 @@ export function isRtlLocale(locale: string = i18n.language): boolean {
 }
 
 export function getLocale(): Locale {
-  return normalizeLocale(i18n.language) || 'zh-CN';
+  return normalizeLocale(i18n.language) || 'en-US';
 }
 
 export async function setLocale(locale: Locale): Promise<void> {
@@ -93,7 +93,7 @@ i18n
   .init({
     resources,
     lng: getInitialLocale(),
-    fallbackLng: 'zh-CN',
+    fallbackLng: 'en-US',
     supportedLngs: [...SUPPORTED_LOCALES],
     ns: ['common'],
     defaultNS: 'common',
@@ -103,7 +103,7 @@ i18n
   });
 
 i18n.on('languageChanged', (language) => {
-  const locale = normalizeLocale(language) || 'zh-CN';
+  const locale = normalizeLocale(language) || 'en-US';
   syncDocumentLocale(locale);
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(STORAGE_KEY, locale);

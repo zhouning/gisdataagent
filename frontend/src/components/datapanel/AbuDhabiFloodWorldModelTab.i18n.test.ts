@@ -37,9 +37,19 @@ describe('Abu Dhabi flood world-model English presentation', () => {
 
   it('does not expose the legacy placeholder or Han characters for unmapped receipt fragments', () => {
     const text = translateAbuEnglishText('遗留诊断字段：未知状态');
-    expect(text).toBe('model metadata: UnknownStatus');
+    expect(text).toBe('untranslated model detail: UnknownStatus');
     expect(text).not.toContain('additional detail');
+    expect(text).not.toContain('model metadata');
     expect(text).not.toMatch(/[\u3400-\u9fff]/u);
+  });
+
+  it('uses an action label for the phase-4 execution button', () => {
+    expect(translateAbuEnglishText('运行规则型情景筛选')).toBe('Run rule-based scenario screening');
+  });
+
+  it('keeps the phase-5 report action in English presentation mode', () => {
+    expect(translateAbuEnglishText('输出决策支持报告')).toBe('Open decision-support report');
+    expect(translateAbuEnglishText('正在生成报告…')).toBe('Generating report...');
   });
 
   it('translates dynamic map labels without generic fallback words', () => {

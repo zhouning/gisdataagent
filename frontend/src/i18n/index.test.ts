@@ -35,9 +35,9 @@ describe('locale normalization', () => {
     expect(isRtlLocale('zh-CN')).toBe(false);
   });
 
-  it('defaults to Chinese when no preference is stored', () => {
-    expect(resolveInitialLocale()).toBe('zh-CN');
-    expect(resolveInitialLocale('fr-FR')).toBe('zh-CN');
+  it('defaults to English when no supported preference is stored', () => {
+    expect(resolveInitialLocale()).toBe('en-US');
+    expect(resolveInitialLocale('fr-FR')).toBe('en-US');
     expect(resolveInitialLocale('en-US')).toBe('en-US');
   });
 

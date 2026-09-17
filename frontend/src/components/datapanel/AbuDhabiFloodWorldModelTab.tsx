@@ -62,6 +62,38 @@ interface PipelineStatusReceipt {
   delivery?: { status?: StageStatus; derived_artifact_count?: number; surface_product?: string };
 }
 
+interface HotspotCatalogReceipt {
+  status: string;
+  inventory?: {
+    current_count?: number;
+    history_count?: number;
+    current_by_municipality?: Record<string, number>;
+    current_by_criticality?: Record<string, number>;
+    current_by_network_availability?: Record<string, number>;
+  };
+  network_candidate_join?: {
+    matched_count?: number;
+    maximum_candidate_distance_m?: number;
+  };
+  spatial_concordance?: {
+    status?: string;
+    return_periods?: Record<string, {
+      inside_domain_count?: number;
+      outside_domain_count?: number;
+      hit_ge_0_01m_count?: number;
+      hit_ge_0_05m_count?: number;
+      miss_ge_0_01m_count?: number;
+    }>;
+    validation_gate?: Record<string, string>;
+  };
+  intervention_catalog?: { status?: string; item_count?: number; claim_boundary?: string };
+}
+
+interface HotspotGeoJson {
+  type: 'FeatureCollection';
+  features: any[];
+}
+
 const stages: Stage[] = [
   {
     key: 'data',
@@ -156,6 +188,68 @@ const pipelineCheckLabels: Record<string, string> = {
   gwm: 'GWM 训练产物',
   validation: '交付结果包',
 };
+
+function buildHotspotMapLayers(
+  stageKey: string,
+  current?: HotspotGeoJson | null,
+  history?: HotspotGeoJson | null,
+) {
+  if (!current?.features?.length || !['data', 'swmm', 'surface', 'validation'].includes(stageKey)) return [];
+  const currentLayer = {
+    name: stageKey === 'validation'
+      ? 'Origen 当前热点 · 模型空间一致性'
+      : 'Origen 当前暴雨内涝热点（590 个）',
+    type: 'categorized' as const,
+    geojsonData: current,
+    category_column: 'criticality',
+    category_colors: {
+      'Very High': '#7f1d1d',
+      High: '#dc2626',
+      Medium: '#f59e0b',
+      Low: '#facc15',
+      Unknown: '#64748b',
+    },
+    category_labels: {
+      'Very High': 'Very High',
+      High: 'High',
+      Medium: 'Medium',
+      Low: 'Low',
+      Unknown: 'Unknown',
+    },
+    legend_title: 'Origen 热点等级',
+    style: { radius: 6, weight: 1.5, color: '#ffffff', opacity: 0.98, fillOpacity: 0.88 },
+    tooltip_fields: [
+      'municipality', 'hotspot_id', 'hotspot_area', 'hotspot_location', 'criticality',
+      'network_available', 'root_cause_category', 'swmm_node_candidate_id',
+      'swmm_node_candidate_distance_m', 'rp005_maximum_depth_m', 'rp100_maximum_depth_m',
+    ],
+    tooltip_labels: {
+      municipality: '市政区', hotspot_id: '热点 ID', hotspot_area: '热点区域',
+      hotspot_location: '热点位置', criticality: '风险等级', network_available: '排水网络可用',
+      root_cause_category: '根因分类', swmm_node_candidate_id: 'SWMM 候选节点',
+      swmm_node_candidate_distance_m: '候选节点距离（m）',
+      rp005_maximum_depth_m: '5 年一遇模型最大深度（m）',
+      rp100_maximum_depth_m: '100 年一遇模型最大深度（m）',
+    },
+  };
+  if (stageKey !== 'data' || !history?.features?.length) return [currentLayer];
+  return [
+    currentLayer,
+    {
+      name: 'ADM 历史热点（上一版 255 个）',
+      type: 'bubble' as const,
+      geojsonData: history,
+      value_column: 'criticality_rank',
+      breaks: [1, 2, 3, 4],
+      color_scheme: 'Greys',
+      legend_title: 'ADM 历史热点（默认关闭）',
+      visible: false,
+      style: { min_radius: 3, max_radius: 6, weight: 1, color: '#475569', opacity: 0.8, fillOpacity: 0.45 },
+      tooltip_fields: ['hotspot_id', 'hotspot_area', 'hotspot_location', 'criticality'],
+      tooltip_labels: { hotspot_id: '热点 ID', hotspot_area: '热点区域', hotspot_location: '热点位置', criticality: '风险等级' },
+    },
+  ];
+}
 
 // These are private, locally generated derivatives of the customer FileGDB.
 // They are input/asset geometry only; no hydraulic variables are encoded here.
@@ -606,8 +700,24 @@ const ABU_EN_REPLACEMENTS: Array<[string, string]> = [
   ['GWM 快速推演', 'GWM rapid rollout'], ['GWM 快速推演控制', 'GWM rapid rollout controls'], ['已训练', 'Trained'], ['可训练', 'Ready to train'],
   ['GWM 从客户 SWMM 动态状态学习下一时刻状态，可用于快速比较动作情景；地图时间轴显示 GWM 节点级 rollout，传统 SWMM/ANUGA 仍作为复核基线。', 'GWM learns next-step states from customer SWMM dynamics for rapid scenario comparison. The map timeline shows node-level GWM rollouts; SWMM and ANUGA remain the verification baseline.'],
   ['模型训练', 'Model training'], ['个训练转移样本', 'training transitions'], ['读取客户私有 SWMM 动态张量', 'Read private customer SWMM dynamic tensors'], ['训练/推演中…', 'Training / rolling out...'], ['训练 GWM 原型', 'Train GWM prototype'], ['尚未训练', 'Not trained'],
+  ['运行规则型情景筛选', 'Run rule-based scenario screening'], ['正在运行 GWM 快速推演…', 'Running GWM rapid rollout...'],
   ['动作情景', 'Action scenario'], ['修改输入后运行快速 rollout', 'Adjust inputs, then run a rapid rollout'], ['推演步数', 'Rollout steps'], ['降雨倍率', 'Rainfall multiplier'], ['出水口水位', 'Outfall level'], ['运行中…', 'Running...'], ['运行 GWM 推演', 'Run GWM rollout'], ['峰值水深', 'Peak water depth'], ['峰值流量', 'Peak flow'], ['节点索引', 'Node index'], ['时间片', 'Time step'], ['GWM 水深', 'GWM water depth'], ['GWM 液压水头', 'GWM hydraulic head'], ['GWM 溢流/积水', 'GWM overflow/flooding'],
   ['验证与交付', 'Validation and delivery'], ['传统模型', 'Traditional models'], ['快速推演层', 'Rapid rollout layer'],
+  ['当前热点', 'Current hotspots'], ['ADM 历史热点', 'ADM historical hotspots'], ['与当前清单分层', 'kept separate from the current inventory'],
+  ['SWMM 候选节点绑定', 'SWMM candidate-node links'], ['仅空间候选', 'spatial candidates only'],
+  ['5 年一遇热点命中', '5-year hotspot concordance'], ['100 年一遇热点命中', '100-year hotspot concordance'],
+  ['100 年一遇漏判清单', '100-year non-hit list'], ['个域内热点', 'in-domain hotspots'],
+  ['热点一致性属于静态位置弱证据；事件水深、积水范围和退水时间验证仍为待补充。', 'Hotspot concordance is weak static location evidence; event depth, flood extent, and recession-time validation remain pending.'],
+  ['输出决策支持报告', 'Open decision-support report'], ['正在生成报告…', 'Generating report...'],
+  ['浏览器阻止了报告窗口，请允许本站点打开新窗口后重试。', 'The browser blocked the report window. Allow pop-ups for this site and try again.'],
+  ['阶段 5 决策支持报告暂不可用', 'The phase 5 decision-support report is unavailable.'],
+  ['阶段 5 决策支持报告生成失败', 'Failed to generate the phase 5 decision-support report.'],
+  ['Origen 当前热点 · 模型空间一致性', 'Origen current hotspots · model spatial concordance'],
+  ['Origen 当前暴雨内涝热点（590 个）', 'Origen current stormwater hotspots (590)'],
+  ['ADM 历史热点（上一版 255 个）', 'ADM historical hotspots (previous inventory, 255)'],
+  ['Origen 热点等级', 'Origen hotspot criticality'], ['风险等级', 'Criticality'], ['排水网络可用', 'Drainage network available'],
+  ['根因分类', 'Root-cause category'], ['SWMM 候选节点', 'SWMM candidate node'], ['候选节点距离（m）', 'Candidate-node distance (m)'],
+  ['5 年一遇模型最大深度（m）', '5-year modeled maximum depth (m)'], ['100 年一遇模型最大深度（m）', '100-year modeled maximum depth (m)'],
   ['决策输出', 'Decision outputs'], ['物理基线', 'Physical baseline'], ['主二维链路', 'Primary 2D chain'], ['复核模型', 'Cross-check model'], ['代理层', 'Surrogate layer'],
   ['输入', 'Inputs'], ['输出', 'Outputs'], ['下一动作', 'Next action'], ['阶段可推进', 'stages available'],
   ['客户规范化管线', 'Normalized customer pipes'], ['客户规范化节点', 'Normalized customer nodes'], ['空间参考', 'Spatial reference'], ['问题', 'issues'],
@@ -909,7 +1019,7 @@ export function translateAbuEnglishText(value: string): string {
   // the English surface honest and compact instead of leaking Han characters
   // or the old, confusing "additional detail" placeholder.
   return translated
-    .replace(/[\u3400-\u9fff]+/g, 'model metadata')
+    .replace(/[\u3400-\u9fff]+/g, 'untranslated model detail')
     .replace(/：/g, ': ')
     .replace(/，/g, ', ')
     .replace(/；/g, '; ')
@@ -1106,7 +1216,7 @@ const scenarioRunStages = [
   ['04', '地图动画回挂', '真实 SWMM 作业完成后接入动态结果图层'],
 ] as const;
 
-function buildCustomerMapUpdate(stageKey: string, ready: boolean, resultReady: boolean, cityCompiled: boolean, cityRuntimeReady: boolean, cityDynamicResultReady: boolean, citySpatialResultReady: boolean, dtmDiagnostic?: CustomerDtmDiagnostic | null, publicCitywide2dDiagnostic?: PublicCitywide2dDiagnostic | null) {
+function buildCustomerMapUpdate(stageKey: string, ready: boolean, resultReady: boolean, cityCompiled: boolean, cityRuntimeReady: boolean, cityDynamicResultReady: boolean, citySpatialResultReady: boolean, dtmDiagnostic?: CustomerDtmDiagnostic | null, publicCitywide2dDiagnostic?: PublicCitywide2dDiagnostic | null, hotspotCurrent?: HotspotGeoJson | null, hotspotHistory?: HotspotGeoJson | null) {
   const keys = stageLayerKeys[stageKey] || stageLayerKeys.data;
     const resultKeys = stageResultLayerKeys[stageKey] || [];
   // The five-feature public proxy sample is not a citywide hydraulic result.
@@ -1137,6 +1247,7 @@ function buildCustomerMapUpdate(stageKey: string, ready: boolean, resultReady: b
   const publicCitywide2dLayers = showPublicCitywide2dResult && publicCitywide2dDiagnostic
     ? buildPublicCitywide2dMapLayers(publicCitywide2dDiagnostic)
     : [];
+  const hotspotLayers = buildHotspotMapLayers(stageKey, hotspotCurrent, hotspotHistory);
   const layers = [
     ...publicCitywide2dLayers,
     ...dtmLayers,
@@ -1176,6 +1287,7 @@ function buildCustomerMapUpdate(stageKey: string, ready: boolean, resultReady: b
         }
         : customerMapLayers[key])
       : []),
+    ...hotspotLayers,
   ];
   // A local 500 m DTM diagnostic must open at its actual footprint. Using the
   // citywide default view (zoom 10) makes a valid result look like a stray
@@ -1183,6 +1295,10 @@ function buildCustomerMapUpdate(stageKey: string, ready: boolean, resultReady: b
   // use a neighborhood-scale zoom; citywide SWMM results keep the default.
   let mapCenter: [number, number] = [24.46, 54.45];
   let mapZoom = 10;
+  if (stageKey === 'data' && hotspotCurrent?.features?.length) {
+    mapCenter = [24.15, 54.4];
+    mapZoom = 8;
+  }
   if (showDtmResult && dtmDiagnostic?.maximum_depth?.features?.length) {
     const coordinates: number[][] = [];
     for (const feature of dtmDiagnostic.maximum_depth.features) {
@@ -1490,6 +1606,9 @@ export default function AbuDhabiFloodWorldModelTab() {
   const [gwmTraining, setGwmTraining] = useState<any | null>(null);
   const [gwmRollout, setGwmRollout] = useState<any | null>(null);
   const [pipelineStatus, setPipelineStatus] = useState<PipelineStatusReceipt | null>(null);
+  const [hotspotCatalog, setHotspotCatalog] = useState<HotspotCatalogReceipt | null>(null);
+  const [hotspotCurrent, setHotspotCurrent] = useState<HotspotGeoJson | null>(null);
+  const [hotspotHistory, setHotspotHistory] = useState<HotspotGeoJson | null>(null);
   const gwmRolloutRef = useRef<any | null>(null);
   const [gwmBusy, setGwmBusy] = useState(false);
   const [gwmError, setGwmError] = useState<string | null>(null);
@@ -1499,6 +1618,8 @@ export default function AbuDhabiFloodWorldModelTab() {
   const [designStormBatchError, setDesignStormBatchError] = useState<string | null>(null);
   const [eventEvidence, setEventEvidence] = useState<any | null>(null);
   const [eventEvidenceLoading, setEventEvidenceLoading] = useState(false);
+  const [phase5ReportLoading, setPhase5ReportLoading] = useState(false);
+  const [phase5ReportError, setPhase5ReportError] = useState<string | null>(null);
   const originalTextNodesRef = useRef(new WeakMap<Text, string>());
   const originalAttributesRef = useRef(new WeakMap<HTMLElement, Record<string, string>>());
   const effectiveStages = useMemo(() => stages.map(stage => {
@@ -1559,11 +1680,66 @@ export default function AbuDhabiFloodWorldModelTab() {
     finally { setGwmBusy(false); }
   };
 
+  const openPhase5Report = async () => {
+    const reportWindow = window.open('', '_blank');
+    if (!reportWindow) {
+      setPhase5ReportError('浏览器阻止了报告窗口，请允许本站点打开新窗口后重试。');
+      return;
+    }
+    const locale = getLocale();
+    const loadingText = locale === 'zh-CN'
+      ? '正在生成阶段 5 决策支持报告…'
+      : 'Generating the phase 5 decision-support report...';
+    reportWindow.document.title = locale === 'zh-CN'
+      ? '阿布扎比城市暴雨内涝世界模型 · 阶段 5 交付报告'
+      : 'Abu Dhabi Urban Pluvial Flood World Model - Phase 5 Delivery Report';
+    reportWindow.document.body.innerHTML = `<p style="font-family:Arial;padding:24px">${loadingText}</p>`;
+    setPhase5ReportLoading(true);
+    setPhase5ReportError(null);
+    try {
+      const response = await fetch('/api/abu-dhabi/flood/validation/report', {
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
+      const html = await response.text();
+      if (!response.ok) throw new Error('阶段 5 决策支持报告暂不可用');
+      reportWindow.document.open();
+      reportWindow.document.write(html);
+      reportWindow.document.close();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '阶段 5 决策支持报告生成失败';
+      setPhase5ReportError(message);
+      reportWindow.document.body.textContent = localizeAbuText(message);
+    } finally {
+      setPhase5ReportLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetch('/api/abu-dhabi/flood/gwm/status', { credentials: 'include', headers: getLocaleHeaders() })
       .then(response => response.ok ? response.json() : null)
       .then(payload => { if (payload) { applyGwmAvailability(payload); if (payload.training) setGwmTraining(payload.training); } })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetch('/api/abu-dhabi/flood/hotspots/catalog', { credentials: 'include', headers: getLocaleHeaders() }),
+      fetch('/api/abu-dhabi/flood/hotspots/map?inventory=current', { credentials: 'include', headers: getLocaleHeaders() }),
+      fetch('/api/abu-dhabi/flood/hotspots/map?inventory=history', { credentials: 'include', headers: getLocaleHeaders() }),
+    ]).then(async ([catalogResponse, currentResponse, historyResponse]) => {
+      const [catalog, current, history] = await Promise.all([
+        catalogResponse.ok ? catalogResponse.json() : null,
+        currentResponse.ok ? currentResponse.json() : null,
+        historyResponse.ok ? historyResponse.json() : null,
+      ]);
+      if (cancelled) return;
+      if (catalog?.status) setHotspotCatalog(catalog);
+      if (current?.type === 'FeatureCollection') setHotspotCurrent(current);
+      if (history?.type === 'FeatureCollection') setHotspotHistory(history);
+    }).catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -1800,7 +1976,7 @@ export default function AbuDhabiFloodWorldModelTab() {
       } else if (selectedKey === 'swmm') {
         mapHandler(buildScenarioResultMapUpdate(scenarioMapPayload));
       } else {
-        mapHandler(buildCustomerMapUpdate(selectedKey, customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady, cityDynamicResultReady, citySpatialResultReady, customerDtmDiagnostic, publicCitywide2dDiagnostic));
+        mapHandler(buildCustomerMapUpdate(selectedKey, customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady, cityDynamicResultReady, citySpatialResultReady, customerDtmDiagnostic, publicCitywide2dDiagnostic, hotspotCurrent, hotspotHistory));
       }
       setMapSent(true);
       return true;
@@ -1812,7 +1988,7 @@ export default function AbuDhabiFloodWorldModelTab() {
       if (publish() || attempts >= 20) window.clearInterval(timer);
     }, 150);
     return () => window.clearInterval(timer);
-  }, [scenarioMapPayload, gwmRollout, selectedKey, customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady, cityDynamicResultReady, citySpatialResultReady, customerDtmDiagnostic, publicCitywide2dDiagnostic]);
+  }, [scenarioMapPayload, gwmRollout, selectedKey, customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady, cityDynamicResultReady, citySpatialResultReady, customerDtmDiagnostic, publicCitywide2dDiagnostic, hotspotCurrent, hotspotHistory]);
 
   const rainfallProfile = useMemo(() => {
     if (scenario.rainfallPattern === 'official_zone_b_ddf_abm') {
@@ -2075,7 +2251,7 @@ export default function AbuDhabiFloodWorldModelTab() {
     setScenarioMapPayload(null);
   };
 
-  const sendStageToMap = (stageKey = selectedKey, ready = customerMapReady, resultReady = swmmResultReady, cityCompiled = cityCompileReady, cityRuntime = cityRuntimeReady, cityDynamicResult = cityDynamicResultReady, citySpatialResult = citySpatialResultReady, dtmDiagnostic = customerDtmDiagnostic, publicCitywide2d = publicCitywide2dDiagnostic) => {
+  const sendStageToMap = (stageKey = selectedKey, ready = customerMapReady, resultReady = swmmResultReady, cityCompiled = cityCompileReady, cityRuntime = cityRuntimeReady, cityDynamicResult = cityDynamicResultReady, citySpatialResult = citySpatialResultReady, dtmDiagnostic = customerDtmDiagnostic, publicCitywide2d = publicCitywide2dDiagnostic, currentHotspots = hotspotCurrent, historyHotspots = hotspotHistory) => {
     const handler = (window as any).__handleMapUpdate;
     if (typeof handler !== 'function') return;
     if (gwmRolloutRef.current && stageKey === 'gwm') {
@@ -2088,7 +2264,7 @@ export default function AbuDhabiFloodWorldModelTab() {
       setMapSent(true);
       return;
     }
-    handler(buildCustomerMapUpdate(stageKey, ready, resultReady, cityCompiled, cityRuntime, cityDynamicResult, citySpatialResult, dtmDiagnostic, publicCitywide2d));
+    handler(buildCustomerMapUpdate(stageKey, ready, resultReady, cityCompiled, cityRuntime, cityDynamicResult, citySpatialResult, dtmDiagnostic, publicCitywide2d, currentHotspots, historyHotspots));
     setMapSent(true);
   };
 
@@ -2126,7 +2302,7 @@ export default function AbuDhabiFloodWorldModelTab() {
         // result. Skipping here avoids duplicate 20 MB first-frame requests.
         return true;
       }
-      handler(buildCustomerMapUpdate(selectedKey, customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady, cityDynamicResultReady, citySpatialResultReady, customerDtmDiagnostic, publicCitywide2dDiagnostic));
+      handler(buildCustomerMapUpdate(selectedKey, customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady, cityDynamicResultReady, citySpatialResultReady, customerDtmDiagnostic, publicCitywide2dDiagnostic, hotspotCurrent, hotspotHistory));
       setMapSent(true);
       return true;
     };
@@ -2137,7 +2313,7 @@ export default function AbuDhabiFloodWorldModelTab() {
       if (publish() || attempts >= 20) window.clearInterval(timer);
     }, 150);
     return () => window.clearInterval(timer);
-  }, [customerDtmDiagnostic, publicCitywide2dDiagnostic, customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady, cityDynamicResultReady, citySpatialResultReady, selectedKey]);
+  }, [customerDtmDiagnostic, publicCitywide2dDiagnostic, hotspotCurrent, hotspotHistory, customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady, cityDynamicResultReady, citySpatialResultReady, selectedKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2223,6 +2399,9 @@ export default function AbuDhabiFloodWorldModelTab() {
       completed: stage.status === 'ready' ? 1 : 0,
       required: 1,
     }));
+  const hotspotInventory = hotspotCatalog?.inventory;
+  const hotspotFiveYear = hotspotCatalog?.spatial_concordance?.return_periods?.['5'];
+  const hotspotHundredYear = hotspotCatalog?.spatial_concordance?.return_periods?.['100'];
 
   return (
     <div className="abu-flood-tab">
@@ -2438,6 +2617,11 @@ export default function AbuDhabiFloodWorldModelTab() {
             <span className={`abu-flood-pill ${stageStatusClass[selectedStage.status]}`}>{localizeAbuText(selectedStage.statusLabel)}</span>
           </div>
           <p className="abu-flood-detail-summary">{localizeAbuText(selectedStage.summary)}</p>
+          {selectedKey === 'data' && hotspotCatalog && <div className="abu-flood-scenario-result-metrics abu-flood-delivery-metrics">
+            <div><span>{localizeAbuText('当前热点')}</span><strong>{Number(hotspotInventory?.current_count || 0).toLocaleString()}</strong><small>ADM / AAM / DRM</small></div>
+            <div><span>{localizeAbuText('ADM 历史热点')}</span><strong>{Number(hotspotInventory?.history_count || 0).toLocaleString()}</strong><small>{localizeAbuText('与当前清单分层')}</small></div>
+            <div><span>{localizeAbuText('SWMM 候选节点绑定')}</span><strong>{Number(hotspotCatalog.network_candidate_join?.matched_count || 0).toLocaleString()}</strong><small>{localizeAbuText('仅空间候选')}</small></div>
+          </div>}
           <div className="abu-flood-io-grid">
             <div><span>{localizeAbuText('输入')}</span>{selectedStage.inputs.map(item => <div key={item}><ArrowRight size={12} />{localizeAbuText(item)}</div>)}</div>
             <div><span>{localizeAbuText('输出')}</span>{selectedStage.outputs.map(item => <div key={item}><CheckCircle2 size={12} />{localizeAbuText(item)}</div>)}</div>
@@ -2447,6 +2631,18 @@ export default function AbuDhabiFloodWorldModelTab() {
             <div><span>{localizeAbuText('结果包文件')}</span><strong>{Number(pipelineStatus.delivery?.derived_artifact_count || 0)}</strong><small>{localizeAbuText('个派生产物')}</small></div>
             <div><span>{localizeAbuText('二维时间片')}</span><strong>{Number(pipelineStatus.stages.find(item => item.key === 'surface')?.metrics?.valid_snapshot_count || 0)}</strong><small>{localizeAbuText('帧全市结果')}</small></div>
             <div><span>{localizeAbuText('GWM pilot')}</span><strong>{Number(pipelineStatus.stages.find(item => item.key === 'gwm')?.metrics?.pilot_count || 0)}</strong><small>{localizeAbuText('个状态模型')}</small></div>
+          </div>}
+          {selectedKey === 'validation' && hotspotCatalog && <div className="abu-flood-scenario-result-metrics abu-flood-delivery-metrics">
+            <div><span>{localizeAbuText('5 年一遇热点命中')}</span><strong>{Number(hotspotFiveYear?.hit_ge_0_01m_count || 0)} / {Number(hotspotFiveYear?.inside_domain_count || 0)}</strong><small>≥ 1 cm</small></div>
+            <div><span>{localizeAbuText('100 年一遇热点命中')}</span><strong>{Number(hotspotHundredYear?.hit_ge_0_01m_count || 0)} / {Number(hotspotHundredYear?.inside_domain_count || 0)}</strong><small>≥ 1 cm</small></div>
+            <div><span>{localizeAbuText('100 年一遇漏判清单')}</span><strong>{Number(hotspotHundredYear?.miss_ge_0_01m_count || 0)}</strong><small>{localizeAbuText('个域内热点')}</small></div>
+          </div>}
+          {selectedKey === 'validation' && hotspotCatalog && <div className="abu-flood-gate-note"><ShieldCheck size={14} />{localizeAbuText('热点一致性属于静态位置弱证据；事件水深、积水范围和退水时间验证仍为待补充。')}</div>}
+          {selectedKey === 'validation' && <div className="abu-flood-scenario-actions">
+            <button className="abu-flood-map-action" type="button" onClick={openPhase5Report} disabled={phase5ReportLoading}>
+              <FileCheck2 size={15} />{phase5ReportLoading ? localizeAbuText('正在生成报告…') : localizeAbuText('输出决策支持报告')}
+            </button>
+            {phase5ReportError && <span className="abu-flood-form-error"><AlertTriangle size={13} />{localizeAbuText(phase5ReportError)}</span>}
           </div>}
         </div>
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import HTMLResponse, JSONResponse
 from starlette.routing import Route
 
 from .helpers import _get_user_from_request, _set_user_context
@@ -224,6 +224,62 @@ async def get_abu_dhabi_april_2024_event_evidence(request: Request) -> JSONRespo
     return JSONResponse(build_april_2024_event_evidence())
 
 
+async def get_abu_dhabi_hotspot_catalog(request: Request) -> JSONResponse:
+    """Serve aggregate metadata from the private Origen-derived bundle."""
+
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        from ..uwm.abu_dhabi_flood.hotspot_inventory import hotspot_catalog_payload
+
+        return JSONResponse(hotspot_catalog_payload())
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+
+
+async def get_abu_dhabi_hotspot_map(request: Request) -> JSONResponse:
+    """Serve normalized hotspot points; raw workbook rows are never exposed."""
+
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    inventory = str(request.query_params.get("inventory") or "current")
+    try:
+        from ..uwm.abu_dhabi_flood.hotspot_inventory import hotspot_geojson_payload
+
+        return JSONResponse(hotspot_geojson_payload(inventory))
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+
+
+async def get_abu_dhabi_phase5_delivery_report(
+    request: Request,
+) -> HTMLResponse | JSONResponse:
+    """Return the printable phase-5 report in the active UI language."""
+
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        from ..abu_dhabi_flood_delivery_report import phase5_report_html
+        from ..i18n import get_language
+
+        return HTMLResponse(
+            phase5_report_html(get_language()),
+            headers={
+                "Content-Disposition": (
+                    'inline; filename="abu_dhabi_flood_phase5_delivery_report.html"'
+                )
+            },
+        )
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+
+
 async def get_abu_dhabi_gwm_status(request: Request) -> JSONResponse:
     user = _get_user_from_request(request)
     if not user:
@@ -341,6 +397,9 @@ def get_abu_dhabi_flood_routes() -> list[Route]:
         Route("/api/abu-dhabi/flood/public-citywide-2d/bootstrap", endpoint=get_abu_dhabi_public_citywide_2d_bootstrap, methods=["GET"]),
         Route("/api/abu-dhabi/flood/public-citywide-2d/timeseries", endpoint=get_abu_dhabi_public_citywide_2d_timeseries, methods=["GET"]),
         Route("/api/abu-dhabi/flood/events/april-2024/evidence", endpoint=get_abu_dhabi_april_2024_event_evidence, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/hotspots/catalog", endpoint=get_abu_dhabi_hotspot_catalog, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/hotspots/map", endpoint=get_abu_dhabi_hotspot_map, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/validation/report", endpoint=get_abu_dhabi_phase5_delivery_report, methods=["GET"]),
         Route("/api/abu-dhabi/flood/gwm/status", endpoint=get_abu_dhabi_gwm_status, methods=["GET"]),
         Route("/api/abu-dhabi/flood/gwm/train", endpoint=train_abu_dhabi_gwm, methods=["POST"]),
         Route("/api/abu-dhabi/flood/gwm/rollout", endpoint=run_abu_dhabi_gwm, methods=["POST"]),
