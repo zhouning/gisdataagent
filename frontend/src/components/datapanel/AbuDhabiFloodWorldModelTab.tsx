@@ -316,20 +316,36 @@ function buildHotspotMapLayers(
 
 // These are private, locally generated derivatives of the customer FileGDB.
 // They are input/asset geometry only; no hydraulic variables are encoded here.
-const customerMapLayers = {
+export const customerMapLayers = {
   extent: {
-    name: '模型输入 · 客户 GDB 雨水管线（规范化全量，238,287 条）', type: 'fgb', fgb: 'abu_dhabi_customer_stormwater_gdb_pipeline_full.fgb',
-    style: { color: '#38bdf8', weight: 1, opacity: 0.25 },
+    name: '模型输入 · 客户 GDB 雨水管线（全量 MVT，238,287 条）', type: 'mvt',
+    tile_url: '/api/tiles/abu-stormwater-pipelines-v1/{z}/{x}/{y}.pbf',
+    metadata_url: '/api/tiles/abu-stormwater-pipelines-v1/metadata.json',
+    layer_id: 'abu-stormwater-pipelines-v1', source_layer: 'stormwater_pipelines',
+    min_zoom: 8, max_zoom: 16, bounds: [54.3058647, 24.2761843, 54.7718883, 24.6097775] as [number, number, number, number],
+    style: { color: '#00e5ff', weight: 3, opacity: 1 },
   },
   network: {
-    name: '模型输入 · 客户 GDB 雨水管线（规范化全量，238,287 条）', type: 'fgb', fgb: 'abu_dhabi_customer_stormwater_gdb_pipeline_full.fgb',
-    style: { color: '#f59e0b', weight: 1.5, opacity: 0.72 },
+    name: '模型输入 · 客户 GDB 雨水管线（全量 MVT，高对比显示，238,287 条）', type: 'mvt',
+    tile_url: '/api/tiles/abu-stormwater-pipelines-v1/{z}/{x}/{y}.pbf',
+    metadata_url: '/api/tiles/abu-stormwater-pipelines-v1/metadata.json',
+    layer_id: 'abu-stormwater-pipelines-v1', source_layer: 'stormwater_pipelines',
+    min_zoom: 8, max_zoom: 16, bounds: [54.3058647, 24.2761843, 54.7718883, 24.6097775] as [number, number, number, number],
+    style: { color: '#00e5ff', weight: 3, opacity: 1 },
     tooltip_fields: ['registered_pipeline_fid', 'source_node_id', 'target_node_id', 'recomputed_length_m', 'diameter_numeric', 'pipe_material', 'pipeline_status'],
     tooltip_labels: { registered_pipeline_fid: '客户管段 FID', source_node_id: '起点拓扑 ID', target_node_id: '终点拓扑 ID', recomputed_length_m: '重算长度（m）', diameter_numeric: '管径候选值', pipe_material: '管材', pipeline_status: '管线状态' },
   },
   nodes: {
-    name: '模型输入 · 管线端点拓扑节点（0.1 m 吸附派生，238,350 个）', type: 'fgb', fgb: 'abu_dhabi_customer_stormwater_topology_nodes_full.fgb',
-    style: { color: '#ecfeff', fillColor: '#06b6d4', radius: 2.5, weight: 0.5, opacity: 0.9, fillOpacity: 0.72 },
+    name: '模型输入 · 管线端点拓扑节点（全量 MVT，默认高亮，238,350 个）', type: 'mvt',
+    tile_url: '/api/tiles/abu-stormwater-nodes-v1/{z}/{x}/{y}.pbf',
+    metadata_url: '/api/tiles/abu-stormwater-nodes-v1/metadata.json',
+    layer_id: 'abu-stormwater-nodes-v1', source_layer: 'stormwater_nodes',
+    min_zoom: 8, max_zoom: 16, bounds: [54.3058643, 24.2761845, 54.7718879, 24.6097773] as [number, number, number, number],
+    style: {
+      color: '#0f172a', fillColor: '#ff2fb3', weight: 0.5,
+      radius: 60, radiusUnits: 'meters', radiusMinPixels: 1.1, radiusMaxPixels: 4.8,
+      opacity: 0.96, fillOpacity: 0.92,
+    },
     tooltip_fields: ['node_id', 'degree', 'endpoint_count', 'component_id', 'candidate_facility_count', 'candidate_facility_roles'],
     tooltip_labels: { node_id: '拓扑节点 ID', degree: '连接度', endpoint_count: '吸附端点数', component_id: '连通分量', candidate_facility_count: '候选设施数', candidate_facility_roles: '候选设施角色' },
   },
@@ -1320,7 +1336,7 @@ const scenarioRunStages = [
   ['04', '地图动画回挂', '真实 SWMM 作业完成后接入动态结果图层'],
 ] as const;
 
-function buildCustomerMapUpdate(stageKey: string, ready: boolean, resultReady: boolean, cityCompiled: boolean, cityRuntimeReady: boolean, cityDynamicResultReady: boolean, citySpatialResultReady: boolean, dtmDiagnostic?: CustomerDtmDiagnostic | null, publicCitywide2dDiagnostic?: PublicCitywide2dDiagnostic | null, hotspotCurrent?: HotspotGeoJson | null, hotspotHistory?: HotspotGeoJson | null) {
+export function buildCustomerMapUpdate(stageKey: string, ready: boolean, resultReady: boolean, cityCompiled: boolean, cityRuntimeReady: boolean, cityDynamicResultReady: boolean, citySpatialResultReady: boolean, dtmDiagnostic?: CustomerDtmDiagnostic | null, publicCitywide2dDiagnostic?: PublicCitywide2dDiagnostic | null, hotspotCurrent?: HotspotGeoJson | null, hotspotHistory?: HotspotGeoJson | null) {
   const keys = stageLayerKeys[stageKey] || stageLayerKeys.data;
     const resultKeys = stageResultLayerKeys[stageKey] || [];
   // The five-feature public proxy sample is not a citywide hydraulic result.
@@ -1399,10 +1415,6 @@ function buildCustomerMapUpdate(stageKey: string, ready: boolean, resultReady: b
   // use a neighborhood-scale zoom; citywide SWMM results keep the default.
   let mapCenter: [number, number] = [24.46, 54.45];
   let mapZoom = 10;
-  if (stageKey === 'data' && hotspotCurrent?.features?.length) {
-    mapCenter = [24.15, 54.4];
-    mapZoom = 8;
-  }
   if (showDtmResult && dtmDiagnostic?.maximum_depth?.features?.length) {
     const coordinates: number[][] = [];
     for (const feature of dtmDiagnostic.maximum_depth.features) {
@@ -2440,13 +2452,25 @@ export default function AbuDhabiFloodWorldModelTab() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/user/files', { credentials: 'include', headers: getLocaleHeaders() })
-      .then(response => response.ok ? response.json() : [])
-      .then(files => {
+    Promise.all([
+      fetch('/api/user/files', { credentials: 'include', headers: getLocaleHeaders() })
+        .then(response => response.ok ? response.json() : [])
+        .catch(() => []),
+      fetch(customerMapLayers.network.metadata_url, { credentials: 'include', headers: getLocaleHeaders() })
+        .then(response => response.ok ? response.json() : null)
+        .catch(() => null),
+      fetch(customerMapLayers.nodes.metadata_url, { credentials: 'include', headers: getLocaleHeaders() })
+        .then(response => response.ok ? response.json() : null)
+        .catch(() => null),
+    ])
+      .then(([files, pipelineTileMetadata, nodeTileMetadata]) => {
         if (cancelled) return;
         const names = new Set(Array.isArray(files) ? files.map((file: any) => String(file.name || '')) : []);
-        const ready = names.has('abu_dhabi_customer_stormwater_gdb_pipeline_full.fgb')
+        const fgbReady = names.has('abu_dhabi_customer_stormwater_gdb_pipeline_full.fgb')
           && names.has('abu_dhabi_customer_stormwater_topology_nodes_full.fgb');
+        const mvtReady = Number(pipelineTileMetadata?.feature_count || 0) > 0
+          && Number(nodeTileMetadata?.feature_count || 0) > 0;
+        const ready = fgbReady || mvtReady;
         const resultReady = names.has('abu_dhabi_swmm_public_proxy_pilot_nodes.geojson')
           && names.has('abu_dhabi_swmm_public_proxy_pilot_links.geojson');
         const cityCompiled = names.has('abu_dhabi_city_swmm_full_compile_summary.json');

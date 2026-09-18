@@ -7,9 +7,10 @@ Lifecycle: GeoJSON import → temp PostGIS table → tile queries → expiry cle
 import os
 import uuid
 import hashlib
+import re
+from datetime import datetime
 from typing import Optional
 
-import mercantile
 import geopandas as gpd
 from sqlalchemy import text
 
@@ -39,10 +40,19 @@ def create_tile_layer(
     geojson_path: str,
     user_id: str,
     layer_name: str = "default",
+    *,
+    layer_id: Optional[str] = None,
+    table_name: Optional[str] = None,
+    expires_at: Optional[datetime] = None,
 ) -> dict:
-    """Import a GeoJSON file into a temporary PostGIS table for MVT serving.
+    """Import a GeoPandas-readable vector file into PostGIS for MVT serving.
 
     Returns metadata dict: {layer_id, table_name, srid, bounds, feature_count, columns}.
+
+    By default the layer keeps the existing short-lived behavior. Stable
+    ``layer_id``/``table_name`` values plus an explicit ``expires_at`` are used
+    by private, locally managed customer map assets that must survive process
+    restarts and the normal 24-hour scratch-layer cleanup.
     """
     gdf = gpd.read_file(geojson_path)
     if gdf.empty:
@@ -56,8 +66,13 @@ def create_tile_layer(
     # Generate unique table name
     uid_hash = hashlib.md5(user_id.encode()).hexdigest()[:4]
     short_id = uuid.uuid4().hex[:8]
-    layer_id = short_id
-    table_name = f"_mvt_{uid_hash}_{short_id}"
+    layer_id = layer_id or short_id
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", layer_id):
+        raise ValueError("layer_id must contain only letters, numbers, underscores, or hyphens")
+    if table_name is None:
+        table_name = f"_mvt_{uid_hash}_{short_id}"
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,62}", table_name):
+        raise ValueError("table_name is not a safe PostgreSQL identifier")
 
     # Select attribute columns (non-geometry, limited count)
     geom_col = gdf.geometry.name
@@ -99,17 +114,33 @@ def create_tile_layer(
     }
 
     with engine.connect() as conn:
+        # Stable private layers are deliberately replaceable: rebuilding the
+        # same customer asset updates its table and metadata without forcing
+        # the frontend to learn a new random URL.
         conn.execute(text("""
             INSERT INTO agent_mvt_layers
                 (layer_id, table_name, owner_username, layer_name, srid,
-                 feature_count, bounds, columns, source_file)
+                 feature_count, bounds, columns, source_file, expires_at)
             VALUES
                 (:layer_id, :table_name, :owner_username, :layer_name, :srid,
-                 :feature_count, :bounds, :columns, :source_file)
+                 :feature_count, :bounds, :columns, :source_file,
+                 COALESCE(:expires_at, NOW() + INTERVAL '24 hours'))
+            ON CONFLICT (layer_id) DO UPDATE SET
+                table_name = EXCLUDED.table_name,
+                owner_username = EXCLUDED.owner_username,
+                layer_name = EXCLUDED.layer_name,
+                srid = EXCLUDED.srid,
+                feature_count = EXCLUDED.feature_count,
+                bounds = EXCLUDED.bounds,
+                columns = EXCLUDED.columns,
+                source_file = EXCLUDED.source_file,
+                created_at = NOW(),
+                expires_at = EXCLUDED.expires_at
         """), {
             **meta,
             "bounds": bounds,
             "columns": safe_cols,
+            "expires_at": expires_at,
         })
         conn.commit()
 

@@ -7,6 +7,7 @@ import json
 import os
 import tempfile
 import unittest
+from datetime import datetime
 from unittest.mock import patch, MagicMock, AsyncMock, PropertyMock
 
 
@@ -129,6 +130,56 @@ class TestCreateTileLayer(unittest.TestCase):
 
             with self.assertRaises(ValueError):
                 create_tile_layer(path, "testuser")
+
+    @patch("data_agent.tile_server.get_engine")
+    def test_create_stable_tile_layer_uses_requested_identity_and_expiry(self, mock_engine):
+        from data_agent.tile_server import create_tile_layer, _layer_cache
+
+        engine = MagicMock()
+        mock_engine.return_value = engine
+        conn = MagicMock()
+        engine.connect.return_value.__enter__ = MagicMock(return_value=conn)
+        engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        expires_at = datetime(2099, 12, 31, 23, 59, 59)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            geojson_path = _make_geojson_file(tmpdir, num_features=2)
+            with patch("geopandas.GeoDataFrame.to_postgis") as mock_postgis:
+                meta = create_tile_layer(
+                    geojson_path,
+                    "admin",
+                    "stormwater_pipelines",
+                    layer_id="abu-stormwater-pipelines-v1",
+                    table_name="_mvt_abu_stormwater_pipelines_v1",
+                    expires_at=expires_at,
+                )
+
+        self.assertEqual(meta["layer_id"], "abu-stormwater-pipelines-v1")
+        self.assertEqual(meta["table_name"], "_mvt_abu_stormwater_pipelines_v1")
+        mock_postgis.assert_called_once()
+        registration = conn.execute.call_args_list[-1]
+        self.assertIn("ON CONFLICT (layer_id) DO UPDATE", str(registration.args[0]))
+        self.assertEqual(registration.args[1]["expires_at"], expires_at)
+        _layer_cache.pop(meta["layer_id"], None)
+
+    @patch("data_agent.tile_server.get_engine")
+    def test_create_stable_tile_layer_rejects_unsafe_identifiers(self, mock_engine):
+        from data_agent.tile_server import create_tile_layer
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            geojson_path = _make_geojson_file(tmpdir, num_features=1)
+            with self.assertRaises(ValueError):
+                create_tile_layer(
+                    geojson_path,
+                    "admin",
+                    layer_id="bad/id",
+                )
+            with self.assertRaises(ValueError):
+                create_tile_layer(
+                    geojson_path,
+                    "admin",
+                    table_name='bad";drop table x',
+                )
 
 
 class TestGetLayerMetadata(unittest.TestCase):

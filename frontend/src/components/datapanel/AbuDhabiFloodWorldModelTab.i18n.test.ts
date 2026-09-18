@@ -1,7 +1,33 @@
 import { describe, expect, it } from 'vitest';
-import { translateAbuEnglishText } from './AbuDhabiFloodWorldModelTab';
+import {
+  buildCustomerMapUpdate,
+  customerMapLayers,
+  translateAbuEnglishText,
+} from './AbuDhabiFloodWorldModelTab';
 
 describe('Abu Dhabi flood world-model English presentation', () => {
+  it('publishes stage-1 customer pipes and topology nodes as visible MVT layers', () => {
+    const update = buildCustomerMapUpdate(
+      'data', true, false, false, false, false, false,
+      null, null,
+      { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: null, properties: {} }] },
+      null,
+    );
+    const pipelines = update.layers.find((layer: any) => (
+      layer.layer_id === 'abu-stormwater-pipelines-v1'
+    )) as any;
+    const nodes = update.layers.find((layer: any) => (
+      layer.layer_id === 'abu-stormwater-nodes-v1'
+    )) as any;
+
+    expect(customerMapLayers.network.type).toBe('mvt');
+    expect(pipelines?.type).toBe('mvt');
+    expect(nodes?.type).toBe('mvt');
+    expect(nodes?.visible).not.toBe(false);
+    expect(update.center).toEqual([24.46, 54.45]);
+    expect(update.zoom).toBe(10);
+  });
+
   it('translates the core workflow and scenario controls without Han characters', () => {
     const text = translateAbuEnglishText(
       '模型输入降雨数据 · 全市连续网络（单个 SWMM 作业） · 在线公开来源降雨数据（Open-Meteo）',

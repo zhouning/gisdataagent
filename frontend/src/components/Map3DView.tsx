@@ -250,6 +250,9 @@ export default function Map3DView({
       const fetchedGeojson: Record<string, any> = {};
       const fetchedFgb: Record<string, any> = {};
       for (const layer of layers) {
+        // Do not download large optional reference assets until the user
+        // explicitly enables them in the layer control.
+        if (layer.visible === false && layerVisibility[layer.name] !== true) continue;
         // MVT layers don't need pre-fetched data
         if (layer.type === 'mvt') continue;
 
@@ -303,7 +306,7 @@ export default function Map3DView({
       setLayerData(newData);
     };
     if (layers.length > 0) fetchLayers();
-  }, [layers]);
+  }, [layers, layerVisibility]);
 
   const onHover = useCallback((info: any) => {
     if (info.object) {
@@ -355,12 +358,31 @@ export default function Map3DView({
 
       // MVT vector tile layer — no pre-fetched data needed
       if (layer.type === 'mvt' && layer.tile_url) {
+        const pointRadius = Number(layer.style?.radius || 4);
+        const pointRadiusUnits = layer.style?.radiusUnits === 'meters' ? 'meters' : 'pixels';
+        const pointRadiusMinPixels = Number(
+          layer.style?.radiusMinPixels
+          ?? (pointRadiusUnits === 'meters' ? 1 : Math.max(2, pointRadius)),
+        );
+        const pointRadiusMaxPixels = Number(
+          layer.style?.radiusMaxPixels
+          ?? (pointRadiusUnits === 'meters' ? 8 : Math.max(8, pointRadius * 1.75)),
+        );
         return new MVTLayer({
           id: `layer-${idx}-${layer.name}`,
           data: layer.tile_url,
           getFillColor: fillColor,
           getLineColor: lineColor,
-          lineWidthMinPixels: 1,
+          getLineWidth: Number(layer.style?.weight || 1),
+          lineWidthUnits: 'pixels',
+          lineWidthMinPixels: Math.max(0.5, Number(layer.style?.weight || 1)),
+          getPointRadius: pointRadius,
+          pointRadiusUnits,
+          pointRadiusMinPixels,
+          pointRadiusMaxPixels,
+          stroked: true,
+          filled: true,
+          parameters: { depthTest: false },
           minZoom: layer.min_zoom,
           maxZoom: layer.max_zoom,
           loadOptions: {
