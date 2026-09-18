@@ -619,7 +619,9 @@ def test_public_citywide_2d_resolves_return_period_batch_root(monkeypatch, tmp_p
     assert scenario_service._public_citywide_2d_root() == hundred_year_root.resolve()
 
 
-def test_pipeline_status_reports_five_functional_stages_from_derived_artifacts(monkeypatch):
+def test_pipeline_status_keeps_underpowered_external_validation_partial(monkeypatch):
+    import data_agent.uwm.abu_dhabi_flood.external_validation as external_validation
+
     monkeypatch.setattr(
         scenario_service,
         "_pipeline_asset",
@@ -670,13 +672,39 @@ def test_pipeline_status_reports_five_functional_stages_from_derived_artifacts(m
             "functional_probe": {"status": "completed", "run_id": "gwm-test"},
         },
     )
+    monkeypatch.setattr(
+        external_validation,
+        "external_validation_payload",
+        lambda: {
+            "status": "completed",
+            "strict_confirmatory": {
+                "event_count": 4,
+                "target_event_count": 5,
+                "target_sample_size_reached": False,
+                "receipt": {"integrity_verified": True},
+            },
+            "supplementary": {
+                "event_count": 2,
+                "target_event_count": 5,
+                "receipt": {"integrity_verified": True},
+            },
+            "cross_cohort": {"independent_event_count": 6},
+            "engineering_admission": {"admitted": False},
+        },
+    )
 
     payload = pipeline_status_payload()
-    assert payload["status"] == "ready"
-    assert payload["ready_stage_count"] == 5
+    assert payload["status"] == "partial"
+    assert payload["ready_stage_count"] == 4
     assert [stage["key"] for stage in payload["stages"]] == [
         "data", "swmm", "surface", "gwm", "validation"
     ]
+    assert payload["delivery"]["status"] == "ready"
+    assert payload["delivery"]["engineering_admitted"] is False
+    validation = payload["stages"][-1]
+    assert validation["status"] == "partial"
+    assert validation["metrics"]["confirmatory_event_count"] == 4
+    assert validation["metrics"]["independent_external_event_count"] == 6
 
 
 def test_gwm_status_bridge_adds_functional_probe(monkeypatch):

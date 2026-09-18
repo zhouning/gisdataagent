@@ -255,6 +255,23 @@ async def get_abu_dhabi_hotspot_map(request: Request) -> JSONResponse:
         return JSONResponse({"error": str(error)}, status_code=409)
 
 
+async def get_abu_dhabi_gwm_external_validation(request: Request) -> JSONResponse:
+    """Serve a sanitized audit ledger for the frozen external-validation cohorts."""
+
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        from ..uwm.abu_dhabi_flood.external_validation import (
+            external_validation_payload,
+        )
+
+        return JSONResponse(external_validation_payload())
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+
+
 async def get_abu_dhabi_phase5_delivery_report(
     request: Request,
 ) -> HTMLResponse | JSONResponse:
@@ -399,6 +416,11 @@ def get_abu_dhabi_flood_routes() -> list[Route]:
         Route("/api/abu-dhabi/flood/events/april-2024/evidence", endpoint=get_abu_dhabi_april_2024_event_evidence, methods=["GET"]),
         Route("/api/abu-dhabi/flood/hotspots/catalog", endpoint=get_abu_dhabi_hotspot_catalog, methods=["GET"]),
         Route("/api/abu-dhabi/flood/hotspots/map", endpoint=get_abu_dhabi_hotspot_map, methods=["GET"]),
+        Route(
+            "/api/abu-dhabi/flood/gwm/external-validation",
+            endpoint=get_abu_dhabi_gwm_external_validation,
+            methods=["GET"],
+        ),
         Route("/api/abu-dhabi/flood/validation/report", endpoint=get_abu_dhabi_phase5_delivery_report, methods=["GET"]),
         Route("/api/abu-dhabi/flood/gwm/status", endpoint=get_abu_dhabi_gwm_status, methods=["GET"]),
         Route("/api/abu-dhabi/flood/gwm/train", endpoint=train_abu_dhabi_gwm, methods=["POST"]),

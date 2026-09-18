@@ -317,6 +317,9 @@ def pipeline_status_payload() -> dict[str, Any]:
     )
     surface_assets, surface_metrics = _citywide_2d_artifacts()
     gwm = _gwm_pipeline_status()
+    from .uwm.abu_dhabi_flood.external_validation import external_validation_payload
+
+    external_validation = external_validation_payload()
 
     data_ready = all(item["available"] for item in data_assets)
     swmm_ready = all(item["available"] for item in swmm_assets)
@@ -381,18 +384,66 @@ def pipeline_status_payload() -> dict[str, Any]:
     ]
     delivery_ready = all(stage["status"] == "ready" for stage in stages)
     delivery_artifacts = [item for stage in stages for item in stage["artifacts"]]
+    strict_validation = external_validation.get("strict_confirmatory") or {}
+    supplementary_validation = external_validation.get("supplementary") or {}
+    engineering_admission = external_validation.get("engineering_admission") or {}
+    strict_receipt_ready = bool(
+        (strict_validation.get("receipt") or {}).get("integrity_verified")
+    )
+    supplementary_receipt_ready = bool(
+        (supplementary_validation.get("receipt") or {}).get("integrity_verified")
+    )
+    strict_target_reached = bool(strict_validation.get("target_sample_size_reached"))
+    engineering_admitted = engineering_admission.get("admitted") is True
+    validation_artifacts = [
+        *delivery_artifacts,
+        {"key": "strict_confirmatory_receipt", "available": strict_receipt_ready},
+        {
+            "key": "supplementary_validation_receipt",
+            "available": supplementary_receipt_ready,
+        },
+        {"key": "strict_confirmatory_event_target", "available": strict_target_reached},
+        {"key": "engineering_admission_certificate", "available": engineering_admitted},
+    ]
+    validation_ready = bool(
+        delivery_ready
+        and strict_receipt_ready
+        and supplementary_receipt_ready
+        and strict_target_reached
+        and engineering_admitted
+    )
     stages.append(
         {
             "key": "validation",
-            "status": "ready" if delivery_ready else "partial",
-            "completed_artifacts": sum(item["available"] for item in delivery_artifacts),
-            "required_artifacts": len(delivery_artifacts),
+            "status": "ready" if validation_ready else "partial",
+            "completed_artifacts": sum(item["available"] for item in validation_artifacts),
+            "required_artifacts": len(validation_artifacts),
             "metrics": {
                 "swmm_result_layers": 2,
                 "surface_timeline_frames": surface_metrics["valid_snapshot_count"],
                 "gwm_pilot_count": int(gwm.get("pilot_count") or 0),
+                "confirmatory_event_count": int(
+                    strict_validation.get("event_count") or 0
+                ),
+                "confirmatory_target_event_count": int(
+                    strict_validation.get("target_event_count") or 0
+                ),
+                "supplementary_event_count": int(
+                    supplementary_validation.get("event_count") or 0
+                ),
+                "supplementary_target_event_count": int(
+                    supplementary_validation.get("target_event_count") or 0
+                ),
+                "independent_external_event_count": int(
+                    (external_validation.get("cross_cohort") or {}).get(
+                        "independent_event_count"
+                    )
+                    or 0
+                ),
+                "cross_sensor_metrics_pooled": False,
+                "engineering_admitted": engineering_admitted,
             },
-            "artifacts": delivery_artifacts,
+            "artifacts": validation_artifacts,
         }
     )
     checks = [
@@ -404,9 +455,10 @@ def pipeline_status_payload() -> dict[str, Any]:
         }
         for stage in stages
     ]
+    pipeline_ready = all(stage["status"] == "ready" for stage in stages)
     return {
         "schema": "gwm.abu_dhabi_flood.pipeline_status.v1",
-        "status": "ready" if delivery_ready else "partial",
+        "status": "ready" if pipeline_ready else "partial",
         "ready_stage_count": sum(stage["status"] == "ready" for stage in stages),
         "stage_count": len(stages),
         "stages": stages,
@@ -415,6 +467,30 @@ def pipeline_status_payload() -> dict[str, Any]:
             "status": "ready" if delivery_ready else "partial",
             "derived_artifact_count": len(delivery_artifacts),
             "surface_product": surface_metrics.get("surface_product"),
+            "engineering_admitted": engineering_admitted,
+        },
+        "external_validation": {
+            "status": external_validation.get("status"),
+            "strict_confirmatory_event_count": int(
+                strict_validation.get("event_count") or 0
+            ),
+            "strict_confirmatory_target_event_count": int(
+                strict_validation.get("target_event_count") or 0
+            ),
+            "supplementary_event_count": int(
+                supplementary_validation.get("event_count") or 0
+            ),
+            "supplementary_target_event_count": int(
+                supplementary_validation.get("target_event_count") or 0
+            ),
+            "independent_event_count": int(
+                (external_validation.get("cross_cohort") or {}).get(
+                    "independent_event_count"
+                )
+                or 0
+            ),
+            "performance_metrics_pooled": False,
+            "engineering_admitted": engineering_admitted,
         },
     }
 

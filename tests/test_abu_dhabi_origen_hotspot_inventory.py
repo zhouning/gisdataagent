@@ -290,5 +290,6 @@ def test_phase5_report_defaults_to_english_and_contains_hotspot_evidence(
 
     assert "Phase 5 Delivery Report" in html
     assert "Current hotspots" in html
-    assert "Observation validation still pending" in html
+    assert "External GWM validation" in html
+    assert "NOT ADMITTED" in html
     assert not any("\u3400" <= character <= "\u9fff" for character in html)

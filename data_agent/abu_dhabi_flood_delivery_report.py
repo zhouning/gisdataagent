@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from html import escape
 from typing import Any
 
+from .uwm.abu_dhabi_flood.external_validation import external_validation_payload
 from .uwm.abu_dhabi_flood.hotspot_inventory import hotspot_catalog_payload
 
 
@@ -15,7 +16,7 @@ def phase5_report_payload() -> dict[str, Any]:
     concordance = catalog.get("spatial_concordance") or {}
     periods = concordance.get("return_periods") or {}
     return {
-        "schema": "gwm.abu_dhabi_flood.phase5_delivery_report.v1",
+        "schema": "gwm.abu_dhabi_flood.phase5_delivery_report.v2",
         "generated_at_utc": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "hotspot_inventory": inventory,
         "network_candidate_join": catalog.get("network_candidate_join") or {},
@@ -25,6 +26,7 @@ def phase5_report_payload() -> dict[str, Any]:
             "hundred_year": periods.get("100") or {},
             "validation_gate": concordance.get("validation_gate") or {},
         },
+        "external_validation": external_validation_payload(),
         "claim_boundary": (
             "Origen hotspot points are static weak spatial evidence. They are not event-specific "
             "observed depth, flood-extent, timing, or recession ground truth, and "
@@ -41,6 +43,13 @@ def _metric(value: Any) -> str:
         return "0"
 
 
+def _score(value: Any) -> str:
+    try:
+        return f"{float(value):.3f}"
+    except (TypeError, ValueError):
+        return "—"
+
+
 def phase5_report_html(language: str | None = None) -> str:
     """Render a printable report; English is the safe/default demo language."""
 
@@ -51,6 +60,17 @@ def phase5_report_html(language: str | None = None) -> str:
     hundred = report["spatial_concordance"]["hundred_year"]
     node_join = report["network_candidate_join"]
     interventions = report["intervention_catalog"]
+    external = report["external_validation"]
+    strict = external.get("strict_confirmatory") or {}
+    supplementary = external.get("supplementary") or {}
+    cross_cohort = external.get("cross_cohort") or {}
+    engineering = external.get("engineering_admission") or {}
+    physics_metrics = (strict.get("physics_emulation") or {}).get("gated_hybrid_gwm") or {}
+    satellite_metrics = strict.get("sentinel2_observation") or {}
+    satellite_physics = satellite_metrics.get("physics") or {}
+    satellite_gwm = satellite_metrics.get("gated_hybrid_gwm") or {}
+    strict_receipt = strict.get("receipt") or {}
+    supplementary_receipt = supplementary.get("receipt") or {}
     if zh:
         labels = {
             "lang": "zh-CN",
@@ -67,8 +87,36 @@ def phase5_report_html(language: str | None = None) -> str:
             "hundred": "100 年一遇 ≥1 cm",
             "miss": "100 年一遇域内未命中",
             "denominator": "域内热点",
-            "pending": "仍待完成的观测验证",
-            "pending_items": "事件水深、积水范围、发生时间和退水时间",
+            "external": "GWM 外部验证",
+            "strict": "严格确认性覆盖",
+            "small_n": "小样本；预声明目标未满足",
+            "supplementary": "补充探索性覆盖",
+            "underpowered": "样本不足；Landsat 与 Sentinel-1 分源评估",
+            "independent": "跨队列独立事件",
+            "disjoint": "两批事件无重叠",
+            "physics_iou": "GWM 对物理仿真 IoU",
+            "sentinel_iou": "Sentinel-2 宏观 IoU",
+            "physics": "物理",
+            "gwm": "GWM",
+            "no_pool": (
+                "严格确认性与补充探索性队列保持分层；Landsat、Sentinel-1 与 "
+                "Sentinel-2 指标不得跨传感器合并。"
+            ),
+            "audit": "审计回执",
+            "strict_hash": "严格确认性回执 SHA-256",
+            "supplementary_hash": "补充验证回执 SHA-256",
+            "verified": "规范化内容哈希已校验",
+            "admission": "工程准入",
+            "not_admitted": "未准入",
+            "admission_reason": (
+                "严格确认性事件仅 4/5，且遥感水体掩膜不是实测水深；"
+                "这些证据不能授权工程预测或运行替代。"
+            ),
+            "remaining": "剩余证据缺口",
+            "remaining_items": (
+                "补足第 5 个通过冻结覆盖门的严格确认事件，并取得独立实测"
+                "水深、范围、时序与退水校准证据。"
+            ),
             "action": "建议下一步",
             "action_text": (
                 "优先复核 100 年一遇仍未命中的域内热点，并将已规划干预与正式工程"
@@ -92,8 +140,39 @@ def phase5_report_html(language: str | None = None) -> str:
             "hundred": "100-year result at or above 1 cm",
             "miss": "100-year in-domain non-hits",
             "denominator": "in-domain hotspots",
-            "pending": "Observation validation still pending",
-            "pending_items": "Event depth, flood extent, occurrence time and recession time",
+            "external": "External GWM validation",
+            "strict": "Strict confirmatory coverage",
+            "small_n": "Small-n; preregistered target not reached",
+            "supplementary": "Supplementary exploratory coverage",
+            "underpowered": "Underpowered; Landsat and Sentinel-1 assessed separately",
+            "independent": "Independent events across cohorts",
+            "disjoint": "No event overlap between cohorts",
+            "physics_iou": "GWM-to-physics IoU",
+            "sentinel_iou": "Sentinel-2 macro IoU",
+            "physics": "Physics",
+            "gwm": "GWM",
+            "no_pool": (
+                "The strict confirmatory and supplementary exploratory cohorts remain "
+                "separate. Landsat, Sentinel-1 and Sentinel-2 metrics are not pooled "
+                "across sensors."
+            ),
+            "audit": "Audit receipts",
+            "strict_hash": "Strict confirmatory receipt SHA-256",
+            "supplementary_hash": "Supplementary receipt SHA-256",
+            "verified": "Canonical content hash verified",
+            "admission": "Engineering admission",
+            "not_admitted": "NOT ADMITTED",
+            "admission_reason": (
+                "Only 4 of 5 strict confirmatory events passed the frozen coverage gate, "
+                "and satellite water masks are not observed depth. This evidence cannot "
+                "authorize engineering prediction or operational replacement."
+            ),
+            "remaining": "Remaining evidence gap",
+            "remaining_items": (
+                "Add a fifth strict event that passes the frozen coverage gate, plus "
+                "independent observed depth, extent, timing and recession evidence for "
+                "calibration."
+            ),
             "action": "Recommended next step",
             "action_text": (
                 "Review the in-domain hotspots not hit by the 100-year result first. "
@@ -111,6 +190,17 @@ def phase5_report_html(language: str | None = None) -> str:
             "干预文字也不能证明水力改善量。"
         )
     )
+    strict_hash = escape(str(strict_receipt.get("declared_sha256") or "unavailable"))
+    supplementary_hash = escape(
+        str(supplementary_receipt.get("declared_sha256") or "unavailable")
+    )
+    receipts_verified = str(
+        bool(
+            strict_receipt.get("integrity_verified")
+            and supplementary_receipt.get("integrity_verified")
+        )
+    ).lower()
+    admission_label = labels["not_admitted"] if not engineering.get("admitted") else "ADMITTED"
     return f"""<!doctype html>
 <html lang="{labels["lang"]}">
 <head>
@@ -127,6 +217,7 @@ h2 {{ margin-top: 28px; border-bottom: 2px solid #0f87a8; padding-bottom: 6px; }
 .card {{ border: 1px solid #cddde5; border-left: 4px solid #0f87a8; padding: 13px; }}
 .card strong {{ display: block; font-size: 24px; }}
 .notice {{ padding: 14px; border-left: 4px solid #d97706; background: #fff8e6; }}
+.notice.critical {{ border-left-color: #b91c1c; background: #fff1f2; }}
 .meta {{ font-family: monospace; color: #607789; }}
 </style>
 </head>
@@ -162,7 +253,34 @@ h2 {{ margin-top: 28px; border-bottom: 2px solid #0f87a8; padding-bottom: 6px; }
 <div class="card"><span>{escape(labels["miss"])}</span>
 <strong>{_metric(hundred.get("miss_ge_0_01m_count"))}</strong></div>
 </section>
-<h2>{escape(labels["pending"])}</h2><p>{escape(labels["pending_items"])}</p>
+<h2>{escape(labels["external"])}</h2>
+<section class="grid">
+<div class="card"><span>{escape(labels["strict"])}</span>
+<strong>{_metric(strict.get("event_count"))} / {_metric(strict.get("target_event_count"))}</strong>
+<small>{escape(labels["small_n"])}</small></div>
+<div class="card"><span>{escape(labels["supplementary"])}</span>
+<strong>{_metric(supplementary.get("event_count"))} /
+{_metric(supplementary.get("target_event_count"))}</strong>
+<small>{escape(labels["underpowered"])}</small></div>
+<div class="card"><span>{escape(labels["independent"])}</span>
+<strong>{_metric(cross_cohort.get("independent_event_count"))}</strong>
+<small>{escape(labels["disjoint"])}</small></div>
+<div class="card"><span>{escape(labels["physics_iou"])}</span>
+<strong>{_score(physics_metrics.get("macro_physics_binary_iou"))}</strong>
+<small>gated hybrid GWM</small></div>
+<div class="card"><span>{escape(labels["sentinel_iou"])}</span>
+<strong>{escape(labels["physics"])} {_score(satellite_physics.get("macro_iou"))}</strong>
+<small>{escape(labels["gwm"])} {_score(satellite_gwm.get("macro_iou"))}</small></div>
+</section>
+<div class="notice">{escape(labels["no_pool"])}</div>
+<h2>{escape(labels["audit"])}</h2>
+<p class="meta">{escape(labels["strict_hash"])}: {strict_hash}<br>
+{escape(labels["supplementary_hash"])}: {supplementary_hash}<br>
+{escape(labels["verified"])}: {receipts_verified}</p>
+<h2>{escape(labels["admission"])}</h2>
+<div class="notice critical"><strong>{escape(admission_label)}</strong><br>
+{escape(labels["admission_reason"])}</div>
+<h2>{escape(labels["remaining"])}</h2><p>{escape(labels["remaining_items"])}</p>
 <h2>{escape(labels["action"])}</h2><p>{escape(labels["action_text"])}</p>
 <h2>{escape(labels["boundary"])}</h2><div class="notice">{boundary}</div>
 </main></body>

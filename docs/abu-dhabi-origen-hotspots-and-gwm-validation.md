@@ -44,6 +44,7 @@ serve normalized data only:
 - `/api/abu-dhabi/flood/hotspots/catalog`
 - `/api/abu-dhabi/flood/hotspots/map?inventory=current`
 - `/api/abu-dhabi/flood/hotspots/map?inventory=history`
+- `/api/abu-dhabi/flood/gwm/external-validation`
 - `/api/abu-dhabi/flood/validation/report`
 
 ## Batch 1 acceptance snapshot
@@ -62,8 +63,28 @@ identities.
 
 Within the available model domain, 187 of 224 hotspots intersect at least 1 cm
 in the 5-year result and 215 of 224 do so in the 100-year result. These are
-static location concordance figures only; event depth, extent, timing, and
-recession validation remain pending.
+static location concordance figures only. They are shown beside, but never
+substituted for, the event-level external-validation cohorts described below.
+
+## External-validation serving contract
+
+The authenticated external-validation endpoint reads the frozen confirmatory
+and supplementary receipts from private local storage. It verifies each
+receipt's declared canonical hash, computes a file hash, checks within- and
+cross-cohort event duplication, and publishes a path-free aggregate ledger.
+Raw event IDs, source paths, and prediction arrays are not returned.
+
+The 2026-09-18 ledger contains four strict Sentinel-2 confirmatory events out
+of the preregistered target of five and two source-specific supplementary
+events out of five. The event sets do not overlap, so six independent events
+have been evaluated, but performance metrics are not pooled across the
+Sentinel-2, Landsat, and Sentinel-1 observation contracts. The resulting
+engineering-admission flag remains `false`.
+
+Use `ABU_DHABI_GWM_CONFIRMATORY_RECEIPT` and
+`ABU_DHABI_GWM_SUPPLEMENTARY_RECEIPT` to override the two default private
+receipt locations. These environment values and their resolved paths are
+never returned by the API.
 
 ## Reproduce supplementary GWM evaluation
 

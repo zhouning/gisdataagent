@@ -52,6 +52,19 @@ describe('Abu Dhabi flood world-model English presentation', () => {
     expect(translateAbuEnglishText('正在生成报告…')).toBe('Generating report...');
   });
 
+  it('keeps external-validation evidence boundaries explicit in English', () => {
+    const metrics = translateAbuEnglishText(
+      '严格确认性事件 · 补充探索性事件 · 独立外部事件 · GWM 对物理仿真 IoU · 工程准入 · 未准入',
+    );
+    const boundary = translateAbuEnglishText(
+      '严格确认性队列为 4/5，补充队列为 2/5；Landsat、Sentinel-1 与 Sentinel-2 指标保持分源，禁止跨传感器合并。当前证据不授权工程预测或替代物理模型。',
+    );
+    expect(metrics).toContain('Strict confirmatory events');
+    expect(metrics).toContain('Engineering admission');
+    expect(boundary).toContain('must not be pooled');
+    expect(`${metrics}${boundary}`).not.toMatch(/[\u3400-\u9fff]/u);
+  });
+
   it('translates dynamic map labels without generic fallback words', () => {
     const text = translateAbuEnglishText('全市二维最大积水深度（m）· 公共 DEM 原型');
     expect(text).toBe('Citywide 2D maximum flood depth (m) · public DEM prototype');
