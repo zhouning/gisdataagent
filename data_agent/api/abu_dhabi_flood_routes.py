@@ -225,7 +225,7 @@ async def get_abu_dhabi_april_2024_event_evidence(request: Request) -> JSONRespo
 
 
 async def get_abu_dhabi_hotspot_catalog(request: Request) -> JSONResponse:
-    """Serve aggregate metadata from the private Origen-derived bundle."""
+    """Serve aggregate metadata from the private customer hotspot bundle."""
 
     user = _get_user_from_request(request)
     if not user:
@@ -350,6 +350,26 @@ async def run_abu_dhabi_gwm(request: Request) -> JSONResponse:
         return JSONResponse({"error": "gwm_rollout_failed", "detail": str(error)[:500]}, status_code=500)
 
 
+async def get_latest_abu_dhabi_gwm_run(request: Request) -> JSONResponse:
+    """Restore the latest GWM result or build the standard offline demo run."""
+
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        from ..uwm.abu_dhabi_flood.gwm_surrogate import gwm_store
+
+        return JSONResponse(gwm_store().latest_or_default())
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+    except Exception as error:
+        return JSONResponse(
+            {"error": "gwm_latest_restore_failed", "detail": str(error)[:500]},
+            status_code=500,
+        )
+
+
 async def get_abu_dhabi_gwm_run(request: Request) -> JSONResponse:
     user = _get_user_from_request(request)
     if not user:
@@ -399,6 +419,132 @@ async def get_abu_dhabi_gwm_timeseries(request: Request) -> JSONResponse:
         return JSONResponse({"error": str(error)}, status_code=409)
 
 
+async def get_abu_dhabi_trained_gwm_events(request: Request) -> JSONResponse:
+    """List the admitted historical events for the frozen citywide GWM."""
+
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        from ..abu_dhabi_trained_gwm_service import available_events
+
+        return JSONResponse(available_events())
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+    except Exception as error:
+        return JSONResponse({"error": "trained_gwm_events_failed", "detail": str(error)[:500]}, status_code=500)
+
+
+async def create_abu_dhabi_trained_gwm_rollout(request: Request) -> JSONResponse:
+    """Run the frozen GWM with an admitted event and bounded dynamic forcing."""
+
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        payload = await request.json()
+    except Exception:
+        return JSONResponse({"error": "trained_gwm_json_required"}, status_code=400)
+    try:
+        from ..abu_dhabi_trained_gwm_service import start_rollout
+
+        return JSONResponse(start_rollout(payload), status_code=202)
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+    except Exception as error:
+        return JSONResponse({"error": "trained_gwm_rollout_failed", "detail": str(error)[:500]}, status_code=500)
+
+
+async def create_abu_dhabi_trained_gwm_rainfall_scenario(request: Request) -> JSONResponse:
+    """Create a frozen-GWM scenario from a customer-facing rainfall total in mm."""
+
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        payload = await request.json()
+    except Exception:
+        return JSONResponse({"error": "trained_gwm_json_required"}, status_code=400)
+    try:
+        from ..abu_dhabi_trained_gwm_service import start_rainfall_amount_rollout
+
+        return JSONResponse(start_rainfall_amount_rollout(payload), status_code=202)
+    except ValueError as error:
+        code = str(error)
+        validation_errors = {
+            "trained_gwm_payload_invalid",
+            "trained_gwm_event_id_required",
+            "trained_gwm_event_not_admitted",
+            "trained_gwm_total_rainfall_invalid",
+            "trained_gwm_total_rainfall_out_of_supported_range",
+            "trained_gwm_rainfall_duration_invalid",
+            "trained_gwm_rainfall_duration_out_of_supported_range",
+        }
+        return JSONResponse(
+            {"error": code},
+            status_code=422 if code in validation_errors else 409,
+        )
+    except Exception as error:
+        return JSONResponse(
+            {
+                "error": "trained_gwm_rainfall_scenario_failed",
+                "detail": str(error)[:500],
+            },
+            status_code=500,
+        )
+
+
+async def get_abu_dhabi_trained_gwm_run(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    run_id = str(request.path_params.get("run_id") or "")
+    try:
+        from ..abu_dhabi_trained_gwm_service import public_run
+
+        return JSONResponse(public_run(run_id))
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+
+
+async def get_abu_dhabi_trained_gwm_map(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    run_id = str(request.path_params.get("run_id") or "")
+    try:
+        from ..abu_dhabi_trained_gwm_service import map_bootstrap
+
+        return JSONResponse(map_bootstrap(run_id))
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+
+
+async def get_abu_dhabi_trained_gwm_map_timeseries(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    run_id = str(request.path_params.get("run_id") or "")
+    try:
+        time_index = int(request.query_params.get("time_index", "0"))
+    except (TypeError, ValueError):
+        return JSONResponse({"error": "trained_gwm_time_index_invalid"}, status_code=400)
+    try:
+        from ..abu_dhabi_trained_gwm_service import map_timeseries
+
+        return JSONResponse(map_timeseries(run_id, time_index))
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+    except Exception as error:
+        return JSONResponse({"error": "trained_gwm_timeseries_failed", "detail": str(error)[:500]}, status_code=500)
+
+
 def get_abu_dhabi_flood_routes() -> list[Route]:
     return [
         Route("/api/abu-dhabi/flood/scenarios", endpoint=create_abu_dhabi_flood_scenario, methods=["POST"]),
@@ -425,7 +571,14 @@ def get_abu_dhabi_flood_routes() -> list[Route]:
         Route("/api/abu-dhabi/flood/gwm/status", endpoint=get_abu_dhabi_gwm_status, methods=["GET"]),
         Route("/api/abu-dhabi/flood/gwm/train", endpoint=train_abu_dhabi_gwm, methods=["POST"]),
         Route("/api/abu-dhabi/flood/gwm/rollout", endpoint=run_abu_dhabi_gwm, methods=["POST"]),
+        Route("/api/abu-dhabi/flood/gwm/latest", endpoint=get_latest_abu_dhabi_gwm_run, methods=["GET"]),
         Route("/api/abu-dhabi/flood/gwm/runs/{run_id}", endpoint=get_abu_dhabi_gwm_run, methods=["GET"]),
         Route("/api/abu-dhabi/flood/gwm/runs/{run_id}/map/bootstrap", endpoint=get_abu_dhabi_gwm_bootstrap, methods=["GET"]),
         Route("/api/abu-dhabi/flood/gwm/runs/{run_id}/timeseries", endpoint=get_abu_dhabi_gwm_timeseries, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/gwm/trained/events", endpoint=get_abu_dhabi_trained_gwm_events, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/gwm/trained/rollout", endpoint=create_abu_dhabi_trained_gwm_rollout, methods=["POST"]),
+        Route("/api/abu-dhabi/flood/gwm/trained/rainfall-scenarios", endpoint=create_abu_dhabi_trained_gwm_rainfall_scenario, methods=["POST"]),
+        Route("/api/abu-dhabi/flood/gwm/trained/runs/{run_id}", endpoint=get_abu_dhabi_trained_gwm_run, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/gwm/trained/runs/{run_id}/map", endpoint=get_abu_dhabi_trained_gwm_map, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/gwm/trained/runs/{run_id}/map/timeseries", endpoint=get_abu_dhabi_trained_gwm_map_timeseries, methods=["GET"]),
     ]

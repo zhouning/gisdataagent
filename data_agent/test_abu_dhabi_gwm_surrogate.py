@@ -145,3 +145,24 @@ def test_stressed_rollout_stays_on_the_empirical_pilot_scale(tmp_path):
     assert np.isfinite(edge_frames).all()
     assert float(node_frames[:, :, 0].max()) <= max(float(model.node_states[:, :, 0].max()) * 12.0, 0.05) + 1e-6
     assert float(edge_frames[:, :, 3].max()) <= max(float(model.edge_states[:, :, 3].max()) * 12.0, 0.05) + 1e-6
+
+
+def test_latest_or_default_rollout_restores_a_stable_map_result(tmp_path, monkeypatch):
+    surrogate = AbuDhabiGwmSurrogate(_private_tensor_root(tmp_path))
+    monkeypatch.setattr(
+        surrogate,
+        "_load_geometry_index",
+        lambda: {
+            0: {"type": "Point", "coordinates": [54.40, 24.40]},
+            1: {"type": "Point", "coordinates": [54.41, 24.41]},
+        },
+    )
+
+    restored = surrogate.latest_or_default()
+    repeated = surrogate.latest_or_default()
+
+    assert restored["run_id"] == repeated["run_id"]
+    assert restored["status"] == "completed"
+    assert restored["metadata"]["timeline"]["period_count"] == 24
+    assert restored["metadata"]["map_view"]["node_feature_count"] == 2
+    assert surrogate.timeseries(restored["run_id"], 0)["features"]

@@ -55,7 +55,9 @@ interface MapLayer {
     elapsedMinutes: number[];
     periodCount: number;
     totalNodeCount?: number;
-    kind?: 'swmm-node' | 'gwm-node' | 'surface-cell';
+    reportStepMinutes?: number;
+    initialTimeIndex?: number;
+    kind?: 'swmm-node' | 'gwm-node' | 'surface-cell' | 'gwm-surface-cell';
   };
 }
 
@@ -850,8 +852,22 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       return;
     }
     setScenarioTimeIndex(
-      scenarioTimeline?.kind === 'surface-cell'
-        ? Math.max(0, scenarioTimeline.periodCount - 1)
+      scenarioTimeline?.kind === 'surface-cell' || scenarioTimeline?.kind === 'gwm-surface-cell'
+        ? Math.max(0, Math.min(
+          Number.isInteger(scenarioTimeline.initialTimeIndex)
+            ? Number(scenarioTimeline.initialTimeIndex)
+            : scenarioTimeline.periodCount - 1,
+          Math.max(0, scenarioTimeline.periodCount - 1),
+        ))
+        : scenarioTimeline?.kind === 'swmm-node'
+          // The first native OUT period is commonly a dry warm-up frame.
+          // Open the diagnostic at a representative mid-storm period so a
+          // valid SWMM result is visible immediately while preserving the full
+          // timeline for playback and inspection.
+          ? Math.min(
+            Math.max(0, scenarioTimeline.periodCount - 1),
+            Math.max(0, Math.floor((scenarioTimeline.periodCount - 1) * 0.45)),
+          )
         : 0,
     );
     setScenarioTimelinePlaying(false);
@@ -1214,16 +1230,20 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
               {scenarioTimelinePlaying ? <Pause size={14} /> : <Play size={14} />}
             </button>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#334155', whiteSpace: 'nowrap' }}>
-              {scenarioTimeline.kind === 'surface-cell'
-                ? t('map.anugaSurfaceTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })
+              {scenarioTimeline.kind === 'gwm-surface-cell'
+                ? t('map.gwmSurfaceTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })
+                : scenarioTimeline.kind === 'surface-cell'
+                  ? t('map.anugaSurfaceTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })
                 : scenarioTimeline.kind === 'gwm-node'
                   ? t('map.gwmTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })
                   : t('map.swmmTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })}
             </span>
             <input
               type="range"
-              aria-label={scenarioTimeline.kind === 'surface-cell'
-                ? t('map.anugaSurfaceTimelineControl')
+              aria-label={scenarioTimeline.kind === 'gwm-surface-cell'
+                ? t('map.gwmSurfaceTimelineControl')
+                : scenarioTimeline.kind === 'surface-cell'
+                  ? t('map.anugaSurfaceTimelineControl')
                 : scenarioTimeline.kind === 'gwm-node'
                   ? t('map.gwmTimelineControl')
                   : t('map.swmmNodeTimeline')}
@@ -1242,7 +1262,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 5 }}>
             <span style={{ fontSize: 11, color: '#64748b' }}>
-              {scenarioTimeline.kind === 'surface-cell'
+              {scenarioTimeline.kind === 'gwm-surface-cell' || scenarioTimeline.kind === 'surface-cell'
                 ? t('map.simulationTime', { time: scenarioTimeline.timeValues[scenarioTimeIndex] || t('map.loading') })
                 : scenarioTimeline.kind === 'gwm-node'
                   ? t('map.gwmTime', { time: scenarioTimeline.timeValues[scenarioTimeIndex] || t('map.loading') })
@@ -1498,16 +1518,20 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
               {scenarioTimelinePlaying ? <Pause size={14} /> : <Play size={14} />}
             </button>
             <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
-              {scenarioTimeline.kind === 'surface-cell'
-                ? t('map.anugaSurfaceTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })
+              {scenarioTimeline.kind === 'gwm-surface-cell'
+                ? t('map.gwmSurfaceTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })
+                : scenarioTimeline.kind === 'surface-cell'
+                  ? t('map.anugaSurfaceTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })
                 : scenarioTimeline.kind === 'gwm-node'
                   ? t('map.gwmTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })
                   : t('map.swmmTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })}
             </span>
             <input
               type="range"
-              aria-label={scenarioTimeline.kind === 'surface-cell'
-                ? t('map.anugaSurfaceTimelineControl3d')
+              aria-label={scenarioTimeline.kind === 'gwm-surface-cell'
+                ? t('map.gwmSurfaceTimelineControl3d')
+                : scenarioTimeline.kind === 'surface-cell'
+                  ? t('map.anugaSurfaceTimelineControl3d')
                 : scenarioTimeline.kind === 'gwm-node'
                   ? t('map.gwmTimelineControl3d')
                   : t('map.swmmNodeTimeline3d')}
@@ -1526,7 +1550,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 5 }}>
             <span style={{ fontSize: 11, color: '#cbd5e1' }}>
-              {scenarioTimeline.kind === 'surface-cell'
+              {scenarioTimeline.kind === 'surface-cell' || scenarioTimeline.kind === 'gwm-surface-cell'
                 ? t('map.simulationTime', { time: scenarioTimeline.timeValues[scenarioTimeIndex] || t('map.loading') })
                 : scenarioTimeline.kind === 'gwm-node'
                   ? t('map.gwmTime', { time: scenarioTimeline.timeValues[scenarioTimeIndex] || t('map.loading') })

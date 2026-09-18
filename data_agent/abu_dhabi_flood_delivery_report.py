@@ -29,7 +29,7 @@ def phase5_report_payload() -> dict[str, Any]:
         },
         "external_validation": external_validation_payload(),
         "claim_boundary": (
-            "Origen hotspot points are static weak spatial evidence. They are not event-specific "
+            "Customer flood-hotspot points are static weak spatial evidence. They are not event-specific "
             "observed depth, flood-extent, timing, or recession ground truth, and "
             "intervention text "
             "does not establish a modeled hydraulic benefit."
@@ -92,7 +92,7 @@ def phase5_report_html(language: str | None = None) -> str:
             "lang": "zh-CN",
             "title": "阿布扎比城市暴雨内涝世界模型 · 阶段 5 交付报告",
             "eyebrow": "验证、行动和证据边界",
-            "inventory": "Origen 热点清单",
+            "inventory": "客户城市内涝热点清单",
             "current": "当前热点",
             "history": "ADM 历史热点（独立分层）",
             "nodes": "SWMM 候选节点绑定",
@@ -121,7 +121,7 @@ def phase5_report_html(language: str | None = None) -> str:
             "audit": "审计回执",
             "strict_hash": "严格确认性回执 SHA-256",
             "supplementary_hash": "补充验证回执 SHA-256",
-            "origen_model": "Origen GWM 前瞻消融",
+            "origen_model": "客户热点静态特征前瞻消融",
             "active_channels": "有效静态特征通道",
             "current_grid": "进入当前网格的热点",
             "intervention_grid": "进入当前网格的干预记录",
@@ -133,9 +133,9 @@ def phase5_report_html(language: str | None = None) -> str:
             "origen_mixed": "结果混合，暂无一致收益",
             "origen_consistent": "探索性空间折中一致改善",
             "origen_unavailable": "尚未完成",
-            "origen_hash": "Origen 消融回执 SHA-256",
+            "origen_hash": "客户热点静态特征消融回执 SHA-256",
             "origen_boundary": (
-                "Origen 消融仅使用物理仿真标签作探索性比较，未使用已有外部确认"
+                "客户热点静态特征消融仅使用物理仿真标签作探索性比较，未使用已有外部确认"
                 "队列；新模型仍需未来独立事件验证。"
             ),
             "verified": "规范化内容哈希已校验",
@@ -162,7 +162,7 @@ def phase5_report_html(language: str | None = None) -> str:
             "lang": "en",
             "title": "Abu Dhabi Urban Pluvial Flood World Model - Phase 5 Delivery Report",
             "eyebrow": "VALIDATION, ACTIONS AND EVIDENCE BOUNDARIES",
-            "inventory": "Origen hotspot inventory",
+            "inventory": "Customer urban flood-hotspot inventory",
             "current": "Current hotspots",
             "history": "ADM historical hotspots (separate inventory)",
             "nodes": "SWMM candidate-node links",
@@ -192,7 +192,7 @@ def phase5_report_html(language: str | None = None) -> str:
             "audit": "Audit receipts",
             "strict_hash": "Strict confirmatory receipt SHA-256",
             "supplementary_hash": "Supplementary receipt SHA-256",
-            "origen_model": "Prospective Origen GWM ablation",
+            "origen_model": "Prospective customer-hotspot static-feature ablation",
             "active_channels": "Active static feature channels",
             "current_grid": "Current hotspots influencing the grid",
             "intervention_grid": "Intervention records influencing the grid",
@@ -204,9 +204,9 @@ def phase5_report_html(language: str | None = None) -> str:
             "origen_mixed": "Mixed result; no consistent benefit",
             "origen_consistent": "Consistent improvement across exploratory spatial folds",
             "origen_unavailable": "Not completed",
-            "origen_hash": "Origen ablation receipt SHA-256",
+            "origen_hash": "Customer-hotspot static-feature ablation receipt SHA-256",
             "origen_boundary": (
-                "The Origen ablation is exploratory and uses physics-simulation labels. "
+                "The customer-hotspot static-feature ablation is exploratory and uses physics-simulation labels. "
                 "It did not use the existing external confirmatory cohort; the new model "
                 "still requires future independent-event validation."
             ),
@@ -237,7 +237,7 @@ def phase5_report_html(language: str | None = None) -> str:
         report["claim_boundary"]
         if not zh
         else (
-            "Origen 热点仅为静态位置弱证据，不是事件水深、范围、发生时间或退水真值；"
+            "客户内涝热点仅为静态位置弱证据，不是事件水深、范围、发生时间或退水真值；"
             "干预文字也不能证明水力改善量。"
         )
     )

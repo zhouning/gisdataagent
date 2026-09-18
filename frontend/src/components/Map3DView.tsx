@@ -50,7 +50,9 @@ interface MapLayer {
     elapsedMinutes: number[];
     periodCount: number;
     totalNodeCount?: number;
-    kind?: 'swmm-node' | 'gwm-node' | 'surface-cell';
+    reportStepMinutes?: number;
+    initialTimeIndex?: number;
+    kind?: 'swmm-node' | 'gwm-node' | 'surface-cell' | 'gwm-surface-cell';
   };
 }
 
@@ -75,6 +77,10 @@ function map3dDisplayName(value: string, locale: string): string {
   const replacements: Array<[RegExp, string]> = [
     [/全市陆域二维最大积水深度（m）· 客户 DTM/g, 'Citywide land-surface 2D maximum flood depth (m) · customer DTM'],
     [/全市陆域二维动态积水深度（m）· 客户 DTM/g, 'Citywide dynamic land-surface 2D flood depth (m) · customer DTM'],
+    [/GWM 全市 250 m 最大水深/g, 'GWM citywide 250 m maximum depth'],
+    [/GWM 全市 250 m 动态水深/g, 'GWM citywide 250 m dynamic depth'],
+    [/GWM 全市最大水深（m）· 250 m 格网/g, 'GWM citywide maximum depth (m) · 250 m grid'],
+    [/GWM 动态水深（m）· 全市 250 m 格网/g, 'GWM dynamic depth (m) · citywide 250 m grid'],
     [/二维结果 · 客户 AUH_DTM_5m_Z40 真实 5 m DTM 全市陆域最大积水深度/g, '2D result · Customer AUH_DTM_5m_Z40 actual 5 m DTM citywide land-surface maximum flood depth'],
     [/二维结果 · 客户 AUH_DTM_5m_Z40 真实 5 m DTM 全市陆域动态积水深度/g, '2D result · Customer AUH_DTM_5m_Z40 actual 5 m DTM citywide dynamic land-surface flood depth'],
     [/阿布扎比暴雨内涝世界模型/g, 'Abu Dhabi Stormwater Flood World Model'],
@@ -159,6 +165,81 @@ function isCategorizedLegendLayer(layer: MapLayer) {
 function isChoroplethLegendLayer(layer: MapLayer) {
   return (layer.type === 'choropleth' || layer.type === 'bubble')
     && Boolean(layer.breaks && layer.color_scheme);
+}
+
+const SWMM_NODE_VALUE_COLUMNS = [
+  'scenario_water_depth_m',
+  'scenario_hydraulic_head_m',
+  'scenario_stored_volume_m3',
+  'scenario_lateral_inflow_m3s',
+  'scenario_total_inflow_m3s',
+  'scenario_overflow_or_flooding_m3s',
+];
+const MAX_SWMM_NODE_RENDER_POINTS = 1_600;
+
+function isSwmmNodeColumnsPayload(data: any): boolean {
+  return data?.format === 'swmm-node-columns-v1'
+    && Array.isArray(data?.coordinates)
+    && Array.isArray(data?.values);
+}
+
+function swmmNodeValueOffset(data: any, valueColumn?: string): number {
+  const columns = Array.isArray(data?.columns?.values)
+    ? data.columns.values
+    : SWMM_NODE_VALUE_COLUMNS;
+  const offset = columns.indexOf(valueColumn || '');
+  return offset >= 0 ? offset : 0;
+}
+
+function swmmNodeValueCount(data: any): number {
+  const count = Array.isArray(data?.columns?.values) ? data.columns.values.length : SWMM_NODE_VALUE_COLUMNS.length;
+  return Math.max(1, count);
+}
+
+function swmmNodeCount(data: any): number {
+  return Math.min(
+    Math.floor((data?.coordinates?.length || 0) / 2),
+    Math.floor((data?.values?.length || 0) / swmmNodeValueCount(data)),
+  );
+}
+
+function swmmNodeIndexes(data: any, overflowOnly: boolean): number[] {
+  const nodeCount = swmmNodeCount(data);
+  if (overflowOnly) {
+    return (Array.isArray(data?.overflow_node_indexes) ? data.overflow_node_indexes : [])
+      .filter((index: unknown): index is number => (
+        typeof index === 'number' && Number.isInteger(index) && index >= 0 && index < nodeCount
+      ));
+  }
+  return Array.from({ length: nodeCount }, (_, index) => index);
+}
+
+function swmmNodeDisplayIndexes(data: any, valueOffset: number, overflowOnly: boolean): number[] {
+  const valueCount = swmmNodeValueCount(data);
+  const renderThreshold = overflowOnly ? 0 : 0.05;
+  const candidates = swmmNodeIndexes(data, overflowOnly).filter((nodeIndex) => (
+    Math.max(0, Number(data.values[(nodeIndex * valueCount) + valueOffset]) || 0) >= renderThreshold
+  ));
+  if (candidates.length <= MAX_SWMM_NODE_RENDER_POINTS) return candidates;
+  const stride = Math.ceil(candidates.length / MAX_SWMM_NODE_RENDER_POINTS);
+  return candidates.filter((_, candidateIndex) => candidateIndex % stride === 0);
+}
+
+function swmmNodeProperties(data: any, nodeIndex: number): Record<string, unknown> {
+  const valueCount = swmmNodeValueCount(data);
+  const properties: Record<string, unknown> = {
+    node_id: data?.node_ids?.[nodeIndex],
+    partition_label: data?.partition_labels?.[data?.partition_indexes?.[nodeIndex]],
+    scenario_timestamp: data?.metadata?.timestamp,
+    scenario_elapsed_minutes: data?.metadata?.elapsed_minutes,
+  };
+  const valueColumns = Array.isArray(data?.columns?.values) ? data.columns.values : SWMM_NODE_VALUE_COLUMNS;
+  for (let valueOffset = 0; valueOffset < valueColumns.length; valueOffset += 1) {
+    const value = Number(data?.values?.[(nodeIndex * valueCount) + valueOffset]);
+    properties[valueColumns[valueOffset]] = Number.isFinite(value) ? value : 0;
+  }
+  properties.scenario_node_flooding_detected = Number(properties.scenario_overflow_or_flooding_m3s || 0) > 0;
+  return properties;
 }
 
 function rasterBasemapStyle(
@@ -348,6 +429,30 @@ export default function Map3DView({
     onHover(info);
   }, [onHover, displayName]);
 
+  // Compact SWMM periods keep 100k+ node geometries in numeric columns. This
+  // confirms the WebGL layer has a renderable frame without rebuilding a large
+  // GeoJSON feature collection on every timeline step.
+  useEffect(() => {
+    const compactFrame = Object.values(scenarioData || {}).find(isSwmmNodeColumnsPayload);
+    if (!compactFrame) return;
+    const runId = String(compactFrame.metadata?.run_id || '');
+    const renderedLayerCount = layers.filter((layer) => (
+      layer.scenarioTimeline?.kind === 'swmm-node'
+      && layerVisibility[layer.name] !== false
+    )).length;
+    if (!runId || renderedLayerCount === 0) return;
+    const depthOffset = swmmNodeValueOffset(compactFrame, 'scenario_water_depth_m');
+    const renderedPointCount = swmmNodeDisplayIndexes(compactFrame, depthOffset, false).length;
+    window.dispatchEvent(new CustomEvent('swmm-scenario-frame-rendered', {
+      detail: {
+        runId,
+        nodeFeatureCount: swmmNodeCount(compactFrame),
+        renderedLayerCount,
+        renderedPointCount,
+      },
+    }));
+  }, [layers, layerVisibility, scenarioData]);
+
   // Build deck.gl layers from MapLayer configs
   const deckLayers = useMemo(() => {
     return layers.map((layer, idx) => {
@@ -485,6 +590,56 @@ export default function Map3DView({
 
       // Point / Scatterplot layer
       if (layer.type === 'point' || layer.type === 'bubble') {
+        if (isSwmmNodeColumnsPayload(data)) {
+          const valueOffset = swmmNodeValueOffset(data, layer.value_column);
+          const valueCount = swmmNodeValueCount(data);
+          const overflowOnly = layer.value_column === 'scenario_overflow_or_flooding_m3s';
+          // The response retains every native SWMM node, including dry ones.
+          // At city scale a marker for every affected node becomes an opaque
+          // blanket. Keep a deterministic, bounded representative sample for
+          // WebGL display while retaining the complete native period in data.
+          const nodeIndexes = swmmNodeDisplayIndexes(data, valueOffset, overflowOnly);
+          const maximumValue = nodeIndexes.reduce((maximum, nodeIndex) => {
+            const value = Math.max(0, Number(data.values[(nodeIndex * valueCount) + valueOffset]) || 0);
+            return Math.max(maximum, value);
+          }, 0);
+          const minRadius = Math.max(1, Number(layer.style?.min_radius ?? 3));
+          const maxRadius = Math.max(minRadius, Math.min(7, Number(layer.style?.max_radius ?? 30)));
+          return new ScatterplotLayer({
+            id: `layer-${idx}-${layer.name}`,
+            data: nodeIndexes,
+            pickable: true,
+            getPosition: (nodeIndex: number) => [
+              Number(data.coordinates[nodeIndex * 2]) || 0,
+              Number(data.coordinates[(nodeIndex * 2) + 1]) || 0,
+            ],
+            getRadius: (nodeIndex: number) => {
+              const value = Math.max(0, Number(data.values[(nodeIndex * valueCount) + valueOffset]) || 0);
+              const normalizedValue = maximumValue > 0 ? value / maximumValue : 0;
+              return minRadius + (normalizedValue * (maxRadius - minRadius));
+            },
+            radiusUnits: 'pixels',
+            radiusMinPixels: minRadius,
+            radiusMaxPixels: maxRadius,
+            getFillColor: (nodeIndex: number) => {
+              const value = Math.max(0, Number(data.values[(nodeIndex * valueCount) + valueOffset]) || 0);
+              return layer.breaks
+                ? getBreakColor(value, layer.breaks, layer.color_scheme)
+                : fillColor;
+            },
+            parameters: { depthTest: false },
+            onHover: (info: any) => {
+              if (!info.object && info.object !== 0) {
+                onLayerHover(info, layer);
+                return;
+              }
+              onLayerHover({
+                ...info,
+                object: { properties: swmmNodeProperties(data, Number(info.object)) },
+              }, layer);
+            },
+          });
+        }
         const features = data.features || [];
         const valueColumn = layer.value_column;
         const values = valueColumn
@@ -573,6 +728,20 @@ export default function Map3DView({
         const catCol = layer.category_column || '';
         const catColors = layer.category_colors || {};
         const styleMap = layer.style_map || {};
+        const categorizedFeatures = Array.isArray(data)
+          ? data
+          : (Array.isArray(data?.features) ? data.features : []);
+        const hasPointGeometry = categorizedFeatures.some((feature: any) =>
+          feature?.geometry?.type === 'Point' || feature?.geometry?.type === 'MultiPoint',
+        );
+        const pointRadius = Math.max(
+          3,
+          Number(layer.style?.radius ?? layer.style?.min_radius ?? 7),
+        );
+        const pointRadiusMax = Math.max(
+          pointRadius,
+          Number(layer.style?.max_radius ?? pointRadius),
+        );
         const getCategoryStyle = (f: any) => {
           const raw = String(f.properties?.[catCol] ?? '');
           const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
@@ -585,6 +754,12 @@ export default function Map3DView({
           stroked: true,
           filled: true,
           extruded: false,
+          pointType: 'circle',
+          getPointRadius: pointRadius,
+          pointRadiusUnits: 'pixels',
+          pointRadiusMinPixels: pointRadius,
+          pointRadiusMaxPixels: pointRadiusMax,
+          parameters: hasPointGeometry ? { depthTest: false } : undefined,
           getFillColor: (f: any) => {
             const raw = String(f.properties?.[catCol] ?? '');
             const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;

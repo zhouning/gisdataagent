@@ -72,6 +72,12 @@ def test_gwm_http_contract_serves_train_rollout_and_node_frames(tmp_path, monkey
 
     with TestClient(app) as client:
         assert client.get("/api/abu-dhabi/flood/gwm/status").json()["status"] == "ready_to_train"
+        restored = client.get("/api/abu-dhabi/flood/gwm/latest")
+        assert restored.status_code == 200
+        assert restored.json()["metadata"]["timeline"]["period_count"] == 24
+        assert restored.json()["metadata"]["map_view"]["node_feature_count"] == 2
+        assert client.get("/api/abu-dhabi/flood/gwm/latest").json()["run_id"] == restored.json()["run_id"]
+
         training = client.post("/api/abu-dhabi/flood/gwm/train", json={"ridge": 0.0001})
         assert training.status_code == 200
         assert training.json()["sample_count"] == 4
@@ -131,3 +137,49 @@ def test_pipeline_status_http_contract_is_authenticated_and_returns_five_stages(
         payload = response.json()
         assert payload["ready_stage_count"] == 5
         assert len(payload["stages"]) == 5
+
+
+def test_customer_rainfall_amount_route_maps_a_simple_mm_contract(monkeypatch):
+    monkeypatch.setattr(
+        flood_routes,
+        "_get_user_from_request",
+        lambda request: SimpleNamespace(identifier="test-analyst", metadata={"role": "analyst"}),
+    )
+    monkeypatch.setattr(flood_routes, "_set_user_context", lambda user: None)
+    import data_agent.abu_dhabi_trained_gwm_service as trained_service
+
+    received = {}
+
+    def fake_rollout(payload):
+        received.update(payload)
+        return {
+            "run_id": "trained-gwm-fixture",
+            "status": "completed",
+            "metadata": {
+                "input_adapter": {
+                    "requested_total_precipitation_mm": payload["totalRainfallMm"],
+                    "requested_rainfall_duration_hours": payload["durationHours"],
+                    "mapped_rainfall_multiplier": 1.5,
+                }
+            },
+        }
+
+    monkeypatch.setattr(trained_service, "start_rainfall_amount_rollout", fake_rollout)
+    app = Starlette(routes=flood_routes.get_abu_dhabi_flood_routes())
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/abu-dhabi/flood/gwm/trained/rainfall-scenarios",
+            json={
+                "eventId": "admitted-event",
+                "totalRainfallMm": 75.0,
+                "durationHours": 24,
+            },
+        )
+
+    assert response.status_code == 202
+    assert received == {
+        "eventId": "admitted-event",
+        "totalRainfallMm": 75.0,
+        "durationHours": 24,
+    }
+    assert response.json()["metadata"]["input_adapter"]["mapped_rainfall_multiplier"] == 1.5

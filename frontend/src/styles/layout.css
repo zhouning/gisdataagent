@@ -735,6 +735,20 @@ html[lang^='ar'] {
 .abu-flood-metrics strong { color: var(--text); font-family: var(--font-mono); font-size: 14px; }
 .abu-flood-metrics strong.success { color: var(--success); }
 .abu-flood-metrics strong.warning { color: var(--warning); }
+.abu-flood-gwm-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 14px;
+  border: 1px solid rgba(20,184,166,.42);
+  border-radius: 7px;
+  background: linear-gradient(90deg, rgba(20,184,166,.11), rgba(6,182,212,.05));
+}
+.abu-flood-gwm-entry > div { min-width: 0; }
+.abu-flood-gwm-entry strong { display: block; margin-top: 3px; color: var(--text); font-size: 12px; }
+.abu-flood-gwm-entry small { display: block; margin-top: 3px; color: var(--text-secondary); font-size: 9px; line-height: 1.4; }
+.abu-flood-gwm-entry .abu-flood-map-action { flex: 0 0 auto; margin-top: 0; }
 .abu-flood-section,
 .abu-flood-map-section { padding: 14px; }
 .abu-flood-scenario-section {
@@ -793,6 +807,21 @@ html[lang^='ar'] {
 .abu-flood-scenario-result-metrics small { display: block; color: var(--text-tertiary); font-size: 8px; line-height: 1.25; }
 .abu-flood-scenario-result-metrics strong { display: block; margin: 3px 0 2px; color: var(--text); font-family: var(--font-mono); font-size: 13px; }
 .abu-flood-delivery-metrics { margin-top: 11px; padding-top: 10px; border-top: 1px solid var(--border); }
+.abu-flood-hotspot-explorer { margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--border); }
+.abu-flood-hotspot-toolbar { display: grid; grid-template-columns: minmax(180px, 1fr) auto minmax(180px, .8fr); align-items: end; gap: 8px; }
+.abu-flood-hotspot-toolbar > div:first-child > strong { display: block; margin-top: 4px; color: var(--text); font-size: 11px; }
+.abu-flood-hotspot-toolbar input { min-height: 30px; padding: 5px 8px; border: 1px solid var(--border-light); border-radius: 5px; background: var(--bg); color: var(--text); font: inherit; font-size: 9px; }
+.abu-flood-hotspot-switch { display: flex; gap: 4px; }
+.abu-flood-hotspot-switch button { padding: 6px 8px; border: 1px solid var(--border-light); border-radius: 5px; background: var(--bg); color: var(--text-secondary); font-size: 9px; cursor: pointer; }
+.abu-flood-hotspot-switch button.active { border-color: var(--info); background: rgba(6,182,212,.12); color: #a5f3fc; font-weight: 700; }
+.abu-flood-hotspot-table { max-height: 330px; margin-top: 9px; overflow: auto; border: 1px solid var(--border); border-radius: 5px; }
+.abu-flood-hotspot-row { display: grid; grid-template-columns: minmax(90px, .6fr) minmax(150px, 1fr) minmax(190px, 1.25fr) minmax(150px, 1fr); gap: 9px; padding: 8px 9px; border-bottom: 1px solid var(--border); background: var(--bg); }
+.abu-flood-hotspot-row:last-child { border-bottom: 0; }
+.abu-flood-hotspot-row.header { position: sticky; top: 0; z-index: 1; background: var(--surface-elevated); color: var(--info); font-size: 8px; font-weight: 700; text-transform: uppercase; }
+.abu-flood-hotspot-row > span { min-width: 0; }
+.abu-flood-hotspot-row strong { display: block; overflow: hidden; color: var(--text-secondary); font-size: 9px; line-height: 1.35; text-overflow: ellipsis; }
+.abu-flood-hotspot-row small { display: -webkit-box; margin-top: 3px; overflow: hidden; color: var(--text-tertiary); font-size: 8px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.abu-flood-hotspot-empty { padding: 18px; color: var(--text-tertiary); font-size: 9px; text-align: center; }
 .abu-flood-hyetograph { margin-top: 9px; padding: 8px; border: 1px solid rgba(148,163,184,.18); border-radius: 4px; background: rgba(15,23,42,.32); }
 .abu-flood-hyetograph > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .abu-flood-hyetograph > div:first-child span { color: var(--text-secondary); font-size: 9px; font-weight: 600; }
@@ -992,12 +1021,13 @@ html[lang^='ar'] {
 .abu-flood-status-footer strong { color: var(--text); font-size: 10px; }
 .abu-flood-status-footer span { color: var(--text-secondary); font-size: 9px; }
 .abu-flood-footer-note { color: var(--warning) !important; text-align: right; }
-.abu-flood-gwm-section { padding: 14px; border: 1px solid rgba(20,184,166,.42); border-radius: 7px; background: var(--surface); }
+.abu-flood-gwm-section { scroll-margin-top: 12px; padding: 14px; border: 1px solid rgba(20,184,166,.42); border-radius: 7px; background: var(--surface); }
 .abu-flood-gwm-grid { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.35fr); gap: 12px; }
 
 @container (max-width: 760px) {
   .abu-flood-hero { grid-template-columns: 1fr; }
   .abu-flood-hero-side { justify-content: flex-start; }
+  .abu-flood-gwm-entry { align-items: flex-start; flex-direction: column; }
   .abu-flood-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .abu-flood-map-section,
   .abu-flood-detail-grid,
@@ -1006,6 +1036,8 @@ html[lang^='ar'] {
   .abu-flood-event-grid { grid-template-columns: 1fr; }
   .abu-flood-event-facts { grid-template-columns: 1fr; }
   .abu-flood-event-gap-grid { grid-template-columns: 1fr; }
+  .abu-flood-hotspot-toolbar { grid-template-columns: 1fr; align-items: stretch; }
+  .abu-flood-hotspot-row { min-width: 680px; }
   .abu-flood-map-layers { border-top: 1px solid var(--border); border-left: 0; }
   .abu-flood-scenario-result { border-top: 1px solid var(--border); border-left: 0; }
   .abu-flood-stage-track { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }

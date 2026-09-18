@@ -90,6 +90,7 @@ class AbuDhabiGwmSurrogate:
         self._models: dict[str, _PilotModel] = {}
         self._training_receipt: dict[str, Any] | None = None
         self._runs: dict[str, dict[str, Any]] = {}
+        self._latest_run_id: str | None = None
         self._geometry_by_full_node_index: dict[int, dict[str, Any]] | None = None
         self._lock = threading.RLock()
 
@@ -259,6 +260,11 @@ class AbuDhabiGwmSurrogate:
         with self._lock:
             self._models = models
             self._training_receipt = receipt
+            # A newly fitted model invalidates the meaning of any previous
+            # process-local rollout. The next restore request creates a fresh
+            # default run from this model version.
+            self._runs = {}
+            self._latest_run_id = None
         return dict(receipt)
 
     def status(self) -> dict[str, Any]:
@@ -445,7 +451,24 @@ class AbuDhabiGwmSurrogate:
         }
         with self._lock:
             self._runs[run_id] = result
+            self._latest_run_id = run_id
         return self.public_result(result)
+
+    def latest_or_default(self) -> dict[str, Any]:
+        """Return the latest rollout, creating the standard demo run if needed.
+
+        GWM frames are intentionally process-local because they are derived
+        from customer-controlled tensors. This restore boundary ensures that a
+        fresh offline backend process still has an immediately viewable stage-4
+        result without requiring the presenter to click Run first.
+        """
+
+        with self._lock:
+            if self._latest_run_id:
+                result = self._runs.get(self._latest_run_id)
+                if result is not None:
+                    return self.public_result(result)
+            return self.rollout({})
 
     def public_result(self, result: dict[str, Any]) -> dict[str, Any]:
         return {key: value for key, value in result.items() if not key.startswith("_")}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildCustomerMapUpdate,
+  buildHotspotMapLayers,
   customerMapLayers,
   translateAbuEnglishText,
 } from './AbuDhabiFloodWorldModelTab';
@@ -26,6 +27,37 @@ describe('Abu Dhabi flood world-model English presentation', () => {
     expect(nodes?.visible).not.toBe(false);
     expect(update.center).toEqual([24.46, 54.45]);
     expect(update.zoom).toBe(10);
+  });
+
+  it('can make the historical Excel hotspot inventory the visible stage-1 layer', () => {
+    const current = { type: 'FeatureCollection' as const, features: [{ properties: { hotspot_id: 'C-1' } }] };
+    const history = { type: 'FeatureCollection' as const, features: [{ properties: { hotspot_id: 'H-1' } }] };
+    const layers = buildHotspotMapLayers('data', current, history, 'history');
+    const currentLayer = layers.find((layer: any) => String(layer.name).includes('客户当前城市内涝热点')) as any;
+    const historyLayer = layers.find((layer: any) => String(layer.name).includes('客户历史城市内涝热点')) as any;
+
+    expect(currentLayer.visible).toBe(false);
+    expect(historyLayer.visible).toBe(true);
+    expect(historyLayer.tooltip_fields).toContain('current_network_capacity');
+    expect(historyLayer.tooltip_fields).toContain('intervention_status');
+  });
+
+  it('uses business names for current and historical customer hotspot layers', () => {
+    const current = { type: 'FeatureCollection' as const, features: [{ properties: { hotspot_id: 'C-1' } }] };
+    const history = { type: 'FeatureCollection' as const, features: [{ properties: { hotspot_id: 'H-1' } }] };
+    const stage1 = buildHotspotMapLayers('data', current, history, 'current');
+    const stage4 = buildHotspotMapLayers('gwm', current);
+    const englishNames = [...stage1, ...stage4]
+      .map((layer: any) => translateAbuEnglishText(String(layer.name)))
+      .join(' · ');
+
+    expect(stage1[0].name).toContain('客户当前城市内涝热点');
+    expect(stage1[1].name).toContain('客户历史城市内涝热点');
+    expect(stage4[0].name).toBe('客户当前城市内涝热点 · GWM 静态参考');
+    expect(englishNames).toContain('Customer current urban-flood hotspots');
+    expect(englishNames).toContain('Customer historical urban-flood hotspots');
+    expect(englishNames).not.toContain('Origen');
+    expect(englishNames).not.toMatch(/[\u3400-\u9fff]/u);
   });
 
   it('translates the core workflow and scenario controls without Han characters', () => {
@@ -73,6 +105,15 @@ describe('Abu Dhabi flood world-model English presentation', () => {
     expect(translateAbuEnglishText('运行规则型情景筛选')).toBe('Run rule-based scenario screening');
   });
 
+  it('translates the visible phase-4 entry and supported dynamic parameter boundary', () => {
+    const entry = translateAbuEnglishText('阶段4 · GWM 快速推演 · 打开阶段4 GWM控制与执行');
+    const parameter = translateAbuEnglishText('目标累计降雨量（mm） · 降雨持续时间（小时）');
+    expect(entry).toContain('Open Phase 4 GWM controls and run');
+    expect(parameter).toContain('Target total rainfall (mm)');
+    expect(parameter).toContain('Rainfall duration (hours)');
+    expect(`${entry}${parameter}`).not.toMatch(/[\u3400-\u9fff]/u);
+  });
+
   it('keeps the phase-5 report action in English presentation mode', () => {
     expect(translateAbuEnglishText('输出决策支持报告')).toBe('Open decision-support report');
     expect(translateAbuEnglishText('正在生成报告…')).toBe('Generating report...');
@@ -91,16 +132,17 @@ describe('Abu Dhabi flood world-model English presentation', () => {
     expect(`${metrics}${boundary}`).not.toMatch(/[\u3400-\u9fff]/u);
   });
 
-  it('translates the Origen spatial-ablation result and its evidence boundary', () => {
+  it('translates the customer-hotspot static-feature ablation and its evidence boundary', () => {
     const metrics = translateAbuEnglishText(
       '空间分块消融 · 折完成 · 成对模型 · 相同架构与随机种子 · RMSE 改善折数 · IoU 改善折数 · 结果混合，暂无一致收益 · 物理标签探索性评估',
     );
     const boundary = translateAbuEnglishText(
-      'Origen 消融使用物理仿真标签进行探索性评估，未使用已有外部确认队列；新模型仍需未来独立事件验证。',
+      '客户热点静态特征消融使用物理仿真标签进行探索性评估，未使用已有外部确认队列；新模型仍需未来独立事件验证。',
     );
     expect(metrics).toContain('Spatially blocked ablation');
     expect(metrics).toContain('same architecture and random seed');
     expect(boundary).toContain('future independent-event validation');
+    expect(boundary).not.toContain('Origen');
     expect(`${metrics}${boundary}`).not.toMatch(/[\u3400-\u9fff]/u);
   });
 
