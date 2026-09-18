@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
+import numpy as np
 import openpyxl
 from pyproj import Transformer
 from starlette.applications import Starlette
@@ -11,7 +12,10 @@ from starlette.testclient import TestClient
 
 from data_agent.abu_dhabi_flood_delivery_report import phase5_report_html
 from data_agent.api import abu_dhabi_flood_routes as flood_routes
-from data_agent.uwm.abu_dhabi_flood.hotspot_inventory import build_private_bundle
+from data_agent.uwm.abu_dhabi_flood.hotspot_inventory import (
+    augment_private_bundle_with_static_prior,
+    build_private_bundle,
+)
 
 HEADERS = [
     "#",
@@ -190,6 +194,20 @@ def _write_nodes(path: Path) -> None:
     )
 
 
+def _write_model_grid(path: Path) -> None:
+    transformer = Transformer.from_crs("EPSG:4326", "EPSG:32640", always_xy=True)
+    center_x, center_y = transformer.transform(54.45, 24.45)
+    x = np.arange(center_x - 500.0, center_x + 750.0, 250.0)
+    y = np.arange(center_y - 500.0, center_y + 750.0, 250.0)
+    np.savez_compressed(
+        path,
+        x=x,
+        y=y,
+        values=np.zeros((len(y), len(x)), dtype=np.float32),
+        land_mask=np.ones((len(y) - 1, len(x) - 1), dtype=bool),
+    )
+
+
 def test_build_private_bundle_separates_history_and_preserves_claim_boundary(
     tmp_path: Path,
 ) -> None:
@@ -200,6 +218,8 @@ def test_build_private_bundle_separates_history_and_preserves_claim_boundary(
     depth_path = _write_depth_result(tmp_path / "rp005")
     node_path = tmp_path / "nodes.geojson"
     _write_nodes(node_path)
+    grid_path = tmp_path / "terrain_grid.npz"
+    _write_model_grid(grid_path)
 
     manifest = build_private_bundle(
         source,
@@ -207,6 +227,7 @@ def test_build_private_bundle_separates_history_and_preserves_claim_boundary(
         depth_results={5: depth_path},
         node_path=node_path,
         maximum_node_distance_m=100.0,
+        model_grid_path=grid_path,
     )
 
     assert manifest["inventory"]["current_count"] == 4
@@ -219,6 +240,22 @@ def test_build_private_bundle_separates_history_and_preserves_claim_boundary(
     ]
     assert not list(output.glob("*.xlsx"))
     assert (output / "hotspots.parquet").is_file()
+    assert manifest["gwm_static_prior"]["status"] == "ready_prospective_training_only"
+    assert manifest["gwm_static_prior"]["feature_count"] == 15
+    assert manifest["gwm_static_prior"]["active_feature_count"] > 0
+    assert (output / "gwm_static_prior_250m.npz").is_file()
+    with np.load(output / "gwm_static_prior_250m.npz") as prior:
+        assert prior["features"].shape == (15, 4, 4)
+        assert "origen_criticality_weighted_proximity_exp_1km" in set(
+            prior["feature_names"].tolist()
+        )
+        assert float(prior["features"].max()) > 0.0
+    prior_receipt = json.loads(
+        (output / "gwm_static_prior_receipt.json").read_text(encoding="utf-8")
+    )
+    assert prior_receipt["grid"]["source_sha256"]
+    assert prior_receipt["source_record_counts"]["current_contributing_within_cutoff"] > 0
+    assert prior_receipt["admission"]["forbidden"][0] == "retrofit_into_existing_frozen_models"
 
     quality = json.loads((output / "data_quality_receipt.json").read_text(encoding="utf-8"))
     assert quality["cached_error_value_count_workbook_wide"] == 0
@@ -274,6 +311,25 @@ def test_hotspot_routes_require_authentication_and_never_return_raw_rows(
         assert '"raw"' not in text
         assert "source_formulas" not in text
         assert len(response.json()["features"]) == 4
+
+
+def test_existing_private_bundle_can_be_augmented_without_rebuilding_evidence(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    output = tmp_path / "private"
+    source.mkdir()
+    _write_workbooks(source)
+    original = build_private_bundle(source, output)
+    original_geojson_hash = original["artifacts"]["hotspots_current.geojson"]["sha256"]
+    grid_path = tmp_path / "terrain_grid.npz"
+    _write_model_grid(grid_path)
+
+    augmented = augment_private_bundle_with_static_prior(output, grid_path)
+
+    assert augmented["artifacts"]["hotspots_current.geojson"]["sha256"] == original_geojson_hash
+    assert augmented["gwm_static_prior"]["feature_count"] == 15
+    assert augmented["gwm_admission"]["frozen_confirmatory_model_use"] == "forbidden"
 
 
 def test_phase5_report_defaults_to_english_and_contains_hotspot_evidence(

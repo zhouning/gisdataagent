@@ -749,6 +749,292 @@ def _intervention_catalog(records: Iterable[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _has_intervention(record: Mapping[str, Any]) -> bool:
+    return any(record.get(field) not in (None, "") for field in INTERVENTION_FIELDS)
+
+
+def _intervention_state(record: Mapping[str, Any]) -> str:
+    """Return a conservative inventory state without inferring hydraulic benefit."""
+
+    status = re.sub(r"\s+", " ", str(record.get("intervention_status") or "")).strip().lower()
+    stage = re.sub(r"\s+", " ", str(record.get("project_stage") or "")).strip().lower()
+    if record.get("actual_completion_date") not in (None, "") or "completed" in status:
+        return "completed"
+    if "not started" in status:
+        return "not_started"
+    if any(
+        token in f"{status} {stage}"
+        for token in ("on track", "under construction", "implementation", "execution")
+    ):
+        return "active"
+    return "recorded" if _has_intervention(record) else "none"
+
+
+def _build_static_prior_features(
+    records: list[dict[str, Any]],
+    model_grid_path: Path | None,
+    output_root: Path,
+    *,
+    influence_scale_m: float,
+    cutoff_m: float,
+) -> dict[str, Any]:
+    """Rasterize Origen inventory attributes as prospective GWM covariates.
+
+    The feature cube is aligned to the existing 250 m model grid.  It is kept
+    separate from frozen models and confirmatory observations so that using it
+    later requires a new training freeze and spatially blocked ablation.
+    """
+
+    if model_grid_path is None:
+        return {
+            "status": "not_requested",
+            "admission": "prospective_training_only",
+        }
+    if influence_scale_m <= 0.0 or cutoff_m <= 0.0:
+        raise ValueError("hotspot_static_prior_kernel_invalid")
+
+    import numpy as np
+    from pyproj import Transformer
+    from scipy.spatial import cKDTree
+
+    grid_path = model_grid_path.expanduser().resolve()
+    if not grid_path.is_file():
+        raise ValueError(f"hotspot_static_prior_grid_not_found:{grid_path}")
+    with np.load(grid_path) as archive:
+        x = np.asarray(archive["x"], dtype=np.float64)
+        y = np.asarray(archive["y"], dtype=np.float64)
+        land = np.asarray(archive["land_mask"], dtype=bool)
+    rows, columns = land.shape
+    if x.size == columns + 1:
+        cell_x = 0.5 * (x[:-1] + x[1:])
+    elif x.size == columns:
+        cell_x = x
+    else:
+        raise ValueError("hotspot_static_prior_grid_x_invalid")
+    if y.size == rows + 1:
+        cell_y = 0.5 * (y[:-1] + y[1:])
+    elif y.size == rows:
+        cell_y = y
+    else:
+        raise ValueError("hotspot_static_prior_grid_y_invalid")
+    grid_x, grid_y = np.meshgrid(cell_x, cell_y)
+    cells = np.column_stack((grid_x.reshape(-1), grid_y.reshape(-1)))
+    land_flat = land.reshape(-1)
+    transformer = Transformer.from_crs("EPSG:4326", "EPSG:32640", always_xy=True)
+
+    def projected(
+        source: Iterable[Mapping[str, Any]],
+    ) -> tuple[np.ndarray, list[Mapping[str, Any]]]:
+        selected = [
+            record
+            for record in source
+            if record.get("longitude") is not None and record.get("latitude") is not None
+        ]
+        if not selected:
+            return np.empty((0, 2), dtype=np.float64), []
+        eastings, northings = transformer.transform(
+            [float(record["longitude"]) for record in selected],
+            [float(record["latitude"]) for record in selected],
+        )
+        return np.column_stack((eastings, northings)).astype(np.float64), selected
+
+    def maximum_influence(points: np.ndarray, weights: np.ndarray | None = None) -> np.ndarray:
+        result = np.zeros(cells.shape[0], dtype=np.float32)
+        if not len(points):
+            return result
+        point_weights = (
+            np.ones(len(points), dtype=np.float32)
+            if weights is None
+            else np.asarray(weights, dtype=np.float32)
+        )
+        for start in range(0, len(points), 64):
+            chunk = points[start : start + 64]
+            difference = cells[:, None, :] - chunk[None, :, :]
+            distance = np.sqrt(np.sum(difference * difference, axis=2))
+            influence = np.exp(-distance / influence_scale_m).astype(np.float32)
+            influence[distance > cutoff_m] = 0.0
+            influence *= point_weights[start : start + 64][None, :]
+            result = np.maximum(result, influence.max(axis=1))
+        result[~land_flat] = 0.0
+        return result
+
+    current_records = list(_iter_normalized(records, "current"))
+    history_records = list(_iter_normalized(records, "history"))
+    current_points, current_valid = projected(current_records)
+    history_points, history_valid = projected(history_records)
+    land_tree = cKDTree(cells[land_flat])
+    current_distance, _ = land_tree.query(current_points, k=1)
+    history_distance, _ = land_tree.query(history_points, k=1)
+    current_contributes = current_distance <= cutoff_m
+    history_contributes = history_distance <= cutoff_m
+    proximity = maximum_influence(current_points)
+    density = np.zeros(cells.shape[0], dtype=np.float32)
+    for start in range(0, len(current_points), 64):
+        chunk = current_points[start : start + 64]
+        difference = cells[:, None, :] - chunk[None, :, :]
+        squared_distance = np.sum(difference * difference, axis=2)
+        density += np.sum(squared_distance <= 1_000.0**2, axis=1, dtype=np.int32)
+    density = np.clip(density / 4.0, 0.0, 1.0)
+    density[~land_flat] = 0.0
+
+    def selected_influence(predicate) -> np.ndarray:
+        indexes = [index for index, record in enumerate(current_valid) if predicate(record)]
+        return maximum_influence(current_points[indexes]) if indexes else np.zeros_like(proximity)
+
+    criticality = maximum_influence(
+        current_points,
+        np.asarray(
+            [float(record.get("criticality_rank") or 0.0) / 4.0 for record in current_valid],
+            dtype=np.float32,
+        ),
+    )
+    features: list[tuple[str, np.ndarray]] = [
+        ("origen_current_hotspot_proximity_exp_1km", proximity),
+        ("origen_current_hotspot_density_1km_capped_4", density),
+        ("origen_criticality_weighted_proximity_exp_1km", criticality),
+        (
+            "origen_network_absence_proximity_exp_1km",
+            selected_influence(lambda record: record.get("network_available") == "no"),
+        ),
+        ("origen_history_hotspot_proximity_exp_1km", maximum_influence(history_points)),
+    ]
+    for category in (
+        "absence_of_drainage_network",
+        "insufficient_network_capacity",
+        "blockage_or_maintenance",
+        "topography_or_low_point",
+        "other_or_unspecified",
+    ):
+        features.append(
+            (
+                f"origen_root_cause_{category}_proximity_exp_1km",
+                selected_influence(
+                    lambda record, value=category: record.get("root_cause_category")
+                    == value
+                ),
+            )
+        )
+    features.extend(
+        [
+            (
+                "origen_intervention_recorded_proximity_exp_1km",
+                selected_influence(_has_intervention),
+            ),
+            (
+                "origen_intervention_not_started_proximity_exp_1km",
+                selected_influence(lambda record: _intervention_state(record) == "not_started"),
+            ),
+            (
+                "origen_intervention_active_proximity_exp_1km",
+                selected_influence(lambda record: _intervention_state(record) == "active"),
+            ),
+            (
+                "origen_intervention_completed_proximity_exp_1km",
+                selected_influence(lambda record: _intervention_state(record) == "completed"),
+            ),
+            (
+                "origen_swmm_node_candidate_proximity_exp_1km",
+                selected_influence(
+                    lambda record: isinstance(record.get("swmm_node_candidate"), dict)
+                    and record["swmm_node_candidate"].get("status") == "candidate"
+                ),
+            ),
+        ]
+    )
+    feature_names = [name for name, _ in features]
+    cube = np.stack([values.reshape(land.shape) for _, values in features]).astype(np.float32)
+    output_path = output_root / "gwm_static_prior_250m.npz"
+    np.savez_compressed(
+        output_path,
+        features=cube,
+        feature_names=np.asarray(feature_names),
+        x=cell_x,
+        y=cell_y,
+        land_mask=land,
+        epsg=np.asarray(32640, dtype=np.int32),
+    )
+    statistics = {
+        name: {
+            "minimum": float(np.min(values)),
+            "maximum": float(np.max(values)),
+            "mean_on_land": float(np.mean(values[land_flat])) if np.any(land_flat) else 0.0,
+            "nonzero_land_cell_count": int(np.count_nonzero(values[land_flat])),
+        }
+        for name, values in features
+    }
+    zero_feature_names = [
+        name for name, values in features if not np.any(values[land_flat] > 0.0)
+    ]
+    contributing_by_municipality = Counter(
+        record["municipality"]
+        for record, contributes in zip(current_valid, current_contributes, strict=True)
+        if contributes
+    )
+    intervention_mask = np.asarray(
+        [_has_intervention(record) for record in current_valid], dtype=bool
+    )
+    receipt = {
+        "schema": f"{SCHEMA_VERSION}.static_prior.v1",
+        "status": "ready_prospective_training_only",
+        "artifact": {
+            "filename": output_path.name,
+            "sha256": _sha256(output_path),
+            "size_bytes": output_path.stat().st_size,
+        },
+        "grid": {
+            "source_filename": grid_path.name,
+            "source_sha256": _sha256(grid_path),
+            "epsg": 32640,
+            "shape": [rows, columns],
+            "cell_size_m": float(np.median(np.diff(cell_x))) if cell_x.size > 1 else None,
+            "land_cell_count": int(np.count_nonzero(land)),
+        },
+        "kernel": {
+            "type": "exponential_distance_decay",
+            "influence_scale_m": influence_scale_m,
+            "cutoff_m": cutoff_m,
+            "density_radius_m": 1_000.0,
+            "density_cap_count": 4,
+        },
+        "source_record_counts": {
+            "current": len(current_records),
+            "current_valid_coordinate": len(current_valid),
+            "current_contributing_within_cutoff": int(np.count_nonzero(current_contributes)),
+            "current_contributing_by_municipality": dict(
+                sorted(contributing_by_municipality.items())
+            ),
+            "history": len(history_records),
+            "history_valid_coordinate": len(history_valid),
+            "history_contributing_within_cutoff": int(np.count_nonzero(history_contributes)),
+            "intervention_recorded": int(np.count_nonzero(intervention_mask)),
+            "intervention_contributing_within_cutoff": int(
+                np.count_nonzero(intervention_mask & current_contributes)
+            ),
+        },
+        "feature_names": feature_names,
+        "active_feature_count": len(feature_names) - len(zero_feature_names),
+        "zero_feature_names": zero_feature_names,
+        "feature_statistics": statistics,
+        "admission": {
+            "allowed": "new_prospectively_frozen_gwm_training_or_scenario_conditioning",
+            "required_validation": (
+                "spatially_blocked_ablation_against_the_same_model_without_origen_features"
+            ),
+            "forbidden": [
+                "retrofit_into_existing_frozen_models",
+                "event_water_depth_label",
+                "event_flood_extent_ground_truth",
+            ],
+        },
+        "claim_boundary": (
+            "The cube encodes proximity to a current static inventory. It does not encode "
+            "event timing, observed depth, flood extent, intervention benefit, or recession truth."
+        ),
+    }
+    _write_json(output_root / "gwm_static_prior_receipt.json", receipt)
+    return receipt
+
+
 def build_private_bundle(
     source_root: Path,
     output_root: Path,
@@ -756,6 +1042,9 @@ def build_private_bundle(
     depth_results: Mapping[int, Path] | None = None,
     node_path: Path | None = None,
     maximum_node_distance_m: float = 500.0,
+    model_grid_path: Path | None = None,
+    hotspot_influence_scale_m: float = 1_000.0,
+    hotspot_cutoff_m: float = 3_000.0,
 ) -> dict[str, Any]:
     """Build an auditable private bundle from Origen Batch1 workbooks."""
 
@@ -770,6 +1059,13 @@ def build_private_bundle(
     current = list(_iter_normalized(records, "current"))
     history = list(_iter_normalized(records, "history"))
     interventions = _intervention_catalog(current)
+    static_prior = _build_static_prior_features(
+        records,
+        model_grid_path,
+        output_root,
+        influence_scale_m=hotspot_influence_scale_m,
+        cutoff_m=hotspot_cutoff_m,
+    )
 
     current_geojson = _geojson(current)
     history_geojson = _geojson(history)
@@ -827,6 +1123,10 @@ def build_private_bundle(
     ):
         path = output_root / name
         artifacts[name] = {"sha256": _sha256(path), "size_bytes": path.stat().st_size}
+    if static_prior["status"] != "not_requested":
+        for name in ("gwm_static_prior_250m.npz", "gwm_static_prior_receipt.json"):
+            path = output_root / name
+            artifacts[name] = {"sha256": _sha256(path), "size_bytes": path.stat().st_size}
     manifest = {
         "schema": f"{SCHEMA_VERSION}.bundle_manifest",
         "status": "ready_private_derived_bundle",
@@ -844,6 +1144,15 @@ def build_private_bundle(
         "network_candidate_join": network_join,
         "spatial_concordance_status": concordance["status"],
         "intervention_item_count": interventions["item_count"],
+        "gwm_static_prior": {
+            "status": static_prior["status"],
+            "feature_count": len(static_prior.get("feature_names", [])),
+            "active_feature_count": static_prior.get("active_feature_count", 0),
+            "zero_feature_names": static_prior.get("zero_feature_names", []),
+            "source_record_counts": static_prior.get("source_record_counts", {}),
+            "admission": static_prior.get("admission"),
+            "claim_boundary": static_prior.get("claim_boundary"),
+        },
         "artifacts": artifacts,
         "privacy": {
             "classification": "customer_private_derived",
@@ -854,9 +1163,67 @@ def build_private_bundle(
         "gwm_admission": {
             "allowed_roles": ["auxiliary_static_feature", "spatial_prior", "external_diagnostic"],
             "forbidden_roles": ["event_water_depth_label", "event_flood_extent_ground_truth"],
+            "frozen_confirmatory_model_use": "forbidden",
+            "prospective_training_requirement": "new_freeze_and_spatially_blocked_ablation",
         },
     }
     _write_json(output_root / "manifest.json", manifest)
+    return manifest
+
+
+def augment_private_bundle_with_static_prior(
+    output_root: Path,
+    model_grid_path: Path,
+    *,
+    hotspot_influence_scale_m: float = 1_000.0,
+    hotspot_cutoff_m: float = 3_000.0,
+) -> dict[str, Any]:
+    """Add a model-grid feature cube without rebuilding established evidence artifacts."""
+
+    output_root = output_root.expanduser().resolve()
+    records_path = output_root / "hotspot_records.jsonl"
+    manifest_path = output_root / "manifest.json"
+    if not records_path.is_file() or not manifest_path.is_file():
+        raise ValueError("abu_dhabi_hotspot_bundle_not_available")
+    records = []
+    for line_number, line in enumerate(records_path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        record = json.loads(line)
+        if not isinstance(record, dict) or not isinstance(record.get("normalized"), dict):
+            raise ValueError(f"abu_dhabi_hotspot_record_invalid:{line_number}")
+        records.append(record)
+    static_prior = _build_static_prior_features(
+        records,
+        model_grid_path,
+        output_root,
+        influence_scale_m=hotspot_influence_scale_m,
+        cutoff_m=hotspot_cutoff_m,
+    )
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict):
+        raise ValueError("abu_dhabi_hotspot_manifest_invalid")
+    manifest["gwm_static_prior"] = {
+        "status": static_prior["status"],
+        "feature_count": len(static_prior.get("feature_names", [])),
+        "active_feature_count": static_prior.get("active_feature_count", 0),
+        "zero_feature_names": static_prior.get("zero_feature_names", []),
+        "source_record_counts": static_prior.get("source_record_counts", {}),
+        "admission": static_prior.get("admission"),
+        "claim_boundary": static_prior.get("claim_boundary"),
+    }
+    manifest.setdefault("gwm_admission", {}).update(
+        {
+            "frozen_confirmatory_model_use": "forbidden",
+            "prospective_training_requirement": "new_freeze_and_spatially_blocked_ablation",
+        }
+    )
+    artifacts = manifest.setdefault("artifacts", {})
+    for name in ("gwm_static_prior_250m.npz", "gwm_static_prior_receipt.json"):
+        path = output_root / name
+        artifacts[name] = {"sha256": _sha256(path), "size_bytes": path.stat().st_size}
+    manifest["updated_at_utc"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    _write_json(manifest_path, manifest)
     return manifest
 
 
@@ -896,6 +1263,7 @@ def hotspot_catalog_payload() -> dict[str, Any]:
             "item_count": interventions.get("item_count"),
             "claim_boundary": interventions.get("claim_boundary"),
         },
+        "gwm_static_prior": manifest.get("gwm_static_prior"),
         "privacy": manifest.get("privacy"),
         "gwm_admission": manifest.get("gwm_admission"),
     }

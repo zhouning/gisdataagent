@@ -115,6 +115,19 @@ interface HotspotCatalogReceipt {
     validation_gate?: Record<string, string>;
   };
   intervention_catalog?: { status?: string; item_count?: number; claim_boundary?: string };
+  gwm_static_prior?: {
+    status?: string;
+    feature_count?: number;
+    active_feature_count?: number;
+    zero_feature_names?: string[];
+    source_record_counts?: {
+      current?: number;
+      current_contributing_within_cutoff?: number;
+      history_contributing_within_cutoff?: number;
+      intervention_recorded?: number;
+      intervention_contributing_within_cutoff?: number;
+    };
+  };
 }
 
 interface HotspotGeoJson {
@@ -171,8 +184,8 @@ const stages: Stage[] = [
     statusLabel: 'GWM 已训练并可推演',
     icon: GitBranch,
     summary: 'GWM 已接入客户 SWMM 动态状态张量，可训练状态转移并按降雨、管线、泵站和出水口动作快速推演。',
-    inputs: ['SWMM / ANUGA 多事件状态', '观测掩码与质量掩码', '降雨、潮位和操作动作', '图结构与空间特征'],
-    outputs: ['快速情景 rollout', '分布外检测与不确定性', '候选方案筛选与回退信号'],
+    inputs: ['SWMM / ANUGA 多事件状态', '观测掩码与质量掩码', '降雨、潮位和操作动作', '图结构、地形与 Origen 静态先验'],
+    outputs: ['快速情景 rollout', '分布外检测与不确定性', 'Origen 250 m 静态先验特征包', '候选方案筛选与回退信号'],
     next: '设置降雨、管线、泵站和出水口动作，运行节点级快速推演。',
   },
   {
@@ -746,6 +759,13 @@ const ABU_EN_REPLACEMENTS: Array<[string, string]> = [
   ['补足第 5 个严格确认事件和独立实测水深证据，再申请工程复核。', 'Add the fifth strict confirmatory event and independent observed-depth evidence before engineering review.'],
   ['当前热点', 'Current hotspots'], ['ADM 历史热点', 'ADM historical hotspots'], ['与当前清单分层', 'kept separate from the current inventory'],
   ['SWMM 候选节点绑定', 'SWMM candidate-node links'], ['仅空间候选', 'spatial candidates only'],
+  ['GWM 静态先验', 'GWM static prior'], ['个有效特征通道', 'active feature channels'],
+  ['Origen 特征通道', 'Origen feature channels'], ['250 m 网格对齐', 'aligned to the 250 m grid'],
+  ['当前热点进入网格', 'Current hotspots influencing grid'], ['影响范围', 'influence radius'],
+  ['干预记录进入网格', 'Intervention records influencing grid'], ['当前模型域', 'current model domain'],
+  ['Origen 特征仅供新冻结模型开展空间分块消融训练；不得回填现有冻结确认性模型。', 'Origen features are reserved for spatially blocked ablation of a newly frozen model; they must not be retrofitted into the existing frozen confirmatory model.'],
+  ['图结构、地形与 Origen 静态先验', 'Graph structure, terrain, and Origen static prior'],
+  ['Origen 250 m 静态先验特征包', 'Origen 250 m static-prior feature package'],
   ['5 年一遇热点命中', '5-year hotspot concordance'], ['100 年一遇热点命中', '100-year hotspot concordance'],
   ['100 年一遇漏判清单', '100-year non-hit list'], ['个域内热点', 'in-domain hotspots'],
   ['热点一致性属于静态位置弱证据；它不替代下方分层展示的事件级外部验证。', 'Hotspot concordance is weak static location evidence; it does not replace the event-level external validation shown separately below.'],
@@ -2483,6 +2503,7 @@ export default function AbuDhabiFloodWorldModelTab() {
   const hotspotInventory = hotspotCatalog?.inventory;
   const hotspotFiveYear = hotspotCatalog?.spatial_concordance?.return_periods?.['5'];
   const hotspotHundredYear = hotspotCatalog?.spatial_concordance?.return_periods?.['100'];
+  const hotspotStaticPrior = hotspotCatalog?.gwm_static_prior;
   const strictExternal = externalValidation?.strict_confirmatory;
   const supplementaryExternal = externalValidation?.supplementary;
   const externalCrossCohort = externalValidation?.cross_cohort;
@@ -2708,7 +2729,14 @@ export default function AbuDhabiFloodWorldModelTab() {
             <div><span>{localizeAbuText('当前热点')}</span><strong>{Number(hotspotInventory?.current_count || 0).toLocaleString()}</strong><small>ADM / AAM / DRM</small></div>
             <div><span>{localizeAbuText('ADM 历史热点')}</span><strong>{Number(hotspotInventory?.history_count || 0).toLocaleString()}</strong><small>{localizeAbuText('与当前清单分层')}</small></div>
             <div><span>{localizeAbuText('SWMM 候选节点绑定')}</span><strong>{Number(hotspotCatalog.network_candidate_join?.matched_count || 0).toLocaleString()}</strong><small>{localizeAbuText('仅空间候选')}</small></div>
+            <div><span>{localizeAbuText('GWM 静态先验')}</span><strong>{Number(hotspotStaticPrior?.active_feature_count || 0)} / {Number(hotspotStaticPrior?.feature_count || 0)}</strong><small>{localizeAbuText('个有效特征通道')}</small></div>
           </div>}
+          {selectedKey === 'gwm' && hotspotStaticPrior && <div className="abu-flood-scenario-result-metrics abu-flood-delivery-metrics">
+            <div><span>{localizeAbuText('Origen 特征通道')}</span><strong>{Number(hotspotStaticPrior.active_feature_count || 0)} / {Number(hotspotStaticPrior.feature_count || 0)}</strong><small>{localizeAbuText('250 m 网格对齐')}</small></div>
+            <div><span>{localizeAbuText('当前热点进入网格')}</span><strong>{Number(hotspotStaticPrior.source_record_counts?.current_contributing_within_cutoff || 0)} / {Number(hotspotStaticPrior.source_record_counts?.current || 0)}</strong><small>3 km {localizeAbuText('影响范围')}</small></div>
+            <div><span>{localizeAbuText('干预记录进入网格')}</span><strong>{Number(hotspotStaticPrior.source_record_counts?.intervention_contributing_within_cutoff || 0)} / {Number(hotspotStaticPrior.source_record_counts?.intervention_recorded || 0)}</strong><small>{localizeAbuText('当前模型域')}</small></div>
+          </div>}
+          {selectedKey === 'gwm' && hotspotStaticPrior && <div className="abu-flood-gate-note"><ShieldCheck size={14} />{localizeAbuText('Origen 特征仅供新冻结模型开展空间分块消融训练；不得回填现有冻结确认性模型。')}</div>}
           <div className="abu-flood-io-grid">
             <div><span>{localizeAbuText('输入')}</span>{selectedStage.inputs.map(item => <div key={item}><ArrowRight size={12} />{localizeAbuText(item)}</div>)}</div>
             <div><span>{localizeAbuText('输出')}</span>{selectedStage.outputs.map(item => <div key={item}><CheckCircle2 size={12} />{localizeAbuText(item)}</div>)}</div>

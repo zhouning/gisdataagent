@@ -22,13 +22,15 @@ export HOTSPOT_BUNDLE_ROOT="$HOME/.local/share/gisdataagent/private/abu_dhabi_st
 export SWMM_NODE_PATH="/path/to/abu_dhabi_customer_stormwater_topology_nodes_full.fgb"
 export RP005_DEPTH_PATH="/path/to/rp005/maximum_depth_wgs84.geojson"
 export RP100_DEPTH_PATH="/path/to/rp100/maximum_depth_wgs84.geojson"
+export MODEL_GRID_PATH="/path/to/terrain_grid.npz"
 
 python scripts/import_abu_dhabi_origen_hotspots.py \
   --source-root "$ORIGEN_SOURCE_ROOT" \
   --output-root "$HOTSPOT_BUNDLE_ROOT" \
   --swmm-nodes "$SWMM_NODE_PATH" \
   --depth-result "5=$RP005_DEPTH_PATH" \
-  --depth-result "100=$RP100_DEPTH_PATH"
+  --depth-result "100=$RP100_DEPTH_PATH" \
+  --model-grid "$MODEL_GRID_PATH"
 ```
 
 The importer ignores Excel lock files, preserves source hashes and formulas for
@@ -65,6 +67,35 @@ Within the available model domain, 187 of 224 hotspots intersect at least 1 cm
 in the 5-year result and 215 of 224 do so in the 100-year result. These are
 static location concordance figures only. They are shown beside, but never
 substituted for, the event-level external-validation cohorts described below.
+
+## Prospective GWM static prior
+
+The importer can align the inventory to the existing 250 m model grid and
+produce `gwm_static_prior_250m.npz` plus an auditable
+`gwm_static_prior_receipt.json`. Existing private bundles can be augmented
+without rebuilding their evidence artifacts:
+
+```bash
+python scripts/build_abu_dhabi_origen_gwm_static_prior.py \
+  --bundle-root "$HOTSPOT_BUNDLE_ROOT" \
+  --model-grid "$MODEL_GRID_PATH"
+```
+
+The feature cube contains 15 channels for current and historical hotspot
+proximity, local hotspot density, criticality, network absence, normalized
+root-cause classes, intervention states, and SWMM node candidates. The
+2026-09-18 ADM-domain build has eight active channels: 230 of 590 current
+hotspots and 232 of 255 historical hotspots influence the grid within the
+frozen 3 km cutoff. All 339 records with intervention fields are outside the
+current model domain, so intervention channels correctly remain zero instead
+of being imputed or mislocated.
+
+These channels are prospective covariates only. Do not retrofit them into the
+existing frozen confirmatory model. Any model that consumes them requires a
+new training freeze and a spatially blocked ablation against the otherwise
+identical model without Origen features. Extending use to AAM/DRM intervention
+features first requires an expanded hydraulic/GWM domain and corresponding
+terrain, drainage-network, and event-state coverage.
 
 ## External-validation serving contract
 

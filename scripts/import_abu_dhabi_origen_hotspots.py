@@ -35,6 +35,9 @@ def main() -> None:
     parser.add_argument("--depth-result", action="append", type=_depth_result, default=[])
     parser.add_argument("--swmm-nodes", type=Path)
     parser.add_argument("--maximum-node-distance-m", type=float, default=500.0)
+    parser.add_argument("--model-grid", type=Path)
+    parser.add_argument("--hotspot-influence-scale-m", type=float, default=1_000.0)
+    parser.add_argument("--hotspot-cutoff-m", type=float, default=3_000.0)
     args = parser.parse_args()
     manifest = build_private_bundle(
         args.source_root,
@@ -42,6 +45,9 @@ def main() -> None:
         depth_results=dict(args.depth_result),
         node_path=args.swmm_nodes,
         maximum_node_distance_m=args.maximum_node_distance_m,
+        model_grid_path=args.model_grid,
+        hotspot_influence_scale_m=args.hotspot_influence_scale_m,
+        hotspot_cutoff_m=args.hotspot_cutoff_m,
     )
     print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
 
