@@ -119,7 +119,7 @@ def _dtm_diagnostic_root() -> Path:
 
 def _public_citywide_2d_root() -> Path:
     configured = os.environ.get("ABU_DHABI_PUBLIC_CITYWIDE_2D_ROOT", "").strip()
-    return (
+    root = (
         Path(configured).expanduser().resolve()
         if configured
         else (
@@ -132,6 +132,23 @@ def _public_citywide_2d_root() -> Path:
             )
         )
     )
+    # A configured location may be either one completed 2D run or the parent
+    # of the six Zone-B return-period runs.  Keep the original single-run
+    # contract, while resolving a batch to the same 10-year event used by the
+    # default interactive scenario.  Operators can select another batch member
+    # without changing the base directory.
+    if (root / "maximum_depth_wgs84.geojson").is_file():
+        return root
+    return_period = os.environ.get(
+        "ABU_DHABI_PUBLIC_CITYWIDE_2D_RETURN_PERIOD_YEARS", "10"
+    ).strip()
+    try:
+        batch_root = root / f"rp{int(return_period):03d}"
+    except ValueError:
+        return root
+    if (batch_root / "maximum_depth_wgs84.geojson").is_file():
+        return batch_root
+    return root
 
 
 def _pipeline_upload_candidates() -> list[Path]:

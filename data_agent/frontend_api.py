@@ -20,12 +20,13 @@ import os
 import re
 from collections import defaultdict
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import bindparam, text
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import FileResponse, JSONResponse, Response
 from starlette.routing import Route
 
 from .audit_logger import (
@@ -48,6 +49,25 @@ from .pipeline_helpers import clean_cot_leakage
 from .user_context import current_user_id, current_user_role
 
 logger = get_logger("frontend_api")
+
+_FRONTEND_SERVICE_WORKER = (
+    Path(__file__).resolve().parents[1] / "frontend" / "dist" / "sw.js"
+)
+
+
+async def _frontend_service_worker(_request: Request) -> Response:
+    """Serve the Vite service worker before Chainlit's SPA catch-all."""
+
+    if not _FRONTEND_SERVICE_WORKER.is_file():
+        return Response("Service worker unavailable", status_code=404)
+    return FileResponse(
+        _FRONTEND_SERVICE_WORKER,
+        media_type="application/javascript",
+        headers={
+            "Cache-Control": "no-cache",
+            "Service-Worker-Allowed": "/",
+        },
+    )
 
 
 def _iso_utc(value) -> str | None:
@@ -4735,6 +4755,7 @@ def get_frontend_api_routes():
     from .api.abu_dhabi_flood_routes import get_abu_dhabi_flood_routes
 
     return [
+        Route("/sw.js", endpoint=_frontend_service_worker, methods=["GET"]),
         Route("/api/platform/branding", endpoint=_api_platform_branding, methods=["GET"]),
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
         Route("/api/catalog/search", endpoint=_api_catalog_search, methods=["GET"]),

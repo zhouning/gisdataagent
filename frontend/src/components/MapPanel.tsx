@@ -395,6 +395,11 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       center,
       zoom,
       zoomControl: true,
+      // High-volume SWMM/ANUGA timelines switch from Leaflet to the WebGL
+      // renderer immediately after their metadata arrives.  A pending
+      // Leaflet zoom transition can otherwise fire after the map pane has
+      // been removed and raise `_leaflet_pos` errors during that hand-off.
+      zoomAnimation: false,
     });
 
     const selectedBasemap = availableBasemaps[activeBasemap]
@@ -834,14 +839,21 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
     ? `${scenarioTimeline.runId}:${scenarioTimeline.endpoint}:${scenarioTimeline.periodCount}`
     : '';
 
-  // Reset a newly completed SWMM run to its first native reporting period.
+  // Start node timelines at their first native reporting period. Surface-water
+  // runs often have an empty t0 frame, so open them at the final/peak period
+  // to make the 2D result immediately visible; users can still scrub back to
+  // flood onset with the shared timeline.
   useEffect(() => {
     if (!scenarioTimelineSignature) {
       setScenarioTimeIndex(0);
       setScenarioTimelinePlaying(false);
       return;
     }
-    setScenarioTimeIndex(0);
+    setScenarioTimeIndex(
+      scenarioTimeline?.kind === 'surface-cell'
+        ? Math.max(0, scenarioTimeline.periodCount - 1)
+        : 0,
+    );
     setScenarioTimelinePlaying(false);
   }, [scenarioTimelineSignature]);
 

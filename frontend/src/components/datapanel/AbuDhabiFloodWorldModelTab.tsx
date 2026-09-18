@@ -523,6 +523,8 @@ const ABU_EN_REPLACEMENTS: Array<[string, string]> = [
   ['阶段已完成', 'stages complete'],
   ['客户管网与 DTM 已接入', 'Customer network and DTM connected'],
   ['模型结果契约加载中', 'Loading model result contract'],
+  ['客户原始资产作为空间输入；SWMM、ANUGA 和 GWM 结果分别回挂到真实节点、管线或地表网格，并保留本次运行的数据来源。', 'Customer source assets provide the spatial inputs. SWMM, ANUGA, and GWM results are joined to actual nodes, pipes, or surface cells, with the source for this run retained.'],
+  ['模型结果图层 · 当前状态', 'Model result layers · current status'],
   ['数据源已绑定', 'Data sources bound'],
   ['数据与输入', 'Data and inputs'],
   ['SWMM 已完成', 'SWMM complete'],
@@ -948,6 +950,18 @@ const ABU_EN_DYNAMIC_REPLACEMENTS: Array<[RegExp, string]> = [
   // Customer-DTM citywide result labels are assembled from the run receipt.
   // Translate them as complete contracts so the English screen never falls
   // through to the legacy token-level fallback.
+  [/全市二维结果已接入：([^、；]+)、([\d.]+) m 计算网格、([\d]+) 个时间片；ESA WorldCover 2021 陆海掩膜已应用，([\d,]+) 个永久水体或土地覆盖源外单元已排除，海域不再显示为城市积水。/g,
+    'Citywide 2D result connected: $1, $2 m computational grid, $3 time slices. The ESA WorldCover 2021 land/water mask is applied; $4 permanent-water or uncovered cells are excluded, and the sea is not shown as urban flooding.'],
+  [/ANUGA 2D · ([^\n]+?) 全市陆域结果/g,
+    'ANUGA 2D · $1 citywide land-surface result'],
+  [/当前地图主图层来自 ([^；]+?) 驱动的 ANUGA 2D 全市地表结果，使用 ([\d.]+) m 计算网格；ESA WorldCover 2021 永久水体掩膜已应用，海域不接受降雨且不输出为城市积水。时间轴可播放陆域积水演变。/g,
+    'The primary map layer is the ANUGA 2D citywide surface result driven by $1 on a $2 m computational grid. The ESA WorldCover 2021 permanent-water mask is applied: sea cells receive no rainfall and are not published as urban flooding. The timeline plays land-surface flood evolution.'],
+  [/二维结果 · ([^\n·]+?) 全市陆域最大积水深度/g,
+    '2D result · $1 citywide land-surface maximum flood depth'],
+  [/二维结果 · ([^\n·]+?) 全市陆域动态积水深度/g,
+    '2D result · $1 citywide dynamic land-surface flood depth'],
+  [/^([^\n]+?) 全市二维结果已接入$/g,
+    '$1 citywide 2D result connected'],
   [/客户 AUH_DTM_5m_Z40 真实 5 m DTM 全市二维结果已接入/g,
     'Customer AUH_DTM_5m_Z40 actual 5 m DTM citywide 2D result connected'],
   [/全市二维结果已接入：客户 AUH_DTM_5m_Z40 真实 5 m DTM、([\d.]+) m 计算网格、([\d]+) 个时间片；ESA WorldCover 2021 陆海掩膜已应用，([\d,]+) 个永久水体或土地覆盖源外单元已排除，海域不再显示为城市积水。/g,

@@ -483,6 +483,7 @@ class TestRouteMount(unittest.TestCase):
         from data_agent.frontend_api import get_frontend_api_routes
         routes = get_frontend_api_routes()
         paths = [r.path for r in routes]
+        self.assertIn("/sw.js", paths)
         self.assertIn("/api/catalog", paths)
         self.assertIn("/api/catalog/search", paths)
         self.assertIn("/api/semantic/domains", paths)

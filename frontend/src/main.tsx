@@ -14,7 +14,7 @@ const apiClient = new ChainlitAPI(CHAINLIT_SERVER, 'webapp');
 // v24.0: Register Service Worker for offline mode and citywide SWMM build.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/public/sw.js?version=25-i18n').catch(() => {
+      navigator.serviceWorker.register('/sw.js?version=25-i18n').catch(() => {
       // Non-fatal: SW registration may fail in dev mode
     });
   });

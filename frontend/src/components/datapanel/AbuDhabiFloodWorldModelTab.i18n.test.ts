@@ -58,4 +58,32 @@ describe('Abu Dhabi flood world-model English presentation', () => {
     expect(text).not.toContain('source label');
     expect(text).not.toMatch(/[\u3400-\u9fff]/u);
   });
+
+  it('translates customer-DTM receipt labels that already contain an English product name', () => {
+    const warning = translateAbuEnglishText(
+      '全市二维结果已接入：Customer AUH_DTM_5m_Z40、250 m 计算网格、11 个时间片；ESA WorldCover 2021 陆海掩膜已应用，10,646 个永久水体或土地覆盖源外单元已排除，海域不再显示为城市积水。',
+    );
+    const layer = translateAbuEnglishText(
+      'ANUGA 2D · Customer AUH_DTM_5m_Z40 全市陆域结果',
+    );
+    const mapName = translateAbuEnglishText(
+      '二维结果 · Customer AUH_DTM_5m_Z40 全市陆域最大积水深度',
+    );
+    expect(warning).toContain('250 m computational grid');
+    expect(warning).toContain('10,646 permanent-water or uncovered cells');
+    expect(layer).toBe('ANUGA 2D · Customer AUH_DTM_5m_Z40 citywide land-surface result');
+    expect(mapName).toBe('2D result · Customer AUH_DTM_5m_Z40 citywide land-surface maximum flood depth');
+    expect(`${warning}${layer}${mapName}`).not.toContain('untranslated model detail');
+  });
+
+  it('keeps the phase-3 map explanation free of fallback placeholders', () => {
+    const explanation = translateAbuEnglishText(
+      '客户原始资产作为空间输入；SWMM、ANUGA 和 GWM 结果分别回挂到真实节点、管线或地表网格，并保留本次运行的数据来源。',
+    );
+    expect(explanation).toContain('Customer source assets provide the spatial inputs');
+    expect(translateAbuEnglishText('模型结果图层 · 当前状态')).toBe(
+      'Model result layers · current status',
+    );
+    expect(explanation).not.toContain('untranslated model detail');
+  });
 });

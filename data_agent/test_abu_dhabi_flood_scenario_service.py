@@ -594,6 +594,31 @@ def test_public_citywide_2d_exposes_land_water_mask_and_land_cell_timeline(
     assert result_frame["features"][0]["properties"]["land_fraction"] == 0.95
 
 
+def test_public_citywide_2d_resolves_return_period_batch_root(monkeypatch, tmp_path):
+    batch_root = tmp_path / "citywide-2d-batch"
+    ten_year_root = batch_root / "rp010"
+    hundred_year_root = batch_root / "rp100"
+    ten_year_root.mkdir(parents=True)
+    hundred_year_root.mkdir(parents=True)
+    (ten_year_root / "maximum_depth_wgs84.geojson").write_text(
+        "{}", encoding="utf-8"
+    )
+    (hundred_year_root / "maximum_depth_wgs84.geojson").write_text(
+        "{}", encoding="utf-8"
+    )
+    monkeypatch.setenv("ABU_DHABI_PUBLIC_CITYWIDE_2D_ROOT", str(batch_root))
+    monkeypatch.delenv(
+        "ABU_DHABI_PUBLIC_CITYWIDE_2D_RETURN_PERIOD_YEARS", raising=False
+    )
+
+    assert scenario_service._public_citywide_2d_root() == ten_year_root.resolve()
+
+    monkeypatch.setenv(
+        "ABU_DHABI_PUBLIC_CITYWIDE_2D_RETURN_PERIOD_YEARS", "100"
+    )
+    assert scenario_service._public_citywide_2d_root() == hundred_year_root.resolve()
+
+
 def test_pipeline_status_reports_five_functional_stages_from_derived_artifacts(monkeypatch):
     monkeypatch.setattr(
         scenario_service,
