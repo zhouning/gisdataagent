@@ -1,0 +1,279 @@
+openapi: 3.1.0
+info:
+  title: Abu Dhabi Urban Flood GWM API
+  version: 1.0.0
+  description: Offline, database-free API for frozen Abu Dhabi GWM inference.
+servers:
+  - url: http://127.0.0.1:8080
+security:
+  - bearerAuth: []
+paths:
+  /health/live:
+    get:
+      security: []
+      summary: Process liveness
+      responses:
+        "200":
+          description: Service process is alive
+  /health/ready:
+    get:
+      security: []
+      summary: Model, storage, and disk readiness
+      responses:
+        "200":
+          description: Ready for inference
+        "503":
+          description: Not ready for new inference
+  /v1/model:
+    get:
+      summary: Frozen model metadata and supported inputs
+      responses:
+        "200":
+          description: Model metadata
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /v1/rollouts:
+    post:
+      summary: Run a rainfall amount-and-duration sensitivity scenario
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            maxLength: 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RolloutRequest"
+      responses:
+        "201":
+          description: Completed immutable rollout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolloutResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Idempotency key was already used with different inputs
+        "422":
+          description: Invalid or unsupported input
+        "429":
+          description: The single rollout execution slot is busy
+        "507":
+          description: Result volume is below its minimum free-space threshold
+  /v1/runs/{runId}:
+    get:
+      summary: Read an immutable rollout receipt
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      responses:
+        "200":
+          description: Rollout receipt
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Run not found
+  /v1/runs/{runId}/map:
+    get:
+      summary: Read maximum depth and initial time-slice GeoJSON
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      responses:
+        "200":
+          description: GeoJSON bootstrap payload
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /v1/runs/{runId}/timeseries:
+    get:
+      summary: Read a time-slice GeoJSON payload
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - in: query
+          name: timeIndex
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        "200":
+          description: GeoJSON time slice
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: Time index outside the run timeline
+  /v1/runs/{runId}/artifacts/{artifactName}:
+    get:
+      summary: Download run.json or the NPZ dynamic-depth artifact
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - in: path
+          name: artifactName
+          required: true
+          schema:
+            type: string
+            enum: [run.json, surface_depth_labels_250m.npz]
+      responses:
+        "200":
+          description: Immutable result artifact
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Artifact not found
+  /api/abu-dhabi/flood/gwm/trained/events:
+    get:
+      summary: Read the current GIS Data Agent compatible model and event catalog
+      responses:
+        "200":
+          description: Frozen-model metadata, split counts, and rainfall adapter limits
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/abu-dhabi/flood/gwm/trained/rainfall-scenarios:
+    post:
+      summary: Run a rollout using the current GIS Data Agent response shape
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            maxLength: 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompatibilityRolloutRequest"
+      responses:
+        "202":
+          description: Completed rollout in the current phase-4 response shape
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Idempotency key was already used with different inputs
+        "422":
+          description: Invalid input or non-admitted event identifier
+        "429":
+          description: The single rollout execution slot is busy
+        "507":
+          description: Result volume is below its minimum free-space threshold
+  /api/abu-dhabi/flood/gwm/trained/runs/{runId}:
+    get:
+      summary: Read a rollout in the current GIS Data Agent response shape
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      responses:
+        "200":
+          description: Compatible rollout receipt
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Run not found
+  /api/abu-dhabi/flood/gwm/trained/runs/{runId}/map:
+    get:
+      summary: Read compatible maximum-depth and initial time-slice GeoJSON
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      responses:
+        "200":
+          description: Compatible GeoJSON bootstrap payload
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Run not found
+  /api/abu-dhabi/flood/gwm/trained/runs/{runId}/map/timeseries:
+    get:
+      summary: Read a compatible time-slice GeoJSON payload
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - in: query
+          name: time_index
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: Compatible GeoJSON time slice
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Run not found
+        "422":
+          description: Time index outside the run timeline
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    RunId:
+      in: path
+      name: runId
+      required: true
+      schema:
+        type: string
+        pattern: '^trained-gwm-\d{8}T\d{6}Z-[0-9a-f]{8}$'
+  responses:
+    Unauthorized:
+      description: Missing or invalid bearer token
+  schemas:
+    RolloutRequest:
+      type: object
+      additionalProperties: false
+      required: [totalRainfallMm, durationHours]
+      properties:
+        totalRainfallMm:
+          type: number
+          minimum: 0
+          maximum: 245.93333333333328
+          example: 100
+        durationHours:
+          type: integer
+          minimum: 1
+          maximum: 72
+          example: 24
+    CompatibilityRolloutRequest:
+      type: object
+      additionalProperties: false
+      required: [totalRainfallMm, durationHours]
+      properties:
+        eventId:
+          type: [string, "null"]
+          example: noaa-isd-ae-202404151200-0327
+        totalRainfallMm:
+          type: number
+          minimum: 0
+          maximum: 245.93333333333328
+          example: 100
+        durationHours:
+          type: integer
+          minimum: 1
+          maximum: 72
+          example: 24
+    RolloutResponse:
+      type: object
+      required: [runId, status, createdAt, metrics, scenario, links]
+      properties:
+        runId:
+          type: string
+        status:
+          type: string
+          const: completed
+        createdAt:
+          type: string
+          format: date-time
+        metrics:
+          type: object
+          additionalProperties: true
+        scenario:
+          type: object
+          additionalProperties: true
+        links:
+          type: object
+          additionalProperties:
+            type: string

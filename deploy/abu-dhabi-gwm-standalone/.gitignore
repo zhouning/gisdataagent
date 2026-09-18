@@ -1,0 +1,6 @@
+model_bundle/
+dist/
+.env
+test-runs/
+*.tar
+*.tar.sha256

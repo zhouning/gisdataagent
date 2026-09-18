@@ -1,0 +1,4 @@
+fastapi==0.141.1
+numpy==2.4.6
+pyproj==3.7.2
+uvicorn==0.52.4
