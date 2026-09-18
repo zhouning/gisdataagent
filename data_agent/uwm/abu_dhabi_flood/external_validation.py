@@ -28,11 +28,18 @@ DEFAULT_SUPPLEMENTARY_RECEIPT = (
     / "evaluation_final_v1"
     / "run_receipt.json"
 )
+DEFAULT_ORIGEN_ABLATION_RECEIPT = (
+    DEFAULT_VALIDATION_WORKSPACE
+    / "customer_gwm_origen_spatial_ablation_20260918_v1"
+    / "run_receipt.json"
+)
 
 CONFIRMATORY_SCHEMA = "gwm.abu_dhabi_flood.confirmatory_evaluation.v1"
 SUPPLEMENTARY_SCHEMA = (
     "gwm.abu_dhabi_flood.supplementary_external_validation_evaluation.v1"
 )
+ORIGEN_ABLATION_SCHEMA = "gwm.abu_dhabi_flood.origen_spatial_ablation.v1"
+ORIGEN_ABLATION_VARIANT_SCHEMA = f"{ORIGEN_ABLATION_SCHEMA}.variant"
 CONFIRMATORY_TARGET_EVENT_COUNT = 5
 
 
@@ -106,6 +113,95 @@ def _read_verified_receipt(
     return value, audit
 
 
+def _safe_child_path(root: Path, relative: Any) -> Path | None:
+    if not isinstance(relative, str) or not relative.strip():
+        return None
+    candidate = (root / relative).resolve()
+    try:
+        candidate.relative_to(root.resolve())
+    except ValueError:
+        return None
+    return candidate
+
+
+def _verify_origen_ablation_artifacts(
+    receipt_path: Path,
+    receipt: dict[str, Any] | None,
+) -> dict[str, Any]:
+    audit: dict[str, Any] = {"artifact_chain_verified": False, "artifact_count": 0}
+    if receipt is None or not isinstance(receipt.get("outputs"), dict):
+        audit["artifact_error_code"] = "artifact_manifest_missing"
+        return audit
+    outputs = receipt["outputs"]
+    root = receipt_path.parent.resolve()
+    checks: list[tuple[Path, str]] = []
+    for path_key, hash_key in (
+        ("protocol", "protocol_file_sha256"),
+        ("metrics", "metrics_sha256"),
+    ):
+        path = _safe_child_path(root, outputs.get(path_key))
+        expected_hash = outputs.get(hash_key)
+        if path is None or not isinstance(expected_hash, str):
+            audit["artifact_error_code"] = f"{path_key}_artifact_invalid"
+            return audit
+        checks.append((path, expected_hash))
+    artifacts = outputs.get("variant_artifacts")
+    if (
+        not isinstance(artifacts, list)
+        or len(artifacts) != int(outputs.get("variant_receipt_count") or -1)
+        or len(artifacts) != int(receipt.get("paired_variant_count") or -1)
+    ):
+        audit["artifact_error_code"] = "variant_artifact_manifest_invalid"
+        return audit
+    for item in artifacts:
+        if not isinstance(item, dict):
+            audit["artifact_error_code"] = "variant_artifact_invalid"
+            return audit
+        child_path = _safe_child_path(root, item.get("receipt"))
+        expected_hash = item.get("receipt_file_sha256")
+        if child_path is None or not isinstance(expected_hash, str):
+            audit["artifact_error_code"] = "variant_receipt_path_invalid"
+            return audit
+        checks.append((child_path, expected_hash))
+        child, child_audit = _read_verified_receipt(
+            child_path,
+            expected_schema=ORIGEN_ABLATION_VARIANT_SCHEMA,
+            ensure_ascii=True,
+        )
+        if (
+            child is None
+            or not child_audit["integrity_verified"]
+            or child.get("receipt_sha256") != item.get("declared_receipt_sha256")
+            or child.get("model_sha256") != item.get("model_sha256")
+        ):
+            audit["artifact_error_code"] = "variant_receipt_invalid"
+            return audit
+        child_outputs = child.get("outputs")
+        if not isinstance(child_outputs, dict):
+            audit["artifact_error_code"] = "variant_outputs_invalid"
+            return audit
+        model_path = _safe_child_path(root, child_outputs.get("model"))
+        if model_path is None or not model_path.is_file():
+            audit["artifact_error_code"] = "variant_model_missing"
+            return audit
+        checks.append((model_path, str(child.get("model_sha256") or "")))
+    try:
+        for path, expected_hash in checks:
+            if not path.is_file() or not expected_hash or _sha256(path) != expected_hash:
+                audit["artifact_error_code"] = "artifact_hash_mismatch"
+                return audit
+    except OSError:
+        audit["artifact_error_code"] = "artifact_unreadable"
+        return audit
+    audit.update(
+        {
+            "artifact_chain_verified": True,
+            "artifact_count": len(checks),
+        }
+    )
+    return audit
+
+
 def _event_ids(receipt: dict[str, Any] | None) -> list[str]:
     if receipt is None or not isinstance(receipt.get("event_ids"), list):
         return []
@@ -174,6 +270,41 @@ def _claim_boundary(receipt: dict[str, Any] | None) -> list[str]:
     ]
 
 
+def _origen_ablation_summary(receipt: dict[str, Any] | None) -> dict[str, Any]:
+    if receipt is None or not isinstance(receipt.get("legacy_test_holdout_summary"), dict):
+        return {}
+    allowed = (
+        "mean_delta_macro_rmse_m",
+        "mean_delta_macro_mae_m",
+        "mean_delta_macro_inundation_iou",
+        "rmse_improved_fold_count",
+        "iou_improved_fold_count",
+    )
+    summary = receipt["legacy_test_holdout_summary"]
+    return {
+        key: summary[key]
+        for key in allowed
+        if isinstance(summary.get(key), (int, float))
+    }
+
+
+def _origen_ablation_external_validation(
+    receipt: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if receipt is None or not isinstance(receipt.get("external_validation"), dict):
+        return {}
+    allowed = {
+        "used_for_training_or_selection",
+        "current_confirmatory_cohort_use",
+        "required_next_step",
+    }
+    return {
+        key: value
+        for key, value in receipt["external_validation"].items()
+        if key in allowed and isinstance(value, (str, bool))
+    }
+
+
 def external_validation_payload() -> dict[str, Any]:
     """Build a path-free, non-pooled audit ledger for authenticated clients."""
 
@@ -190,6 +321,18 @@ def external_validation_payload() -> dict[str, Any]:
         ),
         expected_schema=SUPPLEMENTARY_SCHEMA,
         ensure_ascii=False,
+    )
+    origen_ablation_path = _configured_receipt(
+        "ABU_DHABI_GWM_ORIGEN_ABLATION_RECEIPT",
+        DEFAULT_ORIGEN_ABLATION_RECEIPT,
+    )
+    origen_ablation, origen_ablation_audit = _read_verified_receipt(
+        origen_ablation_path,
+        expected_schema=ORIGEN_ABLATION_SCHEMA,
+        ensure_ascii=True,
+    )
+    origen_ablation_audit.update(
+        _verify_origen_ablation_artifacts(origen_ablation_path, origen_ablation)
     )
 
     confirmatory_ids = _event_ids(confirmatory)
@@ -211,6 +354,11 @@ def external_validation_payload() -> dict[str, Any]:
     supplementary_valid = bool(
         supplementary_audit["schema_valid"]
         and supplementary_audit["integrity_verified"]
+    )
+    origen_ablation_valid = bool(
+        origen_ablation_audit["schema_valid"]
+        and origen_ablation_audit["integrity_verified"]
+        and origen_ablation_audit["artifact_chain_verified"]
     )
     event_ids_unique = (
         len(confirmatory_ids) == confirmatory_count
@@ -246,6 +394,7 @@ def external_validation_payload() -> dict[str, Any]:
 
     confirmatory_receipt = confirmatory or {}
     supplementary_receipt = supplementary or {}
+    origen_ablation_receipt = origen_ablation or {}
     engineering_admitted = False
     admission_reason_codes = [
         "satellite_masks_are_not_observed_depth",
@@ -255,6 +404,8 @@ def external_validation_payload() -> dict[str, Any]:
         admission_reason_codes.insert(0, "strict_confirmatory_target_not_reached")
     if not supplementary_target_reached:
         admission_reason_codes.insert(1, "supplementary_target_not_reached")
+    if origen_ablation_valid:
+        admission_reason_codes.append("origen_ablation_exploratory_only")
     return {
         "schema": "gwm.abu_dhabi_flood.external_validation_summary.v1",
         "status": status,
@@ -292,6 +443,46 @@ def external_validation_payload() -> dict[str, Any]:
             ),
             "claim_boundary": _claim_boundary(supplementary),
         },
+        "origen_spatial_ablation": {
+            "status": (
+                origen_ablation_receipt.get("status")
+                if origen_ablation_valid
+                else "invalid" if origen_ablation_audit["available"] else "unavailable"
+            ),
+            "evidence_class": "prospective_spatial_ablation_exploratory",
+            "fold_count": (
+                int(origen_ablation_receipt.get("fold_count") or 0)
+                if origen_ablation_valid
+                else 0
+            ),
+            "paired_variant_count": int(
+                origen_ablation_receipt.get("paired_variant_count") or 0
+            )
+            if origen_ablation_valid
+            else 0,
+            "receipt": origen_ablation_audit,
+            "legacy_test_holdout_summary": (
+                _origen_ablation_summary(origen_ablation)
+                if origen_ablation_valid
+                else {}
+            ),
+            "interpretation": (
+                origen_ablation_receipt.get("interpretation")
+                if origen_ablation_valid
+                and isinstance(origen_ablation_receipt.get("interpretation"), str)
+                else None
+            ),
+            "promotion_decision": (
+                origen_ablation_receipt.get("promotion_decision")
+                if origen_ablation_valid
+                and isinstance(origen_ablation_receipt.get("promotion_decision"), str)
+                else None
+            ),
+            "external_validation": _origen_ablation_external_validation(
+                origen_ablation if origen_ablation_valid else None
+            ),
+            "engineering_admitted": False,
+        },
         "cross_cohort": {
             "independent_event_count": len(confirmatory_set | supplementary_set),
             "overlap_event_count": overlap_count,
@@ -307,7 +498,11 @@ def external_validation_payload() -> dict[str, Any]:
         },
         "audit": {
             "all_available_receipts_integrity_verified": bool(
-                confirmatory_valid and supplementary_valid
+                confirmatory_valid
+                and supplementary_valid
+                and (
+                    not origen_ablation_audit["available"] or origen_ablation_valid
+                )
             ),
             "event_deduplication_passed": bool(event_ids_unique and event_ids_disjoint),
             "receipt_event_counts_consistent": receipt_event_counts_consistent,

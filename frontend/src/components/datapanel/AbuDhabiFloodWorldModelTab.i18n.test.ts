@@ -65,6 +65,19 @@ describe('Abu Dhabi flood world-model English presentation', () => {
     expect(`${metrics}${boundary}`).not.toMatch(/[\u3400-\u9fff]/u);
   });
 
+  it('translates the Origen spatial-ablation result and its evidence boundary', () => {
+    const metrics = translateAbuEnglishText(
+      '空间分块消融 · 折完成 · 成对模型 · 相同架构与随机种子 · RMSE 改善折数 · IoU 改善折数 · 结果混合，暂无一致收益 · 物理标签探索性评估',
+    );
+    const boundary = translateAbuEnglishText(
+      'Origen 消融使用物理仿真标签进行探索性评估，未使用已有外部确认队列；新模型仍需未来独立事件验证。',
+    );
+    expect(metrics).toContain('Spatially blocked ablation');
+    expect(metrics).toContain('same architecture and random seed');
+    expect(boundary).toContain('future independent-event validation');
+    expect(`${metrics}${boundary}`).not.toMatch(/[\u3400-\u9fff]/u);
+  });
+
   it('translates dynamic map labels without generic fallback words', () => {
     const text = translateAbuEnglishText('全市二维最大积水深度（m）· 公共 DEM 原型');
     expect(text).toBe('Citywide 2D maximum flood depth (m) · public DEM prototype');

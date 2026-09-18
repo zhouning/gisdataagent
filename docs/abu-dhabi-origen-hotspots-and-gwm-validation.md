@@ -97,6 +97,39 @@ identical model without Origen features. Extending use to AAM/DRM intervention
 features first requires an expanded hydraulic/GWM domain and corresponding
 terrain, drainage-network, and event-state coverage.
 
+Run the prospective paired ablation with:
+
+```bash
+python scripts/train_abu_dhabi_gwm_origen_spatial_ablation.py \
+  --origen-prior "$HOTSPOT_BUNDLE_ROOT/gwm_static_prior_250m.npz" \
+  --origen-receipt "$HOTSPOT_BUNDLE_ROOT/gwm_static_prior_receipt.json" \
+  --output-root /path/to/new_origen_spatial_ablation
+```
+
+The runner verifies the prior, receipt, terrain, land mask, coordinates, and
+feature schema before freezing its protocol. It trains paired models with the
+same architecture, initialization, event batches, and optimizer; the control
+receives all-zero Origen channels. Four deterministic 5 km spatial-block folds
+use a 1.25 km exclusion buffer around each holdout, and label-derived static
+susceptibility is omitted. Existing external-validation events are forbidden
+from training and model selection because the new model postdates that cohort.
+Only a future event cohort frozen before scoring can externally validate the
+new model.
+
+Interrupted runs may be continued with the same arguments plus `--resume`.
+Resume accepts only the exact frozen protocol and reuses a fold/variant only
+after verifying its receipt and model hashes; partial variants are rerun.
+
+The 2026-09-18 prospective run completed four folds and eight paired models at
+the same fixed step 200. Every pair used 13,201 parameters and had identical
+step-zero metrics; no stability violations occurred. On the legacy test
+spatial holdouts, Origen improved RMSE in three of four folds and IoU in two of
+four. Mean macro RMSE changed by -0.0000187 m and mean macro IoU by +0.0143,
+while mean macro MAE worsened by +0.000690 m. The correct interpretation is
+therefore `mixed_no_consistent_benefit`, and the candidate is not promoted.
+The authenticated API verifies an 18-artifact chain covering the protocol,
+summary metrics, eight variant receipts, and eight model files.
+
 ## External-validation serving contract
 
 The authenticated external-validation endpoint reads the frozen confirmatory
@@ -113,9 +146,10 @@ Sentinel-2, Landsat, and Sentinel-1 observation contracts. The resulting
 engineering-admission flag remains `false`.
 
 Use `ABU_DHABI_GWM_CONFIRMATORY_RECEIPT` and
-`ABU_DHABI_GWM_SUPPLEMENTARY_RECEIPT` to override the two default private
-receipt locations. These environment values and their resolved paths are
-never returned by the API.
+`ABU_DHABI_GWM_SUPPLEMENTARY_RECEIPT` to override the two external-validation
+receipt locations. Use `ABU_DHABI_GWM_ORIGEN_ABLATION_RECEIPT` for the optional
+prospective Origen ablation receipt. These environment values and their
+resolved paths are never returned by the API.
 
 ## Reproduce supplementary GWM evaluation
 

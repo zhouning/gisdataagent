@@ -81,6 +81,22 @@ interface ExternalValidationReceipt {
     target_sample_size_reached?: boolean;
     receipt?: { integrity_verified?: boolean };
   };
+  origen_spatial_ablation?: {
+    status?: string;
+    fold_count?: number;
+    paired_variant_count?: number;
+    receipt?: { integrity_verified?: boolean };
+    legacy_test_holdout_summary?: {
+      mean_delta_macro_rmse_m?: number;
+      mean_delta_macro_mae_m?: number;
+      mean_delta_macro_inundation_iou?: number;
+      rmse_improved_fold_count?: number;
+      iou_improved_fold_count?: number;
+    };
+    interpretation?: string | null;
+    promotion_decision?: string | null;
+    engineering_admitted?: boolean;
+  };
   cross_cohort?: {
     independent_event_count?: number;
     overlap_event_count?: number;
@@ -764,6 +780,12 @@ const ABU_EN_REPLACEMENTS: Array<[string, string]> = [
   ['当前热点进入网格', 'Current hotspots influencing grid'], ['影响范围', 'influence radius'],
   ['干预记录进入网格', 'Intervention records influencing grid'], ['当前模型域', 'current model domain'],
   ['Origen 特征仅供新冻结模型开展空间分块消融训练；不得回填现有冻结确认性模型。', 'Origen features are reserved for spatially blocked ablation of a newly frozen model; they must not be retrofitted into the existing frozen confirmatory model.'],
+  ['空间分块消融', 'Spatially blocked ablation'], ['折完成', 'folds completed'],
+  ['成对模型', 'Paired models'], ['相同架构与随机种子', 'same architecture and random seed'],
+  ['RMSE 改善折数', 'Folds with improved RMSE'], ['IoU 改善折数', 'Folds with improved IoU'],
+  ['结果混合，暂无一致收益', 'Mixed result; no consistent benefit'], ['结论', 'Conclusion'],
+  ['物理标签探索性评估', 'Exploratory evaluation on physics labels'],
+  ['Origen 消融使用物理仿真标签进行探索性评估，未使用已有外部确认队列；新模型仍需未来独立事件验证。', 'The Origen ablation is an exploratory evaluation against physics-simulation labels and did not use the existing external confirmatory cohort. The new model still requires future independent-event validation.'],
   ['图结构、地形与 Origen 静态先验', 'Graph structure, terrain, and Origen static prior'],
   ['Origen 250 m 静态先验特征包', 'Origen 250 m static-prior feature package'],
   ['5 年一遇热点命中', '5-year hotspot concordance'], ['100 年一遇热点命中', '100-year hotspot concordance'],
@@ -2506,6 +2528,10 @@ export default function AbuDhabiFloodWorldModelTab() {
   const hotspotStaticPrior = hotspotCatalog?.gwm_static_prior;
   const strictExternal = externalValidation?.strict_confirmatory;
   const supplementaryExternal = externalValidation?.supplementary;
+  const origenAblation = externalValidation?.origen_spatial_ablation;
+  const origenAblationInterpretation = origenAblation?.interpretation === 'mixed_no_consistent_benefit'
+    ? '结果混合，暂无一致收益'
+    : origenAblation?.interpretation || '—';
   const externalCrossCohort = externalValidation?.cross_cohort;
   const hybridPhysicsIou = strictExternal?.physics_emulation?.gated_hybrid_gwm?.macro_physics_binary_iou;
   const sentinelPhysicsIou = strictExternal?.sentinel2_observation?.physics?.macro_iou;
@@ -2737,6 +2763,14 @@ export default function AbuDhabiFloodWorldModelTab() {
             <div><span>{localizeAbuText('干预记录进入网格')}</span><strong>{Number(hotspotStaticPrior.source_record_counts?.intervention_contributing_within_cutoff || 0)} / {Number(hotspotStaticPrior.source_record_counts?.intervention_recorded || 0)}</strong><small>{localizeAbuText('当前模型域')}</small></div>
           </div>}
           {selectedKey === 'gwm' && hotspotStaticPrior && <div className="abu-flood-gate-note"><ShieldCheck size={14} />{localizeAbuText('Origen 特征仅供新冻结模型开展空间分块消融训练；不得回填现有冻结确认性模型。')}</div>}
+          {selectedKey === 'gwm' && origenAblation && origenAblation.status !== 'unavailable' && <div className="abu-flood-scenario-result-metrics abu-flood-delivery-metrics">
+            <div><span>{localizeAbuText('空间分块消融')}</span><strong>{Number(origenAblation?.fold_count || 0)}</strong><small>{localizeAbuText('折完成')}</small></div>
+            <div><span>{localizeAbuText('成对模型')}</span><strong>{Number(origenAblation?.paired_variant_count || 0)}</strong><small>{localizeAbuText('相同架构与随机种子')}</small></div>
+            <div><span>{localizeAbuText('RMSE 改善折数')}</span><strong>{Number(origenAblation?.legacy_test_holdout_summary?.rmse_improved_fold_count || 0)} / {Number(origenAblation?.fold_count || 0)}</strong><small>Origen</small></div>
+            <div><span>{localizeAbuText('IoU 改善折数')}</span><strong>{Number(origenAblation?.legacy_test_holdout_summary?.iou_improved_fold_count || 0)} / {Number(origenAblation?.fold_count || 0)}</strong><small>Origen</small></div>
+            <div><span>{localizeAbuText('结论')}</span><strong>{localizeAbuText(origenAblationInterpretation)}</strong><small>{localizeAbuText('物理标签探索性评估')}</small></div>
+          </div>}
+          {selectedKey === 'gwm' && origenAblation && origenAblation.status !== 'unavailable' && <div className="abu-flood-gate-note"><AlertTriangle size={14} />{localizeAbuText('Origen 消融使用物理仿真标签进行探索性评估，未使用已有外部确认队列；新模型仍需未来独立事件验证。')}</div>}
           <div className="abu-flood-io-grid">
             <div><span>{localizeAbuText('输入')}</span>{selectedStage.inputs.map(item => <div key={item}><ArrowRight size={12} />{localizeAbuText(item)}</div>)}</div>
             <div><span>{localizeAbuText('输出')}</span>{selectedStage.outputs.map(item => <div key={item}><CheckCircle2 size={12} />{localizeAbuText(item)}</div>)}</div>

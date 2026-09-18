@@ -16,11 +16,12 @@ def phase5_report_payload() -> dict[str, Any]:
     concordance = catalog.get("spatial_concordance") or {}
     periods = concordance.get("return_periods") or {}
     return {
-        "schema": "gwm.abu_dhabi_flood.phase5_delivery_report.v2",
+        "schema": "gwm.abu_dhabi_flood.phase5_delivery_report.v3",
         "generated_at_utc": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "hotspot_inventory": inventory,
         "network_candidate_join": catalog.get("network_candidate_join") or {},
         "intervention_catalog": catalog.get("intervention_catalog") or {},
+        "gwm_static_prior": catalog.get("gwm_static_prior") or {},
         "spatial_concordance": {
             "five_year": periods.get("5") or {},
             "hundred_year": periods.get("100") or {},
@@ -63,6 +64,8 @@ def phase5_report_html(language: str | None = None) -> str:
     external = report["external_validation"]
     strict = external.get("strict_confirmatory") or {}
     supplementary = external.get("supplementary") or {}
+    origen_ablation = external.get("origen_spatial_ablation") or {}
+    origen_ablation_summary = origen_ablation.get("legacy_test_holdout_summary") or {}
     cross_cohort = external.get("cross_cohort") or {}
     engineering = external.get("engineering_admission") or {}
     physics_metrics = (strict.get("physics_emulation") or {}).get("gated_hybrid_gwm") or {}
@@ -71,6 +74,19 @@ def phase5_report_html(language: str | None = None) -> str:
     satellite_gwm = satellite_metrics.get("gated_hybrid_gwm") or {}
     strict_receipt = strict.get("receipt") or {}
     supplementary_receipt = supplementary.get("receipt") or {}
+    origen_ablation_receipt = origen_ablation.get("receipt") or {}
+    static_prior = report["gwm_static_prior"]
+    static_prior_counts = static_prior.get("source_record_counts") or {}
+    current_grid_count = _metric(
+        static_prior_counts.get("current_contributing_within_cutoff")
+    )
+    current_inventory_count = _metric(static_prior_counts.get("current"))
+    intervention_grid_count = _metric(
+        static_prior_counts.get("intervention_contributing_within_cutoff")
+    )
+    intervention_inventory_count = _metric(
+        static_prior_counts.get("intervention_recorded")
+    )
     if zh:
         labels = {
             "lang": "zh-CN",
@@ -105,6 +121,23 @@ def phase5_report_html(language: str | None = None) -> str:
             "audit": "审计回执",
             "strict_hash": "严格确认性回执 SHA-256",
             "supplementary_hash": "补充验证回执 SHA-256",
+            "origen_model": "Origen GWM 前瞻消融",
+            "active_channels": "有效静态特征通道",
+            "current_grid": "进入当前网格的热点",
+            "intervention_grid": "进入当前网格的干预记录",
+            "spatial_folds": "空间分块折数",
+            "paired_models": "成对模型",
+            "rmse_folds": "RMSE 改善折数",
+            "iou_folds": "IoU 改善折数",
+            "origen_result": "消融结论",
+            "origen_mixed": "结果混合，暂无一致收益",
+            "origen_consistent": "探索性空间折中一致改善",
+            "origen_unavailable": "尚未完成",
+            "origen_hash": "Origen 消融回执 SHA-256",
+            "origen_boundary": (
+                "Origen 消融仅使用物理仿真标签作探索性比较，未使用已有外部确认"
+                "队列；新模型仍需未来独立事件验证。"
+            ),
             "verified": "规范化内容哈希已校验",
             "admission": "工程准入",
             "not_admitted": "未准入",
@@ -159,6 +192,24 @@ def phase5_report_html(language: str | None = None) -> str:
             "audit": "Audit receipts",
             "strict_hash": "Strict confirmatory receipt SHA-256",
             "supplementary_hash": "Supplementary receipt SHA-256",
+            "origen_model": "Prospective Origen GWM ablation",
+            "active_channels": "Active static feature channels",
+            "current_grid": "Current hotspots influencing the grid",
+            "intervention_grid": "Intervention records influencing the grid",
+            "spatial_folds": "Spatial-block folds",
+            "paired_models": "Paired models",
+            "rmse_folds": "Folds with improved RMSE",
+            "iou_folds": "Folds with improved IoU",
+            "origen_result": "Ablation conclusion",
+            "origen_mixed": "Mixed result; no consistent benefit",
+            "origen_consistent": "Consistent improvement across exploratory spatial folds",
+            "origen_unavailable": "Not completed",
+            "origen_hash": "Origen ablation receipt SHA-256",
+            "origen_boundary": (
+                "The Origen ablation is exploratory and uses physics-simulation labels. "
+                "It did not use the existing external confirmatory cohort; the new model "
+                "still requires future independent-event validation."
+            ),
             "verified": "Canonical content hash verified",
             "admission": "Engineering admission",
             "not_admitted": "NOT ADMITTED",
@@ -194,12 +245,16 @@ def phase5_report_html(language: str | None = None) -> str:
     supplementary_hash = escape(
         str(supplementary_receipt.get("declared_sha256") or "unavailable")
     )
+    origen_hash = escape(
+        str(origen_ablation_receipt.get("declared_sha256") or "unavailable")
+    )
     receipts_verified = str(
-        bool(
-            strict_receipt.get("integrity_verified")
-            and supplementary_receipt.get("integrity_verified")
-        )
+        bool((external.get("audit") or {}).get("all_available_receipts_integrity_verified"))
     ).lower()
+    origen_interpretation = {
+        "mixed_no_consistent_benefit": labels["origen_mixed"],
+        "consistent_exploratory_benefit": labels["origen_consistent"],
+    }.get(str(origen_ablation.get("interpretation") or ""), labels["origen_unavailable"])
     admission_label = labels["not_admitted"] if not engineering.get("admitted") else "ADMITTED"
     return f"""<!doctype html>
 <html lang="{labels["lang"]}">
@@ -273,9 +328,33 @@ h2 {{ margin-top: 28px; border-bottom: 2px solid #0f87a8; padding-bottom: 6px; }
 <small>{escape(labels["gwm"])} {_score(satellite_gwm.get("macro_iou"))}</small></div>
 </section>
 <div class="notice">{escape(labels["no_pool"])}</div>
+<h2>{escape(labels["origen_model"])}</h2>
+<section class="grid">
+<div class="card"><span>{escape(labels["active_channels"])}</span>
+<strong>{_metric(static_prior.get("active_feature_count"))} /
+{_metric(static_prior.get("feature_count"))}</strong></div>
+<div class="card"><span>{escape(labels["current_grid"])}</span>
+<strong>{current_grid_count} / {current_inventory_count}</strong></div>
+<div class="card"><span>{escape(labels["intervention_grid"])}</span>
+<strong>{intervention_grid_count} / {intervention_inventory_count}</strong></div>
+<div class="card"><span>{escape(labels["spatial_folds"])}</span>
+<strong>{_metric(origen_ablation.get("fold_count"))}</strong></div>
+<div class="card"><span>{escape(labels["paired_models"])}</span>
+<strong>{_metric(origen_ablation.get("paired_variant_count"))}</strong></div>
+<div class="card"><span>{escape(labels["rmse_folds"])}</span>
+<strong>{_metric(origen_ablation_summary.get("rmse_improved_fold_count"))} /
+{_metric(origen_ablation.get("fold_count"))}</strong></div>
+<div class="card"><span>{escape(labels["iou_folds"])}</span>
+<strong>{_metric(origen_ablation_summary.get("iou_improved_fold_count"))} /
+{_metric(origen_ablation.get("fold_count"))}</strong></div>
+<div class="card"><span>{escape(labels["origen_result"])}</span>
+<strong>{escape(origen_interpretation)}</strong></div>
+</section>
+<div class="notice">{escape(labels["origen_boundary"])}</div>
 <h2>{escape(labels["audit"])}</h2>
 <p class="meta">{escape(labels["strict_hash"])}: {strict_hash}<br>
 {escape(labels["supplementary_hash"])}: {supplementary_hash}<br>
+{escape(labels["origen_hash"])}: {origen_hash}<br>
 {escape(labels["verified"])}: {receipts_verified}</p>
 <h2>{escape(labels["admission"])}</h2>
 <div class="notice critical"><strong>{escape(admission_label)}</strong><br>
