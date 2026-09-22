@@ -154,6 +154,26 @@ async function main() {
     await page.screenshot({ path: `${OUT_DIR}/abu-dhabi-flood-stage3.png` });
 
     await selectStage(workbench, 'GWM 快速推演层');
+    const stage4Card = workbench.locator('.abu-flood-stage', { hasText: 'GWM 快速推演层' }).first();
+    await page.waitForFunction(() => {
+      const cards = [...document.querySelectorAll('.abu-flood-stage')];
+      const card = cards.find((item) => item.textContent?.includes('GWM 快速推演层'));
+      return /[1-9][0-9]* 个事件已训练/.test(card?.textContent || '');
+    }, null, { timeout: 30_000 });
+    const stage4CardText = (await stage4Card.innerText()).trim();
+    await page.waitForTimeout(500);
+    const stage4BeforeRun = await page.evaluate(() => window.__lastMapUpdate || null);
+    if (!stage4BeforeRun?.layers?.some((layer) => layer.scenarioTimeline?.kind === 'surface-cell')) {
+      throw new Error('stage 4: opening controls cleared the existing stage-3 map before rollout');
+    }
+    const stage4RunButton = workbench.locator('button', { hasText: '运行全市 GWM 推演' }).first();
+    await stage4RunButton.waitFor({ state: 'visible', timeout: 30_000 });
+    await page.waitForFunction(() => {
+      const button = [...document.querySelectorAll('.abu-flood-tab button')]
+        .find((item) => item.textContent?.includes('运行全市 GWM 推演'));
+      return Boolean(button && !button.disabled);
+    }, null, { timeout: 30_000 });
+    await stage4RunButton.click();
     const stage4 = await waitForMap(
       page,
       "update => update.layers.some(layer => layer.scenarioTimeline?.kind === 'gwm-surface-cell' && layer.type === 'choropleth' && Array.isArray(layer.geojsonData?.features) && layer.geojsonData.features.length > 0)",
@@ -187,6 +207,12 @@ async function main() {
       'stage 5',
     );
     const stage5Frame = await waitForTimelineFrame(page, stage5, 'stage 5');
+    const stage5GwmMetric = workbench.locator('.abu-flood-scenario-result-metrics', { hasText: 'GWM 动态格网事件' }).first();
+    await stage5GwmMetric.waitFor({ state: 'visible', timeout: 30_000 });
+    const stage5GwmMetricText = (await stage5GwmMetric.innerText()).trim();
+    if (!/GWM 动态格网事件\s*[1-9][0-9]*\s*个训练事件/.test(stage5GwmMetricText)) {
+      throw new Error(`stage 5: trained GWM event count is missing or zero: ${stage5GwmMetricText}`);
+    }
     await page.screenshot({ path: `${OUT_DIR}/abu-dhabi-flood-stage5.png` });
 
     await selectStage(workbench, '数据与输入');
@@ -195,7 +221,7 @@ async function main() {
     await explorer.locator('button', { hasText: 'ADM 历史热点' }).click();
     const historyMap = await waitForMap(
       page,
-      "update => update.layers.some(layer => String(layer.name).includes('历史热点') && layer.visible !== false) && update.layers.some(layer => String(layer.name).includes('当前暴雨内涝热点') && layer.visible === false)",
+      "update => update.layers.some(layer => String(layer.name).includes('客户历史城市内涝热点') && layer.visible !== false) && update.layers.some(layer => String(layer.name).includes('客户当前城市内涝热点') && layer.visible === false)",
       'historical hotspot inventory',
     );
     const historyRows = await explorer.locator('.abu-flood-hotspot-row:not(.header)').count();
@@ -210,6 +236,10 @@ async function main() {
     await reportButton.click();
     const report = await popupPromise;
     await report.waitForLoadState('domcontentloaded');
+    await report.waitForFunction(() => (
+      document.body.innerText.includes('Customer urban flood-hotspot inventory')
+      && document.body.innerText.includes('ADM historical hotspots')
+    ), null, { timeout: 60_000 });
     const reportText = await report.locator('body').innerText();
     if (!reportText.includes('Customer urban flood-hotspot inventory') || !reportText.includes('ADM historical hotspots')) {
       throw new Error('phase 5 report does not expose the customer current/history hotspot summary');
@@ -238,11 +268,14 @@ async function main() {
       stage2RenderedFrame,
       stage3: summarize(stage3),
       stage3Frame,
+      stage4CardText,
+      stage4BeforeRun: summarize(stage4BeforeRun),
       stage4: summarize(stage4),
       stage4Frame,
       stage4Geometry,
       stage5: summarize(stage5),
       stage5Frame,
+      stage5GwmMetricText,
       history: { ...summarize(historyMap), visibleRows: historyRows },
       reportChecks: {
         language: 'en-US',

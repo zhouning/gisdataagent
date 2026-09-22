@@ -285,59 +285,61 @@ export function buildHotspotMapLayers(
   current?: HotspotGeoJson | null,
   history?: HotspotGeoJson | null,
   activeInventory: 'current' | 'history' = 'current',
+  latest506?: HotspotGeoJson | null,
 ) {
-  if (!current?.features?.length || !['data', 'swmm', 'surface', 'gwm', 'validation'].includes(stageKey)) return [];
-  const currentLayer = {
-    name: stageKey === 'validation'
-      ? '客户当前城市内涝热点 · 模型空间一致性'
-      : stageKey === 'gwm'
-        ? '客户当前城市内涝热点 · GWM 静态参考'
-      : `客户当前城市内涝热点（${current.features.length} 条）`,
-    type: 'categorized' as const,
-    geojsonData: current,
-    category_column: 'criticality',
-    category_colors: {
-      'Very High': '#7f1d1d',
-      High: '#dc2626',
-      Medium: '#f59e0b',
-      Low: '#facc15',
-      Unknown: '#64748b',
-    },
-    category_labels: {
-      'Very High': 'Very High',
-      High: 'High',
-      Medium: 'Medium',
-      Low: 'Low',
-      Unknown: 'Unknown',
-    },
-    legend_title: '客户内涝热点风险等级',
-    visible: stageKey !== 'data' || activeInventory === 'current',
-    style: { radius: 6, weight: 1.5, color: '#ffffff', opacity: 0.98, fillOpacity: 0.88 },
-    tooltip_fields: [
-      'municipality', 'hotspot_id', 'hotspot_area', 'hotspot_location', 'criticality',
-      'network_available', 'root_cause', 'root_cause_details', 'root_cause_category',
-      'current_network_capacity', 'future_network_capacity', 'design_solution',
-      'intervention_type', 'intervention_status', 'planned_completion_date',
-      'additional_budget_required', 'swmm_node_candidate_id',
-      'swmm_node_candidate_distance_m', 'rp005_maximum_depth_m', 'rp100_maximum_depth_m',
-    ],
-    tooltip_labels: {
-      municipality: '市政区', hotspot_id: '热点 ID', hotspot_area: '热点区域',
-      hotspot_location: '热点位置', criticality: '风险等级', network_available: '排水网络可用',
-      root_cause: '内涝根因', root_cause_details: '根因说明', root_cause_category: '根因分类',
-      current_network_capacity: '当前排水能力', future_network_capacity: '未来排水能力',
-      design_solution: '设计方案', intervention_type: '干预类型', intervention_status: '干预状态',
-      planned_completion_date: '计划完成时间', additional_budget_required: '是否需要追加预算',
-      swmm_node_candidate_id: 'SWMM 候选节点',
-      swmm_node_candidate_distance_m: '候选节点距离（m）',
-      rp005_maximum_depth_m: '5 年一遇模型最大深度（m）',
-      rp100_maximum_depth_m: '100 年一遇模型最大深度（m）',
-    },
-  };
-  if (stageKey !== 'data' || !history?.features?.length) return [currentLayer];
-  return [
-    currentLayer,
-    {
+  if (!['data', 'swmm', 'surface', 'gwm', 'validation'].includes(stageKey)) return [];
+  const layers: any[] = [];
+  if (current?.features?.length) {
+    layers.push({
+      name: stageKey === 'validation'
+        ? '客户当前城市内涝热点 · 模型空间一致性'
+        : stageKey === 'gwm'
+          ? '客户当前城市内涝热点 · GWM 静态参考'
+        : `客户当前城市内涝热点（${current.features.length} 条）`,
+      type: 'categorized' as const,
+      geojsonData: current,
+      category_column: 'criticality',
+      category_colors: {
+        'Very High': '#7f1d1d',
+        High: '#dc2626',
+        Medium: '#f59e0b',
+        Low: '#facc15',
+        Unknown: '#64748b',
+      },
+      category_labels: {
+        'Very High': 'Very High',
+        High: 'High',
+        Medium: 'Medium',
+        Low: 'Low',
+        Unknown: 'Unknown',
+      },
+      legend_title: '客户内涝热点风险等级',
+      visible: stageKey !== 'data' || activeInventory === 'current',
+      style: { radius: 6, weight: 1.5, color: '#ffffff', opacity: 0.98, fillOpacity: 0.88 },
+      tooltip_fields: [
+        'municipality', 'hotspot_id', 'hotspot_area', 'hotspot_location', 'criticality',
+        'network_available', 'root_cause', 'root_cause_details', 'root_cause_category',
+        'current_network_capacity', 'future_network_capacity', 'design_solution',
+        'intervention_type', 'intervention_status', 'planned_completion_date',
+        'additional_budget_required', 'swmm_node_candidate_id',
+        'swmm_node_candidate_distance_m', 'rp005_maximum_depth_m', 'rp100_maximum_depth_m',
+      ],
+      tooltip_labels: {
+        municipality: '市政区', hotspot_id: '热点 ID', hotspot_area: '热点区域',
+        hotspot_location: '热点位置', criticality: '风险等级', network_available: '排水网络可用',
+        root_cause: '内涝根因', root_cause_details: '根因说明', root_cause_category: '根因分类',
+        current_network_capacity: '当前排水能力', future_network_capacity: '未来排水能力',
+        design_solution: '设计方案', intervention_type: '干预类型', intervention_status: '干预状态',
+        planned_completion_date: '计划完成时间', additional_budget_required: '是否需要追加预算',
+        swmm_node_candidate_id: 'SWMM 候选节点',
+        swmm_node_candidate_distance_m: '候选节点距离（m）',
+        rp005_maximum_depth_m: '5 年一遇模型最大深度（m）',
+        rp100_maximum_depth_m: '100 年一遇模型最大深度（m）',
+      },
+    });
+  }
+  if (stageKey === 'data' && history?.features?.length) {
+    layers.push({
       name: `客户历史城市内涝热点（${history.features.length} 条，上一版清单）`,
       type: 'bubble' as const,
       geojsonData: history,
@@ -362,8 +364,37 @@ export function buildHotspotMapLayers(
         planned_mobilization_date: '计划启动时间', planned_completion_date: '计划完成时间',
         additional_budget_required: '是否需要追加预算',
       },
-    },
-  ];
+    });
+  }
+  if (latest506?.features?.length) {
+    layers.push({
+      name: `客户最新城市积水关键点（${latest506.features.length} 条）`,
+      type: 'categorized' as const,
+      geojsonData: latest506,
+      category_column: 'priority',
+      category_colors: {
+        'Very Important': '#dc2626',
+        Important: '#f59e0b',
+      },
+      category_labels: {
+        'Very Important': 'Very Important',
+        Important: 'Important',
+      },
+      legend_title: '客户最新积水关键点优先级',
+      visible: stageKey === 'data',
+      style: { radius: 7, weight: 1.8, color: '#fff7ed', opacity: 1, fillOpacity: 0.92 },
+      tooltip_fields: [
+        'hotspot_id', 'priority', 'description_ar', 'service_center_ar',
+        'service_center_en', 'latitude', 'longitude', 'inventory_version',
+      ],
+      tooltip_labels: {
+        hotspot_id: '积水点 ID', priority: '优先级', description_ar: '阿拉伯语描述',
+        service_center_ar: '服务中心（阿拉伯语）', service_center_en: '服务中心',
+        latitude: '纬度', longitude: '经度', inventory_version: '清单版本',
+      },
+    });
+  }
+  return layers;
 }
 
 // These are private, locally generated derivatives of the customer FileGDB.
@@ -916,6 +947,10 @@ const ABU_EN_REPLACEMENTS: Array<[string, string]> = [
   ['客户当前城市内涝热点 · GWM 静态参考', 'Customer current urban-flood hotspots · GWM static reference'],
   ['客户内涝热点风险等级', 'Customer flood-hotspot criticality'],
   ['客户历史内涝热点风险等级', 'Customer historical flood-hotspot criticality'], ['风险等级', 'Criticality'], ['排水网络可用', 'Drainage network available'],
+  ['客户最新积水关键点优先级', 'Latest customer flood-point priority'],
+  ['积水点 ID', 'Flood-point ID'], ['优先级', 'Priority'], ['阿拉伯语描述', 'Arabic description'],
+  ['服务中心（阿拉伯语）', 'Service center (Arabic)'], ['服务中心', 'Service center'],
+  ['纬度', 'Latitude'], ['经度', 'Longitude'], ['清单版本', 'Inventory version'],
   ['根因分类', 'Root-cause category'], ['SWMM 候选节点', 'SWMM candidate node'], ['候选节点距离（m）', 'Candidate-node distance (m)'],
   ['5 年一遇模型最大深度（m）', '5-year modeled maximum depth (m)'], ['100 年一遇模型最大深度（m）', '100-year modeled maximum depth (m)'],
   ['决策输出', 'Decision outputs'], ['物理基线', 'Physical baseline'], ['主二维链路', 'Primary 2D chain'], ['复核模型', 'Cross-check model'], ['代理层', 'Surrogate layer'],
@@ -1145,6 +1180,8 @@ const ABU_EN_REPLACEMENTS: Array<[string, string]> = [
 // Runtime receipts and map labels contain values that cannot be listed
 // literally above (node counts, run IDs, cell counts, and measurements).
 const ABU_EN_DYNAMIC_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/客户最新城市积水关键点（([\d,]+) 条）/g,
+    'Customer latest urban-flood critical points ($1 records)'],
   [/客户当前城市内涝热点（([\d,]+) 条）/g,
     'Customer current urban-flood hotspots ($1 records)'],
   [/客户历史城市内涝热点（([\d,]+) 条，上一版清单）/g,
@@ -1438,7 +1475,7 @@ const scenarioRunStages = [
   ['04', '地图动画回挂', '真实 SWMM 作业完成后接入动态结果图层'],
 ] as const;
 
-export function buildCustomerMapUpdate(stageKey: string, ready: boolean, resultReady: boolean, cityCompiled: boolean, cityRuntimeReady: boolean, cityDynamicResultReady: boolean, citySpatialResultReady: boolean, dtmDiagnostic?: CustomerDtmDiagnostic | null, publicCitywide2dDiagnostic?: PublicCitywide2dDiagnostic | null, hotspotCurrent?: HotspotGeoJson | null, hotspotHistory?: HotspotGeoJson | null, activeHotspotInventory: 'current' | 'history' = 'current') {
+export function buildCustomerMapUpdate(stageKey: string, ready: boolean, resultReady: boolean, cityCompiled: boolean, cityRuntimeReady: boolean, cityDynamicResultReady: boolean, citySpatialResultReady: boolean, dtmDiagnostic?: CustomerDtmDiagnostic | null, publicCitywide2dDiagnostic?: PublicCitywide2dDiagnostic | null, hotspotCurrent?: HotspotGeoJson | null, hotspotHistory?: HotspotGeoJson | null, activeHotspotInventory: 'current' | 'history' = 'current', hotspotLatest506?: HotspotGeoJson | null) {
   const keys = stageLayerKeys[stageKey] || stageLayerKeys.data;
     const resultKeys = stageResultLayerKeys[stageKey] || [];
   // The five-feature public proxy sample is not a citywide hydraulic result.
@@ -1469,7 +1506,13 @@ export function buildCustomerMapUpdate(stageKey: string, ready: boolean, resultR
   const publicCitywide2dLayers = showPublicCitywide2dResult && publicCitywide2dDiagnostic
     ? buildPublicCitywide2dMapLayers(publicCitywide2dDiagnostic)
     : [];
-  const hotspotLayers = buildHotspotMapLayers(stageKey, hotspotCurrent, hotspotHistory, activeHotspotInventory);
+  const hotspotLayers = buildHotspotMapLayers(
+    stageKey,
+    hotspotCurrent,
+    hotspotHistory,
+    activeHotspotInventory,
+    hotspotLatest506,
+  );
   const layers = [
     ...publicCitywide2dLayers,
     ...dtmLayers,
@@ -1775,6 +1818,7 @@ export function buildTrainedGwmResultMapUpdate(
   runPayload: any,
   mapPayload: any,
   hotspotCurrent?: HotspotGeoJson | null,
+  hotspotLatest506?: HotspotGeoJson | null,
 ) {
   const runId = String(runPayload?.run_id || mapPayload?.metadata?.run_id || 'unknown');
   const metadata = mapPayload?.metadata || runPayload?.metadata || {};
@@ -1855,7 +1899,8 @@ export function buildTrainedGwmResultMapUpdate(
         },
         scenarioTimeline: timeline,
       },
-      ...buildHotspotMapLayers('gwm', hotspotCurrent).map((layer) => ({ ...layer, visible: false })),
+      ...buildHotspotMapLayers('gwm', hotspotCurrent, null, 'current', hotspotLatest506)
+        .map((layer) => ({ ...layer, visible: false })),
     ],
     metadata: {
       model_mode: 'trained_event_rollout',
@@ -1934,6 +1979,7 @@ export default function AbuDhabiFloodWorldModelTab() {
   const [hotspotCatalog, setHotspotCatalog] = useState<HotspotCatalogReceipt | null>(null);
   const [hotspotCurrent, setHotspotCurrent] = useState<HotspotGeoJson | null>(null);
   const [hotspotHistory, setHotspotHistory] = useState<HotspotGeoJson | null>(null);
+  const [hotspotLatest506, setHotspotLatest506] = useState<HotspotGeoJson | null>(null);
   const [hotspotInventoryView, setHotspotInventoryView] = useState<'current' | 'history'>('current');
   const [hotspotSearch, setHotspotSearch] = useState('');
   const [externalValidation, setExternalValidation] = useState<ExternalValidationReceipt | null>(null);
@@ -1961,14 +2007,14 @@ export default function AbuDhabiFloodWorldModelTab() {
         data: '数据源已绑定',
         swmm: 'SWMM 已完成',
         surface: `${Number(metrics.snapshot_count || 0)} 帧二维结果已生成`,
-        gwm: `${Number(metrics.event_count || metrics.training_event_count || 0)} 个事件已训练`,
+        gwm: `${Number(metrics.event_count || metrics.training_event_count || gwmModel?.training_event_count || 0)} 个事件已训练`,
         validation: '结果包已生成',
       } as Record<string, string>)[stage.key]
       : stage.key === 'validation'
         ? '外部验证小样本 · 未工程准入'
         : `${receipt.completed_artifacts} / ${receipt.required_artifacts} 产物`;
     return { ...stage, status: receipt.status, statusLabel: metricLabel || stage.statusLabel };
-  }), [pipelineStatus]);
+  }), [gwmModel, pipelineStatus]);
   const selectedStage = useMemo(
     () => effectiveStages.find(stage => stage.key === selectedKey) || effectiveStages[0],
     [effectiveStages, selectedKey],
@@ -2051,7 +2097,7 @@ export default function AbuDhabiFloodWorldModelTab() {
       setGwmRollout(combined); gwmRolloutRef.current = combined; setSelectedKey('gwm');
       window.localStorage.setItem('abu-dhabi-trained-gwm-run-id', runId);
       const handler = (window as any).__handleMapUpdate;
-      if (typeof handler === 'function') { handler(buildTrainedGwmResultMapUpdate(combined, mapPayload, hotspotCurrent)); setMapSent(true); }
+      if (typeof handler === 'function') { handler(buildTrainedGwmResultMapUpdate(combined, mapPayload, hotspotCurrent, hotspotLatest506)); setMapSent(true); }
     } catch (error) { setGwmError(error instanceof Error ? error.message : 'GWM 全市格网推演失败'); }
     finally { setGwmBusy(false); }
   };
@@ -2131,16 +2177,19 @@ export default function AbuDhabiFloodWorldModelTab() {
       fetch('/api/abu-dhabi/flood/hotspots/catalog', { credentials: 'include', headers: getLocaleHeaders() }),
       fetch('/api/abu-dhabi/flood/hotspots/map?inventory=current', { credentials: 'include', headers: getLocaleHeaders() }),
       fetch('/api/abu-dhabi/flood/hotspots/map?inventory=history', { credentials: 'include', headers: getLocaleHeaders() }),
-    ]).then(async ([catalogResponse, currentResponse, historyResponse]) => {
-      const [catalog, current, history] = await Promise.all([
+      fetch('/api/abu-dhabi/flood/hotspots/latest-506/map', { credentials: 'include', headers: getLocaleHeaders() }),
+    ]).then(async ([catalogResponse, currentResponse, historyResponse, latest506Response]) => {
+      const [catalog, current, history, latest506] = await Promise.all([
         catalogResponse.ok ? catalogResponse.json() : null,
         currentResponse.ok ? currentResponse.json() : null,
         historyResponse.ok ? historyResponse.json() : null,
+        latest506Response.ok ? latest506Response.json() : null,
       ]);
       if (cancelled) return;
       if (catalog?.status) setHotspotCatalog(catalog);
       if (current?.type === 'FeatureCollection') setHotspotCurrent(current);
       if (history?.type === 'FeatureCollection') setHotspotHistory(history);
+      if (latest506?.type === 'FeatureCollection') setHotspotLatest506(latest506);
     }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
@@ -2387,12 +2436,18 @@ export default function AbuDhabiFloodWorldModelTab() {
     const publish = () => {
       const mapHandler = (window as any).__handleMapUpdate;
       if (typeof mapHandler !== 'function') return false;
+      if (selectedKey === 'gwm' && !gwmRolloutRef.current) return true;
       if (selectedKey === 'gwm' && gwmRolloutRef.current) {
-        mapHandler(buildTrainedGwmResultMapUpdate(gwmRolloutRef.current, gwmRolloutRef.current.map, hotspotCurrent));
+        mapHandler(buildTrainedGwmResultMapUpdate(
+          gwmRolloutRef.current,
+          gwmRolloutRef.current.map,
+          hotspotCurrent,
+          hotspotLatest506,
+        ));
       } else if (selectedKey === 'swmm') {
         mapHandler(buildScenarioResultMapUpdate(scenarioMapPayload));
       } else {
-        mapHandler(buildCustomerMapUpdate(selectedKey, customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady, cityDynamicResultReady, citySpatialResultReady, customerDtmDiagnostic, publicCitywide2dDiagnostic, hotspotCurrent, hotspotHistory, hotspotInventoryView));
+        mapHandler(buildCustomerMapUpdate(selectedKey, customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady, cityDynamicResultReady, citySpatialResultReady, customerDtmDiagnostic, publicCitywide2dDiagnostic, hotspotCurrent, hotspotHistory, hotspotInventoryView, hotspotLatest506));
       }
       setMapSent(true);
       return true;
@@ -2404,7 +2459,7 @@ export default function AbuDhabiFloodWorldModelTab() {
       if (publish() || attempts >= 20) window.clearInterval(timer);
     }, 150);
     return () => window.clearInterval(timer);
-  }, [scenarioMapPayload, gwmRollout, selectedKey, customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady, cityDynamicResultReady, citySpatialResultReady, customerDtmDiagnostic, publicCitywide2dDiagnostic, hotspotCurrent, hotspotHistory, hotspotInventoryView]);
+  }, [scenarioMapPayload, gwmRollout, selectedKey, customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady, cityDynamicResultReady, citySpatialResultReady, customerDtmDiagnostic, publicCitywide2dDiagnostic, hotspotCurrent, hotspotHistory, hotspotInventoryView, hotspotLatest506]);
 
   const rainfallProfile = useMemo(() => {
     if (scenario.rainfallPattern === 'official_zone_b_ddf_abm') {
@@ -2667,11 +2722,19 @@ export default function AbuDhabiFloodWorldModelTab() {
     setScenarioMapPayload(null);
   };
 
-  const sendStageToMap = (stageKey = selectedKey, ready = customerMapReady, resultReady = swmmResultReady, cityCompiled = cityCompileReady, cityRuntime = cityRuntimeReady, cityDynamicResult = cityDynamicResultReady, citySpatialResult = citySpatialResultReady, dtmDiagnostic = customerDtmDiagnostic, publicCitywide2d = publicCitywide2dDiagnostic, currentHotspots = hotspotCurrent, historyHotspots = hotspotHistory) => {
+  const sendStageToMap = (stageKey = selectedKey, ready = customerMapReady, resultReady = swmmResultReady, cityCompiled = cityCompileReady, cityRuntime = cityRuntimeReady, cityDynamicResult = cityDynamicResultReady, citySpatialResult = citySpatialResultReady, dtmDiagnostic = customerDtmDiagnostic, publicCitywide2d = publicCitywide2dDiagnostic, currentHotspots = hotspotCurrent, historyHotspots = hotspotHistory, latestHotspots506 = hotspotLatest506) => {
     const handler = (window as any).__handleMapUpdate;
     if (typeof handler !== 'function') return;
+    // Do not replace an existing map with an empty GWM placeholder before a
+    // stage-4 rollout has actually been executed.
+    if (stageKey === 'gwm' && !gwmRolloutRef.current) return;
     if (gwmRolloutRef.current && stageKey === 'gwm') {
-      handler(buildTrainedGwmResultMapUpdate(gwmRolloutRef.current, gwmRolloutRef.current.map, currentHotspots));
+      handler(buildTrainedGwmResultMapUpdate(
+        gwmRolloutRef.current,
+        gwmRolloutRef.current.map,
+        currentHotspots,
+        latestHotspots506,
+      ));
       setMapSent(true);
       return;
     }
@@ -2680,7 +2743,7 @@ export default function AbuDhabiFloodWorldModelTab() {
       setMapSent(true);
       return;
     }
-    handler(buildCustomerMapUpdate(stageKey, ready, resultReady, cityCompiled, cityRuntime, cityDynamicResult, citySpatialResult, dtmDiagnostic, publicCitywide2d, currentHotspots, historyHotspots, hotspotInventoryView));
+    handler(buildCustomerMapUpdate(stageKey, ready, resultReady, cityCompiled, cityRuntime, cityDynamicResult, citySpatialResult, dtmDiagnostic, publicCitywide2d, currentHotspots, historyHotspots, hotspotInventoryView, latestHotspots506));
     setMapSent(true);
   };
 
@@ -2709,6 +2772,7 @@ export default function AbuDhabiFloodWorldModelTab() {
     const publish = () => {
       const handler = (window as any).__handleMapUpdate;
       if (typeof handler !== 'function') return false;
+      if (selectedKey === 'gwm' && !gwmRolloutRef.current) return true;
       // An explicitly loaded SWMM scenario owns the SWMM/GWM map until the
       // user selects another stage. Late DTM/public-2D bootstrap responses
       // must not replace its native OUT timeline.
@@ -2718,7 +2782,7 @@ export default function AbuDhabiFloodWorldModelTab() {
         // result. Skipping here avoids duplicate 20 MB first-frame requests.
         return true;
       }
-      handler(buildCustomerMapUpdate(selectedKey, customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady, cityDynamicResultReady, citySpatialResultReady, customerDtmDiagnostic, publicCitywide2dDiagnostic, hotspotCurrent, hotspotHistory, hotspotInventoryView));
+      handler(buildCustomerMapUpdate(selectedKey, customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady, cityDynamicResultReady, citySpatialResultReady, customerDtmDiagnostic, publicCitywide2dDiagnostic, hotspotCurrent, hotspotHistory, hotspotInventoryView, hotspotLatest506));
       setMapSent(true);
       return true;
     };
@@ -2729,7 +2793,7 @@ export default function AbuDhabiFloodWorldModelTab() {
       if (publish() || attempts >= 20) window.clearInterval(timer);
     }, 150);
     return () => window.clearInterval(timer);
-  }, [customerDtmDiagnostic, publicCitywide2dDiagnostic, hotspotCurrent, hotspotHistory, hotspotInventoryView, customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady, cityDynamicResultReady, citySpatialResultReady, selectedKey]);
+  }, [customerDtmDiagnostic, publicCitywide2dDiagnostic, hotspotCurrent, hotspotHistory, hotspotInventoryView, hotspotLatest506, customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady, cityDynamicResultReady, citySpatialResultReady, selectedKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2866,7 +2930,7 @@ export default function AbuDhabiFloodWorldModelTab() {
       handler(buildCustomerMapUpdate(
         'data', customerMapReady, swmmResultReady, cityCompileReady, cityRuntimeReady,
         cityDynamicResultReady, citySpatialResultReady, customerDtmDiagnostic,
-        publicCitywide2dDiagnostic, hotspotCurrent, hotspotHistory, inventory,
+        publicCitywide2dDiagnostic, hotspotCurrent, hotspotHistory, inventory, hotspotLatest506,
       ));
       setMapSent(true);
     }
@@ -3040,7 +3104,7 @@ export default function AbuDhabiFloodWorldModelTab() {
           <div className="abu-flood-map-warning"><AlertTriangle size={14} /><span>{gwmResultVisible ? localizeAbuText(`本次 GWM 推演已刷新全市 250 m 动态格网时间轴，共 ${Number(gwmRollout?.metadata?.timeline?.total_cell_count || 0).toLocaleString()} 个陆域单元、${Number(gwmRollout?.metadata?.timeline?.period_count || 0)} 个时间片，步长 ${Number(gwmRollout?.metadata?.timeline?.step_minutes || 5)} 分钟；可在 2D/3D 地图底部播放。`) : publicCitywide2dVisible ? localizeAbuText(`全市二维结果已接入：${citywideSurfaceProduct}、${Number(publicCitywide2dDiagnostic?.metadata?.model_cell_size_m || 250)} m 计算网格、${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.period_count || 0)} 个时间片；ESA WorldCover 2021 陆海掩膜已应用，${Number(publicLandWaterMask?.excluded_permanent_water_cells || 0).toLocaleString()} 个永久水体或土地覆盖源外单元已排除，海域不再显示为城市积水。`) : scenarioMapPayload ? localizeAbuText(`本次 SWMM 情景已接入原生 OUT 时间轴，共 ${Number(scenarioMapPayload.metadata?.total_node_result_count || scenarioMapPayload.metadata?.timeline?.total_node_count || 0).toLocaleString()} 个节点；地图每个时间片均加载全部节点（含零值节点），没有按阈值或数量截断。可在 2D/3D 地图底部播放，节点溢流/积水层可在图层控制中打开。`) : !customerMapChecked ? localizeAbuText('正在检查本地客户图层和模型结果…') : citySpatialResultReady ? localizeAbuText('已接入客户节点/管线几何上的全市连续网络 SWMM 最大值：节点最大水深、节点溢流/积水、管段流量、流速和容量率。') : cityRuntimeReady ? `${localizeAbuText('已接入全市连续网络运行状态')}：${localizeAbuText(runtimeCountLabel)}。${localizeAbuText('失败分类')}：${localizeAbuText(runtimeFailureLabel)}。` : cityCompileReady ? localizeAbuText('全市连续网络 SWMM 输入已编译：保留跨内部计算组织的可用管段。') : customerMapReady && swmmResultReady ? localizeAbuText('已接入 Open-Meteo 降雨驱动的 SWMM 原型结果。') : customerMapReady ? localizeAbuText('客户图层：EPSG:32640 → WGS 84 预览；模型结果加载中。') : localizeAbuText('客户图层加载中；未覆盖输入由公开与参数化适配器补足。')}</span></div>
           {publicCitywide2dVisible && publicLandWaterMask && <div className="abu-flood-map-warning"><Waves size={14} /><span>{localizeAbuText(`陆海掩膜已应用：${publicLandWaterMask.product || 'ESA WorldCover 2021'}；永久水体占比阈值 ${Number(publicLandWaterMask.water_cell_fraction_threshold || 0.5).toFixed(2)}；降雨仅施加到陆域单元，永久水体和土地覆盖源外单元不进入城市积水图层。`)}</span></div>}
           {publicCitywide2dVisible && publicCitywide2dDiagnostic?.metadata?.coupling && <div className="abu-flood-map-warning"><GitBranch size={14} /><span>{localizeAbuText(String(publicCitywide2dDiagnostic.metadata.coupling.mode || 'one_way_swmm_to_anuga'))} · {localizeAbuText('SWMM 节点溢流作为 ANUGA 地表源项；同步水头差回流尚未启用')}</span></div>}
-          <button className="abu-flood-map-action" disabled={!customerMapReady && !cityRuntimeReady && !cityCompileReady && !swmmResultReady && !citySpatialResultReady && !scenarioMapPayload && !publicCitywide2dVisible && !gwmResultVisible} onClick={() => sendStageToMap()}><MapIcon size={15} />{localizeAbuText(mapSent ? '重新发送当前阶段图层到地图' : '在地图上展示当前阶段')}</button>
+          <button className="abu-flood-map-action" disabled={selectedKey === 'gwm' ? !gwmResultVisible : !customerMapReady && !cityRuntimeReady && !cityCompileReady && !swmmResultReady && !citySpatialResultReady && !scenarioMapPayload && !publicCitywide2dVisible && !gwmResultVisible} onClick={() => sendStageToMap()}><MapIcon size={15} />{localizeAbuText(mapSent ? '重新发送当前阶段图层到地图' : '在地图上展示当前阶段')}</button>
         </div>
         <div className="abu-flood-map-layers" aria-label={localizeAbuText('当前地图图层和结果状态')}>
           <div className="abu-flood-map-layer-heading"><Database size={13} /><strong>{localizeAbuText('地图输入与底图')}</strong></div>
@@ -3174,7 +3238,7 @@ export default function AbuDhabiFloodWorldModelTab() {
           {selectedKey === 'validation' && pipelineStatus && <div className="abu-flood-scenario-result-metrics abu-flood-delivery-metrics">
             <div><span>{localizeAbuText('结果包文件')}</span><strong>{Number(pipelineStatus.delivery?.derived_artifact_count || 0)}</strong><small>{localizeAbuText('个派生产物')}</small></div>
             <div><span>{localizeAbuText('二维时间片')}</span><strong>{Number(pipelineStatus.stages.find(item => item.key === 'surface')?.metrics?.valid_snapshot_count || 0)}</strong><small>{localizeAbuText('帧全市结果')}</small></div>
-            <div><span>{localizeAbuText('GWM 动态格网事件')}</span><strong>{Number(pipelineStatus.stages.find(item => item.key === 'gwm')?.metrics?.event_count || pipelineStatus.stages.find(item => item.key === 'gwm')?.metrics?.training_event_count || 0)}</strong><small>{localizeAbuText('个训练事件')}</small></div>
+            <div><span>{localizeAbuText('GWM 动态格网事件')}</span><strong>{Number(pipelineStatus.stages.find(item => item.key === 'gwm')?.metrics?.event_count || pipelineStatus.stages.find(item => item.key === 'gwm')?.metrics?.training_event_count || gwmModel?.training_event_count || 0)}</strong><small>{localizeAbuText('个训练事件')}</small></div>
           </div>}
           {selectedKey === 'validation' && externalValidation && <div className="abu-flood-scenario-result-metrics abu-flood-delivery-metrics">
             <div><span>{localizeAbuText('严格确认性事件')}</span><strong>{Number(strictExternal?.event_count || 0)} / {Number(strictExternal?.target_event_count || 0)}</strong><small>{localizeAbuText('小样本，目标未满足')}</small></div>

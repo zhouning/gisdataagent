@@ -535,6 +535,8 @@
       "uwm_multistage": "UWM多阶段城市干预规划",
     "ai_demand_readiness": "AI应用需求矩阵",
     "abu_dhabi_flood_world_model": "阿布扎比 · 暴雨内涝世界模型",
+    "al_bateen_high_resolution_flood": "Al Bateen · 高精度内涝推演",
+    "abu_dhabi_rdf_workflow": "阿布扎比 · RD F 全流程",
       "abu_land_use_compare": "阿布扎比 · 三模型对比",
       "abu_flus": "阿布扎比 · GeoSOS-FLUS",
       "abu_kernel": "阿布扎比 · Geospatial Kernel",

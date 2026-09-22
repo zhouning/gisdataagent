@@ -1024,6 +1024,56 @@ html[lang^='ar'] {
 .abu-flood-gwm-section { scroll-margin-top: 12px; padding: 14px; border: 1px solid rgba(20,184,166,.42); border-radius: 7px; background: var(--surface); }
 .abu-flood-gwm-grid { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.35fr); gap: 12px; }
 
+/* RD F stays visually related to the V1 workbench while remaining a separate
+   local-model workflow with its own source and quality boundary. */
+.rdf-workflow-tab { container-type: inline-size; }
+.rdf-hero { border-color: rgba(14,165,233,.42); }
+.rdf-source-path { display: block; overflow: hidden; margin: -4px 0 11px; color: #a5f3fc; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.rdf-stage-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
+.rdf-stage-grid .abu-flood-stage-index { color: var(--info); font-family: var(--font-mono); font-size: 9px; }
+.rdf-stage-grid .abu-flood-pill { margin-top: auto; }
+.rdf-stage-detail { display: grid; grid-template-columns: minmax(200px, .8fr) minmax(0, 1.5fr); gap: 12px; margin-top: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: #0e1a25; }
+.rdf-stage-detail > div:first-child p { margin-top: 7px; color: var(--text-secondary); font-size: 10px; line-height: 1.55; }
+.rdf-stage-detail .abu-flood-next { grid-column: 1 / -1; margin-top: 0; }
+.rdf-run-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.rdf-warning-list { margin-top: 10px; padding: 8px 10px; border: 1px solid rgba(245,158,11,.3); border-radius: 5px; color: var(--warning); font-size: 9px; }
+.rdf-warning-list summary { cursor: pointer; font-weight: 700; }
+.rdf-warning-list > div { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; color: var(--text-tertiary); line-height: 1.35; }
+.rdf-warning-list svg { flex: 0 0 auto; margin-top: 1px; color: var(--warning); }
+.rdf-loading { display: flex; min-height: 320px; align-items: center; justify-content: center; gap: 8px; color: var(--text-secondary); font-size: 11px; }
+
+/* Al Bateen local high-resolution hydrodynamic workbench. */
+.al-bateen-tab { container-type: inline-size; }
+.al-bateen-hero { border-color: rgba(56,189,248,.48); background: linear-gradient(135deg, rgba(14,116,144,.14), var(--surface) 55%); }
+.al-bateen-loading { display: flex; min-height: 360px; align-items: center; justify-content: center; gap: 9px; color: var(--text-secondary); font-size: 11px; }
+.al-bateen-form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.al-bateen-form-grid label { display: flex; min-width: 0; flex-direction: column; gap: 6px; color: var(--text-secondary); font-size: 9px; font-weight: 700; letter-spacing: .03em; }
+.al-bateen-form-grid select, .al-bateen-form-grid input { width: 100%; min-height: 34px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 5px; background: #0d1822; color: var(--text-primary); padding: 6px 8px; font: inherit; font-weight: 500; letter-spacing: 0; }
+.al-bateen-form-grid select:focus, .al-bateen-form-grid input:focus { border-color: rgba(56,189,248,.7); outline: 0; box-shadow: 0 0 0 2px rgba(56,189,248,.1); }
+.al-bateen-input-suffix { position: relative; }
+.al-bateen-input-suffix input { padding-right: 28px; }
+.al-bateen-input-suffix em { position: absolute; right: 9px; top: 9px; color: var(--text-tertiary); font-style: normal; font-weight: 600; }
+.al-bateen-progress { position: relative; height: 22px; overflow: hidden; margin-top: 10px; border: 1px solid rgba(56,189,248,.28); border-radius: 4px; background: rgba(8,47,73,.24); }
+.al-bateen-progress > span { display: block; height: 100%; background: linear-gradient(90deg, rgba(14,165,233,.35), rgba(34,211,238,.48)); transition: width .35s ease; }
+.al-bateen-progress > em { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #cffafe; font-size: 9px; font-style: normal; font-weight: 700; }
+.al-bateen-result-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.al-bateen-dewatering-note { display: flex; align-items: flex-start; gap: 9px; margin: 10px 0; padding: 10px 12px; border: 1px solid rgba(245,158,11,.35); border-radius: 5px; background: rgba(120,53,15,.14); color: #fde68a; }
+.al-bateen-dewatering-note.complete { border-color: rgba(34,197,94,.35); background: rgba(20,83,45,.14); color: #bbf7d0; }
+.al-bateen-dewatering-note > div { min-width: 0; }
+.al-bateen-dewatering-note strong, .al-bateen-dewatering-note span { display: block; }
+.al-bateen-dewatering-note strong { font-size: 10px; }
+.al-bateen-dewatering-note span { margin-top: 3px; color: var(--text-secondary); font-size: 9px; line-height: 1.5; }
+.al-bateen-timeline-controls { display: grid; grid-template-columns: auto minmax(160px, 1fr) auto auto; align-items: center; gap: 9px; margin-top: 12px; }
+.al-bateen-timeline-controls input[type='range'] { width: 100%; accent-color: #22d3ee; }
+.al-bateen-asset-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.al-bateen-asset-grid > div { display: flex; min-width: 0; align-items: flex-start; gap: 8px; padding: 9px; border: 1px solid var(--border); border-radius: 5px; background: #0e1a25; }
+.al-bateen-asset-grid > div.ready svg { color: var(--success); }
+.al-bateen-asset-grid > div.blocked svg { color: var(--warning); }
+.al-bateen-asset-grid > div > div { min-width: 0; }
+.al-bateen-asset-grid strong, .al-bateen-asset-grid span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.al-bateen-asset-grid strong { color: var(--text-primary); font-size: 9px; }
+.al-bateen-asset-grid span { margin-top: 3px; color: var(--text-tertiary); font-size: 8px; }
+
 @container (max-width: 760px) {
   .abu-flood-hero { grid-template-columns: 1fr; }
   .abu-flood-hero-side { justify-content: flex-start; }
@@ -1041,6 +1091,13 @@ html[lang^='ar'] {
   .abu-flood-map-layers { border-top: 1px solid var(--border); border-left: 0; }
   .abu-flood-scenario-result { border-top: 1px solid var(--border); border-left: 0; }
   .abu-flood-stage-track { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .rdf-stage-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rdf-stage-detail { grid-template-columns: 1fr; }
+  .rdf-run-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .al-bateen-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .al-bateen-result-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .al-bateen-timeline-controls { grid-template-columns: 1fr; }
+  .al-bateen-asset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .abu-flood-stage-wrap { display: block; }
   .abu-flood-stage-arrow { display: none; }
   .abu-flood-flow-board { grid-template-columns: 1fr; }

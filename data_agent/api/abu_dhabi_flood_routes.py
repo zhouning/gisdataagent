@@ -9,6 +9,208 @@ from starlette.routing import Route
 from .helpers import _get_user_from_request, _set_user_context
 
 
+async def get_al_bateen_high_resolution_status(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        from ..abu_dhabi_al_bateen_flood_service import workflow_status
+
+        return JSONResponse(workflow_status())
+    except Exception as error:
+        return JSONResponse(
+            {"error": "al_bateen_status_failed", "detail": str(error)[:500]},
+            status_code=500,
+        )
+
+
+async def get_al_bateen_precomputed_result_library(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        from ..abu_dhabi_al_bateen_flood_service import precomputed_result_catalog
+
+        return JSONResponse(precomputed_result_catalog())
+    except Exception as error:
+        return JSONResponse(
+            {"error": "al_bateen_precomputed_library_failed", "detail": str(error)[:500]},
+            status_code=500,
+        )
+
+
+async def create_al_bateen_high_resolution_run(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        payload = await request.json()
+    except Exception:
+        return JSONResponse({"error": "al_bateen_scenario_json_required"}, status_code=400)
+    try:
+        from ..abu_dhabi_al_bateen_flood_service import start_run
+
+        return JSONResponse(start_run(payload), status_code=202)
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=400)
+    except Exception as error:
+        return JSONResponse(
+            {"error": "al_bateen_run_start_failed", "detail": str(error)[:500]},
+            status_code=500,
+        )
+
+
+async def get_latest_al_bateen_high_resolution_run(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        from ..abu_dhabi_al_bateen_flood_service import latest_run
+
+        return JSONResponse(latest_run())
+    except KeyError:
+        return JSONResponse({"error": "al_bateen_run_not_found"}, status_code=404)
+
+
+async def get_al_bateen_high_resolution_run(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    run_id = str(request.path_params.get("run_id") or "")
+    try:
+        from ..abu_dhabi_al_bateen_flood_service import public_run
+
+        return JSONResponse(public_run(run_id))
+    except KeyError:
+        return JSONResponse({"error": "al_bateen_run_not_found"}, status_code=404)
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=400)
+
+
+async def get_al_bateen_high_resolution_map(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    run_id = str(request.path_params.get("run_id") or "")
+    try:
+        from ..abu_dhabi_al_bateen_flood_service import map_bootstrap
+
+        return JSONResponse(map_bootstrap(run_id))
+    except KeyError:
+        return JSONResponse({"error": "al_bateen_run_not_found"}, status_code=404)
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+    except Exception as error:
+        return JSONResponse(
+            {"error": "al_bateen_map_failed", "detail": str(error)[:500]},
+            status_code=500,
+        )
+
+
+async def get_al_bateen_high_resolution_timeseries(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    run_id = str(request.path_params.get("run_id") or "")
+    try:
+        time_index = int(request.query_params.get("time_index", "0"))
+    except (TypeError, ValueError):
+        return JSONResponse({"error": "al_bateen_time_index_invalid"}, status_code=400)
+    try:
+        from ..abu_dhabi_al_bateen_flood_service import map_timeseries
+
+        return JSONResponse(map_timeseries(run_id, time_index))
+    except KeyError:
+        return JSONResponse({"error": "al_bateen_run_not_found"}, status_code=404)
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+    except Exception as error:
+        return JSONResponse(
+            {"error": "al_bateen_timeseries_failed", "detail": str(error)[:500]},
+            status_code=500,
+        )
+
+
+async def get_abu_dhabi_rdf_workflow(request: Request) -> JSONResponse:
+    """Return the isolated five-stage readiness receipt for customer RD F."""
+
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        from ..abu_dhabi_rdf_workflow_service import workflow_status
+
+        return JSONResponse(workflow_status())
+    except Exception as error:
+        return JSONResponse(
+            {"error": "rdf_workflow_status_failed", "detail": str(error)[:500]},
+            status_code=500,
+        )
+
+
+async def create_abu_dhabi_rdf_run(request: Request) -> JSONResponse:
+    """Start a byte-preserving native SWMM baseline run for customer RD F."""
+
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        from ..abu_dhabi_rdf_workflow_service import start_baseline_run
+
+        return JSONResponse(start_baseline_run(), status_code=202)
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+    except Exception as error:
+        return JSONResponse(
+            {"error": "rdf_swmm_start_failed", "detail": str(error)[:500]},
+            status_code=500,
+        )
+
+
+async def get_abu_dhabi_rdf_run(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    run_id = str(request.path_params.get("run_id") or "")
+    try:
+        from ..abu_dhabi_rdf_workflow_service import public_run
+
+        return JSONResponse(public_run(run_id))
+    except KeyError:
+        return JSONResponse({"error": "rdf_run_not_found"}, status_code=404)
+
+
+async def get_abu_dhabi_rdf_run_map(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    run_id = str(request.path_params.get("run_id") or "")
+    try:
+        from ..abu_dhabi_rdf_workflow_service import run_map_payload
+
+        return JSONResponse(run_map_payload(run_id))
+    except KeyError:
+        return JSONResponse({"error": "rdf_run_not_found"}, status_code=404)
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+    except Exception as error:
+        return JSONResponse(
+            {"error": "rdf_run_map_failed", "detail": str(error)[:500]},
+            status_code=500,
+        )
+
+
 async def create_abu_dhabi_flood_scenario(request: Request) -> JSONResponse:
     user = _get_user_from_request(request)
     if not user:
@@ -251,6 +453,40 @@ async def get_abu_dhabi_hotspot_map(request: Request) -> JSONResponse:
         from ..uwm.abu_dhabi_flood.hotspot_inventory import hotspot_geojson_payload
 
         return JSONResponse(hotspot_geojson_payload(inventory))
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+
+
+async def get_abu_dhabi_latest_hotspot_506_catalog(request: Request) -> JSONResponse:
+    """Serve the audited receipt for the customer's latest 506 flood points."""
+
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        from ..uwm.abu_dhabi_flood.customer_hotspots_506 import (
+            latest_hotspot_catalog_payload,
+        )
+
+        return JSONResponse(latest_hotspot_catalog_payload())
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+
+
+async def get_abu_dhabi_latest_hotspot_506_map(request: Request) -> JSONResponse:
+    """Serve the 506 normalized customer flood critical points in WGS84."""
+
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        from ..uwm.abu_dhabi_flood.customer_hotspots_506 import (
+            latest_hotspot_geojson_payload,
+        )
+
+        return JSONResponse(latest_hotspot_geojson_payload())
     except ValueError as error:
         return JSONResponse({"error": str(error)}, status_code=409)
 
@@ -547,6 +783,17 @@ async def get_abu_dhabi_trained_gwm_map_timeseries(request: Request) -> JSONResp
 
 def get_abu_dhabi_flood_routes() -> list[Route]:
     return [
+        Route("/api/abu-dhabi/flood/al-bateen/status", endpoint=get_al_bateen_high_resolution_status, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/al-bateen/library", endpoint=get_al_bateen_precomputed_result_library, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/al-bateen/runs", endpoint=create_al_bateen_high_resolution_run, methods=["POST"]),
+        Route("/api/abu-dhabi/flood/al-bateen/runs/latest", endpoint=get_latest_al_bateen_high_resolution_run, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/al-bateen/runs/{run_id}", endpoint=get_al_bateen_high_resolution_run, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/al-bateen/runs/{run_id}/map", endpoint=get_al_bateen_high_resolution_map, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/al-bateen/runs/{run_id}/timeseries", endpoint=get_al_bateen_high_resolution_timeseries, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/rd-f/workflow", endpoint=get_abu_dhabi_rdf_workflow, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/rd-f/runs", endpoint=create_abu_dhabi_rdf_run, methods=["POST"]),
+        Route("/api/abu-dhabi/flood/rd-f/runs/{run_id}", endpoint=get_abu_dhabi_rdf_run, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/rd-f/runs/{run_id}/map", endpoint=get_abu_dhabi_rdf_run_map, methods=["GET"]),
         Route("/api/abu-dhabi/flood/scenarios", endpoint=create_abu_dhabi_flood_scenario, methods=["POST"]),
         Route("/api/abu-dhabi/flood/scenarios/latest", endpoint=get_latest_abu_dhabi_flood_scenario, methods=["GET"]),
         Route("/api/abu-dhabi/flood/design-storms/latest", endpoint=get_latest_zone_b_design_storm_batch, methods=["GET"]),
@@ -562,6 +809,16 @@ def get_abu_dhabi_flood_routes() -> list[Route]:
         Route("/api/abu-dhabi/flood/events/april-2024/evidence", endpoint=get_abu_dhabi_april_2024_event_evidence, methods=["GET"]),
         Route("/api/abu-dhabi/flood/hotspots/catalog", endpoint=get_abu_dhabi_hotspot_catalog, methods=["GET"]),
         Route("/api/abu-dhabi/flood/hotspots/map", endpoint=get_abu_dhabi_hotspot_map, methods=["GET"]),
+        Route(
+            "/api/abu-dhabi/flood/hotspots/latest-506/catalog",
+            endpoint=get_abu_dhabi_latest_hotspot_506_catalog,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/hotspots/latest-506/map",
+            endpoint=get_abu_dhabi_latest_hotspot_506_map,
+            methods=["GET"],
+        ),
         Route(
             "/api/abu-dhabi/flood/gwm/external-validation",
             endpoint=get_abu_dhabi_gwm_external_validation,

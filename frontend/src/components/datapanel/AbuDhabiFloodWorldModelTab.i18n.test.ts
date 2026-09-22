@@ -60,6 +60,24 @@ describe('Abu Dhabi flood world-model English presentation', () => {
     expect(englishNames).not.toMatch(/[\u3400-\u9fff]/u);
   });
 
+  it('publishes the latest 506 customer flood points as a separate priority layer', () => {
+    const latest = {
+      type: 'FeatureCollection' as const,
+      features: Array.from({ length: 506 }, (_, index) => ({
+        type: 'Feature',
+        properties: { hotspot_id: String(index + 1), priority: index < 151 ? 'Very Important' : 'Important' },
+      })),
+    };
+    const layers = buildHotspotMapLayers('data', null, null, 'current', latest);
+    const layer = layers.find((item: any) => String(item.name).includes('客户最新城市积水关键点')) as any;
+
+    expect(layer.geojsonData.features).toHaveLength(506);
+    expect(layer.category_column).toBe('priority');
+    expect(layer.visible).toBe(true);
+    expect(layer.tooltip_fields).toContain('description_ar');
+    expect(translateAbuEnglishText(layer.name)).toBe('Customer latest urban-flood critical points (506 records)');
+  });
+
   it('translates the core workflow and scenario controls without Han characters', () => {
     const text = translateAbuEnglishText(
       '模型输入降雨数据 · 全市连续网络（单个 SWMM 作业） · 在线公开来源降雨数据（Open-Meteo）',

@@ -146,6 +146,8 @@ _ITEMS = (
     ])
     + _items("analysis", "world_models", [
         ("abu_dhabi_flood_world_model", "阿布扎比 · 暴雨内涝世界模型", "droplets"),
+        ("al_bateen_high_resolution_flood", "Al Bateen · 高精度内涝推演", "droplets"),
+        ("abu_dhabi_rdf_workflow", "阿布扎比 · RD F 全流程", "droplets"),
         ("worldmodel", "世界模型", "globe"),
         ("worldmodel_v11", "世界模型v1.1 · Paper58（阿布扎比）", "globe"),
         ("worldmodel_v2", "世界模型v2", "globe"), ("worldmodel_v21", "世界模型v2.1", "globe"),
