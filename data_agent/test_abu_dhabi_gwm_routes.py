@@ -1,185 +1,212 @@
-"""HTTP contract tests for the Abu Dhabi GWM rollout API."""
+"""HTTP contract tests for the Abu Dhabi flood world-model v1 routes."""
 
 from __future__ import annotations
 
-import json
 from types import SimpleNamespace
 
-import numpy as np
 from starlette.applications import Starlette
 from starlette.testclient import TestClient
 
 import data_agent.api.abu_dhabi_flood_routes as flood_routes
-import data_agent.uwm.abu_dhabi_flood.gwm_surrogate as gwm_surrogate
-from data_agent.uwm.abu_dhabi_flood.gwm_surrogate import AbuDhabiGwmSurrogate
 
 
-def _tensor_root(tmp_path):
-    periods = 5
-    elapsed = np.arange(1, periods + 1, dtype=np.int64) * 900
-    node = np.zeros((periods, 2, 6), dtype=np.float32)
-    edge = np.zeros((periods, 1, 4), dtype=np.float32)
-    for step in range(periods):
-        value = float(step + 1)
-        node[step, :, 0] = value * 0.02
-        node[step, :, 1] = 2.0 + value * 0.02
-        node[step, :, 2] = value * 0.1
-        node[step, :, 3] = value * 0.005
-        node[step, :, 4] = value * 0.008
-        node[step, :, 5] = value * 0.001
-        edge[step, :, :] = value * 0.02
-    arrays = {
-        "pilot_01_elapsed_seconds": elapsed,
-        "pilot_01_node_state": node,
-        "pilot_01_edge_state": edge,
-    }
-    np.savez_compressed(tmp_path / "customer_swmm_gwm_dynamic_diagnostic.private.npz", **arrays)
-    (tmp_path / "customer_swmm_gwm_dynamic_diagnostic_manifest.json").write_text(
-        json.dumps(
-            {
-                "schema": "gwm.abu_dhabi_flood.customer_gdb_swmm_gwm_dynamic_diagnostic.v1",
-                "arrays": {name: {"shape": list(value.shape)} for name, value in arrays.items()},
-            }
+def _app(monkeypatch) -> Starlette:
+    monkeypatch.setattr(
+        flood_routes,
+        "_get_user_from_request",
+        lambda request: SimpleNamespace(
+            identifier="test-analyst",
+            metadata={"role": "analyst"},
         ),
-        encoding="utf-8",
     )
-    np.savez_compressed(
-        tmp_path / "customer_swmm_gwm_pilot_alignment.private.npz",
-        pilot_node_indices=np.asarray([0, 1], dtype=np.int64),
-        pilot_node_offsets=np.asarray([0, 2], dtype=np.int64),
-    )
-    return tmp_path
-
-
-def test_gwm_http_contract_serves_train_rollout_and_node_frames(tmp_path, monkeypatch):
-    store = AbuDhabiGwmSurrogate(_tensor_root(tmp_path))
-    monkeypatch.setattr(
-        store,
-        "_load_geometry_index",
-        lambda: {
-            0: {"type": "Point", "coordinates": [54.40, 24.40]},
-            1: {"type": "Point", "coordinates": [54.41, 24.41]},
-        },
-    )
-    monkeypatch.setattr(gwm_surrogate, "_STORE", store)
     monkeypatch.setattr(
         flood_routes,
-        "_get_user_from_request",
-        lambda request: SimpleNamespace(identifier="test-analyst", metadata={"role": "analyst"}),
+        "_set_user_context",
+        lambda user: (user.identifier, "analyst"),
     )
-    monkeypatch.setattr(flood_routes, "_set_user_context", lambda user: (user.identifier, "analyst"))
-    app = Starlette(routes=flood_routes.get_abu_dhabi_flood_routes())
-
-    with TestClient(app) as client:
-        assert client.get("/api/abu-dhabi/flood/gwm/status").json()["status"] == "ready_to_train"
-        restored = client.get("/api/abu-dhabi/flood/gwm/latest")
-        assert restored.status_code == 200
-        assert restored.json()["metadata"]["timeline"]["period_count"] == 24
-        assert restored.json()["metadata"]["map_view"]["node_feature_count"] == 2
-        assert client.get("/api/abu-dhabi/flood/gwm/latest").json()["run_id"] == restored.json()["run_id"]
-
-        training = client.post("/api/abu-dhabi/flood/gwm/train", json={"ridge": 0.0001})
-        assert training.status_code == 200
-        assert training.json()["sample_count"] == 4
-
-        rollout = client.post(
-            "/api/abu-dhabi/flood/gwm/rollout",
-            json={"pilot_id": "pilot_01", "steps": 4, "rainfall_multiplier": 1.4},
-        )
-        assert rollout.status_code == 200
-        assert rollout.json()["metadata"]["map_view"]["available"] is True
-        assert rollout.json()["metadata"]["map_view"]["node_feature_count"] == 2
-        run_id = rollout.json()["run_id"]
-
-        bootstrap = client.get(f"/api/abu-dhabi/flood/gwm/runs/{run_id}/map/bootstrap")
-        assert bootstrap.status_code == 200
-        assert len(bootstrap.json()["frame"]["features"]) == 2
-
-        frame = client.get(f"/api/abu-dhabi/flood/gwm/runs/{run_id}/timeseries?time_index=2")
-        assert frame.status_code == 200
-        assert frame.json()["metadata"]["time_index"] == 2
-        assert len(frame.json()["features"]) == 2
+    return Starlette(routes=flood_routes.get_abu_dhabi_flood_routes())
 
 
-def test_pipeline_status_http_contract_is_authenticated_and_returns_five_stages(monkeypatch):
-    monkeypatch.setattr(
-        flood_routes,
-        "_get_user_from_request",
-        lambda request: SimpleNamespace(identifier="test-analyst", metadata={"role": "analyst"}),
-    )
-    monkeypatch.setattr(flood_routes, "_set_user_context", lambda user: None)
-    monkeypatch.setattr(
-        flood_routes,
-        "pipeline_status_payload",
-        lambda: {
-            "schema": "gwm.abu_dhabi_flood.pipeline_status.v1",
-            "status": "ready",
-            "ready_stage_count": 5,
-            "stage_count": 5,
-            "stages": [{"key": key, "status": "ready"} for key in ("data", "swmm", "surface", "gwm", "validation")],
-        },
-        raising=False,
-    )
-    # The route imports the service function lazily; patching the module keeps
-    # the test independent from local customer files.
+def test_public_citywide_2d_route_preserves_result_selection(monkeypatch) -> None:
     import data_agent.abu_dhabi_flood_scenario_service as scenario_service
-    monkeypatch.setattr(scenario_service, "pipeline_status_payload", lambda: {
-        "schema": "gwm.abu_dhabi_flood.pipeline_status.v1",
-        "status": "ready",
-        "ready_stage_count": 5,
-        "stage_count": 5,
-        "stages": [{"key": key, "status": "ready"} for key in ("data", "swmm", "surface", "gwm", "validation")],
-    })
-    app = Starlette(routes=flood_routes.get_abu_dhabi_flood_routes())
-    with TestClient(app) as client:
-        response = client.get("/api/abu-dhabi/flood/pipeline-status")
-        assert response.status_code == 200
-        payload = response.json()
-        assert payload["ready_stage_count"] == 5
-        assert len(payload["stages"]) == 5
 
+    received: dict[str, object] = {}
 
-def test_customer_rainfall_amount_route_maps_a_simple_mm_contract(monkeypatch):
+    def fake_bootstrap(return_period_years, result_source):
+        received.update(
+            return_period_years=return_period_years,
+            result_source=result_source,
+        )
+        return {
+            "schema": "gwm.abu_dhabi_flood.public_citywide_2d.v1",
+            "metadata": {
+                "return_period_years": return_period_years,
+                "result_source": result_source,
+            },
+        }
+
     monkeypatch.setattr(
-        flood_routes,
-        "_get_user_from_request",
-        lambda request: SimpleNamespace(identifier="test-analyst", metadata={"role": "analyst"}),
+        scenario_service,
+        "public_citywide_2d_bootstrap_payload",
+        fake_bootstrap,
     )
-    monkeypatch.setattr(flood_routes, "_set_user_context", lambda user: None)
+
+    with TestClient(_app(monkeypatch)) as client:
+        response = client.get(
+            "/api/abu-dhabi/flood/public-citywide-2d/bootstrap",
+            params={
+                "return_period_years": "100",
+                "result_source": "bidirectional_validation",
+            },
+        )
+
+    assert response.status_code == 200
+    assert received == {
+        "return_period_years": 100,
+        "result_source": "bidirectional_validation",
+    }
+    assert response.json()["metadata"] == received
+
+
+def test_frozen_trained_gwm_routes_serve_realtime_inference_without_training(monkeypatch) -> None:
     import data_agent.abu_dhabi_trained_gwm_service as trained_service
 
-    received = {}
+    received: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        trained_service,
+        "available_events",
+        lambda: {
+            "schema": "gwm.abu_dhabi_flood.trained_events.v1",
+            "events": [{"event_id": "admitted-event"}],
+        },
+    )
 
     def fake_rollout(payload):
         received.update(payload)
         return {
             "run_id": "trained-gwm-fixture",
             "status": "completed",
-            "metadata": {
-                "input_adapter": {
-                    "requested_total_precipitation_mm": payload["totalRainfallMm"],
-                    "requested_rainfall_duration_hours": payload["durationHours"],
-                    "mapped_rainfall_multiplier": 1.5,
-                }
-            },
+            "metadata": {"model_mode": "trained_event_rollout"},
         }
 
-    monkeypatch.setattr(trained_service, "start_rainfall_amount_rollout", fake_rollout)
-    app = Starlette(routes=flood_routes.get_abu_dhabi_flood_routes())
+    monkeypatch.setattr(trained_service, "start_rollout", fake_rollout)
+    monkeypatch.setattr(
+        trained_service,
+        "public_run",
+        lambda run_id: {"run_id": run_id, "status": "completed"},
+    )
+    monkeypatch.setattr(
+        trained_service,
+        "map_bootstrap",
+        lambda run_id: {"run_id": run_id, "maximum_depth": {"features": []}},
+    )
+    monkeypatch.setattr(
+        trained_service,
+        "map_timeseries",
+        lambda run_id, time_index: {
+            "run_id": run_id,
+            "metadata": {"time_index": time_index},
+            "features": [],
+        },
+    )
+
+    app = _app(monkeypatch)
+    route_paths = {route.path for route in app.routes}
+    assert "/api/abu-dhabi/flood/gwm/train" not in route_paths
+    assert "/api/abu-dhabi/flood/gwm/trained/rainfall-scenarios" not in route_paths
+
     with TestClient(app) as client:
-        response = client.post(
-            "/api/abu-dhabi/flood/gwm/trained/rainfall-scenarios",
-            json={
-                "eventId": "admitted-event",
-                "totalRainfallMm": 75.0,
-                "durationHours": 24,
-            },
+        events = client.get("/api/abu-dhabi/flood/gwm/trained/events")
+        rollout = client.post(
+            "/api/abu-dhabi/flood/gwm/trained/rollout",
+            json={"eventId": "admitted-event"},
+        )
+        run_id = rollout.json()["run_id"]
+        run = client.get(f"/api/abu-dhabi/flood/gwm/trained/runs/{run_id}")
+        map_response = client.get(
+            f"/api/abu-dhabi/flood/gwm/trained/runs/{run_id}/map"
+        )
+        frame = client.get(
+            f"/api/abu-dhabi/flood/gwm/trained/runs/{run_id}/map/timeseries",
+            params={"time_index": "2"},
         )
 
-    assert response.status_code == 202
-    assert received == {
-        "eventId": "admitted-event",
-        "totalRainfallMm": 75.0,
-        "durationHours": 24,
+    assert events.status_code == 200
+    assert events.json()["events"][0]["event_id"] == "admitted-event"
+    assert rollout.status_code == 202
+    assert received == {"eventId": "admitted-event"}
+    assert run.status_code == 200
+    assert map_response.status_code == 200
+    assert frame.status_code == 200
+    assert frame.json()["metadata"]["time_index"] == 2
+
+
+def test_customer_hotspots_and_historical_replay_are_read_only(monkeypatch) -> None:
+    import data_agent.abu_dhabi_customer_hotspots_service as hotspot_service
+    import data_agent.abu_dhabi_flood_validation_service as validation_service
+
+    monkeypatch.setattr(
+        hotspot_service,
+        "customer_hotspots_bootstrap_payload",
+        lambda: {
+            "schema": "gwm.abu_dhabi_flood.customer_hotspots.v1",
+            "metadata": {"feature_count": 506},
+            "features": [],
+        },
+    )
+    monkeypatch.setattr(
+        validation_service,
+        "historical_replay_bootstrap_payload",
+        lambda: {
+            "schema": "gwm.abu_dhabi_flood.historical_replay.v1",
+            "metadata": {"status": "completed"},
+        },
+    )
+    monkeypatch.setattr(
+        validation_service,
+        "historical_replay_timeseries_payload",
+        lambda time_index: {
+            "metadata": {"time_index": time_index},
+            "features": [],
+        },
+    )
+    monkeypatch.setattr(
+        validation_service,
+        "historical_replay_report_html",
+        lambda language: f"<html lang='{language}'>validated</html>",
+    )
+
+    app = _app(monkeypatch)
+    methods_by_path = {
+        route.path: route.methods
+        for route in app.routes
+        if getattr(route, "path", None)
     }
-    assert response.json()["metadata"]["input_adapter"]["mapped_rainfall_multiplier"] == 1.5
+    assert methods_by_path[
+        "/api/abu-dhabi/flood/customer-hotspots/bootstrap"
+    ] == {"GET", "HEAD"}
+    assert methods_by_path[
+        "/api/abu-dhabi/flood/validation/historical-replay/bootstrap"
+    ] == {"GET", "HEAD"}
+
+    with TestClient(app) as client:
+        hotspots = client.get("/api/abu-dhabi/flood/customer-hotspots/bootstrap")
+        bootstrap = client.get(
+            "/api/abu-dhabi/flood/validation/historical-replay/bootstrap"
+        )
+        frame = client.get(
+            "/api/abu-dhabi/flood/validation/historical-replay/timeseries",
+            params={"time_index": "3"},
+        )
+        report = client.get(
+            "/api/abu-dhabi/flood/validation/historical-replay/report"
+        )
+
+    assert hotspots.status_code == 200
+    assert hotspots.json()["metadata"]["feature_count"] == 506
+    assert bootstrap.status_code == 200
+    assert frame.status_code == 200
+    assert frame.json()["metadata"]["time_index"] == 3
+    assert report.status_code == 200
+    assert "validated" in report.text

@@ -10,7 +10,6 @@ import data_agent.abu_dhabi_flood_scenario_service as scenario_service
 from data_agent.abu_dhabi_flood_scenario_service import (
     _rainfall_series,
     _parse_node_hydraulic_results,
-    pipeline_status_payload,
     render_scenario_input,
     validate_scenario,
 )
@@ -48,31 +47,6 @@ def test_design_storm_depth_is_conserved():
     assert abs(depth_mm - 12.0) < 1e-8
     assert stats["generated_intervals"] == 6
     assert scenario["partitions"] == [0]
-
-
-def test_historical_event_uses_supplied_event_package_and_expands_to_swmm_step(monkeypatch):
-    monkeypatch.setattr(
-        scenario_service,
-        "_read_historical_event_payload",
-        lambda: {
-            "t0_utc": "2024-04-15T16:00:00.000Z",
-            "n_hours": 3,
-            "hyetograph_mmph": [0.0, 12.0, 24.0],
-        },
-    )
-    scenario = validate_scenario(
-        _scenario(
-            rainfallMode="historical_event",
-            startTime="2024-04-15T16:00",
-            durationMinutes=180,
-            tailMinutes=0,
-        )
-    )
-    series, stats = _rainfall_series(scenario)
-    assert len(series) == 37
-    assert sum(intensity * 5.0 / 60.0 for _, intensity in series[:36]) == pytest.approx(36.0)
-    assert stats["source"] == "customer_historical_event_devpack"
-    assert stats["event_sequence_hours"] == 3
 
 
 @pytest.mark.parametrize(
@@ -191,16 +165,9 @@ def test_full_city_input_accepts_explicit_file_override(monkeypatch, tmp_path):
     assert scenario_service._full_city_input(tmp_path / "ignored-root") == configured_input
 
 
-def test_historical_event_mode_accepts_event_package_window():
-    scenario = validate_scenario(
-        _scenario(
-            rainfallMode="historical_event",
-            startTime="2024-04-15T16:00",
-            durationMinutes=4320,
-            tailMinutes=0,
-        )
-    )
-    assert scenario["rainfall_mode"] == "historical_event"
+def test_historical_event_requires_authoritative_timeseries():
+    with pytest.raises(ValueError, match="historical_event_requires_authoritative_timeseries"):
+        validate_scenario(_scenario(rainfallMode="historical_event"))
 
 
 def test_online_public_mode_is_distinct_from_design_storm(monkeypatch):
@@ -323,6 +290,18 @@ def test_map_bootstrap_returns_timeline_without_serializing_node_features(monkey
     assert payload["metadata"]["map_node_filter"] == "none"
 
 
+def test_map_node_coverage_contract_separates_result_nodes_from_renderable_geometry():
+    metadata = scenario_service._map_node_coverage_metadata(146_823, 138_831)
+
+    assert metadata["total_node_result_count"] == 146_823
+    assert metadata["node_feature_count"] == 138_831
+    assert metadata["missing_geometry_count"] == 7_992
+    assert metadata["geometry_coverage_fraction"] == pytest.approx(138_831 / 146_823)
+    assert metadata["map_node_completeness"] == "partial_geometry_coverage"
+    assert metadata["node_value_filter"] == "none_including_zero_values_for_mapped_nodes"
+    assert metadata["node_map_filter"] == "none"
+
+
 def test_timeseries_map_returns_every_native_out_node_including_zero_values(monkeypatch, tmp_path):
     run = {
         "status": "completed_with_warnings",
@@ -378,6 +357,8 @@ def test_timeseries_map_returns_every_native_out_node_including_zero_values(monk
     ]
     assert payload["metadata"]["node_feature_count"] == 3
     assert payload["metadata"]["affected_node_count"] == 2
+    assert payload["metadata"]["missing_geometry_count"] == 0
+    assert payload["metadata"]["map_node_completeness"] == "complete_geometry_coverage"
     assert payload["metadata"]["node_map_filter"] == "none"
 
 
@@ -438,6 +419,8 @@ def test_timeseries_columns_preserve_every_node_without_geojson_repetition(monke
     assert payload["overflow_node_indexes"] == [2]
     assert payload["metadata"]["node_feature_count"] == 3
     assert payload["metadata"]["affected_node_count"] == 2
+    assert payload["metadata"]["missing_geometry_count"] == 0
+    assert payload["metadata"]["map_node_completeness"] == "complete_geometry_coverage"
     assert "features" not in payload
 
 
@@ -571,11 +554,20 @@ def test_public_citywide_2d_exposes_land_water_mask_and_land_cell_timeline(
         encoding="utf-8",
     )
     (snapshots / "t0.geojson").write_text(
+        __import__("json").dumps({"type": "FeatureCollection", "features": []}),
+        encoding="utf-8",
+    )
+    (snapshots / "t1.geojson").write_text(
         __import__("json").dumps(frame), encoding="utf-8"
     )
     (snapshots / "manifest.json").write_text(
         __import__("json").dumps(
-            {"snapshots": [{"time_seconds": 0, "time_minutes": 0, "path": "temporal_snapshots/t0.geojson"}]}
+            {
+                "snapshots": [
+                    {"time_seconds": 0, "time_minutes": 0, "path": "temporal_snapshots/t0.geojson"},
+                    {"time_seconds": 1800, "time_minutes": 30, "path": "temporal_snapshots/t1.geojson"},
+                ]
+            }
         ),
         encoding="utf-8",
     )
@@ -587,171 +579,160 @@ def test_public_citywide_2d_exposes_land_water_mask_and_land_cell_timeline(
     assert bootstrap["metadata"]["land_water_mask"]["source_coverage_threshold"] == 0.999
     assert bootstrap["metadata"]["land_water_mask"]["source_uncovered_cells_excluded"] == 10
     assert bootstrap["metadata"]["timeline"]["total_cell_count"] == 65
+    assert bootstrap["metadata"]["timeline"]["initial_time_index"] == 1
+    assert bootstrap["metadata"]["model_configuration"] == {
+        "execution_mode": "registered_precomputed_result",
+        "solver": "ANUGA 2D",
+        "solver_chain": "EPA SWMM 5.2.4 native OUT -> ANUGA 2D",
+        "terrain_source": "copernicus_dem_glo30",
+        "terrain_product": "Copernicus DEM GLO-30 public proxy",
+        "terrain_source_resolution_m": [30, 30],
+        "model_cell_size_m": 250,
+        "forcing_source": None,
+        "forcing_duration_minutes": None,
+        "forcing_interval_minutes": None,
+        "forcing_peak_position_percent": None,
+        "simulation_duration_minutes": None,
+        "tail_minutes": None,
+        "output_interval_minutes": 30,
+        "coupling_mode": "one_way_swmm_to_anuga",
+        "exchange_quantity": None,
+        "dynamic_head_feedback": False,
+        "sea_boundary_condition": None,
+        "sea_boundary_level_m": 0,
+        "water_cell_fraction_threshold": 0.5,
+        "editable_parameters": ["return_period_years"],
+        "frozen_parameter_reason": (
+            "The current web contract selects an audited registered result. "
+            "Changing mesh, boundary, coupling, roughness, or time-step settings "
+            "requires a new ANUGA run and a new run receipt."
+        ),
+    }
     assert "WorldCover" in bootstrap["metadata"]["claim_boundary"]
 
-    result_frame = scenario_service.public_citywide_2d_timeseries_payload(0)
+    assert scenario_service.public_citywide_2d_timeseries_payload(0)["features"] == []
+    result_frame = scenario_service.public_citywide_2d_timeseries_payload(1)
     assert result_frame["metadata"]["permanent_water_cells_excluded"] is True
     assert result_frame["features"][0]["properties"]["land_fraction"] == 0.95
 
 
-def test_public_citywide_2d_resolves_return_period_batch_root(monkeypatch, tmp_path):
-    batch_root = tmp_path / "citywide-2d-batch"
-    ten_year_root = batch_root / "rp010"
-    hundred_year_root = batch_root / "rp100"
-    ten_year_root.mkdir(parents=True)
-    hundred_year_root.mkdir(parents=True)
-    (ten_year_root / "maximum_depth_wgs84.geojson").write_text(
-        "{}", encoding="utf-8"
+def test_periodless_citywide_2d_request_defaults_to_available_100_year_customer_product(
+    monkeypatch, tmp_path
+):
+    root = tmp_path / "customer-citywide"
+    period = root / "rp100" / "temporal_snapshots"
+    period.mkdir(parents=True)
+    maximum = {"type": "FeatureCollection", "features": []}
+    (root / "rp100" / "maximum_depth_wgs84.geojson").write_text(
+        __import__("json").dumps(maximum), encoding="utf-8"
     )
-    (hundred_year_root / "maximum_depth_wgs84.geojson").write_text(
-        "{}", encoding="utf-8"
-    )
-    monkeypatch.setenv("ABU_DHABI_PUBLIC_CITYWIDE_2D_ROOT", str(batch_root))
-    monkeypatch.delenv(
-        "ABU_DHABI_PUBLIC_CITYWIDE_2D_RETURN_PERIOD_YEARS", raising=False
-    )
-
-    assert scenario_service._public_citywide_2d_root() == ten_year_root.resolve()
-
-    monkeypatch.setenv(
-        "ABU_DHABI_PUBLIC_CITYWIDE_2D_RETURN_PERIOD_YEARS", "100"
-    )
-    assert scenario_service._public_citywide_2d_root() == hundred_year_root.resolve()
-
-
-def test_pipeline_status_keeps_underpowered_external_validation_partial(monkeypatch):
-    import data_agent.uwm.abu_dhabi_flood.external_validation as external_validation
-
-    monkeypatch.setattr(
-        scenario_service,
-        "_pipeline_asset",
-        lambda name: scenario_service.Path("/tmp") / name,
-    )
-    monkeypatch.setattr(
-        scenario_service,
-        "_read_json_object",
-        lambda path: {
-            "files": {
-                "pipelines": {"feature_count": 238287},
-                "topology_nodes": {"feature_count": 238350},
-                "node_results": {"feature_count": 138852},
-                "link_results": {"feature_count": 83340},
-            },
-            "modeled_node_count": 146823,
-            "modeled_pipeline_count": 93669,
-        },
-    )
-    monkeypatch.setattr(
-        scenario_service.Path,
-        "is_file",
-        lambda self: True,
-    )
-    monkeypatch.setattr(
-        scenario_service,
-        "_citywide_2d_artifacts",
-        lambda: (
-            [{"key": "maximum_depth", "available": True}],
+    (root / "rp100" / "delivery_summary.json").write_text(
+        __import__("json").dumps(
             {
-                "snapshot_count": 11,
-                "valid_snapshot_count": 11,
-                "maximum_depth_m": 3.65,
-                "active_land_cells": 16714,
-                "surface_product": "customer DTM",
-                "surface_evidence_class": "customer_provided_dtm",
-            },
+                "solver": "ANUGA 2D",
+                "status": "completed_customer_dtm_citywide_2d_validation",
+                "surface": {
+                    "product": "Customer AUH_DTM_5m_Z40",
+                    "evidence_class": "customer_dtm_5m",
+                    "source_resolution_m": [5, 5],
+                },
+                "domain": {"active_land_cells": 0, "output_step_minutes": 30},
+                "forcing": {"return_period_years": 100},
+            }
+        ), encoding="utf-8"
+    )
+    (period / "manifest.json").write_text(
+        __import__("json").dumps(
+            {"snapshots": [{"time_seconds": 0, "time_minutes": 0, "path": "temporal_snapshots/t0.geojson"}]}
+        ), encoding="utf-8"
+    )
+    (period / "t0.geojson").write_text(__import__("json").dumps(maximum), encoding="utf-8")
+    monkeypatch.setenv("ABU_DHABI_CUSTOMER_CITYWIDE_2D_ROOT", str(root))
+    monkeypatch.delenv("ABU_DHABI_PUBLIC_CITYWIDE_2D_ROOT", raising=False)
+
+    payload = scenario_service.public_citywide_2d_bootstrap_payload()
+    assert payload["metadata"]["return_period_years"] == 100
+    assert payload["metadata"]["surface_source_class"] == "customer_authoritative"
+    assert payload["metadata"]["source_resolution_m"] == [5, 5]
+
+
+def test_citywide_2d_bidirectional_validation_is_exposed_as_separate_result_source(
+    monkeypatch, tmp_path
+):
+    root = tmp_path / "bidirectional"
+    snapshots = root / "temporal_snapshots"
+    snapshots.mkdir(parents=True)
+    maximum = {"type": "FeatureCollection", "features": []}
+    (root / "maximum_depth_wgs84.geojson").write_text(
+        __import__("json").dumps(maximum), encoding="utf-8"
+    )
+    (root / "delivery_summary.json").write_text(
+        __import__("json").dumps(
+            {
+                "status": "completed_customer_dtm_citywide_synchronous_bidirectional_2d_validation",
+                "run_id": "bidirectional-run-001",
+                "solver": "EPA SWMM 5.2.4 + ANUGA 2D synchronous coupling",
+                "surface": {
+                    "product": "Customer DTM + synchronous bidirectional coupling",
+                    "evidence_class": "customer_dtm_customer_swmm_synchronous_bidirectional_coupling",
+                    "source_resolution_m": [5, 5],
+                },
+                "domain": {
+                    "active_land_cells": 10,
+                    "cell_size_m": 250,
+                    "simulation_duration_minutes": 180,
+                    "output_step_minutes": 5,
+                },
+                "forcing": {
+                    "return_period_years": 100,
+                    "configured_storm_duration_minutes": 180,
+                },
+                "coupling": {
+                    "mode": "synchronous_two_way_swmm_anuga_surface_exchange",
+                    "quality_passed": True,
+                    "window_count": 36,
+                    "exchange_window_seconds": 300,
+                    "interface_count": 141840,
+                    "total_swmm_to_anuga_m3": 100.0,
+                    "total_anuga_to_swmm_m3": 25.0,
+                },
+                "results": {"maximum_depth_m": 1.2},
+            }
         ),
+        encoding="utf-8",
     )
-    monkeypatch.setattr(
-        scenario_service,
-        "_gwm_pipeline_status",
-        lambda: {
-            "status": "trained",
-            "pilot_count": 5,
-            "sample_count": 1555,
-            "model_version": "test-gwm",
-            "functional_probe": {"status": "completed", "run_id": "gwm-test"},
-        },
+    (snapshots / "manifest.json").write_text(
+        __import__("json").dumps(
+            {
+                "snapshots": [
+                    {
+                        "time_seconds": 0,
+                        "time_minutes": 0,
+                        "path": "temporal_snapshots/t0.geojson",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
     )
-    monkeypatch.setattr(
-        external_validation,
-        "external_validation_payload",
-        lambda: {
-            "status": "completed",
-            "strict_confirmatory": {
-                "event_count": 4,
-                "target_event_count": 5,
-                "target_sample_size_reached": False,
-                "receipt": {"integrity_verified": True},
-            },
-            "supplementary": {
-                "event_count": 2,
-                "target_event_count": 5,
-                "receipt": {"integrity_verified": True},
-            },
-            "cross_cohort": {"independent_event_count": 6},
-            "engineering_admission": {"admitted": False},
-        },
+    (snapshots / "t0.geojson").write_text(
+        __import__("json").dumps(maximum), encoding="utf-8"
+    )
+    monkeypatch.setenv("ABU_DHABI_CUSTOMER_BIDIRECTIONAL_2D_ROOT", str(root))
+
+    payload = scenario_service.public_citywide_2d_bootstrap_payload(
+        100, "bidirectional_validation"
     )
 
-    payload = pipeline_status_payload()
-    assert payload["status"] == "partial"
-    assert payload["ready_stage_count"] == 4
-    assert [stage["key"] for stage in payload["stages"]] == [
-        "data", "swmm", "surface", "gwm", "validation"
-    ]
-    assert payload["delivery"]["status"] == "ready"
-    assert payload["delivery"]["engineering_admitted"] is False
-    validation = payload["stages"][-1]
-    assert validation["status"] == "partial"
-    assert validation["metrics"]["confirmatory_event_count"] == 4
-    assert validation["metrics"]["independent_external_event_count"] == 6
+    assert payload["metadata"]["result_variant"] == "bidirectional_validation"
+    assert payload["metadata"]["timeline"]["run_id"] == "bidirectional-run-001"
+    assert "result_source=bidirectional_validation" in payload["metadata"]["timeline"]["endpoint"]
+    assert payload["metadata"]["model_configuration"]["dynamic_head_feedback"] is True
+    assert payload["metadata"]["coupling_summary"]["window_count"] == 36
+    assert payload["metadata"]["coupling_summary"]["total_anuga_to_swmm_m3"] == 25.0
 
-
-def test_gwm_status_bridge_adds_functional_probe(monkeypatch):
-    class _Response:
-        def __init__(self, payload):
-            self.payload = payload
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_args):
-            return False
-
-        def read(self):
-            return __import__("json").dumps(self.payload).encode("utf-8")
-
-    class _UnavailableStore:
-        def status(self):
-            return {"status": "data_unavailable"}
-
-    calls = []
-
-    def fake_urlopen(request, timeout):
-        calls.append((request.full_url, request.data))
-        if request.data is None:
-            return _Response(
-                {
-                    "schema": "gwm.abu_dhabi_flood.gwm_surrogate.v1",
-                    "status": "trained",
-                    "pilot_count": 5,
-                    "pilot_ids": ["pilot_01"],
-                    "sample_count": 10,
-                }
-            )
-        return _Response({"status": "completed", "run_id": "gwm-probe"})
-
-    import data_agent.uwm.abu_dhabi_flood.gwm_surrogate as gwm_surrogate
-
-    monkeypatch.setattr(gwm_surrogate, "gwm_store", lambda: _UnavailableStore())
-    monkeypatch.setattr(scenario_service, "urlopen", fake_urlopen)
-    monkeypatch.setenv(
-        "ABU_DHABI_GWM_BRIDGE_STATUS_URL",
-        "http://127.0.0.1:8003/api/abu-dhabi/flood/gwm/status",
+    frame = scenario_service.public_citywide_2d_timeseries_payload(
+        0, 100, "bidirectional_validation"
     )
-
-    payload = scenario_service._gwm_pipeline_status()
-
-    assert payload["functional_probe"]["status"] == "completed"
-    assert payload["functional_probe"]["run_id"] == "gwm-probe"
-    assert calls[1][0].endswith("/gwm/rollout")
+    assert frame["metadata"]["result_variant"] == "bidirectional_validation"
+    assert frame["metadata"]["coupling_mode"] == "synchronous_two_way_swmm_anuga_surface_exchange"

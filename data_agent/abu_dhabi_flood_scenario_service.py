@@ -15,7 +15,6 @@ import os
 import re
 import threading
 import uuid
-import zipfile
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
@@ -56,12 +55,19 @@ DEFAULT_EXECUTABLE = Path(__file__).resolve().parents[1] / (
 )
 DEFAULT_NODE_GEOMETRY = DEFAULT_PRIVATE_ROOT / "customer_city_swmm_spatial_results_20260824" / "abu_dhabi_city_swmm_node_results.geojson"
 DEFAULT_DTM_DIAGNOSTIC_ROOT = DEFAULT_PRIVATE_ROOT / "customer_dtm_2d_diagnostic"
+# The customer supplied 5 m DTM citywide coupled products are kept outside
+# the repository.  They are the primary phase-3 assets; the Copernicus
+# product remains an explicit fallback for installations where these assets
+# have not yet been provisioned.
+DEFAULT_CUSTOMER_CITYWIDE_2D_ROOT = (
+    Path.home() / "Downloads/阿布扎比/二维水动力_客户DTM_SWMM耦合_多年一遇_250m_20260910"
+)
+DEFAULT_CUSTOMER_BIDIRECTIONAL_2D_ROOT = (
+    Path.home()
+    / "Downloads/阿布扎比/全市双向耦合_客户DTM_250m_100年一遇_300分钟_20260911_rerun_min-depth"
+)
 DEFAULT_PUBLIC_CITYWIDE_2D_ROOT = DEFAULT_PUBLIC_ROOT / "copernicus_citywide_2d"
-DEFAULT_COUPLED_CITYWIDE_2D_ROOT = Path.home() / "Downloads/阿布扎比/二维水动力诊断_客户DTM_z40_全市_SWMM二维单向耦合_250m_20260909_v2"
-DEFAULT_COUPLED_CITYWIDE_2D_ROOT_100M = Path.home() / "Downloads/阿布扎比/二维水动力诊断_客户DTM_z40_全市_SWMM二维单向耦合_100m_20260909"
 DEFAULT_PUBLIC_NCEI_ROOT = DEFAULT_PUBLIC_ROOT / "ncei_2024_station_constraint"
-DEFAULT_HISTORICAL_EVENT_ROOT = Path.home() / "Downloads/阿布扎比/nabd_flood_devpack_v1.5.zip"
-DEFAULT_PIPELINE_UPLOAD_ROOT = Path(__file__).resolve().parent / "uploads/admin"
 SWMM_SCENARIO_SCHEMA = "gwm.abu_dhabi_flood.interactive_swmm_scenario.v1"
 _IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
 _FLOAT = r"[-+]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[Ee][-+]?[0-9]+)?"
@@ -117,433 +123,123 @@ def _dtm_diagnostic_root() -> Path:
     return _configured_path("ABU_DHABI_DTM_DIAGNOSTIC_ROOT", DEFAULT_DTM_DIAGNOSTIC_ROOT).expanduser().resolve()
 
 
-def _public_citywide_2d_root() -> Path:
-    configured = os.environ.get("ABU_DHABI_PUBLIC_CITYWIDE_2D_ROOT", "").strip()
-    root = (
-        Path(configured).expanduser().resolve()
-        if configured
-        else (
-            DEFAULT_COUPLED_CITYWIDE_2D_ROOT_100M.resolve()
-            if DEFAULT_COUPLED_CITYWIDE_2D_ROOT_100M.is_dir()
-            else (
-            DEFAULT_COUPLED_CITYWIDE_2D_ROOT.resolve()
-            if DEFAULT_COUPLED_CITYWIDE_2D_ROOT.is_dir()
-            else DEFAULT_PUBLIC_CITYWIDE_2D_ROOT.resolve()
-            )
+def _customer_citywide_2d_root() -> Path:
+    return _configured_path(
+        "ABU_DHABI_CUSTOMER_CITYWIDE_2D_ROOT", DEFAULT_CUSTOMER_CITYWIDE_2D_ROOT
+    ).expanduser().resolve()
+
+
+def _customer_bidirectional_2d_root() -> Path:
+    return _configured_path(
+        "ABU_DHABI_CUSTOMER_BIDIRECTIONAL_2D_ROOT",
+        DEFAULT_CUSTOMER_BIDIRECTIONAL_2D_ROOT,
+    ).expanduser().resolve()
+
+
+def _normalise_citywide_2d_result_source(result_source: str | None) -> str:
+    source = str(result_source or "return_period_one_way").strip().lower()
+    aliases = {
+        "return_period": "return_period_one_way",
+        "one_way": "return_period_one_way",
+        "bidirectional": "bidirectional_validation",
+        "two_way": "bidirectional_validation",
+    }
+    source = aliases.get(source, source)
+    if source not in {"return_period_one_way", "bidirectional_validation"}:
+        raise ValueError("public_citywide_2d_result_source_not_supported")
+    return source
+
+
+def _citywide_2d_result_root(
+    return_period_years: int | None,
+    result_source: str | None,
+) -> tuple[Path, str]:
+    source = _normalise_citywide_2d_result_source(result_source)
+    if source == "bidirectional_validation":
+        if return_period_years not in (None, 100):
+            raise ValueError("bidirectional_citywide_2d_only_available_for_100_year_result")
+        root = _customer_bidirectional_2d_root()
+        if not root.is_dir():
+            raise ValueError("bidirectional_citywide_2d_result_not_available")
+        return root, source
+    return _public_citywide_2d_root(return_period_years), source
+
+
+def _result_root_for_period(base: Path, return_period_years: int | None) -> Path:
+    """Resolve a result directory while preserving the legacy 100-year layout."""
+    if return_period_years is None:
+        # Customer deliveries are organised as ``rpXXX`` directories, while
+        # older public prototypes stored the assets directly under ``base``.
+        # Prefer a complete root-level product when present; otherwise use
+        # the default 100-year customer product (or the first available
+        # supported period) so period-less API/report requests remain valid.
+        root_assets = (
+            (base / "delivery_summary.json").is_file()
+            and (base / "temporal_snapshots" / "manifest.json").is_file()
+            and (base / "maximum_depth_wgs84.geojson").is_file()
         )
-    )
-    # A configured location may be either one completed 2D run or the parent
-    # of the six Zone-B return-period runs.  Keep the original single-run
-    # contract, while resolving a batch to the same 10-year event used by the
-    # default interactive scenario.  Operators can select another batch member
-    # without changing the base directory.
-    if (root / "maximum_depth_wgs84.geojson").is_file():
-        return root
-    return_period = os.environ.get(
-        "ABU_DHABI_PUBLIC_CITYWIDE_2D_RETURN_PERIOD_YEARS", "10"
-    ).strip()
+        if root_assets:
+            return base
+        preferred = [100, *[period for period in SUPPORTED_RETURN_PERIODS if period != 100]]
+        for period in preferred:
+            candidate = base / f"rp{period:03d}"
+            if (
+                (candidate / "delivery_summary.json").is_file()
+                and (candidate / "temporal_snapshots" / "manifest.json").is_file()
+                and (candidate / "maximum_depth_wgs84.geojson").is_file()
+            ):
+                return candidate
+        return base
+    if return_period_years not in SUPPORTED_RETURN_PERIODS:
+        raise ValueError("public_citywide_2d_return_period_not_supported")
+    period_root = base / f"rp{return_period_years:03d}"
+    if period_root.is_dir():
+        return period_root
+    if return_period_years == 100 and base.is_dir():
+        return base
+    raise ValueError("public_citywide_2d_return_period_not_available")
+
+
+def _public_citywide_2d_root(return_period_years: int | None = None) -> Path:
+    # An explicitly configured public root is an operator override (and is
+    # also useful for isolated tests).  Otherwise customer 5 m DTM products
+    # take precedence, with Copernicus used only when the selected customer
+    # result is absent.
+    configured_public = os.environ.get("ABU_DHABI_PUBLIC_CITYWIDE_2D_ROOT", "").strip()
+    if configured_public:
+        return _result_root_for_period(Path(configured_public).expanduser().resolve(), return_period_years)
+    customer_base = _customer_citywide_2d_root()
+    if return_period_years is None:
+        customer_candidate = _result_root_for_period(customer_base, None)
+        if customer_candidate != customer_base or (
+            (customer_base / "delivery_summary.json").is_file()
+            and (customer_base / "temporal_snapshots" / "manifest.json").is_file()
+            and (customer_base / "maximum_depth_wgs84.geojson").is_file()
+        ):
+            return customer_candidate
+        return _result_root_for_period(DEFAULT_PUBLIC_CITYWIDE_2D_ROOT.expanduser().resolve(), None)
     try:
-        batch_root = root / f"rp{int(return_period):03d}"
+        return _result_root_for_period(customer_base, return_period_years)
     except ValueError:
-        return root
-    if (batch_root / "maximum_depth_wgs84.geojson").is_file():
-        return batch_root
-    return root
+        return _result_root_for_period(DEFAULT_PUBLIC_CITYWIDE_2D_ROOT.expanduser().resolve(), return_period_years)
 
 
-def _pipeline_upload_candidates() -> list[Path]:
-    """Locate locally registered, derived map assets without exposing inputs."""
-
-    configured = os.environ.get("ABU_DHABI_PIPELINE_UPLOAD_ROOT", "").strip()
-    candidates = [
-        Path(configured).expanduser() if configured else DEFAULT_PIPELINE_UPLOAD_ROOT,
-        Path.home() / "gisdataagent/data_agent/uploads/admin",
-    ]
-    unique: list[Path] = []
-    for candidate in candidates:
-        resolved = candidate.resolve()
-        if resolved not in unique:
-            unique.append(resolved)
-    return unique
-
-
-def _pipeline_asset(name: str) -> Path | None:
-    for root in _pipeline_upload_candidates():
-        candidate = root / name
-        if candidate.is_file():
-            return candidate
-    return None
-
-
-def _read_json_object(path: Path | None) -> dict[str, Any]:
-    if path is None:
-        return {}
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-        return {}
-    return value if isinstance(value, dict) else {}
-
-
-def _citywide_2d_artifacts() -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    root = _public_citywide_2d_root()
-    required = {
-        "maximum_depth": root / "maximum_depth_wgs84.geojson",
-        "delivery_summary": root / "delivery_summary.json",
-        "run_receipt": root / "run_receipt.json",
-        "timeline_manifest": root / "temporal_snapshots/manifest.json",
-    }
-    available = {key: path.is_file() for key, path in required.items()}
-    manifest = _read_json_object(required["timeline_manifest"])
-    snapshots = manifest.get("snapshots")
-    valid_snapshots = 0
-    expected_snapshots = len(snapshots) if isinstance(snapshots, list) else 0
-    if isinstance(snapshots, list):
-        for item in snapshots:
-            if not isinstance(item, dict) or not isinstance(item.get("path"), str):
-                continue
-            relative = Path(item["path"])
-            if relative.is_absolute() or ".." in relative.parts:
-                continue
-            if (root / relative).is_file():
-                valid_snapshots += 1
-    summary = _read_json_object(required["delivery_summary"])
-    return (
-        [
-            {"key": key, "available": value}
-            for key, value in available.items()
-        ],
-        {
-            "snapshot_count": expected_snapshots,
-            "valid_snapshot_count": valid_snapshots,
-            "maximum_depth_m": (summary.get("results") or {}).get("maximum_depth_m"),
-            "active_land_cells": (summary.get("domain") or {}).get("active_land_cells"),
-            "surface_product": (summary.get("surface") or {}).get("product"),
-            "surface_evidence_class": (summary.get("surface") or {}).get("evidence_class"),
-        },
-    )
-
-
-def _gwm_pipeline_status() -> dict[str, Any]:
-    """Return a trained local GWM status, falling back to the demo bridge.
-
-    Production deployments host the surrogate in the application process.  The
-    local workbench uses a small isolated bridge so its state survives frontend
-    reloads.  Both paths return only model metadata, never private tensors.
-    """
-
-    try:
-        from .uwm.abu_dhabi_flood.gwm_surrogate import gwm_store
-
-        status = gwm_store().status()
-        if status.get("status") == "ready_to_train":
-            status = gwm_store().train()
-            status = {**status, "status": "trained", "training": status}
-        if status.get("status") == "trained":
-            pilot_ids = status.get("pilot_ids") or []
-            if pilot_ids:
-                probe = gwm_store().rollout(
-                    {"pilot_id": str(pilot_ids[0]), "steps": 2}
-                )
-                status = {**status, "functional_probe": probe}
-            return status
-    except (OSError, ValueError, ImportError):
-        pass
-
-    bridge_url = os.environ.get(
-        "ABU_DHABI_GWM_BRIDGE_STATUS_URL",
-        "http://127.0.0.1:8003/api/abu-dhabi/flood/gwm/status",
-    )
-    try:
-        request = Request(bridge_url, headers={"Accept": "application/json"})
-        with urlopen(request, timeout=2) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-        if isinstance(payload, dict):
-            if payload.get("status") == "trained" and payload.get("pilot_ids"):
-                rollout_url = bridge_url.rsplit("/status", 1)[0] + "/rollout"
-                probe_request = Request(
-                    rollout_url,
-                    data=json.dumps(
-                        {"pilot_id": str(payload["pilot_ids"][0]), "steps": 2}
-                    ).encode("utf-8"),
-                    headers={"Accept": "application/json", "Content-Type": "application/json"},
-                    method="POST",
-                )
-                with urlopen(probe_request, timeout=5) as response:
-                    probe = json.loads(response.read().decode("utf-8"))
-                if isinstance(probe, dict):
-                    payload = {**payload, "functional_probe": probe}
-            return payload
-    except (OSError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
-        pass
-    return {"status": "unavailable", "pilot_count": 0, "sample_count": 0}
-
-
-def pipeline_status_payload() -> dict[str, Any]:
-    """Build the five-stage functional receipt from registered local results.
-
-    This contract intentionally contains derived artifact names and aggregate
-    metrics only.  It is safe to send to the authenticated workbench while all
-    customer GDB, DTM and tensor source files remain outside the repository.
-    """
-
-    data_asset_names = (
-        "abu_dhabi_customer_stormwater_gdb_pipeline_full.fgb",
-        "abu_dhabi_customer_stormwater_topology_nodes_full.fgb",
-        "abu_dhabi_customer_stormwater_map_assets_manifest.json",
-    )
-    swmm_asset_names = (
-        "abu_dhabi_city_swmm_full_compile_summary.json",
-        "abu_dhabi_city_swmm_spatial_results_fgb_manifest.json",
-        "abu_dhabi_city_swmm_node_results.fgb",
-        "abu_dhabi_city_swmm_link_results.fgb",
-    )
-    data_assets = [
-        {"key": name, "available": _pipeline_asset(name) is not None}
-        for name in data_asset_names
-    ]
-    swmm_assets = [
-        {"key": name, "available": _pipeline_asset(name) is not None}
-        for name in swmm_asset_names
-    ]
-    data_manifest = _read_json_object(
-        _pipeline_asset("abu_dhabi_customer_stormwater_map_assets_manifest.json")
-    )
-    swmm_summary = _read_json_object(
-        _pipeline_asset("abu_dhabi_city_swmm_full_compile_summary.json")
-    )
-    spatial_manifest = _read_json_object(
-        _pipeline_asset("abu_dhabi_city_swmm_spatial_results_fgb_manifest.json")
-    )
-    surface_assets, surface_metrics = _citywide_2d_artifacts()
-    gwm = _gwm_pipeline_status()
-    from .uwm.abu_dhabi_flood.external_validation import external_validation_payload
-
-    external_validation = external_validation_payload()
-
-    data_ready = all(item["available"] for item in data_assets)
-    swmm_ready = all(item["available"] for item in swmm_assets)
-    surface_ready = (
-        all(item["available"] for item in surface_assets)
-        and surface_metrics["snapshot_count"] > 0
-        and surface_metrics["valid_snapshot_count"] == surface_metrics["snapshot_count"]
-    )
-    gwm_ready = (
-        gwm.get("status") == "trained"
-        and int(gwm.get("pilot_count") or 0) > 0
-        and int(gwm.get("sample_count") or 0) > 0
-        and (gwm.get("functional_probe") or {}).get("status") == "completed"
-    )
-
-    stages = [
-        {
-            "key": "data",
-            "status": "ready" if data_ready else "partial",
-            "completed_artifacts": sum(item["available"] for item in data_assets),
-            "required_artifacts": len(data_assets),
-            "metrics": {
-                "pipeline_count": ((data_manifest.get("files") or {}).get("pipelines") or {}).get("feature_count"),
-                "topology_node_count": ((data_manifest.get("files") or {}).get("topology_nodes") or {}).get("feature_count"),
-            },
-            "artifacts": data_assets,
-        },
-        {
-            "key": "swmm",
-            "status": "ready" if swmm_ready else "partial",
-            "completed_artifacts": sum(item["available"] for item in swmm_assets),
-            "required_artifacts": len(swmm_assets),
-            "metrics": {
-                "modeled_node_count": swmm_summary.get("modeled_node_count"),
-                "modeled_pipeline_count": swmm_summary.get("modeled_pipeline_count"),
-                "node_result_count": ((spatial_manifest.get("files") or {}).get("node_results") or {}).get("feature_count"),
-                "link_result_count": ((spatial_manifest.get("files") or {}).get("link_results") or {}).get("feature_count"),
-            },
-            "artifacts": swmm_assets,
-        },
-        {
-            "key": "surface",
-            "status": "ready" if surface_ready else "partial",
-            "completed_artifacts": sum(item["available"] for item in surface_assets) + surface_metrics["valid_snapshot_count"],
-            "required_artifacts": len(surface_assets) + surface_metrics["snapshot_count"],
-            "metrics": surface_metrics,
-            "artifacts": surface_assets,
-        },
-        {
-            "key": "gwm",
-            "status": "ready" if gwm_ready else "partial",
-            "completed_artifacts": 1 if gwm_ready else 0,
-            "required_artifacts": 1,
-            "metrics": {
-                "pilot_count": int(gwm.get("pilot_count") or 0),
-                "sample_count": int(gwm.get("sample_count") or 0),
-                "model_version": gwm.get("model_version"),
-                "rollout_probe_id": (gwm.get("functional_probe") or {}).get("run_id"),
-            },
-            "artifacts": [{"key": "trained_gwm_model", "available": gwm_ready}],
-        },
-    ]
-    delivery_ready = all(stage["status"] == "ready" for stage in stages)
-    delivery_artifacts = [item for stage in stages for item in stage["artifacts"]]
-    strict_validation = external_validation.get("strict_confirmatory") or {}
-    supplementary_validation = external_validation.get("supplementary") or {}
-    engineering_admission = external_validation.get("engineering_admission") or {}
-    strict_receipt_ready = bool(
-        (strict_validation.get("receipt") or {}).get("integrity_verified")
-    )
-    supplementary_receipt_ready = bool(
-        (supplementary_validation.get("receipt") or {}).get("integrity_verified")
-    )
-    strict_target_reached = bool(strict_validation.get("target_sample_size_reached"))
-    engineering_admitted = engineering_admission.get("admitted") is True
-    validation_artifacts = [
-        *delivery_artifacts,
-        {"key": "strict_confirmatory_receipt", "available": strict_receipt_ready},
-        {
-            "key": "supplementary_validation_receipt",
-            "available": supplementary_receipt_ready,
-        },
-        {"key": "strict_confirmatory_event_target", "available": strict_target_reached},
-        {"key": "engineering_admission_certificate", "available": engineering_admitted},
-    ]
-    validation_ready = bool(
-        delivery_ready
-        and strict_receipt_ready
-        and supplementary_receipt_ready
-        and strict_target_reached
-        and engineering_admitted
-    )
-    stages.append(
-        {
-            "key": "validation",
-            "status": "ready" if validation_ready else "partial",
-            "completed_artifacts": sum(item["available"] for item in validation_artifacts),
-            "required_artifacts": len(validation_artifacts),
-            "metrics": {
-                "swmm_result_layers": 2,
-                "surface_timeline_frames": surface_metrics["valid_snapshot_count"],
-                "gwm_pilot_count": int(gwm.get("pilot_count") or 0),
-                "confirmatory_event_count": int(
-                    strict_validation.get("event_count") or 0
-                ),
-                "confirmatory_target_event_count": int(
-                    strict_validation.get("target_event_count") or 0
-                ),
-                "supplementary_event_count": int(
-                    supplementary_validation.get("event_count") or 0
-                ),
-                "supplementary_target_event_count": int(
-                    supplementary_validation.get("target_event_count") or 0
-                ),
-                "independent_external_event_count": int(
-                    (external_validation.get("cross_cohort") or {}).get(
-                        "independent_event_count"
-                    )
-                    or 0
-                ),
-                "cross_sensor_metrics_pooled": False,
-                "engineering_admitted": engineering_admitted,
-            },
-            "artifacts": validation_artifacts,
-        }
-    )
-    checks = [
-        {
-            "key": stage["key"],
-            "status": stage["status"],
-            "completed": stage["completed_artifacts"],
-            "required": stage["required_artifacts"],
-        }
-        for stage in stages
-    ]
-    pipeline_ready = all(stage["status"] == "ready" for stage in stages)
-    return {
-        "schema": "gwm.abu_dhabi_flood.pipeline_status.v1",
-        "status": "ready" if pipeline_ready else "partial",
-        "ready_stage_count": sum(stage["status"] == "ready" for stage in stages),
-        "stage_count": len(stages),
-        "stages": stages,
-        "checks": checks,
-        "delivery": {
-            "status": "ready" if delivery_ready else "partial",
-            "derived_artifact_count": len(delivery_artifacts),
-            "surface_product": surface_metrics.get("surface_product"),
-            "engineering_admitted": engineering_admitted,
-        },
-        "external_validation": {
-            "status": external_validation.get("status"),
-            "strict_confirmatory_event_count": int(
-                strict_validation.get("event_count") or 0
-            ),
-            "strict_confirmatory_target_event_count": int(
-                strict_validation.get("target_event_count") or 0
-            ),
-            "supplementary_event_count": int(
-                supplementary_validation.get("event_count") or 0
-            ),
-            "supplementary_target_event_count": int(
-                supplementary_validation.get("target_event_count") or 0
-            ),
-            "independent_event_count": int(
-                (external_validation.get("cross_cohort") or {}).get(
-                    "independent_event_count"
-                )
-                or 0
-            ),
-            "performance_metrics_pooled": False,
-            "engineering_admitted": engineering_admitted,
-        },
-    }
+def _public_citywide_2d_available_periods(base: Path) -> list[int]:
+    available: set[int] = set()
+    for period in SUPPORTED_RETURN_PERIODS:
+        try:
+            candidate = _public_citywide_2d_root(period)
+        except ValueError:
+            candidate = base / f"rp{period:03d}"
+        if (candidate / "delivery_summary.json").is_file() and (candidate / "temporal_snapshots" / "manifest.json").is_file() and (candidate / "maximum_depth_wgs84.geojson").is_file():
+            available.add(period)
+    if (base / "delivery_summary.json").is_file() and (base / "temporal_snapshots" / "manifest.json").is_file() and (base / "maximum_depth_wgs84.geojson").is_file():
+        available.add(100)
+    return [period for period in SUPPORTED_RETURN_PERIODS if period in available]
 
 
 def _public_ncei_root() -> Path:
     return _configured_path("ABU_DHABI_PUBLIC_NCEI_ROOT", DEFAULT_PUBLIC_NCEI_ROOT).expanduser().resolve()
-
-
-def _historical_event_candidates() -> list[Path]:
-    """Return customer/event packages outside the repository, in priority order."""
-
-    configured = os.environ.get("ABU_DHABI_HISTORICAL_EVENT_ROOT", "").strip()
-    candidates = [
-        Path(configured).expanduser() if configured else DEFAULT_HISTORICAL_EVENT_ROOT,
-        Path.home() / "gisdataagent/data_agent/uploads/admin/abu_dhabi_historical_event",
-    ]
-    unique: list[Path] = []
-    for candidate in candidates:
-        resolved = candidate.resolve()
-        if resolved not in unique:
-            unique.append(resolved)
-    return unique
-
-
-def _read_historical_event_payload() -> dict[str, Any] | None:
-    """Read the supplied event package without copying it into the repo."""
-
-    for candidate in _historical_event_candidates():
-        try:
-            if candidate.is_dir():
-                for relative in (Path("p3.json"), Path("data/p3_replay_2024/p3.json"), Path("devpack/data/p3_replay_2024/p3.json")):
-                    path = candidate / relative
-                    if path.is_file():
-                        value = json.loads(path.read_text(encoding="utf-8"))
-                        if isinstance(value, dict):
-                            return value
-            elif candidate.is_file() and candidate.suffix.lower() == ".zip":
-                with zipfile.ZipFile(candidate) as archive:
-                    names = (
-                        "devpack/data/p3_replay_2024/p3.json",
-                        "data/p3_replay_2024/p3.json",
-                        "p3.json",
-                    )
-                    for name in names:
-                        try:
-                            value = json.loads(archive.read(name).decode("utf-8"))
-                        except (KeyError, UnicodeDecodeError, json.JSONDecodeError):
-                            continue
-                        if isinstance(value, dict):
-                            return value
-        except (OSError, zipfile.BadZipFile, UnicodeDecodeError, json.JSONDecodeError):
-            continue
-    return None
 
 
 def _json_write(path: Path, payload: Any) -> None:
@@ -613,10 +309,8 @@ def validate_scenario(payload: dict[str, Any]) -> dict[str, Any]:
     rainfall_mode = payload.get("rainfallMode", payload.get("rainfall_mode", "design_storm"))
     if rainfall_mode not in {"design_storm", "online_public", "public_station_event", "historical_event"}:
         raise ValueError("rainfall_mode_invalid")
-    # Historical-event mode uses the customer event package when present and
-    # otherwise falls back to the configured public event adapter.  This keeps
-    # the interactive workflow runnable while preserving the actual source in
-    # the run receipt.
+    if rainfall_mode == "historical_event":
+        raise ValueError("historical_event_requires_authoritative_timeseries")
     duration = _as_number(payload.get("durationMinutes", payload.get("duration_minutes")), "duration_minutes", minimum=5, maximum=4320)
     tail = _as_number(payload.get("tailMinutes", payload.get("tail_minutes", 0)), "tail_minutes", minimum=0, maximum=1440)
     if duration % _STEP_MINUTES or tail % _STEP_MINUTES:
@@ -625,8 +319,6 @@ def validate_scenario(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("total_simulation_window_exceeds_72_hours")
     if rainfall_mode == "public_station_event" and (duration != 4320 or tail != 0):
         raise ValueError("public_station_event_requires_72_hour_window")
-    if rainfall_mode == "historical_event" and tail != 0:
-        raise ValueError("historical_event_tail_must_be_zero")
     pattern = payload.get("rainfallPattern", payload.get("rainfall_pattern", "uniform"))
     if pattern not in {"uniform", "front_loaded", "alternating_block", "official_zone_b_ddf_abm"}:
         raise ValueError("rainfall_pattern_invalid")
@@ -701,7 +393,7 @@ def validate_scenario(payload: dict[str, Any]) -> dict[str, Any]:
         "partition": partition_id,
         "partitions": partitions,
         "rainfall_mode": rainfall_mode,
-        "public_station": public_station if rainfall_mode in {"public_station_event", "historical_event"} else None,
+        "public_station": public_station if rainfall_mode == "public_station_event" else None,
         "public_rainfall_source": public_source if rainfall_mode == "online_public" else None,
         "public_latitude": latitude,
         "public_longitude": longitude,
@@ -952,73 +644,6 @@ def _public_ncei_station_event_series(scenario: dict[str, Any]) -> tuple[list[tu
     }
 
 
-def _historical_event_series(scenario: dict[str, Any]) -> tuple[list[tuple[datetime, float]], dict[str, Any]]:
-    """Build a 5-minute forcing from the supplied 2024 event package.
-
-    The devpack stores an hourly reconstructed sequence.  The SWMM input
-    contract remains unchanged: each hour is expanded to twelve constant
-    five-minute intensities, and the run receipt records the package version
-    and reconstruction boundary.  If the package is not present, the local
-    NOAA-constrained adapter is used as a deterministic public fallback.
-    """
-
-    payload = _read_historical_event_payload()
-    if not payload:
-        try:
-            values, metadata = _public_ncei_station_event_series(
-                {**scenario, "rainfall_mode": "public_station_event", "start_time": "2024-04-15T00:00"}
-            )
-            return values, {
-                **metadata,
-                "source": "historical_event_public_station_fallback",
-                "source_label": "2024 历史事件（NOAA NCEI 公开站点约束回退）",
-                "source_authority": "public_proxy_station_constraint",
-                "fallback": True,
-            }
-        except ValueError as error:
-            raise ValueError("historical_event_forcing_missing") from error
-
-    start = datetime.fromisoformat(str(payload.get("t0_utc", "")).replace("Z", "+00:00")).astimezone(timezone.utc).replace(tzinfo=None)
-    requested_start = datetime.fromisoformat(scenario["start_time"])
-    if requested_start != start:
-        raise ValueError("historical_event_start_time_mismatch")
-    raw_values = payload.get("hyetograph_mmph")
-    if not isinstance(raw_values, list) or not raw_values:
-        raise ValueError("historical_event_forcing_invalid")
-    hourly: list[float] = []
-    try:
-        hourly = [float(value) for value in raw_values]
-    except (TypeError, ValueError) as error:
-        raise ValueError("historical_event_forcing_invalid") from error
-    if any(not math.isfinite(value) or value < 0 for value in hourly):
-        raise ValueError("historical_event_forcing_invalid")
-    count = int(scenario["duration_minutes"] // _STEP_MINUTES)
-    if count > len(hourly) * 12:
-        raise ValueError("historical_event_forcing_window_incomplete")
-    values = [
-        (start + timedelta(minutes=index * _STEP_MINUTES), hourly[index // 12])
-        for index in range(count)
-    ]
-    end_of_rain = start + timedelta(minutes=int(scenario["duration_minutes"]))
-    values.append((end_of_rain, 0.0))
-    total_depth = sum(value * _STEP_MINUTES / 60.0 for _, value in values[:count])
-    return values, {
-        "source": "customer_historical_event_devpack",
-        "source_label": "2024 历史事件时序（客户提供 devpack）",
-        "source_authority": "customer_provided_event_package",
-        "provider": "nabd_flood_devpack_v1.5",
-        "event_start_utc": start.isoformat(timespec="minutes") + "Z",
-        "native_interval_minutes": 60,
-        "resampling_method": "hourly_reconstructed_intensity_expanded_to_constant_5_minute_intensity",
-        "generated_intervals": float(count),
-        "generated_total_depth_mm": float(total_depth),
-        "peak_intensity_mm_per_hour": float(max(hourly[: max(1, (count + 11) // 12)])),
-        "event_package_version": "v1.5",
-        "event_sequence_hours": len(hourly),
-        "reconstruction_note": "Package sequence is retained as supplied; source metadata and model-run status remain separate.",
-    }
-
-
 def _rainfall_series(scenario: dict[str, Any]) -> tuple[list[tuple[datetime, float]], dict[str, Any]]:
     mode = scenario.get("rainfall_mode", "design_storm")
     if mode == "design_storm":
@@ -1027,9 +652,7 @@ def _rainfall_series(scenario: dict[str, Any]) -> tuple[list[tuple[datetime, flo
         return _online_public_rainfall_series(scenario)
     if mode == "public_station_event":
         return _public_ncei_station_event_series(scenario)
-    if mode == "historical_event":
-        return _historical_event_series(scenario)
-    raise ValueError("rainfall_mode_unsupported")
+    raise ValueError("historical_event_requires_authoritative_timeseries")
 
 
 def _section_indexes(lines: list[str]) -> dict[str, tuple[int, int]]:
@@ -1365,6 +988,59 @@ def _partition_out_path(run_id: str, partition_id: Any) -> Path | None:
     directory = _private_run_root().expanduser().resolve() / run_id / _partition_label(partition_id) / "native_swmm_results"
     paths = sorted(directory.glob("*.out"))
     return paths[0] if paths else None
+
+
+def _map_node_coverage_metadata(total_node_count: int, mapped_node_count: int) -> dict[str, Any]:
+    """Describe native-result versus map-geometry coverage without overclaiming.
+
+    SWMM can produce a valid result row for a node whose customer geometry is
+    not present in the currently configured spatial index.  Those values are
+    retained in the native OUT file, but they cannot be rendered on the map.
+    Keep value filtering and geometry coverage as two separate assertions.
+    """
+
+    total = max(0, int(total_node_count))
+    mapped = max(0, min(total, int(mapped_node_count)))
+    missing = max(0, total - mapped)
+    coverage = float(mapped / total) if total else 0.0
+    return {
+        "node_feature_count": mapped,
+        "total_node_result_count": total,
+        "missing_geometry_count": missing,
+        "geometry_coverage_fraction": coverage,
+        "map_node_completeness": (
+            "complete_geometry_coverage" if total and missing == 0 else "partial_geometry_coverage"
+        ),
+        "node_value_filter": "none_including_zero_values_for_mapped_nodes",
+        # Retained for older map clients.  This means no threshold/count
+        # filtering; it does not mean that every result node has geometry.
+        "node_map_filter": "none",
+        "map_node_filter": "none",
+    }
+
+
+def _scenario_node_geometry_coverage(run_id: str, run: dict[str, Any]) -> dict[str, Any]:
+    """Count native OUT nodes that can be joined to the active map geometry."""
+
+    rows, selected = _completed_partition_rows(run)
+    geometry_index = _node_geometry_index()
+    total = 0
+    mapped = 0
+    for partition_id in sorted(selected or rows, key=str):
+        row = rows.get(partition_id)
+        if not row or row.get("status") not in {"completed", "completed_quality_warning"}:
+            continue
+        out_path = _partition_out_path(run_id, partition_id)
+        if not out_path:
+            continue
+        try:
+            header = _swmm_out_header(out_path)
+        except ValueError:
+            continue
+        node_names = [str(value) for value in header.get("node_names", [])]
+        total += len(node_names)
+        mapped += sum(node_id in geometry_index for node_id in node_names)
+    return _map_node_coverage_metadata(total, mapped)
 
 
 def _scenario_timeline(run_id: str, run: dict[str, Any]) -> dict[str, Any]:
@@ -1829,15 +1505,52 @@ def dtm_diagnostic_timeseries_payload(time_index: int) -> dict[str, Any]:
     return payload
 
 
-def public_citywide_2d_bootstrap_payload() -> dict[str, Any]:
-    """Return the configured full-city 2D result and timeline contract.
+def _first_renderable_citywide_2d_snapshot_index(
+    root: Path, snapshots: list[dict[str, Any]]
+) -> int:
+    """Return the first non-empty 2D frame without removing dry frames.
 
-    The route name is retained for compatibility. The configured result may be
-    produced from either the public DEM or a customer DTM; provenance is read
-    from the run receipt instead of being inferred from the endpoint name.
+    ANUGA legitimately emits an empty FeatureCollection at the initial dry
+    instant.  Starting the shared map on that frame makes a completed result
+    look missing, so the bootstrap points at the first renderable frame while
+    the explicit zero-minute frame remains available from the timeline API.
     """
 
-    root = _public_citywide_2d_root()
+    for index, item in enumerate(snapshots):
+        if not isinstance(item, dict) or not isinstance(item.get("path"), str):
+            raise ValueError("public_citywide_2d_snapshot_invalid")
+        relative = Path(item["path"])
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("public_citywide_2d_snapshot_path_invalid")
+        snapshot_path = root / relative
+        if not snapshot_path.is_file():
+            raise ValueError("public_citywide_2d_snapshot_missing")
+        try:
+            payload = json.loads(snapshot_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise ValueError("public_citywide_2d_snapshot_invalid") from error
+        if not isinstance(payload, dict) or payload.get("type") != "FeatureCollection":
+            raise ValueError("public_citywide_2d_snapshot_invalid")
+        if isinstance(payload.get("features"), list) and payload["features"]:
+            return index
+    return 0
+
+
+def public_citywide_2d_bootstrap_payload(
+    return_period_years: int | None = None,
+    result_source: str | None = None,
+) -> dict[str, Any]:
+    """Return the full-city 2D result contract.
+
+    Customer 5 m DTM coupled results are selected first.  The historical
+    endpoint name is retained for API compatibility, but metadata identifies
+    whether the active surface is customer DTM or the public fallback.
+    """
+
+    root, resolved_result_source = _citywide_2d_result_root(
+        return_period_years, result_source
+    )
+    bidirectional_validation = resolved_result_source == "bidirectional_validation"
     maximum_path = root / "maximum_depth_wgs84.geojson"
     summary_path = root / "delivery_summary.json"
     manifest_path = root / "temporal_snapshots" / "manifest.json"
@@ -1859,42 +1572,148 @@ def public_citywide_2d_bootstrap_payload() -> dict[str, Any]:
     snapshots = manifest.get("snapshots")
     if not isinstance(snapshots, list) or not snapshots:
         raise ValueError("public_citywide_2d_timeline_invalid")
+    initial_time_index = _first_renderable_citywide_2d_snapshot_index(root, snapshots)
     domain = summary.get("domain") or {}
     surface = summary.get("surface") or {}
     results = summary.get("results") or {}
     land_water = summary.get("land_water_treatment") or surface.get("land_water_mask") or {}
-    surface_evidence_class = str(
-        surface.get("evidence_class") or "public_proxy_not_authoritative"
-    )
-    customer_surface = surface_evidence_class.startswith("customer")
-    run_id = str(
-        summary.get("run_id")
-        or "abu-dhabi-public-copernicus-citywide-anuga-20260906"
-    )
+    coupling = summary.get("coupling") or {}
     active_land_cells = int(
         domain.get("active_land_cells", domain.get("rectangular_cells", 0)) or 0
     )
+    forcing = summary.get("forcing") or {}
+    selected_return_period = int(
+        return_period_years
+        if return_period_years is not None
+        else forcing.get("return_period_years", 100)
+    )
+    base_root = _public_citywide_2d_root()
+    evidence = str(surface.get("evidence_class") or "").lower()
+    product = str(surface.get("product") or "")
+    customer_surface = "customer" in evidence or "dtm" in evidence or "customer" in product.lower() or "dtm" in product.lower()
+    surface_source_class = "customer_authoritative" if customer_surface else "public_proxy"
+    surface_authority = "customer_provided" if customer_surface else "ESA/Copernicus public product"
+    source_resolution = surface.get("source_resolution_m")
+    if customer_surface and source_resolution is None:
+        source_resolution = [5.0, 5.0]
+    source_label = "customer_dtm_5m" if customer_surface else "copernicus_dem_glo30"
+    if bidirectional_validation:
+        claim_boundary = str(
+            summary.get("claim_boundary")
+            or "Full-interface synchronous SWMM-ANUGA numerical validation using customer DTM; not calibrated or engineering-admitted."
+        )
+        result_name = "abu_dhabi_customer_dtm5m_citywide_swmm_anuga_bidirectional_validation"
+        run_prefix = "abu-dhabi-customer-dtm5m-citywide-swmm-anuga-bidirectional"
+    elif customer_surface:
+        claim_boundary = str(summary.get("claim_boundary") or "Customer 5 m DTM citywide 2D result; calibration and engineering admission remain separate gates.")
+        result_name = "abu_dhabi_customer_dtm5m_citywide_anuga_2d"
+        run_prefix = "abu-dhabi-customer-dtm5m-citywide-anuga"
+    else:
+        claim_boundary = "Full-city public Copernicus DEM and ESA WorldCover land/water-mask prototype; coarse grid, not calibrated, not engineering-admitted."
+        result_name = "abu_dhabi_public_copernicus_citywide_anuga_2d"
+        run_prefix = "abu-dhabi-public-copernicus-citywide-anuga"
+    coupling_mode = str(
+        coupling.get("mode")
+        or ("synchronous_two_way_swmm_anuga_surface_exchange" if bidirectional_validation else "one_way_swmm_to_anuga")
+    )
+    dynamic_head_feedback = bidirectional_validation or bool(
+        coupling.get("dynamic_head_feedback_in_this_run", False)
+    )
+    forcing_duration_minutes = forcing.get(
+        "duration_minutes", forcing.get("configured_storm_duration_minutes")
+    )
+    simulation_duration_minutes = domain.get("simulation_duration_minutes")
+    if simulation_duration_minutes is None and domain.get("simulation_duration_hours") is not None:
+        simulation_duration_minutes = float(domain.get("simulation_duration_hours")) * 60.0
+    timeline_run_id = str(
+        summary.get("run_id")
+        or f"{run_prefix}-rp{selected_return_period:03d}"
+    )
+    timeline_source_query = (
+        "&result_source=bidirectional_validation" if bidirectional_validation else ""
+    )
+    available_result_sources = ["return_period_one_way"]
+    bidirectional_root = _customer_bidirectional_2d_root()
+    if (
+        (bidirectional_root / "delivery_summary.json").is_file()
+        and (bidirectional_root / "temporal_snapshots" / "manifest.json").is_file()
+        and (bidirectional_root / "maximum_depth_wgs84.geojson").is_file()
+    ):
+        available_result_sources.append("bidirectional_validation")
     return {
         "type": "FeatureCollection",
-        "name": (
-            "abu_dhabi_customer_dtm_citywide_anuga_2d"
-            if customer_surface
-            else "abu_dhabi_public_copernicus_citywide_anuga_2d"
-        ),
+        "name": result_name,
         "features": [],
         "metadata": {
             "schema": "gwm.abu_dhabi_flood.public_citywide_2d_map_bootstrap.v1",
             "solver": summary.get("solver", "ANUGA 2D"),
             "result_status": summary.get("status"),
-            "surface_product": surface.get("product"),
-            "surface_evidence_class": surface_evidence_class,
-            "customer_surface": customer_surface,
-            "coupling": summary.get("coupling"),
-            "source_resolution_m": surface.get("source_resolution_m"),
+            "result_source": resolved_result_source,
+            "result_variant": resolved_result_source,
+            "available_result_sources": available_result_sources,
+            "return_period_years": selected_return_period,
+            "available_return_periods": (
+                [100]
+                if bidirectional_validation
+                else _public_citywide_2d_available_periods(base_root)
+            ),
+            "forcing": forcing,
+            "surface_product": product,
+            "surface_evidence_class": surface_source_class,
+            "surface_source_class": surface_source_class,
+            "surface_source": source_label,
+            "surface_source_authority": surface_authority,
+            "source_resolution_m": source_resolution,
             "model_cell_size_m": domain.get("cell_size_m"),
             "domain_bounds_epsg32640": domain.get("bounds_epsg32640"),
             "domain_area_m2": domain.get("area_m2"),
             "triangle_count": domain.get("triangle_count"),
+            "model_configuration": {
+                "execution_mode": "registered_precomputed_result",
+                "solver": summary.get("solver", "ANUGA 2D"),
+                "solver_chain": (
+                    "EPA SWMM 5.2.4 <-> ANUGA 2D synchronous exchange validation"
+                    if bidirectional_validation
+                    else "EPA SWMM 5.2.4 native OUT -> ANUGA 2D"
+                ),
+                "terrain_source": source_label,
+                "terrain_product": product,
+                "terrain_source_resolution_m": source_resolution,
+                "model_cell_size_m": domain.get("cell_size_m"),
+                "forcing_source": forcing.get("source"),
+                "forcing_duration_minutes": forcing_duration_minutes,
+                "forcing_interval_minutes": forcing.get("native_interval_minutes"),
+                "forcing_peak_position_percent": forcing.get("peak_position_percent"),
+                "simulation_duration_minutes": simulation_duration_minutes,
+                "tail_minutes": (
+                    max(
+                        0.0,
+                        float(simulation_duration_minutes)
+                        - float(forcing_duration_minutes or 0.0),
+                    )
+                    if simulation_duration_minutes is not None
+                    else None
+                ),
+                "output_interval_minutes": domain.get("output_step_minutes"),
+                "coupling_mode": coupling_mode,
+                "exchange_quantity": (
+                    "head-difference exchange in both directions"
+                    if bidirectional_validation
+                    else (coupling.get("exchange_quantity") or {}).get("swmm_to_anuga")
+                ),
+                "dynamic_head_feedback": dynamic_head_feedback,
+                "sea_boundary_condition": land_water.get("sea_boundary_condition"),
+                "sea_boundary_level_m": land_water.get("sea_boundary_level_m"),
+                "water_cell_fraction_threshold": land_water.get(
+                    "water_cell_fraction_threshold"
+                ),
+                "editable_parameters": [] if bidirectional_validation else ["return_period_years"],
+                "frozen_parameter_reason": (
+                    "The current web contract selects an audited registered result. "
+                    "Changing mesh, boundary, coupling, roughness, or time-step settings "
+                    "requires a new ANUGA run and a new run receipt."
+                ),
+            },
             "land_water_mask": {
                 "applied": bool(land_water),
                 "product": land_water.get("product"),
@@ -1923,10 +1742,31 @@ def public_citywide_2d_bootstrap_payload() -> dict[str, Any]:
             "maximum_depth_m": results.get("maximum_depth_m"),
             "inundated_area_ge_0_01m2": results.get("inundated_area_ge_0_01m2"),
             "inundated_area_ge_0_05m2": results.get("inundated_area_ge_0_05m2"),
+            "coupling_summary": {
+                "mode": coupling_mode,
+                "quality_passed": coupling.get("quality_passed"),
+                "quality_scope": coupling.get("quality_scope"),
+                "window_count": coupling.get("window_count"),
+                "exchange_window_seconds": coupling.get("exchange_window_seconds"),
+                "interface_count": coupling.get("interface_count"),
+                "total_swmm_to_anuga_m3": coupling.get("total_swmm_to_anuga_m3"),
+                "total_anuga_to_swmm_m3": coupling.get("total_anuga_to_swmm_m3"),
+                "maximum_absolute_surface_mass_balance_residual_m3": coupling.get(
+                    "maximum_absolute_surface_mass_balance_residual_m3"
+                ),
+                "maximum_exchange_application_relative_difference": coupling.get(
+                    "maximum_exchange_application_relative_difference"
+                ),
+                "execution_provenance": (
+                    "Receipt records synchronous two-way exchange; native SWMM re-invocation in every window requires runtime-log verification."
+                    if bidirectional_validation
+                    else "Registered native SWMM OUT is applied as a one-way ANUGA source."
+                ),
+            },
             "timeline": {
                 "available": True,
-                "run_id": run_id,
-                "endpoint": "/api/abu-dhabi/flood/public-citywide-2d/timeseries",
+                "run_id": timeline_run_id,
+                "endpoint": f"/api/abu-dhabi/flood/public-citywide-2d/timeseries?return_period_years={selected_return_period}{timeline_source_query}",
                 "time_values": [
                     f"{float(item.get('time_minutes', 0.0)):.0f} min"
                     for item in snapshots if isinstance(item, dict)
@@ -1938,24 +1778,35 @@ def public_citywide_2d_bootstrap_payload() -> dict[str, Any]:
                 "period_count": len(snapshots),
                 "step_minutes": float(domain.get("output_step_minutes", 30.0)),
                 "total_cell_count": active_land_cells,
+                "initial_time_index": initial_time_index,
             },
-            "claim_boundary": summary.get("claim_boundary") or (
-                "Full-city public Copernicus DEM and ESA WorldCover land/water-mask "
-                "prototype; coarse grid, not calibrated, not engineering-admitted."
+            "claim_boundary": claim_boundary,
+            "replacement_rule": (
+                "This validation asset is retained alongside, not in place of, the six one-way return-period products. Replace it only with a rerun carrying equivalent synchronous-window receipts and runtime provenance."
+                if bidirectional_validation
+                else "Customer 5 m DTM is the primary surface; public Copernicus is used only when the selected customer result is unavailable."
+                if not customer_surface
+                else "Replace this result only after a revised customer DTM or boundary is admitted, then rerun the same SWMM→ANUGA contract."
             ),
         },
         "maximum_depth": maximum,
     }
 
 
-def public_citywide_2d_timeseries_payload(time_index: int) -> dict[str, Any]:
-    """Return one configured full-city surface-depth frame for map playback."""
+def public_citywide_2d_timeseries_payload(
+    time_index: int,
+    return_period_years: int | None = None,
+    result_source: str | None = None,
+) -> dict[str, Any]:
+    """Return one public full-city surface-depth frame for map playback."""
 
     if isinstance(time_index, bool) or not isinstance(time_index, int):
         raise ValueError("time_index_invalid")
-    root = _public_citywide_2d_root()
+    root, resolved_result_source = _citywide_2d_result_root(
+        return_period_years, result_source
+    )
+    bidirectional_validation = resolved_result_source == "bidirectional_validation"
     manifest_path = root / "temporal_snapshots" / "manifest.json"
-    summary_path = root / "delivery_summary.json"
     if not manifest_path.is_file():
         raise ValueError("public_citywide_2d_timeline_missing")
     try:
@@ -1980,30 +1831,43 @@ def public_citywide_2d_timeseries_payload(time_index: int) -> dict[str, Any]:
         raise ValueError("public_citywide_2d_snapshot_invalid") from error
     if not isinstance(payload, dict) or payload.get("type") != "FeatureCollection":
         raise ValueError("public_citywide_2d_snapshot_invalid")
+    summary_path = root / "delivery_summary.json"
     try:
-        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        summary = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.is_file() else {}
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         summary = {}
     surface = summary.get("surface") or {}
-    evidence_class = str(
-        surface.get("evidence_class") or "public_proxy_not_authoritative"
-    )
-    customer_surface = evidence_class.startswith("customer")
-    run_id = str(summary.get("run_id") or "abu-dhabi-public-copernicus-citywide-anuga")
-    payload["name"] = f"{run_id}_time_{time_index:03d}"
+    evidence = str(surface.get("evidence_class") or "").lower()
+    product = str(surface.get("product") or "")
+    customer_surface = "customer" in evidence or "dtm" in evidence or "customer" in product.lower() or "dtm" in product.lower()
+    source_label = "customer_dtm_5m" if customer_surface else "copernicus_dem_glo30"
+    payload["name"] = f"abu_dhabi_{source_label}_citywide_2d_time_{time_index:03d}"
     payload["metadata"] = {
         "schema": "gwm.abu_dhabi_flood.public_citywide_2d_surface_timeseries.v1",
-        "solver": "ANUGA 2D",
+        "solver": summary.get("solver", "ANUGA 2D"),
+        "result_source": resolved_result_source,
+        "result_variant": resolved_result_source,
         "time_index": time_index,
         "time_seconds": float(item.get("time_seconds", 0.0)),
         "time_minutes": float(item.get("time_minutes", 0.0)),
+        "return_period_years": return_period_years,
         "depth_field": "depth_m",
         "crs": "EPSG:4326",
-        "result_status": summary.get("status") or "citywide_2d_result_available",
-        "surface_product": surface.get("product"),
-        "surface_evidence_class": evidence_class,
-        "customer_surface": customer_surface,
-        "coupling": summary.get("coupling"),
+        "result_status": (
+            "customer_dtm_citywide_synchronous_bidirectional_validation_not_engineering_admitted"
+            if bidirectional_validation
+            else "customer_dtm_citywide_2d_not_engineering_admitted"
+            if customer_surface
+            else "public_proxy_prototype_not_engineering_admitted"
+        ),
+        "coupling_mode": (
+            (summary.get("coupling") or {}).get("mode")
+            or ("synchronous_two_way_swmm_anuga_surface_exchange" if bidirectional_validation else "one_way_swmm_to_anuga")
+        ),
+        "surface_product": product,
+        "surface_source": source_label,
+        "surface_source_class": "customer_authoritative" if customer_surface else "public_proxy",
+        "source_resolution_m": surface.get("source_resolution_m") or ([5.0, 5.0] if customer_surface else None),
         "permanent_water_cells_excluded": True,
         "land_water_mask_source_coverage_protection": (
             "cells outside the land-cover source coverage are excluded"
@@ -2028,6 +1892,10 @@ def scenario_map_bootstrap_payload(run_id: str) -> dict[str, Any]:
         raise ValueError("scenario_timeline_unavailable")
     rainfall_stats = dict(run.get("scenario", {}).get("rainfall_stats") or {})
     total_node_count = int(timeline.get("total_node_count") or 0)
+    coverage = _scenario_node_geometry_coverage(run_id, run)
+    if int(coverage.get("total_node_result_count") or 0) == 0 and total_node_count:
+        coverage = _map_node_coverage_metadata(total_node_count, 0)
+        coverage["map_node_completeness"] = "geometry_coverage_unavailable"
     return {
         "type": "FeatureCollection",
         "name": f"abu_dhabi_interactive_swmm_{run_id}_timeline_bootstrap",
@@ -2039,14 +1907,12 @@ def scenario_map_bootstrap_payload(run_id: str) -> dict[str, Any]:
             "rainfall_source": rainfall_stats.get("source_label"),
             "rainfall_source_url": rainfall_stats.get("source_url"),
             "rainfall_resampling_method": rainfall_stats.get("resampling_method"),
-            "result_boundary": "full_native_swmm_out_timeline_joined_to_customer_node_geometry",
-            "claim_boundary": "complete native diagnostic timeline; not calibrated or engineering admitted",
+            "result_boundary": "native_swmm_out_timeline_joined_where_customer_node_geometry_is_available",
+            "claim_boundary": "native diagnostic timeline; mapped geometry coverage is reported separately; not calibrated or engineering admitted",
             "node_result_source": "native SWMM OUT reporting periods",
             "node_geometry_source": "private customer node geometry index (EPSG:4326)",
-            "node_feature_count": 0,
-            "total_node_result_count": total_node_count,
-            "map_node_completeness": "all_native_out_nodes_in_every_returned_frame_including_zero_values",
-            "map_node_filter": "none",
+            **coverage,
+            "serialized_node_feature_count": 0,
             "bootstrap_only": True,
             "timeline": timeline,
         },
@@ -2102,6 +1968,7 @@ def scenario_map_payload(run_id: str) -> dict[str, Any]:
     node_counts: dict[str, int] = {}
     total_node_result_count = 0
     affected_node_count = 0
+    missing_geometry_count = 0
     for partition_id in sorted(selected or by_partition.keys(), key=str):
         row = by_partition.get(partition_id)
         if not row or row.get("status") not in {"completed", "completed_quality_warning"}:
@@ -2125,6 +1992,7 @@ def scenario_map_payload(run_id: str) -> dict[str, Any]:
                 affected_node_count += 1
             geometry = geometry_index.get(node_id) or _fallback_node_geometry(input_path, node_id)
             if not geometry:
+                missing_geometry_count += 1
                 continue
             properties = {
                 "node_id": node_id,
@@ -2161,11 +2029,9 @@ def scenario_map_payload(run_id: str) -> dict[str, Any]:
             "claim_boundary": "node maxima are diagnostic only; not calibrated or engineering admitted",
             "node_result_source": "native SWMM RPT summaries or OUT period aggregation",
             "node_geometry_source": "private customer node geometry index (EPSG:4326), with scenario INP coordinate fallback",
-            "node_feature_count": len(node_features),
-            "total_node_result_count": total_node_result_count,
+            **_map_node_coverage_metadata(total_node_result_count, len(node_features)),
             "affected_node_count": affected_node_count,
-            "map_node_completeness": "all_native_result_nodes_including_zero_values",
-            "node_map_filter": "none",
+            "missing_geometry_count": missing_geometry_count,
             "affected_node_definition": "max_water_depth_m >= 0.5 OR max_overflow_or_flooding_m3s > 0",
             "node_counts_by_partition": node_counts,
             "partition_result_feature_count": len(partition_features),
@@ -2266,12 +2132,9 @@ def scenario_map_timeseries_payload(run_id: str, time_index: int) -> dict[str, A
             "result_boundary": "node_level_native_swmm_out_period_joined_to_customer_node_geometry",
             "node_result_source": "native SWMM OUT node result period",
             "node_geometry_source": "private customer node geometry index (EPSG:4326)",
-            "node_feature_count": len(features),
-            "total_node_result_count": total_node_result_count,
+            **_map_node_coverage_metadata(total_node_result_count, len(features)),
             "affected_node_count": affected_node_count,
             "missing_geometry_count": missing_geometry_count,
-            "map_node_completeness": "all_native_out_nodes_including_zero_values",
-            "node_map_filter": "none",
             "affected_node_definition": "water_depth_m >= 0.05 OR overflow_or_flooding_m3s > 0",
             "claim_boundary": "native diagnostic time slice; not calibrated or engineering admitted",
         },
@@ -2384,13 +2247,10 @@ def scenario_map_timeseries_columns_payload(run_id: str, time_index: int) -> dic
             "timestamp": timestamp or timeline["time_values"][time_index],
             "elapsed_minutes": elapsed_minutes if elapsed_minutes is not None else timeline["elapsed_minutes"][time_index],
             "timeline": timeline,
-            "node_feature_count": len(node_ids),
-            "total_node_result_count": total_node_result_count,
+            **_map_node_coverage_metadata(total_node_result_count, len(node_ids)),
             "affected_node_count": affected_node_count,
             "missing_geometry_count": missing_geometry_count,
             "overflow_node_count": len(overflow_node_indexes),
-            "map_node_completeness": "all_native_out_nodes_including_zero_values",
-            "node_map_filter": "none",
             "claim_boundary": "native diagnostic time slice; not calibrated or engineering admitted",
         },
         "columns": {

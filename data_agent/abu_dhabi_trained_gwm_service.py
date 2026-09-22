@@ -2,11 +2,9 @@
 
 This service is intentionally separate from the phase-4 rule-based scenario
 adapter.  It loads the completed, quality-gated five-year cellwise ridge model
-and runs it against an admitted historical event forcing, optionally with a
-bounded rainfall multiplier for sensitivity analysis.  The April 2024 event
-remains an external holdout: it may be inferred and displayed, but never used
-to fit or select this frozen model.  Modified forcing is never reported as
-historical replay or external validation.
+and runs it only against an admitted historical event forcing.  The April 2024
+event remains an external holdout: it may be inferred and displayed, but never
+used to fit or select this frozen model.
 """
 
 from __future__ import annotations
@@ -45,11 +43,6 @@ RUN_SCHEMA = "gwm.abu_dhabi_flood.trained_event_rollout.v1"
 WET_THRESHOLD_M = 0.01
 GRID_CRS = "EPSG:32640"
 GRID_CELL_SIZE_M = 250.0
-MIN_RAINFALL_MULTIPLIER = 0.0
-MAX_RAINFALL_MULTIPLIER = 3.0
-MIN_RAINFALL_DURATION_HOURS = 1
-MAX_RAINFALL_DURATION_HOURS = 72
-RAINFALL_AMOUNT_ADAPTER_SCHEMA = "gwm.abu_dhabi_flood.rainfall_amount_adapter.v1"
 
 _RUNS: dict[str, dict[str, Any]] = {}
 _LOCK = threading.RLock()
@@ -269,118 +262,6 @@ def _external_holdout_forcing(event: dict[str, Any]) -> tuple[Path, dict[str, An
     }
 
 
-def _forcing_path_for_event(event: dict[str, Any]) -> Path:
-    """Return the exact forcing consumed by the frozen model for an event."""
-
-    _, _, forcing_path = _load_event_assets(event)
-    if event["external_holdout"]:
-        forcing_path, _ = _external_holdout_forcing(event)
-    return forcing_path
-
-
-def _hourly_precipitation_mm(forcing_path: Path) -> list[float]:
-    forcing = _read_json(forcing_path, "trained_gwm_forcing_invalid")
-    values = forcing.get("hourly_precipitation_mm")
-    if (
-        not isinstance(values, list)
-        or not values
-        or any(
-            isinstance(value, bool)
-            or not isinstance(value, (int, float))
-            or not math.isfinite(float(value))
-            or float(value) < 0.0
-            for value in values
-        )
-    ):
-        raise ValueError("trained_gwm_forcing_invalid")
-    return [float(value) for value in values]
-
-
-def _event_duration_hours(event: dict[str, Any]) -> int:
-    try:
-        start = datetime.fromisoformat(str(event["start_utc"]).replace("Z", "+00:00"))
-        end = datetime.fromisoformat(str(event["end_utc"]).replace("Z", "+00:00"))
-    except (KeyError, TypeError, ValueError) as error:
-        raise ValueError("trained_gwm_event_duration_invalid") from error
-    duration = (end - start).total_seconds() / 3600.0
-    rounded = round(duration)
-    if duration <= 0.0 or not math.isclose(duration, rounded, abs_tol=1e-9):
-        raise ValueError("trained_gwm_event_duration_invalid")
-    return int(rounded)
-
-
-def _mass_conserving_resample_hourly(
-    source: list[float], target_duration_hours: int
-) -> list[float]:
-    """Time-compress or expand an hourly pattern while preserving its total."""
-
-    if not source or target_duration_hours < 1:
-        raise ValueError("trained_gwm_rainfall_duration_invalid")
-    source_count = len(source)
-    result: list[float] = []
-    for target_index in range(target_duration_hours):
-        source_start = target_index * source_count / target_duration_hours
-        source_end = (target_index + 1) * source_count / target_duration_hours
-        first_source = int(math.floor(source_start))
-        last_source = min(source_count - 1, int(math.ceil(source_end)) - 1)
-        amount = 0.0
-        for source_index in range(first_source, last_source + 1):
-            overlap = max(
-                0.0,
-                min(source_end, source_index + 1.0)
-                - max(source_start, float(source_index)),
-            )
-            amount += source[source_index] * overlap
-        result.append(amount)
-    if not math.isclose(sum(result), sum(source), rel_tol=1e-12, abs_tol=1e-9):
-        raise ValueError("trained_gwm_rainfall_duration_resampling_failed")
-    return result
-
-
-def _rainfall_adapter_for_event(event: dict[str, Any]) -> dict[str, Any]:
-    forcing_path = _forcing_path_for_event(event)
-    hourly = _hourly_precipitation_mm(forcing_path)
-    base_duration_hours = _event_duration_hours(event)
-    if len(hourly) < base_duration_hours:
-        raise ValueError("trained_gwm_event_duration_forcing_mismatch")
-    post_rainfall_tail_hours = len(hourly) - base_duration_hours
-    if any(value > 1e-12 for value in hourly[base_duration_hours:]):
-        raise ValueError("trained_gwm_event_duration_forcing_mismatch")
-    base_total = float(sum(hourly[:base_duration_hours]))
-    if base_total <= 0.0:
-        raise ValueError("trained_gwm_rainfall_adapter_zero_base_event")
-    return {
-        "schema": RAINFALL_AMOUNT_ADAPTER_SCHEMA,
-        "input_field": "totalRainfallMm",
-        "input_unit": "mm",
-        "base_total_precipitation_mm": base_total,
-        "default_total_precipitation_mm": base_total,
-        "minimum_total_precipitation_mm": base_total * MIN_RAINFALL_MULTIPLIER,
-        "maximum_total_precipitation_mm": base_total * MAX_RAINFALL_MULTIPLIER,
-        "duration_input_field": "durationHours",
-        "duration_unit": "hours",
-        "base_rainfall_duration_hours": base_duration_hours,
-        "default_rainfall_duration_hours": base_duration_hours,
-        "minimum_rainfall_duration_hours": MIN_RAINFALL_DURATION_HOURS,
-        "maximum_rainfall_duration_hours": MAX_RAINFALL_DURATION_HOURS,
-        "post_rainfall_tail_hours": post_rainfall_tail_hours,
-        "default_simulation_duration_hours": base_duration_hours + post_rainfall_tail_hours,
-        "mapped_parameter": "forcing.rainfallMultiplier",
-        "mapping_formula": "totalRainfallMm / base_total_precipitation_mm",
-        "duration_mapping": "mass-conserving resampling of the selected event hourly rainfall pattern",
-        "forcing_basis": (
-            "external_evaluation_overpass_window"
-            if event["external_holdout"]
-            else "admitted_event_hourly_forcing"
-        ),
-        "claim_boundary": (
-            "The target total and duration form a research sensitivity scenario. "
-            "Duration changes use mass-conserving time resampling of the selected event pattern; "
-            "they do not define an independently calibrated design hyetograph."
-        ),
-    }
-
-
 def _load_grid_and_forcing(depth_path: Path, forcing_path: Path) -> tuple[Any, Any, Any, Any]:
     try:
         import numpy as np
@@ -485,13 +366,7 @@ def available_events() -> dict[str, Any]:
     receipt, card, _ = _load_model_contract()
     catalog, _ = _event_catalog()
     split_summary = _model_split_summary(receipt, catalog)
-    events = [
-        {
-            **_event_public(event),
-            "rainfall_amount_adapter": _rainfall_adapter_for_event(event),
-        }
-        for event in catalog.values()
-    ]
+    events = [_event_public(event) for event in catalog.values()]
     events.sort(key=lambda item: (item["start_utc"], item["event_id"]))
     return {
         "schema": RUN_SCHEMA,
@@ -504,44 +379,6 @@ def available_events() -> dict[str, Any]:
             "grid_cell_size_m": GRID_CELL_SIZE_M,
             "terrain": card.get("terrain"),
             "claim_boundary": card.get("claim_boundary"),
-            "dynamic_parameters": {
-                "total_precipitation_mm": {
-                    "supported": True,
-                    "endpoint": "/api/abu-dhabi/flood/gwm/trained/rainfall-scenarios",
-                    "input_fields": ["totalRainfallMm", "durationHours"],
-                    "unit": "mm",
-                    "minimum": "event-specific; base event total multiplied by 0.0",
-                    "maximum": "event-specific; base event total multiplied by 3.0",
-                    "mapping_formula": "totalRainfallMm / base_total_precipitation_mm",
-                    "mapped_parameter": "forcing.rainfallMultiplier",
-                    "duration_hours": {
-                        "minimum": MIN_RAINFALL_DURATION_HOURS,
-                        "maximum": MAX_RAINFALL_DURATION_HOURS,
-                        "default": "selected event duration",
-                        "resampling": "mass-conserving hourly pattern resampling",
-                    },
-                    "semantics": "maps customer total rainfall and duration to a resampled selected-event forcing before frozen-model inference",
-                    "claim_boundary": "customer-friendly sensitivity input only; a changed duration is not an independently calibrated design hyetograph",
-                },
-                "rainfall_multiplier": {
-                    "supported": True,
-                    "minimum": MIN_RAINFALL_MULTIPLIER,
-                    "maximum": MAX_RAINFALL_MULTIPLIER,
-                    "default": 1.0,
-                    "semantics": "scales the admitted event rainfall forcing before frozen-model inference",
-                    "claim_boundary": "sensitivity scenario only; values other than 1.0 are not historical-event replay or external validation",
-                },
-                "unsupported": [
-                    "custom_rainfall_timeseries",
-                    "spatial_rainfall_distribution",
-                    "pump_operation",
-                    "gate_operation",
-                    "pipe_capacity",
-                    "outfall_level",
-                    "tide_level",
-                    "terrain_replacement",
-                ],
-            },
         },
         "events": events,
         "external_holdout_policy": {
@@ -564,129 +401,21 @@ def _event_from_payload(payload: dict[str, Any], catalog: dict[str, dict[str, An
     return event
 
 
-def _rainfall_multiplier_from_payload(payload: dict[str, Any]) -> float:
-    forcing = payload.get("forcing", {})
-    if forcing is None:
-        forcing = {}
-    if not isinstance(forcing, dict):
-        raise ValueError("trained_gwm_forcing_parameters_invalid")
-    value = forcing.get(
-        "rainfallMultiplier",
-        forcing.get(
-            "rainfall_multiplier",
-            payload.get("rainfallMultiplier", payload.get("rainfall_multiplier", 1.0)),
-        ),
-    )
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ValueError("trained_gwm_rainfall_multiplier_invalid")
-    multiplier = float(value)
-    if (
-        not math.isfinite(multiplier)
-        or multiplier < MIN_RAINFALL_MULTIPLIER
-        or multiplier > MAX_RAINFALL_MULTIPLIER
-    ):
-        raise ValueError("trained_gwm_rainfall_multiplier_out_of_range")
-    return multiplier
-
-
-def _total_rainfall_mm_from_payload(payload: dict[str, Any]) -> float:
-    if not isinstance(payload, dict):
-        raise ValueError("trained_gwm_payload_invalid")
-    value = payload.get("totalRainfallMm", payload.get("total_rainfall_mm"))
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ValueError("trained_gwm_total_rainfall_invalid")
-    total = float(value)
-    if not math.isfinite(total) or total < 0.0:
-        raise ValueError("trained_gwm_total_rainfall_invalid")
-    return total
-
-
-def _rainfall_duration_hours_from_payload(
-    payload: dict[str, Any],
-    *,
-    default: int,
-) -> int:
-    value = payload.get("durationHours", payload.get("duration_hours", default))
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ValueError("trained_gwm_rainfall_duration_invalid")
-    duration = float(value)
-    rounded = round(duration)
-    if (
-        not math.isfinite(duration)
-        or not math.isclose(duration, rounded, abs_tol=1e-9)
-        or rounded < MIN_RAINFALL_DURATION_HOURS
-        or rounded > MAX_RAINFALL_DURATION_HOURS
-    ):
-        raise ValueError("trained_gwm_rainfall_duration_out_of_supported_range")
-    return int(rounded)
-
-
-def _validated_hourly_override(values: list[float]) -> Any:
-    try:
-        import numpy as np
-    except ImportError as error:  # pragma: no cover - deployment dependency
-        raise RuntimeError("trained_gwm_numpy_dependency_missing") from error
-    hourly = np.asarray(values, dtype=np.float64)
-    if hourly.ndim != 1 or not len(hourly) or not np.isfinite(hourly).all() or (hourly < 0).any():
-        raise ValueError("trained_gwm_forcing_invalid")
-    return hourly
-
-
-def _start_rollout(
-    payload: dict[str, Any],
-    *,
-    input_adapter: dict[str, Any] | None = None,
-    hourly_override: list[float] | None = None,
-    scenario_overrides: dict[str, Any] | None = None,
-) -> dict[str, Any]:
+def start_rollout(payload: dict[str, Any]) -> dict[str, Any]:
     receipt, card, coefficients_path = _load_model_contract()
     catalog, _ = _event_catalog()
     split_summary = _model_split_summary(receipt, catalog)
     event = _event_from_payload(payload, catalog)
-    rainfall_multiplier = _rainfall_multiplier_from_payload(payload)
-    scenario_overrides = dict(scenario_overrides or {})
-    temporal_pattern_modified = bool(
-        scenario_overrides.get("temporal_pattern_modified")
-    )
-    forcing_modified = (
-        not math.isclose(rainfall_multiplier, 1.0)
-        or temporal_pattern_modified
-    )
     event_receipt, depth_path, forcing_path = _load_event_assets(event)
     external_validation: dict[str, Any] | None = None
     if event["external_holdout"]:
         forcing_path, external_validation = _external_holdout_forcing(event)
     hourly, x, y, land = _load_grid_and_forcing(depth_path, forcing_path)
-    base_total_precipitation_mm = float(hourly.sum())
-    hourly = (
-        _validated_hourly_override(hourly_override)
-        if hourly_override is not None
-        else hourly * rainfall_multiplier
-    )
-    scenario_total_precipitation_mm = float(hourly.sum())
     depth, times = _rollout(coefficients_path, hourly, land)
     if external_validation is not None:
         reference_index = int(external_validation["model_frame_index"])
-        observation_frame_available = reference_index < len(times)
-        external_validation = {
-            **external_validation,
-            "forcing_modified": forcing_modified,
-            "observation_comparison_allowed": not forcing_modified,
-            "observation_frame_available": observation_frame_available,
-            "validation_status": (
-                "reference_event_replay"
-                if not forcing_modified
-                else (
-                    "not_valid_for_external_comparison_dynamic_forcing"
-                    if observation_frame_available
-                    else "not_valid_for_external_comparison_observation_outside_scenario_window"
-                )
-            ),
-        }
-        if not forcing_modified and not observation_frame_available:
+        if reference_index >= len(times):
             raise ValueError("trained_gwm_sentinel_forcing_does_not_cover_overpass")
-        if not observation_frame_available:
-            reference_index = -1
     else:
         reference_index = -1
     run_id = f"trained-gwm-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
@@ -698,28 +427,8 @@ def _start_rollout(
     first_renderable = int(next((index for index, count in enumerate(frame_wet) if count), 0))
     initial_time_index = reference_index if reference_index >= 0 else first_renderable
     time_values = [f"T+{int(seconds // 60)} min" for seconds in times]
-    if external_validation is not None and reference_index >= 0:
-        suffix = "Sentinel-2 同相位" if not forcing_modified else "观测参考时刻 · 动态降雨情景"
-        time_values[reference_index] = f"T+{int(times[reference_index] // 60)} min · {suffix}"
-    scenario_kind = str(
-        scenario_overrides.pop(
-            "kind",
-            (
-                "admitted_historical_event_replay"
-                if not forcing_modified
-                else "admitted_event_rainfall_multiplier_sensitivity"
-            ),
-        )
-    )
-    scenario = {
-        "kind": scenario_kind,
-        "base_event_id": event["event_id"],
-        "rainfall_multiplier": rainfall_multiplier,
-        "base_total_precipitation_mm": base_total_precipitation_mm,
-        "scenario_total_precipitation_mm": scenario_total_precipitation_mm,
-        "historical_event_replay": not forcing_modified,
-        **scenario_overrides,
-    }
+    if external_validation is not None:
+        time_values[reference_index] = f"T+{int(times[reference_index] // 60)} min · Sentinel-2 同相位"
     metadata = {
         "schema": RUN_SCHEMA,
         "run_id": run_id,
@@ -737,7 +446,6 @@ def _start_rollout(
         },
         "terrain": card.get("terrain"),
         "external_validation": external_validation,
-        "scenario": scenario,
         "grid": {"crs": GRID_CRS, "cell_size_m": GRID_CELL_SIZE_M, "rows": int(land.shape[0]), "columns": int(land.shape[1])},
         "timeline": {
             "available": True,
@@ -758,21 +466,8 @@ def _start_rollout(
             "training_forbidden": bool(event["external_holdout"]),
             "external_evaluation_forcing_sha256": external_validation["forcing_sha256"] if external_validation else None,
         },
-        "claim_boundary": (
-            "Frozen five-year research GWM inference over an admitted historical rainfall forcing. "
-            "It emulates 250 m SWMM--ANUGA labels and is not an engineering replacement for the physical solver."
-            if not forcing_modified
-            else (
-                "Frozen five-year research GWM rainfall amount-and-duration sensitivity scenario over an admitted event. "
-                "The selected event pattern was time-resampled with rainfall-volume conservation; this is not a calibrated design hyetograph, historical replay, or external validation result."
-                if temporal_pattern_modified
-                else "Frozen five-year research GWM rainfall-multiplier sensitivity scenario over an admitted event. "
-                "The modified forcing is not a historical replay or external validation result and is not an engineering replacement for the physical solver."
-            )
-        ),
+        "claim_boundary": "Frozen five-year research GWM inference over an admitted historical rainfall forcing. It emulates 250 m SWMM--ANUGA labels and is not an engineering replacement for the physical solver.",
     }
-    if input_adapter is not None:
-        metadata["input_adapter"] = input_adapter
     record = {
         "run_id": run_id,
         "status": "completed",
@@ -785,90 +480,6 @@ def _start_rollout(
     with _LOCK:
         _RUNS[run_id] = record
     return public_run(run_id)
-
-
-def start_rollout(payload: dict[str, Any]) -> dict[str, Any]:
-    """Run the frozen model using its native bounded multiplier contract."""
-
-    return _start_rollout(payload)
-
-
-def start_rainfall_amount_rollout(payload: dict[str, Any]) -> dict[str, Any]:
-    """Map customer-facing rainfall total and duration to frozen-model forcing."""
-
-    catalog, _ = _event_catalog()
-    event = _event_from_payload(payload, catalog)
-    requested_total = _total_rainfall_mm_from_payload(payload)
-    adapter = _rainfall_adapter_for_event(event)
-    base_total = float(adapter["base_total_precipitation_mm"])
-    maximum_total = float(adapter["maximum_total_precipitation_mm"])
-    base_duration = int(adapter["base_rainfall_duration_hours"])
-    duration_hours = _rainfall_duration_hours_from_payload(
-        payload,
-        default=base_duration,
-    )
-    if requested_total > maximum_total and not math.isclose(
-        requested_total,
-        maximum_total,
-        rel_tol=1e-12,
-        abs_tol=1e-9,
-    ):
-        raise ValueError("trained_gwm_total_rainfall_out_of_supported_range")
-    multiplier = min(MAX_RAINFALL_MULTIPLIER, requested_total / base_total)
-    base_hourly = _hourly_precipitation_mm(_forcing_path_for_event(event))
-    base_pattern = base_hourly[:base_duration]
-    resampled_pattern = _mass_conserving_resample_hourly(
-        base_pattern,
-        duration_hours,
-    )
-    resampled_total = float(sum(resampled_pattern))
-    amount_scale = requested_total / resampled_total
-    post_rainfall_tail_hours = int(adapter["post_rainfall_tail_hours"])
-    scenario_hourly = [
-        value * amount_scale for value in resampled_pattern
-    ] + [0.0] * post_rainfall_tail_hours
-    temporal_pattern_modified = duration_hours != base_duration
-    if temporal_pattern_modified:
-        scenario_kind = "admitted_event_rainfall_amount_duration_sensitivity"
-    elif not math.isclose(multiplier, 1.0):
-        scenario_kind = "admitted_event_rainfall_amount_sensitivity"
-    else:
-        scenario_kind = "admitted_historical_event_replay"
-    mapping = {
-        **adapter,
-        "requested_total_precipitation_mm": requested_total,
-        "requested_rainfall_duration_hours": duration_hours,
-        "mapped_rainfall_multiplier": multiplier,
-        "temporal_scale_factor": duration_hours / base_duration,
-        "temporal_pattern_modified": temporal_pattern_modified,
-        "resampling_method": "mass_conserving_piecewise_constant_hourly_overlap",
-        "scenario_mean_rainfall_intensity_mm_per_hour": (
-            requested_total / duration_hours
-        ),
-        "scenario_simulation_duration_hours": (
-            duration_hours + post_rainfall_tail_hours
-        ),
-        "selected_event_id": event["event_id"],
-    }
-    return _start_rollout(
-        {
-            "eventId": event["event_id"],
-            "forcing": {"rainfallMultiplier": multiplier},
-        },
-        input_adapter=mapping,
-        hourly_override=scenario_hourly,
-        scenario_overrides={
-            "kind": scenario_kind,
-            "rainfall_duration_hours": duration_hours,
-            "base_rainfall_duration_hours": base_duration,
-            "post_rainfall_tail_hours": post_rainfall_tail_hours,
-            "simulation_duration_hours": duration_hours + post_rainfall_tail_hours,
-            "mean_rainfall_intensity_mm_per_hour": requested_total / duration_hours,
-            "temporal_scale_factor": duration_hours / base_duration,
-            "temporal_pattern_modified": temporal_pattern_modified,
-            "temporal_resampling_method": "mass_conserving_piecewise_constant_hourly_overlap",
-        },
-    )
 
 
 def _get(run_id: str) -> dict[str, Any]:

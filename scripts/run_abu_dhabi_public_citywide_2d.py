@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Run a citywide Abu Dhabi 2D surface model with a supplied DEM/DTM.
+"""Run a citywide Abu Dhabi 2D prototype with public Copernicus DEM.
 
-The computational grid, rainfall forcing, land/water mask, solver and output
-contract stay fixed so a customer DTM can replace the public DEM without
-changing downstream consumers. Outputs are written outside the repository.
+This runner is independent from customer DTM and customer network. It creates
+a coarse, full-public-domain ANUGA surface run for customer demonstrations.
+Outputs are written to a local private directory and are not model admission
+evidence.
 """
 from __future__ import annotations
 import argparse
-import importlib.util
 import json
 import math
 import os
@@ -30,25 +30,10 @@ DEFAULT_OUTPUT = Path(os.environ.get(
     "ABU_DHABI_PUBLIC_CITYWIDE_2D_ROOT",
     Path.home() / "Downloads/abu_dhabi_public_citywide_2d",
 ))
-ANUGA_PYTHON = Path(os.environ.get(
-    "ABU_DHABI_ANUGA_PYTHON",
-    next(
-        (
-            candidate
-            for candidate in (
-                REPOSITORY_ROOT / "external_models/anuga-venv/bin/python",
-                Path("/Users/zhouning/gisdataagent/external_models/anuga-venv/bin/python"),
-            )
-            if candidate.is_file()
-        ),
-        REPOSITORY_ROOT / "external_models/anuga-venv/bin/python",
-    ),
-))
+ANUGA_PYTHON = REPOSITORY_ROOT / "external_models/anuga-venv/bin/python"
 # Bounds are snapped to the 250 m model grid. They remain inside the existing
 # public Copernicus crop while avoiding a partial cell at either edge.
 CITY_BOUNDS = (225750.0, 2687250.0, 273250.0, 2723250.0)
-# Fast citywide default. The runner also accepts finer grids (100 m is the
-# recommended full-city demonstration profile; 50 m is a priority-area profile).
 CELL_SIZE_M = 250.0
 ACTIVE_CELL_SIZE_M = CELL_SIZE_M
 RAIN_DURATION_MINUTES = 180
@@ -57,6 +42,8 @@ REPORT_INTERVAL_SECONDS = 1800.0
 MANNING = 0.035
 WATER_MANNING = 0.020
 SEA_LEVEL_M = 0.0
+INITIAL_DEPTH_M = 0.0
+MINIMUM_OUTPUT_DEPTH_M = 0.01
 PERMANENT_WATER_CLASS = 80
 # At the 250 m public prototype resolution a shoreline often occupies one
 # mixed cell.  Keep only cells with <20% permanent-water coverage so the map
@@ -68,223 +55,24 @@ def _json_dump(path: Path, payload: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=True, sort_keys=True) + "\n", encoding="utf-8")
 
-
-def _parse_swmm_coordinates(inp_path: Path) -> dict[str, tuple[float, float]]:
-    coordinates: dict[str, tuple[float, float]] = {}
-    section = ""
-    with inp_path.open("r", encoding="utf-8", errors="replace") as handle:
-        for raw_line in handle:
-            line = raw_line.strip()
-            if not line or line.startswith(";"):
-                continue
-            if line.startswith("[") and line.endswith("]"):
-                section = line.upper()
-                continue
-            if section != "[COORDINATES]":
-                continue
-            values = line.split()
-            if len(values) < 3:
-                continue
-            try:
-                coordinates[values[0]] = (float(values[1]), float(values[2]))
-            except ValueError:
-                continue
-    if not coordinates:
-        raise ValueError("swmm_inp_coordinates_missing")
-    return coordinates
+ZONE_B_DEPTHS_180_MM = {
+    2: [4.02, 4.93, 5.53, 6.76, 8.25, 10.08, 11.31],
+    5: [9.39, 11.44, 12.76, 15.44, 18.68, 22.60, 25.29],
+    10: [10.59, 12.92, 14.43, 17.48, 21.18, 25.68, 28.71],
+    25: [15.69, 18.93, 21.02, 25.21, 30.24, 36.26, 40.35],
+    50: [23.03, 27.05, 29.56, 34.51, 40.28, 47.02, 51.48],
+    100: [26.99, 31.70, 34.64, 40.44, 47.21, 55.12, 60.33],
+}
 
 
-def _parse_swmm_subcatchment_areas(inp_path: Path) -> list[tuple[str, float]]:
-    """Return outlet node identifiers and areas in square metres."""
-
-    subcatchments: list[tuple[str, float]] = []
-    section = ""
-    with inp_path.open("r", encoding="utf-8", errors="replace") as handle:
-        for raw_line in handle:
-            line = raw_line.strip()
-            if not line or line.startswith(";"):
-                continue
-            if line.startswith("[") and line.endswith("]"):
-                section = line.upper()
-                continue
-            if section != "[SUBCATCHMENTS]":
-                continue
-            values = line.split()
-            if len(values) < 4:
-                continue
-            try:
-                area_m2 = max(0.0, float(values[3]) * 10_000.0)
-            except ValueError:
-                continue
-            if area_m2 > 0.0:
-                subcatchments.append((values[2], area_m2))
-    return subcatchments
-
-
-def _load_swmm_out_parser():
-    parser_path = REPOSITORY_ROOT / "data_agent/uwm/abu_dhabi_flood/swmm_out_parser.py"
-    spec = importlib.util.spec_from_file_location("abu_dhabi_swmm_out_parser", parser_path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError("swmm_out_parser_unavailable")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def _prepare_swmm_exchange(
-    swmm_out_path: Path,
-    swmm_inp_path: Path,
-    terrain_grid_path: Path,
-    work: Path,
-    bounds: tuple[float, float, float, float],
-) -> dict[str, object]:
-    """Map native SWMM node flooding rates to ANUGA surface cells.
-
-    This is deliberately an explicit one-way adapter.  A native SWMM ``.out``
-    file is a completed run, so it can provide a time-varying surface source,
-    but it cannot accept ANUGA feedback after the fact.  Keeping that boundary
-    explicit prevents a prescribed lateral-inflow series from being mistaken
-    for a true ANUGA -> SWMM hydraulic feedback.
-    """
-
-    parser = _load_swmm_out_parser()
-    header = parser.read_swmm_out_header(swmm_out_path)
-    coordinates = _parse_swmm_coordinates(swmm_inp_path)
-    subcatchments = _parse_swmm_subcatchment_areas(swmm_inp_path)
-    nx = int(round((bounds[2] - bounds[0]) / ACTIVE_CELL_SIZE_M))
-    ny = int(round((bounds[3] - bounds[1]) / ACTIVE_CELL_SIZE_M))
-    with np.load(terrain_grid_path) as grid:
-        land_mask = np.asarray(grid["land_mask"], dtype=bool)
-    if land_mask.shape != (ny, nx):
-        raise ValueError("swmm_exchange_land_mask_shape_invalid")
-
-    node_names = list(header["node_names"])
-    node_cells = np.full(len(node_names), -1, dtype=np.int64)
-    matched = 0
-    in_domain = 0
-    remapped_to_land = 0
-    from scipy.ndimage import distance_transform_edt
-
-    _, nearest_land = distance_transform_edt(~land_mask, return_indices=True)
-    for index, node_name in enumerate(node_names):
-        position = coordinates.get(node_name)
-        if position is None:
-            continue
-        matched += 1
-        x, y = position
-        if not (bounds[0] <= x < bounds[2] and bounds[1] < y <= bounds[3]):
-            continue
-        col = min(nx - 1, max(0, int((x - bounds[0]) // ACTIVE_CELL_SIZE_M)))
-        row = min(ny - 1, max(0, int((bounds[3] - y) // ACTIVE_CELL_SIZE_M)))
-        in_domain += 1
-        if not land_mask[row, col]:
-            row = int(nearest_land[0, row, col])
-            col = int(nearest_land[1, row, col])
-            remapped_to_land += 1
-        node_cells[index] = row * nx + col
-
-    valid_node_indices = np.flatnonzero(node_cells >= 0)
-    if valid_node_indices.size == 0:
-        raise ValueError("swmm_exchange_has_no_nodes_in_2d_domain")
-    period_count = int(header["period_count"])
-    report_step_seconds = float(header["report_step_seconds"])
-    swmm_to_anuga_cell_rates_mps = np.zeros((period_count, nx * ny), dtype=np.float32)
-    swmm_modeled_area_by_cell_m2 = np.zeros(nx * ny, dtype=np.float64)
-    mapped_subcatchment_count = 0
-    mapped_subcatchment_area_m2 = 0.0
-    for outlet_node_id, area_m2 in subcatchments:
-        position = coordinates.get(outlet_node_id)
-        if position is None:
-            continue
-        x, y = position
-        if not (bounds[0] <= x < bounds[2] and bounds[1] < y <= bounds[3]):
-            continue
-        col = min(nx - 1, max(0, int((x - bounds[0]) // ACTIVE_CELL_SIZE_M)))
-        row = min(ny - 1, max(0, int((bounds[3] - y) // ACTIVE_CELL_SIZE_M)))
-        if not land_mask[row, col]:
-            row = int(nearest_land[0, row, col])
-            col = int(nearest_land[1, row, col])
-        swmm_modeled_area_by_cell_m2[row * nx + col] += area_m2
-        mapped_subcatchment_count += 1
-        mapped_subcatchment_area_m2 += area_m2
-    cell_area_m2 = ACTIVE_CELL_SIZE_M * ACTIVE_CELL_SIZE_M
-    swmm_modeled_fraction_by_cell = np.clip(
-        swmm_modeled_area_by_cell_m2 / cell_area_m2, 0.0, 1.0
-    ).astype(np.float32)
-    surface_rainfall_fraction_by_cell = np.where(
-        land_mask.reshape(-1), 1.0 - swmm_modeled_fraction_by_cell, 0.0
-    ).astype(np.float32)
-    times_seconds = np.asarray(
-        [report_step_seconds * (index + 1) for index in range(period_count)],
-        dtype=np.float64,
-    )
-    positive_node_periods = 0
-    maximum_total_rate_m3s = 0.0
-    transferred_volume_m3 = 0.0
-    for period_index in range(period_count):
-        period = parser.read_node_period(swmm_out_path, header, period_index)
-        flooding = np.fromiter(
-            (max(0.0, float(values[5])) for values in period["nodes"]),
-            dtype=np.float64,
-            count=len(node_names),
-        )
-        selected = flooding[valid_node_indices]
-        positive_node_periods += int(np.count_nonzero(selected > 0.0))
-        total_rate = float(selected.sum())
-        maximum_total_rate_m3s = max(maximum_total_rate_m3s, total_rate)
-        transferred_volume_m3 += total_rate * report_step_seconds
-        overflow_by_cell_m3s = np.zeros(nx * ny, dtype=np.float64)
-        np.add.at(overflow_by_cell_m3s, node_cells[valid_node_indices], selected)
-        swmm_to_anuga_cell_rates_mps[period_index] = (
-            overflow_by_cell_m3s / (ACTIVE_CELL_SIZE_M * ACTIVE_CELL_SIZE_M)
-        ).astype(np.float32)
-
-    exchange_path = work / "swmm_exchange.npz"
-    np.savez_compressed(
-        exchange_path,
-        swmm_to_anuga_cell_rates_mps=swmm_to_anuga_cell_rates_mps,
-        surface_rainfall_fraction_by_cell=surface_rainfall_fraction_by_cell,
-        times_seconds=times_seconds,
-        report_step_seconds=np.asarray(report_step_seconds, dtype=np.float64),
-        cell_size_m=np.asarray(ACTIVE_CELL_SIZE_M, dtype=np.float64),
-    )
-    return {
-        "mode": "one_way_swmm_to_anuga",
-        "source_out": str(swmm_out_path),
-        "source_inp": str(swmm_inp_path),
-        "swmm_node_count": len(node_names),
-        "coordinate_match_count": matched,
-        "nodes_in_2d_domain": in_domain,
-        "nodes_remapped_from_masked_water_to_nearest_land_cell": remapped_to_land,
-        "mapped_node_count": int(valid_node_indices.size),
-        "swmm_subcatchment_count": len(subcatchments),
-        "mapped_swmm_subcatchment_count": mapped_subcatchment_count,
-        "mapped_swmm_subcatchment_area_m2": mapped_subcatchment_area_m2,
-        "effective_swmm_subcatchment_area_m2_after_cell_cap": float(
-            swmm_modeled_fraction_by_cell.sum() * cell_area_m2
-        ),
-        "swmm_period_count": period_count,
-        "swmm_report_step_seconds": report_step_seconds,
-        "swmm_exchange_time_origin": "first_native_report_period_at_report_step_not_t0",
-        "positive_node_period_count": positive_node_periods,
-        "maximum_aggregate_exchange_rate_m3s": maximum_total_rate_m3s,
-        "prescribed_swmm_to_anuga_volume_m3": transferred_volume_m3,
-        "exchange_quantity": {
-            "swmm_to_anuga": "node overflow_or_flooding_m3s",
-        },
-        "exchange_application": "piecewise_constant_source_over_mapped_2d_cell",
-        "rainfall_partition": (
-            "direct_2d_rainfall_is_reduced_by_mapped_swmm_subcatchment_fraction_"
-            "to_avoid_double_counting"
-        ),
-        "dynamic_head_feedback_in_this_run": False,
-        "bidirectional_solver_loop": "not_available_for_completed_native_swmm_out",
-        "next_bidirectional_step": "synchronous_swmm_step_anuga_step_with_head_difference_exchange",
-    }
-
-def _rainfall_100y_180min() -> tuple[list[float], dict[str, object]]:
+def _rainfall_design_storm_180min(
+    return_period_years: int,
+    peak_position_percent: float = 40.0,
+) -> tuple[list[float], dict[str, object]]:
+    if return_period_years not in ZONE_B_DEPTHS_180_MM:
+        raise ValueError("return_period_years_must_be_2_5_10_25_50_or_100")
     durations = [5, 10, 15, 30, 60, 120, 180]
-    depths = [26.99, 31.70, 34.64, 40.44, 47.21, 55.12, 60.33]
+    depths = ZONE_B_DEPTHS_180_MM[return_period_years]
     cumulative = []
     for duration in range(5, 181, 5):
         if duration in durations:
@@ -295,7 +83,7 @@ def _rainfall_100y_180min() -> tuple[list[float], dict[str, object]]:
         ratio = (math.log(duration) - math.log(durations[lower])) / (math.log(durations[upper]) - math.log(durations[lower]))
         cumulative.append(math.exp(math.log(depths[lower]) + ratio * (math.log(depths[upper]) - math.log(depths[lower]))))
     increments = [cumulative[0], *[b - a for a, b in zip(cumulative, cumulative[1:])]]
-    peak_index = round(35 * 0.40)
+    peak_index = round(35 * peak_position_percent / 100.0)
     positions = [peak_index]
     distance = 1
     while len(positions) < len(increments):
@@ -312,12 +100,12 @@ def _rainfall_100y_180min() -> tuple[list[float], dict[str, object]]:
     return intensities, {
         "source": "abu_dhabi_2022_official_zone_b_ddf_table_3_6",
         "source_authority": "official_publication_user_supplied_extract",
-        "return_period_years": 100,
+        "return_period_years": return_period_years,
         "duration_minutes": 180,
         "published_total_depth_mm": 60.33,
         "generated_total_depth_mm": float(sum(value / 12.0 for value in intensities)),
         "native_interval_minutes": 5,
-        "peak_position_percent": 40,
+        "peak_position_percent": float(peak_position_percent),
         "temporal_distribution_method": "alternating_block_from_nested_ddf_increments",
         "claim_boundary": "public prototype forcing; not a customer event observation or calibrated forecast",
     }
@@ -330,16 +118,16 @@ def _prepare_terrain(
 ) -> dict[str, object]:
     with rasterio.open(dem_path) as source:
         if source.crs is None or source.crs.to_epsg() != 32640 or source.count != 1:
-            raise ValueError("citywide_surface_must_be_single_band_epsg32640")
+            raise ValueError("public_citywide_dem_must_be_single_band_epsg32640")
         nx = int(round((bounds[2] - bounds[0]) / ACTIVE_CELL_SIZE_M))
         ny = int(round((bounds[3] - bounds[1]) / ACTIVE_CELL_SIZE_M))
         window = from_bounds(*bounds, transform=source.transform).round_offsets().round_lengths()
         arr = source.read(1, window=window, out_shape=(ny + 1, nx + 1), resampling=Resampling.bilinear, masked=True)
         if np.ma.getmaskarray(arr).any():
-            raise ValueError("citywide_surface_contains_nodata")
+            raise ValueError("public_citywide_dem_contains_nodata")
         values = np.asarray(arr, dtype=np.float64)
         if not np.isfinite(values).all():
-            raise ValueError("citywide_surface_contains_nonfinite")
+            raise ValueError("public_citywide_dem_contains_nonfinite")
         source_resolution = [abs(float(source.transform.a)), abs(float(source.transform.e))]
     with rasterio.open(land_cover_path) as source:
         if source.crs is None or source.count != 1:
@@ -422,45 +210,11 @@ def _prepare_terrain(
         },
     }
 
-def _write_model_script(
-    path: Path,
-    terrain: dict[str, object],
-    rainfall: list[float],
-    bounds: tuple[float, float, float, float],
-    exchange_enabled: bool = False,
-) -> None:
+def _write_model_script(path: Path, terrain: dict[str, object], rainfall: list[float], bounds: tuple[float, float, float, float]) -> None:
     nx = int(round((bounds[2] - bounds[0]) / ACTIVE_CELL_SIZE_M))
     ny = int(round((bounds[3] - bounds[1]) / ACTIVE_CELL_SIZE_M))
     final_time = (RAIN_DURATION_MINUTES + TAIL_MINUTES) * 60.0
-    exchange_block = """
-EXCHANGE = np.load("swmm_exchange.npz")
-SWMM_TO_ANUGA_RATES = np.asarray(EXCHANGE["swmm_to_anuga_cell_rates_mps"], dtype=float)
-SURFACE_RAINFALL_FRACTION = np.asarray(EXCHANGE["surface_rainfall_fraction_by_cell"], dtype=float)
-EXCHANGE_TIMES = np.asarray(EXCHANGE["times_seconds"], dtype=float)
-EXCHANGE_STEP_SECONDS = float(np.asarray(EXCHANGE["report_step_seconds"]).reshape(()))
-if (SWMM_TO_ANUGA_RATES.ndim != 2
-        or SWMM_TO_ANUGA_RATES.shape[1] != LAND.size
-        or SURFACE_RAINFALL_FRACTION.size != LAND.size
-        or EXCHANGE_TIMES.size != SWMM_TO_ANUGA_RATES.shape[0]):
-    raise RuntimeError("swmm_exchange_grid_shape_mismatch")
-""" if exchange_enabled else ""
-    exchange_operators = """
-def swmm_surface_source_rate(x, y, t):
-    exchange_active = t >= EXCHANGE_TIMES[0] and t < EXCHANGE_TIMES[-1] + EXCHANGE_STEP_SECONDS
-    exchange_index = int(np.searchsorted(EXCHANGE_TIMES, t, side=\"right\") - 1) if exchange_active else -1
-    rate = SWMM_TO_ANUGA_RATES[int(np.clip(exchange_index, 0, SWMM_TO_ANUGA_RATES.shape[0] - 1))][cell_ids(x, y)] if exchange_index >= 0 else 0.0
-    return np.where(is_land(x, y), rate, 0.0)
-
-swmm_to_anuga_operator = anuga.Rate_operator(domain, rate=swmm_surface_source_rate, label=\"swmm_node_flooding_to_anuga_surface\")
-""" if exchange_enabled else ""
-    exchange_runtime = """
-import json
-with open(\"coupling_runtime.json\", \"w\", encoding=\"utf-8\") as handle:
-    json.dump({
-        \"actual_swmm_to_anuga_volume_m3\": float(swmm_to_anuga_operator.cumulative_influx),
-    }, handle, sort_keys=True)
-""" if exchange_enabled else ""
-    script = f'''"""Generated full-city Abu Dhabi ANUGA model."""
+    script = f'''"""Generated full-city Abu Dhabi public DEM ANUGA prototype."""
 import numpy as np
 import anuga
 
@@ -471,7 +225,6 @@ Y = np.asarray(GRID["y"], dtype=float)
 LAND = np.asarray(GRID["land_mask"], dtype=bool)
 RAINFALL_MM_PER_H = {tuple(float(v) for v in rainfall)!r}
 DX = {ACTIVE_CELL_SIZE_M!r}
-{exchange_block}
 
 def topography(x, y):
     x = np.asarray(x, dtype=float)
@@ -491,26 +244,14 @@ def is_land(x, y):
     row = np.clip(np.floor((Y[0] - y) / DX).astype(int), 0, LAND.shape[0] - 1)
     return LAND[row, col]
 
-def cell_ids(x, y):
-    x = np.asarray(x, dtype=float)
-    y = np.asarray(y, dtype=float)
-    col = np.clip(np.floor((x - X[0]) / DX).astype(int), 0, LAND.shape[1] - 1)
-    row = np.clip(np.floor((Y[0] - y) / DX).astype(int), 0, LAND.shape[0] - 1)
-    return row * LAND.shape[1] + col
-
 def rainfall_rate(x, y, t):
     index = int(t // 300.0)
     intensity = RAINFALL_MM_PER_H[index] * 0.001 / 3600.0 if 0 <= index < len(RAINFALL_MM_PER_H) else 0.0
-    base = np.where(is_land(x, y), intensity, 0.0)
-    {(
-        'return base * SURFACE_RAINFALL_FRACTION[cell_ids(x, y)]'
-        if exchange_enabled
-        else 'return base'
-    )}
+    return np.where(is_land(x, y), intensity, 0.0)
 
 def initial_stage(x, y):
     elevation = topography(x, y)
-    return np.where(is_land(x, y), elevation, np.maximum(elevation, {SEA_LEVEL_M!r}))
+    return np.where(is_land(x, y), elevation + {INITIAL_DEPTH_M!r}, np.maximum(elevation, {SEA_LEVEL_M!r}))
 
 def surface_friction(x, y):
     return np.where(is_land(x, y), {MANNING!r}, {WATER_MANNING!r})
@@ -523,26 +264,12 @@ domain.set_quantity("stage", initial_stage)
 boundary = anuga.Dirichlet_boundary([{SEA_LEVEL_M!r}, 0.0, 0.0])
 domain.set_boundary({{"left": boundary, "right": boundary, "top": boundary, "bottom": boundary}})
 rainfall_operator = anuga.Rate_operator(domain, rate=rainfall_rate, label="public_zone_b_100y_land_only_rainfall")
-{exchange_operators}
 for _ in domain.evolve(yieldstep={REPORT_INTERVAL_SECONDS!r}, finaltime={final_time!r}):
     pass
-{exchange_runtime}
 '''
     path.write_text(script, encoding="utf-8")
 
-def _extract_outputs(
-    sww_path: Path,
-    output: Path,
-    bounds: tuple[float, float, float, float],
-    terrain: dict[str, object],
-    rainfall: dict[str, object],
-    terrain_grid_path: Path,
-    *,
-    surface_product: str,
-    surface_evidence_class: str,
-    run_id: str,
-    coupling_metadata: dict[str, object] | None = None,
-) -> dict[str, object]:
+def _extract_outputs(sww_path: Path, output: Path, bounds: tuple[float, float, float, float], terrain: dict[str, object], rainfall: dict[str, object], terrain_grid_path: Path) -> dict[str, object]:
     from scipy.io import netcdf_file
     with netcdf_file(sww_path, "r", mmap=False) as dataset:
         x = np.asarray(dataset.variables["x"].data, dtype=np.float64).copy()
@@ -563,12 +290,15 @@ def _extract_outputs(
     columns = np.clip(np.floor((centroids[:, 0] - bounds[0]) / ACTIVE_CELL_SIZE_M).astype(int), 0, nx - 1)
     rows = np.clip(np.floor((bounds[3] - centroids[:, 1]) / ACTIVE_CELL_SIZE_M).astype(int), 0, ny - 1)
     cell_ids = rows * nx + columns
-    depth_by_time_cell = np.zeros((len(times), nx * ny), dtype=np.float32)
-    for time_index in range(len(times)):
-        np.maximum.at(depth_by_time_cell[time_index], cell_ids, depths[time_index])
-    max_by_cell = np.asarray(depth_by_time_cell.max(axis=0), dtype=np.float64)
-    peak_time_by_cell = times[np.argmax(depth_by_time_cell, axis=0)]
-    final_by_cell = np.asarray(depth_by_time_cell[-1], dtype=np.float64)
+    max_by_cell = np.zeros(nx * ny, dtype=np.float64)
+    peak_time_by_cell = np.zeros(nx * ny, dtype=np.float64)
+    final_by_cell = np.zeros(nx * ny, dtype=np.float64)
+    for cell in np.unique(cell_ids):
+        indices = np.where(cell_ids == cell)[0]
+        local = depths[:, indices]
+        max_by_cell[cell] = local.max(axis=1).max()
+        peak_time_by_cell[cell] = times[int(np.argmax(local.max(axis=1)))]
+        final_by_cell[cell] = local[-1].max()
     active_land_by_cell = land_mask.reshape(-1)
     water_fraction_by_cell = water_fraction.reshape(-1)
     max_by_cell[~active_land_by_cell] = 0.0
@@ -584,7 +314,7 @@ def _extract_outputs(
     def make_features(values: np.ndarray, time_minutes: float | None = None) -> list[dict[str, object]]:
         features = []
         for cell, value in enumerate(values):
-            if not active_land_by_cell[cell] or value < 0.01:
+            if not active_land_by_cell[cell] or value < MINIMUM_OUTPUT_DEPTH_M:
                 continue
             row, col = divmod(cell, nx)
             props = {
@@ -600,15 +330,17 @@ def _extract_outputs(
                 props["time_minutes"] = float(time_minutes)
             features.append({"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [polygon_for_cell(row, col)]}, "properties": props})
         return features
-    maximum = {"type": "FeatureCollection", "name": f"{run_id}_maximum_depth", "features": make_features(max_by_cell)}
+    maximum = {"type": "FeatureCollection", "name": "abu_dhabi_public_copernicus_citywide_anuga_2d_maximum_depth", "features": make_features(max_by_cell)}
     _json_dump(output / "maximum_depth_wgs84.geojson", maximum)
     snapshot_dir = output / "temporal_snapshots"
     snapshot_dir.mkdir(parents=True, exist_ok=True)
     snapshots = []
     for time_index, timestamp in enumerate(times):
-        values_by_cell = np.asarray(depth_by_time_cell[time_index], dtype=np.float64)
+        values_by_cell = np.zeros(nx * ny, dtype=np.float64)
+        for cell in np.unique(cell_ids):
+            values_by_cell[cell] = depths[time_index, np.where(cell_ids == cell)[0]].max()
         name = f"surface_depth_t{time_index:03d}.geojson"
-        _json_dump(snapshot_dir / name, {"type": "FeatureCollection", "name": f"{run_id}_time_{time_index:03d}", "features": make_features(values_by_cell, float(timestamp / 60.0))})
+        _json_dump(snapshot_dir / name, {"type": "FeatureCollection", "name": f"abu_dhabi_public_citywide_2d_time_{time_index:03d}", "features": make_features(values_by_cell, float(timestamp / 60.0))})
         snapshots.append({"index": time_index, "time_seconds": float(timestamp), "time_minutes": float(timestamp / 60.0), "path": f"temporal_snapshots/{name}"})
     _json_dump(snapshot_dir / "manifest.json", {"schema": "gwm.abu_dhabi_flood.public_citywide_2d_timeseries.v1", "snapshots": snapshots})
     land_mask_metadata = terrain["land_water_mask"]
@@ -618,40 +350,17 @@ def _extract_outputs(
     maximum_depth_cell = int(np.flatnonzero(active_land_by_cell)[np.argmax(max_by_cell[active_land_by_cell])])
     summary = {
         "schema": "gwm.abu_dhabi_flood.public_citywide_2d_delivery.v2",
-        "status": (
-            "completed_customer_dtm_citywide_2d_validation"
-            if surface_evidence_class.startswith("customer")
-            else "completed_public_copernicus_citywide_2d_prototype_not_calibrated"
-        ),
-        "run_id": run_id,
+        "status": "completed_public_copernicus_citywide_2d_prototype_not_calibrated",
         "solver": "ANUGA 2D",
-        "surface": {
-            "product": surface_product,
-            "evidence_class": surface_evidence_class,
-            **terrain,
-        },
+        "surface": {"product": "Copernicus DEM GLO-30 public proxy", **terrain, "claim_boundary": "public proxy / prototype only"},
         "domain": {"bounds_epsg32640": list(bounds), "area_m2": float((bounds[2]-bounds[0]) * (bounds[3]-bounds[1])), "cell_size_m": ACTIVE_CELL_SIZE_M, "rectangular_cells": nx * ny, "active_land_cells": active_land_count, "excluded_permanent_water_cells": int((~active_land_by_cell).sum()), "active_land_area_m2": active_land_area_m2, "triangle_count": int(len(volumes)), "simulation_duration_hours": float(times[-1] / 3600.0), "output_step_minutes": float(REPORT_INTERVAL_SECONDS / 60.0)},
         "forcing": rainfall,
         "land_water_treatment": {**land_mask_metadata, "rainfall_applied_to": "active_land_cells_only", "permanent_water_output_policy": "excluded_from_inland_flood_layers_and_statistics", "sea_boundary_level_m": SEA_LEVEL_M, "sea_boundary_condition": "fixed_stage_zero_momentum_at_outer_domain; connected permanent-water cells retained as drainage medium"},
-        "results": {"maximum_depth_m": maximum_depth_m, "maximum_depth_time_minutes": float(peak_time_by_cell[maximum_depth_cell] / 60.0), "inundated_cells_ge_0_01m": int(np.sum((max_by_cell >= 0.01) & active_land_by_cell)), "inundated_area_ge_0_01m2": float(np.sum((max_by_cell >= 0.01) & active_land_by_cell) * ACTIVE_CELL_SIZE_M * ACTIVE_CELL_SIZE_M), "inundated_area_ge_0_05m2": float(np.sum((max_by_cell >= 0.05) & active_land_by_cell) * ACTIVE_CELL_SIZE_M * ACTIVE_CELL_SIZE_M), "final_surface_volume_m3": float(np.sum(final_by_cell[active_land_by_cell]) * ACTIVE_CELL_SIZE_M * ACTIVE_CELL_SIZE_M)},
+        "results": {"maximum_depth_m": maximum_depth_m, "maximum_depth_time_minutes": float(peak_time_by_cell[maximum_depth_cell] / 60.0), "minimum_published_depth_m": MINIMUM_OUTPUT_DEPTH_M, "inundated_cells_ge_0_01m": int(np.sum((max_by_cell >= 0.01) & active_land_by_cell)), "inundated_area_ge_0_01m2": float(np.sum((max_by_cell >= 0.01) & active_land_by_cell) * ACTIVE_CELL_SIZE_M * ACTIVE_CELL_SIZE_M), "inundated_area_ge_0_05m2": float(np.sum((max_by_cell >= 0.05) & active_land_by_cell) * ACTIVE_CELL_SIZE_M * ACTIVE_CELL_SIZE_M), "final_surface_volume_m3": float(np.sum(final_by_cell[active_land_by_cell]) * ACTIVE_CELL_SIZE_M * ACTIVE_CELL_SIZE_M)},
         "outputs": {"maximum_depth": "maximum_depth_wgs84.geojson", "timeline_manifest": "temporal_snapshots/manifest.json", "native_sww": "abu_dhabi_public_citywide_2d.sww"},
-        "admission": {
-            "numerical_validation_completed": True,
-            "customer_surface_used": surface_evidence_class.startswith("customer"),
-            "customer_authoritative_engineering_prediction": False,
-            "gwm_training_admitted": False,
-            "citywide_prediction_claim_allowed": False,
-        },
-        "claim_boundary": (
-            "Customer 5 m DTM citywide numerical validation; vertical datum, tide boundary, "
-            "urban microtopography, infiltration and observations still require calibration."
-            if surface_evidence_class.startswith("customer")
-            else "Public DEM citywide prototype; not calibrated or engineering-admitted."
-        ),
-        "replacement_contract": "The DEM/DTM is replaceable while retaining the same ANUGA and map-output contract.",
+        "admission": {"public_proxy_test_allowed": True, "customer_authoritative_engineering_prediction": False, "gwm_training_admitted": False, "citywide_prediction_claim_allowed": False},
+        "replacement_contract": "Replace the DEM and public land/water proxy with customer authoritative DTM, shoreline, permanent-water polygons, vertical datum, and tide boundary; then rerun this same model/output contract.",
     }
-    if coupling_metadata is not None:
-        summary["coupling"] = coupling_metadata
     _json_dump(output / "delivery_summary.json", summary)
     return summary
 
@@ -660,20 +369,51 @@ def run(
     land_cover_path: Path,
     output: Path,
     *,
+    return_period_years: int = 100,
     cell_size_m: float = CELL_SIZE_M,
-    surface_product: str = "Copernicus DEM GLO-30 public proxy",
-    surface_evidence_class: str = "public_proxy_not_authoritative",
-    dem_source_url: str | None = "https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_DEM_GLO30",
-    run_id: str = "abu-dhabi-public-copernicus-citywide-anuga-20260906",
-    swmm_inp_path: Path | None = None,
-    swmm_out_path: Path | None = None,
+    peak_position_percent: float = 40.0,
+    tail_minutes: int = TAIL_MINUTES,
+    output_interval_minutes: int = 30,
+    land_manning_n: float = MANNING,
+    water_manning_n: float = WATER_MANNING,
+    sea_boundary_level_m: float = SEA_LEVEL_M,
+    initial_depth_m: float = INITIAL_DEPTH_M,
+    minimum_output_depth_m: float = MINIMUM_OUTPUT_DEPTH_M,
+    water_cell_fraction_threshold: float = WATER_CELL_FRACTION_THRESHOLD,
 ) -> dict[str, object]:
-    if not math.isfinite(float(cell_size_m)) or cell_size_m < 25.0 or cell_size_m > 1000.0:
-        raise ValueError("citywide_2d_cell_size_m_must_be_between_25_and_1000")
-    if abs(round((CITY_BOUNDS[2] - CITY_BOUNDS[0]) / cell_size_m) * cell_size_m - (CITY_BOUNDS[2] - CITY_BOUNDS[0])) > 1e-6:
+    if not math.isfinite(float(cell_size_m)) or cell_size_m < 50.0 or cell_size_m > 500.0:
+        raise ValueError("citywide_2d_cell_size_m_must_be_between_50_and_500")
+    width = CITY_BOUNDS[2] - CITY_BOUNDS[0]
+    height = CITY_BOUNDS[3] - CITY_BOUNDS[1]
+    if abs(round(width / cell_size_m) * cell_size_m - width) > 1e-6 or abs(round(height / cell_size_m) * cell_size_m - height) > 1e-6:
         raise ValueError("citywide_2d_cell_size_m_must_tile_city_bounds")
-    global ACTIVE_CELL_SIZE_M
+    if not 5.0 <= float(peak_position_percent) <= 95.0:
+        raise ValueError("peak_position_percent_out_of_range")
+    if not 0 <= int(tail_minutes) <= 1440:
+        raise ValueError("tail_minutes_out_of_range")
+    if int(output_interval_minutes) not in {5, 10, 15, 30, 60}:
+        raise ValueError("output_interval_minutes_not_supported")
+    if not 0.005 <= float(land_manning_n) <= 0.2 or not 0.005 <= float(water_manning_n) <= 0.2:
+        raise ValueError("manning_n_out_of_range")
+    if not -5.0 <= float(sea_boundary_level_m) <= 10.0:
+        raise ValueError("sea_boundary_level_m_out_of_range")
+    if not 0.0 <= float(initial_depth_m) <= 2.0:
+        raise ValueError("initial_depth_m_out_of_range")
+    if not 0.0001 <= float(minimum_output_depth_m) <= 0.5:
+        raise ValueError("minimum_output_depth_m_out_of_range")
+    if not 0.0 <= float(water_cell_fraction_threshold) <= 1.0:
+        raise ValueError("water_cell_fraction_threshold_out_of_range")
+    global ACTIVE_CELL_SIZE_M, TAIL_MINUTES, REPORT_INTERVAL_SECONDS, MANNING, WATER_MANNING
+    global SEA_LEVEL_M, INITIAL_DEPTH_M, MINIMUM_OUTPUT_DEPTH_M, WATER_CELL_FRACTION_THRESHOLD
     ACTIVE_CELL_SIZE_M = float(cell_size_m)
+    TAIL_MINUTES = int(tail_minutes)
+    REPORT_INTERVAL_SECONDS = float(output_interval_minutes) * 60.0
+    MANNING = float(land_manning_n)
+    WATER_MANNING = float(water_manning_n)
+    SEA_LEVEL_M = float(sea_boundary_level_m)
+    INITIAL_DEPTH_M = float(initial_depth_m)
+    MINIMUM_OUTPUT_DEPTH_M = float(minimum_output_depth_m)
+    WATER_CELL_FRACTION_THRESHOLD = float(water_cell_fraction_threshold)
     if not dem_path.is_file():
         raise ValueError("public_citywide_dem_missing")
     if not land_cover_path.is_file():
@@ -682,62 +422,20 @@ def run(
     work = Path(tempfile.mkdtemp(prefix="abu-public-citywide-2d-"))
     try:
         terrain = _prepare_terrain(dem_path, land_cover_path, work, CITY_BOUNDS)
-        rainfall, rainfall_meta = _rainfall_100y_180min()
-        coupling_metadata = None
-        exchange_enabled = swmm_inp_path is not None or swmm_out_path is not None
-        if exchange_enabled:
-            if swmm_inp_path is None or swmm_out_path is None:
-                raise ValueError("swmm_inp_and_out_required_for_coupled_run")
-            swmm_inp_path = swmm_inp_path.expanduser().resolve()
-            swmm_out_path = swmm_out_path.expanduser().resolve()
-            if not swmm_inp_path.is_file() or not swmm_out_path.is_file():
-                raise ValueError("swmm_coupling_input_missing")
-            coupling_metadata = _prepare_swmm_exchange(
-                swmm_out_path, swmm_inp_path, work / "terrain_grid.npz", work, CITY_BOUNDS
-            )
+        rainfall, rainfall_meta = _rainfall_design_storm_180min(return_period_years, peak_position_percent)
         model_script = work / "abu_dhabi_public_citywide_2d.py"
-        _write_model_script(model_script, terrain, rainfall, CITY_BOUNDS, exchange_enabled=exchange_enabled)
+        _write_model_script(model_script, terrain, rainfall, CITY_BOUNDS)
         process = subprocess.run([str(ANUGA_PYTHON), str(model_script)], cwd=work, capture_output=True, text=True, timeout=1800)
         (output / "anuga_stdout.log").write_text(process.stdout, encoding="utf-8")
         (output / "anuga_stderr.log").write_text(process.stderr, encoding="utf-8")
         if process.returncode != 0:
             raise RuntimeError(f"anuga_public_citywide_failed:{process.returncode}")
-        if exchange_enabled and coupling_metadata is not None:
-            runtime_path = work / "coupling_runtime.json"
-            if runtime_path.is_file():
-                coupling_metadata["runtime"] = json.loads(runtime_path.read_text(encoding="utf-8"))
         sww_candidates = sorted(work.glob("*.sww"))
         if not sww_candidates:
             raise RuntimeError("anuga_public_citywide_sww_missing")
         shutil.copy2(sww_candidates[0], output / "abu_dhabi_public_citywide_2d.sww")
-        summary = _extract_outputs(
-            output / "abu_dhabi_public_citywide_2d.sww", output, CITY_BOUNDS,
-            terrain, rainfall_meta, work / "terrain_grid.npz",
-            surface_product=surface_product,
-            surface_evidence_class=surface_evidence_class,
-            run_id=run_id,
-            coupling_metadata=coupling_metadata,
-        )
-        if coupling_metadata is not None:
-            shutil.copy2(work / "swmm_exchange.npz", output / "swmm_exchange.npz")
-            coupling_metadata["exchange_artifact"] = "swmm_exchange.npz"
-            summary["coupling"] = coupling_metadata
-        _json_dump(output / "run_receipt.json", {
-            "schema": "gwm.abu_dhabi_flood.citywide_2d_run_receipt.v3",
-            "status": "completed",
-            "run_id": run_id,
-            "dem_source": str(dem_path),
-            "dem_source_url": dem_source_url,
-            "surface_product": surface_product,
-            "surface_evidence_class": surface_evidence_class,
-            "land_cover_source": str(land_cover_path),
-            "land_cover_source_url": WORLD_COVER_SOURCE_URL,
-            "output_directory": str(output),
-            "summary": summary,
-            "anuga_returncode": process.returncode,
-            "claim_boundary": summary["claim_boundary"],
-            "coupling": coupling_metadata,
-        })
+        summary = _extract_outputs(output / "abu_dhabi_public_citywide_2d.sww", output, CITY_BOUNDS, terrain, rainfall_meta, work / "terrain_grid.npz")
+        _json_dump(output / "run_receipt.json", {"schema": "gwm.abu_dhabi_flood.public_citywide_2d_run_receipt.v2", "status": "completed", "dem_source": str(dem_path), "dem_source_url": "https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_DEM_GLO30", "land_cover_source": str(land_cover_path), "land_cover_source_url": WORLD_COVER_SOURCE_URL, "output_directory": str(output), "summary": summary, "anuga_returncode": process.returncode, "claim_boundary": "public Copernicus DEM and ESA WorldCover land/water-mask prototype only; not calibrated or engineering-admitted"})
         return summary
     finally:
         shutil.rmtree(work, ignore_errors=True)
@@ -747,26 +445,9 @@ def main() -> None:
     parser.add_argument("--dem", type=Path, default=DEFAULT_DEM)
     parser.add_argument("--land-cover", type=Path, default=DEFAULT_LAND_COVER)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
-    parser.add_argument("--surface-product", default="Copernicus DEM GLO-30 public proxy")
-    parser.add_argument("--surface-evidence-class", default="public_proxy_not_authoritative")
-    parser.add_argument("--dem-source-url", default="https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_DEM_GLO30")
-    parser.add_argument("--run-id", default="abu-dhabi-public-copernicus-citywide-anuga-20260906")
-    parser.add_argument("--cell-size-m", type=float, default=CELL_SIZE_M, help="2D grid cell size in metres (100 m recommended citywide demo)")
-    parser.add_argument("--swmm-inp", type=Path, default=None, help="Optional SWMM input used to map node coordinates")
-    parser.add_argument("--swmm-out", type=Path, default=None, help="Optional native SWMM OUT used to inject node flooding into ANUGA")
+    parser.add_argument("--return-period-years", type=int, choices=sorted(ZONE_B_DEPTHS_180_MM), default=100)
     args = parser.parse_args()
-    result = run(
-        args.dem.expanduser().resolve(),
-        args.land_cover.expanduser().resolve(),
-        args.output.expanduser().resolve(),
-        surface_product=args.surface_product,
-        surface_evidence_class=args.surface_evidence_class,
-        dem_source_url=args.dem_source_url or None,
-        run_id=args.run_id,
-        cell_size_m=args.cell_size_m,
-        swmm_inp_path=args.swmm_inp,
-        swmm_out_path=args.swmm_out,
-    )
+    result = run(args.dem.expanduser().resolve(), args.land_cover.expanduser().resolve(), args.output.expanduser().resolve(), return_period_years=args.return_period_years)
     print(json.dumps({"output": str(args.output), "status": result["status"], "results": result["results"]}, ensure_ascii=True))
 
 if __name__ == "__main__":
