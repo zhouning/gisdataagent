@@ -3,6 +3,7 @@ import { initReactI18next } from 'react-i18next';
 import zhCN from './locales/zh-CN/common.json';
 import enUS from './locales/en-US/common.json';
 import arAE from './locales/ar-AE/common.json';
+import { floodV11Translations } from './floodV11';
 
 export const SUPPORTED_LOCALES = ['zh-CN', 'en-US', 'ar-AE'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
@@ -83,9 +84,9 @@ export function getLocaleHeaders(): Record<string, string> {
 }
 
 const resources = {
-  'zh-CN': { common: zhCN },
-  'en-US': { common: enUS },
-  'ar-AE': { common: arAE },
+  'zh-CN': { common: { ...zhCN, floodV11: floodV11Translations['zh-CN'] } },
+  'en-US': { common: { ...enUS, floodV11: floodV11Translations['en-US'] } },
+  'ar-AE': { common: { ...arAE, floodV11: floodV11Translations['ar-AE'] } },
 } as const;
 
 i18n
