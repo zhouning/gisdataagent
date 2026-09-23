@@ -32,8 +32,12 @@ WORKDIR /opt/build
 
 COPY deploy/abu-dhabi-hydrodynamics/requirements.txt /opt/build/requirements.txt
 RUN python -m pip install --upgrade pip \
+    --timeout 120 \
+    --retries 8 \
     --index-url "${PIP_INDEX_URL}" \
     && python -m pip install --requirement /opt/build/requirements.txt \
+    --timeout 120 \
+    --retries 8 \
     --index-url "${PIP_INDEX_URL}"
 
 RUN git clone --filter=blob:none "${SWMM_REPOSITORY}" swmm \
@@ -52,6 +56,8 @@ RUN git clone --filter=blob:none "${SWMM_REPOSITORY}" swmm \
 RUN git clone --filter=blob:none "${ANUGA_REPOSITORY}" anuga \
     && git -C anuga checkout --detach "${ANUGA_COMMIT}" \
     && python -m pip install --no-build-isolation ./anuga \
+    --timeout 120 \
+    --retries 8 \
     --index-url "${PIP_INDEX_URL}" \
     && python -c "import anuga; print('ANUGA', getattr(anuga, '__version__', 'unknown'))"
 

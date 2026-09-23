@@ -88,7 +88,8 @@ registry manifest is used.
 
 ```bash
 TARGET_PLATFORM=linux/arm64
-IMAGE_NAME=abu-dhabi-hydrodynamics:runtime-v1
+TARGET_SUFFIX=linux-arm64
+IMAGE_NAME="abu-dhabi-hydrodynamics:runtime-v1-${TARGET_SUFFIX}"
 
 docker buildx build \
   --platform "${TARGET_PLATFORM}" \
@@ -96,27 +97,65 @@ docker buildx build \
   -t "${IMAGE_NAME}" \
   --load .
 
-docker save "${IMAGE_NAME}" \
-  | gzip > abu-dhabi-hydrodynamics-runtime-v1-linux-arm64.tar.gz
+docker save --output \
+  "abu-dhabi-hydrodynamics-runtime-v1-${TARGET_SUFFIX}.tar" \
+  "${IMAGE_NAME}"
 
-shasum -a 256 abu-dhabi-hydrodynamics-runtime-v1-linux-arm64.tar.gz \
-  > abu-dhabi-hydrodynamics-runtime-v1-linux-arm64.tar.gz.sha256
+shasum -a 256 \
+  "abu-dhabi-hydrodynamics-runtime-v1-${TARGET_SUFFIX}.tar"
 ```
 
 On the receiving machine:
 
 ```bash
-docker load < abu-dhabi-hydrodynamics-runtime-v1-linux-arm64.tar.gz
-docker image inspect abu-dhabi-hydrodynamics:runtime-v1
+docker load --input abu-dhabi-hydrodynamics-runtime-v1-linux-arm64.tar
+docker image inspect abu-dhabi-hydrodynamics:runtime-v1-linux-arm64
 docker run --rm \
+  --platform linux/arm64 \
   --read-only \
   --tmpfs /tmp:size=512m,mode=1777 \
   --tmpfs /data/runs:size=1g,mode=1777 \
-  abu-dhabi-hydrodynamics:runtime-v1 --check --smoke
+  abu-dhabi-hydrodynamics:runtime-v1-linux-arm64 --check --smoke
 ```
 
 Create a separate tar and checksum for `abu-dhabi-lisflood-fp:5.9-bmi` if
 LISFLOOD-FP is part of the approved delivery.
+
+### Validated 2026-09-23 offline bundle
+
+The following architecture-specific archives were built and smoke-tested. Use
+`linux-amd64` for Intel/AMD x86-64 servers and workstations. Use `linux-arm64`
+for AWS Graviton, Ampere, Apple Silicon Docker Desktop and other AArch64 hosts.
+
+| Archive | Loaded image tag | Platform | Bytes | SHA-256 |
+|---|---|---|---:|---|
+| `abu-dhabi-hydrodynamics-runtime-v1-linux-amd64.tar` | `abu-dhabi-hydrodynamics:runtime-v1-linux-amd64` | `linux/amd64` | 258,993,152 | `9af4c2be07609121400df8dd8c01b50669dadd4dfe1f77faddfbdaa115354086` |
+| `abu-dhabi-hydrodynamics-runtime-v1-linux-arm64.tar` | `abu-dhabi-hydrodynamics:runtime-v1-linux-arm64` | `linux/arm64` | 255,635,456 | `2dae19fe71a8989233d009e8d5fb84257e91940aaf470de8c9778a6b88ccb174` |
+| `abu-dhabi-lisflood-fp-5.9-bmi-linux-amd64.tar` | `abu-dhabi-lisflood-fp:5.9-bmi-linux-amd64` | `linux/amd64` | 31,154,688 | `f70f948b517835550a6970bf404fe082a754d661bd15fd07543f72974d6ba5f3` |
+| `abu-dhabi-lisflood-fp-5.9-bmi-linux-arm64.tar` | `abu-dhabi-lisflood-fp:5.9-bmi-linux-arm64` | `linux/arm64` | 29,020,672 | `afe2b3d856053025348c98b8779f235df648c29ed88563b1bd7452ac9b1f3d9b` |
+
+Load and test only the pair matching the deployment host. For an x86-64
+deployment, replace `arm64` with `amd64` and `linux/arm64` with `linux/amd64`
+in the following commands:
+
+```bash
+docker load --input abu-dhabi-hydrodynamics-runtime-v1-linux-arm64.tar
+docker load --input abu-dhabi-lisflood-fp-5.9-bmi-linux-arm64.tar
+
+docker run --rm --platform linux/arm64 \
+  --read-only \
+  --tmpfs /tmp:size=512m,mode=1777 \
+  --tmpfs /data/runs:size=1g,mode=1777 \
+  abu-dhabi-hydrodynamics:runtime-v1-linux-arm64 --check --smoke
+
+docker run --rm --platform linux/arm64 \
+  --read-only \
+  --tmpfs /tmp:size=256m,mode=1777 \
+  abu-dhabi-lisflood-fp:5.9-bmi-linux-arm64
+```
+
+The amd64 archive was also executed under Docker's `linux/amd64` emulation on
+an ARM64 build host. Native x86-64 deployment does not require emulation.
 
 ## Customer data is a separate delivery
 
