@@ -1,0 +1,41 @@
+# Optional GPL-3.0 LISFLOOD-FP BMI image. Keep this image separate from the
+# Apache-2.0/Public-Domain SWMM + ANUGA image and review redistribution terms.
+
+FROM ubuntu:22.04 AS builder
+
+ARG LISFLOOD_REPOSITORY=https://github.com/openearth/lisflood-fp-bmi.git
+ARG LISFLOOD_COMMIT=11f2a9214f80e1194bfaea23bc52a8247b9924ad
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates g++ git make \
+      && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/build
+RUN git clone --filter=blob:none "${LISFLOOD_REPOSITORY}" source \
+    && git -C source checkout --detach "${LISFLOOD_COMMIT}" \
+    && make -C source/lisflood-fp-bmi-v5.9 \
+    && install -d /opt/lisflood/bin /opt/lisflood/lib /opt/lisflood/validation \
+    && install -m 0755 source/lisflood-fp-bmi-v5.9/lisflood /opt/lisflood/bin/lisflood \
+    && install -m 0644 source/lisflood-fp-bmi-v5.9/liblisflood.so /opt/lisflood/lib/liblisflood.so
+
+
+FROM ubuntu:22.04 AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PATH=/opt/lisflood/bin:$PATH \
+    LD_LIBRARY_PATH=/opt/lisflood/lib
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libgomp1 libstdc++6 \
+      && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/lisflood/ /opt/lisflood/
+COPY deploy/abu-dhabi-hydrodynamics/fixtures/lisflood_synthetic.* /opt/lisflood/validation/
+COPY deploy/abu-dhabi-hydrodynamics/scripts/lisflood_entrypoint.sh /usr/local/bin/lisflood-entrypoint
+RUN chmod 0755 /usr/local/bin/lisflood-entrypoint
+
+WORKDIR /data/runs
+ENTRYPOINT ["/usr/local/bin/lisflood-entrypoint"]
+CMD ["--smoke"]

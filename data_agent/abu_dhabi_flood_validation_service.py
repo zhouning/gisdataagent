@@ -24,9 +24,18 @@ except Exception:  # pragma: no cover - standalone execution fallback
         return "en"
 
 
+_HYDRO_DATA_ROOT = Path(
+    os.environ.get(
+        "ABU_DHABI_HYDRO_DATA_ROOT",
+        str(Path.home() / ".local/share/gisdataagent/private/abu_dhabi_stormwater"),
+    )
+).expanduser()
 DEFAULT_HISTORICAL_REPLAY_ROOT = Path(
-    "/Users/zhouning/Downloads/阿布扎比/二维水动力_客户DTM_SWMM耦合_2024年4月历史事件重演_250m_20260910/anuga_2d"
-)
+    os.environ.get(
+        "ABU_DHABI_HISTORICAL_REPLAY_2D_ROOT",
+        str(_HYDRO_DATA_ROOT / "surface/historical_replay_2024_04/anuga_2d"),
+    )
+).expanduser()
 
 
 def _root() -> Path:

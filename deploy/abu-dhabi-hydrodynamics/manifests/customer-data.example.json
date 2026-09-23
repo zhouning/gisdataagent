@@ -1,0 +1,49 @@
+{
+  "schema": "gwm.abu_dhabi_flood.customer_hydrodynamics_data_manifest.v1",
+  "profile": "abu_dhabi_customer_citywide_v1",
+  "data_root": "/data/input",
+  "artifacts": [
+    {
+      "id": "full_city_swmm_input",
+      "relative_path": "swmm/abu_dhabi_city_full_topology.inp",
+      "required_for": ["swmm_citywide", "one_way_swmm_to_anuga", "two_way_swmm_anuga"],
+      "size_bytes": 39679155,
+      "sha256": "42d47501e6dd14041d7beb55388f996c9913bfd6e13a53c37a97e98dcd57b05e",
+      "customer_restricted": true
+    },
+    {
+      "id": "swmm_node_geometry",
+      "relative_path": "swmm/abu_dhabi_city_swmm_node_results.geojson",
+      "required_for": ["swmm_map", "one_way_swmm_to_anuga", "two_way_swmm_anuga"],
+      "size_bytes": 53114958,
+      "sha256": "9cb50c0aef34652f33237aa5c6d6c9f7ecaa6bb505ab2c7cf01564e2778bc50a",
+      "customer_restricted": true
+    },
+    {
+      "id": "terrain_grid_250m",
+      "relative_path": "surface/terrain_grid_250m.npz",
+      "required_for": ["anuga_citywide", "one_way_swmm_to_anuga", "two_way_swmm_anuga"],
+      "size_bytes": 105865,
+      "sha256": "8f01bef3d857515ff62bd2fd5599efea71176e2afac7c875bcd225cf3db5a1b2",
+      "customer_restricted": true,
+      "derived_from": "AUH_DTM_5m_Z40.TIF"
+    },
+    {
+      "id": "interface_bindings",
+      "relative_path": "coupling/interface_bindings.jsonl.gz",
+      "required_for": ["one_way_swmm_to_anuga", "two_way_swmm_anuga"],
+      "size_bytes": 5162120,
+      "sha256": "c67ff1ea6f1e09f865b48fb9d0d138efb3074482ce9cdc566a270b57ceea4648",
+      "record_count": 141840,
+      "customer_restricted": true
+    },
+    {
+      "id": "customer_dtm_5m_optional",
+      "relative_path": "source/AUH_DTM_5m_Z40.TIF",
+      "required_for": ["terrain_preprocessing_only"],
+      "required": false,
+      "approximate_size_bytes": 24696061952,
+      "customer_restricted": true
+    }
+  ]
+}

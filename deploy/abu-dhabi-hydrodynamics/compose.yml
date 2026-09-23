@@ -1,0 +1,62 @@
+services:
+  hydrodynamics:
+    build:
+      context: ../..
+      dockerfile: deploy/abu-dhabi-hydrodynamics/Dockerfile
+    image: abu-dhabi-hydrodynamics:runtime-v1
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    environment:
+      ABU_DHABI_HYDRO_DATA_ROOT: /data/input
+      ABU_DHABI_HYDRO_RUN_ROOT: /data/runs
+      ABU_DHABI_SWMM_EXECUTABLE: /opt/swmm/bin/runswmm
+      ABU_DHABI_SWMM_LIBRARY: /opt/swmm/lib/libswmm5.so
+      ABU_DHABI_SWMM_INPUT_ROOT: /data/input/swmm
+      ABU_DHABI_SWMM_FULL_CITY_INPUT: /data/input/swmm/abu_dhabi_city_full_topology.inp
+      ABU_DHABI_SWMM_NODE_GEOMETRY: /data/input/swmm/abu_dhabi_city_swmm_node_results.geojson
+      ABU_DHABI_CUSTOMER_DTM_PATH: /data/input/source/AUH_DTM_5m_Z40.TIF
+      ABU_DHABI_SURFACE_INTERACTIVE_RUN_ROOT: /data/runs/surface
+      ABU_DHABI_SURFACE_RUNNER_PATH: /app/scripts/run_abu_dhabi_public_citywide_2d.py
+      ABU_DHABI_COUPLED_RUNNER_PATH: /app/scripts/run_abu_dhabi_swmm_anuga_bidirectional_pilot.py
+      ABU_DHABI_TERRAIN_GRID_PATH: /data/input/surface/terrain_grid_250m.npz
+      ABU_DHABI_COUPLING_BINDINGS_PATH: /data/input/coupling/interface_bindings.jsonl.gz
+      ABU_DHABI_CUSTOMER_CITYWIDE_2D_ROOT: /data/input/surface/customer_citywide_2d
+      ABU_DHABI_CUSTOMER_BIDIRECTIONAL_2D_ROOT: /data/input/coupling/bidirectional
+      ABU_DHABI_HISTORICAL_REPLAY_2D_ROOT: /data/input/surface/historical_replay_2024_04/anuga_2d
+      ABU_DHABI_TRAINED_GWM_MODEL_ROOT: /data/input/gwm/customer_five_year_event_gwm
+      ABU_DHABI_TRAINED_GWM_LABEL_ROOT: /data/input/coupling/customer_2d_coupled_labels
+      ABU_DHABI_TRAINED_GWM_SENTINEL_OBSERVATION_ROOT: /data/input/observations/customer_sentinel2_observed_flood
+      ABU_DHABI_TRAINED_GWM_RUN_ROOT: /data/runs/gwm
+    volumes:
+      - type: bind
+        source: ${ABU_DHABI_HYDRO_INPUT_DIR:?Set ABU_DHABI_HYDRO_INPUT_DIR to a customer data directory}
+        target: /data/input
+        read_only: true
+      - type: bind
+        source: ${ABU_DHABI_HYDRO_RUN_DIR:?Set ABU_DHABI_HYDRO_RUN_DIR to a writable run directory}
+        target: /data/runs
+
+  lisflood:
+    profiles: [lisflood]
+    build:
+      context: ../..
+      dockerfile: deploy/abu-dhabi-hydrodynamics/Dockerfile.lisflood
+    image: abu-dhabi-lisflood-fp:5.9-bmi
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    volumes:
+      - type: bind
+        source: ${ABU_DHABI_HYDRO_INPUT_DIR:?Set ABU_DHABI_HYDRO_INPUT_DIR to a customer data directory}
+        target: /data/input
+        read_only: true
+      - type: bind
+        source: ${ABU_DHABI_HYDRO_RUN_DIR:?Set ABU_DHABI_HYDRO_RUN_DIR to a writable run directory}
+        target: /data/runs

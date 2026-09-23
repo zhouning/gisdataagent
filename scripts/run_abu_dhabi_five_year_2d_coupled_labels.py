@@ -17,6 +17,7 @@ import hashlib
 import importlib.util
 import json
 import math
+import os
 import sys
 import tempfile
 import types
@@ -29,16 +30,23 @@ import numpy as np
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_IMPLEMENTATION_ROOT = REPOSITORY_ROOT
 DEFAULT_GRID = Path(
-    "/Users/zhouning/Downloads/阿布扎比/全市双向耦合试点_客户DTM_250m_20260910_v2高程门控/terrain_grid.npz"
+    os.environ.get(
+        "ABU_DHABI_TERRAIN_GRID_PATH",
+        str(REPOSITORY_ROOT / "data/abu_dhabi_hydrodynamics/terrain_grid_250m.npz"),
+    )
 )
 DEFAULT_GRID_ROOT = DEFAULT_GRID.parent
 DEFAULT_BASE_SWMM_INPUT = Path(
-    "/Users/zhouning/Downloads/阿布扎比/GDB提交版_模型工作区_20260821/"
-    "customer_interactive_swmm_runs/abu-zone-b-ddf-180m-20260826-v2-rp100/"
-    "full_city/scenario.inp"
+    os.environ.get(
+        "ABU_DHABI_SWMM_FULL_CITY_INPUT",
+        str(REPOSITORY_ROOT / "data/abu_dhabi_hydrodynamics/abu_dhabi_city_full_topology.inp"),
+    )
 )
-DEFAULT_SWMM_LIBRARY = (
-    REPOSITORY_ROOT / "external_models/swmm-5.2.4/build-local/lib/libswmm5.dylib"
+DEFAULT_SWMM_LIBRARY = Path(
+    os.environ.get(
+        "ABU_DHABI_SWMM_LIBRARY",
+        str(REPOSITORY_ROOT / "external_models/swmm-5.2.4/build-local/lib/libswmm5.dylib"),
+    )
 )
 SCHEMA = "gwm.abu_dhabi_flood.five_year_2d_coupled_label.v1"
 WINDOW_SCHEMA = "gwm.abu_dhabi_flood.five_year_2d_coupled_window.v1"
@@ -859,7 +867,16 @@ def main() -> None:
     parser.add_argument("--forcing", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--grid", type=Path, default=DEFAULT_GRID)
-    parser.add_argument("--dtm", type=Path, default=Path("/Users/zhouning/Downloads/阿布扎比/DTM_z40_customer/AUH_DTM_5m_Z40.TIF"))
+    parser.add_argument(
+        "--dtm",
+        type=Path,
+        default=Path(
+            os.environ.get(
+                "ABU_DHABI_CUSTOMER_DTM_PATH",
+                str(REPOSITORY_ROOT / "data/abu_dhabi_hydrodynamics/AUH_DTM_5m_Z40.TIF"),
+            )
+        ),
+    )
     parser.add_argument("--base-swmm-input", type=Path, default=DEFAULT_BASE_SWMM_INPUT)
     parser.add_argument("--swmm-library", type=Path, default=DEFAULT_SWMM_LIBRARY)
     parser.add_argument("--implementation-root", type=Path, default=DEFAULT_IMPLEMENTATION_ROOT)

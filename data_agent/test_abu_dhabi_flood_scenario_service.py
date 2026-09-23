@@ -49,6 +49,21 @@ def test_design_storm_depth_is_conserved():
     assert scenario["partitions"] == [0]
 
 
+def test_render_scenario_input_rebinds_all_subcatchment_rain_gages(tmp_path):
+    base = tmp_path / "base.inp"
+    base.write_text(
+        """[OPTIONS]\nSTART_DATE  01/01/2020\nSTART_TIME  00:00:00\nREPORT_START_DATE  01/01/2020\nREPORT_START_TIME  00:00:00\nEND_DATE  01/01/2020\nEND_TIME  01:00:00\nREPORT_STEP  00:05:00\nWET_STEP  00:05:00\nROUTING_STEP  00:05:00\n\n[RAINGAGES]\nRG_PUBLIC  INTENSITY  00:05  1.0  TIMESERIES  TS_PUBLIC\nRG_LEGACY  INTENSITY  00:05  1.0  TIMESERIES  TS_LEGACY\n\n[SUBCATCHMENTS]\nS_PUBLIC  RG_PUBLIC  J1  1  80  100  0.5  0\nS_LEGACY  RG_LEGACY  J1  1  80  100  0.5  0\nS_NONE  -  J1  1  80  100  0.5  0\n\n[TIMESERIES]\nTS_PUBLIC  00:00  0\n\n[OUTFALLS]\nO1  0  FREE\n\n[XSECTIONS]\nC1  CIRCULAR  0.15  0  0  0  1\n""",
+        encoding="utf-8",
+    )
+    output = tmp_path / "scenario.inp"
+    scenario = validate_scenario(_scenario())
+    render_scenario_input(base, output, scenario)
+    text = output.read_text(encoding="utf-8")
+    assert "S_PUBLIC  RG_INTERACTIVE" in text
+    assert "S_LEGACY  RG_INTERACTIVE" in text
+    assert "S_NONE  -  J1" in text
+
+
 @pytest.mark.parametrize(
     ("return_period", "expected_depth"),
     [(2, 11.31), (5, 25.29), (10, 28.71), (25, 40.35), (50, 51.48), (100, 60.33)],

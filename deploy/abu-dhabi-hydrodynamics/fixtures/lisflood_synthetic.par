@@ -1,0 +1,9 @@
+DEMfile lisflood_synthetic.dem
+resroot lisflood_synthetic
+fpfric 0.03
+sim_time 60
+initial_tstep 1
+massint 20
+saveint 20
+rainfall lisflood_synthetic.rain
+qoutput

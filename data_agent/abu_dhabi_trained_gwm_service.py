@@ -20,21 +20,36 @@ from pathlib import Path
 from typing import Any
 
 
+_HYDRO_DATA_ROOT = Path(
+    os.environ.get(
+        "ABU_DHABI_HYDRO_DATA_ROOT",
+        str(Path.home() / ".local/share/gisdataagent/private/abu_dhabi_stormwater"),
+    )
+).expanduser()
 DEFAULT_MODEL_ROOT = Path(
-    "/Users/zhouning/Downloads/阿布扎比/GDB提交版_模型工作区_20260821/"
-    "customer_five_year_event_gwm_20260914_r1"
-)
+    os.environ.get(
+        "ABU_DHABI_TRAINED_GWM_MODEL_ROOT",
+        str(_HYDRO_DATA_ROOT / "gwm/customer_five_year_event_gwm"),
+    )
+).expanduser()
 DEFAULT_LABEL_ROOT = Path(
-    "/Users/zhouning/Downloads/阿布扎比/GDB提交版_模型工作区_20260821/"
-    "customer_city_swmm_2d_coupled_labels_20260914_r1"
-)
+    os.environ.get(
+        "ABU_DHABI_TRAINED_GWM_LABEL_ROOT",
+        str(_HYDRO_DATA_ROOT / "coupling/customer_2d_coupled_labels"),
+    )
+).expanduser()
 DEFAULT_SENTINEL_OBSERVATION_ROOT = Path(
-    "/Users/zhouning/Downloads/阿布扎比/GDB提交版_模型工作区_20260821/"
-    "customer_sentinel2_observed_flood_202404_r1"
-)
-DEFAULT_RUN_ROOT = (
-    Path.home() / ".local/share/gisdataagent/private/abu_dhabi_stormwater/trained_gwm_runs"
-)
+    os.environ.get(
+        "ABU_DHABI_TRAINED_GWM_SENTINEL_OBSERVATION_ROOT",
+        str(_HYDRO_DATA_ROOT / "observations/customer_sentinel2_observed_flood"),
+    )
+).expanduser()
+DEFAULT_RUN_ROOT = Path(
+    os.environ.get(
+        "ABU_DHABI_TRAINED_GWM_RUN_ROOT",
+        str(_HYDRO_DATA_ROOT / "gwm/trained_gwm_runs"),
+    )
+).expanduser()
 EXTERNAL_HOLDOUT_EVENT_ID = "noaa-isd-ae-202404151200-0327"
 MODEL_NAME = "cellwise_ridge_rainfall_conditioned_dynamics"
 MODEL_SCHEMA = "gwm.abu_dhabi_flood.five_year_event_emulator.v1"

@@ -1331,7 +1331,7 @@ type SurfaceResultSource = 'return_period_one_way' | 'bidirectional_validation';
 
 interface SurfaceRunForm {
   solver: 'anuga';
-  couplingMode: 'surface_rainfall_only';
+  couplingMode: 'surface_rainfall_only' | 'one_way_swmm_to_anuga' | 'two_way_swmm_anuga';
   rainfallSource: 'zone_b_design_storm';
   returnPeriodYears: ReturnPeriodYears;
   rainfallDurationMinutes: 180;
@@ -1348,6 +1348,11 @@ interface SurfaceRunForm {
   boundaryType: 'fixed_stage';
   seaBoundaryLevelM: number;
   waterCellFractionThreshold: number;
+  exchangeWindowSeconds: 300 | 600 | 900;
+  openingAreaM2: number;
+  dischargeCoefficient: number;
+  maximumExchangeRateM3s: number;
+  interfaceDetailLimit: number;
 }
 
 interface SurfaceRunReceipt {
@@ -1510,6 +1515,11 @@ const DEFAULT_SURFACE_RUN: SurfaceRunForm = {
   boundaryType: 'fixed_stage',
   seaBoundaryLevelM: 0,
   waterCellFractionThreshold: 0.2,
+  exchangeWindowSeconds: 300,
+  openingAreaM2: 0.5,
+  dischargeCoefficient: 0.61,
+  maximumExchangeRateM3s: 5,
+  interfaceDetailLimit: 200,
 };
 
 const rainfallPatternLabels: Record<RainfallPattern, string> = {
@@ -3001,6 +3011,11 @@ export default function AbuDhabiFloodWorldModelTab() {
           boundary_type: surfaceRunForm.boundaryType,
           sea_boundary_level_m: surfaceRunForm.seaBoundaryLevelM,
           water_cell_fraction_threshold: surfaceRunForm.waterCellFractionThreshold,
+          exchange_window_seconds: surfaceRunForm.exchangeWindowSeconds,
+          opening_area_m2: surfaceRunForm.openingAreaM2,
+          discharge_coefficient: surfaceRunForm.dischargeCoefficient,
+          maximum_exchange_rate_m3s: surfaceRunForm.maximumExchangeRateM3s,
+          interface_detail_limit: surfaceRunForm.interfaceDetailLimit,
         }),
       });
       const created = await response.json().catch(() => null);
@@ -3839,13 +3854,13 @@ export default function AbuDhabiFloodWorldModelTab() {
 
             {surfaceWorkspaceView === 'invoke' ? <div className="abu-flood-surface-run-grid">
               <div className="abu-flood-scenario-form">
-                <div className="abu-flood-scenario-disclaimer"><AlertTriangle size={14} /><span>{localizeAbuText('提交后会在独立私有目录中真实启动 ANUGA 2D，不覆盖已登记成果。当前这个 Web 新建作业器只开放二维面雨直接驱动；已算结果中同时保留 SWMM→ANUGA 单向成果和 SWMM–ANUGA 同步双向数值验证成果。LISFLOOD-FP 已有合成诊断适配器，但尚未核实到可加载的阿布扎比全市成果。')}</span></div>
+                <div className="abu-flood-scenario-disclaimer"><AlertTriangle size={14} /><span>{localizeAbuText('提交后会在独立私有目录中真实启动 ANUGA 2D，不覆盖已登记成果。二维面雨、SWMM→ANUGA 单向交换和 SWMM–ANUGA 同步双向交换均调用真实求解器；耦合模式要求服务器已挂载全市 SWMM 输入、250 m 地形网格和接口绑定清单。LISFLOOD-FP 通过独立 GPL 镜像运行，不在本 API 进程内混装。')}</span></div>
                 <div className="abu-flood-form-group">
                   <div className="abu-flood-form-group-title"><Layers3 size={14} /><strong>{localizeAbuText('求解器与一维输入')}</strong><small>{localizeAbuText('能力状态与作业来源')}</small></div>
                   <div className="abu-flood-form-grid">
                     <label>{localizeAbuText('二维求解器')}<select value={surfaceRunForm.solver} disabled={surfaceRunBusy} onChange={event => updateSurfaceRun('solver', event.target.value as SurfaceRunForm['solver'])}><option value="anuga">{localizeAbuText('ANUGA 2D（当前可新建作业）')}</option><option disabled value="lisflood">{localizeAbuText('LISFLOOD-FP（合成诊断已适配，全市作业器未接入）')}</option></select></label>
-                    <label>{localizeAbuText('阶段 2 输入作业')}<select value="surface_only" disabled><option value="surface_only">{localizeAbuText('本次新算：二维面雨直接驱动')}</option><option value="registered_swmm">{localizeAbuText('已登记 SWMM OUT（仅已有成果）')}</option></select></label>
-                    <label>{localizeAbuText('耦合方式')}<select value={surfaceRunForm.couplingMode} disabled={surfaceRunBusy} onChange={event => updateSurfaceRun('couplingMode', event.target.value as SurfaceRunForm['couplingMode'])}><option value="surface_rainfall_only">{localizeAbuText('二维面雨直接驱动')}</option><option disabled value="one_way_swmm_to_anuga">SWMM → ANUGA {localizeAbuText('单向交换（已算成果可加载）')}</option><option disabled value="two_way">{localizeAbuText('同步双向交换（已算验证成果可加载；Web 新算器未接入）')}</option></select></label>
+                    <label>{localizeAbuText('阶段 2 输入作业')}<select value={surfaceRunForm.couplingMode === 'surface_rainfall_only' ? 'surface_only' : 'mounted_swmm'} disabled><option value="surface_only">{localizeAbuText('本次新算：二维面雨直接驱动')}</option><option value="mounted_swmm">{localizeAbuText('服务器挂载的全市 SWMM 输入')}</option></select></label>
+                    <label>{localizeAbuText('耦合方式')}<select value={surfaceRunForm.couplingMode} disabled={surfaceRunBusy} onChange={event => { const couplingMode = event.target.value as SurfaceRunForm['couplingMode']; setSurfaceRunForm(current => ({ ...current, couplingMode, ...(couplingMode === 'surface_rainfall_only' ? {} : { cellSizeM: 250, terrainSource: 'customer_dtm_5m', outputIntervalMinutes: 5 }) })); setSurfaceRunError(null); }}><option value="surface_rainfall_only">{localizeAbuText('二维面雨直接驱动')}</option><option value="one_way_swmm_to_anuga">SWMM → ANUGA {localizeAbuText('单向溢流交换')}</option><option value="two_way_swmm_anuga">SWMM ↔ ANUGA {localizeAbuText('同步双向交换')}</option></select></label>
                     <label>{localizeAbuText('计算范围')}<select value={surfaceRunForm.domain} disabled><option value="citywide">{localizeAbuText('阿布扎比全市登记范围')}</option></select></label>
                   </div>
                 </div>
@@ -3864,8 +3879,8 @@ export default function AbuDhabiFloodWorldModelTab() {
                 <div className="abu-flood-form-group">
                   <div className="abu-flood-form-group-title"><MapIcon size={14} /><strong>{localizeAbuText('地形、网格与糙率')}</strong><small>{localizeAbuText('新算参数写入运行回执')}</small></div>
                   <div className="abu-flood-form-grid">
-                    <label>{localizeAbuText('地形产品')}<select value={surfaceRunForm.terrainSource} disabled={surfaceRunBusy} onChange={event => updateSurfaceRun('terrainSource', event.target.value as SurfaceRunForm['terrainSource'])}><option value="customer_dtm_5m">{localizeAbuText('客户 AUH_DTM 5 m（主输入）')}</option><option value="copernicus_dem_glo30">Copernicus DEM GLO-30（{localizeAbuText('公开回退')}）</option></select></label>
-                    <label>{localizeAbuText('计算网格（m）')}<select value={surfaceRunForm.cellSizeM} disabled={surfaceRunBusy} onChange={event => updateSurfaceRun('cellSizeM', Number(event.target.value) as SurfaceRunForm['cellSizeM'])}><option value="500">500 · {localizeAbuText('快速诊断')}</option><option value="250">250 · {localizeAbuText('登记基线')}</option><option disabled value="100">100 · {localizeAbuText('高分辨率（Web 调用暂未开放）')}</option><option disabled value="50">50 · {localizeAbuText('高分辨率（Web 调用暂未开放）')}</option></select></label>
+                    <label>{localizeAbuText('地形产品')}<select value={surfaceRunForm.terrainSource} disabled={surfaceRunBusy || surfaceRunForm.couplingMode !== 'surface_rainfall_only'} onChange={event => updateSurfaceRun('terrainSource', event.target.value as SurfaceRunForm['terrainSource'])}><option value="customer_dtm_5m">{localizeAbuText('客户 AUH_DTM 5 m（主输入）')}</option><option value="copernicus_dem_glo30">Copernicus DEM GLO-30（{localizeAbuText('公开回退')}）</option></select></label>
+                    <label>{localizeAbuText('计算网格（m）')}<select value={surfaceRunForm.cellSizeM} disabled={surfaceRunBusy || surfaceRunForm.couplingMode !== 'surface_rainfall_only'} onChange={event => updateSurfaceRun('cellSizeM', Number(event.target.value) as SurfaceRunForm['cellSizeM'])}><option value="500">500 · {localizeAbuText('快速诊断')}</option><option value="250">250 · {localizeAbuText('登记/耦合基线')}</option><option disabled value="100">100 · {localizeAbuText('高分辨率（Web 调用暂未开放）')}</option><option disabled value="50">50 · {localizeAbuText('高分辨率（Web 调用暂未开放）')}</option></select></label>
                     <label>{localizeAbuText('陆地 Manning n')}<input type="number" min="0.005" max="0.2" step="0.001" value={surfaceRunForm.landManningN} disabled={surfaceRunBusy} onChange={event => updateSurfaceRun('landManningN', Number(event.target.value))} /></label>
                     <label>{localizeAbuText('水体 Manning n')}<input type="number" min="0.005" max="0.2" step="0.001" value={surfaceRunForm.waterManningN} disabled={surfaceRunBusy} onChange={event => updateSurfaceRun('waterManningN', Number(event.target.value))} /></label>
                     <label>{localizeAbuText('初始水深（m）')}<input type="number" min="0" max="2" step="0.01" value={surfaceRunForm.initialDepthM} disabled={surfaceRunBusy} onChange={event => updateSurfaceRun('initialDepthM', Number(event.target.value))} /></label>
@@ -3874,14 +3889,17 @@ export default function AbuDhabiFloodWorldModelTab() {
                 </div>
 
                 <div className="abu-flood-form-group">
-                  <div className="abu-flood-form-group-title"><Network size={14} /><strong>{localizeAbuText('交换与重复计量控制')}</strong><small>{localizeAbuText('当前新算为面雨模式，耦合参数锁定')}</small></div>
+                  <div className="abu-flood-form-group-title"><Network size={14} /><strong>{localizeAbuText('交换与重复计量控制')}</strong><small>{localizeAbuText(surfaceRunForm.couplingMode === 'surface_rainfall_only' ? '面雨模式不读取阶段 2 节点交换量' : '耦合参数写入运行回执')}</small></div>
                   <div className="abu-flood-form-grid">
                     <label>{localizeAbuText('SWMM→二维交换变量')}<select disabled value="node_flooding"><option value="node_flooding">{localizeAbuText('节点 overflow / flooding 流量')}</option></select></label>
-                    <label>{localizeAbuText('动态水头反向反馈')}<select disabled value="off"><option value="off">{localizeAbuText('本次新算关闭（双向已算成果可在右侧页面加载）')}</option></select></label>
-                    <label>{localizeAbuText('进水口有效开口面积（m²）')}<input type="number" value="—" disabled /></label>
-                    <label>{localizeAbuText('单点最大交换流量（m³/s）')}<input type="number" value="—" disabled /></label>
+                    <label>{localizeAbuText('动态水头反向反馈')}<select disabled value={surfaceRunForm.couplingMode === 'two_way_swmm_anuga' ? 'on' : 'off'}><option value="off">{localizeAbuText('关闭')}</option><option value="on">{localizeAbuText('开启（同步双向）')}</option></select></label>
+                    <label>{localizeAbuText('交换窗口（秒）')}<select value={surfaceRunForm.exchangeWindowSeconds} disabled={surfaceRunBusy || surfaceRunForm.couplingMode === 'surface_rainfall_only'} onChange={event => updateSurfaceRun('exchangeWindowSeconds', Number(event.target.value) as SurfaceRunForm['exchangeWindowSeconds'])}>{([300, 600, 900] as const).map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+                    <label>{localizeAbuText('进水口有效开口面积（m²）')}<input type="number" min="0" max="100" step="0.05" value={surfaceRunForm.openingAreaM2} disabled={surfaceRunBusy || surfaceRunForm.couplingMode !== 'two_way_swmm_anuga'} onChange={event => updateSurfaceRun('openingAreaM2', Number(event.target.value))} /></label>
+                    <label>{localizeAbuText('流量系数 Cd')}<input type="number" min="0" max="1" step="0.01" value={surfaceRunForm.dischargeCoefficient} disabled={surfaceRunBusy || surfaceRunForm.couplingMode !== 'two_way_swmm_anuga'} onChange={event => updateSurfaceRun('dischargeCoefficient', Number(event.target.value))} /></label>
+                    <label>{localizeAbuText('单点最大交换流量（m³/s）')}<input type="number" min="0.0001" max="1000" step="0.1" value={surfaceRunForm.maximumExchangeRateM3s} disabled={surfaceRunBusy || surfaceRunForm.couplingMode !== 'two_way_swmm_anuga'} onChange={event => updateSurfaceRun('maximumExchangeRateM3s', Number(event.target.value))} /></label>
+                    <label>{localizeAbuText('回执接口明细上限')}<input type="number" min="0" max="10000" step="10" value={surfaceRunForm.interfaceDetailLimit} disabled={surfaceRunBusy || surfaceRunForm.couplingMode === 'surface_rainfall_only'} onChange={event => updateSurfaceRun('interfaceDetailLimit', Number(event.target.value))} /></label>
                   </div>
-                  <div className="abu-flood-control-row"><label className="abu-flood-toggle"><input type="checkbox" checked disabled /><span>{localizeAbuText('避免 SWMM 汇水区与二维面雨重复计量（耦合成果中启用）')}</span></label></div>
+                  <div className="abu-flood-control-row"><label className="abu-flood-toggle"><input type="checkbox" checked={surfaceRunForm.couplingMode !== 'surface_rainfall_only'} disabled /><span>{localizeAbuText('耦合模式关闭二维面雨，仅使用 SWMM 节点交换量，避免重复计量')}</span></label></div>
                 </div>
 
                 <div className="abu-flood-form-group compact">
@@ -3898,7 +3916,7 @@ export default function AbuDhabiFloodWorldModelTab() {
 
                 {surfaceRunError && <div className="abu-flood-form-error"><AlertTriangle size={14} />{localizeAbuText(surfaceRunError)}</div>}
                 <div className="abu-flood-scenario-actions">
-                  <button className="abu-flood-map-action" type="button" onClick={runSurfaceModel} disabled={controlsBusy}><Play size={15} />{surfaceRunBusy ? localizeAbuText('正在运行 ANUGA 2D…') : localizeAbuText('提交二维计算')}</button>
+                  <button className="abu-flood-map-action" type="button" onClick={runSurfaceModel} disabled={controlsBusy}><Play size={15} />{surfaceRunBusy ? localizeAbuText(surfaceRunForm.couplingMode === 'surface_rainfall_only' ? '正在运行 ANUGA 2D…' : '正在运行 SWMM–ANUGA 耦合…') : localizeAbuText('提交二维计算')}</button>
                   <button className="abu-flood-reset-action" type="button" onClick={resetSurfaceRun} disabled={controlsBusy}><RotateCcw size={14} />{localizeAbuText('恢复默认')}</button>
                 </div>
               </div>

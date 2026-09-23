@@ -1,0 +1,89 @@
+;; SWMM 5.2.4 source-level validation fixture.
+;; Synthetic rainfall only; this is not an Abu Dhabi forecast.
+
+[TITLE]
+Abu Dhabi hydrodynamics reproducibility smoke test
+
+[OPTIONS]
+FLOW_UNITS           CMS
+INFILTRATION         HORTON
+FLOW_ROUTING         KINWAVE
+LINK_OFFSETS         DEPTH
+MIN_SLOPE            0
+ALLOW_PONDING        YES
+SKIP_STEADY_STATE    NO
+
+START_DATE           01/01/2020
+START_TIME           00:00:00
+REPORT_START_DATE    01/01/2020
+REPORT_START_TIME    00:00:00
+END_DATE             01/01/2020
+END_TIME             02:00:00
+SWEEP_START          01/01
+SWEEP_END            12/31
+DRY_DAYS             0
+REPORT_STEP          00:05:00
+WET_STEP             00:01:00
+DRY_STEP             01:00:00
+ROUTING_STEP         00:01:00
+
+[EVAPORATION]
+CONSTANT             0.0
+
+[RAINGAGES]
+;;Name           RainType        Intvl      SCF      Data Source
+RG1              INTENSITY       00:05      1.0      TIMESERIES TS1
+
+[SUBCATCHMENTS]
+;;Name           Rain Gage       Outlet     Area     %Imperv  Width    %Slope   CurbLen
+S1               RG1             J1         1.0      80       100      0.5      0
+
+[SUBAREAS]
+;;Subcatchment   N-Imperv       N-Perv       S-Imperv  S-Perv   PctZero  RouteTo
+S1               0.015          0.25         0.05      0.15     25       OUTLET
+
+[INFILTRATION]
+;;Subcatchment   MaxRate        MinRate      Decay     DryTime  MaxInfil
+S1               75             7            4         7        0
+
+[JUNCTIONS]
+;;Name           Elevation      MaxDepth     InitDepth  SurDepth  Aponded
+J1               0              0.25         0          1.0       10000
+
+[OUTFALLS]
+;;Name           Elevation      Type         Stage Data  Gated
+O1               -0.1           FREE
+
+[CONDUITS]
+;;Name           From Node      To Node      Length    Roughness  InOffset  OutOffset  InitFlow  MaxFlow
+C1               J1             O1           100       0.013      0         0          0         0
+
+[XSECTIONS]
+;;Link           Shape          Geom1       Geom2      Geom3      Geom4      Barrels
+C1               CIRCULAR       0.15         0          0          0          1
+
+[TIMESERIES]
+;;Name           Time           Value
+TS1              00:00          0
+TS1              00:05          60
+TS1              00:10          120
+TS1              00:15          180
+TS1              00:20          120
+TS1              00:25          60
+TS1              00:30          0
+TS1              02:00          0
+
+[COORDINATES]
+;;Node           X-Coord        Y-Coord
+J1               50             50
+O1               95             50
+
+[REPORT]
+INPUT            YES
+CONTROLS         NO
+SUBCATCHMENTS    ALL
+NODES            ALL
+LINKS            ALL
+
+[TAGS]
+;; Synthetic validation fixture for portable runtime execution.

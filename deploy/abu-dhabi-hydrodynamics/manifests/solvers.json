@@ -1,0 +1,35 @@
+{
+  "schema": "gwm.abu_dhabi_flood.hydrodynamics_solver_manifest.v1",
+  "solvers": [
+    {
+      "id": "epa_swmm",
+      "version": "5.2.4",
+      "source_url": "https://github.com/USEPA/Stormwater-Management-Model.git",
+      "git_commit": "7952ca837988b1c32f791812eccc9fd64547e093",
+      "license": "Public Domain",
+      "runtime_executable": "/opt/swmm/bin/runswmm",
+      "runtime_library": "/opt/swmm/lib/libswmm5.so",
+      "included_in_core_image": true
+    },
+    {
+      "id": "anuga_2d",
+      "version": "0.0.0+g9a7ef66",
+      "source_url": "https://github.com/GeoscienceAustralia/anuga_core.git",
+      "git_commit": "9a7ef669872540a215bbb58972d12262a0209668",
+      "license": "Apache-2.0",
+      "runtime_executable": "/usr/local/bin/python",
+      "included_in_core_image": true
+    },
+    {
+      "id": "lisflood_fp_2d",
+      "version": "5.9-bmi",
+      "source_url": "https://github.com/openearth/lisflood-fp-bmi.git",
+      "git_commit": "11f2a9214f80e1194bfaea23bc52a8247b9924ad",
+      "license": "GPL-3.0",
+      "runtime_executable": "/opt/lisflood/bin/lisflood",
+      "runtime_library": "/opt/lisflood/lib/liblisflood.so",
+      "included_in_core_image": false,
+      "distribution_boundary": "separate_optional_image"
+    }
+  ]
+}

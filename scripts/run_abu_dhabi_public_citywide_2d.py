@@ -13,6 +13,7 @@ import math
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 import numpy as np
@@ -30,7 +31,9 @@ DEFAULT_OUTPUT = Path(os.environ.get(
     "ABU_DHABI_PUBLIC_CITYWIDE_2D_ROOT",
     Path.home() / "Downloads/abu_dhabi_public_citywide_2d",
 ))
-ANUGA_PYTHON = REPOSITORY_ROOT / "external_models/anuga-venv/bin/python"
+ANUGA_PYTHON = Path(
+    os.environ.get("ABU_DHABI_ANUGA_PYTHON", str(Path(sys.executable)))
+).expanduser()
 # Bounds are snapped to the 250 m model grid. They remain inside the existing
 # public Copernicus crop while avoiding a partial cell at either edge.
 CITY_BOUNDS = (225750.0, 2687250.0, 273250.0, 2723250.0)

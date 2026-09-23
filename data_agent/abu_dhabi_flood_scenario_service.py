@@ -41,31 +41,43 @@ from .uwm.abu_dhabi_flood.traditional_solver import (
 )
 
 
-DEFAULT_PRIVATE_ROOT = (
-    Path.home() / ".local/share/gisdataagent/private/abu_dhabi_stormwater"
-)
+_HYDRO_DATA_ROOT = Path(
+    os.environ.get(
+        "ABU_DHABI_HYDRO_DATA_ROOT",
+        str(Path.home() / ".local/share/gisdataagent/private/abu_dhabi_stormwater"),
+    )
+).expanduser()
+DEFAULT_PRIVATE_ROOT = _HYDRO_DATA_ROOT
 DEFAULT_PUBLIC_ROOT = (
     Path.home() / ".local/share/gisdataagent/public/abu_dhabi_stormwater"
 )
 DEFAULT_INPUT_ROOT = DEFAULT_PRIVATE_ROOT / "customer_city_swmm_full_diagnostic_20260825"
 DEFAULT_FULL_CITY_INPUT = DEFAULT_INPUT_ROOT / "abu_dhabi_city_full_topology.inp"
 DEFAULT_RUN_ROOT = DEFAULT_PRIVATE_ROOT / "customer_interactive_swmm_runs"
-DEFAULT_EXECUTABLE = Path(__file__).resolve().parents[1] / (
-    "external_models/swmm-5.2.4/build-local/bin/runswmm"
-)
+DEFAULT_EXECUTABLE = Path(
+    os.environ.get(
+        "ABU_DHABI_SWMM_EXECUTABLE",
+        str(Path(__file__).resolve().parents[1] / "external_models/swmm-5.2.4/build-local/bin/runswmm"),
+    )
+).expanduser()
 DEFAULT_NODE_GEOMETRY = DEFAULT_PRIVATE_ROOT / "customer_city_swmm_spatial_results_20260824" / "abu_dhabi_city_swmm_node_results.geojson"
 DEFAULT_DTM_DIAGNOSTIC_ROOT = DEFAULT_PRIVATE_ROOT / "customer_dtm_2d_diagnostic"
 # The customer supplied 5 m DTM citywide coupled products are kept outside
 # the repository.  They are the primary phase-3 assets; the Copernicus
 # product remains an explicit fallback for installations where these assets
 # have not yet been provisioned.
-DEFAULT_CUSTOMER_CITYWIDE_2D_ROOT = (
-    Path.home() / "Downloads/阿布扎比/二维水动力_客户DTM_SWMM耦合_多年一遇_250m_20260910"
-)
-DEFAULT_CUSTOMER_BIDIRECTIONAL_2D_ROOT = (
-    Path.home()
-    / "Downloads/阿布扎比/全市双向耦合_客户DTM_250m_100年一遇_300分钟_20260911_rerun_min-depth"
-)
+DEFAULT_CUSTOMER_CITYWIDE_2D_ROOT = Path(
+    os.environ.get(
+        "ABU_DHABI_CUSTOMER_CITYWIDE_2D_ROOT",
+        str(_HYDRO_DATA_ROOT / "surface/customer_citywide_2d"),
+    )
+).expanduser()
+DEFAULT_CUSTOMER_BIDIRECTIONAL_2D_ROOT = Path(
+    os.environ.get(
+        "ABU_DHABI_CUSTOMER_BIDIRECTIONAL_2D_ROOT",
+        str(_HYDRO_DATA_ROOT / "coupling/bidirectional"),
+    )
+).expanduser()
 DEFAULT_PUBLIC_CITYWIDE_2D_ROOT = DEFAULT_PUBLIC_ROOT / "copernicus_citywide_2d"
 DEFAULT_PUBLIC_NCEI_ROOT = DEFAULT_PUBLIC_ROOT / "ncei_2024_station_constraint"
 SWMM_SCENARIO_SCHEMA = "gwm.abu_dhabi_flood.interactive_swmm_scenario.v1"
@@ -707,15 +719,16 @@ def render_scenario_input(
     _replace_option(lines, *sections["[OPTIONS]"], "WET_STEP", "00:05:00")
     _replace_option(lines, *sections["[OPTIONS]"], "ROUTING_STEP", "00:05:00")
     _replace_section(lines, "[RAINGAGES]", ["RG_INTERACTIVE  INTENSITY  00:05  1.0  TIMESERIES  TS_INTERACTIVE"])
-    # The registered baseline uses RG_PUBLIC in every subcatchment.  Bind all
-    # of those references to the scenario gage while leaving the geometry and
-    # runoff parameters untouched.
+    # Bind every active subcatchment to the scenario gage. Customer topology
+    # bundles may use RG_PUBLIC, a legacy station name, or multiple source
+    # gages; leaving any of them untouched would silently mix the selected
+    # design storm with stale forcing.
     subcatchment_begin, subcatchment_end = _section_indexes(lines)["[SUBCATCHMENTS]"]
     for index in range(subcatchment_begin + 1, subcatchment_end):
         if lines[index].lstrip().startswith(";"):
             continue
         parts = lines[index].split()
-        if len(parts) >= 2 and parts[1] == "RG_PUBLIC":
+        if len(parts) >= 2 and parts[1] not in {"-", "*"}:
             parts[1] = "RG_INTERACTIVE"
             lines[index] = "  ".join(parts)
     timeseries = [f"TS_INTERACTIVE  {stamp.strftime('%m/%d/%Y')}  {stamp.strftime('%H:%M')}  {intensity:.8f}" for stamp, intensity in rainfall]
