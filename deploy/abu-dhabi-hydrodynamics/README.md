@@ -17,6 +17,13 @@ LISFLOOD-FP is a separate optional image because the pinned BMI runtime is
 GPL-3.0. Do not combine its binary into a product image without completing the
 license review and source-offer obligations.
 
+For the difference between source-rebuild, registry, offline-image and
+customer-data delivery, see [DELIVERY.md](DELIVERY.md). The short version is:
+the Dockerfile is sufficient for a reproducible rebuild, but a pre-built image
+is recommended when another party must run without compiling or accessing
+public package sources. The image still does not contain the customer model
+data.
+
 ## Build and run the public smoke test
 
 From the repository root:

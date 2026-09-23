@@ -3,7 +3,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/abu-dhabi-hydrodynamics/Dockerfile
-    image: abu-dhabi-hydrodynamics:runtime-v1
+    image: ${ABU_DHABI_HYDRO_IMAGE:-abu-dhabi-hydrodynamics:runtime-v1}
     read_only: true
     security_opt:
       - no-new-privileges:true
@@ -45,7 +45,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/abu-dhabi-hydrodynamics/Dockerfile.lisflood
-    image: abu-dhabi-lisflood-fp:5.9-bmi
+    image: ${ABU_DHABI_LISFLOOD_IMAGE:-abu-dhabi-lisflood-fp:5.9-bmi}
     read_only: true
     security_opt:
       - no-new-privileges:true
