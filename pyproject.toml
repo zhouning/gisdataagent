@@ -147,6 +147,7 @@ data_agent = [
     "scca_samples/spatial/county_data/*",
     "scca_samples/spatial/chongqing_uhi_points/*",
     "model_contracts/*.json",
+    "hydro_workbench/*.html",
 ]
 
 [tool.pytest.ini_options]

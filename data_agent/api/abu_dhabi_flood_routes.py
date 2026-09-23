@@ -25,7 +25,70 @@ async def create_abu_dhabi_flood_scenario(request: Request) -> JSONResponse:
     except ValueError as error:
         return JSONResponse({"error": str(error)}, status_code=400)
     except Exception as error:
-        return JSONResponse({"error": "scenario_start_failed", "detail": str(error)[:500]}, status_code=500)
+        return JSONResponse(
+            {"error": "scenario_start_failed", "detail": str(error)[:500]}, status_code=500
+        )
+
+
+async def create_abu_dhabi_hydro_run(request: Request) -> JSONResponse:
+    """Submit a manifest-backed Kubernetes hydro Job from the GIS app."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from ..hydro_workbench.api import create_hydro_run
+
+    return await create_hydro_run(request)
+
+
+async def get_abu_dhabi_hydro_run(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from ..hydro_workbench.api import get_hydro_run
+
+    return await get_hydro_run(request)
+
+
+async def cancel_abu_dhabi_hydro_run(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from ..hydro_workbench.api import cancel_hydro_run
+
+    return await cancel_hydro_run(request)
+
+
+async def get_abu_dhabi_hydro_result(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from ..hydro_workbench.api import get_hydro_result
+
+    return await get_hydro_result(request)
+
+
+async def get_abu_dhabi_hydro_logs(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from ..hydro_workbench.api import get_hydro_logs
+
+    return await get_hydro_logs(request)
+
+
+async def get_abu_dhabi_hydro_map(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from ..hydro_workbench.api import get_hydro_map
+
+    return await get_hydro_map(request)
 
 
 async def get_abu_dhabi_flood_scenario(request: Request) -> JSONResponse:
@@ -328,7 +391,9 @@ async def train_abu_dhabi_gwm(request: Request) -> JSONResponse:
     except ValueError as error:
         return JSONResponse({"error": str(error)}, status_code=409)
     except Exception as error:
-        return JSONResponse({"error": "gwm_train_failed", "detail": str(error)[:500]}, status_code=500)
+        return JSONResponse(
+            {"error": "gwm_train_failed", "detail": str(error)[:500]}, status_code=500
+        )
 
 
 async def run_abu_dhabi_gwm(request: Request) -> JSONResponse:
@@ -347,7 +412,9 @@ async def run_abu_dhabi_gwm(request: Request) -> JSONResponse:
     except ValueError as error:
         return JSONResponse({"error": str(error)}, status_code=409)
     except Exception as error:
-        return JSONResponse({"error": "gwm_rollout_failed", "detail": str(error)[:500]}, status_code=500)
+        return JSONResponse(
+            {"error": "gwm_rollout_failed", "detail": str(error)[:500]}, status_code=500
+        )
 
 
 async def get_latest_abu_dhabi_gwm_run(request: Request) -> JSONResponse:
@@ -433,7 +500,9 @@ async def get_abu_dhabi_trained_gwm_events(request: Request) -> JSONResponse:
     except ValueError as error:
         return JSONResponse({"error": str(error)}, status_code=409)
     except Exception as error:
-        return JSONResponse({"error": "trained_gwm_events_failed", "detail": str(error)[:500]}, status_code=500)
+        return JSONResponse(
+            {"error": "trained_gwm_events_failed", "detail": str(error)[:500]}, status_code=500
+        )
 
 
 async def create_abu_dhabi_trained_gwm_rollout(request: Request) -> JSONResponse:
@@ -454,7 +523,9 @@ async def create_abu_dhabi_trained_gwm_rollout(request: Request) -> JSONResponse
     except ValueError as error:
         return JSONResponse({"error": str(error)}, status_code=409)
     except Exception as error:
-        return JSONResponse({"error": "trained_gwm_rollout_failed", "detail": str(error)[:500]}, status_code=500)
+        return JSONResponse(
+            {"error": "trained_gwm_rollout_failed", "detail": str(error)[:500]}, status_code=500
+        )
 
 
 async def create_abu_dhabi_trained_gwm_rainfall_scenario(request: Request) -> JSONResponse:
@@ -542,43 +613,177 @@ async def get_abu_dhabi_trained_gwm_map_timeseries(request: Request) -> JSONResp
     except ValueError as error:
         return JSONResponse({"error": str(error)}, status_code=409)
     except Exception as error:
-        return JSONResponse({"error": "trained_gwm_timeseries_failed", "detail": str(error)[:500]}, status_code=500)
+        return JSONResponse(
+            {"error": "trained_gwm_timeseries_failed", "detail": str(error)[:500]}, status_code=500
+        )
 
 
 def get_abu_dhabi_flood_routes() -> list[Route]:
     return [
-        Route("/api/abu-dhabi/flood/scenarios", endpoint=create_abu_dhabi_flood_scenario, methods=["POST"]),
-        Route("/api/abu-dhabi/flood/scenarios/latest", endpoint=get_latest_abu_dhabi_flood_scenario, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/design-storms/latest", endpoint=get_latest_zone_b_design_storm_batch, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/pipeline-status", endpoint=get_abu_dhabi_flood_pipeline_status, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/scenarios/{run_id}", endpoint=get_abu_dhabi_flood_scenario, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/scenarios/{run_id}/map/bootstrap", endpoint=get_abu_dhabi_flood_scenario_map_bootstrap, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/scenarios/{run_id}/map", endpoint=get_abu_dhabi_flood_scenario_map, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/scenarios/{run_id}/map/timeseries", endpoint=get_abu_dhabi_flood_scenario_map_timeseries, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/dtm-diagnostic/bootstrap", endpoint=get_abu_dhabi_dtm_diagnostic_bootstrap, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/dtm-diagnostic/timeseries", endpoint=get_abu_dhabi_dtm_diagnostic_timeseries, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/public-citywide-2d/bootstrap", endpoint=get_abu_dhabi_public_citywide_2d_bootstrap, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/public-citywide-2d/timeseries", endpoint=get_abu_dhabi_public_citywide_2d_timeseries, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/events/april-2024/evidence", endpoint=get_abu_dhabi_april_2024_event_evidence, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/hotspots/catalog", endpoint=get_abu_dhabi_hotspot_catalog, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/hotspots/map", endpoint=get_abu_dhabi_hotspot_map, methods=["GET"]),
+        Route(
+            "/api/abu-dhabi/flood/scenarios",
+            endpoint=create_abu_dhabi_flood_scenario,
+            methods=["POST"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/hydro-runs", endpoint=create_abu_dhabi_hydro_run, methods=["POST"]
+        ),
+        Route(
+            "/api/abu-dhabi/flood/hydro-runs/{run_id}",
+            endpoint=get_abu_dhabi_hydro_run,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/hydro-runs/{run_id}",
+            endpoint=cancel_abu_dhabi_hydro_run,
+            methods=["DELETE"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/hydro-runs/{run_id}/result",
+            endpoint=get_abu_dhabi_hydro_result,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/hydro-runs/{run_id}/logs",
+            endpoint=get_abu_dhabi_hydro_logs,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/hydro-runs/{run_id}/map",
+            endpoint=get_abu_dhabi_hydro_map,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/scenarios/latest",
+            endpoint=get_latest_abu_dhabi_flood_scenario,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/design-storms/latest",
+            endpoint=get_latest_zone_b_design_storm_batch,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/pipeline-status",
+            endpoint=get_abu_dhabi_flood_pipeline_status,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/scenarios/{run_id}",
+            endpoint=get_abu_dhabi_flood_scenario,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/scenarios/{run_id}/map/bootstrap",
+            endpoint=get_abu_dhabi_flood_scenario_map_bootstrap,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/scenarios/{run_id}/map",
+            endpoint=get_abu_dhabi_flood_scenario_map,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/scenarios/{run_id}/map/timeseries",
+            endpoint=get_abu_dhabi_flood_scenario_map_timeseries,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/dtm-diagnostic/bootstrap",
+            endpoint=get_abu_dhabi_dtm_diagnostic_bootstrap,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/dtm-diagnostic/timeseries",
+            endpoint=get_abu_dhabi_dtm_diagnostic_timeseries,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/public-citywide-2d/bootstrap",
+            endpoint=get_abu_dhabi_public_citywide_2d_bootstrap,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/public-citywide-2d/timeseries",
+            endpoint=get_abu_dhabi_public_citywide_2d_timeseries,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/events/april-2024/evidence",
+            endpoint=get_abu_dhabi_april_2024_event_evidence,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/hotspots/catalog",
+            endpoint=get_abu_dhabi_hotspot_catalog,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/hotspots/map", endpoint=get_abu_dhabi_hotspot_map, methods=["GET"]
+        ),
         Route(
             "/api/abu-dhabi/flood/gwm/external-validation",
             endpoint=get_abu_dhabi_gwm_external_validation,
             methods=["GET"],
         ),
-        Route("/api/abu-dhabi/flood/validation/report", endpoint=get_abu_dhabi_phase5_delivery_report, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/gwm/status", endpoint=get_abu_dhabi_gwm_status, methods=["GET"]),
+        Route(
+            "/api/abu-dhabi/flood/validation/report",
+            endpoint=get_abu_dhabi_phase5_delivery_report,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/gwm/status", endpoint=get_abu_dhabi_gwm_status, methods=["GET"]
+        ),
         Route("/api/abu-dhabi/flood/gwm/train", endpoint=train_abu_dhabi_gwm, methods=["POST"]),
         Route("/api/abu-dhabi/flood/gwm/rollout", endpoint=run_abu_dhabi_gwm, methods=["POST"]),
-        Route("/api/abu-dhabi/flood/gwm/latest", endpoint=get_latest_abu_dhabi_gwm_run, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/gwm/runs/{run_id}", endpoint=get_abu_dhabi_gwm_run, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/gwm/runs/{run_id}/map/bootstrap", endpoint=get_abu_dhabi_gwm_bootstrap, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/gwm/runs/{run_id}/timeseries", endpoint=get_abu_dhabi_gwm_timeseries, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/gwm/trained/events", endpoint=get_abu_dhabi_trained_gwm_events, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/gwm/trained/rollout", endpoint=create_abu_dhabi_trained_gwm_rollout, methods=["POST"]),
-        Route("/api/abu-dhabi/flood/gwm/trained/rainfall-scenarios", endpoint=create_abu_dhabi_trained_gwm_rainfall_scenario, methods=["POST"]),
-        Route("/api/abu-dhabi/flood/gwm/trained/runs/{run_id}", endpoint=get_abu_dhabi_trained_gwm_run, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/gwm/trained/runs/{run_id}/map", endpoint=get_abu_dhabi_trained_gwm_map, methods=["GET"]),
-        Route("/api/abu-dhabi/flood/gwm/trained/runs/{run_id}/map/timeseries", endpoint=get_abu_dhabi_trained_gwm_map_timeseries, methods=["GET"]),
+        Route(
+            "/api/abu-dhabi/flood/gwm/latest",
+            endpoint=get_latest_abu_dhabi_gwm_run,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/gwm/runs/{run_id}",
+            endpoint=get_abu_dhabi_gwm_run,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/gwm/runs/{run_id}/map/bootstrap",
+            endpoint=get_abu_dhabi_gwm_bootstrap,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/gwm/runs/{run_id}/timeseries",
+            endpoint=get_abu_dhabi_gwm_timeseries,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/gwm/trained/events",
+            endpoint=get_abu_dhabi_trained_gwm_events,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/gwm/trained/rollout",
+            endpoint=create_abu_dhabi_trained_gwm_rollout,
+            methods=["POST"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/gwm/trained/rainfall-scenarios",
+            endpoint=create_abu_dhabi_trained_gwm_rainfall_scenario,
+            methods=["POST"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/gwm/trained/runs/{run_id}",
+            endpoint=get_abu_dhabi_trained_gwm_run,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/gwm/trained/runs/{run_id}/map",
+            endpoint=get_abu_dhabi_trained_gwm_map,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/gwm/trained/runs/{run_id}/map/timeseries",
+            endpoint=get_abu_dhabi_trained_gwm_map_timeseries,
+            methods=["GET"],
+        ),
     ]

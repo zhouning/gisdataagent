@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hydro-api
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hydro-worker
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: hydro-api
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: hydro-api
+subjects:
+  - kind: ServiceAccount
+    name: hydro-api
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: hydro-api

@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gis-agent-hydro-dev
+resources:
+  - namespace.yaml
+  - storage.yaml
+  - rbac.yaml
+  - deployment.yaml
+  - service.yaml
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/part-of: abu-dhabi-hydro-workbench
+      app.kubernetes.io/managed-by: kustomize
