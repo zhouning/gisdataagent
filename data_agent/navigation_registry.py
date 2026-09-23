@@ -94,91 +94,175 @@ _GROUPS: list[dict[str, Any]] = [
 
 
 _ITEMS = (
-    _items("data", "browse", [
-        ("files", "文件", "folder"), ("table", "表格", "table"),
-        ("geojson", "GeoJSON", "map-pin"), ("topology", "拓扑", "network"),
-    ])
-    + _items("data", "assets", [
-        ("catalog", "资产", "database"), ("models", "数据模型", "layout-grid"),
-        ("metadata", "元数据", "tag"),
-    ])
-    + _items("data", "ingest", [
-        ("vsources", "数据源", "link"), ("intake", "接入", "inbox"),
-        ("offline_ingest", "离线入湖", "upload"),
-    ])
-    + _items("semantic", "standards", [
-        ("standards", "领域标准", "database"), ("std_platform", "数据标准", "file-text"),
-    ])
-    + _items("semantic", "models", [
-        ("semantic", "语义层", "tags"), ("ontology", "本体模型", "network"),
-        ("ontology_demo", "本体应用", "sparkles"),
-    ])
-    + _items("semantic", "governance", [
-        ("classification", "分级", "shield"), ("governance", "治理", "shield"),
-        ("approvals", "审批中心", "inbox"),
-    ])
-    + _items("analysis", "general", [
-        ("capabilities", "能力", "zap"), ("tools", "工具", "wrench"),
-        ("gis_workflow", "空间工作流", "git-branch"),
-        ("charts", "图表", "bar-chart"), ("causal", "因果推理", "flask"),
-        ("optimization", "优化", "target"), ("fusion_quality", "融合质量", "git-branch"),
-    ])
-    + _items("analysis", "domain", [
-        ("traditional_livability", "城市宜居性分析（传统方法）", "bar-chart"),
-        ("cultural_heritage", "文化遗产与场所", "map-pin"),
-        ("cross_domain_impact", "跨领域影响与优先级", "git-branch"),
-        ("implementation_roadmap", "建议与实施路线图", "list-todo"),
-        ("resilience_kernel", "韧性世界模型", "shield"),
-        ("digital_readiness", "数字资产与智慧片区", "database"),
-        ("operations_quality", "运维与服务质量", "activity"),
-        ("business_licence", "企业执照与经济活动", "store"),
-        ("development_control", "开发控制规则", "shield"),
-        ("financial_readiness", "财务与投资证据", "bar-chart"),
-        ("public_feedback_readiness", "公众反馈证据", "thumbs-up"),
-        ("spatial_scope_registry", "空间范围注册", "map-pin"),
-        ("planning_version_registry", "规划与地块版本", "file-text"),
-        ("parcel_state_readiness", "用地与地块状态", "map-pin"),
-        ("infrastructure_network_readiness", "基础设施与市政管网", "network"),
-        ("asset_lifecycle_readiness", "资产生命周期", "wrench"),
-        ("population_demographic_readiness", "人口与人口结构", "pie-chart"),
-        ("population_housing_optimization", "人口住房配置", "home"),
-        ("ai_demand_readiness", "AI应用需求矩阵", "clipboard-check"),
-    ])
-    + _items("analysis", "world_models", [
-        ("abu_dhabi_flood_world_model", "阿布扎比 · 暴雨内涝世界模型", "droplets"),
-        ("abu_dhabi_flood_world_model_v11", "阿布扎比 · 暴雨内涝模型参数透明化 V1.1", "sliders-horizontal"),
-        ("worldmodel", "世界模型", "globe"),
-        ("worldmodel_v11", "世界模型v1.1 · Paper58（阿布扎比）", "globe"),
-        ("worldmodel_v2", "世界模型v2", "globe"), ("worldmodel_v21", "世界模型v2.1", "globe"),
-        ("irrigation_demo", "灌区世界模型", "droplets"),
-        ("twm", "TWM", "shield"), ("uwm_livability", "城市宜居性分析（UWM）", "brain"),
-        ("uwm_multistage", "UWM多阶段城市干预规划", "git-branch"),
-    ])
-    + _items("analysis", "regional", [
-        ("abu_land_use_compare", "阿布扎比 · 三模型对比", "bar-chart"),
-        ("abu_flus", "阿布扎比 · GeoSOS-FLUS", "layout-grid"),
-        ("abu_kernel", "阿布扎比 · Geospatial Kernel", "network"),
-    ])
-    + _items("ops", "tasks", [
-        ("tasks", "任务", "list-todo"), ("workflows", "工作流", "git-branch"),
-        ("templates", "模板", "file-text"),
-    ])
-    + _items("ops", "monitoring", [
-        ("history", "历史", "history"), ("agent_logs", "运行日志", "file-text"),
-        ("alerts", "告警", "bell"), ("observability", "追踪", "activity"),
-        ("messagebus", "消息总线", "radio"),
-    ])
-    + _items("ops", "quality", [
-        ("qcmonitor", "质检", "clipboard-check"), ("usage", "用量", "gauge"),
-        ("analytics", "分析", "pie-chart"), ("feedback", "反馈", "thumbs-up"),
-    ])
-    + _items("extensions", "agent", [
-        ("agents", "智能体", "network"), ("kb", "知识库", "book-open"),
-        ("memory", "记忆", "brain"), ("suggestions", "建议", "lightbulb"),
-    ])
-    + _items("extensions", "market", [
-        ("market", "市场", "store"),
-    ])
+    _items(
+        "data",
+        "browse",
+        [
+            ("files", "文件", "folder"),
+            ("table", "表格", "table"),
+            ("geojson", "GeoJSON", "map-pin"),
+            ("topology", "拓扑", "network"),
+        ],
+    )
+    + _items(
+        "data",
+        "assets",
+        [
+            ("catalog", "资产", "database"),
+            ("models", "数据模型", "layout-grid"),
+            ("metadata", "元数据", "tag"),
+        ],
+    )
+    + _items(
+        "data",
+        "ingest",
+        [
+            ("vsources", "数据源", "link"),
+            ("intake", "接入", "inbox"),
+            ("offline_ingest", "离线入湖", "upload"),
+        ],
+    )
+    + _items(
+        "semantic",
+        "standards",
+        [
+            ("standards", "领域标准", "database"),
+            ("std_platform", "数据标准", "file-text"),
+        ],
+    )
+    + _items(
+        "semantic",
+        "models",
+        [
+            ("semantic", "语义层", "tags"),
+            ("ontology", "本体模型", "network"),
+            ("ontology_demo", "本体应用", "sparkles"),
+        ],
+    )
+    + _items(
+        "semantic",
+        "governance",
+        [
+            ("classification", "分级", "shield"),
+            ("governance", "治理", "shield"),
+            ("approvals", "审批中心", "inbox"),
+        ],
+    )
+    + _items(
+        "analysis",
+        "general",
+        [
+            ("capabilities", "能力", "zap"),
+            ("tools", "工具", "wrench"),
+            ("gis_workflow", "空间工作流", "git-branch"),
+            ("charts", "图表", "bar-chart"),
+            ("causal", "因果推理", "flask"),
+            ("optimization", "优化", "target"),
+            ("fusion_quality", "融合质量", "git-branch"),
+        ],
+    )
+    + _items(
+        "analysis",
+        "domain",
+        [
+            ("traditional_livability", "城市宜居性分析（传统方法）", "bar-chart"),
+            ("cultural_heritage", "文化遗产与场所", "map-pin"),
+            ("cross_domain_impact", "跨领域影响与优先级", "git-branch"),
+            ("implementation_roadmap", "建议与实施路线图", "list-todo"),
+            ("resilience_kernel", "韧性世界模型", "shield"),
+            ("digital_readiness", "数字资产与智慧片区", "database"),
+            ("operations_quality", "运维与服务质量", "activity"),
+            ("business_licence", "企业执照与经济活动", "store"),
+            ("development_control", "开发控制规则", "shield"),
+            ("financial_readiness", "财务与投资证据", "bar-chart"),
+            ("public_feedback_readiness", "公众反馈证据", "thumbs-up"),
+            ("spatial_scope_registry", "空间范围注册", "map-pin"),
+            ("planning_version_registry", "规划与地块版本", "file-text"),
+            ("parcel_state_readiness", "用地与地块状态", "map-pin"),
+            ("infrastructure_network_readiness", "基础设施与市政管网", "network"),
+            ("asset_lifecycle_readiness", "资产生命周期", "wrench"),
+            ("population_demographic_readiness", "人口与人口结构", "pie-chart"),
+            ("population_housing_optimization", "人口住房配置", "home"),
+            ("ai_demand_readiness", "AI应用需求矩阵", "clipboard-check"),
+        ],
+    )
+    + _items(
+        "analysis",
+        "world_models",
+        [
+            ("abu_dhabi_flood_world_model", "阿布扎比 · 暴雨内涝世界模型", "droplets"),
+            (
+                "abu_dhabi_flood_world_model_v11",
+                "阿布扎比 · 暴雨内涝模型参数透明化 V1.1",
+                "sliders-horizontal",
+            ),
+            ("abu_dhabi_hydro_workbench", "阿布扎比 · 水动力模型计算工作台", "waves"),
+            ("worldmodel", "世界模型", "globe"),
+            ("worldmodel_v11", "世界模型v1.1 · Paper58（阿布扎比）", "globe"),
+            ("worldmodel_v2", "世界模型v2", "globe"),
+            ("worldmodel_v21", "世界模型v2.1", "globe"),
+            ("irrigation_demo", "灌区世界模型", "droplets"),
+            ("twm", "TWM", "shield"),
+            ("uwm_livability", "城市宜居性分析（UWM）", "brain"),
+            ("uwm_multistage", "UWM多阶段城市干预规划", "git-branch"),
+        ],
+    )
+    + _items(
+        "analysis",
+        "regional",
+        [
+            ("abu_land_use_compare", "阿布扎比 · 三模型对比", "bar-chart"),
+            ("abu_flus", "阿布扎比 · GeoSOS-FLUS", "layout-grid"),
+            ("abu_kernel", "阿布扎比 · Geospatial Kernel", "network"),
+        ],
+    )
+    + _items(
+        "ops",
+        "tasks",
+        [
+            ("tasks", "任务", "list-todo"),
+            ("workflows", "工作流", "git-branch"),
+            ("templates", "模板", "file-text"),
+        ],
+    )
+    + _items(
+        "ops",
+        "monitoring",
+        [
+            ("history", "历史", "history"),
+            ("agent_logs", "运行日志", "file-text"),
+            ("alerts", "告警", "bell"),
+            ("observability", "追踪", "activity"),
+            ("messagebus", "消息总线", "radio"),
+        ],
+    )
+    + _items(
+        "ops",
+        "quality",
+        [
+            ("qcmonitor", "质检", "clipboard-check"),
+            ("usage", "用量", "gauge"),
+            ("analytics", "分析", "pie-chart"),
+            ("feedback", "反馈", "thumbs-up"),
+        ],
+    )
+    + _items(
+        "extensions",
+        "agent",
+        [
+            ("agents", "智能体", "network"),
+            ("kb", "知识库", "book-open"),
+            ("memory", "记忆", "brain"),
+            ("suggestions", "建议", "lightbulb"),
+        ],
+    )
+    + _items(
+        "extensions",
+        "market",
+        [
+            ("market", "市场", "store"),
+        ],
+    )
 )
 
 
@@ -212,16 +296,20 @@ def _policies(scope_type: str, scope_key: str) -> dict[str, dict[str, Any]]:
         return {}
     try:
         with engine.connect() as connection:
-            rows = connection.execute(
-                text(
-                    """
+            rows = (
+                connection.execute(
+                    text(
+                        """
                     SELECT tab_key, visible, group_key, section_key, sort_order
                     FROM app_navigation_policies
                     WHERE scope_type = :scope_type AND scope_key = :scope_key
                     """
-                ),
-                {"scope_type": scope_type, "scope_key": scope_key},
-            ).mappings().all()
+                    ),
+                    {"scope_type": scope_type, "scope_key": scope_key},
+                )
+                .mappings()
+                .all()
+            )
         return {str(row["tab_key"]): dict(row) for row in rows}
     except Exception:
         return {}
@@ -274,14 +362,13 @@ def _group_payload(items: list[dict[str, Any]], *, include_hidden: bool = False)
     groups = []
     for group in sorted(_GROUPS, key=lambda value: value["sort_order"]):
         group_items = [
-            item for item in items
+            item
+            for item in items
             if item["group_key"] == group["key"] and (include_hidden or item.get("visible", True))
         ]
         sections = []
         for section in sorted(group["sections"], key=lambda value: value["sort_order"]):
-            section_items = [
-                item for item in group_items if item["section_key"] == section["key"]
-            ]
+            section_items = [item for item in group_items if item["section_key"] == section["key"]]
             section_items.sort(key=lambda value: (value.get("sort_order", 0), value["label"]))
             if section_items:
                 sections.append({**section, "items": section_items})
@@ -303,9 +390,7 @@ def save_navigation_policies(changes: list[dict[str, Any]], updated_by: str) -> 
     known = {item["tab_key"] for item in _registry_items()}
     group_keys = {group["key"] for group in _GROUPS}
     section_keys = {
-        (group["key"], section["key"])
-        for group in _GROUPS
-        for section in group["sections"]
+        (group["key"], section["key"]) for group in _GROUPS for section in group["sections"]
     }
     prepared: list[dict[str, Any]] = []
     for change in changes:
@@ -333,13 +418,15 @@ def save_navigation_policies(changes: list[dict[str, Any]], updated_by: str) -> 
                 raise ValueError(
                     f"navigation sort_order must be an integer for: {tab_key}"
                 ) from exc
-        prepared.append({
-            "tab_key": tab_key,
-            "visible": visible,
-            "group_key": group_key,
-            "section_key": section_key,
-            "sort_order": sort_order,
-        })
+        prepared.append(
+            {
+                "tab_key": tab_key,
+                "visible": visible,
+                "group_key": group_key,
+                "section_key": section_key,
+                "sort_order": sort_order,
+            }
+        )
     engine = get_engine()
     if engine is None:
         raise RuntimeError("Database not available")

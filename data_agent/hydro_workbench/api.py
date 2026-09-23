@@ -8,7 +8,7 @@ from typing import Any
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse
 
-from .contracts import ManifestValidationError
+from .contracts import ManifestValidationError, build_preflight
 from .coordinator import HydroRunCoordinator
 from .storage import DEFAULT_ROOT, read_json, run_dir
 
@@ -27,6 +27,18 @@ async def create_hydro_run(request: Request) -> JSONResponse:
     except Exception as error:
         return JSONResponse(
             {"error": "hydro_run_submit_failed", "detail": str(error)[:500]}, status_code=503
+        )
+
+
+async def preflight_hydro_run(request: Request) -> JSONResponse:
+    try:
+        payload = await request.json()
+        return JSONResponse(build_preflight(payload))
+    except ManifestValidationError as error:
+        return JSONResponse({"error": "manifest_invalid", "issues": error.issues}, status_code=422)
+    except Exception as error:
+        return JSONResponse(
+            {"error": "hydro_preflight_failed", "detail": str(error)[:500]}, status_code=503
         )
 
 
@@ -99,6 +111,11 @@ def hydro_routes(*, authenticated: bool = False) -> list[Any]:
 
     if not authenticated:
         return [
+            Route(
+                "/api/abu-dhabi/flood/hydro-runs/preflight",
+                preflight_hydro_run,
+                methods=["POST"],
+            ),
             Route("/api/abu-dhabi/flood/hydro-runs", create_hydro_run, methods=["POST"]),
             Route("/api/abu-dhabi/flood/hydro-runs/{run_id}", get_hydro_run, methods=["GET"]),
             Route("/api/abu-dhabi/flood/hydro-runs/{run_id}", cancel_hydro_run, methods=["DELETE"]),

@@ -146,7 +146,7 @@ def _source_record(value: Any, default_format: str, *, fixture: bool) -> dict[st
     return record
 
 
-def build_run_manifest(payload: dict[str, Any]) -> dict[str, Any]:
+def build_run_manifest(payload: dict[str, Any], *, strict_sources: bool = True) -> dict[str, Any]:
     """Validate a user request and return a complete immutable run manifest."""
 
     if not isinstance(payload, dict):
@@ -258,7 +258,7 @@ def build_run_manifest(payload: dict[str, Any]) -> dict[str, Any]:
         "two_d": ["terrain"],
         "coupled_1d_2d": ["network", "terrain"],
     }[model_type]
-    if input_mode == "customer_mount":
+    if input_mode == "customer_mount" and strict_sources:
         missing = [name for name in required_sources if not data_sources[name]["uri"]]
         if missing:
             raise ManifestValidationError(
@@ -357,3 +357,102 @@ def build_run_manifest(payload: dict[str, Any]) -> dict[str, Any]:
 
 def manifest_json(manifest: dict[str, Any]) -> str:
     return json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+
+
+def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return a non-mutating data/parameter readiness report for the UI.
+
+    Preflight intentionally does not create a run directory or a Kubernetes
+    object.  Customer-mounted inputs remain blocked until the ETL adapter has
+    materialised model-native files.
+    """
+
+    manifest = build_run_manifest(payload, strict_sources=False)
+    model_type = str(manifest["request"]["model_type"])
+    required = {
+        "one_d": ["network"],
+        "two_d": ["terrain"],
+        "coupled_1d_2d": ["network", "terrain"],
+    }[model_type]
+    fixture = manifest["request"]["input_mode"] == "development_fixture"
+    checks: list[dict[str, Any]] = [
+        {
+            "key": "aoi",
+            "label": "AOI and model domain",
+            "status": "ready",
+            "detail": "User AOI is valid; model domain includes the configured hydraulic buffer.",
+        },
+        {
+            "key": "parameters",
+            "label": "Core model parameters",
+            "status": "ready",
+            "detail": "Rainfall, duration, grid and coupling values passed contract validation.",
+        },
+    ]
+    if fixture:
+        checks.append(
+            {
+                "key": "model_native_inputs",
+                "label": "Model-native development inputs",
+                "status": "ready",
+                "detail": "Pinned development fixtures are available to the local worker image.",
+            }
+        )
+    else:
+        checks.append(
+            {
+                "key": "customer_etl",
+                "label": "Customer GDB/DTM ETL",
+                "status": "blocked",
+                "detail": (
+                    "Customer references are registered, but the ETL adapter has not yet "
+                    "produced model-ready SWMM INP and ANUGA grid inputs."
+                ),
+            }
+        )
+    source_checks = []
+    for name in required:
+        source = manifest["data_sources"][name]
+        source_checks.append(
+            {
+                "key": name,
+                "label": name,
+                "status": "ready" if fixture else "blocked",
+                "uri": source["uri"],
+                "format": source["format"],
+                "etl_required": source["etl_required"],
+                "detail": (
+                    "Development fixture"
+                    if fixture
+                    else "URI required"
+                    if not source["uri"]
+                    else "Awaiting regional ETL output"
+                ),
+            }
+        )
+    warnings = [
+        (
+            "Results from development fixtures are execution evidence only and are "
+            "not calibrated engineering predictions."
+        )
+    ]
+    if not fixture:
+        warnings.append(
+            "Customer data execution is fail-closed until source validation, field mapping, "
+            "topology checks and model-native export pass."
+        )
+    return {
+        "schema": "gwm.abu_dhabi_flood.hydro_preflight.v1",
+        "status": "ready" if fixture else "blocked",
+        "can_submit": fixture,
+        "manifest_preview": manifest,
+        "checks": checks,
+        "required_sources": source_checks,
+        "warnings": warnings,
+        "resource_estimate": {
+            "profile": manifest["request"]["resource_profile"],
+            "gpu_requested": manifest["request"]["resource_profile"] == "gpu",
+            "two_d_requested_resolution_m": manifest["parameters"]["two_d"]["grid_resolution_m"],
+            "scope": "AOI plus hydraulic buffer",
+        },
+    }

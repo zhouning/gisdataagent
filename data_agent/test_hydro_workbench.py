@@ -7,7 +7,11 @@ from pathlib import Path
 
 import pytest
 
-from data_agent.hydro_workbench.contracts import ManifestValidationError, build_run_manifest
+from data_agent.hydro_workbench.contracts import (
+    ManifestValidationError,
+    build_preflight,
+    build_run_manifest,
+)
 from data_agent.hydro_workbench.coordinator import HydroRunCoordinator
 from data_agent.hydro_workbench.k8s_api import job_manifest
 from data_agent.hydro_workbench.storage import read_manifest, read_status
@@ -140,3 +144,28 @@ def test_coordinator_exposes_bounded_job_logs(tmp_path: Path):
 def test_manifest_is_json_serialisable():
     encoded = json.dumps(build_run_manifest(request()), sort_keys=True)
     assert "hydro_run_manifest.v1" in encoded
+
+
+def test_preflight_is_non_mutating_and_blocks_customer_etl_gap():
+    fixture = build_preflight(request(model_type="two_d"))
+    assert fixture["status"] == "ready"
+    assert fixture["can_submit"] is True
+    assert fixture["required_sources"][0]["status"] == "ready"
+
+    customer = build_preflight(
+        request(
+            model_type="one_d",
+            input_mode="customer_mount",
+            data_sources={"network": {"uri": "nas://hydro/normalized/model.inp"}},
+        )
+    )
+    assert customer["status"] == "blocked"
+    assert customer["can_submit"] is False
+    assert customer["checks"][-1]["key"] == "customer_etl"
+
+
+def test_preflight_reports_missing_customer_uris_without_throwing():
+    report = build_preflight(request(model_type="coupled_1d_2d", input_mode="customer_mount"))
+    assert report["status"] == "blocked"
+    assert report["can_submit"] is False
+    assert {source["detail"] for source in report["required_sources"]} == {"URI required"}

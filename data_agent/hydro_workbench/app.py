@@ -13,6 +13,7 @@ from .api import (
     get_hydro_map,
     get_hydro_result,
     get_hydro_run,
+    preflight_hydro_run,
     workbench_page,
 )
 
@@ -30,6 +31,11 @@ async def health(request):
 routes = [
     Route("/", workbench_page, methods=["GET"]),
     Route("/health", health, methods=["GET"]),
+    Route(
+        "/api/abu-dhabi/flood/hydro-runs/preflight",
+        preflight_hydro_run,
+        methods=["POST"],
+    ),
     Route("/api/abu-dhabi/flood/hydro-runs", create_hydro_run, methods=["POST"]),
     Route("/api/abu-dhabi/flood/hydro-runs/{run_id}", get_hydro_run, methods=["GET"]),
     Route("/api/abu-dhabi/flood/hydro-runs/{run_id}", cancel_hydro_run, methods=["DELETE"]),

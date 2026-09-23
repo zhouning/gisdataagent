@@ -1,0 +1,38 @@
+.abu-hydro-workbench { display: grid; gap: 14px; padding: 18px; color: var(--text); }
+.abu-hydro-hero { display: flex; justify-content: space-between; gap: 18px; padding: 20px; border: 1px solid var(--border); border-radius: 14px; background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 13%, var(--surface)), var(--surface)); }
+.abu-hydro-kicker { color: var(--primary); font-size: 10px; letter-spacing: .14em; font-weight: 700; }
+.abu-hydro-hero h2 { margin: 8px 0 4px; font-size: 24px; }
+.abu-hydro-hero p { margin: 0; color: var(--text-secondary); max-width: 700px; }
+.abu-hydro-hero-status { min-width: 160px; display: grid; align-content: center; justify-items: end; gap: 5px; color: var(--primary); }
+.abu-hydro-hero-status small { color: var(--text-tertiary); }
+.abu-hydro-notice { display: flex; gap: 9px; align-items: flex-start; padding: 11px 14px; border: 1px solid color-mix(in srgb, #f59e0b 45%, var(--border)); border-radius: 10px; background: color-mix(in srgb, #f59e0b 8%, var(--surface)); color: var(--text-secondary); font-size: 12px; }
+.abu-hydro-flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.abu-hydro-flow-step { display: flex; gap: 8px; align-items: center; padding: 10px; border: 1px solid var(--border); border-radius: 9px; color: var(--text-secondary); background: var(--surface); font-size: 12px; }
+.abu-hydro-flow-step svg { color: var(--primary); }
+.abu-hydro-grid, .abu-hydro-results { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr); gap: 14px; }
+.abu-hydro-card { min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.abu-hydro-card-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 13px; }
+.abu-hydro-card-heading h3 { margin: 0; font-size: 15px; }
+.abu-hydro-card-heading svg { color: var(--primary); }
+.abu-hydro-form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.abu-hydro-form-grid label, .abu-hydro-source-grid label { display: grid; gap: 5px; color: var(--text-secondary); font-size: 11px; }
+.abu-hydro-form-grid input, .abu-hydro-form-grid select, .abu-hydro-source-grid input { min-width: 0; padding: 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-elevated); color: var(--text); font-size: 12px; }
+.abu-hydro-subheading { display: flex; align-items: center; gap: 6px; margin: 16px 0 9px; color: var(--text); font-size: 12px; font-weight: 700; }
+.abu-hydro-aoi-grid { grid-template-columns: repeat(4, 1fr); }
+.abu-hydro-source-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.abu-hydro-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px; }
+.abu-hydro-actions button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-elevated); color: var(--text); cursor: pointer; font-size: 12px; }
+.abu-hydro-actions button.primary { border-color: var(--primary); background: var(--primary); color: white; }
+.abu-hydro-actions button:disabled { cursor: not-allowed; opacity: .5; }
+.abu-hydro-empty { padding: 30px 10px; color: var(--text-tertiary); text-align: center; font-size: 12px; }
+.abu-hydro-readiness { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-radius: 8px; font-size: 12px; }
+.abu-hydro-readiness.ready { color: #166534; background: #dcfce7; }.abu-hydro-readiness.blocked { color: #9a3412; background: #ffedd5; }
+.abu-hydro-check-list, .abu-hydro-source-list { display: grid; gap: 8px; margin-top: 12px; }
+.abu-hydro-check { display: flex; gap: 8px; align-items: flex-start; }.abu-hydro-check svg.ok { color: #16a34a; }.abu-hydro-check svg.warn { color: #ea580c; }.abu-hydro-check strong, .abu-hydro-check small { display: block; }.abu-hydro-check strong { font-size: 12px; }.abu-hydro-check small { margin-top: 2px; color: var(--text-secondary); font-size: 11px; }
+.abu-hydro-source-list > div { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; padding-bottom: 7px; border-bottom: 1px solid var(--border); font-size: 11px; }.abu-hydro-source-list small { grid-column: 1 / -1; color: var(--text-tertiary); }.abu-hydro-source-list strong.ready { color: #16a34a; }.abu-hydro-source-list strong.blocked { color: #ea580c; }
+.abu-hydro-warning, .abu-hydro-error { display: flex; gap: 6px; align-items: flex-start; margin: 11px 0 0; color: #9a3412; font-size: 11px; }.abu-hydro-error { color: #b91c1c; }
+.abu-hydro-run-card { display: grid; gap: 4px; }.abu-hydro-state { margin-left: auto; padding: 4px 8px; border-radius: 999px; background: var(--surface-elevated); color: var(--text-secondary); font-size: 11px; }.abu-hydro-state.completed { color: #166534; background: #dcfce7; }.abu-hydro-state.failed { color: #b91c1c; background: #fee2e2; }
+.abu-hydro-run-summary { display: grid; grid-template-columns: 1fr 100px 1fr; gap: 12px; }.abu-hydro-run-summary small, .abu-hydro-run-summary strong { display: block; }.abu-hydro-run-summary small { color: var(--text-tertiary); font-size: 10px; }.abu-hydro-run-summary strong { margin-top: 3px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.abu-hydro-progress { height: 5px; margin-top: 9px; overflow: hidden; border-radius: 5px; background: var(--surface-elevated); }.abu-hydro-progress span { display: block; height: 100%; background: var(--primary); transition: width .3s ease; }
+.abu-hydro-results pre { max-height: 360px; overflow: auto; margin: 0; padding: 10px; border-radius: 8px; background: var(--surface-elevated); color: var(--text-secondary); font-size: 10px; }.abu-hydro-result-map { width: 100%; min-height: 300px; border-radius: 8px; background: linear-gradient(135deg, #e0f2fe, #ecfdf5); }.abu-hydro-result-point { fill: #0f766e; stroke: white; stroke-width: .6; }
+@media (max-width: 900px) { .abu-hydro-grid, .abu-hydro-results { grid-template-columns: 1fr; }.abu-hydro-form-grid { grid-template-columns: repeat(2, 1fr); }.abu-hydro-flow { grid-template-columns: repeat(2, 1fr); } }

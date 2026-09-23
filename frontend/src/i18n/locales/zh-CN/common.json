@@ -536,6 +536,7 @@
     "ai_demand_readiness": "AI应用需求矩阵",
     "abu_dhabi_flood_world_model": "阿布扎比 · 暴雨内涝世界模型",
     "abu_dhabi_flood_world_model_v11": "阿布扎比 · 暴雨内涝模型参数透明化 V1.1",
+    "abu_dhabi_hydro_workbench": "阿布扎比 · 水动力模型计算工作台",
       "abu_land_use_compare": "阿布扎比 · 三模型对比",
       "abu_flus": "阿布扎比 · GeoSOS-FLUS",
       "abu_kernel": "阿布扎比 · Geospatial Kernel",
@@ -3167,6 +3168,30 @@
     "c3CollectRun": "使用同一规则版本和同一依据截面，分别运行 TWM 动作条件预筛与模拟或单纯优化基线。",
     "c3CollectNormalize": "把违法、依据不足和只能复核的原因归一到标准枚举，避免导出原始敏感审查文本。",
     "c3CollectValidate": "先确认 candidate_id 重叠，再比较 Top-K 精度、原因覆盖率和后悔值。"
+  },
+  "hydroWorkbench": {
+    "title": "水动力模型计算工作台",
+    "subtitle": "选择模型可用输入、定义计算区域和参数，并通过 Kubernetes Job 执行计算，实时查看状态与结果。",
+    "heroStatus": "网页化执行",
+    "notice": "客户挂载数据必须先完成 ETL，对 GDB/DTM 进行校验并导出模型原生 SWMM 与 ANUGA 输入后才能计算。",
+    "flowLabel": "水动力模型数据流",
+    "flow": { "data": "源数据", "etl": "ETL 与预检", "solver": "一维 / 二维求解器", "result": "结果与地图" },
+    "configuration": {
+      "title": "运行配置", "model": "模型", "inputMode": "输入模式", "resource": "资源档位",
+      "rainfall": "降雨总量（mm）", "duration": "降雨时长（分钟）", "pattern": "降雨过程类型", "domainBuffer": "水动力缓冲区（m）", "grid": "二维网格（m）",
+      "manning": "曼宁糙率 n", "timestep": "二维时间步长（秒）", "coupling": "耦合方式", "oneD": "一维方法设置", "routing": "汇流方法", "infiltration": "下渗方法", "aoi": "计算区域（AOI 范围）", "sources": "输入数据 URI"
+    },
+    "models": { "coupled": "一维 + 二维耦合", "oneD": "一维 EPA SWMM", "twoD": "二维 ANUGA" },
+    "inputModes": { "fixture": "开发夹具", "customer": "客户数据挂载（需要 ETL）" },
+    "coupling": { "twoWay": "SWMM ↔ ANUGA 双向耦合", "oneWay": "SWMM → ANUGA 单向耦合" },
+    "aoi": { "minLon": "最小经度", "minLat": "最小纬度", "maxLon": "最大经度", "maxLat": "最大纬度" },
+    "sources": { "network": "排水管网", "terrain": "地形 / DTM", "rainfall": "降雨时序", "tide": "潮位 / 边界水位", "outfalls": "出水口", "pumps": "泵站 / SCADA" },
+    "actions": { "preflight": "运行预检", "submit": "提交计算", "working": "处理中…" },
+    "preflight": { "title": "预检与数据就绪性", "empty": "运行预检以检查输入数据和计算参数。", "status": { "ready": "可以提交", "blocked": "已阻止" } },
+    "run": { "title": "计算运行", "id": "运行 ID", "progress": "进度", "message": "消息", "waiting": "尚未提交运行" },
+    "results": { "title": "结果回执", "map": "结果地图预览", "noMap": "暂时没有可用的 GeoJSON 地图结果。" },
+    "statuses": { "idle": "空闲", "queued": "排队中", "running": "运行中", "completed": "已完成", "failed": "失败", "cancelled": "已取消", "submit_failed": "提交失败" },
+    "errors": { "preflight": "预检失败。", "submit": "计算提交失败。", "status": "无法加载运行状态。" }
   },
   "abuDhabiFlood": {
     "title": "城市暴雨内涝世界模型",

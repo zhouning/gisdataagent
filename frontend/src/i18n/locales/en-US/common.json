@@ -536,6 +536,7 @@
     "ai_demand_readiness": "AI use-case demand matrix",
     "abu_dhabi_flood_world_model": "Abu Dhabi · Stormwater flood world model",
     "abu_dhabi_flood_world_model_v11": "Abu Dhabi · Stormwater model parameter transparency V1.1",
+    "abu_dhabi_hydro_workbench": "Abu Dhabi · Hydrodynamic model workbench",
       "abu_land_use_compare": "Abu Dhabi · Three-model comparison",
       "abu_flus": "Abu Dhabi · GeoSOS-FLUS",
       "abu_kernel": "Abu Dhabi · Geospatial Kernel",
@@ -3005,6 +3006,30 @@
     "c3CollectRun": "Using the same rule version and evidence snapshot, run TWM action-conditioned triage and the simulation or optimization-only baseline separately.",
     "c3CollectNormalize": "Normalize illegal, under-evidenced, and review-only reasons to a standard enum to avoid exporting sensitive original review text.",
     "c3CollectValidate": "Confirm candidate_id overlap before comparing Top-K precision, reason coverage, and regret."
+  },
+  "hydroWorkbench": {
+    "title": "Hydrodynamic model calculation workbench",
+    "subtitle": "Select model-ready inputs, define the calculation area and parameters, then run a Kubernetes Job with visible status and results.",
+    "heroStatus": "Web-only execution",
+    "notice": "Customer-mounted data is fail-closed until ETL validates the GDB/DTM sources and exports model-native SWMM and ANUGA inputs.",
+    "flowLabel": "Hydrodynamic model data flow",
+    "flow": { "data": "Source data", "etl": "ETL & preflight", "solver": "1D / 2D solver", "result": "Results & map" },
+    "configuration": {
+      "title": "Run configuration", "model": "Model", "inputMode": "Input mode", "resource": "Resource profile",
+      "rainfall": "Rainfall total (mm)", "duration": "Rainfall duration (min)", "pattern": "Rainfall pattern", "domainBuffer": "Hydraulic buffer (m)", "grid": "2D grid (m)",
+      "manning": "Manning n", "timestep": "2D timestep (s)", "coupling": "Coupling", "oneD": "1D method settings", "routing": "Routing method", "infiltration": "Infiltration method", "aoi": "Calculation area (AOI bbox)", "sources": "Input source URIs"
+    },
+    "models": { "coupled": "1D + 2D coupled", "oneD": "1D EPA SWMM", "twoD": "2D ANUGA" },
+    "inputModes": { "fixture": "Development fixture", "customer": "Customer mount (ETL required)" },
+    "coupling": { "twoWay": "Two-way SWMM ↔ ANUGA", "oneWay": "One-way SWMM → ANUGA" },
+    "aoi": { "minLon": "Min longitude", "minLat": "Min latitude", "maxLon": "Max longitude", "maxLat": "Max latitude" },
+    "sources": { "network": "Drainage network", "terrain": "Terrain / DTM", "rainfall": "Rainfall series", "tide": "Tide / boundary level", "outfalls": "Outfalls", "pumps": "Pumps / SCADA" },
+    "actions": { "preflight": "Run preflight", "submit": "Submit calculation", "working": "Working…" },
+    "preflight": { "title": "Preflight and data readiness", "empty": "Run preflight to inspect inputs and parameters.", "status": { "ready": "Ready to submit", "blocked": "Blocked" } },
+    "run": { "title": "Calculation run", "id": "Run ID", "progress": "Progress", "message": "Message", "waiting": "No run submitted" },
+    "results": { "title": "Result receipt", "map": "Result map preview", "noMap": "No GeoJSON map result available yet." },
+    "statuses": { "idle": "Idle", "queued": "Queued", "running": "Running", "completed": "Completed", "failed": "Failed", "cancelled": "Cancelled", "submit_failed": "Submission failed" },
+    "errors": { "preflight": "Preflight failed.", "submit": "Calculation submission failed.", "status": "Unable to load run status." }
   },
   "abuDhabiFlood": {
     "title": "Abu Dhabi Stormwater Flood World Model",

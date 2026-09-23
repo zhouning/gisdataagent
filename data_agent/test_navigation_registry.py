@@ -16,16 +16,12 @@ def _items(payload):
 
 def test_default_navigation_is_complete_and_unique():
     items = registry._registry_items()
-    assert len(items) == 74
+    assert len(items) == 75
     assert len({item["tab_key"] for item in items}) == len(items)
     assert "abu_dhabi_nl2sql" not in {item["tab_key"] for item in items}
-    offline_ingest = next(
-        item for item in items if item["tab_key"] == "offline_ingest"
-    )
+    offline_ingest = next(item for item in items if item["tab_key"] == "offline_ingest")
     assert offline_ingest["section_key"] == "ingest"
-    irrigation_demo = next(
-        item for item in items if item["tab_key"] == "irrigation_demo"
-    )
+    irrigation_demo = next(item for item in items if item["tab_key"] == "irrigation_demo")
     assert irrigation_demo["section_key"] == "world_models"
     abu_dhabi_flood = next(
         item for item in items if item["tab_key"] == "abu_dhabi_flood_world_model"
@@ -35,6 +31,11 @@ def test_default_navigation_is_complete_and_unique():
         item for item in items if item["tab_key"] == "abu_dhabi_flood_world_model_v11"
     )
     assert abu_dhabi_flood_v11["section_key"] == "world_models"
+    abu_dhabi_hydro_workbench = next(
+        item for item in items if item["tab_key"] == "abu_dhabi_hydro_workbench"
+    )
+    assert abu_dhabi_hydro_workbench["group_key"] == "analysis"
+    assert abu_dhabi_hydro_workbench["section_key"] == "world_models"
 
     with patch.object(registry, "_policies", return_value={}):
         payload = registry.get_effective_navigation()
@@ -42,7 +43,11 @@ def test_default_navigation_is_complete_and_unique():
     grouped = _items(payload)
     assert len(grouped) == len(items)
     assert [group["key"] for group in payload["groups"]] == [
-        "data", "semantic", "analysis", "ops", "extensions"
+        "data",
+        "semantic",
+        "analysis",
+        "ops",
+        "extensions",
     ]
     assert all(item["visible"] for item in grouped)
 
