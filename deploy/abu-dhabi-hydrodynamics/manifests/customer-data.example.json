@@ -4,6 +4,35 @@
   "data_root": "/data/input",
   "artifacts": [
     {
+      "id": "customer_stormwater_gdb_source_archive",
+      "relative_path": "source/DMT_StormWater_AbuDhabi_Processed.gdb.zip",
+      "required_for": ["network_compile", "raw_network_audit"],
+      "size_bytes": 139937474,
+      "sha256": "bc516968a098a10ef5a4cf98dd9277926617bafd60b5e7260c912d185f7ddf7e",
+      "required": false,
+      "customer_restricted": true,
+      "source_format": "Esri FileGDB archive",
+      "layer_contract": [
+        "PIPELINE",
+        "INLET",
+        "CATCHBASIN",
+        "OUTFALL",
+        "SW_NODE",
+        "SW_JUNCTION",
+        "PS_PUMP",
+        "SOAKAWAY",
+        "SW_CAPPEDEND"
+      ],
+      "derives": [
+        "swmm/abu_dhabi_city_full_topology.inp",
+        "swmm/abu_dhabi_city_swmm_node_results.geojson",
+        "coupling/interface_bindings.jsonl.gz",
+        "customer_stormwater_pipelines.private.parquet",
+        "customer_stormwater_nodes.private.parquet",
+        "customer_node_facilities.private.parquet"
+      ]
+    },
+    {
       "id": "full_city_swmm_input",
       "relative_path": "swmm/abu_dhabi_city_full_topology.inp",
       "required_for": ["swmm_citywide", "one_way_swmm_to_anuga", "two_way_swmm_anuga"],
