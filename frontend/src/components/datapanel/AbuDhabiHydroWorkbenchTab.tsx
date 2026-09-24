@@ -61,8 +61,18 @@ interface RegisteredSource {
   sha256?: string;
   crs?: string;
   resolution_m?: number | null;
+  event_id?: string;
+  time_standard?: string;
+  start_time?: string;
+  end_time?: string;
+  total_mm?: number;
+  duration_minutes?: number;
+  peak_interval_mm?: number;
+  evidence_class?: string;
+  calibration_admitted?: boolean;
+  diagnostic_forcing_admitted?: boolean;
 }
-interface SourceDefaultsResponse { sources?: Partial<Record<'network' | 'terrain', RegisteredSource>>; }
+interface SourceDefaultsResponse { sources?: Partial<Record<SourceKey, RegisteredSource>>; }
 interface ParameterReadiness { key: string; value: unknown; source: 'user' | 'system_default' | 'derived'; editable: boolean; }
 interface PreflightResponse {
   status: 'ready' | 'blocked';
@@ -145,7 +155,7 @@ export default function AbuDhabiHydroWorkbenchTab() {
   const [areaOptions, setAreaOptions] = useState<AreaOptionsResponse>({ administrative_units: [], catchments: [] });
   const [areaOptionsState, setAreaOptionsState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [sources, setSources] = useState<Record<SourceKey, string>>({ network: '', terrain: '', rainfall: '', tide: '', outfalls: '', pumps: '' });
-  const [sourceDefaults, setSourceDefaults] = useState<Partial<Record<'network' | 'terrain', RegisteredSource>>>({});
+  const [sourceDefaults, setSourceDefaults] = useState<Partial<Record<SourceKey, RegisteredSource>>>({});
   const [sourceDefaultsState, setSourceDefaultsState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [preflight, setPreflight] = useState<PreflightResponse | null>(null);
@@ -164,13 +174,18 @@ export default function AbuDhabiHydroWorkbenchTab() {
         if (!response.ok) throw new Error(`source defaults: ${response.status}`);
         const data = await response.json() as SourceDefaultsResponse;
         const registered = data.sources || {};
-        const hasRegisteredSource = Boolean(registered.network?.registered || registered.terrain?.registered);
+        const hasRegisteredSource = Boolean(registered.network?.registered || registered.terrain?.registered || registered.rainfall?.registered);
         setSourceDefaults(registered);
         setSources(current => ({
           ...current,
           network: current.network.trim() || (registered.network?.registered ? registered.network.uri : ''),
           terrain: current.terrain.trim() || (registered.terrain?.registered ? registered.terrain.uri : ''),
+          rainfall: current.rainfall.trim() || (registered.rainfall?.registered ? registered.rainfall.uri : ''),
         }));
+        if (registered.rainfall?.registered) {
+          if (typeof registered.rainfall.total_mm === 'number') setRainfallTotal(registered.rainfall.total_mm);
+          if (typeof registered.rainfall.duration_minutes === 'number') setRainfallDuration(registered.rainfall.duration_minutes);
+        }
         setSourceDefaultsState(hasRegisteredSource ? 'ready' : 'unavailable');
       } catch (caught) {
         if (!(caught instanceof DOMException && caught.name === 'AbortError')) setSourceDefaultsState('unavailable');
@@ -214,9 +229,10 @@ export default function AbuDhabiHydroWorkbenchTab() {
 
   const invalidatePreflight = () => { setPreflight(null); if (step === 'preflight' || step === 'results') setStep('parameters'); };
   const markTouched = (key: string) => { setTouched(current => ({ ...current, [key]: true })); invalidatePreflight(); };
+  const rainfallSourceRegistered = Boolean(sourceDefaults.rainfall?.registered && sourceDefaults.rainfall.uri === sources.rainfall);
   const parameterPayload = useMemo(() => ({
-    ...(touched.rainfall_total_mm ? { rainfall_total_mm: rainfallTotal } : {}),
-    ...(touched.rainfall_duration_minutes ? { rainfall_duration_minutes: rainfallDuration } : {}),
+    ...(touched.rainfall_total_mm || rainfallSourceRegistered ? { rainfall_total_mm: rainfallTotal } : {}),
+    ...(touched.rainfall_duration_minutes || rainfallSourceRegistered ? { rainfall_duration_minutes: rainfallDuration } : {}),
     ...(touched.rainfall_pattern ? { rainfall_pattern: rainfallPattern } : {}),
     ...(touched.one_d_routing_method ? { one_d_routing_method: oneDRoutingMethod } : {}),
     ...(touched.one_d_infiltration_method ? { one_d_infiltration_method: oneDInfiltrationMethod } : {}),
@@ -225,7 +241,7 @@ export default function AbuDhabiHydroWorkbenchTab() {
     ...(touched.two_d_timestep_seconds ? { two_d_timestep_seconds: twoDTimestep } : {}),
     ...(touched.domain_buffer_m ? { domain_buffer_m: domainBuffer } : {}),
     ...(touched.coupling_mode ? { coupling_mode: couplingMode } : {}),
-  }), [couplingMode, domainBuffer, gridResolution, manningN, oneDInfiltrationMethod, oneDRoutingMethod, rainfallDuration, rainfallPattern, rainfallTotal, touched, twoDTimestep]);
+  }), [couplingMode, domainBuffer, gridResolution, manningN, oneDInfiltrationMethod, oneDRoutingMethod, rainfallDuration, rainfallPattern, rainfallSourceRegistered, rainfallTotal, touched, twoDTimestep]);
   const payload = useMemo(() => ({
     model_type: modelType, input_mode: inputMode, resource_profile: resourceProfile, ...parameterPayload,
     aoi: aoiGeometry || [aoi.minLon, aoi.minLat, aoi.maxLon, aoi.maxLat],
@@ -235,7 +251,7 @@ export default function AbuDhabiHydroWorkbenchTab() {
       labels: areaSelectionMode === 'administrative' ? (areaOptions.administrative_units || []).filter(item => item.id === selectedAdministrativeId).map(item => item.name) : areaSelectionMode === 'catchment' ? (areaOptions.catchments || []).filter(item => item.id === selectedCatchmentId).map(item => item.name) : [],
     },
     data_sources: Object.fromEntries(sourceKeys.map(key => {
-      const registered = key === 'network' || key === 'terrain' ? sourceDefaults[key] : undefined;
+      const registered = sourceDefaults[key];
       const usesRegisteredSource = Boolean(registered?.registered && registered.uri === sources[key]);
       return [key, {
         uri: sources[key],
@@ -384,10 +400,10 @@ export default function AbuDhabiHydroWorkbenchTab() {
 
   const sourceCard = (key: SourceKey) => {
     const required = requiredSourceKeys.includes(key);
-    const registered = key === 'network' || key === 'terrain' ? sourceDefaults[key] : undefined;
+    const registered = sourceDefaults[key];
     const usesRegisteredSource = Boolean(registered?.registered && registered.uri === sources[key]);
     const sourceAsset = registered?.source_uri || registered?.source_name;
-    const metadata = [registered?.format, formatBytes(registered?.size_bytes), registered?.crs, registered?.resolution_m ? `${registered.resolution_m} m` : ''].filter(Boolean).join(' · ');
+    const metadata = [registered?.format, formatBytes(registered?.size_bytes), registered?.crs, registered?.resolution_m ? `${registered.resolution_m} m` : '', registered?.event_id, registered?.total_mm ? `${registered.total_mm} mm` : '', registered?.duration_minutes ? `${registered.duration_minutes} min` : ''].filter(Boolean).join(' · ');
     return <div key={key} className={`abu-hydro-asset ${required ? 'required' : ''} ${usesRegisteredSource ? 'registered' : ''}`}>
       <div className="abu-hydro-asset-heading"><strong>{tr(`sources.${key}`)}</strong><div className="abu-hydro-asset-badges">{usesRegisteredSource && <span className="abu-hydro-chip registered"><CheckCircle2 size={10} />{tr('data.registered')}</span>}<span className={`abu-hydro-chip ${required ? 'required' : 'optional'}`}>{required ? tr('data.required') : tr('data.optional')}</span></div></div>
       <input aria-label={tr(`sources.${key}`)} placeholder={tr(`sourcePlaceholders.${key}`)} value={sources[key]} onChange={event => updateSource(key, event.target.value)} />

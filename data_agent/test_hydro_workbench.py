@@ -224,6 +224,10 @@ def test_hydro_source_defaults_expose_registered_object_uris(monkeypatch):
     monkeypatch.setenv("HYDRO_NETWORK_SOURCE_URI", "minio://customer-lake/raw/network.gdb.zip")
     monkeypatch.setenv("HYDRO_DEFAULT_TERRAIN_URI", terrain_uri)
     monkeypatch.setenv("HYDRO_DEFAULT_TERRAIN_RESOLUTION_M", "10")
+    rainfall_uri = "minio://customer-lake/hydro/april-2024/openmeteo-hourly.json"
+    monkeypatch.setenv("HYDRO_DEFAULT_RAINFALL_URI", rainfall_uri)
+    monkeypatch.setenv("HYDRO_RAINFALL_TOTAL_MM", "67.8")
+    monkeypatch.setenv("HYDRO_RAINFALL_DURATION_MINUTES", "4320")
 
     payload = hydro_source_defaults_payload()
 
@@ -233,6 +237,11 @@ def test_hydro_source_defaults_expose_registered_object_uris(monkeypatch):
     assert payload["sources"]["terrain"]["uri"] == terrain_uri
     assert payload["sources"]["terrain"]["resolution_m"] == 10
     assert payload["sources"]["terrain"]["registered"] is True
+    assert payload["sources"]["rainfall"]["uri"] == rainfall_uri
+    assert payload["sources"]["rainfall"]["total_mm"] == 67.8
+    assert payload["sources"]["rainfall"]["duration_minutes"] == 4320
+    assert payload["sources"]["rainfall"]["diagnostic_forcing_admitted"] is True
+    assert payload["sources"]["rainfall"]["calibration_admitted"] is False
 
 
 def test_hydro_source_defaults_route_is_mounted_in_frontend_api():
