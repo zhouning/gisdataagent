@@ -244,6 +244,10 @@ export default function AbuDhabiHydroWorkbenchTab() {
   }), [couplingMode, domainBuffer, gridResolution, manningN, oneDInfiltrationMethod, oneDRoutingMethod, rainfallDuration, rainfallPattern, rainfallSourceRegistered, rainfallTotal, touched, twoDTimestep]);
   const payload = useMemo(() => ({
     model_type: modelType, input_mode: inputMode, resource_profile: resourceProfile, ...parameterPayload,
+    parameter_source_hints: {
+      ...(rainfallSourceRegistered && !touched.rainfall_total_mm ? { rainfall_total_mm: 'registered_dataset' } : {}),
+      ...(rainfallSourceRegistered && !touched.rainfall_duration_minutes ? { rainfall_duration_minutes: 'registered_dataset' } : {}),
+    },
     aoi: aoiGeometry || [aoi.minLon, aoi.minLat, aoi.maxLon, aoi.maxLat],
     area_selection: {
       mode: areaSelectionMode,
@@ -261,7 +265,7 @@ export default function AbuDhabiHydroWorkbenchTab() {
         etl_required: usesRegisteredSource ? registered?.etl_required : true,
       }];
     })),
-  }), [aoi, aoiGeometry, areaOptions, areaSelectionMode, inputMode, modelType, parameterPayload, resourceProfile, selectedAdministrativeId, selectedCatchmentId, sourceDefaults, sources]);
+  }), [aoi, aoiGeometry, areaOptions, areaSelectionMode, inputMode, modelType, parameterPayload, rainfallSourceRegistered, resourceProfile, selectedAdministrativeId, selectedCatchmentId, sourceDefaults, sources, touched]);
   const requiredSourceKeys = useMemo<SourceKey[]>(() => modelType === 'one_d' ? ['network'] : modelType === 'two_d' ? ['terrain'] : ['network', 'terrain'], [modelType]);
   const aoiError = useMemo(() => {
     if (areaSelectionMode === 'administrative' && !selectedAdministrativeId) return tr('area.selectionRequired');
@@ -411,7 +415,11 @@ export default function AbuDhabiHydroWorkbenchTab() {
       {usesRegisteredSource && registered && <div className="abu-hydro-source-lineage"><div><span>{tr('data.modelInput')}</span><code title={registered.uri}>{registered.uri}</code></div>{sourceAsset && <div><span>{tr('data.sourceAsset')}</span><code title={sourceAsset}>{sourceAsset}</code></div>}<small>{metadata}{registered.sha256 ? ` · SHA-256 ${registered.sha256.slice(0, 12)}…` : ''}</small></div>}
     </div>;
   };
-  const provenance = (key: string) => touched[key] ? tr('parameterSource.user') : tr('parameterSource.default');
+  const provenance = (key: string) => {
+    if (touched[key]) return tr('parameterSource.user');
+    if (rainfallSourceRegistered && (key === 'rainfall_total_mm' || key === 'rainfall_duration_minutes')) return tr('parameterSource.derived');
+    return tr('parameterSource.default');
+  };
 
   return <div className="abu-hydro-workbench">
     <section className="abu-hydro-hero"><div><span className="abu-hydro-kicker">ABU DHABI / HYDRODYNAMIC MODEL WORKBENCH</span><h2>{tr('title')}</h2><p>{tr('subtitle')}</p></div><div className="abu-hydro-hero-status"><ServerCog size={18} /><strong>{tr(`statuses.${runState}`)}</strong><small>{tr('heroStatus')}</small></div></section>

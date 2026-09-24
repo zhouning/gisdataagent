@@ -51,6 +51,32 @@ def test_manifest_separates_aoi_model_domain_and_display_extent():
     assert len(manifest["immutability"]["sha256"]) == 64
 
 
+def test_manifest_accepts_april_2024_event_duration_and_marks_registered_values_derived():
+    manifest = build_run_manifest(
+        request(
+            rainfall_total_mm=67.8,
+            rainfall_duration_minutes=4_320,
+            parameter_source_hints={
+                "rainfall_total_mm": "registered_dataset",
+                "rainfall_duration_minutes": "registered_dataset",
+            },
+            data_sources={
+                "rainfall": {
+                    "uri": "minio://customer-lake/hydro/april-2024/openmeteo-hourly.json",
+                    "format": "Open-Meteo JSON hourly time series",
+                    "version": "uae-april-2024-event-v1",
+                    "provided_by_customer": False,
+                    "etl_required": False,
+                }
+            },
+        )
+    )
+
+    assert manifest["parameters"]["rainfall"]["duration_minutes"] == 4_320
+    assert manifest["parameter_provenance"]["rainfall.total_mm"] == "derived"
+    assert manifest["parameter_provenance"]["rainfall.duration_minutes"] == "derived"
+
+
 def test_manifest_preserves_polygon_aoi_and_selection_metadata():
     polygon = {
         "type": "Polygon",

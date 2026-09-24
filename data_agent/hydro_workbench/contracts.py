@@ -26,6 +26,7 @@ ONE_D_ROUTING_METHODS = {"KINWAVE", "DYNWAVE", "STEADY"}
 ONE_D_INFILTRATION_METHODS = {"HORTON", "GREEN_AMPT", "CURVE_NUMBER"}
 SUPPORTED_SOURCE_SCHEMES = {"file", "http", "https", "minio", "nas", "nfs", "s3", "oci"}
 DEFAULT_MAX_TWO_D_CELLS = 50_000_000
+MAX_RAINFALL_DURATION_MINUTES = 7 * 24 * 60
 DEFAULTS: dict[str, Any] = {
     "rainfall_total_mm": 50.0,
     "rainfall_duration_minutes": 60,
@@ -301,7 +302,7 @@ def build_run_manifest(payload: dict[str, Any], *, strict_sources: bool = True) 
         payload.get("rainfall_duration_minutes", DEFAULTS["rainfall_duration_minutes"]),
         "rainfall_duration_minutes",
         1,
-        1_440,
+        MAX_RAINFALL_DURATION_MINUTES,
         issues,
     )
     rainfall_pattern = str(
@@ -435,6 +436,23 @@ def build_run_manifest(payload: dict[str, Any], *, strict_sources: bool = True) 
         if issues:
             raise ManifestValidationError(issues)
 
+    source_hints = (
+        payload.get("parameter_source_hints")
+        if isinstance(payload.get("parameter_source_hints"), dict)
+        else {}
+    )
+    rainfall_source_is_model_ready = bool(
+        data_sources["rainfall"]["uri"] and not data_sources["rainfall"]["etl_required"]
+    )
+
+    def rainfall_provenance(provided_key: str) -> str:
+        if (
+            rainfall_source_is_model_ready
+            and source_hints.get(provided_key) == "registered_dataset"
+        ):
+            return "derived"
+        return "user" if provided[provided_key] else "system_default"
+
     area_selection_payload = payload.get("area_selection") if isinstance(payload.get("area_selection"), dict) else {}
     area_selection_mode = str(area_selection_payload.get("mode") or "freehand")
     if area_selection_mode not in AREA_SELECTION_MODES:
@@ -490,10 +508,10 @@ def build_run_manifest(payload: dict[str, Any], *, strict_sources: bool = True) 
             "coupling": {"mode": coupling_mode, "window_seconds": min(600, max(60, timestep))},
         },
         "parameter_provenance": {
-            "rainfall.total_mm": "user" if provided["rainfall_total_mm"] else "system_default",
-            "rainfall.duration_minutes": "user"
-            if provided["rainfall_duration_minutes"]
-            else "system_default",
+            "rainfall.total_mm": rainfall_provenance("rainfall_total_mm"),
+            "rainfall.duration_minutes": rainfall_provenance(
+                "rainfall_duration_minutes"
+            ),
             "rainfall.pattern": "user" if provided["rainfall_pattern"] else "system_default",
             "one_d.routing_method": "user"
             if "one_d_routing_method" in payload
