@@ -4671,7 +4671,19 @@ def get_frontend_api_routes():
     from .api.world_model_routes import get_world_model_routes
     from .api.causal_routes import get_causal_routes
     from .api.causal_world_model_routes import get_causal_world_model_routes
-    from .api.world_model_v11_routes import get_world_model_v11_routes
+    try:
+        from .api.world_model_v11_routes import get_world_model_v11_routes
+    except ModuleNotFoundError as error:
+        if error.name != "data_agent.paper58_runtime":
+            raise
+        logger.warning(
+            "World Model v1.1 runtime routes disabled because the optional "
+            "paper58_runtime package is not installed"
+        )
+
+        def get_world_model_v11_routes():
+            return []
+
     from .api.world_model_v2_routes import get_world_model_v2_routes
     from .api.world_model_v21_routes import get_world_model_v21_routes
     from .api.irrigation_world_model_routes import get_irrigation_world_model_routes

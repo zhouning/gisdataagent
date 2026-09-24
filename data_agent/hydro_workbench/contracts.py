@@ -552,13 +552,29 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
             }
         )
     else:
+        required_sources_are_model_ready = all(
+            manifest["data_sources"][name]["uri"]
+            and not manifest["data_sources"][name]["etl_required"]
+            for name in required
+        )
         checks.append(
             {
-                "key": "customer_etl",
-                "label": "Customer GDB/DTM ETL",
+                "key": (
+                    "customer_runtime_adapter"
+                    if required_sources_are_model_ready
+                    else "customer_etl"
+                ),
+                "label": (
+                    "Customer object-store runtime adapter"
+                    if required_sources_are_model_ready
+                    else "Customer GDB/DTM ETL"
+                ),
                 "status": "blocked",
                 "detail": (
-                    "Customer references are registered, but the ETL adapter has not yet "
+                    "Model-ready customer inputs are registered, but the worker has not yet "
+                    "enabled governed object-store staging and AOI extraction."
+                    if required_sources_are_model_ready
+                    else "Customer references are registered, but regional ETL has not yet "
                     "produced model-ready SWMM INP and ANUGA grid inputs."
                 ),
             }
@@ -571,18 +587,31 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
         if fixture and fixture_enabled:
             status = "ready"
             detail = "Development fixture"
+            detail_code = "development_fixture"
         elif is_required and not source["uri"]:
             status = "blocked"
             detail = "URI required"
-        elif is_required:
+            detail_code = "uri_required"
+        elif is_required and source["etl_required"]:
             status = "blocked"
             detail = "Awaiting regional ETL output"
-        elif source["uri"]:
+            detail_code = "awaiting_etl"
+        elif is_required:
+            status = "ready"
+            detail = "Model-ready customer URI registered"
+            detail_code = "model_ready"
+        elif source["uri"] and source["etl_required"]:
             status = "blocked"
             detail = "Registered but not yet validated by ETL"
+            detail_code = "registered_needs_etl"
+        elif source["uri"]:
+            status = "ready"
+            detail = "Model-ready optional customer URI registered"
+            detail_code = "model_ready_optional"
         else:
             status = "optional"
             detail = "Optional for the selected model"
+            detail_code = "optional"
         source_checks.append(
             {
                 "key": name,
@@ -595,6 +624,7 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
                 "provided_by_customer": source["provided_by_customer"],
                 "etl_required": source["etl_required"],
                 "detail": detail,
+                "detail_code": detail_code,
             }
         )
     required_source_checks = [source for source in source_checks if source["required"]]
@@ -629,17 +659,35 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
             }
         )
     warnings: list[str] = []
+    warning_codes: list[str] = []
     if fixture and fixture_enabled:
         warnings.append(
             "Results from development fixtures are execution evidence only and are "
             "not calibrated engineering predictions."
         )
+        warning_codes.append("fixture_evidence_only")
     elif fixture:
         warnings.append("Development fixture execution is disabled in this environment.")
+        warning_codes.append("fixture_disabled")
     else:
+        required_sources_are_model_ready = all(
+            manifest["data_sources"][name]["uri"]
+            and not manifest["data_sources"][name]["etl_required"]
+            for name in required
+        )
         warnings.append(
-            "Customer data execution is fail-closed until source validation, field mapping, "
-            "topology checks and model-native export pass."
+            (
+                "Customer data execution remains fail-closed until governed object-store "
+                "staging, AOI extraction and solver input verification are enabled."
+                if required_sources_are_model_ready
+                else "Customer data execution is fail-closed until source validation, field "
+                "mapping, topology checks and model-native export pass."
+            )
+        )
+        warning_codes.append(
+            "customer_runtime_adapter"
+            if required_sources_are_model_ready
+            else "customer_etl"
         )
     return {
         "schema": "gwm.abu_dhabi_flood.hydro_preflight.v1",
@@ -651,6 +699,7 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
         "sources": source_checks,
         "parameter_readiness": parameter_readiness,
         "warnings": warnings,
+        "warning_codes": warning_codes,
         "resource_estimate": {
             "profile": manifest["request"]["resource_profile"],
             "gpu_requested": gpu_requested,

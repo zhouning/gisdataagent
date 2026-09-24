@@ -50,3 +50,22 @@ data:
   # Docker Desktop is the explicit development/test overlay. Production
   # overlays must omit this flag (the backend defaults to false).
   HYDRO_ALLOW_DEVELOPMENT_FIXTURES: "true"
+  # Real customer assets registered in the in-cluster MinIO lakehouse. The UI
+  # receives these credential-free URIs from the authenticated defaults API.
+  HYDRO_DEFAULT_NETWORK_URI: "minio://gis-agent-lakehouse/hydro/abu-dhabi/customer-data/v1/model-ready/network/abu_dhabi_city_full_topology.inp"
+  HYDRO_DEFAULT_NETWORK_FORMAT: "SWMM_INP"
+  HYDRO_DEFAULT_NETWORK_VERSION: "customer-data-v1"
+  HYDRO_DEFAULT_NETWORK_SIZE_BYTES: "39679155"
+  HYDRO_DEFAULT_NETWORK_SHA256: "42d47501e6dd14041d7beb55388f996c9913bfd6e13a53c37a97e98dcd57b05e"
+  HYDRO_NETWORK_SOURCE_URI: "minio://gis-agent-lakehouse/hydro/abu-dhabi/customer-data/v1/raw/network/DMT_StormWater_AbuDhabi_Processed.gdb.zip"
+  HYDRO_NETWORK_SOURCE_FORMAT: "FILE_GDB_ZIP"
+  HYDRO_NETWORK_SOURCE_NAME: "DMT_StormWater_AbuDhabi_Processed.gdb.zip"
+  HYDRO_DEFAULT_TERRAIN_URI: "minio://gis-agent-lakehouse/hydro/abu-dhabi/customer-data/v1/model-ready/terrain/AUH_DTM_10m_region.tif"
+  HYDRO_DEFAULT_TERRAIN_FORMAT: "GeoTIFF"
+  HYDRO_DEFAULT_TERRAIN_VERSION: "customer-data-v1"
+  HYDRO_DEFAULT_TERRAIN_SIZE_BYTES: "6688625"
+  HYDRO_DEFAULT_TERRAIN_SHA256: "e0df80a9351962de6dad8a5742e31be2883fe5b34d07d55811858ea30b232f75"
+  HYDRO_DEFAULT_TERRAIN_CRS: "EPSG:32640"
+  HYDRO_DEFAULT_TERRAIN_RESOLUTION_M: "10"
+  HYDRO_TERRAIN_SOURCE_FORMAT: "GeoTIFF"
+  HYDRO_TERRAIN_SOURCE_NAME: "AUH_DTM_5m_Z40.TIF"

@@ -51,6 +51,16 @@ async def preflight_abu_dhabi_hydro_run(request: Request) -> JSONResponse:
     return await preflight_hydro_run(request)
 
 
+async def get_abu_dhabi_hydro_source_defaults(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from ..hydro_workbench.api import get_hydro_source_defaults
+
+    return await get_hydro_source_defaults(request)
+
+
 async def get_abu_dhabi_hydro_run(request: Request) -> JSONResponse:
     user = _get_user_from_request(request)
     if not user:
@@ -642,6 +652,11 @@ def get_abu_dhabi_flood_routes() -> list[Route]:
             "/api/abu-dhabi/flood/hydro-runs/preflight",
             endpoint=preflight_abu_dhabi_hydro_run,
             methods=["POST"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/hydro-runs/source-defaults",
+            endpoint=get_abu_dhabi_hydro_source_defaults,
+            methods=["GET"],
         ),
         Route(
             "/api/abu-dhabi/flood/hydro-runs/{run_id}",

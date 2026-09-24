@@ -68,8 +68,9 @@ class HydroRunCoordinator:
                     {
                         "field": "input_mode",
                         "message": (
-                            "customer data execution is fail-closed until the GDB/DTM ETL "
-                            "adapter produces model-ready SWMM INP and ANUGA grid inputs"
+                            "customer data execution is fail-closed until the runtime adapter "
+                            "securely stages registered object-store inputs, extracts the AOI, "
+                            "and verifies solver-native files"
                         ),
                     }
                 ]

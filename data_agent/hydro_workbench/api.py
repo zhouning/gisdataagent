@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,80 @@ from .storage import read_json, run_dir
 
 def _coordinator() -> HydroRunCoordinator:
     return HydroRunCoordinator()
+
+
+def _optional_int_environment(name: str) -> int | None:
+    value = str(os.environ.get(name) or "").strip()
+    if not value:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
+
+
+def hydro_source_defaults_payload() -> dict[str, Any]:
+    """Return deployment-registered, credential-free customer source URIs.
+
+    The browser never receives host filesystem paths or object-store
+    credentials. Deployments register stable object URIs through environment
+    configuration, so the same UI works with MinIO, S3 or NAS-backed assets.
+    """
+
+    network_uri = str(os.environ.get("HYDRO_DEFAULT_NETWORK_URI") or "").strip()
+    terrain_uri = str(os.environ.get("HYDRO_DEFAULT_TERRAIN_URI") or "").strip()
+    sources = {
+        "network": {
+            "uri": network_uri,
+            "format": str(os.environ.get("HYDRO_DEFAULT_NETWORK_FORMAT") or "SWMM_INP"),
+            "version": str(
+                os.environ.get("HYDRO_DEFAULT_NETWORK_VERSION") or "customer-data-v1"
+            ),
+            "provided_by_customer": True,
+            "etl_required": False,
+            "registered": bool(network_uri),
+            "source_uri": str(os.environ.get("HYDRO_NETWORK_SOURCE_URI") or "").strip(),
+            "source_format": str(
+                os.environ.get("HYDRO_NETWORK_SOURCE_FORMAT") or "FILE_GDB_ZIP"
+            ),
+            "source_name": str(
+                os.environ.get("HYDRO_NETWORK_SOURCE_NAME")
+                or "DMT_StormWater_AbuDhabi_Processed.gdb.zip"
+            ),
+            "size_bytes": _optional_int_environment("HYDRO_DEFAULT_NETWORK_SIZE_BYTES"),
+            "sha256": str(os.environ.get("HYDRO_DEFAULT_NETWORK_SHA256") or "").strip(),
+        },
+        "terrain": {
+            "uri": terrain_uri,
+            "format": str(os.environ.get("HYDRO_DEFAULT_TERRAIN_FORMAT") or "GeoTIFF"),
+            "version": str(
+                os.environ.get("HYDRO_DEFAULT_TERRAIN_VERSION") or "customer-data-v1"
+            ),
+            "provided_by_customer": True,
+            "etl_required": False,
+            "registered": bool(terrain_uri),
+            "source_uri": str(os.environ.get("HYDRO_TERRAIN_SOURCE_URI") or "").strip(),
+            "source_format": str(os.environ.get("HYDRO_TERRAIN_SOURCE_FORMAT") or "GeoTIFF"),
+            "source_name": str(
+                os.environ.get("HYDRO_TERRAIN_SOURCE_NAME") or "AUH_DTM_5m_Z40.TIF"
+            ),
+            "size_bytes": _optional_int_environment("HYDRO_DEFAULT_TERRAIN_SIZE_BYTES"),
+            "sha256": str(os.environ.get("HYDRO_DEFAULT_TERRAIN_SHA256") or "").strip(),
+            "crs": str(os.environ.get("HYDRO_DEFAULT_TERRAIN_CRS") or "EPSG:32640"),
+            "resolution_m": _optional_int_environment("HYDRO_DEFAULT_TERRAIN_RESOLUTION_M"),
+        },
+    }
+    return {
+        "schema": "gwm.abu_dhabi_flood.hydro_source_defaults.v1",
+        "dataset_version": "customer-data-v1",
+        "storage_scope": "deployment_object_store",
+        "sources": sources,
+    }
+
+
+async def get_hydro_source_defaults(request: Request) -> JSONResponse:
+    del request
+    return JSONResponse(hydro_source_defaults_payload())
 
 
 async def create_hydro_run(request: Request) -> JSONResponse:
@@ -141,6 +216,11 @@ def hydro_routes(*, authenticated: bool = False) -> list[Any]:
 
     if not authenticated:
         return [
+            Route(
+                "/api/abu-dhabi/flood/hydro-runs/source-defaults",
+                get_hydro_source_defaults,
+                methods=["GET"],
+            ),
             Route(
                 "/api/abu-dhabi/flood/hydro-runs/preflight",
                 preflight_hydro_run,

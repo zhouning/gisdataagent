@@ -18,6 +18,7 @@ from data_agent.hydro_workbench.coordinator import (
     HydroRunStateError,
 )
 from data_agent.hydro_workbench.k8s_api import job_manifest
+from data_agent.hydro_workbench.api import hydro_source_defaults_payload
 from data_agent.hydro_workbench.storage import read_manifest, read_status
 from data_agent.user_context import current_user_id
 
@@ -163,6 +164,32 @@ def test_manifest_is_json_serialisable():
     assert "hydro_run_manifest.v1" in encoded
 
 
+def test_hydro_source_defaults_expose_registered_object_uris(monkeypatch):
+    network_uri = "minio://customer-lake/hydro/network/model.inp"
+    terrain_uri = "minio://customer-lake/hydro/terrain/dtm.tif"
+    monkeypatch.setenv("HYDRO_DEFAULT_NETWORK_URI", network_uri)
+    monkeypatch.setenv("HYDRO_DEFAULT_NETWORK_SIZE_BYTES", "123")
+    monkeypatch.setenv("HYDRO_NETWORK_SOURCE_URI", "minio://customer-lake/raw/network.gdb.zip")
+    monkeypatch.setenv("HYDRO_DEFAULT_TERRAIN_URI", terrain_uri)
+    monkeypatch.setenv("HYDRO_DEFAULT_TERRAIN_RESOLUTION_M", "10")
+
+    payload = hydro_source_defaults_payload()
+
+    assert payload["sources"]["network"]["uri"] == network_uri
+    assert payload["sources"]["network"]["size_bytes"] == 123
+    assert payload["sources"]["network"]["etl_required"] is False
+    assert payload["sources"]["terrain"]["uri"] == terrain_uri
+    assert payload["sources"]["terrain"]["resolution_m"] == 10
+    assert payload["sources"]["terrain"]["registered"] is True
+
+
+def test_hydro_source_defaults_route_is_mounted_in_frontend_api():
+    from data_agent.frontend_api import get_frontend_api_routes
+
+    paths = {getattr(route, "path", "") for route in get_frontend_api_routes()}
+    assert "/api/abu-dhabi/flood/hydro-runs/source-defaults" in paths
+
+
 def test_preflight_is_non_mutating_and_blocks_customer_etl_gap():
     fixture = build_preflight(request(model_type="two_d"))
     assert fixture["status"] == "ready"
@@ -186,6 +213,31 @@ def test_preflight_reports_missing_customer_uris_without_throwing():
     assert report["status"] == "blocked"
     assert report["can_submit"] is False
     assert {source["detail"] for source in report["required_sources"]} == {"URI required"}
+
+
+def test_preflight_distinguishes_registered_model_inputs_from_runtime_adapter_gap():
+    report = build_preflight(
+        request(
+            input_mode="customer_mount",
+            data_sources={
+                "network": {
+                    "uri": "minio://customer-lake/model-ready/network.inp",
+                    "format": "SWMM_INP",
+                    "etl_required": False,
+                },
+                "terrain": {
+                    "uri": "minio://customer-lake/model-ready/dtm.tif",
+                    "format": "GeoTIFF",
+                    "etl_required": False,
+                },
+            },
+        )
+    )
+    assert report["status"] == "blocked"
+    assert report["can_submit"] is False
+    assert report["checks"][-1]["key"] == "customer_runtime_adapter"
+    assert {source["status"] for source in report["required_sources"]} == {"ready"}
+    assert "object-store staging" in report["warnings"][0]
 
 
 def test_customer_mode_is_the_safe_default_and_requires_model_inputs():
