@@ -16,8 +16,10 @@ spec:
       serviceAccountName: hydro-api
       securityContext:
         runAsUser: 10001
-        runAsGroup: 10001
-        fsGroup: 10001
+        # Match the shared hydro-runs group used by solver Jobs. Without this,
+        # the standalone API cannot read the worker's status/result artifacts.
+        runAsGroup: 999
+        fsGroup: 999
       containers:
         - name: api
           image: abu-dhabi-hydrodynamics:workbench-dev
@@ -38,6 +40,8 @@ spec:
               value: abu-dhabi-hydrodynamics:workbench-dev
             - name: HYDRO_GPU_ENABLED
               value: "false"
+            - name: HYDRO_ALLOW_DEVELOPMENT_FIXTURES
+              value: "true"
           volumeMounts:
             - name: hydro-runs
               mountPath: /data/runs

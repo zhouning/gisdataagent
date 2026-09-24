@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from .contracts import manifest_sha256
 from .storage import atomic_json, read_manifest, run_dir, update_status
 
 
@@ -347,6 +348,9 @@ def run(run_id: str) -> None:
     output = run_dir(run_id, root) / "results"
     update_status(run_id, "running", progress=10, root=root, message="worker_started")
     try:
+        expected_hash = str((manifest.get("immutability") or {}).get("sha256") or "")
+        if not expected_hash or expected_hash != manifest_sha256(manifest):
+            raise RuntimeError("manifest_integrity_check_failed")
         model_type = manifest["request"]["model_type"]
         results: dict[str, Any] = {
             "schema": "gwm.abu_dhabi_flood.hydro_run_result.v1",

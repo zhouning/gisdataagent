@@ -33,9 +33,9 @@
 <body>
   <h1>Abu Dhabi Stormwater Hydro Workbench</h1>
   <p>Draw an AOI, set solver parameters, and submit an immutable manifest to a Kubernetes Job.</p>
-  <p class="notice">Local development mode uses model fixtures. Results are execution evidence,
-    not calibrated engineering predictions. The 2D development runner caps its mesh at 32 × 32
-    cells; customer DTM and GDB execution remains disabled until ETL adapters are complete.</p>
+  <p class="notice">Customer data is the safe default. Submission remains blocked until GDB/DTM
+    ETL produces validated SWMM/ANUGA inputs. Development fixtures are available only through
+    the GIS Data Agent developer route and are execution evidence, not engineering predictions.</p>
   <div id="selector" class="map selector">
     <div id="selection" class="selection"></div>
   </div>
@@ -72,8 +72,8 @@
     </label>
     <label>Input mode
       <select name="input_mode">
-        <option value="development_fixture">Development fixture</option>
-        <option value="customer_mount" disabled>Customer mount (after ETL adapter)</option>
+        <option value="customer_mount">Customer mount (ETL required)</option>
+        <option value="development_fixture" disabled>Development fixture (developer route only)</option>
       </select>
     </label>
     <label>Coupling

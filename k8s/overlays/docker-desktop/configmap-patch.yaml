@@ -39,3 +39,14 @@ data:
   PAPER9_FARMLAND_MPC_REPO: "/app/paper9-demo"
   PAPER9_FARMLAND_MPC_DEFAULT_PREPARED_DIR: "/app/paper9-demo/runs/restoration/buchanan_va/prepared_watershed"
   PAPER9_FARMLAND_MPC_DEFAULT_ENSEMBLE_DIR: "/app/paper9-demo/paper/checkpoints/restoration/profiles/buchanan_va/watershed/ensemble_seed0"
+  # The main GIS API creates hydro Jobs in its own namespace for Docker
+  # Desktop smoke runs. Production overlays should point these values at the
+  # dedicated execution namespace and an immutable worker image.
+  HYDRO_RUN_ROOT: "/data/runs"
+  HYDRO_K8S_NAMESPACE: "gis-agent"
+  HYDRO_RUNS_PVC: "hydro-runs"
+  HYDRO_WORKER_IMAGE: "abu-dhabi-hydrodynamics:workbench-dev"
+  HYDRO_GPU_ENABLED: "false"
+  # Docker Desktop is the explicit development/test overlay. Production
+  # overlays must omit this flag (the backend defaults to false).
+  HYDRO_ALLOW_DEVELOPMENT_FIXTURES: "true"

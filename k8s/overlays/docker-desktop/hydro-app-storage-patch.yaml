@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gis-agent-app
+  namespace: gis-agent
+spec:
+  template:
+    spec:
+      securityContext:
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+      volumes:
+        - name: hydro-runs
+          persistentVolumeClaim:
+            claimName: hydro-runs
+      containers:
+        - name: app
+          volumeMounts:
+            - name: hydro-runs
+              mountPath: /data/runs

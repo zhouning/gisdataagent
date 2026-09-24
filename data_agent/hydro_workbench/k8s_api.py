@@ -159,16 +159,36 @@ def job_manifest(
             {"name": "HYDRO_RUN_ROOT", "value": run_root},
             {"name": "ABU_DHABI_HYDRO_RUN_ROOT", "value": run_root},
         ],
-        "volumeMounts": [{"name": "hydro-runs", "mountPath": run_root}],
+        "volumeMounts": [
+            {"name": "hydro-runs", "mountPath": run_root},
+            {"name": "tmp", "mountPath": "/tmp"},
+        ],
         "resources": resources,
-        "securityContext": {"allowPrivilegeEscalation": False, "runAsNonRoot": True},
+        "securityContext": {
+            "seccompProfile": {"type": "RuntimeDefault"},
+            "allowPrivilegeEscalation": False,
+            "capabilities": {"drop": ["ALL"]},
+            "readOnlyRootFilesystem": True,
+            "runAsNonRoot": True,
+        },
     }
     pod_spec: dict[str, Any] = {
         "restartPolicy": "Never",
         "serviceAccountName": "hydro-worker",
-        "securityContext": {"runAsUser": 10001, "runAsGroup": 10001, "fsGroup": 10001},
+        # The GIS API runs as UID 999 while the dedicated solver image runs as
+        # UID 10001.  A shared supplemental group lets both sides exchange
+        # manifests/status/results on the PVC without making artifacts public.
+        "securityContext": {
+            "runAsUser": 10001,
+            "runAsGroup": 999,
+            "fsGroup": 999,
+            "seccompProfile": {"type": "RuntimeDefault"},
+        },
         "containers": [container],
-        "volumes": [{"name": "hydro-runs", "persistentVolumeClaim": {"claimName": pvc_name}}],
+        "volumes": [
+            {"name": "hydro-runs", "persistentVolumeClaim": {"claimName": pvc_name}},
+            {"name": "tmp", "emptyDir": {"sizeLimit": "1Gi"}},
+        ],
     }
     if profile == "gpu":
         pod_spec["nodeSelector"] = {"hydro.gisdataagent.io/gpu": "true"}
@@ -181,11 +201,16 @@ def job_manifest(
             "labels": {
                 "app.kubernetes.io/name": "hydro-run",
                 "hydro.gisdataagent.io/run-id": run_id,
+                "hydro.gisdataagent.io/model-type": str(manifest["request"]["model_type"]),
+                "hydro.gisdataagent.io/input-mode": str(manifest["request"]["input_mode"]),
+                "hydro.gisdataagent.io/resource-profile": str(profile),
             },
         },
         "spec": {
             "backoffLimit": 0,
-            "activeDeadlineSeconds": 7_200,
+            "activeDeadlineSeconds": int(
+                manifest.get("runtime", {}).get("active_deadline_seconds", 7_200)
+            ),
             "ttlSecondsAfterFinished": 3_600,
             "template": {
                 "metadata": {

@@ -10,14 +10,21 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import uuid
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlparse
 
 SCHEMA = "gwm.abu_dhabi_flood.hydro_run_manifest.v1"
 MODEL_TYPES = {"one_d", "two_d", "coupled_1d_2d"}
 RESOURCE_PROFILES = {"cpu_small", "cpu_large", "gpu"}
 INPUT_MODES = {"development_fixture", "customer_mount"}
+RAINFALL_PATTERNS = {"uniform", "alternating_block"}
+ONE_D_ROUTING_METHODS = {"KINWAVE", "DYNWAVE", "STEADY"}
+ONE_D_INFILTRATION_METHODS = {"HORTON", "GREEN_AMPT", "CURVE_NUMBER"}
+SUPPORTED_SOURCE_SCHEMES = {"file", "http", "https", "minio", "nas", "nfs", "s3", "oci"}
+DEFAULT_MAX_TWO_D_CELLS = 50_000_000
 DEFAULTS: dict[str, Any] = {
     "rainfall_total_mm": 50.0,
     "rainfall_duration_minutes": 60,
@@ -30,7 +37,9 @@ DEFAULTS: dict[str, Any] = {
     "coupling_mode": "two_way_swmm_anuga",
     "domain_buffer_m": 500.0,
     "resource_profile": "cpu_small",
-    "input_mode": "development_fixture",
+    # Customer data is the only safe API default. Development fixtures must be
+    # explicitly selected by a local developer session.
+    "input_mode": "customer_mount",
 }
 
 
@@ -146,6 +155,77 @@ def _source_record(value: Any, default_format: str, *, fixture: bool) -> dict[st
     return record
 
 
+def _validate_source_uri(value: str, field: str, issues: list[dict[str, Any]]) -> None:
+    """Reject ambiguous paths before they reach the storage/ETL boundary."""
+
+    if not value:
+        return
+    if len(value) > 2_048:
+        issues.append({"field": field, "message": "URI exceeds 2048 characters"})
+        return
+    parsed = urlparse(value)
+    if parsed.scheme.lower() not in SUPPORTED_SOURCE_SCHEMES:
+        issues.append(
+            {
+                "field": field,
+                "message": f"URI scheme must be one of {sorted(SUPPORTED_SOURCE_SCHEMES)}",
+            }
+        )
+    if not parsed.netloc and not parsed.path:
+        issues.append({"field": field, "message": "URI must include a path or authority"})
+    if parsed.username or parsed.password:
+        issues.append(
+            {
+                "field": field,
+                "message": "URI must not contain embedded credentials; use a workload identity or secret reference",
+            }
+        )
+    if parsed.query or parsed.fragment:
+        issues.append(
+            {
+                "field": field,
+                "message": "URI must not contain query strings or fragments; signed URLs and secrets are not accepted",
+            }
+        )
+
+
+def _estimated_two_d_cells(bbox: list[float], resolution_m: float) -> int:
+    """Estimate the requested surface cells before any ETL or solver starts."""
+
+    min_lon, min_lat, max_lon, max_lat = bbox
+    mid_lat = math.radians((min_lat + max_lat) / 2)
+    width_m = max(0.0, (max_lon - min_lon) * 111_320.0 * max(0.2, math.cos(mid_lat)))
+    height_m = max(0.0, (max_lat - min_lat) * 111_320.0)
+    return max(1, math.ceil(width_m / resolution_m) * math.ceil(height_m / resolution_m))
+
+
+def manifest_sha256(manifest: dict[str, Any]) -> str:
+    """Hash a manifest without including its own mutable digest field."""
+
+    unsigned = json.loads(json.dumps(manifest, ensure_ascii=False))
+    immutability = unsigned.setdefault("immutability", {})
+    immutability.pop("sha256", None)
+    encoded = json.dumps(unsigned, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
+        "utf-8"
+    )
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def seal_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Update the immutable digest after server-owned metadata is attached."""
+
+    manifest.setdefault("immutability", {})["sha256"] = manifest_sha256(manifest)
+    return manifest
+
+
+def _bounded_env_int(name: str, default: int, minimum: int, maximum: int) -> int:
+    try:
+        value = int(os.environ.get(name, str(default)))
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, min(maximum, value))
+
+
 def build_run_manifest(payload: dict[str, Any], *, strict_sources: bool = True) -> dict[str, Any]:
     """Validate a user request and return a complete immutable run manifest."""
 
@@ -189,6 +269,16 @@ def build_run_manifest(payload: dict[str, Any], *, strict_sources: bool = True) 
         1_440,
         issues,
     )
+    rainfall_pattern = str(
+        payload.get("rainfall_pattern") or DEFAULTS["rainfall_pattern"]
+    )
+    if rainfall_pattern not in RAINFALL_PATTERNS:
+        issues.append(
+            {
+                "field": "rainfall_pattern",
+                "message": f"must be one of {sorted(RAINFALL_PATTERNS)}",
+            }
+        )
     grid_resolution = _number(
         payload.get("two_d_grid_resolution_m", DEFAULTS["two_d_grid_resolution_m"]),
         "two_d_grid_resolution_m",
@@ -210,6 +300,43 @@ def build_run_manifest(payload: dict[str, Any], *, strict_sources: bool = True) 
         3_600,
         issues,
     )
+    estimated_two_d_cells = _estimated_two_d_cells(model_domain, grid_resolution)
+    max_two_d_cells = _bounded_env_int(
+        "HYDRO_MAX_TWO_D_CELLS", DEFAULT_MAX_TWO_D_CELLS, 100_000, 2_000_000_000
+    )
+    active_deadline_seconds = _bounded_env_int(
+        "HYDRO_JOB_ACTIVE_DEADLINE_SECONDS", 7_200, 300, 86_400
+    )
+    if model_type in {"two_d", "coupled_1d_2d"} and estimated_two_d_cells > max_two_d_cells:
+        issues.append(
+            {
+                "field": "aoi",
+                "message": (
+                    f"AOI plus hydraulic buffer requests about {estimated_two_d_cells:,} 2D cells; "
+                    f"reduce the area or use a coarser grid (limit {max_two_d_cells:,})"
+                ),
+            }
+        )
+    routing_method = str(
+        payload.get("one_d_routing_method") or DEFAULTS["one_d_routing_method"]
+    )
+    if routing_method not in ONE_D_ROUTING_METHODS:
+        issues.append(
+            {
+                "field": "one_d_routing_method",
+                "message": f"must be one of {sorted(ONE_D_ROUTING_METHODS)}",
+            }
+        )
+    infiltration_method = str(
+        payload.get("one_d_infiltration_method") or DEFAULTS["one_d_infiltration_method"]
+    )
+    if infiltration_method not in ONE_D_INFILTRATION_METHODS:
+        issues.append(
+            {
+                "field": "one_d_infiltration_method",
+                "message": f"must be one of {sorted(ONE_D_INFILTRATION_METHODS)}",
+            }
+        )
     coupling_mode = str(payload.get("coupling_mode") or DEFAULTS["coupling_mode"])
     if coupling_mode not in {"one_way_swmm_to_anuga", "two_way_swmm_anuga"}:
         issues.append({"field": "coupling_mode", "message": "unsupported coupling mode"})
@@ -267,6 +394,11 @@ def build_run_manifest(payload: dict[str, Any], *, strict_sources: bool = True) 
                     for name in missing
                 ]
             )
+    if input_mode == "customer_mount":
+        for name, source in data_sources.items():
+            _validate_source_uri(source["uri"], f"data_sources.{name}.uri", issues)
+        if issues:
+            raise ManifestValidationError(issues)
 
     manifest: dict[str, Any] = {
         "schema": SCHEMA,
@@ -294,15 +426,14 @@ def build_run_manifest(payload: dict[str, Any], *, strict_sources: bool = True) 
             "rainfall": {
                 "total_mm": rainfall_total,
                 "duration_minutes": rainfall_duration,
-                "pattern": str(payload.get("rainfall_pattern") or DEFAULTS["rainfall_pattern"]),
+                "pattern": rainfall_pattern,
             },
             "one_d": {
                 "routing_method": str(
-                    payload.get("one_d_routing_method") or DEFAULTS["one_d_routing_method"]
+                    routing_method
                 ),
                 "infiltration_method": str(
-                    payload.get("one_d_infiltration_method")
-                    or DEFAULTS["one_d_infiltration_method"]
+                    infiltration_method
                 ),
             },
             "two_d": {
@@ -344,15 +475,14 @@ def build_run_manifest(payload: dict[str, Any], *, strict_sources: bool = True) 
             ),
         },
         "runtime": {
-            "namespace": "gis-agent-hydro-dev",
+            "namespace": os.environ.get("HYDRO_K8S_NAMESPACE", "gis-agent-hydro-dev"),
             "job_name": f"hydro-run-{run_id.removeprefix('hydro-')[:36]}",
+            "active_deadline_seconds": active_deadline_seconds,
         },
     }
-    unsigned = json.dumps(
-        manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
-    manifest["immutability"]["sha256"] = hashlib.sha256(unsigned).hexdigest()
-    return manifest
+    manifest["runtime"]["estimated_two_d_cells"] = estimated_two_d_cells
+    manifest["runtime"]["max_two_d_cells"] = max_two_d_cells
+    return seal_manifest(manifest)
 
 
 def manifest_json(manifest: dict[str, Any]) -> str:
@@ -375,6 +505,10 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
         "coupled_1d_2d": ["network", "terrain"],
     }[model_type]
     fixture = manifest["request"]["input_mode"] == "development_fixture"
+    fixture_enabled = os.environ.get("HYDRO_ALLOW_DEVELOPMENT_FIXTURES", "false").lower() == "true"
+    gpu_enabled = os.environ.get("HYDRO_GPU_ENABLED", "false").lower() == "true"
+    gpu_requested = manifest["request"]["resource_profile"] == "gpu"
+    execution_gate_ready = (not fixture or fixture_enabled) and (not gpu_requested or gpu_enabled)
     checks: list[dict[str, Any]] = [
         {
             "key": "aoi",
@@ -388,14 +522,33 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
             "status": "ready",
             "detail": "Rainfall, duration, grid and coupling values passed contract validation.",
         },
+        {
+            "key": "runtime_resources",
+            "label": "Execution resource profile",
+            "status": "ready" if execution_gate_ready else "blocked",
+            "detail": (
+                "Selected resource profile is enabled in this environment."
+                if execution_gate_ready
+                else "The selected execution profile is disabled in this environment."
+            ),
+        },
     ]
-    if fixture:
+    if fixture and fixture_enabled:
         checks.append(
             {
                 "key": "model_native_inputs",
                 "label": "Model-native development inputs",
                 "status": "ready",
                 "detail": "Pinned development fixtures are available to the local worker image.",
+            }
+        )
+    elif fixture:
+        checks.append(
+            {
+                "key": "development_fixture_gate",
+                "label": "Development fixture execution",
+                "status": "blocked",
+                "detail": "Development fixtures are disabled in this environment.",
             }
         )
     else:
@@ -410,49 +563,103 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
                 ),
             }
         )
+    all_source_names = ["network", "terrain", "rainfall", "tide", "outfalls", "pumps"]
     source_checks = []
-    for name in required:
+    for name in all_source_names:
         source = manifest["data_sources"][name]
+        is_required = name in required
+        if fixture and fixture_enabled:
+            status = "ready"
+            detail = "Development fixture"
+        elif is_required and not source["uri"]:
+            status = "blocked"
+            detail = "URI required"
+        elif is_required:
+            status = "blocked"
+            detail = "Awaiting regional ETL output"
+        elif source["uri"]:
+            status = "blocked"
+            detail = "Registered but not yet validated by ETL"
+        else:
+            status = "optional"
+            detail = "Optional for the selected model"
         source_checks.append(
             {
                 "key": name,
                 "label": name,
-                "status": "ready" if fixture else "blocked",
+                "required": is_required,
+                "status": status,
                 "uri": source["uri"],
                 "format": source["format"],
+                "version": source["version"],
+                "provided_by_customer": source["provided_by_customer"],
                 "etl_required": source["etl_required"],
-                "detail": (
-                    "Development fixture"
-                    if fixture
-                    else "URI required"
-                    if not source["uri"]
-                    else "Awaiting regional ETL output"
-                ),
+                "detail": detail,
             }
         )
-    warnings = [
-        (
+    required_source_checks = [source for source in source_checks if source["required"]]
+    active_parameter_keys = {
+        "rainfall.total_mm",
+        "rainfall.duration_minutes",
+        "rainfall.pattern",
+        "area.domain_buffer_m",
+    }
+    if model_type in {"one_d", "coupled_1d_2d"}:
+        active_parameter_keys.update({"one_d.routing_method", "one_d.infiltration_method"})
+    if model_type in {"two_d", "coupled_1d_2d"}:
+        active_parameter_keys.update(
+            {"two_d.grid_resolution_m", "two_d.manning_n", "two_d.timestep_seconds"}
+        )
+    if model_type == "coupled_1d_2d":
+        active_parameter_keys.add("coupling.mode")
+    parameter_readiness = []
+    for key, provenance in manifest["parameter_provenance"].items():
+        if key not in active_parameter_keys:
+            continue
+        group, field = key.split(".", 1)
+        value = manifest["parameters"].get(group, {}).get(field)
+        if group == "area":
+            value = manifest["area"]["model_calculation_domain"]["buffer_m"]
+        parameter_readiness.append(
+            {
+                "key": key,
+                "value": value,
+                "source": provenance,
+                "editable": provenance in {"user", "system_default"},
+            }
+        )
+    warnings: list[str] = []
+    if fixture and fixture_enabled:
+        warnings.append(
             "Results from development fixtures are execution evidence only and are "
             "not calibrated engineering predictions."
         )
-    ]
-    if not fixture:
+    elif fixture:
+        warnings.append("Development fixture execution is disabled in this environment.")
+    else:
         warnings.append(
             "Customer data execution is fail-closed until source validation, field mapping, "
             "topology checks and model-native export pass."
         )
     return {
         "schema": "gwm.abu_dhabi_flood.hydro_preflight.v1",
-        "status": "ready" if fixture else "blocked",
-        "can_submit": fixture,
+        "status": "ready" if execution_gate_ready and fixture else "blocked",
+        "can_submit": execution_gate_ready and fixture,
         "manifest_preview": manifest,
         "checks": checks,
-        "required_sources": source_checks,
+        "required_sources": required_source_checks,
+        "sources": source_checks,
+        "parameter_readiness": parameter_readiness,
         "warnings": warnings,
         "resource_estimate": {
             "profile": manifest["request"]["resource_profile"],
-            "gpu_requested": manifest["request"]["resource_profile"] == "gpu",
+            "gpu_requested": gpu_requested,
+            "gpu_enabled": gpu_enabled,
+            "development_fixture_enabled": fixture_enabled,
             "two_d_requested_resolution_m": manifest["parameters"]["two_d"]["grid_resolution_m"],
+            "estimated_two_d_cells": manifest["runtime"]["estimated_two_d_cells"],
+            "max_two_d_cells": manifest["runtime"]["max_two_d_cells"],
+            "active_deadline_seconds": manifest["runtime"]["active_deadline_seconds"],
             "scope": "AOI plus hydraulic buffer",
         },
     }

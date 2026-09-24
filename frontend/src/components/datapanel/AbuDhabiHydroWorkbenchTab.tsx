@@ -1,14 +1,20 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
   CheckCircle2,
+  CircleAlert,
   CircleDashed,
   CloudRain,
   Database,
+  Download,
   Gauge,
   GitBranch,
+  Info,
   Layers3,
+  MapPinned,
   Play,
   RefreshCw,
   ServerCog,
@@ -21,48 +27,44 @@ import './AbuDhabiHydroWorkbenchTab.css';
 type ModelType = 'one_d' | 'two_d' | 'coupled_1d_2d';
 type InputMode = 'development_fixture' | 'customer_mount';
 type ResourceProfile = 'cpu_small' | 'cpu_large' | 'gpu';
+type StepKey = 'data' | 'area' | 'parameters' | 'preflight' | 'results';
+type SourceKey = 'network' | 'terrain' | 'rainfall' | 'tide' | 'outfalls' | 'pumps';
 
-interface AoiValues {
-  minLon: number;
-  minLat: number;
-  maxLon: number;
-  maxLat: number;
-}
-
-interface FeatureCollection {
-  features?: Array<{ geometry?: { type?: string; coordinates?: unknown }; properties?: Record<string, unknown> }>;
-}
-
+interface AoiValues { minLon: number; minLat: number; maxLon: number; maxLat: number; }
+interface FeatureCollection { features?: Array<{ geometry?: { type?: string; coordinates?: unknown }; properties?: Record<string, unknown> }>; }
+interface SourceCheck { key: SourceKey; label: string; required: boolean; status: 'ready' | 'blocked' | 'optional'; uri: string; format: string; version?: string; detail: string; provided_by_customer?: boolean; }
+interface ParameterReadiness { key: string; value: unknown; source: 'user' | 'system_default' | 'derived'; editable: boolean; }
 interface PreflightResponse {
   status: 'ready' | 'blocked';
   can_submit: boolean;
-  manifest_preview?: {
-    run_id: string;
-    request: { model_type: ModelType; input_mode: InputMode; resource_profile: ResourceProfile };
-    area: { model_calculation_domain: { buffer_m: number } };
-  };
+  manifest_preview?: { run_id: string; request: { model_type: ModelType; input_mode: InputMode; resource_profile: ResourceProfile }; area: { model_calculation_domain: { buffer_m: number; bbox?: number[] } }; parameter_provenance?: Record<string, string> };
   checks: Array<{ key: string; label: string; status: string; detail: string }>;
-  required_sources: Array<{ key: string; status: string; uri: string; format: string; detail: string }>;
+  required_sources: SourceCheck[];
+  sources?: SourceCheck[];
+  parameter_readiness?: ParameterReadiness[];
   warnings: string[];
-};
-
-interface RunRecord {
-  run_id: string;
-  status?: { status?: string; progress?: number; message?: string; error?: string };
-  manifest?: PreflightResponse['manifest_preview'];
 }
+interface RunRecord { run_id: string; status?: { status?: string; progress?: number; message?: string; error?: string }; manifest?: PreflightResponse['manifest_preview']; }
 
 const initialAoi: AoiValues = { minLon: 54.35, minLat: 24.35, maxLon: 54.45, maxLat: 24.45 };
-
-const numberValue = (value: string) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
+const sourceKeys: SourceKey[] = ['network', 'terrain', 'rainfall', 'tide', 'outfalls', 'pumps'];
+const stepKeys: StepKey[] = ['data', 'area', 'parameters', 'preflight', 'results'];
+const numberValue = (value: string) => { const parsed = Number(value); return Number.isFinite(parsed) ? parsed : 0; };
+const sleep = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 export default function AbuDhabiHydroWorkbenchTab() {
   const { t } = useTranslation('common');
+  const tr = (key: string) => String(t(`hydroWorkbench.${key}`));
+  // Development fixtures are intentionally opt-in in every build.  Append
+  // `?hydroDev=1` only in a local developer session; customer deployments do
+  // not expose the fixture selector.
+  // This selector is only discoverable in an explicit developer URL. The
+  // backend environment gate is authoritative and still rejects fixture runs
+  // in every production deployment.
+  const showDevelopmentOptions = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('hydroDev') === '1';
+  const [step, setStep] = useState<StepKey>('data');
   const [modelType, setModelType] = useState<ModelType>('coupled_1d_2d');
-  const [inputMode, setInputMode] = useState<InputMode>('development_fixture');
+  const [inputMode, setInputMode] = useState<InputMode>(showDevelopmentOptions ? 'development_fixture' : 'customer_mount');
   const [resourceProfile, setResourceProfile] = useState<ResourceProfile>('cpu_small');
   const [rainfallTotal, setRainfallTotal] = useState(50);
   const [rainfallDuration, setRainfallDuration] = useState(60);
@@ -75,209 +77,146 @@ export default function AbuDhabiHydroWorkbenchTab() {
   const [domainBuffer, setDomainBuffer] = useState(500);
   const [couplingMode, setCouplingMode] = useState('two_way_swmm_anuga');
   const [aoi, setAoi] = useState(initialAoi);
-  const [networkUri, setNetworkUri] = useState('');
-  const [terrainUri, setTerrainUri] = useState('');
-  const [rainfallUri, setRainfallUri] = useState('');
-  const [tideUri, setTideUri] = useState('');
-  const [outfallsUri, setOutfallsUri] = useState('');
-  const [pumpsUri, setPumpsUri] = useState('');
+  const [sources, setSources] = useState<Record<SourceKey, string>>({ network: '', terrain: '', rainfall: '', tide: '', outfalls: '', pumps: '' });
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [preflight, setPreflight] = useState<PreflightResponse | null>(null);
   const [run, setRun] = useState<RunRecord | null>(null);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [map, setMap] = useState<FeatureCollection | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const stopPollingRef = useRef(false);
 
-  const tr = (key: string) => String(t(`hydroWorkbench.${key}`));
+  const invalidatePreflight = () => { setPreflight(null); if (step === 'preflight' || step === 'results') setStep('parameters'); };
+  const markTouched = (key: string) => { setTouched(current => ({ ...current, [key]: true })); invalidatePreflight(); };
+  const parameterPayload = useMemo(() => ({
+    ...(touched.rainfall_total_mm ? { rainfall_total_mm: rainfallTotal } : {}),
+    ...(touched.rainfall_duration_minutes ? { rainfall_duration_minutes: rainfallDuration } : {}),
+    ...(touched.rainfall_pattern ? { rainfall_pattern: rainfallPattern } : {}),
+    ...(touched.one_d_routing_method ? { one_d_routing_method: oneDRoutingMethod } : {}),
+    ...(touched.one_d_infiltration_method ? { one_d_infiltration_method: oneDInfiltrationMethod } : {}),
+    ...(touched.two_d_grid_resolution_m ? { two_d_grid_resolution_m: gridResolution } : {}),
+    ...(touched.two_d_manning_n ? { two_d_manning_n: manningN } : {}),
+    ...(touched.two_d_timestep_seconds ? { two_d_timestep_seconds: twoDTimestep } : {}),
+    ...(touched.domain_buffer_m ? { domain_buffer_m: domainBuffer } : {}),
+    ...(touched.coupling_mode ? { coupling_mode: couplingMode } : {}),
+  }), [couplingMode, domainBuffer, gridResolution, manningN, oneDInfiltrationMethod, oneDRoutingMethod, rainfallDuration, rainfallPattern, rainfallTotal, touched, twoDTimestep]);
   const payload = useMemo(() => ({
-    model_type: modelType,
-    input_mode: inputMode,
-    resource_profile: resourceProfile,
-    rainfall_total_mm: rainfallTotal,
-    rainfall_duration_minutes: rainfallDuration,
-    rainfall_pattern: rainfallPattern,
-    one_d_routing_method: oneDRoutingMethod,
-    one_d_infiltration_method: oneDInfiltrationMethod,
-    two_d_grid_resolution_m: gridResolution,
-    two_d_manning_n: manningN,
-    two_d_timestep_seconds: twoDTimestep,
-    domain_buffer_m: domainBuffer,
-    coupling_mode: couplingMode,
+    model_type: modelType, input_mode: inputMode, resource_profile: resourceProfile, ...parameterPayload,
     aoi: [aoi.minLon, aoi.minLat, aoi.maxLon, aoi.maxLat],
-    data_sources: {
-      network: { uri: networkUri, format: 'SWMM_INP/GDB' },
-      terrain: { uri: terrainUri, format: 'GeoTIFF/NPZ' },
-      rainfall: { uri: rainfallUri, format: 'CSV/JSON time series' },
-      tide: { uri: tideUri, format: 'CSV/JSON time series' },
-      outfalls: { uri: outfallsUri, format: 'GeoPackage/GeoJSON' },
-      pumps: { uri: pumpsUri, format: 'CSV/GeoPackage' },
-    },
-  }), [aoi, couplingMode, domainBuffer, gridResolution, inputMode, manningN, modelType, networkUri, oneDInfiltrationMethod, oneDRoutingMethod, pumpsUri, rainfallDuration, rainfallPattern, rainfallTotal, rainfallUri, resourceProfile, terrainUri, tideUri, twoDTimestep, outfallsUri]);
-
-  const updateAoi = (key: keyof AoiValues, value: string) => {
-    setAoi(current => ({ ...current, [key]: numberValue(value) }));
-  };
+    data_sources: Object.fromEntries(sourceKeys.map(key => [key, { uri: sources[key], format: key === 'network' ? 'SWMM_INP/GDB' : key === 'terrain' ? 'GeoTIFF/NPZ' : key === 'rainfall' || key === 'tide' ? 'CSV/JSON time series' : key === 'outfalls' ? 'GeoPackage/GeoJSON' : 'CSV/GeoPackage' }])),
+  }), [aoi, inputMode, modelType, parameterPayload, resourceProfile, sources]);
+  const requiredSourceKeys = useMemo<SourceKey[]>(() => modelType === 'one_d' ? ['network'] : modelType === 'two_d' ? ['terrain'] : ['network', 'terrain'], [modelType]);
+  const aoiError = useMemo(() => aoi.minLon >= aoi.maxLon || aoi.minLat >= aoi.maxLat ? tr('area.invalidOrder') : aoi.maxLon - aoi.minLon > 5 || aoi.maxLat - aoi.minLat > 5 ? tr('area.tooLarge') : '', [aoi, tr]);
+  const aoiMetrics = useMemo(() => ({ widthKm: Math.max(0, (aoi.maxLon - aoi.minLon) * 111.32 * Math.cos(((aoi.minLat + aoi.maxLat) / 2) * Math.PI / 180)), heightKm: Math.max(0, (aoi.maxLat - aoi.minLat) * 111.32) }), [aoi]);
+  const updateAoi = (key: keyof AoiValues, value: string) => { setAoi(current => ({ ...current, [key]: numberValue(value) })); invalidatePreflight(); };
+  const updateSource = (key: SourceKey, value: string) => { setSources(current => ({ ...current, [key]: value })); invalidatePreflight(); };
 
   const runPreflight = async () => {
-    setBusy(true);
-    setError('');
+    setBusy(true); setError('');
     try {
-      const response = await fetch('/api/abu-dhabi/flood/hydro-runs/preflight', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch('/api/abu-dhabi/flood/hydro-runs/preflight', { method: 'POST', credentials: 'include', headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const data = await response.json() as PreflightResponse & { error?: string };
       if (!response.ok) throw new Error(data.error || tr('errors.preflight'));
-      setPreflight(data);
-      setRun(null);
-      setResult(null);
-      setMap(null);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : tr('errors.preflight'));
-    } finally {
-      setBusy(false);
-    }
+      setPreflight(data); setRun(null); setResult(null); setMap(null); setStep('preflight');
+    } catch (caught) { setError(caught instanceof Error ? caught.message : tr('errors.preflight')); } finally { setBusy(false); }
   };
-
   const loadRun = async (runId: string) => {
-    const response = await fetch(`/api/abu-dhabi/flood/hydro-runs/${runId}`, {
-      credentials: 'include', headers: getLocaleHeaders(),
-    });
+    const response = await fetch(`/api/abu-dhabi/flood/hydro-runs/${runId}`, { credentials: 'include', headers: getLocaleHeaders() });
     if (!response.ok) throw new Error(tr('errors.status'));
-    const record = await response.json() as RunRecord;
-    setRun(record);
+    const record = await response.json() as RunRecord; setRun(record);
     const state = record.status?.status;
     if (state === 'completed') {
-      const [resultResponse, mapResponse] = await Promise.all([
-        fetch(`/api/abu-dhabi/flood/hydro-runs/${runId}/result`, { credentials: 'include' }),
-        fetch(`/api/abu-dhabi/flood/hydro-runs/${runId}/map`, { credentials: 'include' }),
-      ]);
-      if (resultResponse.ok) setResult(await resultResponse.json() as Record<string, unknown>);
+      const [resultResponse, mapResponse] = await Promise.all([fetch(`/api/abu-dhabi/flood/hydro-runs/${runId}/result`, { credentials: 'include' }), fetch(`/api/abu-dhabi/flood/hydro-runs/${runId}/map`, { credentials: 'include' })]);
+      if (!resultResponse.ok) return false;
+      setResult(await resultResponse.json() as Record<string, unknown>);
       if (mapResponse.ok) setMap(await mapResponse.json() as FeatureCollection);
-      return true;
+      setStep('results'); return true;
     }
     return ['failed', 'cancelled', 'submit_failed'].includes(state || '');
   };
-
   const submitRun = async () => {
-    if (!preflight?.can_submit) return;
-    setBusy(true);
-    setError('');
+    if (!preflight?.can_submit || aoiError) return;
+    setBusy(true); setError(''); stopPollingRef.current = false;
     try {
-      const response = await fetch('/api/abu-dhabi/flood/hydro-runs', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch('/api/abu-dhabi/flood/hydro-runs', { method: 'POST', credentials: 'include', headers: { ...getLocaleHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const data = await response.json() as RunRecord & { error?: string };
       if (!response.ok) throw new Error(data.error || tr('errors.submit'));
-      setRun(data);
-      for (let attempt = 0; attempt < 120; attempt += 1) {
-        if (await loadRun(data.run_id)) break;
-        await new Promise(resolve => setTimeout(resolve, 2000));
+      setRun(data); setStep('results');
+      let terminal = false;
+      for (let attempt = 0; attempt < 120 && !stopPollingRef.current; attempt += 1) {
+        terminal = await loadRun(data.run_id);
+        if (terminal) break;
+        await sleep(2_000);
       }
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : tr('errors.submit'));
-    } finally {
-      setBusy(false);
-    }
+      if (!terminal && !stopPollingRef.current) setError(tr('errors.timeout'));
+    } catch (caught) { setError(caught instanceof Error ? caught.message : tr('errors.submit')); } finally { setBusy(false); }
+  };
+  const cancelRun = async () => {
+    if (!run?.run_id || !['queued', 'running'].includes(run.status?.status || '')) return;
+    stopPollingRef.current = true;
+    try {
+      const response = await fetch(`/api/abu-dhabi/flood/hydro-runs/${run.run_id}`, { method: 'DELETE', credentials: 'include' });
+      if (!response.ok) throw new Error(tr('errors.cancel'));
+      setRun(current => current ? { ...current, status: { ...current.status, status: 'cancelled', progress: 100, message: tr('run.cancelled') } } : current);
+    } catch (caught) { setError(caught instanceof Error ? caught.message : tr('errors.cancel')); }
+  };
+  const parameterLabel = (key: string) => {
+    const labels: Record<string, string> = {
+      'rainfall.total_mm': 'configuration.rainfall',
+      'rainfall.duration_minutes': 'configuration.duration',
+      'rainfall.pattern': 'configuration.pattern',
+      'one_d.routing_method': 'configuration.routing',
+      'one_d.infiltration_method': 'configuration.infiltration',
+      'two_d.grid_resolution_m': 'configuration.grid',
+      'two_d.manning_n': 'configuration.manning',
+      'two_d.timestep_seconds': 'configuration.timestep',
+      'coupling.mode': 'configuration.coupling',
+      'area.domain_buffer_m': 'configuration.domainBuffer',
+    };
+    return tr(labels[key] || key);
+  };
+  const parameterValue = (parameter: ParameterReadiness) => {
+    const units: Record<string, string> = {
+      'rainfall.total_mm': ' mm',
+      'rainfall.duration_minutes': ' min',
+      'two_d.grid_resolution_m': ' m',
+      'two_d.timestep_seconds': ' s',
+      'area.domain_buffer_m': ' m',
+    };
+    return `${String(parameter.value)}${units[parameter.key] || ''}`;
+  };
+  const engineeringUseLabel = (value: unknown) =>
+    value === true || value === 'true' ? tr('results.engineeringAllowed') : tr('results.engineeringNotAllowed');
+  const downloadResult = () => {
+    if (!result) return;
+    const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${run?.run_id || 'hydro-result'}.json`; anchor.click(); URL.revokeObjectURL(url);
   };
 
-  const pointFeatures = (map?.features || []).filter(feature => {
-    const coordinates = feature.geometry?.coordinates;
-    return Array.isArray(coordinates) && typeof coordinates[0] === 'number' && typeof coordinates[1] === 'number';
-  });
-  const mapCoordinates = pointFeatures.map(feature => feature.geometry?.coordinates as number[]);
-  const minX = Math.min(...mapCoordinates.map(coordinates => coordinates[0]), 0);
-  const maxX = Math.max(...mapCoordinates.map(coordinates => coordinates[0]), 1);
-  const minY = Math.min(...mapCoordinates.map(coordinates => coordinates[1]), 0);
-  const maxY = Math.max(...mapCoordinates.map(coordinates => coordinates[1]), 1);
-  const runState = run?.status?.status || 'idle';
+  const pointFeatures = (map?.features || []).filter(feature => { const coordinates = feature.geometry?.coordinates; return Array.isArray(coordinates) && typeof coordinates[0] === 'number' && typeof coordinates[1] === 'number'; });
+  const mapCoordinates = pointFeatures.map(feature => feature.geometry?.coordinates as number[]); const minX = Math.min(...mapCoordinates.map(coordinates => coordinates[0]), 0); const maxX = Math.max(...mapCoordinates.map(coordinates => coordinates[0]), 1); const minY = Math.min(...mapCoordinates.map(coordinates => coordinates[1]), 0); const maxY = Math.max(...mapCoordinates.map(coordinates => coordinates[1]), 1);
+  const runState = run?.status?.status || 'idle'; const allSources = preflight?.sources || preflight?.required_sources || []; const activeStepIndex = stepKeys.indexOf(step);
+  const goNext = () => { if (step === 'data') setStep('area'); else if (step === 'area' && !aoiError) setStep('parameters'); else if (step === 'parameters') setStep('preflight'); };
+  const goBack = () => { if (activeStepIndex > 0) setStep(stepKeys[activeStepIndex - 1]); };
 
-  return (
-    <div className="abu-hydro-workbench">
-      <section className="abu-hydro-hero">
-        <div>
-          <span className="abu-hydro-kicker">ABU DHABI / HYDRODYNAMIC MODEL WORKBENCH</span>
-          <h2>{tr('title')}</h2>
-          <p>{tr('subtitle')}</p>
-        </div>
-        <div className="abu-hydro-hero-status"><ServerCog size={18} /><strong>{tr(`statuses.${runState}`)}</strong><small>{tr('heroStatus')}</small></div>
-      </section>
+  const sourceCard = (key: SourceKey) => { const required = requiredSourceKeys.includes(key); return <div key={key} className={`abu-hydro-asset ${required ? 'required' : ''}`}><div className="abu-hydro-asset-heading"><strong>{tr(`sources.${key}`)}</strong><span className={`abu-hydro-chip ${required ? 'required' : 'optional'}`}>{required ? tr('data.required') : tr('data.optional')}</span></div><input aria-label={tr(`sources.${key}`)} placeholder={tr(`sourcePlaceholders.${key}`)} value={sources[key]} onChange={event => updateSource(key, event.target.value)} /><small>{tr(`sourceFormats.${key}`)}</small></div>; };
+  const provenance = (key: string) => touched[key] ? tr('parameterSource.user') : tr('parameterSource.default');
 
-      <section className="abu-hydro-notice"><AlertTriangle size={17} /><span>{tr('notice')}</span></section>
+  return <div className="abu-hydro-workbench">
+    <section className="abu-hydro-hero"><div><span className="abu-hydro-kicker">ABU DHABI / HYDRODYNAMIC MODEL WORKBENCH</span><h2>{tr('title')}</h2><p>{tr('subtitle')}</p></div><div className="abu-hydro-hero-status"><ServerCog size={18} /><strong>{tr(`statuses.${runState}`)}</strong><small>{tr('heroStatus')}</small></div></section>
+    <section className="abu-hydro-notice"><AlertTriangle size={17} /><div><strong>{tr('productionNotice.title')}</strong><span>{tr('productionNotice.body')}</span></div></section>
+    <nav className="abu-hydro-stepper" aria-label={tr('stepsLabel')}>{stepKeys.map((key, index) => { const done = index < activeStepIndex; const enabled = index <= activeStepIndex || (key === 'preflight' && Boolean(preflight)) || key === 'results'; return <button key={key} type="button" className={`abu-hydro-step ${key === step ? 'active' : ''} ${done ? 'done' : ''}`} onClick={() => enabled && setStep(key)} disabled={!enabled}><span>{done ? <CheckCircle2 size={15} /> : index + 1}</span><strong>{tr(`steps.${key}.title`)}</strong><small>{tr(`steps.${key}.short`)}</small></button>; })}</nav>
+    <section className="abu-hydro-flow" aria-label={tr('flowLabel')}>{[['data', Database], ['etl', GitBranch], ['solver', Waves], ['result', Layers3]].map(([key, Icon]) => <div key={String(key)} className="abu-hydro-flow-step"><Icon size={16} /><span>{tr(`flow.${String(key)}`)}</span></div>)}</section>
 
-      <section className="abu-hydro-flow" aria-label={tr('flowLabel')}>
-        {[['data', Database], ['etl', GitBranch], ['solver', Waves], ['result', Layers3]].map(([key, Icon]) => (
-          <div key={String(key)} className="abu-hydro-flow-step"><Icon size={16} /><span>{tr(`flow.${String(key)}`)}</span></div>
-        ))}
-      </section>
+    {step === 'data' && <section className="abu-hydro-card abu-hydro-step-panel"><div className="abu-hydro-card-heading"><Database size={16} /><div><h3>{tr('data.title')}</h3><small>{tr('data.subtitle')}</small></div></div><div className="abu-hydro-mode-row"><div><strong>{tr('data.modeTitle')}</strong><span>{inputMode === 'customer_mount' ? tr('data.customerMode') : tr('data.fixtureMode')}</span></div>{showDevelopmentOptions && <label className="abu-hydro-mode-select">{tr('configuration.inputMode')}<select value={inputMode} onChange={event => { setInputMode(event.target.value as InputMode); invalidatePreflight(); }}><option value="customer_mount">{tr('inputModes.customer')}</option><option value="development_fixture">{tr('inputModes.fixture')}</option></select></label>}</div><div className="abu-hydro-asset-grid">{sourceKeys.map(sourceCard)}</div>{inputMode === 'development_fixture' && <p className="abu-hydro-warning"><AlertTriangle size={13} />{tr('data.fixtureWarning')}</p>}<div className="abu-hydro-actions"><button type="button" className="primary" onClick={goNext}>{tr('actions.next')}<ArrowRight size={15} /></button></div></section>}
 
-      <section className="abu-hydro-grid">
-        <div className="abu-hydro-card">
-          <div className="abu-hydro-card-heading"><Gauge size={16} /><h3>{tr('configuration.title')}</h3></div>
-          <div className="abu-hydro-form-grid">
-            <label>{tr('configuration.model')}<select value={modelType} onChange={event => setModelType(event.target.value as ModelType)}><option value="coupled_1d_2d">{tr('models.coupled')}</option><option value="one_d">{tr('models.oneD')}</option><option value="two_d">{tr('models.twoD')}</option></select></label>
-            <label>{tr('configuration.inputMode')}<select value={inputMode} onChange={event => setInputMode(event.target.value as InputMode)}><option value="development_fixture">{tr('inputModes.fixture')}</option><option value="customer_mount">{tr('inputModes.customer')}</option></select></label>
-            <label>{tr('configuration.resource')}<select value={resourceProfile} onChange={event => setResourceProfile(event.target.value as ResourceProfile)}><option value="cpu_small">CPU small</option><option value="cpu_large">CPU large</option><option value="gpu">GPU / H100 profile</option></select></label>
-            <label>{tr('configuration.rainfall')}<input type="number" min="0.01" value={rainfallTotal} onChange={event => setRainfallTotal(numberValue(event.target.value))} /></label>
-            <label>{tr('configuration.duration')}<input type="number" min="1" value={rainfallDuration} onChange={event => setRainfallDuration(numberValue(event.target.value))} /></label>
-            <label>{tr('configuration.pattern')}<select value={rainfallPattern} onChange={event => setRainfallPattern(event.target.value)}><option value="uniform">Uniform</option><option value="alternating_block">Alternating block</option></select></label>
-            <label>{tr('configuration.domainBuffer')}<input type="number" min="0" value={domainBuffer} onChange={event => setDomainBuffer(numberValue(event.target.value))} /></label>
-            <label>{tr('configuration.grid')}<input type="number" min="0.5" value={gridResolution} onChange={event => setGridResolution(numberValue(event.target.value))} /></label>
-            <label>{tr('configuration.manning')}<input type="number" min="0.005" step="0.005" value={manningN} onChange={event => setManningN(numberValue(event.target.value))} /></label>
-            <label>{tr('configuration.timestep')}<input type="number" min="1" value={twoDTimestep} onChange={event => setTwoDTimestep(numberValue(event.target.value))} /></label>
-            <label>{tr('configuration.coupling')}<select value={couplingMode} onChange={event => setCouplingMode(event.target.value)}><option value="two_way_swmm_anuga">{tr('coupling.twoWay')}</option><option value="one_way_swmm_to_anuga">{tr('coupling.oneWay')}</option></select></label>
-          </div>
-          <div className="abu-hydro-subheading"><GitBranch size={14} />{tr('configuration.oneD')}</div>
-          <div className="abu-hydro-form-grid">
-            <label>{tr('configuration.routing')}<select value={oneDRoutingMethod} onChange={event => setOneDRoutingMethod(event.target.value)}><option value="KINWAVE">KINWAVE</option><option value="DYNWAVE">DYNWAVE</option><option value="STEADY">STEADY</option></select></label>
-            <label>{tr('configuration.infiltration')}<select value={oneDInfiltrationMethod} onChange={event => setOneDInfiltrationMethod(event.target.value)}><option value="HORTON">HORTON</option><option value="GREEN_AMPT">GREEN_AMPT</option><option value="CURVE_NUMBER">CURVE_NUMBER</option></select></label>
-          </div>
-          <div className="abu-hydro-subheading"><CloudRain size={14} />{tr('configuration.aoi')}</div>
-          <div className="abu-hydro-form-grid aoi-grid">
-            {(['minLon', 'minLat', 'maxLon', 'maxLat'] as const).map(key => <label key={key}>{tr(`aoi.${key}`)}<input type="number" step="0.00001" value={aoi[key]} onChange={event => updateAoi(key, event.target.value)} /></label>)}
-          </div>
-          <div className="abu-hydro-subheading"><Database size={14} />{tr('configuration.sources')}</div>
-          <div className="abu-hydro-source-grid">
-            <label>{tr('sources.network')}<input placeholder="s3://… / nas://… / normalized SWMM INP" value={networkUri} onChange={event => setNetworkUri(event.target.value)} /></label>
-            <label>{tr('sources.terrain')}<input placeholder="s3://… / nas://… / ANUGA NPZ or COG" value={terrainUri} onChange={event => setTerrainUri(event.target.value)} /></label>
-            <label>{tr('sources.rainfall')}<input placeholder="s3://… / nas://… / rainfall CSV or JSON" value={rainfallUri} onChange={event => setRainfallUri(event.target.value)} /></label>
-            <label>{tr('sources.tide')}<input placeholder="s3://… / nas://… / tide CSV or JSON" value={tideUri} onChange={event => setTideUri(event.target.value)} /></label>
-            <label>{tr('sources.outfalls')}<input placeholder="s3://… / nas://… / outfalls GeoPackage" value={outfallsUri} onChange={event => setOutfallsUri(event.target.value)} /></label>
-            <label>{tr('sources.pumps')}<input placeholder="s3://… / nas://… / pumps CSV or GeoPackage" value={pumpsUri} onChange={event => setPumpsUri(event.target.value)} /></label>
-          </div>
-          <div className="abu-hydro-actions"><button type="button" onClick={runPreflight} disabled={busy}><RefreshCw size={15} />{busy ? tr('actions.working') : tr('actions.preflight')}</button><button type="button" className="primary" onClick={submitRun} disabled={busy || !preflight?.can_submit}><Play size={15} />{tr('actions.submit')}</button></div>
-        </div>
+    {step === 'area' && <section className="abu-hydro-card abu-hydro-step-panel"><div className="abu-hydro-card-heading"><MapPinned size={16} /><div><h3>{tr('area.title')}</h3><small>{tr('area.subtitle')}</small></div></div><div className="abu-hydro-area-layout"><div className="abu-hydro-form-grid aoi-grid">{(['minLon', 'minLat', 'maxLon', 'maxLat'] as const).map(key => <label key={key}>{tr(`aoi.${key}`)}<input type="number" step="0.00001" value={aoi[key]} onChange={event => updateAoi(key, event.target.value)} /></label>)}<div className="abu-hydro-field-note"><Info size={13} />{tr('area.crs')}</div></div><div className="abu-hydro-aoi-preview"><div className="abu-hydro-aoi-canvas"><span className="abu-hydro-aoi-rectangle" /></div><div><strong>{tr('area.preview')}</strong><small>{aoiMetrics.widthKm.toFixed(2)} km × {aoiMetrics.heightKm.toFixed(2)} km</small></div></div></div><div className="abu-hydro-domain-control"><label>{tr('configuration.domainBuffer')}<input type="number" min="0" max="10000" step="10" value={domainBuffer} onChange={event => { setDomainBuffer(numberValue(event.target.value)); markTouched('domain_buffer_m'); }} /><em>{provenance('domain_buffer_m')}</em></label><small>{tr('area.bufferInputHint')}</small></div><div className="abu-hydro-domain-summary"><div><small>{tr('area.modelDomain')}</small><strong>{domainBuffer} m</strong></div><div><small>{tr('area.displayExtent')}</small><strong>{tr('area.sameAsAoi')}</strong></div><div><small>{tr('area.calculationRule')}</small><strong>{tr('area.bufferRule')}</strong></div></div>{aoiError && <p className="abu-hydro-error"><CircleAlert size={13} />{aoiError}</p>}<div className="abu-hydro-actions"><button type="button" onClick={goBack}><ArrowLeft size={15} />{tr('actions.back')}</button><button type="button" className="primary" disabled={Boolean(aoiError)} onClick={goNext}>{tr('actions.next')}<ArrowRight size={15} /></button></div></section>}
 
-        <div className="abu-hydro-card">
-          <div className="abu-hydro-card-heading"><CircleDashed size={16} /><h3>{tr('preflight.title')}</h3></div>
-          {!preflight && <div className="abu-hydro-empty">{tr('preflight.empty')}</div>}
-          {preflight && <>
-            <div className={`abu-hydro-readiness ${preflight.status}`}><strong>{tr(`preflight.status.${preflight.status}`)}</strong><span>{preflight.manifest_preview?.run_id}</span></div>
-            <div className="abu-hydro-check-list">{preflight.checks.map(check => <div key={check.key} className="abu-hydro-check"><CheckCircle2 size={14} className={check.status === 'ready' ? 'ok' : 'warn'} /><div><strong>{check.label}</strong><small>{check.detail}</small></div></div>)}</div>
-            <div className="abu-hydro-source-list">{preflight.required_sources.map(source => <div key={source.key}><span>{source.key}</span><strong className={source.status}>{source.status}</strong><small>{source.format} · {source.detail}</small></div>)}</div>
-            {preflight.warnings.map(warning => <p className="abu-hydro-warning" key={warning}><AlertTriangle size={13} />{warning}</p>)}
-          </>}
-          {error && <p className="abu-hydro-error">{error}</p>}
-        </div>
-      </section>
+    {step === 'parameters' && <section className="abu-hydro-card abu-hydro-step-panel"><div className="abu-hydro-card-heading"><Gauge size={16} /><div><h3>{tr('parameters.title')}</h3><small>{tr('parameters.subtitle')}</small></div></div><div className="abu-hydro-form-grid"><label>{tr('configuration.model')}<select value={modelType} onChange={event => { setModelType(event.target.value as ModelType); invalidatePreflight(); }}><option value="coupled_1d_2d">{tr('models.coupled')}</option><option value="one_d">{tr('models.oneD')}</option><option value="two_d">{tr('models.twoD')}</option></select></label><label>{tr('configuration.resource')}<select value={resourceProfile} onChange={event => { setResourceProfile(event.target.value as ResourceProfile); invalidatePreflight(); }}><option value="cpu_small">{tr('resources.cpuSmall')}</option><option value="cpu_large">{tr('resources.cpuLarge')}</option><option value="gpu">{tr('resources.gpu')}</option></select></label></div><div className="abu-hydro-parameter-section"><div className="abu-hydro-subheading"><CloudRain size={14} />{tr('parameters.rainfall')}</div><div className="abu-hydro-form-grid"><label>{tr('configuration.rainfall')}<input type="number" min="0.01" value={rainfallTotal} onChange={event => { setRainfallTotal(numberValue(event.target.value)); markTouched('rainfall_total_mm'); }} /><em>{provenance('rainfall_total_mm')}</em></label><label>{tr('configuration.duration')}<input type="number" min="1" value={rainfallDuration} onChange={event => { setRainfallDuration(numberValue(event.target.value)); markTouched('rainfall_duration_minutes'); }} /><em>{provenance('rainfall_duration_minutes')}</em></label><label>{tr('configuration.pattern')}<select value={rainfallPattern} onChange={event => { setRainfallPattern(event.target.value); markTouched('rainfall_pattern'); }}><option value="uniform">{tr('patterns.uniform')}</option><option value="alternating_block">{tr('patterns.alternating')}</option></select><em>{provenance('rainfall_pattern')}</em></label></div></div>{(modelType === 'one_d' || modelType === 'coupled_1d_2d') && <div className="abu-hydro-parameter-section"><div className="abu-hydro-subheading"><GitBranch size={14} />{tr('parameters.oneD')}</div><div className="abu-hydro-form-grid"><label>{tr('configuration.routing')}<select value={oneDRoutingMethod} onChange={event => { setOneDRoutingMethod(event.target.value); markTouched('one_d_routing_method'); }}><option value="KINWAVE">KINWAVE</option><option value="DYNWAVE">DYNWAVE</option><option value="STEADY">STEADY</option></select><em>{provenance('one_d_routing_method')}</em></label><label>{tr('configuration.infiltration')}<select value={oneDInfiltrationMethod} onChange={event => { setOneDInfiltrationMethod(event.target.value); markTouched('one_d_infiltration_method'); }}><option value="HORTON">HORTON</option><option value="GREEN_AMPT">GREEN_AMPT</option><option value="CURVE_NUMBER">CURVE_NUMBER</option></select><em>{provenance('one_d_infiltration_method')}</em></label></div></div>}{(modelType === 'two_d' || modelType === 'coupled_1d_2d') && <div className="abu-hydro-parameter-section"><div className="abu-hydro-subheading"><Waves size={14} />{tr('parameters.twoD')}</div><div className="abu-hydro-form-grid"><label>{tr('configuration.grid')}<input type="number" min="0.5" value={gridResolution} onChange={event => { setGridResolution(numberValue(event.target.value)); markTouched('two_d_grid_resolution_m'); }} /><em>{provenance('two_d_grid_resolution_m')}</em></label><label>{tr('configuration.manning')}<input type="number" min="0.005" step="0.005" value={manningN} onChange={event => { setManningN(numberValue(event.target.value)); markTouched('two_d_manning_n'); }} /><em>{provenance('two_d_manning_n')}</em></label><label>{tr('configuration.timestep')}<input type="number" min="1" value={twoDTimestep} onChange={event => { setTwoDTimestep(numberValue(event.target.value)); markTouched('two_d_timestep_seconds'); }} /><em>{provenance('two_d_timestep_seconds')}</em></label></div></div>}{modelType === 'coupled_1d_2d' && <div className="abu-hydro-parameter-section"><div className="abu-hydro-subheading"><GitBranch size={14} />{tr('parameters.coupling')}</div><div className="abu-hydro-form-grid"><label>{tr('configuration.coupling')}<select value={couplingMode} onChange={event => { setCouplingMode(event.target.value); markTouched('coupling_mode'); }}><option value="two_way_swmm_anuga">{tr('coupling.twoWay')}</option><option value="one_way_swmm_to_anuga">{tr('coupling.oneWay')}</option></select><em>{provenance('coupling_mode')}</em></label></div></div>}<div className="abu-hydro-actions"><button type="button" onClick={goBack}><ArrowLeft size={15} />{tr('actions.back')}</button><button type="button" className="primary" onClick={runPreflight} disabled={busy || Boolean(aoiError)}><RefreshCw size={15} />{busy ? tr('actions.working') : tr('actions.preflight')}</button></div></section>}
 
-      <section className="abu-hydro-card abu-hydro-run-card">
-        <div className="abu-hydro-card-heading"><ServerCog size={16} /><h3>{tr('run.title')}</h3><span className={`abu-hydro-state ${runState}`}>{tr(`statuses.${runState}`)}</span></div>
-        <div className="abu-hydro-run-summary"><div><small>{tr('run.id')}</small><strong>{run?.run_id || '—'}</strong></div><div><small>{tr('run.progress')}</small><strong>{run?.status?.progress ?? 0}%</strong></div><div><small>{tr('run.message')}</small><strong>{run?.status?.message || tr('run.waiting')}</strong></div></div>
-        {runState === 'queued' || runState === 'running' ? <div className="abu-hydro-progress"><span style={{ width: `${run?.status?.progress || 5}%` }} /></div> : null}
-      </section>
+    {step === 'preflight' && <section className="abu-hydro-card abu-hydro-step-panel"><div className="abu-hydro-card-heading"><CircleDashed size={16} /><div><h3>{tr('preflight.title')}</h3><small>{tr('preflight.subtitle')}</small></div></div>{!preflight ? <div className="abu-hydro-empty"><CircleDashed size={22} /><p>{tr('preflight.empty')}</p><button type="button" className="primary" onClick={runPreflight} disabled={busy}>{tr('actions.preflight')}</button></div> : <><div className={`abu-hydro-readiness ${preflight.status}`}><strong>{tr(`preflight.status.${preflight.status}`)}</strong><span>{preflight.can_submit ? tr('preflight.readyDetail') : tr('preflight.blockedDetail')}</span></div><div className="abu-hydro-check-list">{preflight.checks.map(check => <div key={check.key} className="abu-hydro-check"><CheckCircle2 size={14} className={check.status === 'ready' ? 'ok' : 'warn'} /><div><strong>{check.label}</strong><small>{check.detail}</small></div></div>)}</div><div className="abu-hydro-review-grid"><div><h4>{tr('preflight.sourcesTitle')}</h4><div className="abu-hydro-source-list">{allSources.map(source => <div key={source.key}><span>{tr(`sources.${source.key}`)}{source.required ? ` · ${tr('data.required')}` : ` · ${tr('data.optional')}`}</span><strong className={source.status}>{tr(`sourceStatus.${source.status}`)}</strong><small>{source.format} · {source.detail}</small></div>)}</div></div><div><h4>{tr('preflight.parametersTitle')}</h4><div className="abu-hydro-provenance-list">{(preflight.parameter_readiness || []).map(parameter => <div key={parameter.key}><span>{parameterLabel(parameter.key)}</span><strong className={parameter.source}>{tr(`parameterSource.${parameter.source === 'system_default' ? 'default' : parameter.source}`)}</strong><small>{parameterValue(parameter)}</small></div>)}</div></div></div>{preflight.warnings.map(warning => <p className="abu-hydro-warning" key={warning}><AlertTriangle size={13} />{warning}</p>)}{error && <p className="abu-hydro-error"><CircleAlert size={13} />{error}</p>}<div className="abu-hydro-actions"><button type="button" onClick={goBack}><ArrowLeft size={15} />{tr('actions.back')}</button><button type="button" className="primary" onClick={submitRun} disabled={busy || !preflight.can_submit}><Play size={15} />{tr('actions.submit')}</button></div></>}</section>}
 
-      {result && <section className="abu-hydro-results">
-        <div className="abu-hydro-card"><div className="abu-hydro-card-heading"><Layers3 size={16} /><h3>{tr('results.title')}</h3></div><pre>{JSON.stringify(result, null, 2)}</pre></div>
-        <div className="abu-hydro-card"><div className="abu-hydro-card-heading"><Waves size={16} /><h3>{tr('results.map')}</h3></div>{pointFeatures.length ? <svg className="abu-hydro-result-map" viewBox="0 0 100 100" role="img" aria-label={tr('results.map')}>
-          {pointFeatures.map((feature, index) => { const coordinates = feature.geometry?.coordinates as number[]; const x = ((coordinates[0] - minX) / (maxX - minX || 1)) * 90 + 5; const y = 95 - ((coordinates[1] - minY) / (maxY - minY || 1)) * 90; return <circle key={index} cx={x} cy={y} r="1.8" className="abu-hydro-result-point"><title>{JSON.stringify(feature.properties || {})}</title></circle>; })}
-        </svg> : <div className="abu-hydro-empty">{tr('results.noMap')}</div>}</div>
-      </section>}
-    </div>
-  );
+    {step === 'results' && <><section className="abu-hydro-card abu-hydro-run-card"><div className="abu-hydro-card-heading"><ServerCog size={16} /><div><h3>{tr('run.title')}</h3><small>{tr('run.subtitle')}</small></div><span className={`abu-hydro-state ${runState}`}>{tr(`statuses.${runState}`)}</span></div><div className="abu-hydro-run-summary"><div><small>{tr('run.id')}</small><strong>{run?.run_id || '—'}</strong></div><div><small>{tr('run.progress')}</small><strong>{run?.status?.progress ?? 0}%</strong></div><div><small>{tr('run.message')}</small><strong>{run?.status?.message || tr('run.waiting')}</strong></div></div>{runState === 'queued' || runState === 'running' ? <><div className="abu-hydro-progress"><span style={{ width: `${run?.status?.progress || 5}%` }} /></div><button type="button" className="abu-hydro-cancel" onClick={cancelRun} disabled={!run?.run_id}><Square size={14} />{tr('actions.cancel')}</button></> : null}{runState === 'failed' && <p className="abu-hydro-error"><CircleAlert size={13} />{run?.status?.error || tr('errors.runFailed')}</p>}</section>{result && <section className="abu-hydro-results"><div className="abu-hydro-card"><div className="abu-hydro-card-heading"><Layers3 size={16} /><h3>{tr('results.title')}</h3><button type="button" className="abu-hydro-icon-button" onClick={downloadResult} title={tr('results.download')}><Download size={14} /></button></div><div className="abu-hydro-result-disclosure"><span>{tr('results.inputMode')}</span><strong>{String(result.input_disclosure || '—')}</strong><span>{tr('results.engineeringUse')}</span><strong className={result.engineering_use === true ? 'allowed' : 'blocked'}>{engineeringUseLabel(result.engineering_use)}</strong></div><details><summary>{tr('results.raw')}</summary><pre>{JSON.stringify(result, null, 2)}</pre></details></div><div className="abu-hydro-card"><div className="abu-hydro-card-heading"><Waves size={16} /><h3>{tr('results.map')}</h3></div>{pointFeatures.length ? <svg className="abu-hydro-result-map" viewBox="0 0 100 100" role="img" aria-label={tr('results.map')}>{pointFeatures.map((feature, index) => { const coordinates = feature.geometry?.coordinates as number[]; const x = ((coordinates[0] - minX) / (maxX - minX || 1)) * 90 + 5; const y = 95 - ((coordinates[1] - minY) / (maxY - minY || 1)) * 90; return <circle key={index} cx={x} cy={y} r="1.8" className="abu-hydro-result-point"><title>{JSON.stringify(feature.properties || {})}</title></circle>; })}</svg> : <div className="abu-hydro-empty">{tr('results.noMap')}</div>}</div></section>}{!result && <div className="abu-hydro-card abu-hydro-empty"><ServerCog size={22} /><p>{tr('results.waiting')}</p></div>}</>}
+    {error && step !== 'preflight' && <p className="abu-hydro-error"><CircleAlert size={13} />{error}</p>}
+  </div>;
 }

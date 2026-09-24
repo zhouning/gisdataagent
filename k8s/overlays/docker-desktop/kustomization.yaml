@@ -19,6 +19,7 @@ namespace: gis-agent
 
 resources:
   - ../../base
+  - hydro-runtime-resources.yaml
 
 # Override images to match the local-built `:dev` tags. Pull policy on the base
 # Deployments is already IfNotPresent so the kubelet won't reach for a registry.
@@ -81,6 +82,11 @@ patches:
   # Fix another base manifest bug: app Deployment disables SA token automount
   # but the wait-for-migrate init container needs it for `kubectl wait`.
   - path: app-sa-token-patch.yaml
+    target:
+      kind: Deployment
+      name: gis-agent-app
+
+  - path: hydro-app-storage-patch.yaml
     target:
       kind: Deployment
       name: gis-agent-app

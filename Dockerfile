@@ -85,17 +85,11 @@ COPY config/deployment_profiles/ /app/config/deployment_profiles/
 COPY config/recovery_sli_baselines/ /app/config/recovery_sli_baselines/
 COPY data/uwm_public_proxy/ /app/data/uwm_public_proxy/
 # Evidence-bounded TWM demo assets. The three test-data directories and the
-# four-file Paper9 evidence bundle enter through data_agent; benchmark
-# artifacts are copied file by file to avoid unrelated local outputs.
+# Paper9 evidence bundle enter through data_agent. Optional benchmark receipts
+# are deliberately not hard-copied here: they are not part of the hydro runtime
+# contract and may be delivered as a separately versioned evidence bundle.
 COPY data/benchmarks/dam_gk_2026-07-18/ /app/data/benchmarks/dam_gk_2026-07-18/
 COPY docs/reports/twm_data_foundation_validation.json /app/docs/reports/twm_data_foundation_validation.json
-COPY benchmarks/gwm_bench_v0_2/internal_dev/hydro_kernel_experiment/stability_report_10seed.json /app/benchmarks/gwm_bench_v0_2/internal_dev/hydro_kernel_experiment/stability_report_10seed.json
-COPY benchmarks/gwm_bench_v0_3_candidate/certificate_refresh_report.json /app/benchmarks/gwm_bench_v0_3_candidate/certificate_refresh_report.json
-COPY benchmarks/gwm_bench_v0_3_candidate/nwm_forcing_admission_certificate.json /app/benchmarks/gwm_bench_v0_3_candidate/nwm_forcing_admission_certificate.json
-COPY benchmarks/gwm_bench_v0_3_candidate/nwm_spatial_topology_admission_certificate.json /app/benchmarks/gwm_bench_v0_3_candidate/nwm_spatial_topology_admission_certificate.json
-COPY benchmarks/standard_mapping_chongqing_v0_1/acceptance_report.json /app/benchmarks/standard_mapping_chongqing_v0_1/acceptance_report.json
-COPY benchmarks/standard_mapping_chongqing_v0_1/source_onboarding_protocol.json /app/benchmarks/standard_mapping_chongqing_v0_1/source_onboarding_protocol.json
-COPY benchmarks/standard_mapping_chongqing_v0_1/source_onboarding_report.json /app/benchmarks/standard_mapping_chongqing_v0_1/source_onboarding_report.json
 COPY geocausal/ /app/geocausal/
 COPY --from=frontend-builder /build/dist/ /app/frontend/dist/
 COPY .chainlit/ /app/.chainlit/
@@ -107,7 +101,14 @@ RUN chmod +x /app/docker-entrypoint.sh
 # local assets so a fresh container never depends on an ignored local output.
 RUN python scripts/build_uwm_environmental_kernel_chongqing.py \
     --source-root /app \
-    --output-dir /app/data/uwm_public_proxy/chongqing_central/uwm_environmental_kernel_chongqing
+    --output-dir /app/data/uwm_public_proxy/chongqing_central/uwm_environmental_kernel_chongqing \
+    || { code=$?; \
+         if [ "$code" -eq 2 ]; then \
+           echo "[image] optional Chongqing environmental product inputs are not bundled; continuing"; \
+         else \
+           exit "$code"; \
+         fi; \
+       }
 
 # ---- Create uploads directory and non-root user -----------------------------
 RUN groupadd -r agent && useradd -r -g agent -d /app -s /bin/bash agent && \

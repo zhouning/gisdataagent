@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -18,9 +19,17 @@ def run_dir(run_id: str, root: Path | None = None) -> Path:
 
 
 def atomic_json(path: Path, payload: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o770)
+    # The API and worker use different UIDs but share the hydro-run group on
+    # Kubernetes. Keep the artifact contract readable by that group while
+    # avoiding world-readable manifests and results.
+    try:
+        os.chmod(path.parent, 0o770)
+    except OSError:
+        pass
     fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=str(path.parent))
     try:
+        os.fchmod(fd, 0o660)
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             json.dump(payload, handle, ensure_ascii=False, indent=2, sort_keys=True)
             handle.write("\n")
@@ -45,6 +54,7 @@ def write_manifest(manifest: dict[str, Any], root: Path | None = None) -> Path:
             "status": "queued",
             "progress": 0,
             "message": "manifest_frozen",
+            "updated_at": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         },
     )
     return path
@@ -70,6 +80,7 @@ def update_status(
         "run_id": run_id,
         "status": status,
         "progress": max(0, min(100, int(progress))),
+        "updated_at": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         **extra,
     }
     atomic_json(run_dir(run_id, root) / "status.json", payload)

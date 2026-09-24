@@ -9,8 +9,8 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse
 
 from .contracts import ManifestValidationError, build_preflight
-from .coordinator import HydroRunCoordinator
-from .storage import DEFAULT_ROOT, read_json, run_dir
+from .coordinator import HydroRunAccessError, HydroRunCoordinator, HydroRunStateError
+from .storage import read_json, run_dir
 
 
 def _coordinator() -> HydroRunCoordinator:
@@ -46,8 +46,12 @@ async def get_hydro_run(request: Request) -> JSONResponse:
     run_id = str(request.path_params.get("run_id") or "")
     try:
         return JSONResponse(_coordinator().status(run_id))
-    except FileNotFoundError:
+    except (FileNotFoundError, ValueError):
         return JSONResponse({"error": "hydro_run_not_found"}, status_code=404)
+    except HydroRunAccessError:
+        return JSONResponse({"error": "hydro_run_not_found"}, status_code=404)
+    except HydroRunStateError:
+        return JSONResponse({"error": "hydro_run_state_invalid"}, status_code=409)
     except Exception as error:
         return JSONResponse(
             {"error": "hydro_run_status_failed", "detail": str(error)[:500]}, status_code=503
@@ -58,8 +62,12 @@ async def cancel_hydro_run(request: Request) -> JSONResponse:
     run_id = str(request.path_params.get("run_id") or "")
     try:
         return JSONResponse(_coordinator().cancel(run_id), status_code=202)
-    except FileNotFoundError:
+    except (FileNotFoundError, ValueError):
         return JSONResponse({"error": "hydro_run_not_found"}, status_code=404)
+    except HydroRunAccessError:
+        return JSONResponse({"error": "hydro_run_not_found"}, status_code=404)
+    except HydroRunStateError as error:
+        return JSONResponse({"error": "hydro_run_state_invalid", "detail": str(error)}, status_code=409)
     except Exception as error:
         return JSONResponse(
             {"error": "hydro_run_cancel_failed", "detail": str(error)[:500]}, status_code=503
@@ -69,8 +77,15 @@ async def cancel_hydro_run(request: Request) -> JSONResponse:
 async def get_hydro_result(request: Request) -> JSONResponse:
     run_id = str(request.path_params.get("run_id") or "")
     try:
-        result = read_json(run_dir(run_id, DEFAULT_ROOT) / "results" / "result.json")
-    except FileNotFoundError:
+        coordinator = _coordinator()
+        coordinator.assert_access(run_id)
+        coordinator.assert_integrity(run_id)
+        result = read_json(run_dir(run_id, coordinator.root) / "results" / "result.json")
+    except (FileNotFoundError, ValueError, OSError):
+        return JSONResponse({"error": "hydro_result_not_ready"}, status_code=404)
+    except HydroRunAccessError:
+        return JSONResponse({"error": "hydro_result_not_ready"}, status_code=404)
+    except HydroRunStateError:
         return JSONResponse({"error": "hydro_result_not_ready"}, status_code=404)
     return JSONResponse(result)
 
@@ -79,7 +94,9 @@ async def get_hydro_logs(request: Request) -> JSONResponse:
     run_id = str(request.path_params.get("run_id") or "")
     try:
         return JSONResponse(_coordinator().logs(run_id))
-    except FileNotFoundError:
+    except (FileNotFoundError, ValueError):
+        return JSONResponse({"error": "hydro_run_not_found"}, status_code=404)
+    except HydroRunAccessError:
         return JSONResponse({"error": "hydro_run_not_found"}, status_code=404)
     except Exception as error:
         return JSONResponse(
@@ -90,7 +107,17 @@ async def get_hydro_logs(request: Request) -> JSONResponse:
 async def get_hydro_map(request: Request) -> JSONResponse:
     run_id = str(request.path_params.get("run_id") or "")
     requested = str(request.query_params.get("layer") or "")
-    directory = run_dir(run_id, DEFAULT_ROOT) / "results"
+    try:
+        coordinator = _coordinator()
+        coordinator.assert_access(run_id)
+        coordinator.assert_integrity(run_id)
+    except (FileNotFoundError, ValueError):
+        return JSONResponse({"error": "hydro_map_not_ready"}, status_code=404)
+    except HydroRunAccessError:
+        return JSONResponse({"error": "hydro_map_not_ready"}, status_code=404)
+    except HydroRunStateError:
+        return JSONResponse({"error": "hydro_map_not_ready"}, status_code=404)
+    directory = run_dir(run_id, coordinator.root) / "results"
     candidates = {
         "one_d": directory / "one_d" / "network.geojson",
         "two_d": directory / "two_d" / "depth_points.geojson",
@@ -103,7 +130,10 @@ async def get_hydro_map(request: Request) -> JSONResponse:
     )
     if path is None or not path.exists():
         return JSONResponse({"error": "hydro_map_not_ready"}, status_code=404)
-    return JSONResponse(read_json(path))
+    try:
+        return JSONResponse(read_json(path))
+    except (OSError, ValueError, TypeError):
+        return JSONResponse({"error": "hydro_map_not_ready"}, status_code=404)
 
 
 def hydro_routes(*, authenticated: bool = False) -> list[Any]:
