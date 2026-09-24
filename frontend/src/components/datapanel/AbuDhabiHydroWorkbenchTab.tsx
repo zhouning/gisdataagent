@@ -68,7 +68,10 @@ interface RegisteredSource {
   total_mm?: number;
   duration_minutes?: number;
   peak_interval_mm?: number;
+  interval_count?: number;
+  interval_minutes?: number;
   evidence_class?: string;
+  admission?: string;
   calibration_admitted?: boolean;
   diagnostic_forcing_admitted?: boolean;
 }
@@ -407,7 +410,7 @@ export default function AbuDhabiHydroWorkbenchTab() {
     const registered = sourceDefaults[key];
     const usesRegisteredSource = Boolean(registered?.registered && registered.uri === sources[key]);
     const sourceAsset = registered?.source_uri || registered?.source_name;
-    const metadata = [registered?.format, formatBytes(registered?.size_bytes), registered?.crs, registered?.resolution_m ? `${registered.resolution_m} m` : '', registered?.event_id, registered?.total_mm ? `${registered.total_mm} mm` : '', registered?.duration_minutes ? `${registered.duration_minutes} min` : ''].filter(Boolean).join(' · ');
+    const metadata = [registered?.format, formatBytes(registered?.size_bytes), registered?.crs, registered?.resolution_m ? `${registered.resolution_m} m` : '', registered?.event_id, registered?.total_mm ? `${registered.total_mm} mm` : '', registered?.duration_minutes ? `${registered.duration_minutes} min` : '', registered?.interval_count && registered?.interval_minutes ? `${registered.interval_count} × ${registered.interval_minutes} min` : '', registered?.admission].filter(Boolean).join(' · ');
     return <div key={key} className={`abu-hydro-asset ${required ? 'required' : ''} ${usesRegisteredSource ? 'registered' : ''}`}>
       <div className="abu-hydro-asset-heading"><strong>{tr(`sources.${key}`)}</strong><div className="abu-hydro-asset-badges">{usesRegisteredSource && <span className="abu-hydro-chip registered"><CheckCircle2 size={10} />{tr('data.registered')}</span>}<span className={`abu-hydro-chip ${required ? 'required' : 'optional'}`}>{required ? tr('data.required') : tr('data.optional')}</span></div></div>
       <input aria-label={tr(`sources.${key}`)} placeholder={tr(`sourcePlaceholders.${key}`)} value={sources[key]} onChange={event => updateSource(key, event.target.value)} />

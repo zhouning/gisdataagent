@@ -87,24 +87,39 @@ def hydro_source_defaults_payload() -> dict[str, Any]:
         },
         "rainfall": {
             "uri": rainfall_uri,
-            "format": str(os.environ.get("HYDRO_DEFAULT_RAINFALL_FORMAT") or "Open-Meteo JSON hourly time series"),
-            "version": str(os.environ.get("HYDRO_DEFAULT_RAINFALL_VERSION") or "uae-april-2024-event-v1"),
+            "format": str(
+                os.environ.get("HYDRO_DEFAULT_RAINFALL_FORMAT")
+                or "April 2024 reconstructed hourly hyetograph JSON"
+            ),
+            "version": str(
+                os.environ.get("HYDRO_DEFAULT_RAINFALL_VERSION")
+                or "uae-april-2024-reconstruction-v1"
+            ),
             "provided_by_customer": False,
             "etl_required": False,
             "registered": bool(rainfall_uri),
             "source_uri": str(os.environ.get("HYDRO_RAINFALL_SOURCE_URI") or "").strip(),
-            "source_format": str(os.environ.get("HYDRO_RAINFALL_SOURCE_FORMAT") or "Open-Meteo Historical API archive point product"),
-            "source_name": str(os.environ.get("HYDRO_RAINFALL_SOURCE_NAME") or "openmeteo_archive_abu_dhabi_20240415_20240417.json"),
+            "source_format": str(
+                os.environ.get("HYDRO_RAINFALL_SOURCE_FORMAT")
+                or "GWM April 2024 public-evidence reconstruction"
+            ),
+            "source_name": str(
+                os.environ.get("HYDRO_RAINFALL_SOURCE_NAME")
+                or "uae_april_2024_reconstructed_hyetograph.json"
+            ),
             "size_bytes": _optional_int_environment("HYDRO_DEFAULT_RAINFALL_SIZE_BYTES"),
             "sha256": str(os.environ.get("HYDRO_DEFAULT_RAINFALL_SHA256") or "").strip(),
             "event_id": str(os.environ.get("HYDRO_RAINFALL_EVENT_ID") or "uae-april-2024-extreme-rainfall"),
-            "time_standard": str(os.environ.get("HYDRO_RAINFALL_TIME_STANDARD") or "GMT"),
-            "start_time": str(os.environ.get("HYDRO_RAINFALL_START_TIME") or "2024-04-15T00:00:00Z"),
-            "end_time": str(os.environ.get("HYDRO_RAINFALL_END_TIME") or "2024-04-17T23:00:00Z"),
-            "total_mm": float(os.environ.get("HYDRO_RAINFALL_TOTAL_MM") or "67.8"),
-            "duration_minutes": _optional_int_environment("HYDRO_RAINFALL_DURATION_MINUTES") or 4_320,
-            "peak_interval_mm": float(os.environ.get("HYDRO_RAINFALL_PEAK_INTERVAL_MM") or "25.9"),
-            "evidence_class": str(os.environ.get("HYDRO_RAINFALL_EVIDENCE_CLASS") or "public_proxy"),
+            "time_standard": str(os.environ.get("HYDRO_RAINFALL_TIME_STANDARD") or "GST (UTC+04:00)"),
+            "start_time": str(os.environ.get("HYDRO_RAINFALL_START_TIME") or "2024-04-15T20:00:00+04:00"),
+            "end_time": str(os.environ.get("HYDRO_RAINFALL_END_TIME") or "2024-04-17T12:00:00+04:00"),
+            "total_mm": float(os.environ.get("HYDRO_RAINFALL_TOTAL_MM") or "254.78"),
+            "duration_minutes": _optional_int_environment("HYDRO_RAINFALL_DURATION_MINUTES") or 2_400,
+            "peak_interval_mm": float(os.environ.get("HYDRO_RAINFALL_PEAK_INTERVAL_MM") or "30.32"),
+            "interval_count": _optional_int_environment("HYDRO_RAINFALL_INTERVAL_COUNT") or 40,
+            "interval_minutes": _optional_int_environment("HYDRO_RAINFALL_INTERVAL_MINUTES") or 60,
+            "evidence_class": str(os.environ.get("HYDRO_RAINFALL_EVIDENCE_CLASS") or "public_reconstruction"),
+            "admission": str(os.environ.get("HYDRO_RAINFALL_ADMISSION") or "prototype_sensitivity_only"),
             "calibration_admitted": False,
             "diagnostic_forcing_admitted": True,
         },

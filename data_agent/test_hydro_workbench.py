@@ -51,20 +51,20 @@ def test_manifest_separates_aoi_model_domain_and_display_extent():
     assert len(manifest["immutability"]["sha256"]) == 64
 
 
-def test_manifest_accepts_april_2024_event_duration_and_marks_registered_values_derived():
+def test_manifest_marks_registered_april_2024_reconstruction_values_derived():
     manifest = build_run_manifest(
         request(
-            rainfall_total_mm=67.8,
-            rainfall_duration_minutes=4_320,
+            rainfall_total_mm=254.78,
+            rainfall_duration_minutes=2_400,
             parameter_source_hints={
                 "rainfall_total_mm": "registered_dataset",
                 "rainfall_duration_minutes": "registered_dataset",
             },
             data_sources={
                 "rainfall": {
-                    "uri": "minio://customer-lake/hydro/april-2024/openmeteo-hourly.json",
-                    "format": "Open-Meteo JSON hourly time series",
-                    "version": "uae-april-2024-event-v1",
+                    "uri": "minio://customer-lake/hydro/april-2024/reconstructed-hyetograph.json",
+                    "format": "April 2024 reconstructed hourly hyetograph JSON",
+                    "version": "uae-april-2024-reconstruction-v1",
                     "provided_by_customer": False,
                     "etl_required": False,
                 }
@@ -72,9 +72,14 @@ def test_manifest_accepts_april_2024_event_duration_and_marks_registered_values_
         )
     )
 
-    assert manifest["parameters"]["rainfall"]["duration_minutes"] == 4_320
+    assert manifest["parameters"]["rainfall"]["duration_minutes"] == 2_400
     assert manifest["parameter_provenance"]["rainfall.total_mm"] == "derived"
     assert manifest["parameter_provenance"]["rainfall.duration_minutes"] == "derived"
+
+
+def test_manifest_accepts_multi_day_rainfall_duration():
+    manifest = build_run_manifest(request(rainfall_duration_minutes=4_320))
+    assert manifest["parameters"]["rainfall"]["duration_minutes"] == 4_320
 
 
 def test_manifest_preserves_polygon_aoi_and_selection_metadata():
@@ -250,10 +255,10 @@ def test_hydro_source_defaults_expose_registered_object_uris(monkeypatch):
     monkeypatch.setenv("HYDRO_NETWORK_SOURCE_URI", "minio://customer-lake/raw/network.gdb.zip")
     monkeypatch.setenv("HYDRO_DEFAULT_TERRAIN_URI", terrain_uri)
     monkeypatch.setenv("HYDRO_DEFAULT_TERRAIN_RESOLUTION_M", "10")
-    rainfall_uri = "minio://customer-lake/hydro/april-2024/openmeteo-hourly.json"
+    rainfall_uri = "minio://customer-lake/hydro/april-2024/reconstructed-hyetograph.json"
     monkeypatch.setenv("HYDRO_DEFAULT_RAINFALL_URI", rainfall_uri)
-    monkeypatch.setenv("HYDRO_RAINFALL_TOTAL_MM", "67.8")
-    monkeypatch.setenv("HYDRO_RAINFALL_DURATION_MINUTES", "4320")
+    monkeypatch.setenv("HYDRO_RAINFALL_TOTAL_MM", "254.78")
+    monkeypatch.setenv("HYDRO_RAINFALL_DURATION_MINUTES", "2400")
 
     payload = hydro_source_defaults_payload()
 
@@ -264,8 +269,11 @@ def test_hydro_source_defaults_expose_registered_object_uris(monkeypatch):
     assert payload["sources"]["terrain"]["resolution_m"] == 10
     assert payload["sources"]["terrain"]["registered"] is True
     assert payload["sources"]["rainfall"]["uri"] == rainfall_uri
-    assert payload["sources"]["rainfall"]["total_mm"] == 67.8
-    assert payload["sources"]["rainfall"]["duration_minutes"] == 4320
+    assert payload["sources"]["rainfall"]["total_mm"] == 254.78
+    assert payload["sources"]["rainfall"]["duration_minutes"] == 2400
+    assert payload["sources"]["rainfall"]["interval_count"] == 40
+    assert payload["sources"]["rainfall"]["interval_minutes"] == 60
+    assert payload["sources"]["rainfall"]["admission"] == "prototype_sensitivity_only"
     assert payload["sources"]["rainfall"]["diagnostic_forcing_admitted"] is True
     assert payload["sources"]["rainfall"]["calibration_admitted"] is False
 
