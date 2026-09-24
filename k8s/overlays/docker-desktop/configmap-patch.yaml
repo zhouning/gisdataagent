@@ -69,3 +69,11 @@ data:
   HYDRO_DEFAULT_TERRAIN_RESOLUTION_M: "10"
   HYDRO_TERRAIN_SOURCE_FORMAT: "GeoTIFF"
   HYDRO_TERRAIN_SOURCE_NAME: "AUH_DTM_5m_Z40.TIF"
+  # Boundary source coordinates are non-secret. The reader credentials are
+  # deliberately not committed and must be injected in gis-agent-secret.
+  HYDRO_AREA_DATABASE_HOST: "10.255.254.109"
+  HYDRO_AREA_DATABASE_PORT: "5443"
+  HYDRO_AREA_DATABASE_NAME: "liveability_data_20260730"
+  HYDRO_ADMINISTRATIVE_TABLE: "public.udm_district"
+  HYDRO_ADMINISTRATIVE_NAME_COLUMN: "nameenglish"
+  HYDRO_ADMINISTRATIVE_GEOMETRY_COLUMN: "shape"

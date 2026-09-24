@@ -36,7 +36,9 @@ type AreaSelectionMode = 'administrative' | 'catchment' | 'freehand';
 
 interface AoiValues { minLon: number; minLat: number; maxLon: number; maxLat: number; }
 interface GeoJSONPolygon { type: 'Polygon'; coordinates: number[][][]; }
-interface AreaOption { id: string; name: string; geometry: GeoJSONPolygon; properties?: Record<string, unknown>; }
+interface GeoJSONMultiPolygon { type: 'MultiPolygon'; coordinates: number[][][][]; }
+type GeoJSONAreaGeometry = GeoJSONPolygon | GeoJSONMultiPolygon;
+interface AreaOption { id: string; name: string; geometry: GeoJSONAreaGeometry; properties?: Record<string, unknown>; }
 interface AreaOptionsResponse {
   administrative_units?: AreaOption[];
   catchments?: AreaOption[];
@@ -83,14 +85,24 @@ const sourceKeys: SourceKey[] = ['network', 'terrain', 'rainfall', 'tide', 'outf
 const stepKeys: StepKey[] = ['data', 'area', 'parameters', 'preflight', 'results'];
 const fallbackSourceFormats: Record<SourceKey, string> = { network: 'SWMM_INP/GDB', terrain: 'GeoTIFF/NPZ', rainfall: 'CSV/JSON time series', tide: 'CSV/JSON time series', outfalls: 'GeoPackage/GeoJSON', pumps: 'CSV/GeoPackage' };
 const numberValue = (value: string) => { const parsed = Number(value); return Number.isFinite(parsed) ? parsed : 0; };
-const polygonBbox = (geometry: GeoJSONPolygon): AoiValues => {
-  const points = geometry.coordinates[0] || [];
+const polygonBbox = (geometry: GeoJSONAreaGeometry): AoiValues => {
+  const points: number[][] = [];
+  const collect = (value: unknown): void => {
+    if (!Array.isArray(value)) return;
+    if (value.length >= 2 && typeof value[0] === 'number' && typeof value[1] === 'number') {
+      points.push(value as number[]);
+      return;
+    }
+    value.forEach(collect);
+  };
+  collect(geometry.coordinates);
   const xs = points.map(point => point[0]).filter(value => Number.isFinite(value));
   const ys = points.map(point => point[1]).filter(value => Number.isFinite(value));
   if (xs.length < 4 || ys.length < 4) return initialAoi;
   return { minLon: Math.min(...xs), minLat: Math.min(...ys), maxLon: Math.max(...xs), maxLat: Math.max(...ys) };
 };
-const isValidPolygon = (geometry: GeoJSONPolygon | null) => {
+const isValidPolygon = (geometry: GeoJSONAreaGeometry | null) => {
+  if (!geometry || geometry.type !== 'Polygon') return false;
   const ring = geometry?.coordinates?.[0];
   if (!ring || ring.length < 4) return false;
   const first = ring[0]; const last = ring[ring.length - 1];
@@ -132,7 +144,7 @@ export default function AbuDhabiHydroWorkbenchTab() {
   const [areaSelectionMode, setAreaSelectionMode] = useState<AreaSelectionMode>('administrative');
   const [selectedAdministrativeId, setSelectedAdministrativeId] = useState('');
   const [selectedCatchmentId, setSelectedCatchmentId] = useState('');
-  const [aoiGeometry, setAoiGeometry] = useState<GeoJSONPolygon | null>(null);
+  const [aoiGeometry, setAoiGeometry] = useState<GeoJSONAreaGeometry | null>(null);
   const [areaOptions, setAreaOptions] = useState<AreaOptionsResponse>({ administrative_units: [], catchments: [] });
   const [areaOptionsState, setAreaOptionsState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [sources, setSources] = useState<Record<SourceKey, string>>({ network: '', terrain: '', rainfall: '', tide: '', outfalls: '', pumps: '' });

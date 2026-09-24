@@ -91,6 +91,16 @@ data:
   # Must match the federated workload identity used by the Alertmanager gateway.
   GDA_SLO_ALERT_DETECTOR_SUBJECT: "workload:slo-alert-ingestor"
 
+  # Optional read-only customer boundary source for the hydro workbench.
+  # Credentials are intentionally supplied only through SecretManager/K8s
+  # Secret; these non-secret coordinates document the source contract.
+  HYDRO_AREA_DATABASE_HOST: "10.255.254.109"
+  HYDRO_AREA_DATABASE_PORT: "5443"
+  HYDRO_AREA_DATABASE_NAME: "liveability_data_20260730"
+  HYDRO_ADMINISTRATIVE_TABLE: "public.udm_district"
+  HYDRO_ADMINISTRATIVE_NAME_COLUMN: "nameenglish"
+  HYDRO_ADMINISTRATIVE_GEOMETRY_COLUMN: "shape"
+
   # Optional plan-bound object projection registry. Keep the JSON in the
   # deployment overlay/SecretManager when a real target is enabled.
   GDA_OBJECT_PROJECTION_TARGETS_JSON: ""

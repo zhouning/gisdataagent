@@ -4,8 +4,13 @@ from __future__ import annotations
 
 import os
 import json
+import re
+from urllib.parse import quote_plus
 from pathlib import Path
 from typing import Any
+
+import psycopg2
+from psycopg2 import sql
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse
@@ -112,7 +117,7 @@ def _area_options_from_environment(name: str) -> list[dict[str, Any]]:
             properties = feature.get("properties") if isinstance(feature.get("properties"), dict) else {}
             option_id = properties.get("id") or properties.get("code") or properties.get("ID")
             name_value = properties.get("name") or properties.get("NAME") or option_id
-            if option_id and name_value and isinstance(feature.get("geometry"), dict) and feature["geometry"].get("type") == "Polygon":
+            if option_id and name_value and isinstance(feature.get("geometry"), dict) and feature["geometry"].get("type") in {"Polygon", "MultiPolygon"}:
                 options.append({
                     "id": str(option_id),
                     "name": str(name_value),
@@ -126,38 +131,154 @@ def _area_options_from_environment(name: str) -> list[dict[str, Any]]:
             if not isinstance(item, dict) or not item.get("id"):
                 continue
             geometry = item.get("geometry")
-            if not isinstance(geometry, dict) or geometry.get("type") != "Polygon":
+            if not isinstance(geometry, dict) or geometry.get("type") not in {"Polygon", "MultiPolygon"}:
                 continue
             options.append({
                 **item,
                 "id": str(item["id"]),
                 "name": str(item.get("name") or item["id"]),
             })
-        return options
-    return []
+    return options
 
 
+_SAFE_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _qualified_identifier(value: str, default_schema: str = "public") -> sql.Composed:
+    """Build a safe schema-qualified identifier from deployment configuration."""
+
+    parts = str(value or "").strip().split(".")
+    if len(parts) == 1:
+        parts.insert(0, default_schema)
+    if len(parts) != 2 or not all(_SAFE_IDENTIFIER.fullmatch(part) for part in parts):
+        raise ValueError("invalid configured area table")
+    return sql.SQL(".").join(sql.Identifier(part) for part in parts)
+
+
+def _area_database_url() -> str:
+    # A separate connection is intentional: the customer source database is
+    # not the GIS Data Agent control database and must never be inferred from
+    # DATABASE_URL.  The URL is injected by the deployment/secret manager.
+    configured_url = str(
+        os.environ.get("HYDRO_AREA_DATABASE_URL")
+        or os.environ.get("HYDRO_ADMINISTRATIVE_DATABASE_URL")
+        or ""
+    ).strip()
+    if configured_url:
+        return configured_url
+    host = str(os.environ.get("HYDRO_AREA_DATABASE_HOST") or "").strip()
+    user = str(os.environ.get("HYDRO_AREA_DATABASE_USER") or "").strip()
+    password = str(os.environ.get("HYDRO_AREA_DATABASE_PASSWORD") or "")
+    database = str(os.environ.get("HYDRO_AREA_DATABASE_NAME") or "liveability_data_20260730").strip()
+    port = str(os.environ.get("HYDRO_AREA_DATABASE_PORT") or "5443").strip()
+    if not host or not user or not password or not database:
+        return ""
+    return f"postgresql://{quote_plus(user)}:{quote_plus(password)}@{host}:{port}/{quote_plus(database)}"
+
+
+def _area_options_from_database(kind: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Read real boundary features from the customer PostGIS source.
+
+    This path is deliberately opt-in and fail-closed.  If the customer
+    database is not configured or reachable, no synthetic options are
+    returned; the response tells the UI that the source is unavailable.
+    """
+
+    database_url = _area_database_url()
+    if not database_url:
+        host = str(os.environ.get("HYDRO_AREA_DATABASE_HOST") or "").strip()
+        if host:
+            port = str(os.environ.get("HYDRO_AREA_DATABASE_PORT") or "5443").strip()
+            database = str(os.environ.get("HYDRO_AREA_DATABASE_NAME") or "liveability_data_20260730").strip()
+            return [], {"status": "credentials_not_registered", "uri": f"postgresql://{host}:{port}/{database}", "count": 0}
+        return [], {"status": "not_registered", "uri": "", "count": 0}
+
+    prefix = "HYDRO_ADMINISTRATIVE" if kind == "administrative_units" else "HYDRO_CATCHMENT"
+    table = os.environ.get(f"{prefix}_TABLE") or (
+        "public.udm_district" if kind == "administrative_units" else ""
+    )
+    if not table:
+        return [], {"status": "not_registered", "uri": "", "count": 0}
+    id_column = os.environ.get(f"{prefix}_ID_COLUMN") or (
+        "objectid" if kind == "administrative_units" else "catchment_id"
+    )
+    name_column = os.environ.get(f"{prefix}_NAME_COLUMN") or (
+        "nameenglish" if kind == "administrative_units" else "name"
+    )
+    geometry_column = os.environ.get(f"{prefix}_GEOMETRY_COLUMN") or "shape"
+    limit_raw = os.environ.get(f"{prefix}_LIMIT") or "5000"
+    try:
+        limit = max(1, min(int(limit_raw), 20000))
+    except ValueError:
+        limit = 5000
+    if not _SAFE_IDENTIFIER.fullmatch(str(geometry_column)):
+        return [], {"status": "configuration_error", "uri": "", "count": 0}
+    try:
+        query = sql.SQL(
+            "SELECT to_jsonb(area_row), "
+            "ST_AsGeoJSON(ST_Transform(area_row.{geom_col}, 4326)) "
+            "FROM {table} AS area_row WHERE area_row.{geom_col} IS NOT NULL "
+            "AND GeometryType(area_row.{geom_col}) IN ('POLYGON', 'MULTIPOLYGON') "
+            "LIMIT %s"
+        ).format(
+            geom_col=sql.Identifier(geometry_column),
+            table=_qualified_identifier(table),
+        )
+        with psycopg2.connect(database_url, connect_timeout=3) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query, (limit,))
+                rows = cursor.fetchall()
+        options = []
+        for attributes, geometry_json in rows:
+            if not isinstance(attributes, dict) or not geometry_json:
+                continue
+            try:
+                geometry = json.loads(geometry_json) if isinstance(geometry_json, str) else geometry_json
+            except (TypeError, json.JSONDecodeError):
+                continue
+            if geometry.get("type") not in {"Polygon", "MultiPolygon"}:
+                continue
+            option_id = attributes.get(id_column) or attributes.get("id") or attributes.get("objectid") or attributes.get("gid")
+            option_name = attributes.get(name_column) or attributes.get("name") or attributes.get("nameenglish") or option_id
+            if not option_id:
+                continue
+            options.append({"id": str(option_id), "name": str(option_name or option_id), "geometry": geometry})
+        return options, {
+            "status": "ready" if options else "empty",
+            "uri": f"postgresql://customer-source/{table}",
+            "count": len(options),
+            "table": table,
+        }
+    except Exception as error:
+        # Do not put DSNs, usernames or driver diagnostics in a browser
+        # response.  The pod log contains the detailed exception.
+        print(f"[hydro-area] {kind} source unavailable: {type(error).__name__}: {error}")
+        return [], {
+            "status": "unavailable",
+            "uri": f"postgresql://customer-source/{table}",
+            "count": 0,
+            "error_code": type(error).__name__,
+            "table": table,
+        }
 def hydro_area_options_payload() -> dict[str, Any]:
     """Return real administrative/catchment choices registered by a deployment."""
 
     administrative = _area_options_from_environment("HYDRO_ADMINISTRATIVE_OPTIONS_JSON")
     catchments = _area_options_from_environment("HYDRO_CATCHMENT_OPTIONS_JSON")
+    administrative_source = {"status": "ready" if administrative else "not_registered", "uri": str(os.environ.get("HYDRO_ADMINISTRATIVE_BOUNDARY_URI") or "").strip(), "count": len(administrative)}
+    catchment_source = {"status": "ready" if catchments else "not_registered", "uri": str(os.environ.get("HYDRO_CATCHMENT_BOUNDARY_URI") or "").strip(), "count": len(catchments)}
+    if not administrative:
+        administrative, administrative_source = _area_options_from_database("administrative_units")
+    if not catchments:
+        catchments, catchment_source = _area_options_from_database("catchments")
     return {
         "schema": "gwm.abu_dhabi_flood.hydro_area_options.v1",
         "crs": "EPSG:4326",
         "administrative_units": administrative,
         "catchments": catchments,
         "sources": {
-            "administrative_units": {
-                "status": "ready" if administrative else "not_registered",
-                "uri": str(os.environ.get("HYDRO_ADMINISTRATIVE_BOUNDARY_URI") or "").strip(),
-                "count": len(administrative),
-            },
-            "catchments": {
-                "status": "ready" if catchments else "not_registered",
-                "uri": str(os.environ.get("HYDRO_CATCHMENT_BOUNDARY_URI") or "").strip(),
-                "count": len(catchments),
-            },
+            "administrative_units": administrative_source,
+            "catchments": catchment_source,
         },
         "freehand": {"status": "ready"},
     }
