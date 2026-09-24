@@ -18,7 +18,7 @@ from data_agent.hydro_workbench.coordinator import (
     HydroRunStateError,
 )
 from data_agent.hydro_workbench.k8s_api import job_manifest
-from data_agent.hydro_workbench.api import hydro_source_defaults_payload
+from data_agent.hydro_workbench.api import hydro_area_options_payload, hydro_source_defaults_payload
 from data_agent.hydro_workbench.storage import read_manifest, read_status
 from data_agent.user_context import current_user_id
 
@@ -49,6 +49,58 @@ def test_manifest_separates_aoi_model_domain_and_display_extent():
     assert area["model_calculation_domain"]["bbox"][2] > area["user_aoi"]["bbox"][2]
     assert manifest["immutability"]["state"] == "frozen"
     assert len(manifest["immutability"]["sha256"]) == 64
+
+
+def test_manifest_preserves_polygon_aoi_and_selection_metadata():
+    polygon = {
+        "type": "Polygon",
+        "coordinates": [[[54.35, 24.35], [54.40, 24.35], [54.40, 24.40], [54.35, 24.40], [54.35, 24.35]]],
+    }
+    manifest = build_run_manifest(
+        request(
+            aoi=polygon,
+            area_selection={"mode": "freehand", "ids": [], "labels": []},
+        )
+    )
+    assert manifest["area"]["selection_mode"] == "freehand"
+    assert manifest["area"]["user_aoi"]["type"] == "Polygon"
+    assert manifest["area"]["user_aoi"]["bbox"] == [54.35, 24.35, 54.4, 24.4]
+
+
+def test_manifest_rejects_unclosed_polygon_aoi():
+    polygon = {
+        "type": "Polygon",
+        "coordinates": [[[54.35, 24.35], [54.40, 24.35], [54.40, 24.40], [54.35, 24.40]]],
+    }
+    with pytest.raises(ManifestValidationError, match="Polygon ring must be closed"):
+        build_run_manifest(request(aoi=polygon, area_selection={"mode": "freehand"}))
+
+
+def test_area_options_do_not_invent_unregistered_boundaries(monkeypatch):
+    monkeypatch.delenv("HYDRO_ADMINISTRATIVE_OPTIONS_JSON", raising=False)
+    monkeypatch.delenv("HYDRO_CATCHMENT_OPTIONS_JSON", raising=False)
+    payload = hydro_area_options_payload()
+    assert payload["administrative_units"] == []
+    assert payload["catchments"] == []
+    assert payload["sources"]["administrative_units"]["status"] == "not_registered"
+    assert payload["freehand"]["status"] == "ready"
+
+
+def test_area_options_accept_feature_collections(monkeypatch):
+    monkeypatch.setenv(
+        "HYDRO_ADMINISTRATIVE_OPTIONS_JSON",
+        json.dumps({
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "properties": {"code": "ADM-1", "name": "District 1"},
+                "geometry": {"type": "Polygon", "coordinates": [[[54.35, 24.35], [54.4, 24.35], [54.4, 24.4], [54.35, 24.4], [54.35, 24.35]]]},
+            }],
+        }),
+    )
+    payload = hydro_area_options_payload()
+    assert payload["administrative_units"][0]["id"] == "ADM-1"
+    assert payload["sources"]["administrative_units"]["status"] == "ready"
 
 
 def test_manifest_discloses_defaults_and_fixture_sources():
@@ -188,6 +240,7 @@ def test_hydro_source_defaults_route_is_mounted_in_frontend_api():
 
     paths = {getattr(route, "path", "") for route in get_frontend_api_routes()}
     assert "/api/abu-dhabi/flood/hydro-runs/source-defaults" in paths
+    assert "/api/abu-dhabi/flood/hydro-runs/area-options" in paths
 
 
 def test_preflight_is_non_mutating_and_blocks_customer_etl_gap():

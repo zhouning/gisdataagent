@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import L from 'leaflet';
+import 'leaflet-draw';
+import 'leaflet-draw/dist/leaflet.draw.css';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -29,8 +32,20 @@ type InputMode = 'development_fixture' | 'customer_mount';
 type ResourceProfile = 'cpu_small' | 'cpu_large' | 'gpu';
 type StepKey = 'data' | 'area' | 'parameters' | 'preflight' | 'results';
 type SourceKey = 'network' | 'terrain' | 'rainfall' | 'tide' | 'outfalls' | 'pumps';
+type AreaSelectionMode = 'administrative' | 'catchment' | 'freehand';
 
 interface AoiValues { minLon: number; minLat: number; maxLon: number; maxLat: number; }
+interface GeoJSONPolygon { type: 'Polygon'; coordinates: number[][][]; }
+interface AreaOption { id: string; name: string; geometry: GeoJSONPolygon; properties?: Record<string, unknown>; }
+interface AreaOptionsResponse {
+  administrative_units?: AreaOption[];
+  catchments?: AreaOption[];
+  sources?: {
+    administrative_units?: { status?: string; uri?: string; count?: number };
+    catchments?: { status?: string; uri?: string; count?: number };
+  };
+  freehand?: { status?: string };
+}
 interface FeatureCollection { features?: Array<{ geometry?: { type?: string; coordinates?: unknown }; properties?: Record<string, unknown> }>; }
 interface SourceCheck { key: SourceKey; label: string; required: boolean; status: 'ready' | 'blocked' | 'optional'; uri: string; format: string; version?: string; detail: string; detail_code?: string; provided_by_customer?: boolean; }
 interface RegisteredSource {
@@ -53,7 +68,7 @@ interface ParameterReadiness { key: string; value: unknown; source: 'user' | 'sy
 interface PreflightResponse {
   status: 'ready' | 'blocked';
   can_submit: boolean;
-  manifest_preview?: { run_id: string; request: { model_type: ModelType; input_mode: InputMode; resource_profile: ResourceProfile }; area: { model_calculation_domain: { buffer_m: number; bbox?: number[] } }; parameter_provenance?: Record<string, string> };
+  manifest_preview?: { run_id: string; request: { model_type: ModelType; input_mode: InputMode; resource_profile: ResourceProfile }; area: { selection_mode?: AreaSelectionMode; selection_ids?: string[]; user_aoi?: { type?: string; bbox?: number[] }; model_calculation_domain: { buffer_m: number; bbox?: number[] } }; parameter_provenance?: Record<string, string> };
   checks: Array<{ key: string; label: string; status: string; detail: string }>;
   required_sources: SourceCheck[];
   sources?: SourceCheck[];
@@ -68,6 +83,19 @@ const sourceKeys: SourceKey[] = ['network', 'terrain', 'rainfall', 'tide', 'outf
 const stepKeys: StepKey[] = ['data', 'area', 'parameters', 'preflight', 'results'];
 const fallbackSourceFormats: Record<SourceKey, string> = { network: 'SWMM_INP/GDB', terrain: 'GeoTIFF/NPZ', rainfall: 'CSV/JSON time series', tide: 'CSV/JSON time series', outfalls: 'GeoPackage/GeoJSON', pumps: 'CSV/GeoPackage' };
 const numberValue = (value: string) => { const parsed = Number(value); return Number.isFinite(parsed) ? parsed : 0; };
+const polygonBbox = (geometry: GeoJSONPolygon): AoiValues => {
+  const points = geometry.coordinates[0] || [];
+  const xs = points.map(point => point[0]).filter(value => Number.isFinite(value));
+  const ys = points.map(point => point[1]).filter(value => Number.isFinite(value));
+  if (xs.length < 4 || ys.length < 4) return initialAoi;
+  return { minLon: Math.min(...xs), minLat: Math.min(...ys), maxLon: Math.max(...xs), maxLat: Math.max(...ys) };
+};
+const isValidPolygon = (geometry: GeoJSONPolygon | null) => {
+  const ring = geometry?.coordinates?.[0];
+  if (!ring || ring.length < 4) return false;
+  const first = ring[0]; const last = ring[ring.length - 1];
+  return Boolean(first && last && first[0] === last[0] && first[1] === last[1]);
+};
 const sleep = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
 const formatBytes = (value?: number | null) => {
   if (!value || value < 1) return '';
@@ -101,6 +129,12 @@ export default function AbuDhabiHydroWorkbenchTab() {
   const [domainBuffer, setDomainBuffer] = useState(500);
   const [couplingMode, setCouplingMode] = useState('two_way_swmm_anuga');
   const [aoi, setAoi] = useState(initialAoi);
+  const [areaSelectionMode, setAreaSelectionMode] = useState<AreaSelectionMode>('administrative');
+  const [selectedAdministrativeId, setSelectedAdministrativeId] = useState('');
+  const [selectedCatchmentId, setSelectedCatchmentId] = useState('');
+  const [aoiGeometry, setAoiGeometry] = useState<GeoJSONPolygon | null>(null);
+  const [areaOptions, setAreaOptions] = useState<AreaOptionsResponse>({ administrative_units: [], catchments: [] });
+  const [areaOptionsState, setAreaOptionsState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [sources, setSources] = useState<Record<SourceKey, string>>({ network: '', terrain: '', rainfall: '', tide: '', outfalls: '', pumps: '' });
   const [sourceDefaults, setSourceDefaults] = useState<Partial<Record<'network' | 'terrain', RegisteredSource>>>({});
   const [sourceDefaultsState, setSourceDefaultsState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
@@ -112,6 +146,11 @@ export default function AbuDhabiHydroWorkbenchTab() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const stopPollingRef = useRef(false);
+  const areaMapRef = useRef<HTMLDivElement | null>(null);
+  const areaMapInstanceRef = useRef<L.Map | null>(null);
+  const areaDrawnItemsRef = useRef<L.FeatureGroup | null>(null);
+  const areaDrawControlRef = useRef<any>(null);
+  const areaHighlightRef = useRef<L.GeoJSON | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -137,6 +176,92 @@ export default function AbuDhabiHydroWorkbenchTab() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    const loadAreaOptions = async () => {
+      try {
+        const response = await fetch('/api/abu-dhabi/flood/hydro-runs/area-options', { credentials: 'include', headers: getLocaleHeaders(), signal: controller.signal });
+        if (!response.ok) throw new Error(`area options: ${response.status}`);
+        const data = await response.json() as AreaOptionsResponse;
+        setAreaOptions(data);
+        setAreaOptionsState((data.administrative_units?.length || data.catchments?.length) ? 'ready' : 'unavailable');
+      } catch (caught) {
+        if (!(caught instanceof DOMException && caught.name === 'AbortError')) setAreaOptionsState('unavailable');
+      }
+    };
+    void loadAreaOptions();
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (step !== 'area' || !areaMapRef.current || areaMapInstanceRef.current) return;
+    const map = L.map(areaMapRef.current, { zoomControl: true, attributionControl: true }).setView([aoi.minLat, aoi.minLon], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+    const drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+    areaMapInstanceRef.current = map;
+    areaDrawnItemsRef.current = drawnItems;
+    const drawControl = new (L.Control as any).Draw({
+      position: 'topright',
+      draw: { polygon: { allowIntersection: false, showArea: true, shapeOptions: { color: '#22c55e' } }, polyline: false, rectangle: false, circle: false, marker: false, circlemarker: false },
+      edit: { featureGroup: drawnItems, remove: true },
+    });
+    areaDrawControlRef.current = drawControl;
+    const drawCreated = (event: any) => {
+      const layer = event.layer as L.Layer & { toGeoJSON?: () => any };
+      const geojson = layer.toGeoJSON?.();
+      const geometry = geojson?.geometry as GeoJSONPolygon | undefined;
+      if (!geometry || geometry.type !== 'Polygon') return;
+      drawnItems.clearLayers();
+      drawnItems.addLayer(layer);
+      setAreaSelectionMode('freehand');
+      setSelectedAdministrativeId('');
+      setSelectedCatchmentId('');
+      setAoiGeometry(geometry);
+      setAoi(polygonBbox(geometry));
+      invalidatePreflight();
+    };
+    map.on('draw:created', drawCreated);
+    const redraw = () => window.setTimeout(() => map.invalidateSize(), 0);
+    window.addEventListener('resize', redraw);
+    redraw();
+    return () => {
+      window.removeEventListener('resize', redraw);
+      map.off('draw:created', drawCreated);
+      map.remove();
+      areaMapInstanceRef.current = null;
+      areaDrawnItemsRef.current = null;
+      areaDrawControlRef.current = null;
+      areaHighlightRef.current = null;
+    };
+  }, [step]);
+
+  useEffect(() => {
+    const map = areaMapInstanceRef.current;
+    const drawControl = areaDrawControlRef.current;
+    if (!map || !drawControl) return;
+    if (areaSelectionMode === 'freehand') {
+      map.addControl(drawControl);
+    } else {
+      try { map.removeControl(drawControl); } catch { /* control not mounted */ }
+    }
+  }, [areaSelectionMode, step]);
+
+  useEffect(() => {
+    const map = areaMapInstanceRef.current;
+    if (!map) return;
+    if (areaHighlightRef.current) map.removeLayer(areaHighlightRef.current);
+    areaHighlightRef.current = null;
+    if (aoiGeometry && areaSelectionMode !== 'freehand') {
+      areaHighlightRef.current = L.geoJSON(aoiGeometry as any, { style: { color: '#fbbf24', weight: 3, fillColor: '#fbbf24', fillOpacity: 0.2 } }).addTo(map);
+      try { map.fitBounds(areaHighlightRef.current.getBounds(), { padding: [20, 20] }); } catch { /* invalid geometry is reported by the form */ }
+    }
+    if (areaSelectionMode === 'freehand' && areaDrawnItemsRef.current) {
+      areaDrawnItemsRef.current.clearLayers();
+      if (aoiGeometry) areaDrawnItemsRef.current.addLayer(L.geoJSON(aoiGeometry as any));
+    }
+  }, [aoiGeometry, areaSelectionMode]);
+
   const invalidatePreflight = () => { setPreflight(null); if (step === 'preflight' || step === 'results') setStep('parameters'); };
   const markTouched = (key: string) => { setTouched(current => ({ ...current, [key]: true })); invalidatePreflight(); };
   const parameterPayload = useMemo(() => ({
@@ -153,7 +278,12 @@ export default function AbuDhabiHydroWorkbenchTab() {
   }), [couplingMode, domainBuffer, gridResolution, manningN, oneDInfiltrationMethod, oneDRoutingMethod, rainfallDuration, rainfallPattern, rainfallTotal, touched, twoDTimestep]);
   const payload = useMemo(() => ({
     model_type: modelType, input_mode: inputMode, resource_profile: resourceProfile, ...parameterPayload,
-    aoi: [aoi.minLon, aoi.minLat, aoi.maxLon, aoi.maxLat],
+    aoi: aoiGeometry || [aoi.minLon, aoi.minLat, aoi.maxLon, aoi.maxLat],
+    area_selection: {
+      mode: areaSelectionMode,
+      ids: areaSelectionMode === 'administrative' ? (selectedAdministrativeId ? [selectedAdministrativeId] : []) : areaSelectionMode === 'catchment' ? (selectedCatchmentId ? [selectedCatchmentId] : []) : [],
+      labels: areaSelectionMode === 'administrative' ? (areaOptions.administrative_units || []).filter(item => item.id === selectedAdministrativeId).map(item => item.name) : areaSelectionMode === 'catchment' ? (areaOptions.catchments || []).filter(item => item.id === selectedCatchmentId).map(item => item.name) : [],
+    },
     data_sources: Object.fromEntries(sourceKeys.map(key => {
       const registered = key === 'network' || key === 'terrain' ? sourceDefaults[key] : undefined;
       const usesRegisteredSource = Boolean(registered?.registered && registered.uri === sources[key]);
@@ -165,12 +295,39 @@ export default function AbuDhabiHydroWorkbenchTab() {
         etl_required: usesRegisteredSource ? registered?.etl_required : true,
       }];
     })),
-  }), [aoi, inputMode, modelType, parameterPayload, resourceProfile, sourceDefaults, sources]);
+  }), [aoi, aoiGeometry, areaOptions, areaSelectionMode, inputMode, modelType, parameterPayload, resourceProfile, selectedAdministrativeId, selectedCatchmentId, sourceDefaults, sources]);
   const requiredSourceKeys = useMemo<SourceKey[]>(() => modelType === 'one_d' ? ['network'] : modelType === 'two_d' ? ['terrain'] : ['network', 'terrain'], [modelType]);
-  const aoiError = useMemo(() => aoi.minLon >= aoi.maxLon || aoi.minLat >= aoi.maxLat ? tr('area.invalidOrder') : aoi.maxLon - aoi.minLon > 5 || aoi.maxLat - aoi.minLat > 5 ? tr('area.tooLarge') : '', [aoi, tr]);
+  const aoiError = useMemo(() => {
+    if (areaSelectionMode === 'administrative' && !selectedAdministrativeId) return tr('area.selectionRequired');
+    if (areaSelectionMode === 'catchment' && !selectedCatchmentId) return tr('area.selectionRequired');
+    if (areaSelectionMode === 'freehand' && !isValidPolygon(aoiGeometry)) return tr('area.drawRequired');
+    if (aoi.minLon >= aoi.maxLon || aoi.minLat >= aoi.maxLat) return tr('area.invalidOrder');
+    if (aoi.maxLon - aoi.minLon > 5 || aoi.maxLat - aoi.minLat > 5) return tr('area.tooLarge');
+    return '';
+  }, [aoi, aoiGeometry, areaSelectionMode, selectedAdministrativeId, selectedCatchmentId, tr]);
   const aoiMetrics = useMemo(() => ({ widthKm: Math.max(0, (aoi.maxLon - aoi.minLon) * 111.32 * Math.cos(((aoi.minLat + aoi.maxLat) / 2) * Math.PI / 180)), heightKm: Math.max(0, (aoi.maxLat - aoi.minLat) * 111.32) }), [aoi]);
   const updateAoi = (key: keyof AoiValues, value: string) => { setAoi(current => ({ ...current, [key]: numberValue(value) })); invalidatePreflight(); };
   const updateSource = (key: SourceKey, value: string) => { setSources(current => ({ ...current, [key]: value })); invalidatePreflight(); };
+  const applyAreaOption = (mode: Exclude<AreaSelectionMode, 'freehand'>, id: string) => {
+    const options = mode === 'administrative' ? (areaOptions.administrative_units || []) : (areaOptions.catchments || []);
+    const option = options.find(item => item.id === id);
+    setAreaSelectionMode(mode);
+    if (mode === 'administrative') { setSelectedAdministrativeId(id); setSelectedCatchmentId(''); }
+    else { setSelectedCatchmentId(id); setSelectedAdministrativeId(''); }
+    if (!option) { setAoiGeometry(null); invalidatePreflight(); return; }
+    setAoiGeometry(option.geometry);
+    setAoi(polygonBbox(option.geometry));
+    invalidatePreflight();
+  };
+  const switchAreaSelectionMode = (mode: AreaSelectionMode) => {
+    setAreaSelectionMode(mode);
+    if (mode === 'freehand') {
+      setSelectedAdministrativeId('');
+      setSelectedCatchmentId('');
+      setAoiGeometry(null);
+    }
+    invalidatePreflight();
+  };
 
   const runPreflight = async () => {
     setBusy(true); setError('');
@@ -287,7 +444,7 @@ export default function AbuDhabiHydroWorkbenchTab() {
 
     {step === 'data' && <section className="abu-hydro-card abu-hydro-step-panel"><div className="abu-hydro-card-heading"><Database size={16} /><div><h3>{tr('data.title')}</h3><small>{tr('data.subtitle')}</small></div></div><div className="abu-hydro-mode-row"><div><strong>{tr('data.modeTitle')}</strong><span>{inputMode === 'customer_mount' ? tr('data.customerMode') : tr('data.fixtureMode')}</span></div>{showDevelopmentOptions && <label className="abu-hydro-mode-select">{tr('configuration.inputMode')}<select value={inputMode} onChange={event => { setInputMode(event.target.value as InputMode); invalidatePreflight(); }}><option value="customer_mount">{tr('inputModes.customer')}</option><option value="development_fixture">{tr('inputModes.fixture')}</option></select></label>}</div><div className={`abu-hydro-default-status ${sourceDefaultsState}`}>{sourceDefaultsState === 'loading' ? <RefreshCw size={13} /> : sourceDefaultsState === 'ready' ? <CheckCircle2 size={13} /> : <CircleAlert size={13} />}<span>{tr(`data.defaults.${sourceDefaultsState}`)}</span></div><div className="abu-hydro-asset-grid">{sourceKeys.map(sourceCard)}</div>{inputMode === 'development_fixture' && <p className="abu-hydro-warning"><AlertTriangle size={13} />{tr('data.fixtureWarning')}</p>}<div className="abu-hydro-actions"><button type="button" className="primary" onClick={goNext}>{tr('actions.next')}<ArrowRight size={15} /></button></div></section>}
 
-    {step === 'area' && <section className="abu-hydro-card abu-hydro-step-panel"><div className="abu-hydro-card-heading"><MapPinned size={16} /><div><h3>{tr('area.title')}</h3><small>{tr('area.subtitle')}</small></div></div><div className="abu-hydro-area-layout"><div className="abu-hydro-form-grid aoi-grid">{(['minLon', 'minLat', 'maxLon', 'maxLat'] as const).map(key => <label key={key}>{tr(`aoi.${key}`)}<input type="number" step="0.00001" value={aoi[key]} onChange={event => updateAoi(key, event.target.value)} /></label>)}<div className="abu-hydro-field-note"><Info size={13} />{tr('area.crs')}</div></div><div className="abu-hydro-aoi-preview"><div className="abu-hydro-aoi-canvas"><span className="abu-hydro-aoi-rectangle" /></div><div><strong>{tr('area.preview')}</strong><small>{aoiMetrics.widthKm.toFixed(2)} km × {aoiMetrics.heightKm.toFixed(2)} km</small></div></div></div><div className="abu-hydro-domain-control"><label>{tr('configuration.domainBuffer')}<input type="number" min="0" max="10000" step="10" value={domainBuffer} onChange={event => { setDomainBuffer(numberValue(event.target.value)); markTouched('domain_buffer_m'); }} /><em>{provenance('domain_buffer_m')}</em></label><small>{tr('area.bufferInputHint')}</small></div><div className="abu-hydro-domain-summary"><div><small>{tr('area.modelDomain')}</small><strong>{domainBuffer} m</strong></div><div><small>{tr('area.displayExtent')}</small><strong>{tr('area.sameAsAoi')}</strong></div><div><small>{tr('area.calculationRule')}</small><strong>{tr('area.bufferRule')}</strong></div></div>{aoiError && <p className="abu-hydro-error"><CircleAlert size={13} />{aoiError}</p>}<div className="abu-hydro-actions"><button type="button" onClick={goBack}><ArrowLeft size={15} />{tr('actions.back')}</button><button type="button" className="primary" disabled={Boolean(aoiError)} onClick={goNext}>{tr('actions.next')}<ArrowRight size={15} /></button></div></section>}
+    {step === 'area' && <section className="abu-hydro-card abu-hydro-step-panel"><div className="abu-hydro-card-heading"><MapPinned size={16} /><div><h3>{tr('area.title')}</h3><small>{tr('area.subtitle')}</small></div></div><div className="abu-hydro-area-order"><strong>{tr('area.selectionOrder')}</strong><span>{tr('area.selectionOrderDetail')}</span></div><div className="abu-hydro-area-modes">{(['administrative', 'catchment', 'freehand'] as AreaSelectionMode[]).map((mode, index) => <button key={mode} type="button" className={`abu-hydro-area-mode ${areaSelectionMode === mode ? 'active' : ''}`} onClick={() => switchAreaSelectionMode(mode)}><span>{index + 1}</span><strong>{tr(`area.modes.${mode}.title`)}</strong><small>{tr(`area.modes.${mode}.subtitle`)}</small></button>)}</div><div className="abu-hydro-area-layout"><div className="abu-hydro-area-selection-panel">{areaSelectionMode === 'administrative' && <div className="abu-hydro-selection-block"><label>{tr('area.modes.administrative.label')}<select value={selectedAdministrativeId} onChange={event => applyAreaOption('administrative', event.target.value)} disabled={!areaOptions.administrative_units?.length}><option value="">{areaOptions.administrative_units?.length ? tr('area.selectPlaceholder') : tr('area.notRegistered')}</option>{(areaOptions.administrative_units || []).map(option => <option key={option.id} value={option.id}>{option.name} · {option.id}</option>)}</select></label><small>{areaOptions.sources?.administrative_units?.uri ? `${tr('area.source')}: ${areaOptions.sources.administrative_units.uri}` : tr('area.modes.administrative.empty')}</small></div>}{areaSelectionMode === 'catchment' && <div className="abu-hydro-selection-block"><label>{tr('area.modes.catchment.label')}<select value={selectedCatchmentId} onChange={event => applyAreaOption('catchment', event.target.value)} disabled={!areaOptions.catchments?.length}><option value="">{areaOptions.catchments?.length ? tr('area.selectPlaceholder') : tr('area.notRegistered')}</option>{(areaOptions.catchments || []).map(option => <option key={option.id} value={option.id}>{option.name} · {option.id}</option>)}</select></label><small>{areaOptions.sources?.catchments?.uri ? `${tr('area.source')}: ${areaOptions.sources.catchments.uri}` : tr('area.modes.catchment.empty')}</small></div>}{areaSelectionMode === 'freehand' && <div className="abu-hydro-selection-block"><strong>{tr('area.modes.freehand.label')}</strong><small>{tr('area.modes.freehand.empty')}</small><span className="abu-hydro-draw-hint"><Info size={13} />{tr('area.drawHint')}</span></div>}<div className={`abu-hydro-area-options-status ${areaOptionsState}`}><Info size={13} />{areaOptionsState === 'loading' ? tr('area.loading') : areaOptionsState === 'ready' ? tr('area.boundariesReady') : tr('area.boundariesUnavailable')}</div><div className="abu-hydro-area-selection-summary"><small>{tr('area.selected')}</small><strong>{areaSelectionMode === 'administrative' ? ((areaOptions.administrative_units || []).find(item => item.id === selectedAdministrativeId)?.name || '—') : areaSelectionMode === 'catchment' ? ((areaOptions.catchments || []).find(item => item.id === selectedCatchmentId)?.name || '—') : (isValidPolygon(aoiGeometry) ? tr('area.freehandSelected') : '—')}</strong><span>{aoiMetrics.widthKm.toFixed(2)} km × {aoiMetrics.heightKm.toFixed(2)} km · {tr('area.crs')}</span></div></div><div className="abu-hydro-area-map-panel"><div ref={areaMapRef} className="abu-hydro-area-map" aria-label={tr('area.mapLabel')} /><small>{areaSelectionMode === 'freehand' ? tr('area.mapDrawHelp') : tr('area.mapSelectionHelp')}</small></div></div><details className="abu-hydro-advanced-aoi"><summary>{tr('area.advanced')}</summary><div className="abu-hydro-form-grid aoi-grid">{(['minLon', 'minLat', 'maxLon', 'maxLat'] as const).map(key => <label key={key}>{tr(`aoi.${key}`)}<input type="number" step="0.00001" value={aoi[key]} onChange={event => { updateAoi(key, event.target.value); setAoiGeometry(null); switchAreaSelectionMode('freehand'); }} /></label>)}<div className="abu-hydro-field-note"><Info size={13} />{tr('area.crs')}</div></div></details><div className="abu-hydro-domain-control"><label>{tr('configuration.domainBuffer')}<input type="number" min="0" max="10000" step="10" value={domainBuffer} onChange={event => { setDomainBuffer(numberValue(event.target.value)); markTouched('domain_buffer_m'); }} /><em>{provenance('domain_buffer_m')}</em></label><small>{tr('area.bufferInputHint')}</small></div><div className="abu-hydro-domain-summary"><div><small>{tr('area.modelDomain')}</small><strong>{domainBuffer} m</strong></div><div><small>{tr('area.displayExtent')}</small><strong>{tr('area.sameAsAoi')}</strong></div><div><small>{tr('area.calculationRule')}</small><strong>{tr('area.bufferRule')}</strong></div></div>{aoiError && <p className="abu-hydro-error"><CircleAlert size={13} />{aoiError}</p>}<div className="abu-hydro-actions"><button type="button" onClick={goBack}><ArrowLeft size={15} />{tr('actions.back')}</button><button type="button" className="primary" disabled={Boolean(aoiError)} onClick={goNext}>{tr('actions.next')}<ArrowRight size={15} /></button></div></section>}
 
     {step === 'parameters' && <section className="abu-hydro-card abu-hydro-step-panel"><div className="abu-hydro-card-heading"><Gauge size={16} /><div><h3>{tr('parameters.title')}</h3><small>{tr('parameters.subtitle')}</small></div></div><div className="abu-hydro-form-grid"><label>{tr('configuration.model')}<select value={modelType} onChange={event => { setModelType(event.target.value as ModelType); invalidatePreflight(); }}><option value="coupled_1d_2d">{tr('models.coupled')}</option><option value="one_d">{tr('models.oneD')}</option><option value="two_d">{tr('models.twoD')}</option></select></label><label>{tr('configuration.resource')}<select value={resourceProfile} onChange={event => { setResourceProfile(event.target.value as ResourceProfile); invalidatePreflight(); }}><option value="cpu_small">{tr('resources.cpuSmall')}</option><option value="cpu_large">{tr('resources.cpuLarge')}</option><option value="gpu">{tr('resources.gpu')}</option></select></label></div><div className="abu-hydro-parameter-section"><div className="abu-hydro-subheading"><CloudRain size={14} />{tr('parameters.rainfall')}</div><div className="abu-hydro-form-grid"><label>{tr('configuration.rainfall')}<input type="number" min="0.01" value={rainfallTotal} onChange={event => { setRainfallTotal(numberValue(event.target.value)); markTouched('rainfall_total_mm'); }} /><em>{provenance('rainfall_total_mm')}</em></label><label>{tr('configuration.duration')}<input type="number" min="1" value={rainfallDuration} onChange={event => { setRainfallDuration(numberValue(event.target.value)); markTouched('rainfall_duration_minutes'); }} /><em>{provenance('rainfall_duration_minutes')}</em></label><label>{tr('configuration.pattern')}<select value={rainfallPattern} onChange={event => { setRainfallPattern(event.target.value); markTouched('rainfall_pattern'); }}><option value="uniform">{tr('patterns.uniform')}</option><option value="alternating_block">{tr('patterns.alternating')}</option></select><em>{provenance('rainfall_pattern')}</em></label></div></div>{(modelType === 'one_d' || modelType === 'coupled_1d_2d') && <div className="abu-hydro-parameter-section"><div className="abu-hydro-subheading"><GitBranch size={14} />{tr('parameters.oneD')}</div><div className="abu-hydro-form-grid"><label>{tr('configuration.routing')}<select value={oneDRoutingMethod} onChange={event => { setOneDRoutingMethod(event.target.value); markTouched('one_d_routing_method'); }}><option value="KINWAVE">KINWAVE</option><option value="DYNWAVE">DYNWAVE</option><option value="STEADY">STEADY</option></select><em>{provenance('one_d_routing_method')}</em></label><label>{tr('configuration.infiltration')}<select value={oneDInfiltrationMethod} onChange={event => { setOneDInfiltrationMethod(event.target.value); markTouched('one_d_infiltration_method'); }}><option value="HORTON">HORTON</option><option value="GREEN_AMPT">GREEN_AMPT</option><option value="CURVE_NUMBER">CURVE_NUMBER</option></select><em>{provenance('one_d_infiltration_method')}</em></label></div></div>}{(modelType === 'two_d' || modelType === 'coupled_1d_2d') && <div className="abu-hydro-parameter-section"><div className="abu-hydro-subheading"><Waves size={14} />{tr('parameters.twoD')}</div><div className="abu-hydro-form-grid"><label>{tr('configuration.grid')}<input type="number" min="0.5" value={gridResolution} onChange={event => { setGridResolution(numberValue(event.target.value)); markTouched('two_d_grid_resolution_m'); }} /><em>{provenance('two_d_grid_resolution_m')}</em></label><label>{tr('configuration.manning')}<input type="number" min="0.005" step="0.005" value={manningN} onChange={event => { setManningN(numberValue(event.target.value)); markTouched('two_d_manning_n'); }} /><em>{provenance('two_d_manning_n')}</em></label><label>{tr('configuration.timestep')}<input type="number" min="1" value={twoDTimestep} onChange={event => { setTwoDTimestep(numberValue(event.target.value)); markTouched('two_d_timestep_seconds'); }} /><em>{provenance('two_d_timestep_seconds')}</em></label></div></div>}{modelType === 'coupled_1d_2d' && <div className="abu-hydro-parameter-section"><div className="abu-hydro-subheading"><GitBranch size={14} />{tr('parameters.coupling')}</div><div className="abu-hydro-form-grid"><label>{tr('configuration.coupling')}<select value={couplingMode} onChange={event => { setCouplingMode(event.target.value); markTouched('coupling_mode'); }}><option value="two_way_swmm_anuga">{tr('coupling.twoWay')}</option><option value="one_way_swmm_to_anuga">{tr('coupling.oneWay')}</option></select><em>{provenance('coupling_mode')}</em></label></div></div>}<div className="abu-hydro-actions"><button type="button" onClick={goBack}><ArrowLeft size={15} />{tr('actions.back')}</button><button type="button" className="primary" onClick={runPreflight} disabled={busy || Boolean(aoiError)}><RefreshCw size={15} />{busy ? tr('actions.working') : tr('actions.preflight')}</button></div></section>}
 

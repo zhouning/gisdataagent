@@ -20,6 +20,7 @@ SCHEMA = "gwm.abu_dhabi_flood.hydro_run_manifest.v1"
 MODEL_TYPES = {"one_d", "two_d", "coupled_1d_2d"}
 RESOURCE_PROFILES = {"cpu_small", "cpu_large", "gpu"}
 INPUT_MODES = {"development_fixture", "customer_mount"}
+AREA_SELECTION_MODES = {"administrative", "catchment", "freehand"}
 RAINFALL_PATTERNS = {"uniform", "alternating_block"}
 ONE_D_ROUTING_METHODS = {"KINWAVE", "DYNWAVE", "STEADY"}
 ONE_D_INFILTRATION_METHODS = {"HORTON", "GREEN_AMPT", "CURVE_NUMBER"}
@@ -82,13 +83,20 @@ def _bbox(payload: Any, issues: list[dict[str, Any]]) -> list[float]:
             points = [
                 point for point in coordinates[0] if isinstance(point, list) and len(point) >= 2
             ]
-            if points:
-                payload = [
-                    min(float(point[0]) for point in points),
-                    min(float(point[1]) for point in points),
-                    max(float(point[0]) for point in points),
-                    max(float(point[1]) for point in points),
-                ]
+            if len(points) >= 4:
+                try:
+                    if points[0][0] != points[-1][0] or points[0][1] != points[-1][1]:
+                        issues.append({"field": "aoi", "message": "Polygon ring must be closed"})
+                    payload = [
+                        min(float(point[0]) for point in points),
+                        min(float(point[1]) for point in points),
+                        max(float(point[0]) for point in points),
+                        max(float(point[1]) for point in points),
+                    ]
+                except (TypeError, ValueError):
+                    issues.append({"field": "aoi", "message": "Polygon coordinates must be numeric"})
+            else:
+                issues.append({"field": "aoi", "message": "Polygon ring must contain at least four points"})
     if not isinstance(payload, (list, tuple)) or len(payload) != 4:
         issues.append(
             {
@@ -119,6 +127,31 @@ def _bbox(payload: Any, issues: list[dict[str, Any]]) -> list[float]:
             {"field": "aoi", "message": "local MVP AOI cannot exceed 5 degrees in either dimension"}
         )
     return bbox
+
+
+def _aoi_geometry(payload: Any, bbox: list[float]) -> dict[str, Any]:
+    """Return a canonical geometry for the immutable manifest.
+
+    A bbox remains the compatibility representation for the worker, while a
+    user-drawn or registered boundary is preserved as a GeoJSON Polygon so
+    downstream AOI extraction does not silently expand it to a rectangle.
+    """
+
+    if isinstance(payload, dict) and payload.get("type") == "Polygon":
+        coordinates = payload.get("coordinates")
+        if isinstance(coordinates, list) and coordinates:
+            return {"type": "Polygon", "coordinates": coordinates}
+    min_lon, min_lat, max_lon, max_lat = bbox
+    return {
+        "type": "Polygon",
+        "coordinates": [[
+            [min_lon, min_lat],
+            [max_lon, min_lat],
+            [max_lon, max_lat],
+            [min_lon, max_lat],
+            [min_lon, min_lat],
+        ]],
+    }
 
 
 def _expand_bbox(bbox: list[float], buffer_m: float) -> list[float]:
@@ -246,7 +279,9 @@ def build_run_manifest(payload: dict[str, Any], *, strict_sources: bool = True) 
             {"field": "resource_profile", "message": f"must be one of {sorted(RESOURCE_PROFILES)}"}
         )
         resource_profile = DEFAULTS["resource_profile"]
-    aoi = _bbox(payload.get("aoi") or payload.get("bbox"), issues)
+    raw_aoi = payload.get("aoi") or payload.get("bbox")
+    aoi = _bbox(raw_aoi, issues)
+    aoi_geometry = _aoi_geometry(raw_aoi, aoi)
     buffer_m = _number(
         payload.get("domain_buffer_m", DEFAULTS["domain_buffer_m"]),
         "domain_buffer_m",
@@ -400,6 +435,14 @@ def build_run_manifest(payload: dict[str, Any], *, strict_sources: bool = True) 
         if issues:
             raise ManifestValidationError(issues)
 
+    area_selection_payload = payload.get("area_selection") if isinstance(payload.get("area_selection"), dict) else {}
+    area_selection_mode = str(area_selection_payload.get("mode") or "freehand")
+    if area_selection_mode not in AREA_SELECTION_MODES:
+        issues.append({"field": "area_selection.mode", "message": f"must be one of {sorted(AREA_SELECTION_MODES)}"})
+        area_selection_mode = "freehand"
+    if issues:
+        raise ManifestValidationError(issues)
+
     manifest: dict[str, Any] = {
         "schema": SCHEMA,
         "manifest_version": 1,
@@ -412,7 +455,10 @@ def build_run_manifest(payload: dict[str, Any], *, strict_sources: bool = True) 
             "resource_profile": resource_profile,
         },
         "area": {
-            "user_aoi": {"type": "bbox", "bbox": aoi, "crs": "EPSG:4326"},
+            "selection_mode": area_selection_mode,
+            "selection_ids": list(area_selection_payload.get("ids") or []),
+            "selection_labels": list(area_selection_payload.get("labels") or []),
+            "user_aoi": {**aoi_geometry, "bbox": aoi, "crs": "EPSG:4326"},
             "model_calculation_domain": {
                 "type": "bbox",
                 "bbox": model_domain,

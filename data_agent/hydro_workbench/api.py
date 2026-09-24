@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 from typing import Any
 
@@ -87,9 +88,89 @@ def hydro_source_defaults_payload() -> dict[str, Any]:
     }
 
 
+def _area_options_from_environment(name: str) -> list[dict[str, Any]]:
+    """Read deployment-provided area options without inventing geometries.
+
+    Boundary products are deliberately injected by the deployment.  The
+    local development overlay does not register synthetic administrative or
+    catchment polygons, so an empty list is the truthful response until the
+    customer publishes those assets.
+    """
+
+    raw = str(os.environ.get(name) or "").strip()
+    if not raw:
+        return []
+    try:
+        decoded = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if isinstance(decoded, dict) and decoded.get("type") == "FeatureCollection":
+        options: list[dict[str, Any]] = []
+        for feature in decoded.get("features") or []:
+            if not isinstance(feature, dict):
+                continue
+            properties = feature.get("properties") if isinstance(feature.get("properties"), dict) else {}
+            option_id = properties.get("id") or properties.get("code") or properties.get("ID")
+            name_value = properties.get("name") or properties.get("NAME") or option_id
+            if option_id and name_value and isinstance(feature.get("geometry"), dict) and feature["geometry"].get("type") == "Polygon":
+                options.append({
+                    "id": str(option_id),
+                    "name": str(name_value),
+                    "geometry": feature["geometry"],
+                    "properties": properties,
+                })
+        return options
+    if isinstance(decoded, list):
+        options = []
+        for item in decoded:
+            if not isinstance(item, dict) or not item.get("id"):
+                continue
+            geometry = item.get("geometry")
+            if not isinstance(geometry, dict) or geometry.get("type") != "Polygon":
+                continue
+            options.append({
+                **item,
+                "id": str(item["id"]),
+                "name": str(item.get("name") or item["id"]),
+            })
+        return options
+    return []
+
+
+def hydro_area_options_payload() -> dict[str, Any]:
+    """Return real administrative/catchment choices registered by a deployment."""
+
+    administrative = _area_options_from_environment("HYDRO_ADMINISTRATIVE_OPTIONS_JSON")
+    catchments = _area_options_from_environment("HYDRO_CATCHMENT_OPTIONS_JSON")
+    return {
+        "schema": "gwm.abu_dhabi_flood.hydro_area_options.v1",
+        "crs": "EPSG:4326",
+        "administrative_units": administrative,
+        "catchments": catchments,
+        "sources": {
+            "administrative_units": {
+                "status": "ready" if administrative else "not_registered",
+                "uri": str(os.environ.get("HYDRO_ADMINISTRATIVE_BOUNDARY_URI") or "").strip(),
+                "count": len(administrative),
+            },
+            "catchments": {
+                "status": "ready" if catchments else "not_registered",
+                "uri": str(os.environ.get("HYDRO_CATCHMENT_BOUNDARY_URI") or "").strip(),
+                "count": len(catchments),
+            },
+        },
+        "freehand": {"status": "ready"},
+    }
+
+
 async def get_hydro_source_defaults(request: Request) -> JSONResponse:
     del request
     return JSONResponse(hydro_source_defaults_payload())
+
+
+async def get_hydro_area_options(request: Request) -> JSONResponse:
+    del request
+    return JSONResponse(hydro_area_options_payload())
 
 
 async def create_hydro_run(request: Request) -> JSONResponse:
@@ -219,6 +300,11 @@ def hydro_routes(*, authenticated: bool = False) -> list[Any]:
             Route(
                 "/api/abu-dhabi/flood/hydro-runs/source-defaults",
                 get_hydro_source_defaults,
+                methods=["GET"],
+            ),
+            Route(
+                "/api/abu-dhabi/flood/hydro-runs/area-options",
+                get_hydro_area_options,
                 methods=["GET"],
             ),
             Route(
