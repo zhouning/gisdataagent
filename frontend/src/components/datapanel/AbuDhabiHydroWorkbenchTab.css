@@ -26,4 +26,12 @@
 @media (max-width: 1100px) { .abu-hydro-stepper { grid-template-columns: repeat(3, 1fr); }.abu-hydro-area-layout, .abu-hydro-results { grid-template-columns: 1fr; } }
 @media (max-width: 900px) { .abu-hydro-form-grid, .abu-hydro-asset-grid, .abu-hydro-review-grid { grid-template-columns: repeat(2, 1fr); }.abu-hydro-flow { grid-template-columns: repeat(2, 1fr); }.abu-hydro-hero { display: grid; }.abu-hydro-hero-status { justify-items: start; }.abu-hydro-domain-summary { grid-template-columns: 1fr; }.abu-hydro-area-modes { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .abu-hydro-stepper, .abu-hydro-form-grid, .abu-hydro-asset-grid, .abu-hydro-review-grid, .abu-hydro-domain-control { grid-template-columns: 1fr; }.abu-hydro-mode-row { align-items: stretch; flex-direction: column; }.abu-hydro-mode-select { grid-template-columns: 1fr; }.abu-hydro-run-summary { grid-template-columns: 1fr; }.abu-hydro-actions { justify-content: stretch; }.abu-hydro-actions button { flex: 1; justify-content: center; }.abu-hydro-area-order { display: grid; } }
+
+/* The shared MapPanel is the only map surface for hydraulic AOI selection. */
+.abu-hydro-area-layout { grid-template-columns: 1fr; }
+.abu-hydro-main-map-hint { display: flex; gap: 10px; align-items: center; min-height: 76px; padding: 14px 16px; border: 1px dashed color-mix(in srgb, var(--primary) 48%, var(--border)); border-radius: 9px; background: color-mix(in srgb, var(--primary) 7%, var(--surface-elevated)); color: var(--text-secondary); }
+.abu-hydro-main-map-hint svg { flex: 0 0 auto; color: var(--primary); }
+.abu-hydro-main-map-hint div { display: grid; gap: 4px; }
+.abu-hydro-main-map-hint strong { color: var(--text); font-size: 12px; }
+.abu-hydro-main-map-hint small { color: var(--text-tertiary); font-size: 10px; line-height: 1.45; }
 @keyframes abu-hydro-spin { to { transform: rotate(360deg); } }

@@ -275,6 +275,15 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   const [drawMode, setDrawMode] = useState(false);
   const drawControlRef = useRef<any>(null);
   const drawnItemsRef = useRef<L.FeatureGroup>(new L.FeatureGroup());
+  // Dedicated polygon-only interaction for the Abu Dhabi hydro workbench.
+  // It deliberately lives on the shared map instead of rendering a second map
+  // inside the workbench side panel.
+  const hydroAreaLayerRef = useRef<L.GeoJSON | null>(null);
+  const hydroAoiDrawControlRef = useRef<any>(null);
+  const hydroAoiDrawnItemsRef = useRef<L.FeatureGroup>(new L.FeatureGroup());
+  const hydroAoiDrawHandlerRef = useRef<((event: any) => void) | null>(null);
+  const hydroAreaSelectionRef = useRef<{ geometry: any | null; mode?: string }>({ geometry: null });
+  const hydroAoiDrawActiveRef = useRef(false);
   const [measurePoints, setMeasurePoints] = useState<[number, number][]>([]);
   const [measureResult, setMeasureResult] = useState<string>('');
   const measureLayerRef = useRef<L.LayerGroup | null>(null);
@@ -289,6 +298,93 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   useEffect(() => {
     interactionModesRef.current = { annotationMode, measureMode, drawMode };
   }, [annotationMode, measureMode, drawMode]);
+
+  const renderHydroAreaSelection = useCallback((map: L.Map, detail: { geometry?: any | null; mode?: string }) => {
+    if (hydroAreaLayerRef.current) {
+      try { map.removeLayer(hydroAreaLayerRef.current); } catch { /* layer may belong to a previous map */ }
+      hydroAreaLayerRef.current = null;
+    }
+    const geometry = detail.geometry;
+    if (!geometry) return;
+    const layer = L.geoJSON(geometry, {
+      style: {
+        color: '#fbbf24',
+        weight: 3,
+        opacity: 1,
+        fillColor: '#fbbf24',
+        fillOpacity: 0.16,
+        dashArray: detail.mode === 'catchment' ? '7 5' : undefined,
+      },
+    }).addTo(map);
+    hydroAreaLayerRef.current = layer;
+    const bounds = layer.getBounds();
+    if (bounds.isValid()) map.fitBounds(bounds.pad(0.08), { maxZoom: 15 });
+  }, []);
+
+  const removeHydroAoiDrawControl = useCallback((map: L.Map) => {
+    if (hydroAoiDrawHandlerRef.current) {
+      map.off((L as any).Draw.Event.CREATED, hydroAoiDrawHandlerRef.current);
+      hydroAoiDrawHandlerRef.current = null;
+    }
+    if (hydroAoiDrawControlRef.current) {
+      try { map.removeControl(hydroAoiDrawControlRef.current); } catch { /* control may already be removed */ }
+      hydroAoiDrawControlRef.current = null;
+    }
+  }, []);
+
+  const ensureHydroAoiDrawControl = useCallback((map: L.Map) => {
+    if (!map.hasLayer(hydroAoiDrawnItemsRef.current)) map.addLayer(hydroAoiDrawnItemsRef.current);
+    if (hydroAoiDrawControlRef.current) return;
+    const control = new (L.Control as any).Draw({
+      edit: false,
+      draw: {
+        marker: false,
+        polyline: false,
+        polygon: { allowIntersection: false, showArea: true, shapeOptions: { color: '#fbbf24', weight: 3, fillOpacity: 0.16 } },
+        rectangle: false,
+        circle: false,
+        circlemarker: false,
+      },
+    });
+    hydroAoiDrawControlRef.current = control;
+    map.addControl(control);
+    const handler = (event: any) => {
+      if (event?.layerType && event.layerType !== 'polygon') return;
+      hydroAoiDrawnItemsRef.current.clearLayers();
+      hydroAoiDrawnItemsRef.current.addLayer(event.layer);
+      const geometry = event.layer.toGeoJSON()?.geometry;
+      if (geometry?.type !== 'Polygon') return;
+      window.dispatchEvent(new CustomEvent('hydro-workbench-aoi-drawn', { detail: { geometry } }));
+    };
+    hydroAoiDrawHandlerRef.current = handler;
+    map.on((L as any).Draw.Event.CREATED, handler);
+  }, []);
+
+  useEffect(() => {
+    const handleAreaSelection = (event: Event) => {
+      const detail = (event as CustomEvent<{ geometry?: any | null; mode?: string }>).detail || {};
+      hydroAreaSelectionRef.current = { geometry: detail.geometry || null, mode: detail.mode };
+      if (mapRef.current) renderHydroAreaSelection(mapRef.current, hydroAreaSelectionRef.current);
+    };
+    const handleDrawAoi = (event: Event) => {
+      const active = Boolean((event as CustomEvent<{ active?: boolean }>).detail?.active);
+      hydroAoiDrawActiveRef.current = active;
+      if (!mapRef.current) return;
+      if (active) {
+        hydroAoiDrawnItemsRef.current.clearLayers();
+        ensureHydroAoiDrawControl(mapRef.current);
+      } else {
+        hydroAoiDrawnItemsRef.current.clearLayers();
+        removeHydroAoiDrawControl(mapRef.current);
+      }
+    };
+    window.addEventListener('hydro-workbench-area-selection', handleAreaSelection);
+    window.addEventListener('hydro-workbench-draw-aoi', handleDrawAoi);
+    return () => {
+      window.removeEventListener('hydro-workbench-area-selection', handleAreaSelection);
+      window.removeEventListener('hydro-workbench-draw-aoi', handleDrawAoi);
+    };
+  }, [ensureHydroAoiDrawControl, removeHydroAoiDrawControl, renderHydroAreaSelection]);
 
   useEffect(() => {
     const cancelS6PointSelection = (reason: string) => {
@@ -389,6 +485,13 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
     // Clean up any stale map instance
     if (mapRef.current) {
+      const previousMap = mapRef.current;
+      removeHydroAoiDrawControl(previousMap);
+      if (hydroAreaLayerRef.current) {
+        try { previousMap.removeLayer(hydroAreaLayerRef.current); } catch { /* already removed */ }
+        hydroAreaLayerRef.current = null;
+      }
+      if (previousMap.hasLayer(hydroAoiDrawnItemsRef.current)) previousMap.removeLayer(hydroAoiDrawnItemsRef.current);
       try { mapRef.current.remove(); } catch { /* already removed */ }
       mapRef.current = null;
     }
@@ -413,11 +516,22 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
     mapRef.current = map;
 
+    if (hydroAreaSelectionRef.current.geometry) {
+      renderHydroAreaSelection(map, hydroAreaSelectionRef.current);
+    }
+    if (hydroAoiDrawActiveRef.current) ensureHydroAoiDrawControl(map);
+
     return () => {
+      removeHydroAoiDrawControl(map);
+      if (hydroAreaLayerRef.current) {
+        try { map.removeLayer(hydroAreaLayerRef.current); } catch { /* already removed */ }
+        hydroAreaLayerRef.current = null;
+      }
+      if (map.hasLayer(hydroAoiDrawnItemsRef.current)) map.removeLayer(hydroAoiDrawnItemsRef.current);
       map.remove();
       mapRef.current = null;
     };
-  }, [viewMode]);
+  }, [ensureHydroAoiDrawControl, removeHydroAoiDrawControl, renderHydroAreaSelection, viewMode]);
 
   // Update center/zoom when props change
   useEffect(() => {
