@@ -400,6 +400,36 @@ def test_standalone_workbench_exposes_registered_area_options_route():
     assert "/api/abu-dhabi/flood/hydro-runs/area-options" in paths
 
 
+def test_coordinator_lists_durable_completed_runs_for_current_principal(tmp_path: Path):
+    coordinator = HydroRunCoordinator(root=tmp_path, k8s_client=FakeKubernetes())
+    run_id = coordinator.submit(request(model_type="one_d"))["run_id"]
+    from data_agent.hydro_workbench.storage import atomic_json, update_status
+
+    atomic_json(
+        tmp_path / run_id / "results" / "result.json",
+        {
+            "schema": "gwm.abu_dhabi_flood.hydro_run_result.v1",
+            "run_id": run_id,
+        },
+    )
+    update_status(run_id, "completed", progress=100, root=tmp_path)
+
+    records = coordinator.list_runs()
+
+    assert len(records) == 1
+    assert records[0]["run_id"] == run_id
+    assert records[0]["status"]["status"] == "completed"
+    assert records[0]["result_available"] is True
+    assert records[0]["request"]["model_type"] == "one_d"
+
+
+def test_frontend_api_mounts_hydro_run_history_route():
+    from data_agent.frontend_api import get_frontend_api_routes
+
+    paths = {getattr(route, "path", "") for route in get_frontend_api_routes()}
+    assert "/api/abu-dhabi/flood/hydro-runs/history" in paths
+
+
 def test_preflight_is_non_mutating_and_blocks_customer_etl_gap():
     fixture = build_preflight(request(model_type="two_d"))
     assert fixture["status"] == "ready"

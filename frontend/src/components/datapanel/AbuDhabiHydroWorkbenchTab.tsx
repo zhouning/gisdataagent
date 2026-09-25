@@ -12,6 +12,7 @@ import {
   Download,
   Gauge,
   GitBranch,
+  History,
   Info,
   Layers3,
   MapPinned,
@@ -101,6 +102,15 @@ interface PreflightResponse {
   warning_codes?: string[];
 }
 interface RunRecord { run_id: string; status?: { status?: string; progress?: number; message?: string; error?: string }; manifest?: PreflightResponse['manifest_preview']; }
+interface RunHistoryRecord {
+  run_id: string;
+  created_at?: string;
+  status?: { status?: string; progress?: number; message?: string; error?: string };
+  result_available?: boolean;
+  request?: { model_type?: ModelType; input_mode?: InputMode; resource_profile?: ResourceProfile };
+  area?: { selection_mode?: AreaSelectionMode; selection_ids?: string[]; selection_labels?: string[]; region?: string | null };
+}
+interface RunHistoryResponse { runs?: RunHistoryRecord[]; count?: number; }
 
 const initialAoi: AoiValues = { minLon: 54.35, minLat: 24.35, maxLon: 54.45, maxLat: 24.45 };
 const sourceKeys: SourceKey[] = ['network', 'terrain', 'rainfall', 'tide', 'outfalls', 'pumps'];
@@ -177,6 +187,8 @@ export default function AbuDhabiHydroWorkbenchTab() {
   const [run, setRun] = useState<RunRecord | null>(null);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [map, setMap] = useState<FeatureCollection | null>(null);
+  const [history, setHistory] = useState<RunHistoryRecord[]>([]);
+  const [historyState, setHistoryState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const stopPollingRef = useRef(false);
@@ -189,6 +201,23 @@ export default function AbuDhabiHydroWorkbenchTab() {
     ? String(selectedCatchment?.properties?.region || '')
     : '';
   const [regionalPilot, setRegionalPilot] = useState<RegionalPilotSummary | null>(null);
+
+  const loadHistory = async () => {
+    try {
+      setHistoryState('loading');
+      const response = await fetch('/api/abu-dhabi/flood/hydro-runs/history?limit=50', { credentials: 'include', headers: getLocaleHeaders() });
+      if (!response.ok) throw new Error(`history: ${response.status}`);
+      const data = await response.json() as RunHistoryResponse;
+      setHistory(data.runs || []);
+      setHistoryState('ready');
+    } catch {
+      setHistoryState('unavailable');
+    }
+  };
+
+  useEffect(() => {
+    void loadHistory();
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -383,6 +412,7 @@ export default function AbuDhabiHydroWorkbenchTab() {
         await sleep(2_000);
       }
       if (!terminal && !stopPollingRef.current) setError(tr('errors.timeout'));
+      void loadHistory();
     } catch (caught) { setError(caught instanceof Error ? caught.message : tr('errors.submit')); } finally { setBusy(false); }
   };
   const cancelRun = async () => {
@@ -464,12 +494,14 @@ export default function AbuDhabiHydroWorkbenchTab() {
     const required = requiredSourceKeys.includes(key);
     const registered = sourceDefaults[key];
     const usesRegisteredSource = Boolean(registered?.registered && registered.uri === sources[key]);
+    const regionalOnly = key === 'tide' || key === 'outfalls' || key === 'pumps';
     const sourceAsset = registered?.source_uri || registered?.source_name;
     const metadata = [registered?.format, formatBytes(registered?.size_bytes), registered?.crs, registered?.resolution_m ? `${registered.resolution_m} m` : '', registered?.event_id, registered?.total_mm ? `${registered.total_mm} mm` : '', registered?.duration_minutes ? `${registered.duration_minutes} min` : '', registered?.interval_count && registered?.interval_minutes ? `${registered.interval_count} × ${registered.interval_minutes} min` : '', registered?.admission].filter(Boolean).join(' · ');
     return <div key={key} className={`abu-hydro-asset ${required ? 'required' : ''} ${usesRegisteredSource ? 'registered' : ''}`}>
       <div className="abu-hydro-asset-heading"><strong>{tr(`sources.${key}`)}</strong><div className="abu-hydro-asset-badges">{usesRegisteredSource && <span className="abu-hydro-chip registered"><CheckCircle2 size={10} />{tr('data.registered')}</span>}<span className={`abu-hydro-chip ${required ? 'required' : 'optional'}`}>{required ? tr('data.required') : tr('data.optional')}</span></div></div>
       <input aria-label={tr(`sources.${key}`)} placeholder={tr(`sourcePlaceholders.${key}`)} value={sources[key]} onChange={event => updateSource(key, event.target.value)} />
       <small>{tr(`sourceFormats.${key}`)}</small>
+      {!sources[key] && regionalOnly && <small className="abu-hydro-source-missing">{selectedPilotRegion ? tr('data.sourceStates.notRegistered') : tr('data.sourceStates.selectCatchment')}</small>}
       {usesRegisteredSource && registered && <div className="abu-hydro-source-lineage"><div><span>{tr('data.modelInput')}</span><code title={registered.uri}>{registered.uri}</code></div>{sourceAsset && <div><span>{tr('data.sourceAsset')}</span><code title={sourceAsset}>{sourceAsset}</code></div>}<small>{metadata}{registered.sha256 ? ` · SHA-256 ${registered.sha256.slice(0, 12)}…` : ''}</small></div>}
     </div>;
   };
@@ -493,7 +525,7 @@ export default function AbuDhabiHydroWorkbenchTab() {
 
     {step === 'preflight' && <section className="abu-hydro-card abu-hydro-step-panel"><div className="abu-hydro-card-heading"><CircleDashed size={16} /><div><h3>{tr('preflight.title')}</h3><small>{tr('preflight.subtitle')}</small></div></div>{!preflight ? <div className="abu-hydro-empty"><CircleDashed size={22} /><p>{tr('preflight.empty')}</p><button type="button" className="primary" onClick={runPreflight} disabled={busy}>{tr('actions.preflight')}</button></div> : <><div className={`abu-hydro-readiness ${preflight.status}`}><strong>{tr(`preflight.status.${preflight.status}`)}</strong><span>{preflight.can_submit ? tr('preflight.readyDetail') : tr('preflight.blockedDetail')}</span></div><div className="abu-hydro-check-list">{preflight.checks.map(check => <div key={check.key} className="abu-hydro-check"><CheckCircle2 size={14} className={check.status === 'ready' ? 'ok' : 'warn'} /><div><strong>{checkLabel(check)}</strong><small>{checkDetail(check)}</small></div></div>)}</div><div className="abu-hydro-review-grid"><div><h4>{tr('preflight.sourcesTitle')}</h4><div className="abu-hydro-source-list">{allSources.map(source => <div key={source.key}><span>{tr(`sources.${source.key}`)}{source.required ? ` · ${tr('data.required')}` : ` · ${tr('data.optional')}`}</span><strong className={source.status}>{tr(`sourceStatus.${source.status}`)}</strong><small>{source.format} · {sourceDetail(source)}</small></div>)}</div></div><div><h4>{tr('preflight.parametersTitle')}</h4><div className="abu-hydro-provenance-list">{(preflight.parameter_readiness || []).map(parameter => <div key={parameter.key}><span>{parameterLabel(parameter.key)}</span><strong className={parameter.source}>{tr(`parameterSource.${parameter.source === 'system_default' ? 'default' : parameter.source}`)}</strong><small>{parameterValue(parameter)}</small></div>)}</div></div></div>{preflight.warnings.map((warning, index) => <p className="abu-hydro-warning" key={warning}><AlertTriangle size={13} />{String(t(`hydroWorkbench.preflight.warningCodes.${preflight.warning_codes?.[index] || 'unknown'}`, { defaultValue: warning }))}</p>)}{error && <p className="abu-hydro-error"><CircleAlert size={13} />{error}</p>}<div className="abu-hydro-actions"><button type="button" onClick={goBack}><ArrowLeft size={15} />{tr('actions.back')}</button><button type="button" className="primary" onClick={submitRun} disabled={busy || !preflight.can_submit}><Play size={15} />{tr('actions.submit')}</button></div></>}</section>}
 
-    {step === 'results' && <><section className="abu-hydro-card abu-hydro-run-card"><div className="abu-hydro-card-heading"><ServerCog size={16} /><div><h3>{tr('run.title')}</h3><small>{tr('run.subtitle')}</small></div><span className={`abu-hydro-state ${runState}`}>{tr(`statuses.${runState}`)}</span></div><div className="abu-hydro-run-summary"><div><small>{tr('run.id')}</small><strong>{run?.run_id || '—'}</strong></div><div><small>{tr('run.progress')}</small><strong>{run?.status?.progress ?? 0}%</strong></div><div><small>{tr('run.message')}</small><strong>{run?.status?.message || tr('run.waiting')}</strong></div></div>{runState === 'queued' || runState === 'running' ? <><div className="abu-hydro-progress"><span style={{ width: `${run?.status?.progress || 5}%` }} /></div><button type="button" className="abu-hydro-cancel" onClick={cancelRun} disabled={!run?.run_id}><Square size={14} />{tr('actions.cancel')}</button></> : null}{runState === 'failed' && <p className="abu-hydro-error"><CircleAlert size={13} />{run?.status?.error || tr('errors.runFailed')}</p>}</section>{result && <section className="abu-hydro-results"><div className="abu-hydro-card"><div className="abu-hydro-card-heading"><Layers3 size={16} /><h3>{tr('results.title')}</h3><button type="button" className="abu-hydro-icon-button" onClick={downloadResult} title={tr('results.download')}><Download size={14} /></button></div><div className="abu-hydro-result-disclosure"><span>{tr('results.inputMode')}</span><strong>{String(result.input_disclosure || '—')}</strong><span>{tr('results.engineeringUse')}</span><strong className={result.engineering_use === true ? 'allowed' : 'blocked'}>{engineeringUseLabel(result.engineering_use)}</strong></div><div className="abu-hydro-main-map-result"><Waves size={18} /><div><strong>{map?.features?.length ? tr('results.map') : tr('results.noMap')}</strong><small>{map?.features?.length ? 'The 1D network and 2D diagnostic depth layers have been loaded into the shared map panel.' : 'The map layer is not available yet.'}</small></div></div><details><summary>{tr('results.raw')}</summary><pre>{JSON.stringify(result, null, 2)}</pre></details></div></section>}{!result && <div className="abu-hydro-card abu-hydro-empty"><ServerCog size={22} /><p>{tr('results.waiting')}</p></div>}</>}
+    {step === 'results' && <><section className="abu-hydro-card abu-hydro-history-card"><div className="abu-hydro-card-heading"><History size={16} /><div><h3>{tr('history.title')}</h3><small>{tr('history.subtitle')}</small></div><button type="button" className="abu-hydro-icon-button" onClick={() => void loadHistory()} title={tr('history.refresh')}><RefreshCw size={14} /></button></div>{historyState === 'loading' ? <div className="abu-hydro-history-empty"><RefreshCw size={16} className="abu-hydro-spin" />{tr('history.loading')}</div> : historyState === 'unavailable' ? <div className="abu-hydro-history-empty"><CircleAlert size={16} />{tr('history.unavailable')}</div> : history.length === 0 ? <div className="abu-hydro-history-empty"><History size={16} />{tr('history.empty')}</div> : <div className="abu-hydro-history-list">{history.map(item => { const itemState = item.status?.status || 'idle'; const title = item.area?.selection_labels?.[0] || item.area?.region || item.area?.selection_mode || tr('history.unknownArea'); return <div className={`abu-hydro-history-item ${item.run_id === run?.run_id ? 'active' : ''}`} key={item.run_id}><div className="abu-hydro-history-main"><strong>{item.run_id}</strong><small>{title} · {item.request?.model_type || '—'} · {item.created_at ? new Date(item.created_at).toLocaleString() : '—'}</small></div><span className={`abu-hydro-state ${itemState}`}>{tr(`statuses.${itemState}`)}</span><button type="button" className="abu-hydro-history-load" disabled={!item.result_available || itemState !== 'completed'} onClick={() => { void loadRun(item.run_id).catch(caught => setError(caught instanceof Error ? caught.message : tr('errors.status'))); }}>{item.result_available && itemState === 'completed' ? tr('history.load') : tr('history.notReady')}</button></div>; })}</div>}</section><section className="abu-hydro-card abu-hydro-run-card"><div className="abu-hydro-card-heading"><ServerCog size={16} /><div><h3>{tr('run.title')}</h3><small>{tr('run.subtitle')}</small></div><span className={`abu-hydro-state ${runState}`}>{tr(`statuses.${runState}`)}</span></div><div className="abu-hydro-run-summary"><div><small>{tr('run.id')}</small><strong>{run?.run_id || '—'}</strong></div><div><small>{tr('run.progress')}</small><strong>{run?.status?.progress ?? 0}%</strong></div><div><small>{tr('run.message')}</small><strong>{run?.status?.message || tr('run.waiting')}</strong></div></div>{runState === 'queued' || runState === 'running' ? <><div className="abu-hydro-progress"><span style={{ width: `${run?.status?.progress || 5}%` }} /></div><button type="button" className="abu-hydro-cancel" onClick={cancelRun} disabled={!run?.run_id}><Square size={14} />{tr('actions.cancel')}</button></> : null}{runState === 'failed' && <p className="abu-hydro-error"><CircleAlert size={13} />{run?.status?.error || tr('errors.runFailed')}</p>}</section>{result && <section className="abu-hydro-results"><div className="abu-hydro-card"><div className="abu-hydro-card-heading"><Layers3 size={16} /><h3>{tr('results.title')}</h3><button type="button" className="abu-hydro-icon-button" onClick={downloadResult} title={tr('results.download')}><Download size={14} /></button></div><div className="abu-hydro-result-disclosure"><span>{tr('results.inputMode')}</span><strong>{String(result.input_disclosure || '—')}</strong><span>{tr('results.engineeringUse')}</span><strong className={result.engineering_use === true ? 'allowed' : 'blocked'}>{engineeringUseLabel(result.engineering_use)}</strong></div><div className="abu-hydro-main-map-result"><Waves size={18} /><div><strong>{map?.features?.length ? tr('results.map') : tr('results.noMap')}</strong><small>{map?.features?.length ? tr('results.mapLoaded') : tr('results.mapNotReady')}</small></div></div><details><summary>{tr('results.raw')}</summary><pre>{JSON.stringify(result, null, 2)}</pre></details></div></section>}{!result && <div className="abu-hydro-card abu-hydro-empty"><ServerCog size={22} /><p>{tr('results.waiting')}</p></div>}</>}
     {error && step !== 'preflight' && <p className="abu-hydro-error"><CircleAlert size={13} />{error}</p>}
   </div>;
 }

@@ -528,6 +528,29 @@ async def get_hydro_source_defaults(request: Request) -> JSONResponse:
     return JSONResponse(hydro_source_defaults_payload(request.query_params.get("region")))
 
 
+async def list_hydro_runs(request: Request) -> JSONResponse:
+    """Return the durable run history visible to the current principal."""
+
+    raw_limit = request.query_params.get("limit", "50")
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 50
+    try:
+        records = _coordinator().list_runs(limit=limit)
+    except Exception as error:
+        return JSONResponse(
+            {"error": "hydro_run_history_failed", "detail": str(error)[:500]}, status_code=503
+        )
+    return JSONResponse(
+        {
+            "schema": "gwm.abu_dhabi_flood.hydro_run_history.v1",
+            "runs": records,
+            "count": len(records),
+        }
+    )
+
+
 async def get_hydro_area_options(request: Request) -> JSONResponse:
     del request
     return JSONResponse(hydro_area_options_payload())
@@ -660,6 +683,11 @@ def hydro_routes(*, authenticated: bool = False) -> list[Any]:
             Route(
                 "/api/abu-dhabi/flood/hydro-runs/source-defaults",
                 get_hydro_source_defaults,
+                methods=["GET"],
+            ),
+            Route(
+                "/api/abu-dhabi/flood/hydro-runs/history",
+                list_hydro_runs,
                 methods=["GET"],
             ),
             Route(

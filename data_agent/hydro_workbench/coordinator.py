@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -197,6 +198,64 @@ class HydroRunCoordinator:
             "result_available": result_ready,
             "kubernetes": {"job_name": job_name, "job_status": job_status},
         }
+
+    def list_runs(self, *, limit: int = 50) -> list[dict[str, Any]]:
+        """List durable runs visible to the current principal.
+
+        History is read from the shared PVC rather than Kubernetes.  Jobs are
+        intentionally short-lived, while the manifest, status and result
+        receipt are the durable user-facing record.  The list endpoint does
+        not call ``status`` for every run, so opening the history view cannot
+        create a burst of Kubernetes API calls.
+        """
+
+        bounded_limit = max(1, min(int(limit), 100))
+        if not self.root.exists():
+            return []
+        records: list[dict[str, Any]] = []
+        for directory in self.root.iterdir():
+            if not directory.is_dir() or not (directory / "manifest.json").exists():
+                continue
+            try:
+                manifest = read_manifest(directory.name, self.root)
+                self.assert_access(manifest)
+                status = read_status(directory.name, self.root)
+            except (FileNotFoundError, OSError, ValueError, HydroRunAccessError, HydroRunStateError):
+                # A partially written or inaccessible run must never prevent
+                # other completed runs from appearing in the history.
+                continue
+            request = manifest.get("request") if isinstance(manifest.get("request"), dict) else {}
+            area = manifest.get("area") if isinstance(manifest.get("area"), dict) else {}
+            records.append(
+                {
+                    "run_id": str(manifest.get("run_id") or directory.name),
+                    "created_at": str(manifest.get("created_at") or ""),
+                    "status": status,
+                    "result_available": self._result_ready(directory.name),
+                    "request": {
+                        "model_type": request.get("model_type"),
+                        "input_mode": request.get("input_mode"),
+                        "resource_profile": request.get("resource_profile"),
+                    },
+                    "area": {
+                        "selection_mode": area.get("selection_mode"),
+                        "selection_ids": area.get("selection_ids") or [],
+                        "selection_labels": area.get("selection_labels") or [],
+                        "region": area.get("region"),
+                    },
+                }
+            )
+
+        def sort_key(record: dict[str, Any]) -> tuple[float, str]:
+            created_at = str(record.get("created_at") or "")
+            try:
+                timestamp = datetime.fromisoformat(created_at.replace("Z", "+00:00")).timestamp()
+            except (TypeError, ValueError, OverflowError):
+                timestamp = 0.0
+            return timestamp, str(record.get("run_id") or "")
+
+        records.sort(key=sort_key, reverse=True)
+        return records[:bounded_limit]
 
     def logs(self, run_id: str) -> dict[str, Any]:
         manifest = read_manifest(run_id, self.root)
