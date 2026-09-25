@@ -50,6 +50,7 @@ data:
   # Docker Desktop is the explicit development/test overlay. Production
   # overlays must omit this flag (the backend defaults to false).
   HYDRO_ALLOW_DEVELOPMENT_FIXTURES: "true"
+  HYDRO_ALLOW_REGIONAL_CUSTOMER_RUNS: "true"
   # Real customer assets registered in the in-cluster MinIO lakehouse. The UI
   # receives these credential-free URIs from the authenticated defaults API.
   HYDRO_DEFAULT_NETWORK_URI: "minio://gis-agent-lakehouse/hydro/abu-dhabi/customer-data/v1/model-ready/network/abu_dhabi_city_full_topology.inp"

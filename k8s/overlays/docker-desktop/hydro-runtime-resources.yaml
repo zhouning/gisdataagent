@@ -68,3 +68,9 @@ spec:
   policyTypes:
     - Ingress
     - Egress
+  egress:
+    # Docker Desktop's bundled Kubernetes does not consistently enforce
+    # namespace/pod selectors for Service traffic.  The dev overlay therefore
+    # permits Job egress so the worker can reach MinIO and DNS.  Production
+    # overlays must replace this with an explicit object-store egress policy.
+    - {}

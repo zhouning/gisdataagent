@@ -91,6 +91,11 @@ patches:
       kind: Deployment
       name: gis-agent-app
 
+  - path: minio-hydro-access-patch.yaml
+    target:
+      kind: NetworkPolicy
+      name: minio-access
+
   # Mount the minimal Paper9 demo bundle copied into Docker Desktop kind nodes.
   - path: paper9-hostpath-patch.yaml
     target:

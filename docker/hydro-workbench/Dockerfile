@@ -3,9 +3,12 @@ FROM ${HYDRO_RUNTIME_IMAGE}
 
 USER root
 ARG PIP_INDEX_URL=https://pypi.org/simple
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libexpat1 \
+    && rm -rf /var/lib/apt/lists/*
 RUN python -m pip install --no-cache-dir \
     --index-url "${PIP_INDEX_URL}" \
-    starlette==1.3.1 uvicorn==0.38.0
+    starlette==1.3.1 uvicorn==0.38.0 boto3==1.40.35
 
 COPY --chown=10001:10001 data_agent/hydro_workbench/ /app/data_agent/hydro_workbench/
 

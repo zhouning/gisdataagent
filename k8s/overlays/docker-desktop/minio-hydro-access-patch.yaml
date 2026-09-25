@@ -1,0 +1,12 @@
+- op: add
+  path: /spec/ingress/-
+  value:
+    from:
+      - podSelector:
+          matchLabels:
+            app.kubernetes.io/name: hydro-run
+    ports:
+      - protocol: TCP
+        port: 9000
+      - protocol: TCP
+        port: 9001

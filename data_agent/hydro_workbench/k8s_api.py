@@ -159,6 +159,10 @@ def job_manifest(
             {"name": "HYDRO_RUN_ROOT", "value": run_root},
             {"name": "ABU_DHABI_HYDRO_RUN_ROOT", "value": run_root},
         ],
+        # Object-store credentials are injected by the deployment Secret; the
+        # immutable manifest only contains credential-free URIs.  Production
+        # overlays should replace this Secret with an external-secrets target.
+        "envFrom": [{"secretRef": {"name": "gis-agent-secret"}}],
         "volumeMounts": [
             {"name": "hydro-runs", "mountPath": run_root},
             {"name": "tmp", "mountPath": "/tmp"},

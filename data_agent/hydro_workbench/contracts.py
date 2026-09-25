@@ -476,6 +476,10 @@ def build_run_manifest(payload: dict[str, Any], *, strict_sources: bool = True) 
             "selection_mode": area_selection_mode,
             "selection_ids": list(area_selection_payload.get("ids") or []),
             "selection_labels": list(area_selection_payload.get("labels") or []),
+            # Deployment-registered regional pilots are selected from the
+            # catchment catalog.  Keep the explicit region in the immutable
+            # manifest so the worker never has to infer a package from an ID.
+            "region": str(area_selection_payload.get("region") or "").strip() or None,
             "user_aoi": {**aoi_geometry, "bbox": aoi, "crs": "EPSG:4326"},
             "model_calculation_domain": {
                 "type": "bbox",
@@ -572,7 +576,14 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
     fixture_enabled = os.environ.get("HYDRO_ALLOW_DEVELOPMENT_FIXTURES", "false").lower() == "true"
     gpu_enabled = os.environ.get("HYDRO_GPU_ENABLED", "false").lower() == "true"
     gpu_requested = manifest["request"]["resource_profile"] == "gpu"
-    execution_gate_ready = (not fixture or fixture_enabled) and (not gpu_requested or gpu_enabled)
+    regional_customer_enabled = (
+        os.environ.get("HYDRO_ALLOW_REGIONAL_CUSTOMER_RUNS", "false").lower() == "true"
+        and str(manifest.get("area", {}).get("region") or "") == "Musaffah_00"
+    )
+    execution_gate_ready = (
+        (not fixture or fixture_enabled or regional_customer_enabled)
+        and (not gpu_requested or gpu_enabled)
+    )
     checks: list[dict[str, Any]] = [
         {
             "key": "aoi",
@@ -633,9 +644,12 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
                     if required_sources_are_model_ready
                     else "Customer GDB/DTM ETL"
                 ),
-                "status": "blocked",
+                "status": "ready" if regional_customer_enabled and required_sources_are_model_ready else "blocked",
                 "detail": (
-                    "Model-ready customer inputs are registered, but the worker has not yet "
+                    "Musaffah_00 regional pilot is enabled; registered model-ready inputs will "
+                    "be staged into the solver Job."
+                    if regional_customer_enabled and required_sources_are_model_ready
+                    else "Model-ready customer inputs are registered, but the worker has not yet "
                     "enabled governed object-store staging and AOI extraction."
                     if required_sources_are_model_ready
                     else "Customer references are registered, but regional ETL has not yet "
@@ -739,24 +753,31 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
             and not manifest["data_sources"][name]["etl_required"]
             for name in required
         )
-        warnings.append(
-            (
-                "Customer data execution remains fail-closed until governed object-store "
-                "staging, AOI extraction and solver input verification are enabled."
-                if required_sources_are_model_ready
-                else "Customer data execution is fail-closed until source validation, field "
-                "mapping, topology checks and model-native export pass."
+        if regional_customer_enabled and required_sources_are_model_ready:
+            warnings.append(
+                "Musaffah_00 is a bounded diagnostic pilot. Dynamic tide and SCADA are not "
+                "provided; results are not engineering-admitted."
             )
-        )
-        warning_codes.append(
-            "customer_runtime_adapter"
-            if required_sources_are_model_ready
-            else "customer_etl"
-        )
+            warning_codes.append("regional_diagnostic_only")
+        else:
+            warnings.append(
+                (
+                    "Customer data execution remains fail-closed until governed object-store "
+                    "staging, AOI extraction and solver input verification are enabled."
+                    if required_sources_are_model_ready
+                    else "Customer data execution is fail-closed until source validation, field "
+                    "mapping, topology checks and model-native export pass."
+                )
+            )
+            warning_codes.append(
+                "customer_runtime_adapter"
+                if required_sources_are_model_ready
+                else "customer_etl"
+            )
     return {
         "schema": "gwm.abu_dhabi_flood.hydro_preflight.v1",
-        "status": "ready" if execution_gate_ready and fixture else "blocked",
-        "can_submit": execution_gate_ready and fixture,
+        "status": "ready" if execution_gate_ready and (fixture or regional_customer_enabled) else "blocked",
+        "can_submit": execution_gate_ready and (fixture or regional_customer_enabled),
         "manifest_preview": manifest,
         "checks": checks,
         "required_sources": required_source_checks,

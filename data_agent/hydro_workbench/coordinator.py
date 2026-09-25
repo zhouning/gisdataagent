@@ -35,6 +35,9 @@ class HydroRunCoordinator:
         self.allow_development_fixtures = (
             os.environ.get("HYDRO_ALLOW_DEVELOPMENT_FIXTURES", "false").lower() == "true"
         )
+        self.allow_regional_customer_runs = (
+            os.environ.get("HYDRO_ALLOW_REGIONAL_CUSTOMER_RUNS", "false").lower() == "true"
+        )
         self.client = k8s_client or InClusterKubernetesClient(self.namespace)
 
     def submit(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -63,18 +66,31 @@ class HydroRunCoordinator:
                 ]
             )
         if manifest["request"]["input_mode"] == "customer_mount":
-            raise ManifestValidationError(
-                [
-                    {
-                        "field": "input_mode",
-                        "message": (
-                            "customer data execution is fail-closed until the runtime adapter "
-                            "securely stages registered object-store inputs, extracts the AOI, "
-                            "and verifies solver-native files"
-                        ),
-                    }
-                ]
-            )
+            region = str(manifest.get("area", {}).get("region") or "")
+            if not self.allow_regional_customer_runs or region != "Musaffah_00":
+                raise ManifestValidationError(
+                    [
+                        {
+                            "field": "input_mode",
+                            "message": (
+                                "customer data execution is fail-closed except for the "
+                                "deployment-enabled Musaffah_00 regional pilot"
+                            ),
+                        }
+                    ]
+                )
+            required = {"one_d": ["network"], "two_d": ["terrain"], "coupled_1d_2d": ["network", "terrain"]}[manifest["request"]["model_type"]]
+            issues = [
+                {
+                    "field": f"data_sources.{name}",
+                    "message": "regional pilot source must be registered model-ready input",
+                }
+                for name in required
+                if not manifest["data_sources"].get(name, {}).get("uri")
+                or manifest["data_sources"].get(name, {}).get("etl_required")
+            ]
+            if issues:
+                raise ManifestValidationError(issues)
         if (
             manifest["request"]["resource_profile"] == "gpu"
             and os.environ.get("HYDRO_GPU_ENABLED", "false").lower() != "true"
