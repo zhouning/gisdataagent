@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import json
 import re
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 from pathlib import Path
 from typing import Any
 
@@ -180,6 +180,127 @@ def _area_options_from_environment(name: str) -> list[dict[str, Any]]:
     return options
 
 
+_AREA_OBJECT_CACHE: dict[str, tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any]]] = {}
+
+
+def _area_options_from_catalog_payload(
+    decoded: Any,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Parse a model-ready catchment FeatureCollection and expose its QA metadata."""
+
+    if not isinstance(decoded, dict) or decoded.get("type") != "FeatureCollection":
+        return [], {"status": "invalid", "count": 0, "format": "GeoJSON"}
+
+    options = _area_options_from_feature_collection(decoded)
+    catalog_metadata = decoded.get("metadata")
+    if not isinstance(catalog_metadata, dict):
+        catalog_metadata = {}
+    region_metadata = catalog_metadata.get("regions")
+    if not isinstance(region_metadata, list):
+        region_metadata = []
+    attribute_statuses = {
+        str(item.get("region")): str(item.get("attributes"))
+        for item in region_metadata
+        if isinstance(item, dict) and item.get("region") and item.get("attributes")
+    }
+    if attribute_statuses:
+        attribute_status = "; ".join(
+            f"{region} {status}" for region, status in attribute_statuses.items()
+        )
+    else:
+        attribute_status = "not_declared"
+    return options, {
+        "status": "ready" if options else "empty",
+        "count": len(options),
+        "format": "GeoJSON",
+        "attribute_status": attribute_status,
+        "source_crs": str(catalog_metadata.get("source_crs") or ""),
+        "source_crs_status": str(catalog_metadata.get("source_crs_status") or ""),
+        "output_crs": str(catalog_metadata.get("output_crs") or "EPSG:4326"),
+        "regions": region_metadata,
+    }
+
+
+def _area_options_from_feature_collection(decoded: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract selectable polygon options from a GeoJSON FeatureCollection."""
+
+    options: list[dict[str, Any]] = []
+    for feature in decoded.get("features") or []:
+        if not isinstance(feature, dict):
+            continue
+        properties = feature.get("properties") if isinstance(feature.get("properties"), dict) else {}
+        option_id = properties.get("id") or properties.get("code") or properties.get("ID")
+        name_value = properties.get("name") or properties.get("NAME") or option_id
+        geometry = feature.get("geometry")
+        if option_id and name_value and isinstance(geometry, dict) and geometry.get("type") in {"Polygon", "MultiPolygon"}:
+            options.append({
+                "id": str(option_id),
+                "name": str(name_value),
+                "geometry": geometry,
+                "properties": properties,
+            })
+    return options
+
+
+def _read_json_from_object_uri(uri: str) -> dict[str, Any] | None:
+    """Read a registered GeoJSON object without exposing storage credentials."""
+
+    cached = _AREA_OBJECT_CACHE.get(uri)
+    if cached is not None:
+        return cached[0]
+    parsed = urlparse(uri)
+    try:
+        if parsed.scheme == "file":
+            with Path(parsed.path).open("r", encoding="utf-8") as stream:
+                decoded = json.load(stream)
+        elif parsed.scheme in {"s3", "minio"}:
+            import boto3
+            from botocore.config import Config as BotoConfig
+
+            bucket = parsed.netloc
+            key = parsed.path.lstrip("/")
+            if not bucket or not key:
+                raise ValueError("object URI must include bucket and key")
+            client_kwargs: dict[str, Any] = {
+                "aws_access_key_id": os.environ.get("AWS_ACCESS_KEY_ID"),
+                "aws_secret_access_key": os.environ.get("AWS_SECRET_ACCESS_KEY"),
+                "region_name": os.environ.get("AWS_REGION", "us-east-1"),
+            }
+            endpoint_url = str(os.environ.get("AWS_ENDPOINT_URL") or "").strip()
+            if endpoint_url:
+                client_kwargs["endpoint_url"] = endpoint_url
+                client_kwargs["config"] = BotoConfig(s3={"addressing_style": "path"})
+            response = boto3.client("s3", **client_kwargs).get_object(Bucket=bucket, Key=key)
+            body = response["Body"].read()
+            decoded = json.loads(body.decode("utf-8") if isinstance(body, bytes) else body)
+        else:
+            raise ValueError("unsupported object URI scheme")
+    except Exception as error:
+        print(f"[hydro-area] catchment object unavailable: {type(error).__name__}: {error}")
+        return None
+    if not isinstance(decoded, dict):
+        return None
+    options, metadata = _area_options_from_catalog_payload(decoded)
+    _AREA_OBJECT_CACHE[uri] = (decoded, options, metadata)
+    return decoded
+
+
+def _area_options_from_object_uri(uri: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Load a catchment catalog from a registered MinIO/S3/NAS URI."""
+
+    decoded = _read_json_from_object_uri(uri)
+    if decoded is None:
+        return [], {
+            "status": "unavailable",
+            "uri": uri,
+            "count": 0,
+            "format": "GeoJSON",
+            "error_code": "object_read_failed",
+        }
+    options, metadata = _area_options_from_catalog_payload(decoded)
+    return options, {**metadata, "uri": uri}
+
+
 _SAFE_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -305,10 +426,17 @@ def hydro_area_options_payload() -> dict[str, Any]:
     administrative = _area_options_from_environment("HYDRO_ADMINISTRATIVE_OPTIONS_JSON")
     catchments = _area_options_from_environment("HYDRO_CATCHMENT_OPTIONS_JSON")
     administrative_source = {"status": "ready" if administrative else "not_registered", "uri": str(os.environ.get("HYDRO_ADMINISTRATIVE_BOUNDARY_URI") or "").strip(), "count": len(administrative)}
-    catchment_source = {"status": "ready" if catchments else "not_registered", "uri": str(os.environ.get("HYDRO_CATCHMENT_BOUNDARY_URI") or "").strip(), "count": len(catchments)}
+    catchment_uri = str(os.environ.get("HYDRO_CATCHMENT_BOUNDARY_URI") or "").strip()
+    catchment_source = {"status": "ready" if catchments else "not_registered", "uri": catchment_uri, "count": len(catchments)}
     if not administrative:
         administrative, administrative_source = _area_options_from_database("administrative_units")
-    if not catchments:
+    if not catchments and catchment_uri:
+        # The model-ready object-store catalog is the authoritative local
+        # development source. Do not silently replace a failed read with an
+        # empty database fallback: that would make the UI look valid while
+        # hiding the real storage problem.
+        catchments, catchment_source = _area_options_from_object_uri(catchment_uri)
+    elif not catchments:
         catchments, catchment_source = _area_options_from_database("catchments")
     return {
         "schema": "gwm.abu_dhabi_flood.hydro_area_options.v1",

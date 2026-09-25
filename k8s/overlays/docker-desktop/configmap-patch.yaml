@@ -78,6 +78,7 @@ data:
   HYDRO_ADMINISTRATIVE_ID_COLUMN: "district_id"
   HYDRO_ADMINISTRATIVE_NAME_COLUMN: "name_en"
   HYDRO_ADMINISTRATIVE_GEOMETRY_COLUMN: "geom"
+  HYDRO_CATCHMENT_BOUNDARY_URI: "minio://gis-agent-lakehouse/hydro/abu-dhabi/customer-data/v1/model-ready/areas/abu_dhabi_catchment_catalog.geojson"
   HYDRO_DEFAULT_RAINFALL_URI: "minio://gis-agent-lakehouse/hydro/abu-dhabi/public-proxy/v1/rainfall/uae_april_2024_reconstructed_hyetograph.json"
   HYDRO_DEFAULT_RAINFALL_FORMAT: "April 2024 reconstructed hourly hyetograph JSON"
   HYDRO_DEFAULT_RAINFALL_VERSION: "uae-april-2024-reconstruction-v1"

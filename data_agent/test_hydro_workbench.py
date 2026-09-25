@@ -18,6 +18,7 @@ from data_agent.hydro_workbench.coordinator import (
     HydroRunStateError,
 )
 from data_agent.hydro_workbench.k8s_api import job_manifest
+import data_agent.hydro_workbench.api as hydro_api
 from data_agent.hydro_workbench.api import hydro_area_options_payload, hydro_source_defaults_payload
 from data_agent.hydro_workbench.storage import read_manifest, read_status
 from data_agent.user_context import current_user_id
@@ -132,6 +133,73 @@ def test_area_options_accept_feature_collections(monkeypatch):
     payload = hydro_area_options_payload()
     assert payload["administrative_units"][0]["id"] == "ADM-1"
     assert payload["sources"]["administrative_units"]["status"] == "ready"
+
+
+def test_area_options_load_registered_catchment_catalog_from_object_store(monkeypatch):
+    features = [
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "RB3:1",
+                "name": "RB3 · 1",
+                "region": "RB3",
+                "source_attribute_status": "geometry_only",
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[[54.35, 24.35], [54.36, 24.35], [54.36, 24.36], [54.35, 24.35]]],
+            },
+        }
+    ] * 17_613
+    catalog = {
+        "type": "FeatureCollection",
+        "metadata": {
+            "source_crs": "EPSG:32640",
+            "source_crs_status": "inferred_pending_customer_confirmation",
+            "output_crs": "EPSG:4326",
+            "regions": [
+                {"region": "Musaffah_00", "attributes": "complete"},
+                {"region": "RB3", "attributes": "geometry_only"},
+                {"region": "Shaliela", "attributes": "complete"},
+            ],
+        },
+        "features": features,
+    }
+    monkeypatch.setenv(
+        "HYDRO_CATCHMENT_BOUNDARY_URI",
+        "minio://gis-agent-lakehouse/hydro/catchments.geojson",
+    )
+    monkeypatch.delenv("HYDRO_CATCHMENT_OPTIONS_JSON", raising=False)
+    monkeypatch.setattr(hydro_api, "_read_json_from_object_uri", lambda uri: catalog)
+
+    payload = hydro_area_options_payload()
+
+    assert len(payload["catchments"]) == 17_613
+    assert payload["sources"]["catchments"]["status"] == "ready"
+    assert payload["sources"]["catchments"]["count"] == 17_613
+    assert payload["sources"]["catchments"]["format"] == "GeoJSON"
+    assert payload["sources"]["catchments"]["attribute_status"] == (
+        "Musaffah_00 complete; RB3 geometry_only; Shaliela complete"
+    )
+    assert payload["sources"]["catchments"]["source_crs_status"] == (
+        "inferred_pending_customer_confirmation"
+    )
+    assert payload["catchments"][0]["properties"]["source_attribute_status"] == "geometry_only"
+
+
+def test_area_options_fails_closed_when_registered_catchment_object_is_unavailable(monkeypatch):
+    monkeypatch.setenv(
+        "HYDRO_CATCHMENT_BOUNDARY_URI",
+        "minio://gis-agent-lakehouse/hydro/catchments.geojson",
+    )
+    monkeypatch.delenv("HYDRO_CATCHMENT_OPTIONS_JSON", raising=False)
+    monkeypatch.setattr(hydro_api, "_read_json_from_object_uri", lambda uri: None)
+
+    payload = hydro_area_options_payload()
+
+    assert payload["catchments"] == []
+    assert payload["sources"]["catchments"]["status"] == "unavailable"
+    assert payload["sources"]["catchments"]["error_code"] == "object_read_failed"
 
 
 def test_manifest_discloses_defaults_and_fixture_sources():
@@ -282,6 +350,14 @@ def test_hydro_source_defaults_route_is_mounted_in_frontend_api():
     from data_agent.frontend_api import get_frontend_api_routes
 
     paths = {getattr(route, "path", "") for route in get_frontend_api_routes()}
+    assert "/api/abu-dhabi/flood/hydro-runs/source-defaults" in paths
+    assert "/api/abu-dhabi/flood/hydro-runs/area-options" in paths
+
+
+def test_standalone_workbench_exposes_registered_area_options_route():
+    from data_agent.hydro_workbench.app import routes
+
+    paths = {getattr(route, "path", "") for route in routes}
     assert "/api/abu-dhabi/flood/hydro-runs/source-defaults" in paths
     assert "/api/abu-dhabi/flood/hydro-runs/area-options" in paths
 

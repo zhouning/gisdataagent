@@ -13,6 +13,7 @@ from .api import (
     get_hydro_map,
     get_hydro_result,
     get_hydro_run,
+    get_hydro_area_options,
     get_hydro_source_defaults,
     preflight_hydro_run,
     workbench_page,
@@ -35,6 +36,11 @@ routes = [
     Route(
         "/api/abu-dhabi/flood/hydro-runs/source-defaults",
         get_hydro_source_defaults,
+        methods=["GET"],
+    ),
+    Route(
+        "/api/abu-dhabi/flood/hydro-runs/area-options",
+        get_hydro_area_options,
         methods=["GET"],
     ),
     Route(
