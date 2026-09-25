@@ -75,7 +75,19 @@ interface RegisteredSource {
   calibration_admitted?: boolean;
   diagnostic_forcing_admitted?: boolean;
 }
-interface SourceDefaultsResponse { sources?: Partial<Record<SourceKey, RegisteredSource>>; }
+interface RegionalPilotSummary {
+  status?: string;
+  engineering_admission?: string;
+  catchment_count?: number;
+  dynamic_tide_available?: boolean;
+  scada_available?: boolean;
+}
+interface SourceDefaultsResponse {
+  sources?: Partial<Record<SourceKey, RegisteredSource>>;
+  region?: string | null;
+  regional_pilot?: RegionalPilotSummary & { region?: string };
+  regional_pilots?: Record<string, RegionalPilotSummary>;
+}
 interface ParameterReadiness { key: string; value: unknown; source: 'user' | 'system_default' | 'derived'; editable: boolean; }
 interface PreflightResponse {
   status: 'ready' | 'blocked';
@@ -128,7 +140,7 @@ const formatBytes = (value?: number | null) => {
 
 export default function AbuDhabiHydroWorkbenchTab() {
   const { t } = useTranslation('common');
-  const tr = (key: string) => String(t(`hydroWorkbench.${key}`));
+  const tr = (key: string, options?: Record<string, unknown>) => String(t(`hydroWorkbench.${key}`, options));
   // Development fixtures are intentionally opt-in in every build.  Append
   // `?hydroDev=1` only in a local developer session; customer deployments do
   // not expose the fixture selector.
@@ -169,26 +181,41 @@ export default function AbuDhabiHydroWorkbenchTab() {
   const [error, setError] = useState('');
   const stopPollingRef = useRef(false);
 
+  const selectedCatchment = useMemo(
+    () => (areaOptions.catchments || []).find(item => item.id === selectedCatchmentId),
+    [areaOptions.catchments, selectedCatchmentId],
+  );
+  const selectedPilotRegion = areaSelectionMode === 'catchment'
+    ? String(selectedCatchment?.properties?.region || '')
+    : '';
+  const [regionalPilot, setRegionalPilot] = useState<RegionalPilotSummary | null>(null);
+
   useEffect(() => {
     const controller = new AbortController();
     const loadSourceDefaults = async () => {
       try {
-        const response = await fetch('/api/abu-dhabi/flood/hydro-runs/source-defaults', { credentials: 'include', headers: getLocaleHeaders(), signal: controller.signal });
+        const query = selectedPilotRegion ? `?region=${encodeURIComponent(selectedPilotRegion)}` : '';
+        setSourceDefaultsState('loading');
+        const response = await fetch(`/api/abu-dhabi/flood/hydro-runs/source-defaults${query}`, { credentials: 'include', headers: getLocaleHeaders(), signal: controller.signal });
         if (!response.ok) throw new Error(`source defaults: ${response.status}`);
         const data = await response.json() as SourceDefaultsResponse;
         const registered = data.sources || {};
-        const hasRegisteredSource = Boolean(registered.network?.registered || registered.terrain?.registered || registered.rainfall?.registered);
+        const hasRegisteredSource = Boolean(Object.values(registered).some(source => source?.registered));
         setSourceDefaults(registered);
         setSources(current => ({
           ...current,
-          network: current.network.trim() || (registered.network?.registered ? registered.network.uri : ''),
-          terrain: current.terrain.trim() || (registered.terrain?.registered ? registered.terrain.uri : ''),
-          rainfall: current.rainfall.trim() || (registered.rainfall?.registered ? registered.rainfall.uri : ''),
+          network: registered.network?.registered ? registered.network.uri : current.network,
+          terrain: registered.terrain?.registered ? registered.terrain.uri : current.terrain,
+          rainfall: registered.rainfall?.registered ? registered.rainfall.uri : current.rainfall,
+          tide: selectedPilotRegion ? (registered.tide?.registered ? registered.tide.uri : '') : '',
+          outfalls: selectedPilotRegion ? (registered.outfalls?.registered ? registered.outfalls.uri : '') : '',
+          pumps: selectedPilotRegion ? (registered.pumps?.registered ? registered.pumps.uri : '') : '',
         }));
         if (registered.rainfall?.registered) {
           if (typeof registered.rainfall.total_mm === 'number') setRainfallTotal(registered.rainfall.total_mm);
           if (typeof registered.rainfall.duration_minutes === 'number') setRainfallDuration(registered.rainfall.duration_minutes);
         }
+        setRegionalPilot(data.regional_pilot || null);
         setSourceDefaultsState(hasRegisteredSource ? 'ready' : 'unavailable');
       } catch (caught) {
         if (!(caught instanceof DOMException && caught.name === 'AbortError')) setSourceDefaultsState('unavailable');
@@ -196,7 +223,7 @@ export default function AbuDhabiHydroWorkbenchTab() {
     };
     void loadSourceDefaults();
     return () => controller.abort();
-  }, []);
+  }, [selectedPilotRegion]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -430,7 +457,7 @@ export default function AbuDhabiHydroWorkbenchTab() {
     <nav className="abu-hydro-stepper" aria-label={tr('stepsLabel')}>{stepKeys.map((key, index) => { const done = index < activeStepIndex; const enabled = index <= activeStepIndex || (key === 'preflight' && Boolean(preflight)) || key === 'results'; return <button key={key} type="button" className={`abu-hydro-step ${key === step ? 'active' : ''} ${done ? 'done' : ''}`} onClick={() => enabled && setStep(key)} disabled={!enabled}><span>{done ? <CheckCircle2 size={15} /> : index + 1}</span><strong>{tr(`steps.${key}.title`)}</strong><small>{tr(`steps.${key}.short`)}</small></button>; })}</nav>
     <section className="abu-hydro-flow" aria-label={tr('flowLabel')}>{[['data', Database], ['etl', GitBranch], ['solver', Waves], ['result', Layers3]].map(([key, Icon]) => <div key={String(key)} className="abu-hydro-flow-step"><Icon size={16} /><span>{tr(`flow.${String(key)}`)}</span></div>)}</section>
 
-    {step === 'data' && <section className="abu-hydro-card abu-hydro-step-panel"><div className="abu-hydro-card-heading"><Database size={16} /><div><h3>{tr('data.title')}</h3><small>{tr('data.subtitle')}</small></div></div><div className="abu-hydro-mode-row"><div><strong>{tr('data.modeTitle')}</strong><span>{inputMode === 'customer_mount' ? tr('data.customerMode') : tr('data.fixtureMode')}</span></div>{showDevelopmentOptions && <label className="abu-hydro-mode-select">{tr('configuration.inputMode')}<select value={inputMode} onChange={event => { setInputMode(event.target.value as InputMode); invalidatePreflight(); }}><option value="customer_mount">{tr('inputModes.customer')}</option><option value="development_fixture">{tr('inputModes.fixture')}</option></select></label>}</div><div className={`abu-hydro-default-status ${sourceDefaultsState}`}>{sourceDefaultsState === 'loading' ? <RefreshCw size={13} /> : sourceDefaultsState === 'ready' ? <CheckCircle2 size={13} /> : <CircleAlert size={13} />}<span>{tr(`data.defaults.${sourceDefaultsState}`)}</span></div><div className="abu-hydro-asset-grid">{sourceKeys.map(sourceCard)}</div>{inputMode === 'development_fixture' && <p className="abu-hydro-warning"><AlertTriangle size={13} />{tr('data.fixtureWarning')}</p>}<div className="abu-hydro-actions"><button type="button" className="primary" onClick={goNext}>{tr('actions.next')}<ArrowRight size={15} /></button></div></section>}
+    {step === 'data' && <section className="abu-hydro-card abu-hydro-step-panel"><div className="abu-hydro-card-heading"><Database size={16} /><div><h3>{tr('data.title')}</h3><small>{tr('data.subtitle')}</small></div></div><div className="abu-hydro-mode-row"><div><strong>{tr('data.modeTitle')}</strong><span>{inputMode === 'customer_mount' ? tr('data.customerMode') : tr('data.fixtureMode')}</span></div>{showDevelopmentOptions && <label className="abu-hydro-mode-select">{tr('configuration.inputMode')}<select value={inputMode} onChange={event => { setInputMode(event.target.value as InputMode); invalidatePreflight(); }}><option value="customer_mount">{tr('inputModes.customer')}</option><option value="development_fixture">{tr('inputModes.fixture')}</option></select></label>}</div><div className={`abu-hydro-default-status ${sourceDefaultsState}`}>{sourceDefaultsState === 'loading' ? <RefreshCw size={13} /> : sourceDefaultsState === 'ready' ? <CheckCircle2 size={13} /> : <CircleAlert size={13} />}<span>{tr(`data.defaults.${sourceDefaultsState}`)}</span></div>{selectedPilotRegion && regionalPilot && <div className="abu-hydro-regional-pilot"><div><strong>{tr('data.regionalPilot.title')}: {selectedPilotRegion}</strong><span>{tr('data.regionalPilot.catchments', { count: regionalPilot.catchment_count || 0 })}</span></div><div className="abu-hydro-regional-pilot-flags"><span className="ready"><CheckCircle2 size={11} />{tr('data.regionalPilot.staticNetwork')}</span><span className="warning"><AlertTriangle size={11} />{tr('data.regionalPilot.dynamicTideMissing')}</span><span className="warning"><AlertTriangle size={11} />{tr('data.regionalPilot.scadaMissing')}</span></div><small>{tr('data.regionalPilot.diagnosticOnly')}</small></div>}<div className="abu-hydro-asset-grid">{sourceKeys.map(sourceCard)}</div>{inputMode === 'development_fixture' && <p className="abu-hydro-warning"><AlertTriangle size={13} />{tr('data.fixtureWarning')}</p>}<div className="abu-hydro-actions"><button type="button" className="primary" onClick={goNext}>{tr('actions.next')}<ArrowRight size={15} /></button></div></section>}
 
     {step === 'area' && <section className="abu-hydro-card abu-hydro-step-panel"><div className="abu-hydro-card-heading"><MapPinned size={16} /><div><h3>{tr('area.title')}</h3><small>{tr('area.subtitle')}</small></div></div><div className="abu-hydro-area-order"><strong>{tr('area.selectionOrder')}</strong><span>{tr('area.selectionOrderDetail')}</span></div><div className="abu-hydro-area-modes">{(['administrative', 'catchment', 'freehand'] as AreaSelectionMode[]).map((mode, index) => <button key={mode} type="button" className={`abu-hydro-area-mode ${areaSelectionMode === mode ? 'active' : ''}`} onClick={() => switchAreaSelectionMode(mode)}><span>{index + 1}</span><strong>{tr(`area.modes.${mode}.title`)}</strong><small>{tr(`area.modes.${mode}.subtitle`)}</small></button>)}</div><div className="abu-hydro-area-layout"><div className="abu-hydro-area-selection-panel">{areaSelectionMode === 'administrative' && <div className="abu-hydro-selection-block"><label>{tr('area.modes.administrative.label')}<select value={selectedAdministrativeId} onChange={event => applyAreaOption('administrative', event.target.value)} disabled={!areaOptions.administrative_units?.length}><option value="">{areaOptions.administrative_units?.length ? tr('area.selectPlaceholder') : tr('area.notRegistered')}</option>{(areaOptions.administrative_units || []).map(option => <option key={option.id} value={option.id}>{option.name} · {option.id}</option>)}</select></label><small>{areaOptions.sources?.administrative_units?.uri ? `${tr('area.source')}: ${areaOptions.sources.administrative_units.uri}` : tr('area.modes.administrative.empty')}</small></div>}{areaSelectionMode === 'catchment' && <div className="abu-hydro-selection-block"><label>{tr('area.modes.catchment.label')}<select value={selectedCatchmentId} onChange={event => applyAreaOption('catchment', event.target.value)} disabled={!areaOptions.catchments?.length}><option value="">{areaOptions.catchments?.length ? tr('area.selectPlaceholder') : tr('area.notRegistered')}</option>{(areaOptions.catchments || []).map(option => <option key={option.id} value={option.id}>{option.name} · {option.id}</option>)}</select></label><small>{areaOptions.sources?.catchments?.uri ? `${tr('area.source')}: ${areaOptions.sources.catchments.uri}` : tr('area.modes.catchment.empty')}</small></div>}{areaSelectionMode === 'freehand' && <div className="abu-hydro-selection-block"><strong>{tr('area.modes.freehand.label')}</strong><small>{tr('area.modes.freehand.empty')}</small><span className="abu-hydro-draw-hint"><Info size={13} />{tr('area.drawHint')}</span></div>}<div className={`abu-hydro-area-options-status ${areaOptionsState}`}><Info size={13} />{areaOptionsState === 'loading' ? tr('area.loading') : areaOptionsState === 'ready' ? tr('area.boundariesReady') : tr('area.boundariesUnavailable')}</div><div className="abu-hydro-area-selection-summary"><small>{tr('area.selected')}</small><strong>{areaSelectionMode === 'administrative' ? ((areaOptions.administrative_units || []).find(item => item.id === selectedAdministrativeId)?.name || '—') : areaSelectionMode === 'catchment' ? ((areaOptions.catchments || []).find(item => item.id === selectedCatchmentId)?.name || '—') : (isValidPolygon(aoiGeometry) ? tr('area.freehandSelected') : '—')}</strong><span>{aoiMetrics.widthKm.toFixed(2)} km × {aoiMetrics.heightKm.toFixed(2)} km · {tr('area.crs')}</span></div></div><div className="abu-hydro-main-map-hint"><MapPinned size={18} /><div><strong>{tr('area.mapLabel')}</strong><small>{tr('area.mapSelectionHelp')} {tr('area.mapDrawHelp')}</small></div></div></div><details className="abu-hydro-advanced-aoi"><summary>{tr('area.advanced')}</summary><div className="abu-hydro-form-grid aoi-grid">{(['minLon', 'minLat', 'maxLon', 'maxLat'] as const).map(key => <label key={key}>{tr(`aoi.${key}`)}<input type="number" step="0.00001" value={aoi[key]} onChange={event => { updateAoi(key, event.target.value); setAoiGeometry(null); switchAreaSelectionMode('freehand'); }} /></label>)}<div className="abu-hydro-field-note"><Info size={13} />{tr('area.crs')}</div></div></details><div className="abu-hydro-domain-control"><label>{tr('configuration.domainBuffer')}<input type="number" min="0" max="10000" step="10" value={domainBuffer} onChange={event => { setDomainBuffer(numberValue(event.target.value)); markTouched('domain_buffer_m'); }} /><em>{provenance('domain_buffer_m')}</em></label><small>{tr('area.bufferInputHint')}</small></div><div className="abu-hydro-domain-summary"><div><small>{tr('area.modelDomain')}</small><strong>{domainBuffer} m</strong></div><div><small>{tr('area.displayExtent')}</small><strong>{tr('area.sameAsAoi')}</strong></div><div><small>{tr('area.calculationRule')}</small><strong>{tr('area.bufferRule')}</strong></div></div>{aoiError && <p className="abu-hydro-error"><CircleAlert size={13} />{aoiError}</p>}<div className="abu-hydro-actions"><button type="button" onClick={goBack}><ArrowLeft size={15} />{tr('actions.back')}</button><button type="button" className="primary" disabled={Boolean(aoiError)} onClick={goNext}>{tr('actions.next')}<ArrowRight size={15} /></button></div></section>}
 

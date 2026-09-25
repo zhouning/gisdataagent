@@ -34,4 +34,8 @@
 .abu-hydro-main-map-hint div { display: grid; gap: 4px; }
 .abu-hydro-main-map-hint strong { color: var(--text); font-size: 12px; }
 .abu-hydro-main-map-hint small { color: var(--text-tertiary); font-size: 10px; line-height: 1.45; }
+.abu-hydro-regional-pilot { display: grid; gap: 8px; margin: 10px 0 14px; padding: 12px; border: 1px solid color-mix(in srgb, var(--primary) 38%, var(--border)); border-radius: 9px; background: color-mix(in srgb, var(--primary) 6%, var(--surface-elevated)); }
+.abu-hydro-regional-pilot > div:first-child { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.abu-hydro-regional-pilot strong { font-size: 13px; }.abu-hydro-regional-pilot span, .abu-hydro-regional-pilot small { color: var(--text-secondary); font-size: 10px; }
+.abu-hydro-regional-pilot-flags { display: flex; flex-wrap: wrap; gap: 6px; }.abu-hydro-regional-pilot-flags span { display: inline-flex; gap: 4px; align-items: center; padding: 4px 7px; border-radius: 999px; background: var(--surface); }.abu-hydro-regional-pilot-flags .ready { color: #166534; }.abu-hydro-regional-pilot-flags .warning { color: #92400e; }
 @keyframes abu-hydro-spin { to { transform: rotate(360deg); } }

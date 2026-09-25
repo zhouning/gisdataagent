@@ -346,6 +346,44 @@ def test_hydro_source_defaults_expose_registered_object_uris(monkeypatch):
     assert payload["sources"]["rainfall"]["calibration_admitted"] is False
 
 
+def test_hydro_source_defaults_switch_to_registered_regional_pilot(monkeypatch):
+    monkeypatch.setenv(
+        "HYDRO_REGIONAL_PILOTS_JSON",
+        json.dumps({
+            "Musaffah_00": {
+                "status": "recommended",
+                "catchment_count": 1243,
+                "dynamic_tide_available": False,
+                "scada_available": False,
+                "network": {
+                    "uri": "minio://lake/regions/musaffah/network.inp",
+                    "format": "SWMM_INP",
+                    "etl_required": False,
+                },
+                "terrain": {
+                    "uri": "minio://lake/regions/musaffah/dtm.tif",
+                    "format": "GeoTIFF",
+                    "etl_required": False,
+                },
+                "outfalls": {
+                    "uri": "minio://lake/regions/musaffah/outfalls.geojson",
+                    "format": "GeoJSON",
+                    "etl_required": False,
+                },
+            }
+        }),
+    )
+
+    payload = hydro_source_defaults_payload("Musaffah_00")
+
+    assert payload["region"] == "Musaffah_00"
+    assert payload["regional_pilot"]["catchment_count"] == 1243
+    assert payload["sources"]["network"]["uri"].endswith("regions/musaffah/network.inp")
+    assert payload["sources"]["terrain"]["uri"].endswith("regions/musaffah/dtm.tif")
+    assert payload["sources"]["outfalls"]["registered"] is True
+    assert payload["sources"]["tide"]["registered"] is False
+
+
 def test_hydro_source_defaults_route_is_mounted_in_frontend_api():
     from data_agent.frontend_api import get_frontend_api_routes
 

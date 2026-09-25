@@ -34,7 +34,32 @@ def _optional_int_environment(name: str) -> int | None:
         return None
 
 
-def hydro_source_defaults_payload() -> dict[str, Any]:
+def _regional_pilot_catalog() -> dict[str, dict[str, Any]]:
+    """Read deployment-registered, region-scoped model-ready assets.
+
+    The catalog is intentionally supplied by the deployment rather than
+    inferred from a browser path.  This keeps the UI credential-free while
+    allowing a selected Catchment to switch from city defaults to a bounded
+    regional pilot package.
+    """
+
+    raw = str(os.environ.get("HYDRO_REGIONAL_PILOTS_JSON") or "").strip()
+    if not raw:
+        return {}
+    try:
+        decoded = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(decoded, dict):
+        return {}
+    return {
+        str(region): value
+        for region, value in decoded.items()
+        if isinstance(region, str) and isinstance(value, dict)
+    }
+
+
+def hydro_source_defaults_payload(region: str | None = None) -> dict[str, Any]:
     """Return deployment-registered, credential-free customer source URIs.
 
     The browser never receives host filesystem paths or object-store
@@ -123,12 +148,60 @@ def hydro_source_defaults_payload() -> dict[str, Any]:
             "calibration_admitted": False,
             "diagnostic_forcing_admitted": True,
         },
+        "tide": {
+            "uri": "",
+            "format": "CSV/JSON time series",
+            "version": "not-provided",
+            "provided_by_customer": False,
+            "etl_required": True,
+            "registered": False,
+        },
+        "outfalls": {
+            "uri": "",
+            "format": "GeoPackage/GeoJSON",
+            "version": "not-provided",
+            "provided_by_customer": False,
+            "etl_required": True,
+            "registered": False,
+        },
+        "pumps": {
+            "uri": "",
+            "format": "CSV/GeoPackage",
+            "version": "not-provided",
+            "provided_by_customer": False,
+            "etl_required": True,
+            "registered": False,
+        },
     }
+    regional_pilots = _regional_pilot_catalog()
+    selected_region = str(region or "").strip() or None
+    regional_pilot = regional_pilots.get(selected_region or "") if selected_region else None
+    if regional_pilot:
+        for key in ("network", "terrain", "tide", "outfalls", "pumps"):
+            override = regional_pilot.get(key)
+            if isinstance(override, dict):
+                sources[key] = {**sources.get(key, {}), **override, "registered": bool(override.get("uri"))}
+        # Region packages do not replace the rainfall proxy unless explicitly
+        # registered; retaining the event forcing makes the pilot reproducible.
+        if isinstance(regional_pilot.get("rainfall"), dict):
+            sources["rainfall"] = {**sources["rainfall"], **regional_pilot["rainfall"]}
     return {
         "schema": "gwm.abu_dhabi_flood.hydro_source_defaults.v1",
         "dataset_version": "customer-data-v1",
         "storage_scope": "deployment_object_store",
         "sources": sources,
+        "region": selected_region,
+        "regional_pilot": regional_pilot,
+        "regional_pilots": {
+            name: {
+                "status": value.get("status", "registered"),
+                "engineering_admission": value.get("engineering_admission", "diagnostic_only"),
+                "catchment_count": value.get("catchment_count"),
+                "dynamic_tide_available": bool(value.get("dynamic_tide_available", False)),
+                "scada_available": bool(value.get("scada_available", False)),
+            }
+            for name, value in regional_pilots.items()
+        },
     }
 
 
@@ -452,8 +525,7 @@ def hydro_area_options_payload() -> dict[str, Any]:
 
 
 async def get_hydro_source_defaults(request: Request) -> JSONResponse:
-    del request
-    return JSONResponse(hydro_source_defaults_payload())
+    return JSONResponse(hydro_source_defaults_payload(request.query_params.get("region")))
 
 
 async def get_hydro_area_options(request: Request) -> JSONResponse:
