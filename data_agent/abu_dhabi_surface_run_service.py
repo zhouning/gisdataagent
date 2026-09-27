@@ -25,6 +25,12 @@ from pathlib import Path
 from typing import Any
 
 from .abu_dhabi_flood_scenario_service import render_scenario_input, validate_scenario
+from .abu_dhabi_rainfall_profiles import (
+    build_rainfall_profile,
+    rainfall_profile_series,
+    spatial_zone_values_mm_per_interval,
+    validate_spatial_rainfall_zones,
+)
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -138,19 +144,33 @@ def validate_surface_request(payload: dict[str, Any]) -> dict[str, Any]:
     }.get(requested_coupling_mode, requested_coupling_mode)
     if coupling_mode not in SUPPORTED_COUPLING_MODES:
         raise ValueError("surface_coupling_mode_invalid")
-    if payload.get("rainfall_source", "zone_b_design_storm") != "zone_b_design_storm":
+    rainfall_source = str(payload.get("rainfall_source", payload.get("rainfallSource", "zone_b_design_storm")))
+    profile_payload = payload.get("rainfall_profile", payload.get("rainfallProfile"))
+    if rainfall_source not in {"zone_b_design_storm", "rainfall_profile", "custom"}:
         raise ValueError("surface_rainfall_source_not_available")
     if payload.get("domain", "citywide") != "citywide":
         raise ValueError("surface_domain_not_available")
     if payload.get("boundary_type", "fixed_stage") != "fixed_stage":
         raise ValueError("surface_boundary_type_not_available")
-    if int(payload.get("rainfall_duration_minutes", 180)) != 180:
+    if profile_payload is not None and not isinstance(profile_payload, dict):
+        raise ValueError("surface_rainfall_profile_invalid")
+    profile = None
+    if profile_payload is not None:
+        profile = build_rainfall_profile(profile_payload)
+        rainfall_duration = int(profile["duration_minutes"])
+        if int(profile["interval_minutes"]) != 5:
+            raise ValueError("surface_rainfall_profile_requires_5_minute_interval")
+        if rainfall_source == "zone_b_design_storm":
+            rainfall_source = "rainfall_profile"
+    else:
+        rainfall_duration = int(payload.get("rainfall_duration_minutes", 180))
+    if rainfall_source == "zone_b_design_storm" and rainfall_duration != 180:
         raise ValueError("zone_b_ddf_duration_must_be_180_minutes")
     try:
         return_period = int(payload.get("return_period_years", 10))
     except (TypeError, ValueError) as error:
         raise ValueError("return_period_years_invalid") from error
-    if return_period not in SUPPORTED_RETURN_PERIODS:
+    if profile is None and return_period not in SUPPORTED_RETURN_PERIODS:
         raise ValueError("return_period_years_not_supported")
     terrain_source = str(payload.get("terrain_source", "customer_dtm_5m"))
     if terrain_source not in {"customer_dtm_5m", "copernicus_dem_glo30"}:
@@ -162,7 +182,8 @@ def validate_surface_request(payload: dict[str, Any]) -> dict[str, Any]:
     if output_interval not in {5, 10, 15, 30, 60}:
         raise ValueError("output_interval_minutes_not_supported")
     exchange_window_seconds = int(_number(payload, "exchange_window_seconds", 300, 60, 3600))
-    simulation_duration_seconds = (180 + int(_number(payload, "tail_minutes", 120, 0, 1440))) * 60
+    tail_minutes = int(_number(payload, "tail_minutes", 120, 0, 1440))
+    simulation_duration_seconds = (rainfall_duration + tail_minutes) * 60
     if coupling_mode != "surface_rainfall_only" and exchange_window_seconds not in {
         300,
         600,
@@ -181,6 +202,8 @@ def validate_surface_request(payload: dict[str, Any]) -> dict[str, Any]:
     binding_limit = None
     if binding_limit_value not in (None, ""):
         binding_limit = int(_number(payload, "binding_limit", 1, 1, 200000))
+    spatial_zones = profile.get("zones", []) if profile is not None else payload.get("spatial_zones", payload.get("spatialRainfallZones", []))
+    spatial_zones = validate_spatial_rainfall_zones(spatial_zones, spatial_mode="zones" if spatial_zones else "uniform")
     scenario = {
         "solver": "anuga",
         "solver_label": (
@@ -189,9 +212,12 @@ def validate_surface_request(payload: dict[str, Any]) -> dict[str, Any]:
             else "ANUGA 2D"
         ),
         "coupling_mode": coupling_mode,
-        "rainfall_source": "zone_b_design_storm",
+        "rainfall_source": rainfall_source,
         "return_period_years": return_period,
-        "rainfall_duration_minutes": 180,
+        "rainfall_duration_minutes": rainfall_duration,
+        "rainfall_profile": profile,
+        "spatial_zones": spatial_zones,
+        "default_rainfall_factor": _number(payload, "default_rainfall_factor", 1.0, 0.0, 20.0),
         "peak_position_percent": _number(payload, "peak_position_percent", 40, 5, 95),
         "terrain_source": terrain_source,
         "domain": "citywide",
@@ -200,7 +226,7 @@ def validate_surface_request(payload: dict[str, Any]) -> dict[str, Any]:
         "water_manning_n": _number(payload, "water_manning_n", 0.02, 0.005, 0.2),
         "initial_depth_m": _number(payload, "initial_depth_m", 0.0, 0.0, 2.0),
         "minimum_output_depth_m": _number(payload, "minimum_output_depth_m", 0.01, 0.0001, 0.5),
-        "tail_minutes": int((simulation_duration_seconds // 60) - 180),
+        "tail_minutes": int((simulation_duration_seconds // 60) - rainfall_duration),
         "output_interval_minutes": output_interval,
         "boundary_type": "fixed_stage",
         "sea_boundary_level_m": _number(payload, "sea_boundary_level_m", 0.0, -5.0, 10.0),
@@ -266,17 +292,16 @@ def _render_coupled_swmm_input(
     scenario: dict[str, Any],
 ) -> tuple[Path, dict[str, Any], dict[str, Any]]:
     exchange_interval_minutes = int(scenario["exchange_window_seconds"] // 60)
-    swmm_scenario = validate_scenario(
-        {
+    rainfall_payload: dict[str, Any] = {
             "scope": "citywide",
             "rainfallMode": "design_storm",
-            "rainfallPattern": "official_zone_b_ddf_abm",
             "returnPeriodYears": scenario["return_period_years"],
             "startTime": _COUPLED_SCENARIO_START_TIME,
             "durationMinutes": scenario["rainfall_duration_minutes"],
             "tailMinutes": scenario["tail_minutes"],
             "peakPosition": scenario["peak_position_percent"],
-            "spatialPattern": "uniform",
+            "spatialPattern": "zones" if scenario.get("spatial_zones") else "uniform",
+            "spatialRainfallZones": scenario.get("spatial_zones") or [],
             "pipeScope": "none",
             "blockagePercent": 0,
             "pipeCapacityMultiplier": 1,
@@ -285,8 +310,13 @@ def _render_coupled_swmm_input(
             "outfallMode": "open",
             "outfallLevelM": 0,
             "outputIntervalMinutes": exchange_interval_minutes,
-        }
-    )
+    }
+    if scenario.get("rainfall_profile"):
+        rainfall_payload["rainfallProfile"] = scenario["rainfall_profile"]
+        rainfall_payload["climateZone"] = scenario["rainfall_profile"].get("climate_zone", "zone_b")
+    else:
+        rainfall_payload["rainfallPattern"] = "official_zone_b_ddf_abm"
+    swmm_scenario = validate_scenario(rainfall_payload)
     scenario_input = output / "coupled_scenario.inp"
     rewrite = render_scenario_input(base_input, scenario_input, swmm_scenario)
     rainfall = dict(rewrite.get("rainfall") or {})
@@ -446,6 +476,31 @@ def _worker(run_id: str, scenario: dict[str, Any]) -> None:
             if not DEFAULT_LAND_COVER.is_file():
                 raise ValueError("surface_land_cover_missing")
             runner = _load_runner()
+            rainfall_values = None
+            if scenario.get("rainfall_profile") is not None:
+                profile_series, _profile_stats = rainfall_profile_series(
+                    scenario["rainfall_profile"],
+                    start=datetime(2000, 1, 1),
+                    tail_minutes=0,
+                )
+                rainfall_values = [float(intensity) for _stamp, intensity in profile_series[:-1]]
+            spatial_zones_for_run = scenario.get("spatial_zones") or []
+            if rainfall_values is not None and spatial_zones_for_run:
+                base_depths = [value / 12.0 for value in rainfall_values]
+                spatial_zones_for_run = [
+                    {
+                        **zone,
+                        "rainfall_values_mm_per_hour": [
+                            depth * 12.0
+                            for depth in spatial_zone_values_mm_per_interval(
+                                base_depths,
+                                zone,
+                                default_peak_position_percent=float(scenario.get("peak_position_percent", 40)),
+                            )
+                        ],
+                    }
+                    for zone in spatial_zones_for_run
+                ]
             summary = runner.run(
                 dem_path,
                 DEFAULT_LAND_COVER,
@@ -461,6 +516,10 @@ def _worker(run_id: str, scenario: dict[str, Any]) -> None:
                 initial_depth_m=scenario["initial_depth_m"],
                 minimum_output_depth_m=scenario["minimum_output_depth_m"],
                 water_cell_fraction_threshold=scenario["water_cell_fraction_threshold"],
+                rainfall_values_mm_per_hour=rainfall_values,
+                rainfall_duration_minutes=scenario["rainfall_duration_minutes"],
+                spatial_zones=spatial_zones_for_run,
+                default_rainfall_factor=scenario.get("default_rainfall_factor", 1.0),
             )
             surface = dict(summary.get("surface") or {})
             surface.update(

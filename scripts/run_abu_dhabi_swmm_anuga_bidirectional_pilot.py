@@ -109,6 +109,101 @@ class RecordingSurfaceAdapter:
         return state
 
 
+def build_land_masked_cross_mesh(
+    x: np.ndarray,
+    y: np.ndarray,
+    land_mask: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[tuple[int, int], str]]:
+    """Build four ANUGA triangles only for active land cells.
+
+    Cell identifiers remain the stable row-major identifiers of the complete
+    delivery grid, but permanent-water cells are absent from the numerical
+    mesh.  This makes the land/water mask a pre-simulation domain constraint
+    instead of a presentation-only filter.
+    """
+
+    ny, nx = land_mask.shape
+    if x.shape != (nx + 1,) or y.shape != (ny + 1,):
+        raise ValueError("pilot_land_mask_mesh_shape_invalid")
+    if not np.any(land_mask):
+        raise ValueError("pilot_land_mask_has_no_active_cells")
+
+    coordinates: list[tuple[float, float]] = []
+    coordinate_index: dict[tuple[float, float], int] = {}
+    triangles: list[tuple[int, int, int]] = []
+    triangle_to_cell: list[int] = []
+
+    def vertex(px: float, py: float) -> int:
+        key = (float(px), float(py))
+        index = coordinate_index.get(key)
+        if index is None:
+            index = len(coordinates)
+            coordinate_index[key] = index
+            coordinates.append(key)
+        return index
+
+    for row, column in np.argwhere(land_mask):
+        northwest = vertex(x[column], y[row])
+        northeast = vertex(x[column + 1], y[row])
+        southeast = vertex(x[column + 1], y[row + 1])
+        southwest = vertex(x[column], y[row + 1])
+        centre = vertex(
+            (x[column] + x[column + 1]) / 2.0,
+            (y[row] + y[row + 1]) / 2.0,
+        )
+        cell_id = int(row * nx + column)
+        # Counter-clockwise triangles preserve the four-triangle cross mesh
+        # used by the previous rectangular ANUGA domain.
+        triangles.extend(
+            (
+                (southwest, southeast, centre),
+                (southeast, northeast, centre),
+                (northeast, northwest, centre),
+                (northwest, southwest, centre),
+            )
+        )
+        triangle_to_cell.extend((cell_id, cell_id, cell_id, cell_id))
+
+    coordinate_array = np.asarray(coordinates, dtype=np.float64)
+    triangle_array = np.asarray(triangles, dtype=np.int64)
+    mapping_array = np.asarray(triangle_to_cell, dtype=np.int64)
+    expected_triangles = int(np.sum(land_mask) * 4)
+    if triangle_array.shape != (expected_triangles, 3):
+        raise RuntimeError("pilot_land_mask_mesh_triangle_count_invalid")
+    if np.any(~land_mask.reshape(-1)[mapping_array]):
+        raise RuntimeError("pilot_land_mask_mesh_contains_water_cell")
+
+    edge_owners: dict[tuple[int, int], list[tuple[int, int]]] = {}
+    for triangle_index, triangle in enumerate(triangle_array):
+        for edge_index in range(3):
+            endpoints = (
+                int(triangle[(edge_index + 1) % 3]),
+                int(triangle[(edge_index + 2) % 3]),
+            )
+            edge_key = tuple(sorted(endpoints))
+            edge_owners.setdefault(edge_key, []).append((triangle_index, edge_index))
+
+    dx = float(x[1] - x[0])
+    tolerance = max(abs(dx) * 1.0e-8, 1.0e-8)
+    boundary: dict[tuple[int, int], str] = {}
+    for edge_key, owners in edge_owners.items():
+        if len(owners) != 1:
+            continue
+        midpoint = coordinate_array[list(edge_key)].mean(axis=0)
+        on_outer_envelope = (
+            abs(float(midpoint[0]) - float(x[0])) <= tolerance
+            or abs(float(midpoint[0]) - float(x[-1])) <= tolerance
+            or abs(float(midpoint[1]) - float(y[0])) <= tolerance
+            or abs(float(midpoint[1]) - float(y[-1])) <= tolerance
+        )
+        boundary[owners[0]] = (
+            "outer_domain" if on_outer_envelope else "permanent_water"
+        )
+    if not boundary:
+        raise RuntimeError("pilot_land_mask_mesh_boundary_missing")
+    return coordinate_array, triangle_array, mapping_array, boundary
+
+
 def build_surface(
     grid_path: Path,
     runner,
@@ -118,6 +213,7 @@ def build_surface(
     duration_seconds: int,
     friction: float,
     initial_depth_m: float,
+    sea_boundary_level_m: float,
 ):
     import anuga
 
@@ -150,25 +246,30 @@ def build_surface(
         se = values[row + 1, col + 1]
         return nw * (1.0 - xw) * (1.0 - yw) + ne * xw * (1.0 - yw) + sw * (1.0 - xw) * yw + se * xw * yw
 
-    domain = anuga.rectangular_cross_domain(
-        nx,
-        ny,
-        len1=float(x[-1] - x[0]),
-        len2=float(y[0] - y[-1]),
-        origin=(float(x[0]), float(y[-1])),
+    coordinates, triangles, triangle_to_cell, mesh_boundary = build_land_masked_cross_mesh(
+        x,
+        y,
+        land_mask,
     )
+    domain = anuga.Domain(coordinates, triangles, boundary=mesh_boundary)
     domain.set_name("abu_dhabi_swmm_anuga_bidirectional_pilot")
     domain.set_datadir(str(output_dir))
     domain.set_quantity("elevation", topography)
     domain.set_quantity("friction", friction)
     domain.set_quantity("stage", lambda xp, yp: topography(xp, yp) + initial_depth_m)
-    boundary = anuga.Dirichlet_boundary([0.0, 0.0, 0.0])
-    domain.set_boundary({"left": boundary, "right": boundary, "top": boundary, "bottom": boundary})
+    # Edges bordering excluded water and edges on the source-grid envelope
+    # were tagged before Domain construction so ANUGA's internal boundary
+    # caches cannot retain a stale generic ``exterior`` tag.
+    open_water_boundary = anuga.Dirichlet_boundary(
+        [float(sea_boundary_level_m), 0.0, 0.0]
+    )
+    domain.set_boundary(
+        {
+            "outer_domain": open_water_boundary,
+            "permanent_water": open_water_boundary,
+        }
+    )
     source_operator = anuga.Rate_operator(domain, rate=0.0, label="swmm_bidirectional_exchange")
-    centroids = np.asarray(domain.centroid_coordinates, dtype=float)
-    columns = np.clip(np.floor((centroids[:, 0] - x[0]) / dx).astype(int), 0, nx - 1)
-    rows = np.clip(np.floor((y[0] - centroids[:, 1]) / dx).astype(int), 0, ny - 1)
-    triangle_to_cell = rows * nx + columns
     cell_areas = np.full(nx * ny, dx * dx, dtype=float)
     adapter = runner.AnugaSurfaceAdapter(
         domain,
@@ -223,7 +324,8 @@ def _load_bindings(
     coordinates: dict[str, tuple[float, float]],
     geometry,
 ):
-    x, y, dx, _, _ = geometry
+    x, y, dx, _, land_mask = geometry
+    active_cells = land_mask.reshape(-1)
     bindings = []
     if args.bindings is not None:
         if not args.bindings.is_file():
@@ -233,12 +335,17 @@ def _load_bindings(
             if not node_id:
                 raise ValueError("pilot_binding_swmm_node_id_missing")
             node_index = record.get("swmm_node_index")
+            cell_index = int(record["anuga_cell_index"])
+            if cell_index < 0 or cell_index >= active_cells.size:
+                raise ValueError("pilot_binding_cell_index_out_of_range")
+            if not active_cells[cell_index]:
+                raise ValueError("pilot_binding_targets_permanent_water_cell")
             bindings.append(
                 runner.CouplingInterfaceBinding(
                     interface_id=str(record.get("interface_id") or f"{node_id}-surface"),
                     swmm_node_id=node_id,
                     swmm_node_index=(int(node_index) if node_index is not None else None),
-                    anuga_cell_index=int(record["anuga_cell_index"]),
+                    anuga_cell_index=cell_index,
                     inlet_elevation_m=float(record.get("inlet_elevation_m", 0.0)),
                     head_exchange_parameters=_head_parameters(record, runner, args),
                     provenance=str(record.get("provenance") or "mounted_customer_interface_binding"),
@@ -259,11 +366,14 @@ def _load_bindings(
         px, py = coordinates[node_id]
         col = int(np.clip(np.floor((px - x[0]) / dx), 0, len(x) - 2))
         row = int(np.clip(np.floor((y[0] - py) / dx), 0, len(y) - 2))
+        cell_index = row * (len(x) - 1) + col
+        if not active_cells[cell_index]:
+            raise ValueError("pilot_coordinate_binding_targets_permanent_water_cell")
         bindings.append(
             runner.CouplingInterfaceBinding(
                 interface_id=f"{node_id}-surface",
                 swmm_node_id=node_id,
-                anuga_cell_index=row * (len(x) - 1) + col,
+                anuga_cell_index=cell_index,
                 inlet_elevation_m=0.0,
                 head_exchange_parameters=_head_parameters({}, runner, args),
                 provenance="swmm_coordinate_to_mounted_terrain_grid",
@@ -291,6 +401,14 @@ def _write_surface_outputs(
     depth = np.maximum(stage - elevation.reshape(1, -1), 0.0)
     depth[:, ~land_mask.reshape(-1)] = 0.0
     maximum = depth.max(axis=0)
+    final_depth = depth[-1]
+    active = land_mask.reshape(-1)
+    expected_triangle_count = int(active.sum() * 4)
+    actual_triangle_count = int(surface.adapter.domain.number_of_triangles)
+    if actual_triangle_count != expected_triangle_count:
+        raise RuntimeError("pilot_land_mask_not_applied_to_anuga_mesh")
+    if np.any(maximum[~active] > 0.0) or np.any(final_depth[~active] > 0.0):
+        raise RuntimeError("pilot_permanent_water_depth_leaked_into_outputs")
     transformer = Transformer.from_crs(args.grid_crs, "EPSG:4326", always_xy=True)
 
     def ring(cell: int):
@@ -315,6 +433,7 @@ def _write_surface_outputs(
                 "depth_m": value,
                 property_name: value,
                 "cell_size_m": dx,
+                "land_mask_active": True,
             }
             if time_minutes is not None:
                 properties["time_minutes"] = time_minutes
@@ -331,6 +450,10 @@ def _write_surface_outputs(
         "type": "FeatureCollection",
         "name": f"{args.run_id}_maximum_depth",
         "features": features(maximum, "maximum_depth_m"),
+        "metadata": {
+            "land_water_mask_applied_before_simulation": True,
+            "permanent_water_feature_count": 0,
+        },
     }
     (args.output / "maximum_depth_wgs84.geojson").write_text(
         json.dumps(maximum_payload, ensure_ascii=True, separators=(",", ":")) + "\n",
@@ -346,6 +469,10 @@ def _write_surface_outputs(
             "type": "FeatureCollection",
             "name": f"{args.run_id}_time_{index:03d}",
             "features": features(values_by_cell, "depth_m", elapsed_seconds / 60.0),
+            "metadata": {
+                "land_water_mask_applied_before_simulation": True,
+                "permanent_water_feature_count": 0,
+            },
         }
         (snapshot_dir / name).write_text(
             json.dumps(payload, ensure_ascii=True, separators=(",", ":")) + "\n",
@@ -360,7 +487,15 @@ def _write_surface_outputs(
             }
         )
     (snapshot_dir / "manifest.json").write_text(
-        json.dumps({"schema": "gwm.abu_dhabi_flood.coupled_surface_timeseries.v1", "snapshots": snapshots}, indent=2)
+        json.dumps(
+            {
+                "schema": "gwm.abu_dhabi_flood.coupled_surface_timeseries.v1",
+                "snapshots": snapshots,
+                "land_water_mask_applied_before_simulation": True,
+                "permanent_water_feature_count": 0,
+            },
+            indent=2,
+        )
         + "\n",
         encoding="utf-8",
     )
@@ -369,13 +504,13 @@ def _write_surface_outputs(
         "coupling_mode": args.coupling_mode,
         "window_count": len(windows),
         "exchange_window_seconds": args.window_seconds,
+        "swmm_substep_seconds": args.swmm_substep_seconds,
         "interface_count": len(receipt.get("interface_bindings") or []),
         "total_swmm_to_anuga_m3": sum(float(item.get("total_swmm_to_anuga_m3", 0.0)) for item in windows),
         "total_anuga_to_swmm_m3": sum(float(item.get("total_anuga_to_swmm_m3", 0.0)) for item in windows),
         "quality_passed": bool(receipt.get("quality_passed")),
         "receipt": "bidirectional_coupling_receipt.json",
     }
-    active = land_mask.reshape(-1)
     summary = {
         "schema": "gwm.abu_dhabi_flood.interactive_coupled_2d_delivery.v1",
         "status": "completed_interactive_coupled_surface_run_not_engineering_admitted",
@@ -393,16 +528,50 @@ def _write_surface_outputs(
             "active_land_cells": int(active.sum()),
             "excluded_permanent_water_cells": int((~active).sum()),
             "area_m2": float(active.sum() * dx * dx),
-            "triangle_count": int(surface.adapter.domain.number_of_triangles),
+            "triangle_count": actual_triangle_count,
+            "expected_land_only_triangle_count": expected_triangle_count,
+            "mesh_policy": "land_mask_applied_before_anuga_domain_construction",
             "simulation_duration_hours": args.duration_seconds / 3600.0,
             "output_step_minutes": args.window_seconds / 60.0,
         },
         "results": {
             "maximum_depth_m": float(maximum[active].max()) if active.any() else 0.0,
+            "final_maximum_depth_m": float(final_depth[active].max()) if active.any() else 0.0,
             "minimum_published_depth_m": args.minimum_output_depth_m,
             "inundated_area_ge_0_01m2": float(np.sum((maximum >= 0.01) & active) * dx * dx),
             "inundated_area_ge_0_05m2": float(np.sum((maximum >= 0.05) & active) * dx * dx),
+            "final_inundated_area_ge_0_01m2": float(
+                np.sum((final_depth >= 0.01) & active) * dx * dx
+            ),
+            "final_inundated_cell_count_ge_0_01m": int(
+                np.sum((final_depth >= 0.01) & active)
+            ),
+            "dewatered_below_0_01m": bool(
+                not np.any((final_depth >= 0.01) & active)
+            ),
         },
+        "land_water_treatment": {
+            "applied": True,
+            "application_stage": "before_anuga_domain_construction",
+            "active_land_cells": int(active.sum()),
+            "excluded_permanent_water_cells": int((~active).sum()),
+            "rainfall_applied_to": "active_land_mesh_only",
+            "swmm_bindings_applied_to": "active_land_cells_only",
+            "permanent_water_output_policy": "excluded_from_flood_layers",
+            "sea_boundary_condition": "fixed_stage_open_boundary",
+            "sea_boundary_level_m": float(args.sea_boundary_level_m),
+        },
+        "quality_gates": {
+            "land_mask_applied_before_simulation": True,
+            "mesh_triangle_count_matches_active_land": actual_triangle_count
+            == expected_triangle_count,
+            "permanent_water_feature_count": 0,
+            "passed": True,
+        },
+        # Keep the canonical service-facing key alongside the explicit
+        # coupling_summary name used by the runner CLI.  The Web result
+        # service consumes ``coupling`` for registered-map metadata.
+        "coupling": coupling_summary,
         "coupling_summary": coupling_summary,
         "outputs": {
             "maximum_depth": "maximum_depth_wgs84.geojson",
@@ -414,7 +583,9 @@ def _write_surface_outputs(
             "execution_mode": "interactive_swmm_anuga_coupled_run",
             "coupling_mode": args.coupling_mode,
             "return_period_years": args.return_period_years,
-            "exchange_quantity": "SWMM node overflow plus signed head exchange"
+            "rainfall_total_mm": args.rainfall_total_mm,
+            "rainfall_duration_minutes": args.rainfall_duration_minutes,
+            "exchange_quantity": "SWMM native node overflow plus inlet-gated surface capture"
             if args.coupling_mode == "two_way_swmm_anuga"
             else "SWMM node overflow only",
             "dynamic_head_feedback": args.coupling_mode == "two_way_swmm_anuga",
@@ -422,6 +593,7 @@ def _write_surface_outputs(
             "output_interval_minutes": args.window_seconds / 60.0,
             "model_cell_size_m": dx,
             "terrain_product": args.terrain_label,
+            "sea_boundary_level_m": float(args.sea_boundary_level_m),
         },
         "claim_boundary": "Diagnostic coupled run; not calibrated or engineering-admitted.",
     }
@@ -444,6 +616,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         duration_seconds=args.duration_seconds,
         friction=args.surface_manning_n,
         initial_depth_m=args.initial_depth_m,
+        sea_boundary_level_m=args.sea_boundary_level_m,
     )
     bindings = _load_bindings(args, runner, coordinates, geometry)
     if not bindings:
@@ -453,7 +626,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         args.swmm_inp,
         args.output / "swmm_dynamic.rpt",
         args.output / "swmm_dynamic.out",
-        save_results=False,
+        save_results=True,
     )
     with session:
         result = runner.run_synchronous_coupling(
@@ -463,7 +636,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             run_id=args.run_id,
             duration_seconds=args.duration_seconds,
             window_seconds=args.window_seconds,
-            fail_on_mass_balance=False,
+            swmm_substep_seconds=args.swmm_substep_seconds,
+            fail_on_mass_balance=True,
             interface_detail_limit=args.interface_detail_limit,
         )
     runner.write_coupled_run_receipt(result, args.output / "bidirectional_coupling_receipt.json")
@@ -493,17 +667,21 @@ def main() -> None:
     )
     parser.add_argument("--duration-seconds", type=int, default=3600)
     parser.add_argument("--window-seconds", type=int, default=300)
+    parser.add_argument("--swmm-substep-seconds", type=int, default=30)
     parser.add_argument(
         "--coupling-mode",
         choices=("one_way_swmm_to_anuga", "two_way_swmm_anuga"),
         default="two_way_swmm_anuga",
     )
-    parser.add_argument("--return-period-years", type=int, default=100)
+    parser.add_argument("--return-period-years", type=int)
+    parser.add_argument("--rainfall-total-mm", type=float)
+    parser.add_argument("--rainfall-duration-minutes", type=int)
     parser.add_argument("--opening-area-m2", type=float, default=0.5)
     parser.add_argument("--discharge-coefficient", type=float, default=0.61)
     parser.add_argument("--maximum-exchange-rate-m3s", type=float, default=5.0)
     parser.add_argument("--surface-manning-n", type=float, default=0.035)
     parser.add_argument("--initial-depth-m", type=float, default=0.0)
+    parser.add_argument("--sea-boundary-level-m", type=float, default=0.0)
     parser.add_argument("--minimum-output-depth-m", type=float, default=0.01)
     parser.add_argument("--grid-crs", default="EPSG:32640")
     parser.add_argument("--terrain-label", default="Mounted customer terrain grid")

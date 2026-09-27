@@ -54,6 +54,24 @@ PERMANENT_WATER_CLASS = 80
 WATER_CELL_FRACTION_THRESHOLD = 0.20
 WORLD_COVER_SOURCE_URL = "https://developers.google.com/earth-engine/datasets/catalog/ESA_WorldCover_v200"
 
+
+def _transform_geometry_to_model_crs(geometry: object, source_crs: str = "EPSG:4326") -> object:
+    """Transform GeoJSON coordinate arrays to the ANUGA EPSG:32640 grid."""
+
+    if not isinstance(geometry, dict) or source_crs.upper() in {"EPSG:32640", "32640"}:
+        return geometry
+    transformer = Transformer.from_crs(source_crs, "EPSG:32640", always_xy=True)
+
+    def walk(value: object) -> object:
+        if isinstance(value, (list, tuple)):
+            if len(value) >= 2 and all(isinstance(item, (int, float)) for item in value[:2]):
+                x, y = transformer.transform(float(value[0]), float(value[1]))
+                return [x, y, *value[2:]]
+            return [walk(item) for item in value]
+        return value
+
+    return {**geometry, "coordinates": walk(geometry.get("coordinates"))}
+
 def _json_dump(path: Path, payload: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=True, sort_keys=True) + "\n", encoding="utf-8")
@@ -213,10 +231,30 @@ def _prepare_terrain(
         },
     }
 
-def _write_model_script(path: Path, terrain: dict[str, object], rainfall: list[float], bounds: tuple[float, float, float, float]) -> None:
+def _write_model_script(
+    path: Path,
+    terrain: dict[str, object],
+    rainfall: list[float],
+    bounds: tuple[float, float, float, float],
+    *,
+    rainfall_duration_minutes: int = RAIN_DURATION_MINUTES,
+    spatial_zones: list[dict[str, object]] | None = None,
+    default_rainfall_factor: float = 1.0,
+) -> None:
     nx = int(round((bounds[2] - bounds[0]) / ACTIVE_CELL_SIZE_M))
     ny = int(round((bounds[3] - bounds[1]) / ACTIVE_CELL_SIZE_M))
-    final_time = (RAIN_DURATION_MINUTES + TAIL_MINUTES) * 60.0
+    final_time = (int(rainfall_duration_minutes) + TAIL_MINUTES) * 60.0
+    zones = spatial_zones or []
+    zone_geometry = [
+        {
+            "zone_id": str(zone.get("zone_id", "zone")),
+            "factor": float(zone.get("rainfall_factor", 1.0)),
+            "rainfall_values_mm_per_hour": tuple(float(value) for value in zone.get("rainfall_values_mm_per_hour", [])),
+            "geometry": _transform_geometry_to_model_crs(zone.get("geometry"), str(zone.get("crs", "EPSG:4326"))),
+            "priority": int(zone.get("priority", index)),
+        }
+        for index, zone in enumerate(zones)
+    ]
     script = f'''"""Generated full-city Abu Dhabi public DEM ANUGA prototype."""
 import numpy as np
 import anuga
@@ -227,6 +265,9 @@ X = np.asarray(GRID["x"], dtype=float)
 Y = np.asarray(GRID["y"], dtype=float)
 LAND = np.asarray(GRID["land_mask"], dtype=bool)
 RAINFALL_MM_PER_H = {tuple(float(v) for v in rainfall)!r}
+RAINFALL_DURATION_MINUTES = {int(rainfall_duration_minutes)!r}
+SPATIAL_ZONES = {zone_geometry!r}
+DEFAULT_RAINFALL_FACTOR = {float(default_rainfall_factor)!r}
 DX = {ACTIVE_CELL_SIZE_M!r}
 
 def topography(x, y):
@@ -247,10 +288,56 @@ def is_land(x, y):
     row = np.clip(np.floor((Y[0] - y) / DX).astype(int), 0, LAND.shape[0] - 1)
     return LAND[row, col]
 
+def _point_in_ring(px, py, ring):
+    inside = False
+    if not ring:
+        return inside
+    previous = ring[-1]
+    for current in ring:
+        x1, y1 = previous
+        x2, y2 = current
+        crosses = ((y1 > py) != (y2 > py)) and (px < (x2 - x1) * (py - y1) / ((y2 - y1) or 1e-30) + x1)
+        if crosses:
+            inside = not inside
+        previous = current
+    return inside
+
+def _point_in_geometry(px, py, geometry):
+    if not isinstance(geometry, dict):
+        return False
+    kind = geometry.get("type")
+    coordinates = geometry.get("coordinates")
+    if kind == "Polygon":
+        if not coordinates or not _point_in_ring(px, py, coordinates[0]):
+            return False
+        return not any(_point_in_ring(px, py, ring) for ring in coordinates[1:])
+    if kind == "MultiPolygon":
+        return any(_point_in_geometry(px, py, {{"type": "Polygon", "coordinates": polygon}}) for polygon in coordinates or [])
+    return False
+
+def rainfall_factor(x, y):
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    factor = np.full(np.broadcast(x, y).shape, DEFAULT_RAINFALL_FACTOR, dtype=float)
+    ordered = sorted(SPATIAL_ZONES, key=lambda item: int(item.get("priority", 0)))
+    for zone in ordered:
+        geometry = zone.get("geometry")
+        mask = np.fromiter((_point_in_geometry(float(px), float(py), geometry) for px, py in zip(x.reshape(-1), y.reshape(-1))), dtype=bool, count=x.size).reshape(x.shape)
+        factor = np.where(mask, float(zone.get("factor", 1.0)), factor)
+    return factor
+
 def rainfall_rate(x, y, t):
     index = int(t // 300.0)
-    intensity = RAINFALL_MM_PER_H[index] * 0.001 / 3600.0 if 0 <= index < len(RAINFALL_MM_PER_H) else 0.0
-    return np.where(is_land(x, y), intensity, 0.0)
+    base_intensity = RAINFALL_MM_PER_H[index] if 0 <= index < len(RAINFALL_MM_PER_H) else 0.0
+    intensity = np.full(np.broadcast(x, y).shape, base_intensity * DEFAULT_RAINFALL_FACTOR, dtype=float)
+    ordered = sorted(SPATIAL_ZONES, key=lambda item: int(item.get("priority", 0)))
+    for zone in ordered:
+        geometry = zone.get("geometry")
+        mask = np.fromiter((_point_in_geometry(float(px), float(py), geometry) for px, py in zip(x.reshape(-1), y.reshape(-1))), dtype=bool, count=x.size).reshape(x.shape)
+        zone_values = zone.get("rainfall_values_mm_per_hour") or ()
+        zone_intensity = zone_values[index] if 0 <= index < len(zone_values) else base_intensity * float(zone.get("factor", 1.0))
+        intensity = np.where(mask, zone_intensity, intensity)
+    return np.where(is_land(x, y), intensity * 0.001 / 3600.0, 0.0)
 
 def initial_stage(x, y):
     elevation = topography(x, y)
@@ -383,6 +470,10 @@ def run(
     initial_depth_m: float = INITIAL_DEPTH_M,
     minimum_output_depth_m: float = MINIMUM_OUTPUT_DEPTH_M,
     water_cell_fraction_threshold: float = WATER_CELL_FRACTION_THRESHOLD,
+    rainfall_values_mm_per_hour: list[float] | None = None,
+    rainfall_duration_minutes: int = RAIN_DURATION_MINUTES,
+    spatial_zones: list[dict[str, object]] | None = None,
+    default_rainfall_factor: float = 1.0,
 ) -> dict[str, object]:
     if not math.isfinite(float(cell_size_m)) or cell_size_m < 50.0 or cell_size_m > 500.0:
         raise ValueError("citywide_2d_cell_size_m_must_be_between_50_and_500")
@@ -394,6 +485,15 @@ def run(
         raise ValueError("peak_position_percent_out_of_range")
     if not 0 <= int(tail_minutes) <= 1440:
         raise ValueError("tail_minutes_out_of_range")
+    if int(rainfall_duration_minutes) < 5 or int(rainfall_duration_minutes) > 4320 or int(rainfall_duration_minutes) % 5:
+        raise ValueError("rainfall_duration_minutes_invalid")
+    if rainfall_values_mm_per_hour is not None:
+        if not rainfall_values_mm_per_hour or len(rainfall_values_mm_per_hour) * 5 != int(rainfall_duration_minutes):
+            raise ValueError("rainfall_values_duration_mismatch")
+        if any(not math.isfinite(float(value)) or float(value) < 0.0 for value in rainfall_values_mm_per_hour):
+            raise ValueError("rainfall_values_invalid")
+    if not math.isfinite(float(default_rainfall_factor)) or float(default_rainfall_factor) < 0.0:
+        raise ValueError("default_rainfall_factor_invalid")
     if int(output_interval_minutes) not in {5, 10, 15, 30, 60}:
         raise ValueError("output_interval_minutes_not_supported")
     if not 0.005 <= float(land_manning_n) <= 0.2 or not 0.005 <= float(water_manning_n) <= 0.2:
@@ -425,9 +525,31 @@ def run(
     work = Path(tempfile.mkdtemp(prefix="abu-public-citywide-2d-"))
     try:
         terrain = _prepare_terrain(dem_path, land_cover_path, work, CITY_BOUNDS)
-        rainfall, rainfall_meta = _rainfall_design_storm_180min(return_period_years, peak_position_percent)
+        if rainfall_values_mm_per_hour is None:
+            rainfall, rainfall_meta = _rainfall_design_storm_180min(return_period_years, peak_position_percent)
+        else:
+            rainfall = [float(value) for value in rainfall_values_mm_per_hour]
+            rainfall_meta = {
+                "source": "rainfall_profile",
+                "source_authority": "validated_profile_contract",
+                "duration_minutes": int(rainfall_duration_minutes),
+                "generated_total_depth_mm": float(sum(rainfall) * 5.0 / 60.0),
+                "native_interval_minutes": 5,
+                "generated_intervals": len(rainfall),
+                "peak_position_percent": float(peak_position_percent),
+                "spatial_mode": "zones" if spatial_zones else "uniform",
+                "spatial_zone_count": len(spatial_zones or []),
+            }
         model_script = work / "abu_dhabi_public_citywide_2d.py"
-        _write_model_script(model_script, terrain, rainfall, CITY_BOUNDS)
+        _write_model_script(
+            model_script,
+            terrain,
+            rainfall,
+            CITY_BOUNDS,
+            rainfall_duration_minutes=rainfall_duration_minutes,
+            spatial_zones=spatial_zones,
+            default_rainfall_factor=default_rainfall_factor,
+        )
         process = subprocess.run([str(ANUGA_PYTHON), str(model_script)], cwd=work, capture_output=True, text=True, timeout=1800)
         (output / "anuga_stdout.log").write_text(process.stdout, encoding="utf-8")
         (output / "anuga_stderr.log").write_text(process.stderr, encoding="utf-8")

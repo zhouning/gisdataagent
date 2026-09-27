@@ -64,6 +64,69 @@ def test_render_scenario_input_rebinds_all_subcatchment_rain_gages(tmp_path):
     assert "S_NONE  -  J1" in text
 
 
+def test_render_scenario_input_applies_spatial_zone_to_swmm_polygons(tmp_path):
+    base = tmp_path / "base-spatial.inp"
+    base.write_text(
+        """[OPTIONS]\nSTART_DATE  01/01/2020\nSTART_TIME  00:00:00\nREPORT_START_DATE  01/01/2020\nREPORT_START_TIME  00:00:00\nEND_DATE  01/01/2020\nEND_TIME  01:00:00\nREPORT_STEP  00:05:00\nWET_STEP  00:05:00\nROUTING_STEP  00:05:00\n\n[RAINGAGES]\nRG_PUBLIC  INTENSITY  00:05  1.0  TIMESERIES  TS_PUBLIC\n\n[SUBCATCHMENTS]\nS_IN  RG_PUBLIC  J1  1  80  100  0.5  0\nS_OUT  RG_PUBLIC  J1  1  80  100  0.5  0\n\n[POLYGONS]\nS_IN  5  5\nS_IN  15  5\nS_IN  15  15\nS_IN  5  15\nS_OUT  100  100\nS_OUT  110  100\nS_OUT  110  110\n\n[TIMESERIES]\nTS_PUBLIC  00:00  0\n\n[OUTFALLS]\nO1  0  FREE\n\n[XSECTIONS]\nC1  CIRCULAR  0.15  0  0  0  1\n""",
+        encoding="utf-8",
+    )
+    output = tmp_path / "spatial.inp"
+    scenario = validate_scenario(
+        _scenario(
+            durationMinutes=10,
+            totalDepthMm=3,
+            spatialPattern="zonal",
+            spatialRainfallZones=[
+                {
+                    "zone_id": "test_zone",
+                    "crs": "EPSG:32640",
+                    "geometry": {"type": "Polygon", "coordinates": [[[0, 0], [50, 0], [50, 50], [0, 50], [0, 0]]]},
+                    "rainfall_factor": 2.0,
+                    "priority": 1,
+                }
+            ],
+        )
+    )
+    rewrite = render_scenario_input(base, output, scenario)
+    text = output.read_text(encoding="utf-8")
+    assert "S_IN  RG_Z001" in text
+    assert "S_OUT  RG_INTERACTIVE" in text
+    assert "RG_Z001  INTENSITY" in text
+    assert rewrite["spatial_mapping"]["applied"] is True
+    assert rewrite["spatial_mapping"]["mapped_subcatchment_count"] == 1
+
+
+def test_render_scenario_input_falls_back_to_subcatchment_outlet_coordinates(tmp_path):
+    base = tmp_path / "base-outlet-spatial.inp"
+    base.write_text(
+        """[OPTIONS]\nSTART_DATE  01/01/2020\nSTART_TIME  00:00:00\nREPORT_START_DATE  01/01/2020\nREPORT_START_TIME  00:00:00\nEND_DATE  01/01/2020\nEND_TIME  01:00:00\nREPORT_STEP  00:05:00\nWET_STEP  00:05:00\nROUTING_STEP  00:05:00\n\n[RAINGAGES]\nRG_PUBLIC  INTENSITY  00:05  1.0  TIMESERIES  TS_PUBLIC\n\n[SUBCATCHMENTS]\nS_IN  RG_PUBLIC  J_IN  1  80  100  0.5  0\nS_OUT  RG_PUBLIC  J_OUT  1  80  100  0.5  0\n\n[COORDINATES]\nJ_IN  10  10\nJ_OUT  100  100\n\n[TIMESERIES]\nTS_PUBLIC  00:00  0\n\n[OUTFALLS]\nO1  0  FREE\n\n[XSECTIONS]\nC1  CIRCULAR  0.15  0  0  0  1\n""",
+        encoding="utf-8",
+    )
+    output = tmp_path / "spatial-outlet.inp"
+    scenario = validate_scenario(
+        _scenario(
+            durationMinutes=10,
+            totalDepthMm=3,
+            spatialPattern="zonal",
+            spatialRainfallZones=[
+                {
+                    "zone_id": "test_zone",
+                    "crs": "EPSG:32640",
+                    "geometry": {"type": "Polygon", "coordinates": [[[0, 0], [50, 0], [50, 50], [0, 50], [0, 0]]]},
+                    "rainfall_factor": 2.0,
+                    "priority": 1,
+                }
+            ],
+        )
+    )
+    rewrite = render_scenario_input(base, output, scenario)
+    text = output.read_text(encoding="utf-8")
+    assert "S_IN  RG_Z001" in text
+    assert "S_OUT  RG_INTERACTIVE" in text
+    assert rewrite["spatial_application"] == "subcatchment_outlet_coordinate_zone_match"
+    assert rewrite["spatial_mapping"]["spatial_reference_method"] == "subcatchment_outlet_coordinate"
+
+
 @pytest.mark.parametrize(
     ("return_period", "expected_depth"),
     [(2, 11.31), (5, 25.29), (10, 28.71), (25, 40.35), (50, 51.48), (100, 60.33)],

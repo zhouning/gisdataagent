@@ -430,23 +430,63 @@ def _resolve_bindings(
     return tuple(resolved)
 
 
-def _bounded_head_rate(
+def _surface_capture_rate(
     binding: CouplingInterfaceBinding,
     swmm_state: Mapping[str, float],
     surface_state: SurfaceState,
-    window_seconds: int,
 ) -> float:
-    """Compute a signed rate and prevent a reverse exchange draining a dry cell."""
+    """Return a non-negative surface-to-network capture rate.
 
-    raw_rate = compute_head_difference_exchange_rate(
-        float(swmm_state.get("head_m", 0.0)),
-        float(surface_state.stage_by_cell_m[binding.anuga_cell_index]),
+    Network-to-surface transfer is represented exclusively by SWMM's native
+    node overflow.  Adding a second positive head-exchange term would count
+    the same surcharge twice.  Reverse capture is admitted only after the
+    surface stage has crossed the physical inlet/rim elevation and exceeds
+    the current SWMM node head.
+    """
+
+    surface_stage = float(surface_state.stage_by_cell_m[binding.anuga_cell_index])
+    swmm_head = float(swmm_state.get("head_m", 0.0))
+    if surface_stage <= binding.inlet_elevation_m or surface_stage <= swmm_head:
+        return 0.0
+    signed_rate = compute_head_difference_exchange_rate(
+        swmm_head,
+        surface_stage,
         binding.head_exchange_parameters,
     )
-    if raw_rate >= 0.0 or not surface_state.available_volume_by_cell_m3:
-        return raw_rate
-    available = float(surface_state.available_volume_by_cell_m3[binding.anuga_cell_index])
-    return max(raw_rate, -available / float(window_seconds))
+    return max(0.0, -signed_rate)
+
+
+def _cap_capture_rates_by_cell(
+    bindings: Sequence[CouplingInterfaceBinding],
+    requested_rates_m3s: Sequence[float],
+    surface_state: SurfaceState,
+    window_seconds: int,
+) -> list[float]:
+    """Cap the sum of all inlet captures to each cell's available water.
+
+    A 250 m exchange cell can contain many SWMM nodes.  Limiting every inlet
+    independently to the full cell volume overdraws that shared cell and
+    forces ANUGA to clip the requested sink.  The proportional cap keeps the
+    requested and applied exchange ledgers identical.
+    """
+
+    result = [max(0.0, float(value)) for value in requested_rates_m3s]
+    available = surface_state.available_volume_by_cell_m3
+    if not available:
+        return [0.0] * len(result)
+    requested_by_cell = [0.0] * len(available)
+    for binding, rate in zip(bindings, result, strict=True):
+        requested_by_cell[binding.anuga_cell_index] += rate
+    scale_by_cell = [1.0] * len(available)
+    for cell_index, requested in enumerate(requested_by_cell):
+        if requested <= 0.0:
+            continue
+        maximum = max(0.0, float(available[cell_index])) / float(window_seconds)
+        scale_by_cell[cell_index] = min(1.0, maximum / requested)
+    return [
+        rate * scale_by_cell[binding.anuga_cell_index]
+        for binding, rate in zip(bindings, result, strict=True)
+    ]
 
 
 def run_synchronous_coupling(
@@ -457,6 +497,7 @@ def run_synchronous_coupling(
     run_id: str,
     duration_seconds: int,
     window_seconds: int = 300,
+    swmm_substep_seconds: int | None = None,
     rainfall_rate_by_cell_m3s: Sequence[float] | None = None,
     fail_on_mass_balance: bool = False,
     interface_detail_limit: int | None = None,
@@ -478,6 +519,16 @@ def run_synchronous_coupling(
         raise ValueError("coupled_runner_duration_seconds_invalid")
     if isinstance(window_seconds, bool) or not isinstance(window_seconds, int) or window_seconds <= 0:
         raise ValueError("coupled_runner_window_seconds_invalid")
+    if swmm_substep_seconds is None:
+        swmm_substep_seconds = window_seconds
+    if (
+        isinstance(swmm_substep_seconds, bool)
+        or not isinstance(swmm_substep_seconds, int)
+        or swmm_substep_seconds <= 0
+    ):
+        raise ValueError("coupled_runner_swmm_substep_seconds_invalid")
+    if window_seconds % swmm_substep_seconds:
+        raise ValueError("coupled_runner_swmm_substep_must_align_window")
     if interface_detail_limit is not None and (
         isinstance(interface_detail_limit, bool)
         or not isinstance(interface_detail_limit, int)
@@ -501,16 +552,22 @@ def run_synchronous_coupling(
     if len(current_surface.stage_by_cell_m) < cell_count:
         raise ValueError("coupled_runner_surface_snapshot_shape_invalid")
     records: list[CoupledWindowRecord] = []
-    pending_exchange_rates: list[float] = []
-    # Seed the first window with the exchange implied by the initial surface
-    # stage.  Without this seed the first ANUGA source would be created from a
-    # transfer that had not yet been removed from SWMM, producing a visible
-    # first-window mass-balance jump.
+    requested_initial_capture_rates: list[float] = []
+    # Seed the first window only with physically admitted surface capture.
+    # A dry surface below the inlet elevation therefore starts with zero
+    # exchange instead of injecting water from an absolute datum mismatch.
     for binding in resolved:
         assert binding.swmm_node_index is not None
         initial_swmm_state = swmm.node_state(binding.swmm_node_index)
-        initial_rate = _bounded_head_rate(binding, initial_swmm_state, current_surface, window_seconds)
-        pending_exchange_rates.append(-initial_rate)
+        requested_initial_capture_rates.append(
+            _surface_capture_rate(binding, initial_swmm_state, current_surface)
+        )
+    pending_capture_rates = _cap_capture_rates_by_cell(
+        resolved,
+        requested_initial_capture_rates,
+        current_surface,
+        window_seconds,
+    )
 
     try:
         for window_index in range(duration_seconds // window_seconds):
@@ -518,49 +575,52 @@ def run_synchronous_coupling(
             end_seconds = float((window_index + 1) * window_seconds)
             swmm_storage_start = _nonnegative(swmm.node_storage_m3(), "swmm_node_storage_start_m3")
 
-            # The exchange calculated from the previous surface state is
-            # written before the matching SWMM stride.
+            # Surface capture calculated from the previous synchronized state
+            # is written as a positive SWMM API external inflow before the
+            # matching SWMM stride.
             for binding_index, binding in enumerate(resolved):
                 assert binding.swmm_node_index is not None
                 swmm.set_node_surface_exchange_flow(
                     binding.swmm_node_index,
-                    pending_exchange_rates[binding_index],
+                    pending_capture_rates[binding_index],
                 )
-            elapsed = _finite(swmm.stride(window_seconds), "swmm_elapsed_seconds")
-            if abs(elapsed - end_seconds) > 1.0e-3:
-                raise RuntimeError("coupled_runner_swmm_elapsed_window_mismatch")
-
-            # Keep only scalar state vectors rather than one Python dict per
-            # citywide node; this is important for the 146k-node network.
-            swmm_heads: list[float] = []
-            overflow_rates: list[float] = []
-            for binding in resolved:
-                state = swmm.node_state(binding.swmm_node_index or 0)
-                swmm_heads.append(float(state.get("head_m", 0.0)))
-                overflow_rates.append(max(0.0, float(state.get("overflow_or_flooding_m3s", 0.0))))
+            # NODE_OVERFLOW is an instantaneous rate. Integrate it over short
+            # SWMM steps instead of multiplying the window-end rate by the
+            # full exchange window.
+            substep_count = window_seconds // swmm_substep_seconds
+            overflow_volumes_by_binding = [0.0] * len(resolved)
+            swmm_heads: list[float] = [0.0] * len(resolved)
+            for substep_index in range(substep_count):
+                elapsed = _finite(swmm.stride(swmm_substep_seconds), "swmm_elapsed_seconds")
+                expected_elapsed = start_seconds + (substep_index + 1) * swmm_substep_seconds
+                if abs(elapsed - expected_elapsed) > 1.0e-3:
+                    raise RuntimeError("coupled_runner_swmm_elapsed_subwindow_mismatch")
+                for binding_index, binding in enumerate(resolved):
+                    state = swmm.node_state(binding.swmm_node_index or 0)
+                    swmm_heads[binding_index] = float(state.get("head_m", 0.0))
+                    overflow_volumes_by_binding[binding_index] += max(
+                        0.0, float(state.get("overflow_or_flooding_m3s", 0.0))
+                    ) * swmm_substep_seconds
             source_rate = list(rainfall)
             interface_rows: list[dict[str, object]] = []
             swmm_overflow_volume = 0.0
             head_to_surface_volume = 0.0
             surface_to_swmm_volume = 0.0
             for binding_index, binding in enumerate(resolved):
-                overflow_rate = overflow_rates[binding_index]
+                overflow_volume = overflow_volumes_by_binding[binding_index]
+                overflow_rate = overflow_volume / float(window_seconds)
                 swmm_head = swmm_heads[binding_index]
                 previous_stage = float(current_surface.stage_by_cell_m[binding.anuga_cell_index])
-                # Use the same rate that was applied to SWMM at the start of
-                # this window.  Recomputing from the post-SWMM head would make
-                # the two solver ledgers refer to different transfers.
+                # Use the same capture rate that was applied to SWMM at the
+                # start of this window. Recomputing it from the post-stride
+                # head would make the two solver ledgers disagree.
                 assert binding.swmm_node_index is not None
-                head_rate = -pending_exchange_rates[binding_index]
-                positive_head_rate = max(0.0, head_rate)
-                reverse_rate = max(0.0, -head_rate)
-                # A negative head rate is a surface sink.  Passing the signed
-                # value to ANUGA keeps the surface ledger closed while the
-                # opposite positive lateral flow is scheduled for SWMM.
-                source_rate[binding.anuga_cell_index] += overflow_rate + head_rate
-                swmm_overflow_volume += overflow_rate * window_seconds
-                head_to_surface_volume += positive_head_rate * window_seconds
-                surface_to_swmm_volume += reverse_rate * window_seconds
+                capture_rate = pending_capture_rates[binding_index]
+                # Native SWMM overflow is the sole network-to-surface source;
+                # admitted capture is the matching surface sink.
+                source_rate[binding.anuga_cell_index] += overflow_rate - capture_rate
+                swmm_overflow_volume += overflow_volume
+                surface_to_swmm_volume += capture_rate * window_seconds
                 if interface_detail_limit is None or len(interface_rows) < interface_detail_limit:
                     interface_rows.append(
                         {
@@ -570,9 +630,9 @@ def run_synchronous_coupling(
                             "swmm_head_m": swmm_head,
                             "surface_stage_m": previous_stage,
                             "overflow_rate_m3s": overflow_rate,
-                            "head_exchange_rate_m3s": head_rate,
-                            "swmm_to_anuga_volume_m3": (overflow_rate + positive_head_rate) * window_seconds,
-                            "anuga_to_swmm_volume_m3": reverse_rate * window_seconds,
+                            "head_exchange_rate_m3s": -capture_rate,
+                            "swmm_to_anuga_volume_m3": overflow_volume,
+                            "anuga_to_swmm_volume_m3": capture_rate * window_seconds,
                             "provenance": binding.provenance,
                         }
                     )
@@ -586,24 +646,20 @@ def run_synchronous_coupling(
             # positive signed rate means SWMM -> surface and is therefore a
             # negative lateral flow when written to SWMM; a negative signed
             # rate means surface -> SWMM and is a positive lateral flow.
-            next_pending_exchange_rates: list[float] = []
+            requested_next_capture_rates: list[float] = []
             for binding_index, binding in enumerate(resolved):
-                next_stage = float(surface_state.stage_by_cell_m[binding.anuga_cell_index])
-                next_surface = SurfaceState(
-                    stage_by_cell_m=surface_state.stage_by_cell_m,
-                    storage_start_m3=surface_state.storage_start_m3,
-                    storage_end_m3=surface_state.storage_end_m3,
-                    available_volume_by_cell_m3=surface_state.available_volume_by_cell_m3,
-                )
-                next_head_rate = _bounded_head_rate(
+                next_capture_rate = _surface_capture_rate(
                     binding,
                     {"head_m": swmm_heads[binding_index]},
-                    next_surface,
-                    window_seconds,
+                    surface_state,
                 )
-                assert binding.swmm_node_index is not None
-                next_pending_exchange_rates.append(-next_head_rate)
-            pending_exchange_rates = next_pending_exchange_rates
+                requested_next_capture_rates.append(next_capture_rate)
+            pending_capture_rates = _cap_capture_rates_by_cell(
+                resolved,
+                requested_next_capture_rates,
+                surface_state,
+                window_seconds,
+            )
 
             # Check the complete surface ledger.  SWMM overflow and head
             # exchange are internal transfers; signed ANUGA source equals

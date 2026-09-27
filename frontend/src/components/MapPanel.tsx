@@ -372,6 +372,18 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   const [drawMode, setDrawMode] = useState(false);
   const drawControlRef = useRef<any>(null);
   const drawnItemsRef = useRef<L.FeatureGroup>(new L.FeatureGroup());
+  const rainfallZonePreviewLayerRef = useRef<L.GeoJSON | null>(null);
+  const rainfallZonePreviewLayersRef = useRef<Map<string, L.Layer>>(new Map());
+  const rainfallZonePreviewColorsRef = useRef<Map<string, string>>(new Map());
+  const rainfallZonePreviewRequestRef = useRef(0);
+  const rainfallZonePreviewGeometryRef = useRef('');
+  const pendingRainfallZoneFocusRef = useRef<string | null>(null);
+  const selectedRainfallZoneIdRef = useRef('');
+  const [rainfallZonePreviewPayload, setRainfallZonePreviewPayload] = useState<any | null>(() => (
+    typeof window === 'undefined' ? null : (window as any).__abuRainfallZonePreview || null
+  ));
+  const [rainfallZonePreviewCount, setRainfallZonePreviewCount] = useState(0);
+  const [selectedRainfallZoneId, setSelectedRainfallZoneId] = useState('');
   const [measurePoints, setMeasurePoints] = useState<[number, number][]>([]);
   const [measureResult, setMeasureResult] = useState<string>('');
   const measureLayerRef = useRef<L.LayerGroup | null>(null);
@@ -381,6 +393,66 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   const interactionModesRef = useRef({ annotationMode, measureMode, drawMode });
   const [availableBasemaps, setAvailableBasemaps] = useState<Record<string, string>>({ ...BASEMAPS });
   const [basemapMetadata, setBasemapMetadata] = useState<Record<string, BasemapMetadata>>({});
+
+  const publishDrawnRainfallZones = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('abu-rainfall-zone-drawn', { detail: drawnItemsRef.current.toGeoJSON() }));
+  }, []);
+
+  const handleDrawCreated = useCallback((event: any) => {
+    drawnItemsRef.current.addLayer(event.layer);
+    publishDrawnRainfallZones();
+  }, [publishDrawnRainfallZones]);
+
+  const activateDrawMode = useCallback((enabled: boolean) => {
+    setDrawMode(enabled);
+    const map = mapRef.current;
+    if (!map) return false;
+    const createdEvent = (L as any).Draw.Event.CREATED;
+    const editedEvent = (L as any).Draw.Event.EDITED;
+    const deletedEvent = (L as any).Draw.Event.DELETED;
+    map.off(createdEvent, handleDrawCreated);
+    map.off(editedEvent, publishDrawnRainfallZones);
+    map.off(deletedEvent, publishDrawnRainfallZones);
+    if (enabled) {
+      if (!map.hasLayer(drawnItemsRef.current)) map.addLayer(drawnItemsRef.current);
+      if (!drawControlRef.current) {
+        drawControlRef.current = new (L.Control as any).Draw({
+          edit: { featureGroup: drawnItemsRef.current },
+          draw: { marker: true, polyline: true, polygon: true, rectangle: true, circle: false, circlemarker: false },
+        });
+      }
+      if (drawControlRef.current._map !== map) map.addControl(drawControlRef.current);
+      map.on(createdEvent, handleDrawCreated);
+      map.on(editedEvent, publishDrawnRainfallZones);
+      map.on(deletedEvent, publishDrawnRainfallZones);
+    } else if (drawControlRef.current?._map === map) {
+      map.removeControl(drawControlRef.current);
+    }
+    return true;
+  }, [handleDrawCreated, publishDrawnRainfallZones]);
+
+  useEffect(() => {
+    const handleRainfallZoneDrawRequest = () => {
+      setViewMode('2d');
+      let attempts = 0;
+      const openDrawTools = () => {
+        attempts += 1;
+        if (activateDrawMode(true) || attempts >= 20) return;
+        window.setTimeout(openDrawTools, 50);
+      };
+      openDrawTools();
+    };
+    window.addEventListener('abu-rainfall-zone-draw-requested', handleRainfallZoneDrawRequest);
+    return () => window.removeEventListener('abu-rainfall-zone-draw-requested', handleRainfallZoneDrawRequest);
+  }, [activateDrawMode]);
+
+  useEffect(() => {
+    const handleRainfallZonePreview = (event: Event) => {
+      setRainfallZonePreviewPayload((event as CustomEvent).detail || null);
+    };
+    window.addEventListener('abu-rainfall-zone-preview', handleRainfallZonePreview);
+    return () => window.removeEventListener('abu-rainfall-zone-preview', handleRainfallZonePreview);
+  }, []);
 
   // Fetch governed DMT basemaps and optional Tianditu configuration.
   useEffect(() => {
@@ -516,6 +588,138 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
     if (!mapRef.current) return;
     mapRef.current.setView(center, zoom);
   }, [center, zoom]);
+
+  const focusRainfallZonePreview = useCallback((zoneId: string, fitBounds: boolean) => {
+    const map = mapRef.current;
+    const target = rainfallZonePreviewLayersRef.current.get(zoneId);
+    if (!map || !target) return false;
+    selectedRainfallZoneIdRef.current = zoneId;
+    setSelectedRainfallZoneId(zoneId);
+    rainfallZonePreviewLayersRef.current.forEach((layer, candidateId) => {
+      if (!('setStyle' in layer)) return;
+      const color = rainfallZonePreviewColorsRef.current.get(candidateId) || '#06b6d4';
+      (layer as L.Path).setStyle(candidateId === zoneId
+        ? { color: '#facc15', weight: 4, opacity: 1, fillColor: color, fillOpacity: 0.42 }
+        : { color, weight: 2, opacity: 0.95, fillColor: color, fillOpacity: 0.24 });
+    });
+    if (fitBounds && 'getBounds' in target) {
+      const bounds = (target as any).getBounds();
+      if (bounds?.isValid?.()) map.fitBounds(bounds.pad(0.12), { maxZoom: 14 });
+    }
+    if ('bringToFront' in target) (target as L.Path).bringToFront();
+    return true;
+  }, []);
+
+  useEffect(() => {
+    const handleRainfallZoneFocus = (event: Event) => {
+      const zoneId = String((event as CustomEvent).detail?.zoneId || '');
+      if (!zoneId) return;
+      pendingRainfallZoneFocusRef.current = zoneId;
+      setViewMode('2d');
+      if (focusRainfallZonePreview(zoneId, true)) pendingRainfallZoneFocusRef.current = null;
+    };
+    window.addEventListener('abu-rainfall-zone-focus', handleRainfallZoneFocus);
+    return () => window.removeEventListener('abu-rainfall-zone-focus', handleRainfallZoneFocus);
+  }, [focusRainfallZonePreview]);
+
+  useEffect(() => {
+    if (viewMode !== '2d' || !mapRef.current) return;
+    const map = mapRef.current;
+    const zones = Array.isArray(rainfallZonePreviewPayload?.zones)
+      ? rainfallZonePreviewPayload.zones
+      : [];
+    const requestId = ++rainfallZonePreviewRequestRef.current;
+    if (!zones.length) {
+      if (rainfallZonePreviewLayerRef.current && map.hasLayer(rainfallZonePreviewLayerRef.current)) {
+        map.removeLayer(rainfallZonePreviewLayerRef.current);
+      }
+      rainfallZonePreviewLayerRef.current = null;
+      rainfallZonePreviewLayersRef.current.clear();
+      rainfallZonePreviewColorsRef.current.clear();
+      rainfallZonePreviewGeometryRef.current = '';
+      selectedRainfallZoneIdRef.current = '';
+      setSelectedRainfallZoneId('');
+      setRainfallZonePreviewCount(0);
+      return;
+    }
+
+    const geometrySignature = JSON.stringify(zones.map((zone: any) => zone?.geometry || zone?.geojson || null));
+    const shouldFitAll = geometrySignature !== rainfallZonePreviewGeometryRef.current;
+    let cancelled = false;
+    fetch('/api/abu-dhabi/flood/rainfall/spatial-preview', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
+      body: JSON.stringify({ zones, default_crs: rainfallZonePreviewPayload?.defaultCrs || 'EPSG:4326' }),
+    })
+      .then(async (response) => {
+        const result = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(String(result?.error || 'rainfall_spatial_preview_failed'));
+        return result;
+      })
+      .then((result) => {
+        if (cancelled || requestId !== rainfallZonePreviewRequestRef.current || !mapRef.current) return;
+        const activeMap = mapRef.current;
+        const featureCollection = result?.feature_collection;
+        if (!Array.isArray(featureCollection?.features)) throw new Error('rainfall_spatial_preview_invalid');
+        if (rainfallZonePreviewLayerRef.current && activeMap.hasLayer(rainfallZonePreviewLayerRef.current)) {
+          activeMap.removeLayer(rainfallZonePreviewLayerRef.current);
+        }
+        rainfallZonePreviewLayersRef.current.clear();
+        rainfallZonePreviewColorsRef.current.clear();
+        const palette = ['#0284c7', '#06b6d4', '#f97316', '#8b5cf6', '#22c55e', '#ef4444'];
+        const english = getLocale() === 'en-US';
+        const previewLayer = L.geoJSON(featureCollection, {
+          style: (feature) => {
+            const index = Number(feature?.properties?.preview_index || 0);
+            const color = palette[Math.abs(index) % palette.length];
+            return { color, weight: 2, opacity: 0.95, fillColor: color, fillOpacity: 0.24 };
+          },
+          onEachFeature: (feature, layer) => {
+            const properties = feature?.properties || {};
+            const zoneId = String(properties.zone_id || feature?.id || 'zone');
+            const index = Number(properties.preview_index || 0);
+            const color = palette[Math.abs(index) % palette.length];
+            rainfallZonePreviewLayersRef.current.set(zoneId, layer);
+            rainfallZonePreviewColorsRef.current.set(zoneId, color);
+            const factor = Number(properties.rainfall_factor);
+            const totalDepth = Number(properties.total_depth_mm);
+            const peakTime = String(properties.peak_time || '');
+            const pattern = String(properties.temporal_pattern_id || 'inherit');
+            const popup = [
+              `<strong>${escapeHtml(zoneId)}</strong>`,
+              `${english ? 'Rainfall total' : '区域总雨量'}: ${Number.isFinite(totalDepth) ? `${totalDepth.toFixed(2)} mm` : '—'}`,
+              `${english ? 'Rainfall factor' : '雨量倍率'}: ${Number.isFinite(factor) ? factor.toFixed(2) : '—'}`,
+              `${english ? 'Temporal pattern' : '时间雨型'}: ${escapeHtml(pattern)}`,
+              `${english ? 'Peak time' : '峰值时间'}: ${escapeHtml(peakTime || '—')}`,
+            ].join('<br/>');
+            layer.bindTooltip(zoneId, { sticky: true });
+            layer.bindPopup(popup, { maxWidth: 300 });
+            layer.on('click', (leafletEvent: L.LeafletMouseEvent) => {
+              L.DomEvent.stopPropagation(leafletEvent);
+              focusRainfallZonePreview(zoneId, false);
+              window.dispatchEvent(new CustomEvent('abu-rainfall-zone-selected', { detail: { zoneId } }));
+            });
+          },
+        }).addTo(activeMap);
+        rainfallZonePreviewLayerRef.current = previewLayer;
+        rainfallZonePreviewGeometryRef.current = geometrySignature;
+        setRainfallZonePreviewCount(featureCollection.features.length);
+        if (shouldFitAll) {
+          const bounds = previewLayer.getBounds();
+          if (bounds.isValid()) activeMap.fitBounds(bounds.pad(0.08), { maxZoom: 13 });
+        }
+        const requestedZoneId = pendingRainfallZoneFocusRef.current || selectedRainfallZoneIdRef.current;
+        if (requestedZoneId && focusRainfallZonePreview(requestedZoneId, Boolean(pendingRainfallZoneFocusRef.current))) {
+          pendingRainfallZoneFocusRef.current = null;
+        }
+      })
+      .catch(() => {
+        if (cancelled || requestId !== rainfallZonePreviewRequestRef.current) return;
+        setRainfallZonePreviewCount(0);
+      });
+    return () => { cancelled = true; };
+  }, [focusRainfallZonePreview, rainfallZonePreviewPayload, viewMode]);
 
   // Switch basemap
   const switchBasemap = useCallback((name: string) => {
@@ -1297,6 +1501,15 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
         <>
           <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />
 
+      {rainfallZonePreviewCount > 0 && (
+        <div className="rainfall-zone-preview-status" data-testid="rainfall-zone-preview-status">
+          <MapIcon size={14} />
+          <span>{getLocale() === 'en-US' ? 'Rainfall spatial preview' : '降雨空间分区预览'}</span>
+          <strong>{rainfallZonePreviewCount}</strong>
+          {selectedRainfallZoneId && <em>{selectedRainfallZoneId}</em>}
+        </div>
+      )}
+
       {!hasLayers && !mapRef.current && (
         <div className="map-placeholder">
           <svg className="map-placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
@@ -1575,27 +1788,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       {/* Draw mode toggle (v14.5) */}
       <button
         className={`annotation-toggle ${drawMode ? 'active' : ''}`}
-        onClick={() => {
-          const newMode = !drawMode;
-          setDrawMode(newMode);
-          if (mapRef.current) {
-            if (newMode) {
-              mapRef.current.addLayer(drawnItemsRef.current);
-              if (!drawControlRef.current) {
-                drawControlRef.current = new (L.Control as any).Draw({
-                  edit: { featureGroup: drawnItemsRef.current },
-                  draw: { marker: true, polyline: true, polygon: true, rectangle: true, circle: false, circlemarker: false },
-                });
-              }
-              mapRef.current.addControl(drawControlRef.current);
-              mapRef.current.on((L as any).Draw.Event.CREATED, (e: any) => {
-                drawnItemsRef.current.addLayer(e.layer);
-              });
-            } else {
-              if (drawControlRef.current) mapRef.current.removeControl(drawControlRef.current);
-            }
-          }
-        }}
+        onClick={() => activateDrawMode(!drawMode)}
         title={drawMode ? t('map.exitDrawMode') : t('map.drawFeatures')}
         aria-label={drawMode ? t('map.exitDrawMode') : t('map.drawFeatures')}
         style={{ bottom: annotationMode ? 130 : 90 }}

@@ -28,6 +28,12 @@ from .abu_dhabi_zone_b_design_storm import (
     official_depth_mm,
     zone_b_180_minute_hyetograph,
 )
+from .abu_dhabi_rainfall_profiles import (
+    build_rainfall_profile,
+    rainfall_profile_series,
+    spatial_zone_values_mm_per_interval,
+    validate_spatial_rainfall_zones,
+)
 from .uwm.abu_dhabi_flood.swmm_adapter import evaluate_swmm_quality, execute_swmm
 from .uwm.abu_dhabi_flood.swmm_out_parser import (
     read_node_period,
@@ -79,6 +85,11 @@ DEFAULT_CUSTOMER_BIDIRECTIONAL_2D_ROOT = Path(
     )
 ).expanduser()
 DEFAULT_PUBLIC_CITYWIDE_2D_ROOT = DEFAULT_PUBLIC_ROOT / "copernicus_citywide_2d"
+DEFAULT_PARTIAL_CITYWIDE_61MM_2H_ROOT = _HYDRO_DATA_ROOT / (
+    "citywide_coupled_matrix_v2_20260925/"
+    "abu-dhabi-citywide-coupled-61mm-2h-250m-validation/"
+    "runs/full-26h-one-way-swmm-to-anuga-routing30s"
+)
 DEFAULT_PUBLIC_NCEI_ROOT = DEFAULT_PUBLIC_ROOT / "ncei_2024_station_constraint"
 SWMM_SCENARIO_SCHEMA = "gwm.abu_dhabi_flood.interactive_swmm_scenario.v1"
 _IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
@@ -148,6 +159,13 @@ def _customer_bidirectional_2d_root() -> Path:
     ).expanduser().resolve()
 
 
+def _partial_citywide_61mm_2h_root() -> Path:
+    return _configured_path(
+        "ABU_DHABI_PARTIAL_CITYWIDE_61MM_2H_ROOT",
+        DEFAULT_PARTIAL_CITYWIDE_61MM_2H_ROOT,
+    ).expanduser().resolve()
+
+
 def _normalise_citywide_2d_result_source(result_source: str | None) -> str:
     source = str(result_source or "return_period_one_way").strip().lower()
     aliases = {
@@ -155,9 +173,15 @@ def _normalise_citywide_2d_result_source(result_source: str | None) -> str:
         "one_way": "return_period_one_way",
         "bidirectional": "bidirectional_validation",
         "two_way": "bidirectional_validation",
+        "partial_61mm_2h": "partial_one_way_61mm_2h",
+        "partial_one_way": "partial_one_way_61mm_2h",
     }
     source = aliases.get(source, source)
-    if source not in {"return_period_one_way", "bidirectional_validation"}:
+    if source not in {
+        "return_period_one_way",
+        "bidirectional_validation",
+        "partial_one_way_61mm_2h",
+    }:
         raise ValueError("public_citywide_2d_result_source_not_supported")
     return source
 
@@ -167,6 +191,11 @@ def _citywide_2d_result_root(
     result_source: str | None,
 ) -> tuple[Path, str]:
     source = _normalise_citywide_2d_result_source(result_source)
+    if source == "partial_one_way_61mm_2h":
+        root = _partial_citywide_61mm_2h_root()
+        if not root.is_dir():
+            raise ValueError("partial_citywide_61mm_2h_result_not_available")
+        return root, source
     if source == "bidirectional_validation":
         if return_period_years not in (None, 100):
             raise ValueError("bidirectional_citywide_2d_only_available_for_100_year_result")
@@ -323,7 +352,18 @@ def validate_scenario(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("rainfall_mode_invalid")
     if rainfall_mode == "historical_event":
         raise ValueError("historical_event_requires_authoritative_timeseries")
-    duration = _as_number(payload.get("durationMinutes", payload.get("duration_minutes")), "duration_minutes", minimum=5, maximum=4320)
+    profile_payload = payload.get("rainfallProfile", payload.get("rainfall_profile"))
+    raw_series = payload.get("rainfallSeries", payload.get("rainfall_series"))
+    if profile_payload is not None and not isinstance(profile_payload, dict):
+        raise ValueError("rainfall_profile_invalid")
+    if raw_series is not None and profile_payload is not None:
+        raise ValueError("rainfall_profile_and_series_are_mutually_exclusive")
+    profile_duration = profile_payload.get("duration_minutes", profile_payload.get("durationMinutes")) if isinstance(profile_payload, dict) else None
+    profile_interval = profile_payload.get("interval_minutes", profile_payload.get("intervalMinutes", _STEP_MINUTES)) if isinstance(profile_payload, dict) else _STEP_MINUTES
+    duration_value = payload.get("durationMinutes", payload.get("duration_minutes", profile_duration))
+    if duration_value is None and isinstance(raw_series, list) and raw_series:
+        duration_value = len(raw_series) * int(profile_interval)
+    duration = _as_number(duration_value, "duration_minutes", minimum=5, maximum=4320)
     tail = _as_number(payload.get("tailMinutes", payload.get("tail_minutes", 0)), "tail_minutes", minimum=0, maximum=1440)
     if duration % _STEP_MINUTES or tail % _STEP_MINUTES:
         raise ValueError("duration_and_tail_must_be_multiples_of_5_minutes")
@@ -331,12 +371,21 @@ def validate_scenario(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("total_simulation_window_exceeds_72_hours")
     if rainfall_mode == "public_station_event" and (duration != 4320 or tail != 0):
         raise ValueError("public_station_event_requires_72_hour_window")
+    climate_zone = str(payload.get("climateZone", payload.get("climate_zone", "zone_b"))).lower()
+    if climate_zone not in {"zone_a", "zone_b"}:
+        raise ValueError("climate_zone_invalid")
     pattern = payload.get("rainfallPattern", payload.get("rainfall_pattern", "uniform"))
-    if pattern not in {"uniform", "front_loaded", "alternating_block", "official_zone_b_ddf_abm"}:
+    if profile_payload is not None or raw_series is not None:
+        pattern = "custom"
+    if pattern not in {"uniform", "front_loaded", "back_loaded", "central_peak", "double_peak", "alternating_block", "custom", "official_zone_b_ddf_abm"}:
         raise ValueError("rainfall_pattern_invalid")
+    if pattern == "custom" and profile_payload is None and raw_series is None:
+        raise ValueError("rainfall_profile_required_for_custom_pattern")
     return_period_value = payload.get("returnPeriodYears", payload.get("return_period_years"))
     return_period: int | None = None
     if rainfall_mode == "design_storm" and pattern == "official_zone_b_ddf_abm":
+        if climate_zone != "zone_b":
+            raise ValueError("zone_a_authoritative_idf_ddf_not_available")
         if isinstance(return_period_value, bool):
             raise ValueError("return_period_years_invalid")
         try:
@@ -357,13 +406,49 @@ def validate_scenario(payload: dict[str, Any]) -> dict[str, Any]:
         depth_value = payload.get("totalDepthMm", payload.get("total_depth_mm"))
         depth = (
             _as_number(depth_value, "total_depth_mm", minimum=0.001, maximum=1000)
-            if rainfall_mode == "design_storm"
+            if rainfall_mode == "design_storm" and profile_payload is None and raw_series is None
             else None
         )
     peak = _as_number(payload.get("peakPosition", payload.get("peak_position", 40)), "peak_position", minimum=0, maximum=100)
     spatial = payload.get("spatialPattern", payload.get("spatial_pattern", "uniform"))
-    if spatial not in {"uniform", "zonal"}:
+    spatial = "zones" if spatial == "zonal" else spatial
+    if spatial not in {"uniform", "zones", "raster"}:
         raise ValueError("spatial_pattern_invalid")
+    spatial_zones = validate_spatial_rainfall_zones(
+        payload.get("spatialRainfallZones", payload.get("spatial_rainfall_zones")),
+        spatial_mode=spatial,
+    )
+    normalized_profile = None
+    if profile_payload is not None:
+        profile_data = dict(profile_payload)
+        profile_data.setdefault("climate_zone", climate_zone)
+        profile_data.setdefault("duration_minutes", int(duration))
+        profile_data.setdefault("interval_minutes", int(profile_interval))
+        normalized_profile = build_rainfall_profile(profile_data)
+        if (payload.get("durationMinutes", payload.get("duration_minutes")) is not None
+                and int(duration) != int(normalized_profile["duration_minutes"])):
+            raise ValueError("rainfall_profile_duration_mismatch")
+        duration = normalized_profile["duration_minutes"]
+        pattern = normalized_profile["temporal_pattern"]
+        climate_zone = normalized_profile["climate_zone"]
+        if spatial == "uniform" and normalized_profile.get("spatial_mode") != "uniform":
+            spatial = normalized_profile["spatial_mode"]
+        if not spatial_zones:
+            spatial_zones = normalized_profile.get("zones", [])
+    elif raw_series is not None:
+        if not isinstance(raw_series, list) or not raw_series:
+            raise ValueError("rainfall_series_invalid")
+        normalized_profile = build_rainfall_profile({
+            "name": "inline rainfall series",
+            "climate_zone": climate_zone,
+            "source_type": "custom",
+            "temporal_pattern": "custom",
+            "duration_minutes": int(duration),
+            "interval_minutes": int(profile_interval),
+            "values_mm_per_interval": raw_series,
+            "spatial_mode": spatial,
+            "zones": spatial_zones,
+        })
     pipe_scope = payload.get("pipeScope", payload.get("pipe_scope", "none"))
     if pipe_scope not in {"none", "priority_corridor", "selected_zone"}:
         raise ValueError("pipe_scope_invalid")
@@ -414,6 +499,9 @@ def validate_scenario(payload: dict[str, Any]) -> dict[str, Any]:
         "tail_minutes": int(tail),
         "total_depth_mm": depth,
         "rainfall_pattern": pattern,
+        "climate_zone": climate_zone,
+        "rainfall_profile": normalized_profile,
+        "spatial_rainfall_zones": spatial_zones,
         "return_period_years": return_period,
         "peak_position": peak,
         "spatial_pattern": spatial,
@@ -429,13 +517,36 @@ def validate_scenario(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _design_rainfall_series(scenario: dict[str, Any]) -> tuple[list[tuple[datetime, float]], dict[str, Any]]:
+    if scenario.get("rainfall_profile") is not None:
+        series, stats = rainfall_profile_series(
+            scenario["rainfall_profile"],
+            start=datetime.fromisoformat(scenario["start_time"]),
+            tail_minutes=int(scenario["tail_minutes"]),
+        )
+        stats.update(
+            {
+                "climate_zone": scenario.get("climate_zone"),
+                "profile_id": scenario["rainfall_profile"].get("profile_id"),
+                "spatial_mode": scenario.get("spatial_pattern", "uniform"),
+                "spatial_zone_count": len(scenario.get("spatial_rainfall_zones") or []),
+            }
+        )
+        return series, stats
     if scenario["rainfall_pattern"] == "official_zone_b_ddf_abm":
-        return zone_b_180_minute_hyetograph(
+        series, stats = zone_b_180_minute_hyetograph(
             int(scenario["return_period_years"]),
             start=datetime.fromisoformat(scenario["start_time"]),
             peak_position_percent=float(scenario["peak_position"]),
             tail_minutes=int(scenario["tail_minutes"]),
         )
+        stats.update(
+            {
+                "climate_zone": "zone_b",
+                "spatial_mode": scenario.get("spatial_pattern", "uniform"),
+                "spatial_zone_count": len(scenario.get("spatial_rainfall_zones") or []),
+            }
+        )
+        return series, stats
     count = int(scenario["duration_minutes"] // _STEP_MINUTES)
     peak_position = float(scenario["peak_position"]) / 100.0
     raw: list[float] = []
@@ -460,6 +571,9 @@ def _design_rainfall_series(scenario: dict[str, Any]) -> tuple[list[tuple[dateti
         "source": "parameterized_design_storm",
         "source_label": "参数化设计暴雨",
         "source_authority": "model_parameter",
+        "climate_zone": scenario.get("climate_zone", "zone_b"),
+        "spatial_mode": scenario.get("spatial_pattern", "uniform"),
+        "spatial_zone_count": len(scenario.get("spatial_rainfall_zones") or []),
         "source_url": None,
         "native_interval_minutes": _STEP_MINUTES,
         "resampling_method": "none",
@@ -692,6 +806,243 @@ def _replace_section(lines: list[str], section: str, content: list[str]) -> None
     lines[begin + 1:end] = content
 
 
+def _spatial_zone_geometry_in_swmm_crs(zone: dict[str, Any]) -> dict[str, Any] | None:
+    """Return a zone geometry in the SWMM coordinate system.
+
+    Customer SWMM coordinates are normally EPSG:32640 in this project. Map
+    GeoJSON is normally EPSG:4326, so conversion is explicit and lazy. The
+    fallback is deliberately an error rather than silently matching degrees
+    against metre coordinates.
+    """
+
+    geometry = zone.get("geometry")
+    if not isinstance(geometry, dict):
+        return None
+    source_crs = str(zone.get("crs", "EPSG:4326")).upper()
+    if source_crs in {"EPSG:32640", "32640"}:
+        return geometry
+    try:
+        from pyproj import Transformer
+    except ImportError as error:
+        raise ValueError("spatial_zone_crs_transform_unavailable") from error
+    transformer = Transformer.from_crs(source_crs, "EPSG:32640", always_xy=True)
+
+    def walk(value: Any) -> Any:
+        if isinstance(value, list):
+            if len(value) >= 2 and all(isinstance(item, (int, float)) for item in value[:2]):
+                x, y = transformer.transform(float(value[0]), float(value[1]))
+                return [x, y, *value[2:]]
+            return [walk(item) for item in value]
+        return value
+
+    return {**geometry, "coordinates": walk(geometry.get("coordinates"))}
+
+
+def _geometry_rings(geometry: dict[str, Any]) -> list[list[list[float]]]:
+    kind = geometry.get("type")
+    coordinates = geometry.get("coordinates")
+    if kind == "Polygon":
+        return [ring for ring in coordinates or [] if isinstance(ring, list)]
+    if kind == "MultiPolygon":
+        rings: list[list[list[float]]] = []
+        for polygon in coordinates or []:
+            rings.extend(ring for ring in polygon or [] if isinstance(ring, list))
+        return rings
+    return []
+
+
+def _point_in_ring(x: float, y: float, ring: list[list[float]]) -> bool:
+    inside = False
+    if len(ring) < 3:
+        return False
+    previous = ring[-1]
+    for current in ring:
+        x1, y1 = float(previous[0]), float(previous[1])
+        x2, y2 = float(current[0]), float(current[1])
+        if ((y1 > y) != (y2 > y)) and x < (x2 - x1) * (y - y1) / ((y2 - y1) or 1e-30) + x1:
+            inside = not inside
+        previous = current
+    return inside
+
+
+def _point_in_geometry(x: float, y: float, geometry: dict[str, Any]) -> bool:
+    kind = geometry.get("type")
+    if kind == "MultiPolygon":
+        return any(
+            _point_in_geometry(x, y, {"type": "Polygon", "coordinates": polygon})
+            for polygon in geometry.get("coordinates") or []
+        )
+    rings = _geometry_rings(geometry)
+    if not rings or not _point_in_ring(x, y, rings[0]):
+        return False
+    return not any(_point_in_ring(x, y, ring) for ring in rings[1:])
+
+
+def _subcatchment_centroids(lines: list[str], sections: dict[str, tuple[int, int]]) -> dict[str, tuple[float, float]]:
+    polygon_section = sections.get("[POLYGONS]")
+    if polygon_section is None:
+        return {}
+    begin, end = polygon_section
+    points: dict[str, list[tuple[float, float]]] = {}
+    for line in lines[begin + 1:end]:
+        stripped = line.strip()
+        if not stripped or stripped.startswith(";"):
+            continue
+        parts = stripped.split()
+        if len(parts) < 3:
+            continue
+        try:
+            points.setdefault(parts[0], []).append((float(parts[1]), float(parts[2])))
+        except ValueError:
+            continue
+    return {
+        subcatchment_id: (sum(point[0] for point in vertices) / len(vertices), sum(point[1] for point in vertices) / len(vertices))
+        for subcatchment_id, vertices in points.items()
+        if vertices
+    }
+
+
+def _subcatchment_outlet_coordinates(
+    lines: list[str], sections: dict[str, tuple[int, int]]
+) -> dict[str, tuple[float, float]]:
+    """Fallback spatial reference for topology-only SWMM inputs.
+
+    The admitted customer citywide input contains one subcatchment per outlet
+    node plus a complete ``[COORDINATES]`` section, but no ``[POLYGONS]``.
+    Binding a subcatchment to its outlet coordinate is explicit and auditable;
+    it is less geometrically complete than a polygon centroid and is therefore
+    reported separately in the spatial mapping receipt.
+    """
+
+    coordinate_section = sections.get("[COORDINATES]")
+    subcatchment_section = sections.get("[SUBCATCHMENTS]")
+    if coordinate_section is None or subcatchment_section is None:
+        return {}
+    begin, end = coordinate_section
+    coordinates: dict[str, tuple[float, float]] = {}
+    for line in lines[begin + 1:end]:
+        stripped = line.strip()
+        if not stripped or stripped.startswith(";"):
+            continue
+        parts = stripped.split()
+        if len(parts) < 3:
+            continue
+        try:
+            coordinates[parts[0]] = (float(parts[1]), float(parts[2]))
+        except ValueError:
+            continue
+    begin, end = subcatchment_section
+    result: dict[str, tuple[float, float]] = {}
+    for line in lines[begin + 1:end]:
+        stripped = line.strip()
+        if not stripped or stripped.startswith(";"):
+            continue
+        parts = stripped.split()
+        if len(parts) < 3:
+            continue
+        coordinate = coordinates.get(parts[2])
+        if coordinate is not None:
+            result[parts[0]] = coordinate
+    return result
+
+
+def _build_spatial_swmm_rainfall(
+    lines: list[str],
+    scenario: dict[str, Any],
+    rainfall: list[tuple[datetime, float]],
+) -> tuple[list[str], dict[str, list[tuple[datetime, float]]], dict[str, Any]]:
+    """Create rain gages and bind subcatchments to the selected spatial zone."""
+
+    base_gage = "RG_INTERACTIVE"
+    rainfall_by_gage = {base_gage: rainfall}
+    default_raingage = f"{base_gage}  INTENSITY  00:05  1.0  TIMESERIES  TS_INTERACTIVE"
+    zones = scenario.get("spatial_rainfall_zones") or []
+    if scenario.get("spatial_pattern") != "zones" or not zones:
+        return [default_raingage], rainfall_by_gage, {
+            "mode": "uniform",
+            "applied": False,
+            "reason": "uniform_spatial_pattern",
+            "mapped_subcatchment_count": 0,
+        }
+    sections = _section_indexes(lines)
+    centroids = _subcatchment_centroids(lines, sections)
+    spatial_reference_method = "polygon_centroid"
+    if not centroids:
+        centroids = _subcatchment_outlet_coordinates(lines, sections)
+        spatial_reference_method = "subcatchment_outlet_coordinate"
+    if not centroids:
+        return [default_raingage], rainfall_by_gage, {
+            "mode": "zones",
+            "applied": False,
+            "reason": "swmm_spatial_reference_missing",
+            "spatial_reference_method": "none",
+            "mapped_subcatchment_count": 0,
+            "zone_count": len(zones),
+        }
+    prepared_zones: list[dict[str, Any]] = []
+    for index, zone in enumerate(zones):
+        geometry = _spatial_zone_geometry_in_swmm_crs(zone)
+        if geometry is None:
+            continue
+        prepared_zones.append({**zone, "geometry": geometry, "priority": int(zone.get("priority", index))})
+    if not prepared_zones:
+        return [default_raingage], rainfall_by_gage, {
+            "mode": "zones",
+            "applied": False,
+            "reason": "spatial_zone_geometry_missing",
+            "mapped_subcatchment_count": 0,
+            "zone_count": len(zones),
+        }
+    zone_gages: dict[str, str] = {}
+    assignments: dict[str, str] = {}
+    factors: dict[str, float] = {}
+    for index, zone in enumerate(prepared_zones, start=1):
+        zone_id = str(zone.get("zone_id", f"zone_{index}"))
+        gage_id = f"RG_Z{index:03d}"
+        zone_gages[zone_id] = gage_id
+        factor = float(zone.get("rainfall_factor", 1.0))
+        factors[gage_id] = factor
+        zone_interval_count = int(scenario.get("duration_minutes", 0)) // _STEP_MINUTES
+        zone_values = spatial_zone_values_mm_per_interval(
+            [float(intensity) / 12.0 for _stamp, intensity in rainfall[:zone_interval_count]],
+            zone,
+            default_peak_position_percent=float(scenario.get("peak_position", 40)),
+        )
+        zone_start = rainfall[0][0] if rainfall else datetime.fromisoformat(scenario["start_time"])
+        zone_rainfall = [
+            (zone_start + timedelta(minutes=index * _STEP_MINUTES), value * 12.0)
+            for index, value in enumerate(zone_values)
+        ]
+        if rainfall:
+            end_of_rain = zone_start + timedelta(minutes=len(zone_values) * _STEP_MINUTES)
+            zone_rainfall.append((end_of_rain, 0.0))
+            if rainfall[-1][0] > end_of_rain:
+                zone_rainfall.append((rainfall[-1][0], 0.0))
+        rainfall_by_gage[gage_id] = zone_rainfall
+    for subcatchment_id, (x, y) in centroids.items():
+        candidates = [zone for zone in prepared_zones if _point_in_geometry(x, y, zone["geometry"])]
+        if candidates:
+            selected = max(candidates, key=lambda zone: int(zone.get("priority", 0)))
+            assignments[subcatchment_id] = zone_gages[str(selected.get("zone_id"))]
+    raingages = [default_raingage]
+    for gage_id in zone_gages.values():
+        index = list(zone_gages.values()).index(gage_id) + 1
+        raingages.append(f"{gage_id}  INTENSITY  00:05  1.0  TIMESERIES  TS_INTERACTIVE_Z{index:03d}")
+    return raingages, rainfall_by_gage, {
+        "mode": "zones",
+        "applied": bool(assignments),
+        "reason": f"{spatial_reference_method}_zone_match" if assignments else "no_subcatchment_reference_points_in_zones",
+        "spatial_reference_method": spatial_reference_method,
+        "zone_count": len(prepared_zones),
+        "mapped_subcatchment_count": len(assignments),
+        "total_subcatchment_centroid_count": len(centroids),
+        "unmapped_subcatchment_count": len(centroids) - len(assignments),
+        "zone_gages": zone_gages,
+        "rainfall_factors": factors,
+        "assignments": assignments,
+    }
+
+
 def render_scenario_input(
     base: Path,
     output: Path,
@@ -718,7 +1069,8 @@ def render_scenario_input(
     _replace_option(lines, *sections["[OPTIONS]"], "REPORT_STEP", step)
     _replace_option(lines, *sections["[OPTIONS]"], "WET_STEP", "00:05:00")
     _replace_option(lines, *sections["[OPTIONS]"], "ROUTING_STEP", "00:05:00")
-    _replace_section(lines, "[RAINGAGES]", ["RG_INTERACTIVE  INTENSITY  00:05  1.0  TIMESERIES  TS_INTERACTIVE"])
+    raingage_lines, rainfall_by_gage, spatial_mapping = _build_spatial_swmm_rainfall(lines, scenario, rainfall)
+    _replace_section(lines, "[RAINGAGES]", raingage_lines)
     # Bind every active subcatchment to the scenario gage. Customer topology
     # bundles may use RG_PUBLIC, a legacy station name, or multiple source
     # gages; leaving any of them untouched would silently mix the selected
@@ -729,10 +1081,19 @@ def render_scenario_input(
             continue
         parts = lines[index].split()
         if len(parts) >= 2 and parts[1] not in {"-", "*"}:
-            parts[1] = "RG_INTERACTIVE"
+            parts[1] = spatial_mapping.get("assignments", {}).get(parts[0], "RG_INTERACTIVE")
             lines[index] = "  ".join(parts)
-    timeseries = [f"TS_INTERACTIVE  {stamp.strftime('%m/%d/%Y')}  {stamp.strftime('%H:%M')}  {intensity:.8f}" for stamp, intensity in rainfall]
+    timeseries: list[str] = []
+    for gage_id, gage_rainfall in rainfall_by_gage.items():
+        timeseries_id = "TS_INTERACTIVE" if gage_id == "RG_INTERACTIVE" else f"TS_INTERACTIVE_Z{list(rainfall_by_gage).index(gage_id):03d}"
+        timeseries.extend(
+            f"{timeseries_id}  {stamp.strftime('%m/%d/%Y')}  {stamp.strftime('%H:%M')}  {intensity:.8f}"
+            for stamp, intensity in gage_rainfall
+        )
     _replace_section(lines, "[TIMESERIES]", timeseries)
+    spatial_mapping_receipt = dict(spatial_mapping)
+    assignments = spatial_mapping_receipt.pop("assignments", {})
+    spatial_mapping_receipt["assignments_sample"] = dict(list(assignments.items())[:20])
     if scenario["outfall_mode"] == "fixed_level":
         begin, end = _section_indexes(lines)["[OUTFALLS]"]
         fixed_lines = []
@@ -774,6 +1135,10 @@ def render_scenario_input(
     return {
         "rainfall": rainfall_stats,
         "rainfall_step_minutes": _STEP_MINUTES,
+        "spatial_pattern": scenario.get("spatial_pattern", "uniform"),
+        "spatial_zone_count": len(scenario.get("spatial_rainfall_zones") or []),
+        "spatial_application": spatial_mapping_receipt.get("reason"),
+        "spatial_mapping": spatial_mapping_receipt,
         "capacity_factor": capacity_factor,
         "equivalent_diameter_factor": capacity_factor ** (3.0 / 8.0),
         "modified_xsection_count": modified_xsections,
@@ -1148,6 +1513,8 @@ def _run_worker(run_id: str, scenario: dict[str, Any]) -> None:
             manifest["warnings"].append("rainfall_is_parameterized_design_storm_not_customer_authoritative_event")
         elif scenario["rainfall_mode"] == "online_public":
             manifest["warnings"].append("rainfall_is_online_open_meteo_public_proxy_not_customer_authoritative_event")
+        if scenario.get("spatial_pattern") == "zones":
+            manifest["warnings"].append("spatial_rainfall_mapping_uses_swmm_polygons_when_available_and_reports_unmapped_subcatchments")
         _update_run(run_id, scenario=scenario, manifest=manifest)
     except ValueError as error:
         manifest.update(
@@ -1179,6 +1546,26 @@ def _run_worker(run_id: str, scenario: dict[str, Any]) -> None:
         input_path = partition_dir / "scenario.inp"
         try:
             rewrite = render_scenario_input(source, input_path, scenario, rainfall_series=rainfall_series)
+            accepted_spatial_applications = {
+                "polygon_centroid_zone_match",
+                "subcatchment_outlet_coordinate_zone_match",
+            }
+            if scenario.get("spatial_pattern") == "zones" and rewrite.get("spatial_application") not in accepted_spatial_applications:
+                manifest["warnings"].append(
+                    f"spatial_rainfall_not_applied:{rewrite.get('spatial_application', 'unknown')}"
+                )
+            state_rewrite = {
+                "rainfall": rewrite.get("rainfall", {}),
+                "rainfall_step_minutes": rewrite.get("rainfall_step_minutes"),
+                "spatial_pattern": rewrite.get("spatial_pattern"),
+                "spatial_zone_count": rewrite.get("spatial_zone_count"),
+                "spatial_application": rewrite.get("spatial_application"),
+                "spatial_mapping": rewrite.get("spatial_mapping", {}),
+                "capacity_factor": rewrite.get("capacity_factor"),
+                "equivalent_diameter_factor": rewrite.get("equivalent_diameter_factor"),
+                "modified_xsection_count": rewrite.get("modified_xsection_count"),
+                "outfall_mode_applied": rewrite.get("outfall_mode_applied"),
+            }
             request = TraditionalSolverRunRequest(
                 run_id=f"{run_id}-{'city' if partition_id == 'full_city' else f'p{int(partition_id):02d}'}",
                 solver_id="epa_swmm",
@@ -1214,7 +1601,7 @@ def _run_worker(run_id: str, scenario: dict[str, Any]) -> None:
             _json_write(partition_dir / "swmm_execution_receipt.json", receipt)
             quality_warning = not bool(strict_quality.get("passed"))
             result_summary["strict_numerical_quality_passed"] = bool(strict_quality.get("passed"))
-            state.update({"status": "completed_quality_warning" if quality_warning else "completed", "input_rewrite": rewrite, "result_summary": result_summary, "quality_warning": quality_warning, "receipt_path": str(partition_dir / "swmm_execution_receipt.json")})
+            state.update({"status": "completed_quality_warning" if quality_warning else "completed", "input_rewrite": state_rewrite, "result_summary": result_summary, "quality_warning": quality_warning, "receipt_path": str(partition_dir / "swmm_execution_receipt.json")})
             if quality_warning:
                 manifest["warnings"].append(f"{partition_label}:swmm_report_links_not_all_stable")
         except TraditionalSolverExecutionError as error:
@@ -1563,25 +1950,57 @@ def public_citywide_2d_bootstrap_payload(
     root, resolved_result_source = _citywide_2d_result_root(
         return_period_years, result_source
     )
+    partial_one_way = resolved_result_source == "partial_one_way_61mm_2h"
     bidirectional_validation = resolved_result_source == "bidirectional_validation"
     maximum_path = root / "maximum_depth_wgs84.geojson"
+    maximum_extent_path = root / "maximum_inundation_extent_wgs84.geojson"
     summary_path = root / "delivery_summary.json"
     manifest_path = root / "temporal_snapshots" / "manifest.json"
-    for path, code in (
+    required_paths = (
         (maximum_path, "public_citywide_2d_maximum_depth_missing"),
         (summary_path, "public_citywide_2d_summary_missing"),
         (manifest_path, "public_citywide_2d_timeline_missing"),
-    ):
+    )
+    for path, code in required_paths:
         if not path.is_file():
             raise ValueError(code)
+    if partial_one_way and not maximum_extent_path.is_file():
+        raise ValueError("public_citywide_2d_maximum_extent_missing")
     try:
         maximum = json.loads(maximum_path.read_text(encoding="utf-8"))
+        maximum_extent = (
+            json.loads(maximum_extent_path.read_text(encoding="utf-8"))
+            if maximum_extent_path.is_file()
+            else None
+        )
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ValueError("public_citywide_2d_payload_invalid") from error
     if not isinstance(maximum, dict) or maximum.get("type") != "FeatureCollection":
         raise ValueError("public_citywide_2d_maximum_depth_invalid")
+    if maximum_extent is None:
+        maximum_extent = {
+            "type": "FeatureCollection",
+            "name": "maximum_inundation_extent_derived_from_maximum_depth",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": feature.get("geometry"),
+                    "properties": {
+                        "cell_id": (feature.get("properties") or {}).get("cell_id"),
+                        "maximum_depth_m": (feature.get("properties") or {}).get("maximum_depth_m"),
+                        "maximum_depth_time_minutes": (feature.get("properties") or {}).get("maximum_depth_time_minutes"),
+                        "inundation_threshold_m": 0.01,
+                    },
+                }
+                for feature in maximum.get("features", [])
+                if isinstance(feature, dict)
+            ],
+            "metadata": {"inundation_extent_threshold_m": 0.01, "derived_from": "maximum_depth_wgs84.geojson"},
+        }
+    if not isinstance(maximum_extent, dict) or maximum_extent.get("type") != "FeatureCollection":
+        raise ValueError("public_citywide_2d_maximum_extent_invalid")
     snapshots = manifest.get("snapshots")
     if not isinstance(snapshots, list) or not snapshots:
         raise ValueError("public_citywide_2d_timeline_invalid")
@@ -1595,10 +2014,14 @@ def public_citywide_2d_bootstrap_payload(
         domain.get("active_land_cells", domain.get("rectangular_cells", 0)) or 0
     )
     forcing = summary.get("forcing") or {}
-    selected_return_period = int(
-        return_period_years
-        if return_period_years is not None
-        else forcing.get("return_period_years", 100)
+    selected_return_period = (
+        None
+        if partial_one_way
+        else int(
+            return_period_years
+            if return_period_years is not None
+            else forcing.get("return_period_years", 100)
+        )
     )
     base_root = _public_citywide_2d_root()
     evidence = str(surface.get("evidence_class") or "").lower()
@@ -1610,7 +2033,14 @@ def public_citywide_2d_bootstrap_payload(
     if customer_surface and source_resolution is None:
         source_resolution = [5.0, 5.0]
     source_label = "customer_dtm_5m" if customer_surface else "copernicus_dem_glo30"
-    if bidirectional_validation:
+    if partial_one_way:
+        claim_boundary = str(
+            summary.get("claim_boundary")
+            or "Partial one-way SWMM→ANUGA result; the final five minutes are missing and complete recession is not verified."
+        )
+        result_name = "abu_dhabi_customer_dtm5m_citywide_swmm_anuga_partial_61mm_2h"
+        run_prefix = "abu-dhabi-customer-dtm5m-citywide-swmm-anuga-partial-61mm-2h"
+    elif bidirectional_validation:
         claim_boundary = str(
             summary.get("claim_boundary")
             or "Full-interface synchronous SWMM-ANUGA numerical validation using customer DTM; not calibrated or engineering-admitted."
@@ -1627,7 +2057,13 @@ def public_citywide_2d_bootstrap_payload(
         run_prefix = "abu-dhabi-public-copernicus-citywide-anuga"
     coupling_mode = str(
         coupling.get("mode")
-        or ("synchronous_two_way_swmm_anuga_surface_exchange" if bidirectional_validation else "one_way_swmm_to_anuga")
+        or (
+            "one_way_swmm_to_anuga_partial"
+            if partial_one_way
+            else "synchronous_two_way_swmm_anuga_surface_exchange"
+            if bidirectional_validation
+            else "one_way_swmm_to_anuga"
+        )
     )
     dynamic_head_feedback = bidirectional_validation or bool(
         coupling.get("dynamic_head_feedback_in_this_run", False)
@@ -1640,12 +2076,24 @@ def public_citywide_2d_bootstrap_payload(
         simulation_duration_minutes = float(domain.get("simulation_duration_hours")) * 60.0
     timeline_run_id = str(
         summary.get("run_id")
-        or f"{run_prefix}-rp{selected_return_period:03d}"
+        or f"{run_prefix}{'' if selected_return_period is None else f'-rp{selected_return_period:03d}'}"
     )
     timeline_source_query = (
-        "&result_source=bidirectional_validation" if bidirectional_validation else ""
+        "&result_source=partial_one_way_61mm_2h"
+        if partial_one_way
+        else "&result_source=bidirectional_validation"
+        if bidirectional_validation
+        else ""
     )
     available_result_sources = ["return_period_one_way"]
+    partial_root = _partial_citywide_61mm_2h_root()
+    if (
+        (partial_root / "delivery_summary.json").is_file()
+        and (partial_root / "temporal_snapshots" / "manifest.json").is_file()
+        and (partial_root / "maximum_depth_wgs84.geojson").is_file()
+        and (partial_root / "maximum_inundation_extent_wgs84.geojson").is_file()
+    ):
+        available_result_sources.append("partial_one_way_61mm_2h")
     bidirectional_root = _customer_bidirectional_2d_root()
     if (
         (bidirectional_root / "delivery_summary.json").is_file()
@@ -1665,9 +2113,20 @@ def public_citywide_2d_bootstrap_payload(
             "result_variant": resolved_result_source,
             "available_result_sources": available_result_sources,
             "return_period_years": selected_return_period,
+            "scenario_label": summary.get("scenario_label") or ("61 mm / 2 h" if partial_one_way else None),
+            "rainfall_total_mm": forcing.get("total_depth_mm") if partial_one_way else None,
+            "rainfall_duration_minutes": forcing.get("duration_minutes") if partial_one_way else None,
+            "partial_result": partial_one_way,
+            "completed_window_count": (summary.get("delivery") or {}).get("completed_window_count") if partial_one_way else None,
+            "expected_window_count": (summary.get("delivery") or {}).get("expected_window_count") if partial_one_way else None,
+            "missing_tail_minutes": float((summary.get("delivery") or {}).get("missing_tail_seconds", 0.0) or 0.0) / 60.0 if partial_one_way else 0.0,
+            "complete_recession_verified": bool((summary.get("delivery") or {}).get("complete_recession_verified", True)) if partial_one_way else True,
+            "maximum_inundation_extent_threshold_m": (summary.get("delivery") or {}).get("inundation_extent_threshold_m") if partial_one_way else None,
             "available_return_periods": (
                 [100]
                 if bidirectional_validation
+                else []
+                if partial_one_way
                 else _public_citywide_2d_available_periods(base_root)
             ),
             "forcing": forcing,
@@ -1685,9 +2144,13 @@ def public_citywide_2d_bootstrap_payload(
                 "execution_mode": "registered_precomputed_result",
                 "solver": summary.get("solver", "ANUGA 2D"),
                 "solver_chain": (
+                    "EPA SWMM 5.2.4 native OUT -> ANUGA 2D (partial one-way result)"
+                    if partial_one_way
+                    else (
                     "EPA SWMM 5.2.4 <-> ANUGA 2D synchronous exchange validation"
                     if bidirectional_validation
                     else "EPA SWMM 5.2.4 native OUT -> ANUGA 2D"
+                    )
                 ),
                 "terrain_source": source_label,
                 "terrain_product": product,
@@ -1720,7 +2183,7 @@ def public_citywide_2d_bootstrap_payload(
                 "water_cell_fraction_threshold": land_water.get(
                     "water_cell_fraction_threshold"
                 ),
-                "editable_parameters": [] if bidirectional_validation else ["return_period_years"],
+                "editable_parameters": [] if bidirectional_validation or partial_one_way else ["return_period_years"],
                 "frozen_parameter_reason": (
                     "The current web contract selects an audited registered result. "
                     "Changing mesh, boundary, coupling, roughness, or time-step settings "
@@ -1779,7 +2242,11 @@ def public_citywide_2d_bootstrap_payload(
             "timeline": {
                 "available": True,
                 "run_id": timeline_run_id,
-                "endpoint": f"/api/abu-dhabi/flood/public-citywide-2d/timeseries?return_period_years={selected_return_period}{timeline_source_query}",
+                "endpoint": (
+                    "/api/abu-dhabi/flood/public-citywide-2d/timeseries?result_source=partial_one_way_61mm_2h"
+                    if partial_one_way
+                    else f"/api/abu-dhabi/flood/public-citywide-2d/timeseries?return_period_years={selected_return_period}{timeline_source_query}"
+                ),
                 "time_values": [
                     f"{float(item.get('time_minutes', 0.0)):.0f} min"
                     for item in snapshots if isinstance(item, dict)
@@ -1795,6 +2262,9 @@ def public_citywide_2d_bootstrap_payload(
             },
             "claim_boundary": claim_boundary,
             "replacement_rule": (
+                "This partial asset is retained as a read-only visualization of 311 completed windows. It must not be presented as a complete recession result; replace only with a verified 312-window rerun."
+                if partial_one_way
+                else
                 "This validation asset is retained alongside, not in place of, the six one-way return-period products. Replace it only with a rerun carrying equivalent synchronous-window receipts and runtime provenance."
                 if bidirectional_validation
                 else "Customer 5 m DTM is the primary surface; public Copernicus is used only when the selected customer result is unavailable."
@@ -1803,6 +2273,7 @@ def public_citywide_2d_bootstrap_payload(
             ),
         },
         "maximum_depth": maximum,
+        "maximum_inundation_extent": maximum_extent,
     }
 
 
@@ -1818,6 +2289,7 @@ def public_citywide_2d_timeseries_payload(
     root, resolved_result_source = _citywide_2d_result_root(
         return_period_years, result_source
     )
+    partial_one_way = resolved_result_source == "partial_one_way_61mm_2h"
     bidirectional_validation = resolved_result_source == "bidirectional_validation"
     manifest_path = root / "temporal_snapshots" / "manifest.json"
     if not manifest_path.is_file():
@@ -1864,9 +2336,18 @@ def public_citywide_2d_timeseries_payload(
         "time_seconds": float(item.get("time_seconds", 0.0)),
         "time_minutes": float(item.get("time_minutes", 0.0)),
         "return_period_years": return_period_years,
+        "scenario_label": "61 mm / 2 h" if partial_one_way else None,
+        "partial_result": partial_one_way,
+        "completed_window_count": (manifest.get("completed_window_count") if partial_one_way else None),
+        "expected_window_count": (manifest.get("expected_window_count") if partial_one_way else None),
+        "complete_recession_verified": False if partial_one_way else True,
+        "missing_tail_minutes": 5.0 if partial_one_way else 0.0,
         "depth_field": "depth_m",
         "crs": "EPSG:4326",
         "result_status": (
+            "customer_dtm_citywide_partial_one_way_not_complete_recession"
+            if partial_one_way
+            else
             "customer_dtm_citywide_synchronous_bidirectional_validation_not_engineering_admitted"
             if bidirectional_validation
             else "customer_dtm_citywide_2d_not_engineering_admitted"
@@ -1875,7 +2356,13 @@ def public_citywide_2d_timeseries_payload(
         ),
         "coupling_mode": (
             (summary.get("coupling") or {}).get("mode")
-            or ("synchronous_two_way_swmm_anuga_surface_exchange" if bidirectional_validation else "one_way_swmm_to_anuga")
+            or (
+                "one_way_swmm_to_anuga_partial"
+                if partial_one_way
+                else "synchronous_two_way_swmm_anuga_surface_exchange"
+                if bidirectional_validation
+                else "one_way_swmm_to_anuga"
+            )
         ),
         "surface_product": product,
         "surface_source": source_label,

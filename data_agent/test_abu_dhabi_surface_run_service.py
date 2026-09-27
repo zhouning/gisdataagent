@@ -76,6 +76,56 @@ def test_validate_surface_request_rejects_non_five_minute_coupling_window() -> N
         )
 
 
+def test_public_2d_runner_generates_independent_spatial_zone_timeseries(
+    tmp_path: Path,
+) -> None:
+    runner = service._load_runner()
+    generated = tmp_path / "generated_anuga_spatial_forcing.py"
+    geometry = {
+        "type": "Polygon",
+        "coordinates": [[
+            [220000.0, 2680000.0],
+            [280000.0, 2680000.0],
+            [280000.0, 2730000.0],
+            [220000.0, 2730000.0],
+            [220000.0, 2680000.0],
+        ]],
+    }
+    zones = [
+        {
+            "zone_id": "earlier",
+            "geometry": geometry,
+            "crs": "EPSG:32640",
+            "rainfall_factor": 1.2,
+            "rainfall_values_mm_per_hour": [12.0, 0.0],
+            "priority": 1,
+        },
+        {
+            "zone_id": "later",
+            "geometry": geometry,
+            "crs": "EPSG:32640",
+            "rainfall_factor": 0.8,
+            "rainfall_values_mm_per_hour": [0.0, 8.0],
+            "priority": 2,
+        },
+    ]
+
+    runner._write_model_script(
+        generated,
+        {},
+        [10.0, 10.0],
+        runner.CITY_BOUNDS,
+        rainfall_duration_minutes=10,
+        spatial_zones=zones,
+    )
+
+    text = generated.read_text(encoding="utf-8")
+    compile(text, str(generated), "exec")
+    assert "'rainfall_values_mm_per_hour': (12.0, 0.0)" in text
+    assert "'rainfall_values_mm_per_hour': (0.0, 8.0)" in text
+    assert 'zone_values = zone.get("rainfall_values_mm_per_hour")' in text
+
+
 def test_coupled_runner_receives_generated_return_period_specific_swmm_input(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -1,0 +1,10 @@
+# Runtime dependencies for the source-data compiler only.
+geopandas==1.1.2
+httpx==0.28.1
+numpy==2.3.5
+pandas==2.3.3
+pyarrow==20.0.0
+pyogrio==0.12.1
+pyproj==3.7.2
+SQLAlchemy==2.0.45
+shapely==2.1.2

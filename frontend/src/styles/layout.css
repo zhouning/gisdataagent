@@ -986,6 +986,19 @@ html[lang^='ar'] {
 .abu-flood-form-group-title { display: flex; align-items: center; gap: 6px; margin-bottom: 9px; color: var(--info); }
 .abu-flood-form-group-title strong { color: var(--text); font-size: 10px; }
 .abu-flood-form-group-title small { margin-left: auto; color: var(--text-tertiary); font-size: 8px; }
+.abu-flood-rainfall-create-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 1px 0 7px; }
+.abu-flood-rainfall-create-heading strong { color: var(--text); font-size: 10px; }
+.abu-flood-rainfall-create-heading span { color: var(--text-secondary); font-size: 8px; text-align: right; }
+.abu-flood-rainfall-create-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-bottom: 10px; }
+.abu-flood-rainfall-create-card { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 9px; overflow: hidden; border: 1px solid var(--border-light); border-radius: 6px; background: var(--surface); color: var(--text-secondary); text-align: left; cursor: pointer; }
+.abu-flood-rainfall-create-card:hover { border-color: var(--info); color: var(--text); }
+.abu-flood-rainfall-create-card.active { border-color: var(--info); background: rgba(6,182,212,.1); box-shadow: inset 0 0 0 1px rgba(6,182,212,.18); color: var(--info); }
+.abu-flood-rainfall-create-card.optional { border-style: dashed; color: var(--text-tertiary); }
+.abu-flood-rainfall-create-card > svg { flex: 0 0 auto; }
+.abu-flood-rainfall-create-card > span { display: grid; gap: 2px; min-width: 0; }
+.abu-flood-rainfall-create-card strong { color: var(--text); font-size: 9px; }
+.abu-flood-rainfall-create-card small { color: var(--text-secondary); font-size: 8px; line-height: 1.35; }
+.abu-flood-rainfall-create-card input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .abu-flood-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 10px; }
 .abu-flood-form-grid label { display: flex; flex-direction: column; gap: 4px; min-width: 0; color: var(--text-secondary); font-size: 9px; }
 .abu-flood-form-grid input,
@@ -994,8 +1007,65 @@ html[lang^='ar'] {
 .abu-flood-form-grid select:focus { outline: 2px solid rgba(6,182,212,.28); outline-offset: 1px; border-color: var(--info); }
 .abu-flood-form-grid input:disabled,
 .abu-flood-form-grid select:disabled { cursor: not-allowed; opacity: .48; }
+.abu-flood-form-grid textarea { width: 100%; min-height: 54px; padding: 5px 7px; border: 1px solid var(--border-light); border-radius: 4px; background: var(--surface); color: var(--text); font: inherit; font-size: 10px; resize: vertical; }
+.abu-flood-form-grid .abu-flood-wide-field { grid-column: 1 / -1; }
+.abu-flood-wide-field { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; color: var(--text-secondary); font-size: 9px; }
+.abu-flood-wide-field textarea { width: 100%; min-height: 54px; padding: 5px 7px; border: 1px solid var(--border-light); border-radius: 4px; background: var(--surface); color: var(--text); font: inherit; font-size: 10px; resize: vertical; box-sizing: border-box; }
 .abu-flood-form-hint { display: flex; align-items: flex-start; gap: 6px; margin-top: 8px; color: var(--warning); font-size: 8px; line-height: 1.4; }
 .abu-flood-form-hint svg { flex: 0 0 auto; }
+.abu-flood-rainfall-profile-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.abu-flood-rainfall-profile-tools select { flex: 1 1 220px; min-height: 30px; padding: 5px 7px; border: 1px solid var(--border-light); border-radius: 4px; background: var(--surface); color: var(--text); font: inherit; font-size: 10px; }
+.abu-flood-rainfall-profile-tools a { text-decoration: none; }
+.abu-flood-rainfall-profile-name { display: flex; align-items: center; gap: 5px; color: var(--text-secondary); font-size: 8px; }
+.abu-flood-rainfall-profile-name input { min-width: 180px; min-height: 28px; padding: 4px 7px; border: 1px solid var(--border-light); border-radius: 4px; background: var(--bg); color: var(--text); font: inherit; font-size: 9px; }
+.abu-flood-csv-import-action { position: relative; overflow: hidden; }
+.abu-flood-csv-import-action input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.abu-flood-form-hint-text { display: block; margin-top: 5px; color: var(--text-secondary); font-size: 8px; line-height: 1.4; }
+.abu-flood-rainfall-draft-warning { color: var(--warning); }
+.abu-flood-custom-rainfall-editor { grid-column: 1 / -1; display: grid; gap: 7px; margin-top: 8px; }
+.abu-flood-custom-rainfall-editor textarea { width: 100%; min-height: 54px; padding: 5px 7px; border: 1px solid var(--border-light); border-radius: 4px; background: var(--surface); color: var(--text); font: inherit; font-size: 10px; resize: vertical; }
+.abu-flood-custom-rainfall-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 8px; }
+.abu-flood-rainfall-chart { padding: 8px; border: 1px solid var(--border-light); border-radius: 6px; background: color-mix(in srgb, var(--surface) 88%, transparent); }
+.abu-flood-rainfall-chart-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 7px; }
+.abu-flood-rainfall-chart-heading strong { color: var(--text); font-size: 9px; }
+.abu-flood-rainfall-chart-heading span { color: var(--text-tertiary); font-size: 8px; }
+.abu-flood-rainfall-chart-body { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 6px; }
+.abu-flood-rainfall-chart-y-axis { display: flex; flex-direction: column; justify-content: space-between; height: 132px; padding-bottom: 15px; color: var(--text-tertiary); font-size: 7px; text-align: right; }
+.abu-flood-rainfall-chart-scroller { min-width: 0; overflow-x: auto; }
+.abu-flood-rainfall-chart-plot { display: flex; align-items: flex-end; gap: 1px; height: 116px; padding: 4px 3px 0; border-bottom: 1px solid var(--border-light); background: repeating-linear-gradient(to bottom, transparent 0, transparent 37px, rgba(148,163,184,.13) 38px); }
+.abu-flood-rainfall-chart-bar { flex: 1 1 4px; min-width: 3px; max-width: 22px; min-height: 0; padding: 0; border: 0; border-radius: 2px 2px 0 0; background: linear-gradient(180deg, #22d3ee, #0284c7); cursor: pointer; transition: filter .12s ease, opacity .12s ease; }
+.abu-flood-rainfall-chart-bar:hover { filter: brightness(1.3); opacity: .92; }
+.abu-flood-rainfall-chart-bar:focus-visible { outline: 2px solid #fbbf24; outline-offset: 1px; }
+.abu-flood-rainfall-chart-x-axis { display: flex; justify-content: space-between; padding-top: 3px; color: var(--text-tertiary); font-size: 7px; }
+.abu-flood-custom-rainfall-nodes { display: grid; gap: 4px; max-height: 260px; padding: 7px; overflow: auto; border: 1px solid var(--border-light); border-radius: 5px; background: color-mix(in srgb, var(--surface) 82%, transparent); }
+.abu-flood-custom-rainfall-node { display: grid; grid-template-columns: 42px minmax(90px, 1fr) 72px; align-items: center; gap: 7px; color: var(--text-secondary); font-size: 8px; }
+.abu-flood-custom-rainfall-node input[type="range"] { width: 100%; accent-color: var(--info); }
+.abu-flood-custom-rainfall-node input[type="number"] { width: 100%; min-height: 25px; padding: 3px 5px; border: 1px solid var(--border-light); border-radius: 4px; background: var(--surface); color: var(--text); font-size: 9px; }
+.abu-flood-spatial-rainfall-editor { display: grid; gap: 8px; margin-top: 9px; padding: 9px; border: 1px solid rgba(6,182,212,.3); border-radius: 6px; background: rgba(6,182,212,.05); }
+.abu-flood-spatial-rainfall-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.abu-flood-spatial-rainfall-heading > div { display: grid; gap: 2px; }
+.abu-flood-spatial-rainfall-heading strong { color: var(--text); font-size: 10px; }
+.abu-flood-spatial-rainfall-heading span { color: var(--text-secondary); font-size: 8px; }
+.abu-flood-spatial-rainfall-zones { display: grid; gap: 5px; }
+.abu-flood-spatial-rainfall-zone-item { display: grid; gap: 5px; }
+.abu-flood-spatial-rainfall-zone-item.selected .abu-flood-spatial-rainfall-zone { border-color: #facc15; box-shadow: 0 0 0 1px rgba(250,204,21,.28); }
+.abu-flood-spatial-rainfall-zone { display: grid; grid-template-columns: minmax(105px, .8fr) minmax(130px, 1.1fr) 82px minmax(90px, auto) 100px auto auto; align-items: end; gap: 7px; padding: 7px; border: 1px solid var(--border-light); border-radius: 5px; background: var(--surface); }
+.abu-flood-spatial-rainfall-zone label { display: grid; gap: 3px; color: var(--text-secondary); font-size: 8px; }
+.abu-flood-spatial-rainfall-zone input,
+.abu-flood-spatial-rainfall-zone select { width: 100%; min-height: 28px; padding: 4px 6px; border: 1px solid var(--border-light); border-radius: 4px; background: var(--bg); color: var(--text); font: inherit; font-size: 9px; }
+.abu-flood-spatial-rainfall-zone > span { padding-bottom: 7px; color: var(--info); font-size: 8px; white-space: nowrap; }
+.abu-flood-spatial-rainfall-preview { display: flex; align-items: flex-end; gap: 1px; height: 28px; padding: 2px 3px; overflow: hidden; border: 1px solid var(--border-light); border-radius: 4px; background: var(--bg); cursor: pointer; }
+.abu-flood-spatial-rainfall-preview:hover,
+.abu-flood-spatial-rainfall-preview:focus-visible { border-color: #22d3ee; outline: none; box-shadow: 0 0 0 2px rgba(34,211,238,.18); }
+.abu-flood-spatial-rainfall-preview i { flex: 1 1 1px; min-width: 1px; max-width: 4px; border-radius: 1px 1px 0 0; background: linear-gradient(180deg, #22d3ee, #0284c7); }
+.abu-flood-spatial-rainfall-zone > button { min-height: 28px; padding: 4px 7px; border: 1px solid rgba(248,113,113,.35); border-radius: 4px; background: rgba(248,113,113,.08); color: #fca5a5; font-size: 8px; cursor: pointer; }
+.abu-flood-spatial-rainfall-zone > button.edit { border-color: rgba(6,182,212,.35); background: rgba(6,182,212,.08); color: var(--info); }
+.abu-flood-spatial-zone-custom-editor { display: grid; gap: 7px; padding: 8px; border: 1px solid rgba(6,182,212,.28); border-radius: 5px; background: rgba(6,182,212,.04); }
+.abu-flood-spatial-zone-custom-editor .abu-flood-custom-rainfall-nodes { max-height: 210px; }
+.abu-flood-spatial-rainfall-editor > small { color: var(--text-secondary); font-size: 8px; line-height: 1.45; }
+.abu-flood-spatial-rainfall-advanced summary { color: var(--text-secondary); font-size: 8px; cursor: pointer; }
+.abu-flood-spatial-rainfall-advanced label { display: grid; gap: 4px; margin-top: 6px; color: var(--text-secondary); font-size: 8px; }
+.abu-flood-spatial-rainfall-advanced textarea { width: 100%; box-sizing: border-box; padding: 6px; border: 1px solid var(--border-light); border-radius: 4px; background: var(--surface); color: var(--text); font: inherit; font-size: 9px; resize: vertical; }
 .abu-flood-validation-gate { display: flex; align-items: flex-start; gap: 7px; margin-top: 9px; padding: 8px 9px; border-left: 3px solid var(--warning); background: rgba(245,158,11,.08); color: var(--warning); font-size: 9px; line-height: 1.4; }
 .abu-flood-validation-gate svg { flex: 0 0 auto; margin-top: 1px; }
 .abu-flood-validation-gate strong { display: block; color: inherit; font-size: 9px; }
@@ -1410,6 +1480,13 @@ html[lang^='ar'] {
   .abu-flood-footer-note { text-align: left; }
   .abu-flood-form-group-title { align-items: flex-start; flex-wrap: wrap; }
   .abu-flood-form-group-title small { width: 100%; margin-left: 20px; }
+  .abu-flood-rainfall-create-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .abu-flood-rainfall-create-heading span { text-align: left; }
+  .abu-flood-rainfall-create-modes { grid-template-columns: 1fr; }
+  .abu-flood-rainfall-chart-heading,
+  .abu-flood-spatial-rainfall-heading { align-items: flex-start; flex-direction: column; }
+  .abu-flood-spatial-rainfall-zone { grid-template-columns: 1fr 80px; }
+  .abu-flood-spatial-rainfall-zone > span { padding-bottom: 0; }
   .abu-flood-scenario-result-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .abu-flood-observation-metrics { grid-template-columns: 1fr; }
   .abu-flood-observation-map-action { align-items: stretch; flex-direction: column; }
@@ -1823,6 +1900,44 @@ html[lang^='ar'] {
 .map-panel .leaflet-container {
   height: 100%;
   width: 100%;
+}
+
+.rainfall-zone-preview-status {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: min(420px, calc(100% - 220px));
+  padding: 7px 10px;
+  border: 1px solid rgba(6, 182, 212, .38);
+  border-radius: 6px;
+  background: rgba(8, 47, 73, .9);
+  box-shadow: var(--shadow-md);
+  color: #cffafe;
+  font-size: 10px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.rainfall-zone-preview-status strong {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 9px;
+  background: #06b6d4;
+  color: #082f49;
+  font-size: 9px;
+}
+.rainfall-zone-preview-status em {
+  overflow: hidden;
+  color: #facc15;
+  font-style: normal;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .directional-flow-arrow-marker {

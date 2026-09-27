@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getLocale, getLocaleHeaders } from '../../i18n';
 import {
@@ -25,6 +25,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   TimerReset,
+  Trash2,
   Waves,
 } from 'lucide-react';
 
@@ -358,7 +359,9 @@ type CustomerDtmDiagnostic = {
   };
 };
 
-type PublicCitywide2dDiagnostic = CustomerDtmDiagnostic;
+type PublicCitywide2dDiagnostic = CustomerDtmDiagnostic & {
+  maximum_inundation_extent?: any;
+};
 
 function isCustomerDtmSurface(diagnostic: PublicCitywide2dDiagnostic | null | undefined): boolean {
   const metadata = diagnostic?.metadata || {};
@@ -497,13 +500,20 @@ function buildCustomerDtmMapLayers(diagnostic: CustomerDtmDiagnostic, includeTim
 function buildPublicCitywide2dMapLayers(diagnostic: PublicCitywide2dDiagnostic) {
   const timeline = diagnostic.metadata?.timeline;
   if (!timeline?.available || !timeline.endpoint) return [];
+  const resultVariant = String(diagnostic.metadata?.result_variant || 'return_period_one_way');
+  const partialResult = resultVariant === 'partial_one_way_61mm_2h' || Boolean(diagnostic.metadata?.partial_result);
   const returnPeriod = Number(diagnostic.metadata?.return_period_years || 100);
   const customerSurface = isCustomerDtmSurface(diagnostic);
   const surfaceLabel = customerSurface ? '客户 5 m DTM' : 'Copernicus DEM GLO-30 公共 DEM';
-  const resultQualifier = customerSurface ? '客户 DTM 主结果' : '公共 DEM 原型';
+  const scenarioLabel = partialResult
+    ? '61 mm / 2 h · 部分结果（311/312 窗口）'
+    : `${returnPeriod} 年一遇`;
+  const resultQualifier = partialResult
+    ? 'SWMM→ANUGA 单向部分结果'
+    : customerSurface ? '客户 DTM 主结果' : '公共 DEM 原型';
   return [
     {
-      name: `二维结果 · ${surfaceLabel} 全市陆域最大积水深度 · ${returnPeriod} 年一遇`,
+      name: `二维结果 · ${surfaceLabel} 全市陆域最大积水深度 · ${scenarioLabel}`,
       type: 'choropleth' as const,
       geojsonData: diagnostic.maximum_depth,
       value_column: 'maximum_depth_m',
@@ -520,7 +530,23 @@ function buildPublicCitywide2dMapLayers(diagnostic: PublicCitywide2dDiagnostic) 
       },
     },
     {
-      name: `二维结果 · ${surfaceLabel} 全市陆域动态积水深度 · ${returnPeriod} 年一遇`,
+      name: `二维结果 · ${surfaceLabel} 最大积水范围（≥ 0.01 m） · ${scenarioLabel}`,
+      type: 'choropleth' as const,
+      geojsonData: diagnostic.maximum_inundation_extent,
+      value_column: 'maximum_depth_m',
+      breaks: [0.01, 0.05, 0.10, 0.20, 0.50, 1, 2, 3],
+      color_scheme: 'Oranges',
+      legend_title: `最大积水范围（最大深度 ≥ 0.01 m）· ${resultQualifier}`,
+      style: { weight: 0.8, opacity: 0.9, fillOpacity: 0.16, color: '#c2410c' },
+      visible: false,
+      tooltip_fields: ['cell_id', 'maximum_depth_m', 'maximum_depth_time_minutes', 'inundation_threshold_m'],
+      tooltip_labels: {
+        cell_id: '二维单元 ID', maximum_depth_m: '单元最大积水深度（m）',
+        maximum_depth_time_minutes: '最大深度时刻（分钟）', inundation_threshold_m: '范围阈值（m）',
+      },
+    },
+    {
+      name: `二维结果 · ${surfaceLabel} 全市陆域动态积水深度 · ${scenarioLabel}`,
       type: 'choropleth' as const,
       value_column: 'depth_m',
       breaks: [0.01, 0.05, 0.10, 0.20, 0.50, 1, 2, 3],
@@ -1055,6 +1081,8 @@ const ABU_EN_REPLACEMENTS: Array<[string, string]> = [
   ['全市连续网络运行状态', 'Citywide continuous-network runtime status'], ['局部诊断已接入', 'Local diagnostic connected'],
   ['全市连续网络编译覆盖', 'Citywide continuous-network compile coverage'], ['全市原型已接入', 'Full-city prototype connected'],
   ['分区降雨系数（后端接入）', 'Zonal rainfall factor (backend integration pending)'],
+  ['地图分区降雨（多边形优先，出口节点坐标回退）', 'Map-zoned rainfall (polygon preferred; outlet-coordinate fallback)'],
+  ['SWMM 优先按子汇水区多边形质心分区；当前全市拓扑缺少多边形时，按子汇水区出口节点坐标回退。回退可运行且有映射回执，但空间精度低于完整汇水区多边形。', 'SWMM first assigns zones by subcatchment polygon centroid. If the current citywide topology has no polygons, it falls back to each subcatchment outlet-node coordinate. The fallback is runnable and auditable, but less spatially precise than complete subcatchment polygons.'],
   ['已加载预计算的全市连续网络基线情景', 'Loaded the precomputed citywide continuous-network baseline scenario'],
   ['Copernicus DEM GLO-30 已完成全市 ANUGA 2D 原型；客户 dtm_5M.tif 仍作为局部诊断参考。全市真实事件模拟仍依赖权威 DTM、垂直基准、道路路缘、建筑阻水和观测。', 'Copernicus DEM GLO-30 supports the citywide ANUGA 2D prototype; customer dtm_5M.tif remains a local diagnostic reference. A citywide real-event simulation still requires an authoritative DTM and vertical datum, road curbs, building blockage, and observations.'],
   ['开始', 'Start'], ['结束', 'End'], ['状态', 'Status'], ['百万升', 'million litres'], ['已接入', 'Connected'], ['未知', 'Unknown'],
@@ -1323,11 +1351,12 @@ function localizeAbuLayerMetadata<T>(value: T, translateAll = false): T {
 }
 
 type RainfallMode = 'design_storm' | 'online_public' | 'public_station_event' | 'historical_event';
-type RainfallPattern = 'uniform' | 'front_loaded' | 'alternating_block' | 'official_zone_b_ddf_abm';
+type RainfallPattern = 'uniform' | 'front_loaded' | 'back_loaded' | 'central_peak' | 'double_peak' | 'alternating_block' | 'custom' | 'official_zone_b_ddf_abm';
+type RainfallForcingTarget = 'swmm' | 'anuga' | 'commercial';
 type ReturnPeriodYears = 2 | 5 | 10 | 25 | 50 | 100;
 type GwmMode = 'trained' | 'screening';
 type SurfaceWorkspaceView = 'invoke' | 'results';
-type SurfaceResultSource = 'return_period_one_way' | 'bidirectional_validation';
+type SurfaceResultSource = 'return_period_one_way' | 'bidirectional_validation' | 'partial_one_way_61mm_2h';
 
 interface SurfaceRunForm {
   solver: 'anuga';
@@ -1393,6 +1422,7 @@ interface FloodScenarioForm {
   scope: 'citywide' | 'partition';
   partition: string;
   rainfallMode: RainfallMode;
+  climateZone: 'zone_a' | 'zone_b';
   publicLatitude: number;
   publicLongitude: number;
   publicStation: 'OMAD' | 'OMAA';
@@ -1403,6 +1433,8 @@ interface FloodScenarioForm {
   returnPeriodYears: ReturnPeriodYears;
   peakPosition: number;
   spatialPattern: 'uniform' | 'zonal';
+  customRainfallValues: string;
+  spatialZonesJson: string;
   tailMinutes: number;
   pipeScope: 'none' | 'priority_corridor' | 'selected_zone';
   blockagePercent: number;
@@ -1432,6 +1464,9 @@ interface ScenarioRun {
     event_window_utc?: string[];
     evidence_class?: string;
     admission?: string;
+    climate_zone?: string;
+    spatial_mode?: string;
+    spatial_zone_count?: number;
   };
   actionSummary: string;
   claimBoundary: string;
@@ -1471,10 +1506,28 @@ interface ScenarioRun {
   }>;
 }
 
+interface SavedRainfallProfile {
+  profile_id: string;
+  profile_hash_sha256?: string;
+  name: string;
+  climate_zone: 'zone_a' | 'zone_b';
+  duration_minutes: number;
+  interval_minutes: number;
+  total_depth_mm: number;
+  source_type?: string;
+  source_reference?: string | null;
+  temporal_pattern?: string;
+  spatial_mode?: 'uniform' | 'zones' | 'raster';
+  spatial_zone_count?: number;
+  evidence_class?: string | null;
+  saved_at_utc?: string;
+}
+
 const DEFAULT_FLOOD_SCENARIO: FloodScenarioForm = {
   scope: 'citywide',
   partition: 'all',
   rainfallMode: 'design_storm',
+  climateZone: 'zone_b',
   publicLatitude: 24.4539,
   publicLongitude: 54.3773,
   publicStation: 'OMAD',
@@ -1485,6 +1538,8 @@ const DEFAULT_FLOOD_SCENARIO: FloodScenarioForm = {
   returnPeriodYears: 10,
   peakPosition: 40,
   spatialPattern: 'uniform',
+  customRainfallValues: '',
+  spatialZonesJson: '',
   tailMinutes: 60,
   pipeScope: 'none',
   blockagePercent: 0,
@@ -1525,9 +1580,29 @@ const DEFAULT_SURFACE_RUN: SurfaceRunForm = {
 const rainfallPatternLabels: Record<RainfallPattern, string> = {
   uniform: '均匀雨型',
   front_loaded: '前峰雨型',
+  back_loaded: '后峰雨型',
+  central_peak: '中央峰雨型',
+  double_peak: '双峰雨型',
   alternating_block: '交替块雨型',
+  custom: '人工定义/导入雨型',
   official_zone_b_ddf_abm: 'Zone B 官方 DDF 交替块雨型（2022）',
 };
+
+function buildRainfallShapePreview(pattern: string, count: number, peakPositionPercent: number, inherited: number[] = []) {
+  if (pattern === 'inherit' && inherited.length) return inherited;
+  const peak = Math.max(0.05, Math.min(0.95, peakPositionPercent / 100));
+  const values = Array.from({ length: Math.max(1, count) }, (_, index) => {
+    const x = (index + 0.5) / Math.max(1, count);
+    if (pattern === 'uniform') return 1;
+    if (pattern === 'front_loaded') return Math.max(0.05, 2 - 1.5 * x);
+    if (pattern === 'back_loaded') return Math.max(0.05, 0.5 + 1.5 * x);
+    if (pattern === 'double_peak') return Math.max(0.05, 0.35 + 1.5 * (Math.exp(-Math.pow((x - 0.25) / 0.12, 2)) + Math.exp(-Math.pow((x - 0.75) / 0.12, 2))));
+    if (pattern === 'alternating_block') return Math.max(0.05, 2 - Math.abs(x - peak) * 2);
+    return Math.max(0.05, 2 - Math.abs(x - peak) * 5);
+  });
+  const maximum = Math.max(...values, 1);
+  return values.map(value => value / maximum);
+}
 
 const zoneB180DepthByReturnPeriod: Record<ReturnPeriodYears, number> = {
   2: 11.31,
@@ -2279,15 +2354,95 @@ export default function AbuDhabiFloodWorldModelTab() {
   const [precomputedLoadStage, setPrecomputedLoadStage] = useState<'job' | 'timeline' | 'map' | null>(null);
   const precomputedRunIdRef = useRef<string | null>(null);
   const [scenarioError, setScenarioError] = useState<string | null>(null);
+  const [savedRainfallProfiles, setSavedRainfallProfiles] = useState<SavedRainfallProfile[]>([]);
+  const [selectedSavedRainfallProfileId, setSelectedSavedRainfallProfileId] = useState('');
+  const [loadedSavedRainfallProfileId, setLoadedSavedRainfallProfileId] = useState('');
+  const [loadedRainfallProfileHash, setLoadedRainfallProfileHash] = useState('');
+  const [rainfallProfileName, setRainfallProfileName] = useState('');
+  const [rainfallProfileDraftChanged, setRainfallProfileDraftChanged] = useState(false);
+  const [rainfallProfileMetadata, setRainfallProfileMetadata] = useState<{
+    sourceType?: string;
+    sourceReference?: string | null;
+    provenance?: Record<string, unknown>;
+  }>({});
+  const [rainfallProfileBusy, setRainfallProfileBusy] = useState(false);
+  const [preserveCustomRainfallTotal, setPreserveCustomRainfallTotal] = useState(true);
+  const [rainfallForcingTarget, setRainfallForcingTarget] = useState<RainfallForcingTarget>('commercial');
+  const [expandedSpatialZoneIndex, setExpandedSpatialZoneIndex] = useState<number | null>(null);
+  const [selectedRainfallPreviewZoneId, setSelectedRainfallPreviewZoneId] = useState('');
   const [designStormBatch, setDesignStormBatch] = useState<any | null>(null);
   const [designStormBatchLoading, setDesignStormBatchLoading] = useState(true);
   const [designStormBatchError, setDesignStormBatchError] = useState<string | null>(null);
+  const [designStormBatchUnavailable, setDesignStormBatchUnavailable] = useState(false);
   const [eventEvidence, setEventEvidence] = useState<any | null>(null);
   const [eventEvidenceLoading, setEventEvidenceLoading] = useState(false);
   const [sentinelObservation, setSentinelObservation] = useState<SentinelObservationDashboard | null>(null);
   const [sentinelObservationLoading, setSentinelObservationLoading] = useState(false);
   const [sentinelObservationError, setSentinelObservationError] = useState<string | null>(null);
   const [sentinelObservationMap, setSentinelObservationMap] = useState<SentinelObservationMapPayload | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/abu-dhabi/flood/rainfall/profiles/saved', { credentials: 'include', headers: getLocaleHeaders() })
+      .then(response => response.ok ? response.json() : null)
+      .then(payload => {
+        if (!cancelled && Array.isArray(payload?.profiles)) setSavedRainfallProfiles(payload.profiles);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const onRainfallZones = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (!detail) return;
+      if (loadedSavedRainfallProfileId) setRainfallProfileDraftChanged(true);
+      setScenario(current => {
+        const incoming = Array.isArray(detail.features) ? detail.features : Array.isArray(detail) ? detail : [];
+        let existing: any[] = [];
+        try {
+          const parsed = JSON.parse(current.spatialZonesJson || '[]');
+          existing = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.features) ? parsed.features : [];
+        } catch {
+          existing = [];
+        }
+        const features = incoming.map((feature: any, index: number) => {
+          const oldFeature = existing[index];
+          const oldProperties = oldFeature?.type === 'Feature' ? (oldFeature.properties || {}) : (oldFeature || {});
+          const properties = feature?.type === 'Feature' ? (feature.properties || {}) : {};
+          return {
+            ...feature,
+            type: 'Feature',
+            properties: {
+              ...properties,
+              zone_id: oldProperties.zone_id || properties.zone_id || `zone_${index + 1}`,
+              rainfall_factor: Number(oldProperties.rainfall_factor ?? properties.rainfall_factor ?? 1),
+              temporal_pattern_id: oldProperties.temporal_pattern_id || properties.temporal_pattern_id || 'inherit',
+              ...(Array.isArray(oldProperties.values_mm_per_interval) ? { values_mm_per_interval: oldProperties.values_mm_per_interval } : Array.isArray(properties.values_mm_per_interval) ? { values_mm_per_interval: properties.values_mm_per_interval } : {}),
+              priority: Number(oldProperties.priority ?? properties.priority ?? index),
+            },
+          };
+        });
+        return {
+          ...current,
+          spatialPattern: 'zonal',
+          spatialZonesJson: JSON.stringify(features),
+        };
+      });
+      setScenarioError(null);
+    };
+    window.addEventListener('abu-rainfall-zone-drawn', onRainfallZones);
+    return () => window.removeEventListener('abu-rainfall-zone-drawn', onRainfallZones);
+  }, [loadedSavedRainfallProfileId]);
+
+  useEffect(() => {
+    const onRainfallZoneSelected = (event: Event) => {
+      const zoneId = String((event as CustomEvent).detail?.zoneId || '');
+      if (zoneId) setSelectedRainfallPreviewZoneId(zoneId);
+    };
+    window.addEventListener('abu-rainfall-zone-selected', onRainfallZoneSelected);
+    return () => window.removeEventListener('abu-rainfall-zone-selected', onRainfallZoneSelected);
+  }, []);
   const sentinelObservationMapRef = useRef<SentinelObservationMapPayload | null>(null);
   const [sentinelObservationMapLoading, setSentinelObservationMapLoading] = useState(false);
   const [sentinelObservationMapError, setSentinelObservationMapError] = useState<string | null>(null);
@@ -2623,9 +2778,10 @@ export default function AbuDhabiFloodWorldModelTab() {
     let cancelled = false;
     setSurfaceReturnPeriodLoading(true);
     setSurfaceReturnPeriodError(null);
-    const selectedPeriod = surfaceResultSource === 'bidirectional_validation' ? 100 : surfaceReturnPeriodYears;
+    const selectedPeriod = surfaceResultSource === 'bidirectional_validation' ? 100 : surfaceResultSource === 'partial_one_way_61mm_2h' ? null : surfaceReturnPeriodYears;
     const resultSource = encodeURIComponent(surfaceResultSource);
-    fetch(`/api/abu-dhabi/flood/public-citywide-2d/bootstrap?return_period_years=${selectedPeriod}&result_source=${resultSource}`, { credentials: 'include', headers: getLocaleHeaders() })
+    const periodQuery = selectedPeriod == null ? '' : `return_period_years=${selectedPeriod}&`;
+    fetch(`/api/abu-dhabi/flood/public-citywide-2d/bootstrap?${periodQuery}result_source=${resultSource}`, { credentials: 'include', headers: getLocaleHeaders() })
       .then(async response => {
         const payload = await response.json().catch(() => null);
         if (!response.ok) {
@@ -2639,11 +2795,11 @@ export default function AbuDhabiFloodWorldModelTab() {
           setPublicCitywide2dDiagnostic(payload);
           setSurfaceInvocationReceipt({
             runId: String(payload.metadata?.timeline?.run_id || 'registered-anuga-result'),
-            returnPeriodYears: Number(payload.metadata?.return_period_years || selectedPeriod),
+            returnPeriodYears: Number(payload.metadata?.return_period_years || selectedPeriod || 0),
             loadedAt: new Date().toISOString(),
           });
           const available = Array.isArray(payload.metadata?.available_return_periods) ? payload.metadata.available_return_periods.map(Number) : [];
-          if (!available.includes(selectedPeriod)) {
+          if (selectedPeriod != null && !available.includes(selectedPeriod)) {
             setSurfaceReturnPeriodError(`${selectedPeriod} 年一遇二维结果当前未生成。`);
           }
         } else if (payload?.error) {
@@ -2744,6 +2900,7 @@ export default function AbuDhabiFloodWorldModelTab() {
     const timeout = window.setTimeout(() => controller.abort(), 20_000);
     setDesignStormBatchLoading(true);
     setDesignStormBatchError(null);
+    setDesignStormBatchUnavailable(false);
     try {
       const response = await fetch('/api/abu-dhabi/flood/design-storms/latest', {
         credentials: 'include',
@@ -2756,6 +2913,15 @@ export default function AbuDhabiFloodWorldModelTab() {
         throw new Error('预计算结果目录接口返回了页面内容而不是 JSON，请确认后端服务已启动并刷新页面。');
       }
       const payload = await response.json();
+      if (response.status === 404 && payload?.error === 'design_storm_batch_not_found') {
+        // A missing optional precomputed batch must not block the productized
+        // rainfall editor or live SWMM submission.  Keep the absence explicit
+        // and let the user choose the live run path instead.
+        setDesignStormBatch(null);
+        setDesignStormBatchUnavailable(true);
+        setDesignStormBatchError(null);
+        return null;
+      }
       if (!response.ok) {
         throw new Error(payload?.detail || payload?.error || '预计算结果目录不存在或接口不可用，请检查后端服务。');
       }
@@ -2923,17 +3089,255 @@ export default function AbuDhabiFloodWorldModelTab() {
     return values.map(value => Number((value / maximum).toFixed(3)));
   }, [scenario.peakPosition, scenario.rainfallPattern, scenario.returnPeriodYears]);
 
+  const customRainfallNodes = useMemo(() => scenario.customRainfallValues
+    .split(/[，,\s]+/)
+    .filter(Boolean)
+    .map(value => Number(value))
+    .filter(value => Number.isFinite(value) && value >= 0), [scenario.customRainfallValues]);
+  const customRainfallNodeCount = Math.max(1, Math.floor(scenario.durationMinutes / 5));
+  const customRainfallPeak = customRainfallNodes.length ? Math.max(...customRainfallNodes) : 0;
+  const customRainfallTotal = customRainfallNodes.reduce((sum, value) => sum + value, 0);
+  const baseRainfallShapePreview = useMemo(() => {
+    if (scenario.rainfallPattern === 'custom' && customRainfallNodes.length === customRainfallNodeCount) {
+      const maximum = Math.max(...customRainfallNodes, 1);
+      return customRainfallNodes.map(value => value / maximum);
+    }
+    if (scenario.rainfallPattern === 'official_zone_b_ddf_abm') {
+      return buildZoneBProfile(scenario.returnPeriodYears, scenario.peakPosition);
+    }
+    return buildRainfallShapePreview(scenario.rainfallPattern, customRainfallNodeCount, scenario.peakPosition);
+  }, [customRainfallNodeCount, customRainfallNodes, scenario.peakPosition, scenario.rainfallPattern, scenario.returnPeriodYears]);
+  const spatialRainfallZones = useMemo<Array<{ index: number; zoneId: string; rainfallFactor: number; temporalPatternId: string; customValues: number[] }>>(() => {
+    if (!scenario.spatialZonesJson.trim()) return [];
+    try {
+      const parsed = JSON.parse(scenario.spatialZonesJson);
+      const features = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.features) ? parsed.features : [];
+      return features.map((feature: any, index: number) => {
+        const properties = feature?.type === 'Feature' ? (feature.properties || {}) : (feature || {});
+        const rainfallFactor = Number(properties.rainfall_factor ?? 1);
+        const customValues = Array.isArray(properties.values_mm_per_interval)
+          ? properties.values_mm_per_interval.map((value: unknown) => Number(value)).filter((value: number) => Number.isFinite(value) && value >= 0)
+          : [];
+        return {
+          index,
+          zoneId: String(properties.zone_id || properties.id || `zone_${index + 1}`),
+          rainfallFactor: Number.isFinite(rainfallFactor) ? rainfallFactor : 1,
+          temporalPatternId: String(properties.temporal_pattern_id || 'inherit'),
+          customValues,
+        };
+      });
+    } catch {
+      return [];
+    }
+  }, [scenario.spatialZonesJson]);
+
   const isDesignStorm = scenario.rainfallMode === 'design_storm';
   const isOnlinePublicRainfall = scenario.rainfallMode === 'online_public';
   const isPublicStationEvent = scenario.rainfallMode === 'public_station_event';
   const isOfficialZoneBStorm = isDesignStorm && scenario.rainfallPattern === 'official_zone_b_ddf_abm';
 
+  useEffect(() => {
+    let previewPayload: any | null = null;
+    if (isDesignStorm && scenario.spatialPattern === 'zonal' && scenario.spatialZonesJson.trim()) {
+      try {
+        const parsed = JSON.parse(scenario.spatialZonesJson);
+        const features = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.features) ? parsed.features : [];
+        const enrichedZones = features.map((feature: any, index: number) => {
+          const zone = spatialRainfallZones[index];
+          const properties = feature?.type === 'Feature' ? (feature.properties || {}) : (feature || {});
+          const previewValues = zone?.temporalPatternId === 'custom' && zone.customValues.length
+            ? zone.customValues
+            : scenario.rainfallPattern === 'custom' && customRainfallNodes.length === customRainfallNodeCount
+              ? customRainfallNodes
+              : baseRainfallShapePreview;
+          const peakIndex = previewValues.reduce((bestIndex, value, valueIndex, values) => (
+            value > (values[bestIndex] ?? -Infinity) ? valueIndex : bestIndex
+          ), 0);
+          const rawTotal = zone?.temporalPatternId === 'custom' && zone.customValues.length === customRainfallNodeCount
+            ? zone.customValues.reduce((sum, value) => sum + value, 0)
+            : scenario.totalDepthMm;
+          const rainfallFactor = zone?.rainfallFactor ?? Number(properties.rainfall_factor ?? 1);
+          const startText = scenario.startTime
+            ? `${scenario.startTime}${/[zZ]|[+-]\d\d:\d\d$/.test(scenario.startTime) ? '' : ':00Z'}`
+            : '';
+          const startMillis = startText ? Date.parse(startText) : Number.NaN;
+          const peakTime = Number.isFinite(startMillis)
+            ? new Date(startMillis + peakIndex * 5 * 60_000).toISOString()
+            : '';
+          const summary = {
+            zone_id: zone?.zoneId || String(properties.zone_id || `zone_${index + 1}`),
+            rainfall_factor: Number.isFinite(rainfallFactor) ? rainfallFactor : 1,
+            temporal_pattern_id: zone?.temporalPatternId || String(properties.temporal_pattern_id || 'inherit'),
+            total_depth_mm: rawTotal * (Number.isFinite(rainfallFactor) ? rainfallFactor : 1),
+            peak_elapsed_minutes: peakIndex * 5,
+            peak_time: peakTime,
+          };
+          return feature?.type === 'Feature'
+            ? { ...feature, properties: { ...properties, ...summary } }
+            : { ...feature, ...summary };
+        });
+        previewPayload = {
+          profileId: selectedSavedRainfallProfileId || null,
+          defaultCrs: 'EPSG:4326',
+          zones: enrichedZones,
+        };
+      } catch {
+        previewPayload = null;
+      }
+    }
+    (window as any).__abuRainfallZonePreview = previewPayload;
+    window.dispatchEvent(new CustomEvent('abu-rainfall-zone-preview', { detail: previewPayload }));
+    setSelectedRainfallPreviewZoneId(current => (
+      previewPayload && spatialRainfallZones.some(zone => zone.zoneId === current) ? current : ''
+    ));
+  }, [
+    baseRainfallShapePreview,
+    customRainfallNodeCount,
+    customRainfallNodes,
+    isDesignStorm,
+    scenario.rainfallPattern,
+    scenario.spatialPattern,
+    scenario.spatialZonesJson,
+    scenario.startTime,
+    scenario.totalDepthMm,
+    selectedSavedRainfallProfileId,
+    spatialRainfallZones,
+  ]);
+
+  useEffect(() => () => {
+    (window as any).__abuRainfallZonePreview = null;
+    window.dispatchEvent(new CustomEvent('abu-rainfall-zone-preview', { detail: null }));
+  }, []);
+
   const updateScenario = <K extends keyof FloodScenarioForm>(key: K, value: FloodScenarioForm[K]) => {
+    if (loadedSavedRainfallProfileId) setRainfallProfileDraftChanged(true);
     setScenario(current => ({ ...current, [key]: value }));
     setScenarioError(null);
   };
 
+  const requestSpatialRainfallDrawing = () => {
+    if (loadedSavedRainfallProfileId) setRainfallProfileDraftChanged(true);
+    setScenario(current => ({ ...current, spatialPattern: 'zonal' }));
+    setScenarioError(null);
+    window.dispatchEvent(new CustomEvent('abu-rainfall-zone-draw-requested'));
+  };
+
+  const focusSpatialRainfallZone = (zoneId: string) => {
+    setSelectedRainfallPreviewZoneId(zoneId);
+    window.dispatchEvent(new CustomEvent('abu-rainfall-zone-focus', { detail: { zoneId } }));
+  };
+
+  const updateSpatialRainfallZone = (index: number, field: 'zone_id' | 'rainfall_factor' | 'temporal_pattern_id', value: string | number) => {
+    if (loadedSavedRainfallProfileId) setRainfallProfileDraftChanged(true);
+    setScenario(current => {
+      try {
+        const parsed = JSON.parse(current.spatialZonesJson);
+        const features = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.features) ? parsed.features : [];
+        const updated = features.map((feature: any, featureIndex: number) => {
+          if (featureIndex !== index) return feature;
+          if (feature?.type === 'Feature') {
+            return { ...feature, properties: { ...(feature.properties || {}), [field]: value } };
+          }
+          return { ...(feature || {}), [field]: value };
+        });
+        return { ...current, spatialZonesJson: JSON.stringify(updated) };
+      } catch {
+        return current;
+      }
+    });
+    setScenarioError(null);
+  };
+
+  const initializeSpatialZoneCustomValues = (index: number) => {
+    if (loadedSavedRainfallProfileId) setRainfallProfileDraftChanged(true);
+    const values = customRainfallNodes.length === customRainfallNodeCount
+      ? [...customRainfallNodes]
+      : Array(customRainfallNodeCount).fill(Math.max(0, scenario.totalDepthMm) / customRainfallNodeCount);
+    setScenario(current => {
+      try {
+        const parsed = JSON.parse(current.spatialZonesJson);
+        const features = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.features) ? parsed.features : [];
+        const updated = features.map((feature: any, featureIndex: number) => {
+          if (featureIndex !== index) return feature;
+          if (feature?.type === 'Feature') {
+            return { ...feature, properties: { ...(feature.properties || {}), temporal_pattern_id: 'custom', values_mm_per_interval: values } };
+          }
+          return { ...(feature || {}), temporal_pattern_id: 'custom', values_mm_per_interval: values };
+        });
+        return { ...current, spatialZonesJson: JSON.stringify(updated) };
+      } catch {
+        return current;
+      }
+    });
+    setExpandedSpatialZoneIndex(index);
+    setScenarioError(null);
+  };
+
+  const updateSpatialZoneCustomNode = (zoneIndex: number, nodeIndex: number, value: number) => {
+    if (loadedSavedRainfallProfileId) setRainfallProfileDraftChanged(true);
+    setScenario(current => {
+      try {
+        const parsed = JSON.parse(current.spatialZonesJson);
+        const features = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.features) ? parsed.features : [];
+        const updated = features.map((feature: any, featureIndex: number) => {
+          if (featureIndex !== zoneIndex) return feature;
+          const properties = feature?.type === 'Feature' ? { ...(feature.properties || {}) } : { ...(feature || {}) };
+          const values = Array.isArray(properties.values_mm_per_interval)
+            ? [...properties.values_mm_per_interval]
+            : Array(customRainfallNodeCount).fill(0);
+          values[nodeIndex] = Math.max(0, Number.isFinite(value) ? value : 0);
+          if (feature?.type === 'Feature') return { ...feature, properties: { ...properties, temporal_pattern_id: 'custom', values_mm_per_interval: values } };
+          return { ...properties, temporal_pattern_id: 'custom', values_mm_per_interval: values };
+        });
+        return { ...current, spatialZonesJson: JSON.stringify(updated) };
+      } catch {
+        return current;
+      }
+    });
+    setScenarioError(null);
+  };
+
+  const normalizeSpatialZoneCustomValues = (zoneIndex: number) => {
+    if (loadedSavedRainfallProfileId) setRainfallProfileDraftChanged(true);
+    const zone = spatialRainfallZones.find(item => item.index === zoneIndex);
+    if (!zone || zone.customValues.length !== customRainfallNodeCount) return;
+    const total = zone.customValues.reduce((sum, value) => sum + value, 0);
+    if (total <= 0) return initializeSpatialZoneCustomValues(zoneIndex);
+    const factor = Math.max(0, scenario.totalDepthMm) / total;
+    const normalized = zone.customValues.map(value => value * factor);
+    setScenario(current => {
+      try {
+        const parsed = JSON.parse(current.spatialZonesJson);
+        const features = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.features) ? parsed.features : [];
+        const updated = features.map((feature: any, featureIndex: number) => {
+          if (featureIndex !== zoneIndex) return feature;
+          if (feature?.type === 'Feature') return { ...feature, properties: { ...(feature.properties || {}), temporal_pattern_id: 'custom', values_mm_per_interval: normalized } };
+          return { ...(feature || {}), temporal_pattern_id: 'custom', values_mm_per_interval: normalized };
+        });
+        return { ...current, spatialZonesJson: JSON.stringify(updated) };
+      } catch {
+        return current;
+      }
+    });
+    setScenarioError(null);
+  };
+
+  const removeSpatialRainfallZone = (index: number) => {
+    if (loadedSavedRainfallProfileId) setRainfallProfileDraftChanged(true);
+    setScenario(current => {
+      try {
+        const parsed = JSON.parse(current.spatialZonesJson);
+        const features = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.features) ? parsed.features : [];
+        return { ...current, spatialZonesJson: JSON.stringify(features.filter((_feature: any, featureIndex: number) => featureIndex !== index)) };
+      } catch {
+        return current;
+      }
+    });
+    setScenarioError(null);
+  };
+
   const updateRainfallPattern = (rainfallPattern: RainfallPattern) => {
+    if (loadedSavedRainfallProfileId) setRainfallProfileDraftChanged(true);
     setScenario(current => rainfallPattern === 'official_zone_b_ddf_abm'
       ? {
         ...current,
@@ -2948,6 +3352,8 @@ export default function AbuDhabiFloodWorldModelTab() {
   };
 
   const updateRainfallMode = (rainfallMode: RainfallMode) => {
+    if (loadedSavedRainfallProfileId && rainfallMode === scenario.rainfallMode) setRainfallProfileDraftChanged(true);
+    if (rainfallMode !== scenario.rainfallMode) clearRainfallProfileMetadata();
     setScenario(current => rainfallMode === 'public_station_event'
       ? {
         ...current,
@@ -2963,6 +3369,7 @@ export default function AbuDhabiFloodWorldModelTab() {
   };
 
   const updateReturnPeriod = (returnPeriodYears: ReturnPeriodYears) => {
+    if (loadedSavedRainfallProfileId) setRainfallProfileDraftChanged(true);
     setScenario(current => ({
       ...current,
       returnPeriodYears,
@@ -2970,6 +3377,393 @@ export default function AbuDhabiFloodWorldModelTab() {
       totalDepthMm: zoneB180DepthByReturnPeriod[returnPeriodYears],
     }));
     setScenarioError(null);
+  };
+
+  const serializeRainfallNodes = (values: number[]) => values
+    .map(value => Number(Math.max(0, value).toFixed(4)).toString())
+    .join(', ');
+
+  const clearRainfallProfileMetadata = () => {
+    setSelectedSavedRainfallProfileId('');
+    setRainfallProfileMetadata({});
+    setRainfallProfileName('');
+    setLoadedSavedRainfallProfileId('');
+    setLoadedRainfallProfileHash('');
+    setRainfallProfileDraftChanged(false);
+  };
+
+  const initializeCustomRainfallNodes = () => {
+    const count = customRainfallNodeCount;
+    const depth = Math.max(0, scenario.totalDepthMm) / count;
+    updateScenario('customRainfallValues', serializeRainfallNodes(Array(count).fill(depth)));
+  };
+
+  const openCustomRainfallDesigner = () => {
+    clearRainfallProfileMetadata();
+    const count = Math.max(1, Math.floor(scenario.durationMinutes / 5));
+    const depth = Math.max(0, scenario.totalDepthMm) / count;
+    setScenario(current => ({
+      ...current,
+      rainfallMode: 'design_storm',
+      rainfallPattern: 'custom',
+      customRainfallValues: serializeRainfallNodes(Array(count).fill(depth)),
+    }));
+    setScenarioError(null);
+    window.setTimeout(() => document.getElementById('abu-rainfall-node-designer')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0);
+  };
+
+  const openTemplateRainfallDesigner = () => {
+    clearRainfallProfileMetadata();
+    setScenario(current => ({
+      ...current,
+      rainfallMode: 'design_storm',
+      rainfallPattern: current.rainfallPattern === 'custom' || current.rainfallPattern === 'official_zone_b_ddf_abm'
+        ? 'central_peak'
+        : current.rainfallPattern,
+    }));
+    setScenarioError(null);
+  };
+
+  const useOfficialZoneBRainfall = () => {
+    clearRainfallProfileMetadata();
+    setScenario(current => ({
+      ...current,
+      rainfallMode: 'design_storm',
+      climateZone: 'zone_b',
+      rainfallPattern: 'official_zone_b_ddf_abm',
+      durationMinutes: 180,
+      totalDepthMm: zoneB180DepthByReturnPeriod[current.returnPeriodYears],
+      tailMinutes: 60,
+      outputIntervalMinutes: 30,
+    }));
+    setScenarioError(null);
+  };
+
+  const normalizeCustomRainfallNodes = () => {
+    if (customRainfallNodes.length !== customRainfallNodeCount || customRainfallTotal <= 0) {
+      initializeCustomRainfallNodes();
+      return;
+    }
+    const factor = Math.max(0, scenario.totalDepthMm) / customRainfallTotal;
+    updateScenario('customRainfallValues', serializeRainfallNodes(customRainfallNodes.map(value => value * factor)));
+  };
+
+  const updateCustomRainfallNode = (index: number, rawValue: number) => {
+    const targetTotal = Math.max(0, scenario.totalDepthMm);
+    const values = customRainfallNodes.length === customRainfallNodeCount
+      ? [...customRainfallNodes]
+      : Array(customRainfallNodeCount).fill(targetTotal / customRainfallNodeCount);
+    const nextValue = Math.max(0, Number.isFinite(rawValue) ? rawValue : 0);
+    if (preserveCustomRainfallTotal && values.length > 1) {
+      values[index] = Math.min(nextValue, targetTotal);
+      const remainingTarget = Math.max(0, targetTotal - values[index]);
+      const otherIndexes = values.map((_value, itemIndex) => itemIndex).filter(itemIndex => itemIndex !== index);
+      const otherSum = otherIndexes.reduce((sum, itemIndex) => sum + values[itemIndex], 0);
+      otherIndexes.forEach(itemIndex => {
+        values[itemIndex] = otherSum > 0 ? values[itemIndex] * remainingTarget / otherSum : remainingTarget / otherIndexes.length;
+      });
+    } else {
+      values[index] = nextValue;
+    }
+    const total = values.reduce((sum, value) => sum + value, 0);
+    setScenario(current => ({
+      ...current,
+      customRainfallValues: serializeRainfallNodes(values),
+      ...(!preserveCustomRainfallTotal ? { totalDepthMm: Number(total.toFixed(4)) } : {}),
+    }));
+    setScenarioError(null);
+  };
+
+  const buildCurrentRainfallProfilePayload = (): Record<string, unknown> => {
+    let zones: unknown[] = [];
+    if (scenario.spatialPattern === 'zonal' && scenario.spatialZonesJson.trim()) {
+      const parsed = JSON.parse(scenario.spatialZonesJson);
+      zones = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.features) ? parsed.features : [];
+    }
+    const payload: Record<string, unknown> = {
+      name: rainfallProfileName.trim() || `Web ${rainfallPatternLabels[scenario.rainfallPattern] || '雨型方案'}`,
+      climate_zone: scenario.climateZone,
+      temporal_pattern: scenario.rainfallPattern,
+      duration_minutes: scenario.durationMinutes,
+      interval_minutes: 5,
+      total_depth_mm: scenario.totalDepthMm,
+      return_period_years: scenario.rainfallPattern === 'official_zone_b_ddf_abm' ? scenario.returnPeriodYears : undefined,
+      peak_position_percent: scenario.peakPosition,
+      spatial_mode: scenario.spatialPattern === 'zonal' ? 'zones' : 'uniform',
+      zones,
+      source_type: rainfallProfileMetadata.sourceType || (scenario.rainfallPattern === 'custom' ? 'custom' : undefined),
+      source_reference: rainfallProfileMetadata.sourceReference,
+      provenance: {
+        ...(rainfallProfileMetadata.provenance || {}),
+        event_start_utc: scenario.startTime
+          ? `${scenario.startTime}${scenario.startTime.length === 16 ? ':00' : ''}${scenario.startTime.endsWith('Z') ? '' : 'Z'}`
+          : undefined,
+        event_duration_minutes: scenario.durationMinutes,
+        ui_authoring: true,
+      },
+    };
+    if (scenario.rainfallPattern === 'custom') {
+      const values = scenario.customRainfallValues
+        .split(/[，,\s]+/)
+        .filter(Boolean)
+        .map(value => Number(value));
+      if (!values.length || values.some(value => !Number.isFinite(value) || value < 0)) {
+        throw new Error('人工雨型必须填写非负的 mm/5分钟 数值序列。');
+      }
+      if (values.length * 5 !== scenario.durationMinutes) {
+        throw new Error('人工雨型序列长度必须等于降雨时长÷5分钟。');
+      }
+      payload.values_mm_per_interval = values;
+    }
+    return payload;
+  };
+
+  const refreshSavedRainfallProfiles = async () => {
+    const response = await fetch('/api/abu-dhabi/flood/rainfall/profiles/saved', { credentials: 'include', headers: getLocaleHeaders() });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(String(payload?.error || '已保存雨型方案读取失败'));
+    const profiles = Array.isArray(payload?.profiles) ? payload.profiles as SavedRainfallProfile[] : [];
+    setSavedRainfallProfiles(profiles);
+    const profileIds = new Set(profiles.map(profile => profile.profile_id));
+    if (selectedSavedRainfallProfileId && !profileIds.has(selectedSavedRainfallProfileId)) {
+      setSelectedSavedRainfallProfileId('');
+    }
+    if (loadedSavedRainfallProfileId && !profileIds.has(loadedSavedRainfallProfileId)) {
+      setLoadedSavedRainfallProfileId('');
+      setLoadedRainfallProfileHash('');
+      setRainfallProfileMetadata({});
+      setRainfallProfileName('');
+      setRainfallProfileDraftChanged(false);
+    }
+    return profiles;
+  };
+
+  const saveCurrentRainfallProfile = async () => {
+    setScenarioError(null);
+    setRainfallProfileBusy(true);
+    try {
+      const response = await fetch('/api/abu-dhabi/flood/rainfall/profiles', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
+        body: JSON.stringify(buildCurrentRainfallProfilePayload()),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(String(payload?.error || '雨型方案保存失败'));
+      const savedProfileId = String(payload?.profile_id || '');
+      setSelectedSavedRainfallProfileId(savedProfileId);
+      setLoadedSavedRainfallProfileId(savedProfileId);
+      setLoadedRainfallProfileHash(String(payload?.profile_hash_sha256 || ''));
+      setRainfallProfileName(String(payload?.name || rainfallProfileName || ''));
+      setRainfallProfileDraftChanged(false);
+      await refreshSavedRainfallProfiles();
+    } catch (error) {
+      setScenarioError(error instanceof Error ? error.message : '雨型方案保存失败');
+    } finally {
+      setRainfallProfileBusy(false);
+    }
+  };
+
+  const updateSelectedRainfallProfile = async () => {
+    if (!selectedSavedRainfallProfileId) {
+      setScenarioError('请先选择一个已保存的雨型方案，再执行覆盖更新。');
+      return;
+    }
+    setScenarioError(null);
+    setRainfallProfileBusy(true);
+    try {
+      const payload = buildCurrentRainfallProfilePayload();
+      payload.profile_id = selectedSavedRainfallProfileId;
+      if (loadedSavedRainfallProfileId !== selectedSavedRainfallProfileId) {
+        throw new Error('请先加载当前选中的雨型方案，再执行覆盖更新；避免误覆盖其他方案。');
+      }
+      if (loadedRainfallProfileHash) payload.expected_profile_hash_sha256 = loadedRainfallProfileHash;
+      const response = await fetch(`/api/abu-dhabi/flood/rainfall/profiles/${encodeURIComponent(selectedSavedRainfallProfileId)}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(String(result?.error || '雨型方案更新失败'));
+      setLoadedSavedRainfallProfileId(selectedSavedRainfallProfileId);
+      setLoadedRainfallProfileHash(String(result?.profile_hash_sha256 || ''));
+      setRainfallProfileName(String(result?.name || rainfallProfileName || ''));
+      setRainfallProfileDraftChanged(false);
+      await refreshSavedRainfallProfiles();
+    } catch (error) {
+      setScenarioError(error instanceof Error ? error.message : '雨型方案更新失败');
+    } finally {
+      setRainfallProfileBusy(false);
+    }
+  };
+
+  const deleteSelectedRainfallProfile = async () => {
+    if (!selectedSavedRainfallProfileId) {
+      setScenarioError('请先选择一个已保存的雨型方案，再执行删除。');
+      return;
+    }
+    const selected = savedRainfallProfiles.find(profile => profile.profile_id === selectedSavedRainfallProfileId);
+    const label = selected?.name || selectedSavedRainfallProfileId;
+    if (typeof window !== 'undefined' && !window.confirm(`确定删除雨型方案“${label}”？删除后不可恢复。`)) return;
+    setScenarioError(null);
+    setRainfallProfileBusy(true);
+    try {
+      const response = await fetch(`/api/abu-dhabi/flood/rainfall/profiles/${encodeURIComponent(selectedSavedRainfallProfileId)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: getLocaleHeaders(),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(String(result?.error || '雨型方案删除失败'));
+      setSelectedSavedRainfallProfileId('');
+      if (loadedSavedRainfallProfileId === selectedSavedRainfallProfileId) {
+        setLoadedSavedRainfallProfileId('');
+        setLoadedRainfallProfileHash('');
+        setRainfallProfileMetadata({});
+        setRainfallProfileName('');
+        setRainfallProfileDraftChanged(false);
+      }
+      await refreshSavedRainfallProfiles();
+    } catch (error) {
+      setScenarioError(error instanceof Error ? error.message : '雨型方案删除失败');
+    } finally {
+      setRainfallProfileBusy(false);
+    }
+  };
+
+  const loadSelectedRainfallProfile = async () => {
+    if (!selectedSavedRainfallProfileId) {
+      setScenarioError('请先选择一个已保存的雨型方案。');
+      return;
+    }
+    setScenarioError(null);
+    setRainfallProfileBusy(true);
+    try {
+      const response = await fetch(`/api/abu-dhabi/flood/rainfall/profiles/${encodeURIComponent(selectedSavedRainfallProfileId)}`, { credentials: 'include', headers: getLocaleHeaders() });
+      const profile = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(String(profile?.error || '雨型方案读取失败'));
+      const supportedReturnPeriods = [2, 5, 10, 25, 50, 100];
+      const loadedReturnPeriod = supportedReturnPeriods.includes(Number(profile?.return_period_years))
+        ? Number(profile.return_period_years) as ReturnPeriodYears
+        : scenario.returnPeriodYears;
+      const eventStartUtc = typeof profile?.provenance?.event_start_utc === 'string'
+        ? profile.provenance.event_start_utc
+        : '';
+      const loadedStartTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(eventStartUtc)
+        ? eventStartUtc.slice(0, 16)
+        : scenario.startTime;
+      setScenario(current => ({
+        ...current,
+        rainfallMode: 'design_storm',
+        startTime: loadedStartTime,
+        climateZone: profile.climate_zone === 'zone_a' ? 'zone_a' : 'zone_b',
+        durationMinutes: Number(profile.duration_minutes || current.durationMinutes),
+        totalDepthMm: Number(profile.total_depth_mm || 0),
+        rainfallPattern: (profile.temporal_pattern || 'custom') as RainfallPattern,
+        returnPeriodYears: loadedReturnPeriod,
+        peakPosition: Number(profile.peak_position_percent || current.peakPosition),
+        customRainfallValues: Array.isArray(profile.values_mm_per_interval) ? profile.values_mm_per_interval.join(', ') : '',
+        spatialPattern: profile.spatial_mode === 'zones' ? 'zonal' : 'uniform',
+        spatialZonesJson: Array.isArray(profile.zones) && profile.zones.length ? JSON.stringify(profile.zones) : '',
+      }));
+      setLoadedSavedRainfallProfileId(selectedSavedRainfallProfileId);
+      setLoadedRainfallProfileHash(String(profile?.profile_hash_sha256 || ''));
+      setRainfallProfileName(String(profile?.name || ''));
+      setRainfallProfileDraftChanged(false);
+      setRainfallProfileMetadata({
+        sourceType: typeof profile?.source_type === 'string' ? profile.source_type : undefined,
+        sourceReference: typeof profile?.source_reference === 'string' ? profile.source_reference : null,
+        provenance: profile?.provenance && typeof profile.provenance === 'object' ? profile.provenance : {},
+      });
+    } catch (error) {
+      setScenarioError(error instanceof Error ? error.message : '雨型方案读取失败');
+    } finally {
+      setRainfallProfileBusy(false);
+    }
+  };
+
+  const importRainfallCsv = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setScenarioError(null);
+    setRainfallProfileBusy(true);
+    try {
+      const csv = await file.text();
+      const response = await fetch('/api/abu-dhabi/flood/rainfall/profiles/import', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
+        body: JSON.stringify({
+          csv,
+          metadata: {
+            name: file.name.replace(/\.csv$/i, '') || 'CSV 导入雨型',
+            climate_zone: scenario.climateZone,
+            source_type: 'csv_import',
+            source_reference: file.name,
+          },
+        }),
+      });
+      const profile = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(String(profile?.error || 'CSV 雨型导入失败'));
+      setScenario(current => ({
+        ...current,
+        rainfallMode: 'design_storm',
+        rainfallPattern: 'custom',
+        durationMinutes: Number(profile.duration_minutes || current.durationMinutes),
+        totalDepthMm: Number(profile.total_depth_mm || 0),
+        customRainfallValues: Array.isArray(profile.values_mm_per_interval) ? profile.values_mm_per_interval.join(', ') : '',
+      }));
+      setLoadedSavedRainfallProfileId('');
+      setLoadedRainfallProfileHash('');
+      setSelectedSavedRainfallProfileId('');
+      setRainfallProfileDraftChanged(false);
+      setRainfallProfileName(String(profile?.name || file.name.replace(/\.csv$/i, '') || 'CSV 导入雨型'));
+      setRainfallProfileMetadata({
+        sourceType: typeof profile?.source_type === 'string' ? profile.source_type : 'csv_import',
+        sourceReference: typeof profile?.source_reference === 'string' ? profile.source_reference : file.name,
+        provenance: profile?.provenance && typeof profile.provenance === 'object' ? profile.provenance : {},
+      });
+    } catch (error) {
+      setScenarioError(error instanceof Error ? error.message : 'CSV 雨型导入失败');
+    } finally {
+      event.target.value = '';
+      setRainfallProfileBusy(false);
+    }
+  };
+
+  const downloadRainfallForcingPackage = async () => {
+    setScenarioError(null);
+    setRainfallProfileBusy(true);
+    try {
+      const response = await fetch('/api/abu-dhabi/flood/rainfall/forcing/package', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
+        body: JSON.stringify({
+          profile: buildCurrentRainfallProfilePayload(),
+          target_solver: rainfallForcingTarget,
+          start_time: `${scenario.startTime}${scenario.startTime.length === 16 ? ':00' : ''}${scenario.startTime.endsWith('Z') ? '' : 'Z'}`,
+        }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(String(payload?.error || '模型强迫交换包生成失败'));
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `abu-dhabi-rainfall-${rainfallForcingTarget}.zip`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      setScenarioError(error instanceof Error ? error.message : '模型强迫交换包生成失败');
+    } finally {
+      setRainfallProfileBusy(false);
+    }
   };
 
   const updateSurfaceRun = <K extends keyof SurfaceRunForm>(key: K, value: SurfaceRunForm[K]) => {
@@ -3087,6 +3881,39 @@ export default function AbuDhabiFloodWorldModelTab() {
       setScenarioError('已选择管线情景，请调整堵塞率或管线能力倍率，或恢复“无管线调整”。');
       return;
     }
+    let rainfallProfile: Record<string, unknown> | undefined;
+    let spatialRainfallZones: unknown[] = [];
+    try {
+      if (scenario.rainfallPattern === 'custom') {
+        const values = scenario.customRainfallValues
+          .split(/[，,\s]+/)
+          .map(value => Number(value))
+          .filter(value => value !== 0 || scenario.customRainfallValues.trim() !== '');
+        if (!values.length || values.some(value => !Number.isFinite(value) || value < 0)) throw new Error('人工雨型必须填写非负的 mm/5分钟 数值序列。');
+        if (values.length * 5 !== scenario.durationMinutes) throw new Error('人工雨型序列长度必须等于降雨时长÷5分钟。');
+        rainfallProfile = {
+          name: 'Web 人工定义雨型',
+          climate_zone: scenario.climateZone,
+          source_type: 'custom',
+          temporal_pattern: 'custom',
+          duration_minutes: scenario.durationMinutes,
+          interval_minutes: 5,
+          values_mm_per_interval: values,
+          spatial_mode: scenario.spatialPattern === 'zonal' ? 'zones' : 'uniform',
+          zones: [],
+        };
+      }
+      if (scenario.spatialPattern === 'zonal') {
+        if (!scenario.spatialZonesJson.trim()) throw new Error('分区降雨需要填写 GeoJSON Feature 数组；地图绘制功能接入后可直接导入。');
+        const parsed = JSON.parse(scenario.spatialZonesJson);
+        spatialRainfallZones = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.features) ? parsed.features : [];
+        if (!spatialRainfallZones.length) throw new Error('分区降雨 GeoJSON 不能为空。');
+      }
+      if (rainfallProfile) rainfallProfile.zones = spatialRainfallZones;
+    } catch (error) {
+      setScenarioError(error instanceof Error ? error.message : '雨型产品参数无效。');
+      return;
+    }
     setScenarioBusy(true);
     scenarioMapPayloadRef.current = null;
     setScenarioMapPayload(null);
@@ -3095,7 +3922,12 @@ export default function AbuDhabiFloodWorldModelTab() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json', ...getLocaleHeaders() },
-        body: JSON.stringify(scenario),
+        body: JSON.stringify({
+          ...scenario,
+          climateZone: scenario.climateZone,
+          rainfallProfile,
+          spatialRainfallZones,
+        }),
       });
       const created = await response.json();
       if (!response.ok) throw new Error(created?.error || '真实 SWMM 情景提交失败');
@@ -3208,6 +4040,7 @@ export default function AbuDhabiFloodWorldModelTab() {
       setSelectedKey('swmm');
       scenarioMapPayloadRef.current = mapPayload;
       setScenarioMapPayload(mapPayload);
+      clearRainfallProfileMetadata();
       setScenario(current => ({
         ...current,
         rainfallMode: 'design_storm',
@@ -3351,6 +4184,12 @@ export default function AbuDhabiFloodWorldModelTab() {
 
   const resetScenario = () => {
     setScenario(DEFAULT_FLOOD_SCENARIO);
+    setSelectedSavedRainfallProfileId('');
+    setLoadedSavedRainfallProfileId('');
+    setLoadedRainfallProfileHash('');
+    setRainfallProfileName('');
+    setRainfallProfileDraftChanged(false);
+    setRainfallProfileMetadata({});
     setScenarioRun(null);
     setScenarioError(null);
     setScenarioBusy(false);
@@ -3541,6 +4380,7 @@ export default function AbuDhabiFloodWorldModelTab() {
   const surfaceCouplingSummary = publicCitywide2dDiagnostic?.metadata?.coupling_summary || {};
   const surfaceResultVariant = String(publicCitywide2dDiagnostic?.metadata?.result_variant || 'return_period_one_way');
   const surfaceIsBidirectionalValidation = surfaceResultVariant === 'bidirectional_validation';
+  const surfaceIsPartialOneWay = surfaceResultVariant === 'partial_one_way_61mm_2h' || Boolean(publicCitywide2dDiagnostic?.metadata?.partial_result);
   const scenarioNativeNodeCount = Number(scenarioMapPayload?.metadata?.total_node_result_count || scenarioMapPayload?.metadata?.timeline?.total_node_count || 0);
   const scenarioMissingGeometryCount = Number(scenarioMapPayload?.metadata?.missing_geometry_count || 0);
   const scenarioMappedNodeCount = Number(scenarioMapPayload?.metadata?.node_feature_count || Math.max(0, scenarioNativeNodeCount - scenarioMissingGeometryCount));
@@ -3559,10 +4399,14 @@ export default function AbuDhabiFloodWorldModelTab() {
     ? localizeAbuText(`规则型 GWM ${Number(gwmRun?.metadata?.return_period_years || gwmReturnPeriodYears)} 年一遇情景筛选已接入：基于阶段 3 二维结果生成基线、干预和差值图层，${Number(gwmRun?.metrics?.source_feature_count || 0).toLocaleString()} 个二维单元、${Number(gwmRun?.metadata?.timeline?.period_count || 0)} 个时间片。`)
     : publicCitywide2dVisible
     ? localizeAbuPair(
-      surfaceIsBidirectionalValidation
+      surfaceIsPartialOneWay
+        ? `61 mm / 2 h 全市 250 m 单向 SWMM→ANUGA 部分结果已接入：已完成 ${Number(publicCitywide2dDiagnostic?.metadata?.completed_window_count || 0)} / ${Number(publicCitywide2dDiagnostic?.metadata?.expected_window_count || 312)} 个五分钟窗口，覆盖到 ${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.elapsed_minutes?.slice(-1)[0] || 0).toFixed(0)} 分钟；最后 5 分钟缺失，不能证明完全退水。最大积水范围图层按 ≥ ${Number(publicCitywide2dDiagnostic?.metadata?.maximum_inundation_extent_threshold_m || 0.01).toFixed(2)} m 发布。`
+        : surfaceIsBidirectionalValidation
         ? `客户 5 m DTM 的 100 年一遇 SWMM–ANUGA 同步双向数值验证成果已接入：${Number(surfaceCouplingSummary.window_count || 0)} 个同步窗口、${Number(surfaceCouplingSummary.interface_count || 0).toLocaleString()} 个交换接口，且回执记录非零 ANUGA→SWMM 回流。这是同步交换验证成果，未校准、未工程准入；每窗口原生 SWMM 重新调用仍需运行日志证明。`
         : `${customerDtmSurfaceActive ? '客户 5 m DTM 输入' : 'Copernicus DEM GLO-30 公共 DEM'}的全市二维结果已接入：250 m 计算网格、${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.period_count || 0)} 个时间片；ESA WorldCover 2021 陆海掩膜已应用，${Number(publicLandWaterMask?.excluded_permanent_water_cells || 0).toLocaleString()} 个永久水体或土地覆盖源外单元已排除。结果未校准、未工程准入。`,
-      surfaceIsBidirectionalValidation
+      surfaceIsPartialOneWay
+        ? `The 61 mm / 2 h citywide 250 m partial one-way SWMM→ANUGA result is integrated: ${Number(publicCitywide2dDiagnostic?.metadata?.completed_window_count || 0)} of ${Number(publicCitywide2dDiagnostic?.metadata?.expected_window_count || 312)} five-minute windows are available through ${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.elapsed_minutes?.slice(-1)[0] || 0).toFixed(0)} minutes. The final five minutes are missing, so complete recession is not verified. The maximum-inundation extent layer uses a ≥ ${Number(publicCitywide2dDiagnostic?.metadata?.maximum_inundation_extent_threshold_m || 0.01).toFixed(2)} m threshold.`
+        : surfaceIsBidirectionalValidation
         ? `The customer-DTM 100-year SWMM–ANUGA synchronous two-way numerical-validation result is integrated with ${Number(surfaceCouplingSummary.window_count || 0)} synchronized windows and ${Number(surfaceCouplingSummary.interface_count || 0).toLocaleString()} exchange interfaces; the receipt records non-zero ANUGA-to-SWMM return flow. It is not calibrated or engineering-admitted, and native SWMM re-invocation in every window still requires runtime-log evidence.`
         : `${customerDtmSurfaceActive ? 'The citywide 2D result using the customer 5 m DTM as input' : 'The citywide public 2D result using Copernicus DEM GLO-30'} is integrated on a 250 m computational grid with ${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.period_count || 0)} time slices. The ESA WorldCover 2021 mask excludes ${Number(publicLandWaterMask?.excluded_permanent_water_cells || 0).toLocaleString()} permanent-water or out-of-coverage cells. The result is uncalibrated and not engineering-admitted.`,
     )
@@ -3597,10 +4441,14 @@ export default function AbuDhabiFloodWorldModelTab() {
     : publicCitywide2dVisible
     ? customerDtmSurfaceActive
       ? localizeAbuPair(
-        surfaceIsBidirectionalValidation
+        surfaceIsPartialOneWay
+          ? '当前地图来自 61 mm / 2 h 全市 250 m 单向 SWMM→ANUGA 部分结果：311/312 个窗口已发布，动态播放到 25 小时 50 分钟；最大积水范围图层阈值为 1 cm。最后 5 分钟缺失，不能证明完全退水。'
+          : surfaceIsBidirectionalValidation
           ? '当前地图主图层是客户 5 m DTM 的 SWMM–ANUGA 同步双向数值验证成果；回执包含正向与反向交换体积，但它仍是未校准、未工程准入的验证资产。'
           : '当前地图主图层以客户 5 m DTM 为地形输入，ANUGA 2D 实际采用 250 m 计算网格，并接受 SWMM 单向源项；当前没有动态水头回馈。ESA WorldCover 2021 陆海掩膜已应用。',
-        surfaceIsBidirectionalValidation
+        surfaceIsPartialOneWay
+          ? 'The map shows the 61 mm / 2 h citywide 250 m partial one-way SWMM→ANUGA result: 311/312 windows are published and playback reaches 25 h 50 min. The maximum-inundation extent layer uses a 1 cm threshold. The final five minutes are missing, so complete recession is not verified.'
+          : surfaceIsBidirectionalValidation
           ? 'The primary layer is the customer-5 m-DTM SWMM–ANUGA synchronous two-way numerical-validation result. Its receipt contains forward and reverse exchange volumes, but it remains an uncalibrated validation asset without engineering admission.'
           : 'The primary map layer uses the customer 5 m DTM as terrain input. ANUGA 2D actually runs on a 250 m computational grid with one-way SWMM source terms and no dynamic head feedback. The ESA WorldCover 2021 land/water mask is applied.',
       )
@@ -3683,26 +4531,189 @@ export default function AbuDhabiFloodWorldModelTab() {
           <div className="abu-flood-scenario-form">
           <div className="abu-flood-form-group">
               <div className="abu-flood-form-group-title">{isOnlinePublicRainfall || isPublicStationEvent ? <Globe2 size={14} /> : <CloudRain size={14} />}<strong>{localizeAbuText('模型输入降雨数据')}</strong><small>{localizeAbuText('三类来源互斥，运行回执记录真实来源')}</small></div>
+              <div className="abu-flood-rainfall-create-heading">
+                <strong>{localizeAbuText('请选择雨型创建方式')}</strong>
+                <span>{localizeAbuText('直接设计雨型不需要上传文件；CSV 仅用于导入已经存在的降雨时序。')}</span>
+              </div>
+              <div className="abu-flood-rainfall-create-modes">
+                <button className={`abu-flood-rainfall-create-card${isOfficialZoneBStorm ? ' active' : ''}`} type="button" onClick={useOfficialZoneBRainfall}>
+                  <CloudRain size={16} />
+                  <span><strong>{localizeAbuText('官方 Zone B 设计暴雨')}</strong><small>{localizeAbuText('选择重现期，生成 180 分钟雨型')}</small></span>
+                </button>
+                <button className={`abu-flood-rainfall-create-card${isDesignStorm && scenario.rainfallPattern !== 'custom' && scenario.rainfallPattern !== 'official_zone_b_ddf_abm' ? ' active' : ''}`} type="button" onClick={openTemplateRainfallDesigner}>
+                  <SlidersHorizontal size={16} />
+                  <span><strong>{localizeAbuText('参数化模板设计')}</strong><small>{localizeAbuText('设置总雨量、时长和峰值位置')}</small></span>
+                </button>
+                <button className={`abu-flood-rainfall-create-card${isDesignStorm && scenario.rainfallPattern === 'custom' ? ' active' : ''}`} type="button" onClick={openCustomRainfallDesigner}>
+                  <GitBranch size={16} />
+                  <span><strong>{localizeAbuText('人工节点设计')}</strong><small>{localizeAbuText('直接拖动或输入每个 5 分钟雨量')}</small></span>
+                </button>
+                <label className="abu-flood-rainfall-create-card optional">
+                  <FileCheck2 size={16} />
+                  <span><strong>{localizeAbuText('导入已有 CSV（仅载入）')}</strong><small>{localizeAbuText('载入后请检查节点，再点击“保存为雨型方案”持久化')}</small></span>
+                  <input type="file" accept=".csv,text/csv" onChange={importRainfallCsv} disabled={controlsBusy || rainfallProfileBusy} />
+                </label>
+              </div>
               <div className="abu-flood-form-grid">
             <label>{localizeAbuText('模拟范围')}<select value={scenario.scope} onChange={event => updateScenario('scope', event.target.value as FloodScenarioForm['scope'])}><option value="citywide">{localizeAbuText('全市连续网络（单个 SWMM 作业）')}</option><option value="partition">{localizeAbuText('内部调试分块（不作为全市结果）')}</option></select></label>
                 <label>{localizeAbuText('目标计算分块')}<select value={scenario.partition} disabled={scenario.scope !== 'partition'} onChange={event => updateScenario('partition', event.target.value)}><option value="all">{localizeAbuText('全部计算分块')}</option>{Array.from({ length: 30 }, (_, index) => <option key={index} value={String(index)}>{localizeAbuText('SWMM 计算分块')} {String(index + 1).padStart(2, '0')}</option>)}</select></label>
                 <label>{localizeAbuText('降雨来源')}<select value={scenario.rainfallMode} onChange={event => updateRainfallMode(event.target.value as RainfallMode)}><option value="design_storm">{localizeAbuText('参数化设计暴雨')}</option><option value="online_public">{localizeAbuText('在线公开来源降雨数据（Open-Meteo）')}</option><option value="public_station_event">{localizeAbuText('公开站点约束雨型（NOAA NCEI）')}</option><option value="historical_event">{localizeAbuText('客户权威历史降雨时序')}</option></select></label>
+                <label>{localizeAbuText('气候分区')}<select value={scenario.climateZone} disabled={!isDesignStorm} onChange={event => { const climateZone = event.target.value as FloodScenarioForm['climateZone']; if (loadedSavedRainfallProfileId) setRainfallProfileDraftChanged(true); setScenario(current => ({ ...current, climateZone, ...(climateZone === 'zone_a' && current.rainfallPattern === 'official_zone_b_ddf_abm' ? { rainfallPattern: 'custom', customRainfallValues: '' } : {}) })); setScenarioError(null); }}><option value="zone_b">Zone B · {localizeAbuText('沿海/当前官方表')}</option><option value="zone_a">Zone A · {localizeAbuText('东部山区/待权威雨量表')}</option></select></label>
                 <label>{localizeAbuText('模型开始时间（UTC）')}<input type="datetime-local" step="300" value={scenario.startTime} onChange={event => updateScenario('startTime', event.target.value)} /></label>
                 <label>{localizeAbuText('降雨时长（分钟）')}<input type="number" min="5" max="4320" step="5" value={scenario.durationMinutes} disabled={scenario.rainfallMode === 'historical_event' || isOfficialZoneBStorm || isPublicStationEvent} onChange={event => updateScenario('durationMinutes', Number(event.target.value))} /></label>
                 <label>{localizeAbuText('总降雨量（mm）')}<input type="number" min="0.1" max="1000" step="0.01" value={scenario.totalDepthMm} disabled={!isDesignStorm || isOfficialZoneBStorm} onChange={event => updateScenario('totalDepthMm', Number(event.target.value))} /></label>
                 <label>{localizeAbuText('时间雨型')}<select value={scenario.rainfallPattern} disabled={!isDesignStorm} onChange={event => updateRainfallPattern(event.target.value as RainfallPattern)}>{Object.entries(rainfallPatternLabels).map(([key, label]) => <option key={key} value={key}>{localizeAbuText(label)}</option>)}</select></label>
                 <label>{localizeAbuText('设计重现期')}<select value={scenario.returnPeriodYears} disabled={!isOfficialZoneBStorm} onChange={event => updateReturnPeriod(Number(event.target.value) as ReturnPeriodYears)}>{([2, 5, 10, 25, 50, 100] as ReturnPeriodYears[]).map(value => <option key={value} value={value}>{value}{localizeAbuText('年一遇')} · {zoneB180DepthByReturnPeriod[value].toFixed(2)} mm</option>)}</select></label>
                 <label>{localizeAbuText('峰值位置（%）')}<input type="number" min="5" max="95" step="5" value={scenario.peakPosition} disabled={!isDesignStorm || scenario.rainfallPattern === 'uniform'} onChange={event => updateScenario('peakPosition', Number(event.target.value))} /></label>
-                <label>{localizeAbuText('空间分布')}<select value={scenario.spatialPattern} onChange={event => updateScenario('spatialPattern', event.target.value as FloodScenarioForm['spatialPattern'])}><option value="uniform">{localizeAbuText('全市均匀')}</option><option value="zonal">{localizeAbuText('分区降雨系数（后端接入）')}</option></select></label>
+                <label>{localizeAbuText('空间分布')}<select value={scenario.spatialPattern} onChange={event => updateScenario('spatialPattern', event.target.value as FloodScenarioForm['spatialPattern'])}><option value="uniform">{localizeAbuText('全市均匀')}</option><option value="zonal">{localizeAbuText('地图分区降雨（多边形优先，出口节点坐标回退）')}</option></select></label>
                 <label>{localizeAbuText('雨后计算（分钟）')}<input type="number" min="0" max="1440" step="5" value={scenario.tailMinutes} onChange={event => updateScenario('tailMinutes', Number(event.target.value))} /></label>
               </div>
+              {isDesignStorm && scenario.climateZone === 'zone_a' && <div className="abu-flood-form-hint"><AlertTriangle size={13} />{localizeAbuText('Zone A 尚未登记权威 IDF/DDF 数值；可使用客户时序或明确标注为假设的总量模板，但不会自动冒充官方 Zone A 设计暴雨。')}</div>}
+              {isDesignStorm && scenario.rainfallPattern === 'custom' && <div id="abu-rainfall-node-designer" className="abu-flood-custom-rainfall-editor">
+                <label className="abu-flood-wide-field">{localizeAbuText('人工雨型（mm/5分钟，逗号或空格分隔）')}<textarea rows={3} value={scenario.customRainfallValues} onChange={event => updateScenario('customRainfallValues', event.target.value)} placeholder="0.5, 1.2, 3.0, 2.1 …" /></label>
+                <div className="abu-flood-custom-rainfall-toolbar">
+                  <label className="abu-flood-toggle"><input type="checkbox" checked={preserveCustomRainfallTotal} onChange={event => setPreserveCustomRainfallTotal(event.target.checked)} /><span>{localizeAbuText('拖动节点时保持总雨量')}</span></label>
+                  <button className="abu-flood-reset-action" type="button" onClick={initializeCustomRainfallNodes}>{localizeAbuText('按总量初始化')}</button>
+                  <button className="abu-flood-reset-action" type="button" onClick={normalizeCustomRainfallNodes}>{localizeAbuText('归一到当前总量')}</button>
+                  <span>{customRainfallNodes.length}/{customRainfallNodeCount} {localizeAbuText('个节点')} · {customRainfallTotal.toFixed(2)} mm · {localizeAbuText('峰值')} {customRainfallPeak.toFixed(2)} mm/5min</span>
+                </div>
+                <div className="abu-flood-rainfall-chart" aria-label={localizeAbuText('人工雨型柱状图')}>
+                  <div className="abu-flood-rainfall-chart-heading">
+                    <strong>{localizeAbuText('5 分钟雨型柱状图')}</strong>
+                    <span>{localizeAbuText('柱高随下方节点实时变化；点击柱子可定位对应节点')}</span>
+                  </div>
+                  <div className="abu-flood-rainfall-chart-body">
+                    <div className="abu-flood-rainfall-chart-y-axis"><span>{customRainfallPeak.toFixed(2)}</span><span>{(customRainfallPeak / 2).toFixed(2)}</span><span>0</span></div>
+                    <div className="abu-flood-rainfall-chart-scroller">
+                      <div className="abu-flood-rainfall-chart-plot" style={{ minWidth: `${Math.max(520, customRainfallNodeCount * 6)}px` }}>
+                        {Array.from({ length: customRainfallNodeCount }, (_unused, index) => {
+                          const value = customRainfallNodes[index] ?? 0;
+                          const height = customRainfallPeak > 0 ? value / customRainfallPeak * 100 : 0;
+                          return <button
+                            className="abu-flood-rainfall-chart-bar"
+                            key={index}
+                            type="button"
+                            style={{ height: `${height}%` }}
+                            title={`T+${index * 5} min · ${value.toFixed(2)} mm/5min`}
+                            aria-label={`T+${index * 5} min · ${value.toFixed(2)} mm/5min`}
+                            onClick={() => document.getElementById(`abu-rainfall-node-${index}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                          />;
+                        })}
+                      </div>
+                      <div className="abu-flood-rainfall-chart-x-axis" style={{ minWidth: `${Math.max(520, customRainfallNodeCount * 6)}px` }}><span>T+0</span><span>T+{Math.floor(scenario.durationMinutes / 2)}</span><span>T+{scenario.durationMinutes} min</span></div>
+                    </div>
+                  </div>
+                </div>
+                {customRainfallNodeCount <= 288
+                  ? <div className="abu-flood-custom-rainfall-nodes" aria-label={localizeAbuText('5 分钟雨型拖动节点')}>
+                    {Array.from({ length: customRainfallNodeCount }, (_unused, index) => {
+                      const value = customRainfallNodes[index] ?? 0;
+                      const sliderMaximum = Math.max(5, customRainfallPeak * 1.5, scenario.totalDepthMm * 0.25);
+                      return <div id={`abu-rainfall-node-${index}`} className="abu-flood-custom-rainfall-node" key={index}>
+                        <span>T+{index * 5}</span>
+                        <input aria-label={`T+${index * 5} min`} type="range" min="0" max={sliderMaximum} step="0.01" value={Math.min(value, sliderMaximum)} onChange={event => updateCustomRainfallNode(index, Number(event.target.value))} />
+                        <input aria-label={`T+${index * 5} min depth`} type="number" min="0" step="0.01" value={Number(value.toFixed(4))} onChange={event => updateCustomRainfallNode(index, Number(event.target.value))} />
+                      </div>;
+                    })}
+                  </div>
+                  : <div className="abu-flood-form-hint"><AlertTriangle size={13} />{localizeAbuText('超过 24 小时的高频雨型请优先使用 CSV 导入；文本序列仍可编辑和运行。')}</div>}
+              </div>}
+              {isDesignStorm && scenario.spatialPattern === 'zonal' && <div className="abu-flood-spatial-rainfall-editor">
+                <div className="abu-flood-spatial-rainfall-heading">
+                  <div><strong>{localizeAbuText('空间分区降雨')}</strong><span>{localizeAbuText('在地图上绘制区域，再为每个区域设置雨量倍率和时间雨型。')}</span></div>
+                  <button className="abu-flood-reset-action" type="button" onClick={requestSpatialRainfallDrawing}><MapIcon size={14} />{localizeAbuText('在地图上绘制/编辑区域')}</button>
+                </div>
+                {spatialRainfallZones.length > 0
+                  ? <div className="abu-flood-spatial-rainfall-zones">
+                    {spatialRainfallZones.map(zone => {
+                      const zoneCustomTotal = zone.customValues.reduce((sum, value) => sum + value, 0);
+                      const zoneTotal = (zone.temporalPatternId === 'custom' && zone.customValues.length === customRainfallNodeCount ? zoneCustomTotal : scenario.totalDepthMm) * zone.rainfallFactor;
+                      const rawPreview = zone.temporalPatternId === 'custom' && zone.customValues.length
+                        ? zone.customValues
+                        : buildRainfallShapePreview(zone.temporalPatternId, baseRainfallShapePreview.length, scenario.peakPosition, baseRainfallShapePreview);
+                      const previewMaximum = Math.max(...rawPreview, 1);
+                      const previewValues = rawPreview.map(value => value / previewMaximum);
+                      return <div className={`abu-flood-spatial-rainfall-zone-item ${selectedRainfallPreviewZoneId === zone.zoneId ? 'selected' : ''}`} key={zone.index}>
+                        <div className="abu-flood-spatial-rainfall-zone">
+                          <label>{localizeAbuText('区域名称')}<input type="text" value={zone.zoneId} onChange={event => updateSpatialRainfallZone(zone.index, 'zone_id', event.target.value)} /></label>
+                          <label>{localizeAbuText('区域时间雨型')}<select value={zone.temporalPatternId} onChange={event => event.target.value === 'custom' ? initializeSpatialZoneCustomValues(zone.index) : updateSpatialRainfallZone(zone.index, 'temporal_pattern_id', event.target.value)}><option value="inherit">{localizeAbuText('沿用基础雨型')}</option><option value="uniform">{localizeAbuText('均匀雨型')}</option><option value="front_loaded">{localizeAbuText('前峰雨型')}</option><option value="back_loaded">{localizeAbuText('后峰雨型')}</option><option value="central_peak">{localizeAbuText('中央峰雨型')}</option><option value="double_peak">{localizeAbuText('双峰雨型')}</option><option value="alternating_block">{localizeAbuText('交替块雨型')}</option><option value="custom">{localizeAbuText('自定义 5 分钟节点')}</option></select></label>
+                          <label>{localizeAbuText('雨量倍率')}<input type="number" min="0" max="20" step="0.05" value={zone.rainfallFactor} onChange={event => updateSpatialRainfallZone(zone.index, 'rainfall_factor', Number(event.target.value))} /></label>
+                          <span>{localizeAbuText('区域总量')} {zoneTotal.toFixed(2)} mm</span>
+                          <div
+                            className="abu-flood-spatial-rainfall-preview"
+                            title={localizeAbuText('区域时间雨型预览；点击在地图上定位')}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={localizeAbuText(`在地图上定位 ${zone.zoneId}`)}
+                            onClick={() => focusSpatialRainfallZone(zone.zoneId)}
+                            onKeyDown={event => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                focusSpatialRainfallZone(zone.zoneId);
+                              }
+                            }}
+                          >
+                            {previewValues.map((value, index) => <i key={index} style={{ height: `${Math.max(2, value * 100)}%` }} />)}
+                          </div>
+                          {zone.temporalPatternId === 'custom' && <button className="edit" type="button" onClick={() => setExpandedSpatialZoneIndex(current => current === zone.index ? null : zone.index)}>{expandedSpatialZoneIndex === zone.index ? localizeAbuText('收起') : localizeAbuText('编辑节点')}</button>}
+                          <button type="button" onClick={() => removeSpatialRainfallZone(zone.index)}>{localizeAbuText('删除')}</button>
+                        </div>
+                        {zone.temporalPatternId === 'custom' && expandedSpatialZoneIndex === zone.index && <div className="abu-flood-spatial-zone-custom-editor">
+                          <div className="abu-flood-custom-rainfall-toolbar"><strong>{zone.zoneId} · {localizeAbuText('区域专属 5 分钟节点')}</strong><button className="abu-flood-reset-action" type="button" onClick={() => initializeSpatialZoneCustomValues(zone.index)}>{localizeAbuText('复制基础人工雨型')}</button><button className="abu-flood-reset-action" type="button" onClick={() => normalizeSpatialZoneCustomValues(zone.index)}>{localizeAbuText('归一到基础总量')}</button><span>{zone.customValues.length}/{customRainfallNodeCount} {localizeAbuText('个节点')} · {zoneCustomTotal.toFixed(2)} mm × {zone.rainfallFactor.toFixed(2)}</span></div>
+                          {customRainfallNodeCount <= 288 ? <div className="abu-flood-custom-rainfall-nodes">
+                            {Array.from({ length: customRainfallNodeCount }, (_unused, nodeIndex) => {
+                              const value = zone.customValues[nodeIndex] ?? 0;
+                              const maximum = Math.max(5, ...zone.customValues, scenario.totalDepthMm * 0.25);
+                              return <div className="abu-flood-custom-rainfall-node" key={nodeIndex}><span>T+{nodeIndex * 5}</span><input type="range" min="0" max={maximum} step="0.01" value={Math.min(value, maximum)} onChange={event => updateSpatialZoneCustomNode(zone.index, nodeIndex, Number(event.target.value))} /><input type="number" min="0" step="0.01" value={Number(value.toFixed(4))} onChange={event => updateSpatialZoneCustomNode(zone.index, nodeIndex, Number(event.target.value))} /></div>;
+                            })}
+                          </div> : <div className="abu-flood-form-hint"><AlertTriangle size={13} />{localizeAbuText('区域人工节点编辑器当前最多显示 24 小时；更长时序请通过 CSV/GeoJSON 交换契约导入。')}</div>}
+                        </div>}
+                      </div>;
+                    })}
+                  </div>
+                  : <div className="abu-flood-form-hint"><MapIcon size={13} />{localizeAbuText('尚未绘制区域。点击上方按钮后，在地图工具栏选择多边形或矩形进行绘制。')}</div>}
+                <small>{localizeAbuText('倍率控制区域总雨量；每个区域既可选择模板，也可编辑独立的 5 分钟人工节点。未落入任何区域的子汇水区继续使用基础雨型。')}</small>
+                <small>{localizeAbuText('SWMM 优先按子汇水区多边形质心分区；当前全市拓扑缺少多边形时，按子汇水区出口节点坐标回退。回退可运行且有映射回执，但空间精度低于完整汇水区多边形。')}</small>
+                <details className="abu-flood-spatial-rainfall-advanced">
+                  <summary>{localizeAbuText('高级：查看或编辑 GeoJSON')}</summary>
+                  <label>{localizeAbuText('空间分区 GeoJSON（Feature 数组或 FeatureCollection）')}<textarea rows={5} value={scenario.spatialZonesJson} onChange={event => updateScenario('spatialZonesJson', event.target.value)} placeholder='[{"zone_id":"al_bateen","geometry":{"type":"Polygon","coordinates":[…]},"rainfall_factor":1.35}]' /></label>
+                </details>
+              </div>}
               {isOnlinePublicRainfall && <div className="abu-flood-form-grid abu-flood-public-source-grid"><label>{localizeAbuText('公开来源纬度')}<input type="number" min="-90" max="90" step="0.0001" value={scenario.publicLatitude} onChange={event => updateScenario('publicLatitude', Number(event.target.value))} /></label><label>{localizeAbuText('公开来源经度')}<input type="number" min="-180" max="180" step="0.0001" value={scenario.publicLongitude} onChange={event => updateScenario('publicLongitude', Number(event.target.value))} /></label></div>}
               {isPublicStationEvent && <div className="abu-flood-form-grid abu-flood-public-source-grid"><label>{localizeAbuText('公开站点')}<select value={scenario.publicStation} onChange={event => updateScenario('publicStation', event.target.value as FloodScenarioForm['publicStation'])}><option value="OMAD">OMAD · Bateen Executive</option><option value="OMAA">OMAA · Abu Dhabi International</option></select></label><label>{localizeAbuText('事件窗口')}<input type="text" value="2024-04-15 00:00 – 2024-04-18 00:00 UTC" readOnly /></label></div>}
               {isOnlinePublicRainfall && <div className="abu-flood-form-hint"><Globe2 size={13} />{localizeAbuText('运行时从 Open-Meteo Archive API 拉取该坐标的小时降雨；公开数据仅作原型代理，不等同于客户实测。')}</div>}
               {isPublicStationEvent && <div className="abu-flood-form-hint"><Globe2 size={13} />{localizeAbuText('使用 NOAA NCEI 阿布扎比站点 2024-04 公开累计观测约束的本地代理时序；原始观测为 12 小时累计，不是逐小时实测，结果仅用于原型敏感性验证，不等同客户权威历史降雨。')}</div>}
               {isOfficialZoneBStorm && <div className="abu-flood-form-hint"><CloudRain size={13} />{localizeAbuText('官方输入：Zone B、')}{scenario.returnPeriodYears}{localizeAbuText('年一遇、180 分钟、')}{scenario.totalDepthMm.toFixed(2)} mm；{localizeAbuText('5 分钟时程由 DDF 嵌套雨量插值后采用交替块法生成，峰值位置为可调整假设')}</div>}
               {isOfficialZoneBStorm && designStormBatch && <div className="abu-flood-form-hint"><FileCheck2 size={13} />{localizeAbuText('已准备 2/5/10/25/50/100 年一遇共 6 套全市预计算结果；严格质量门均未通过，仅用于原型诊断展示。')}</div>}
-              {isOfficialZoneBStorm && designStormBatchError && <div className="abu-flood-form-error"><AlertTriangle size={13} />{localizeAbuText(designStormBatchError)}</div>}
+              {isOfficialZoneBStorm && designStormBatchUnavailable && <div className="abu-flood-form-hint"><AlertTriangle size={13} />{localizeAbuText('当前没有已登记的六套预计算设计暴雨批次；这不影响雨型编辑和实时 SWMM 运行。')}</div>}
+              {isOfficialZoneBStorm && designStormBatchError && !designStormBatchUnavailable && <div className="abu-flood-form-error"><AlertTriangle size={13} />{localizeAbuText(designStormBatchError)}</div>}
+              <div className="abu-flood-rainfall-profile-tools">
+                <label className="abu-flood-rainfall-profile-name">{localizeAbuText('方案名称')}<input type="text" value={rainfallProfileName} onChange={event => { if (loadedSavedRainfallProfileId) setRainfallProfileDraftChanged(true); setRainfallProfileName(event.target.value); }} placeholder={localizeAbuText('例如：2024年4月历史代理雨型')} /></label>
+                <select aria-label={localizeAbuText('已保存雨型方案')} value={selectedSavedRainfallProfileId} onChange={event => setSelectedSavedRainfallProfileId(event.target.value)}>
+                  <option value="">{localizeAbuText('选择已保存雨型方案')}</option>
+                  {savedRainfallProfiles.map(profile => {
+                    const patternLabel = rainfallPatternLabels[profile.temporal_pattern as RainfallPattern] || profile.temporal_pattern || '—';
+                    const evidenceLabel = profile.evidence_class || profile.source_type || '—';
+                    return <option key={profile.profile_id} value={profile.profile_id}>{profile.name} · {patternLabel} · {profile.total_depth_mm.toFixed(2)} mm · {profile.spatial_mode === 'zones' ? `${profile.spatial_zone_count || 0}区` : '均匀'} · {evidenceLabel} · {profile.profile_id}</option>;
+                  })}
+                </select>
+                <button className="abu-flood-reset-action" type="button" onClick={saveCurrentRainfallProfile} disabled={controlsBusy || rainfallProfileBusy}><FileCheck2 size={14} />{rainfallProfileBusy ? localizeAbuText('方案处理中…') : localizeAbuText('保存为雨型方案')}</button>
+                <button className="abu-flood-reset-action" type="button" onClick={updateSelectedRainfallProfile} disabled={controlsBusy || rainfallProfileBusy || !selectedSavedRainfallProfileId || loadedSavedRainfallProfileId !== selectedSavedRainfallProfileId}><FileCheck2 size={14} />{localizeAbuText('覆盖已加载方案')}</button>
+                <button className="abu-flood-reset-action" type="button" onClick={loadSelectedRainfallProfile} disabled={controlsBusy || rainfallProfileBusy || !selectedSavedRainfallProfileId}><RotateCcw size={14} />{localizeAbuText('加载已保存方案')}</button>
+                <button className="abu-flood-reset-action" type="button" onClick={deleteSelectedRainfallProfile} disabled={controlsBusy || rainfallProfileBusy || !selectedSavedRainfallProfileId}><Trash2 size={14} />{localizeAbuText('删除已选方案')}</button>
+                {selectedSavedRainfallProfileId && <a className="abu-flood-reset-action" href={`/api/abu-dhabi/flood/rainfall/profiles/${encodeURIComponent(selectedSavedRainfallProfileId)}/csv`} download>{localizeAbuText('下载标准 CSV')}</a>}
+                <select className="abu-flood-forcing-target" aria-label={localizeAbuText('模型强迫交换包目标')} value={rainfallForcingTarget} onChange={event => setRainfallForcingTarget(event.target.value as RainfallForcingTarget)}>
+                  <option value="swmm">SWMM · mm/h</option>
+                  <option value="anuga">ANUGA · m/s</option>
+                  <option value="commercial">{localizeAbuText('商业模型交换契约')}</option>
+                </select>
+                <button className="abu-flood-reset-action" type="button" onClick={downloadRainfallForcingPackage} disabled={controlsBusy || rainfallProfileBusy}>{localizeAbuText('下载模型交换 ZIP')}</button>
+              </div>
+              {selectedSavedRainfallProfileId && loadedSavedRainfallProfileId !== selectedSavedRainfallProfileId && <small className="abu-flood-form-hint-text">{localizeAbuText('当前只是选中了方案；如需覆盖更新，必须先点击“加载已保存方案”，避免误覆盖其他方案。')}</small>}
+              {loadedSavedRainfallProfileId && <small className="abu-flood-form-hint-text">{localizeAbuText(`当前草稿已绑定方案 ${loadedSavedRainfallProfileId}${loadedRainfallProfileHash ? ` · ${loadedRainfallProfileHash.slice(0, 12)}…` : ''}${rainfallProfileMetadata.sourceType ? ` · ${rainfallProfileMetadata.sourceType}` : ''}${rainfallProfileMetadata.provenance?.evidence_class ? ` · ${String(rainfallProfileMetadata.provenance.evidence_class)}` : ''}；修改后可覆盖更新，或改名后另存为新方案。`)}</small>}
+              {loadedSavedRainfallProfileId && rainfallProfileDraftChanged && <small className="abu-flood-form-hint-text abu-flood-rainfall-draft-warning">{localizeAbuText('当前草稿已有未保存修改；“覆盖已加载方案”会更新原方案，修改方案名称后点击“保存为雨型方案”可另存为新快照。')}</small>}
+              {savedRainfallProfiles.length > 0 && <small className="abu-flood-form-hint-text">{localizeAbuText(`已保存 ${savedRainfallProfiles.length} 个雨型方案；保存记录包含方案哈希、来源、总量、时长和 CSV 快照。`)}</small>}
+              {rainfallForcingTarget === 'commercial' && <small className="abu-flood-form-hint-text">{localizeAbuText('商业模型 ZIP 是 JSON/CSV/GeoJSON 标准交换包，不是 Bentley OpenFlows 或 InfoWorks ICM 原生工程文件；仍需按客户软件版本开发厂商适配器。')}</small>}
               {scenario.rainfallMode === 'historical_event' && <div className="abu-flood-form-hint"><TimerReset size={13} />{localizeAbuText('客户权威历史时序入口已保留，但当前私有数据尚未接入，运行会被拦截；后续通过客户 CSV / NetCDF 和事件元数据验收后绑定。')}</div>}
             </div>
 
@@ -3732,7 +4743,7 @@ export default function AbuDhabiFloodWorldModelTab() {
             {scenarioError && <div className="abu-flood-form-error"><AlertTriangle size={14} />{localizeAbuText(scenarioError)}</div>}
             <div className="abu-flood-scenario-actions">
               <button className="abu-flood-map-action" type="button" onClick={runScenarioPreview} disabled={controlsBusy}><Play size={15} />{scenarioBusy ? en('scenario.running', 'Running SWMM Simulation...') : en('scenario.run', 'Run SWMM Simulation')}</button>
-              {isOfficialZoneBStorm && <button className="abu-flood-reset-action abu-flood-precomputed-action" type="button" onClick={loadPrecomputedDesignStorm} disabled={controlsBusy || designStormBatchLoading}>{precomputedLoadStage || designStormBatchLoading ? <LoaderCircle className="abu-flood-loading-icon" size={14} /> : <FileCheck2 size={14} />}{precomputedLoadStage === 'job' ? localizeAbuText('正在读取预计算作业…') : precomputedLoadStage === 'timeline' ? localizeAbuText('正在准备原生 OUT 时间轴…') : precomputedLoadStage === 'map' ? localizeAbuText('正在加载全量节点到地图…') : designStormBatchLoading ? localizeAbuText('正在读取预计算结果目录…') : getLocale() === 'zh-CN' ? `${designStormBatchError ? '重试并加载' : '加载'} ${scenario.returnPeriodYears} 年一遇预计算结果` : `${designStormBatchError ? 'Retry and load' : 'Load'} ${scenario.returnPeriodYears}-year return-period precomputed result`}</button>}
+              {isOfficialZoneBStorm && !designStormBatchUnavailable && <button className="abu-flood-reset-action abu-flood-precomputed-action" type="button" onClick={loadPrecomputedDesignStorm} disabled={controlsBusy || designStormBatchLoading}>{precomputedLoadStage || designStormBatchLoading ? <LoaderCircle className="abu-flood-loading-icon" size={14} /> : <FileCheck2 size={14} />}{precomputedLoadStage === 'job' ? localizeAbuText('正在读取预计算作业…') : precomputedLoadStage === 'timeline' ? localizeAbuText('正在准备原生 OUT 时间轴…') : precomputedLoadStage === 'map' ? localizeAbuText('正在加载全量节点到地图…') : designStormBatchLoading ? localizeAbuText('正在读取预计算结果目录…') : getLocale() === 'zh-CN' ? `${designStormBatchError ? '重试并加载' : '加载'} ${scenario.returnPeriodYears} 年一遇预计算结果` : `${designStormBatchError ? 'Retry and load' : 'Load'} ${scenario.returnPeriodYears}-year return-period precomputed result`}</button>}
               <button className="abu-flood-reset-action" type="button" onClick={resetScenario} disabled={controlsBusy}><RotateCcw size={14} />{localizeAbuText('恢复默认')}</button>
             </div>
           </div>
@@ -3939,21 +4950,27 @@ export default function AbuDhabiFloodWorldModelTab() {
               </aside>
             </div> : <div className="abu-flood-precomputed-surface-page">
               <div className="abu-flood-surface-period-control">
-                <div><strong>{localizeAbuText('已登记的二维成果')}</strong><small>{localizeAbuText('单向多年一遇成果与 100 年一遇同步双向数值验证成果独立保留；加载只读成果和回执，不会启动新计算。')}</small></div>
-                <label>{localizeAbuText('成果来源')}<select value={surfaceResultSource} disabled={surfaceReturnPeriodLoading} onChange={event => { const source = event.target.value as SurfaceResultSource; setSurfaceReturnPeriodError(null); setSurfaceResultSource(source); if (source === 'bidirectional_validation') setSurfaceReturnPeriodYears(100); }}><option value="return_period_one_way">{localizeAbuText('SWMM→ANUGA 单向多年一遇（6 套）')}</option><option value="bidirectional_validation">{localizeAbuText('SWMM–ANUGA 同步双向验证（100 年一遇）')}</option></select></label>
-                <label>{localizeAbuText('设计重现期')}<select value={surfaceResultSource === 'bidirectional_validation' ? 100 : surfaceReturnPeriodYears} disabled={surfaceReturnPeriodLoading || surfaceResultSource === 'bidirectional_validation'} onChange={event => { setSurfaceReturnPeriodError(null); setSurfaceReturnPeriodYears(Number(event.target.value) as ReturnPeriodYears); }}>{([2, 5, 10, 25, 50, 100] as ReturnPeriodYears[]).map(value => <option key={value} value={value}>{value}{localizeAbuText('年一遇')}</option>)}</select></label>
+                <div><strong>{localizeAbuText('已登记的二维成果')}</strong><small>{localizeAbuText('单向多年一遇成果、同步双向验证成果和现有 61 mm / 2 h 部分结果独立保留；加载只读成果和回执，不会启动新计算。')}</small></div>
+                <label>{localizeAbuText('成果来源')}<select value={surfaceResultSource} disabled={surfaceReturnPeriodLoading} onChange={event => { const source = event.target.value as SurfaceResultSource; setSurfaceReturnPeriodError(null); setSurfaceResultSource(source); if (source === 'bidirectional_validation') setSurfaceReturnPeriodYears(100); }}><option value="return_period_one_way">{localizeAbuText('SWMM→ANUGA 单向多年一遇（6 套）')}</option><option value="bidirectional_validation">{localizeAbuText('SWMM–ANUGA 同步双向验证（100 年一遇）')}</option><option value="partial_one_way_61mm_2h">{localizeAbuText('61 mm / 2 h 单向耦合部分结果（311/312 窗口）')}</option></select></label>
+                <label>{localizeAbuText('设计重现期')}<select value={surfaceResultSource === 'bidirectional_validation' ? 100 : surfaceReturnPeriodYears} disabled={surfaceReturnPeriodLoading || surfaceResultSource !== 'return_period_one_way'} onChange={event => { setSurfaceReturnPeriodError(null); setSurfaceReturnPeriodYears(Number(event.target.value) as ReturnPeriodYears); }}>{([2, 5, 10, 25, 50, 100] as ReturnPeriodYears[]).map(value => <option key={value} value={value}>{value}{localizeAbuText('年一遇')}</option>)}</select></label>
                 <div className="abu-flood-scenario-actions"><button className="abu-flood-map-action" type="button" disabled={surfaceReturnPeriodLoading} onClick={() => setSurfaceReloadToken(value => value + 1)}>{surfaceReturnPeriodLoading ? <LoaderCircle className="abu-flood-loading-icon" size={14} /> : <MapIcon size={14} />}{surfaceReturnPeriodLoading ? localizeAbuText('正在加载二维结果…') : localizeAbuText('加载到地图')}</button></div>
-                <span className="abu-flood-surface-period-status" aria-live="polite">{surfaceReturnPeriodLoading ? localizeAbuText('正在读取最大深度、时间轴与运行回执…') : surfaceResultVariant === surfaceResultSource && Number(publicCitywide2dDiagnostic?.metadata?.return_period_years || 0) === (surfaceResultSource === 'bidirectional_validation' ? 100 : surfaceReturnPeriodYears) && surfaceModelConfiguration.execution_mode === 'registered_precomputed_result' ? localizeAbuText(surfaceResultSource === 'bidirectional_validation' ? '100 年一遇同步双向数值验证成果已加载' : `${surfaceReturnPeriodYears} 年一遇单向登记成果已加载`) : localizeAbuText('已选择成果来源，点击“加载到地图”读取成果')}</span>
+                <span className="abu-flood-surface-period-status" aria-live="polite">{surfaceReturnPeriodLoading ? localizeAbuText('正在读取最大深度、时间轴与运行回执…') : surfaceResultVariant === surfaceResultSource && surfaceModelConfiguration.execution_mode === 'registered_precomputed_result' ? localizeAbuText(surfaceResultSource === 'bidirectional_validation' ? '100 年一遇同步双向数值验证成果已加载' : surfaceResultSource === 'partial_one_way_61mm_2h' ? '61 mm / 2 h 部分结果已加载（311/312 窗口）' : `${surfaceReturnPeriodYears} 年一遇单向登记成果已加载`) : localizeAbuText('已选择成果来源，点击“加载到地图”读取成果')}</span>
                 {surfaceReturnPeriodError && <span className="abu-flood-form-error"><AlertTriangle size={13} />{localizeAbuText(surfaceReturnPeriodError)}</span>}
               </div>
               <div className="abu-flood-scenario-result-metrics abu-flood-surface-result-metrics">
                 <div><span>{localizeAbuText('求解器')}</span><strong>{String(surfaceModelConfiguration.solver || 'ANUGA 2D')}</strong><small>{surfaceIsBidirectionalValidation ? 'EPA SWMM 5.2.4 ↔ ANUGA' : 'EPA SWMM 5.2.4 → ANUGA'}</small></div>
                 <div><span>{localizeAbuText('地形 / 网格')}</span><strong>{Number(surfaceModelConfiguration.model_cell_size_m || 250).toFixed(0)} m</strong><small>{localizeAbuText(String(surfaceModelConfiguration.terrain_product || '客户 5 m DTM'))}</small></div>
-                <div><span>{localizeAbuText('耦合方式')}</span><strong>{localizeAbuText(surfaceIsBidirectionalValidation ? '同步双向验证' : '单向')}</strong><small>{localizeAbuText(String(surfaceModelConfiguration.exchange_quantity || '节点溢流 → 二维源项'))}</small></div>
+                <div><span>{localizeAbuText('耦合方式')}</span><strong>{localizeAbuText(surfaceIsPartialOneWay ? '单向部分结果' : surfaceIsBidirectionalValidation ? '同步双向验证' : '单向')}</strong><small>{localizeAbuText(String(surfaceModelConfiguration.exchange_quantity || '节点溢流 → 二维源项'))}</small></div>
                 <div><span>{localizeAbuText('模拟时长')}</span><strong>{Number(surfaceModelConfiguration.simulation_duration_minutes || 300).toFixed(0)}</strong><small>min · {Number(surfaceModelConfiguration.output_interval_minutes || 30).toFixed(0)} min {localizeAbuText('输出')}</small></div>
                 <div><span>{localizeAbuText('最大积水深度')}</span><strong>{Number(publicCitywide2dDiagnostic?.metadata?.maximum_depth_m || 0).toFixed(2)}</strong><small>m</small></div>
                 <div><span>{localizeAbuText(surfaceIsBidirectionalValidation ? '淹没面积 ≥ 0.01 m' : '淹没面积 ≥ 0.05 m')}</span><strong>{(Number((surfaceIsBidirectionalValidation ? publicCitywide2dDiagnostic?.metadata?.inundated_area_ge_0_01m2 : publicCitywide2dDiagnostic?.metadata?.inundated_area_ge_0_05m2) || 0) / 1_000_000).toFixed(1)}</strong><small>km²</small></div>
               </div>
+              {surfaceIsPartialOneWay && <div className="abu-flood-scenario-result-metrics abu-flood-surface-result-metrics">
+                <div><span>{localizeAbuText('已完成窗口')}</span><strong>{Number(publicCitywide2dDiagnostic?.metadata?.completed_window_count || 0)}</strong><small>/ {Number(publicCitywide2dDiagnostic?.metadata?.expected_window_count || 312)} {localizeAbuText('个窗口')}</small></div>
+                <div><span>{localizeAbuText('最后时间片')}</span><strong>{Number(publicCitywide2dDiagnostic?.metadata?.timeline?.elapsed_minutes?.slice(-1)[0] || 0).toFixed(0)}</strong><small>min</small></div>
+                <div><span>{localizeAbuText('最大积水范围阈值')}</span><strong>{Number(publicCitywide2dDiagnostic?.metadata?.maximum_inundation_extent_threshold_m || 0.01).toFixed(2)}</strong><small>m</small></div>
+                <div><span>{localizeAbuText('完全退水已验证')}</span><strong>{localizeAbuText('否')}</strong><small>{localizeAbuText('最后 5 分钟缺失')}</small></div>
+              </div>}
               {surfaceIsBidirectionalValidation && <div className="abu-flood-scenario-result-metrics abu-flood-surface-result-metrics">
                 <div><span>{localizeAbuText('同步交换窗口')}</span><strong>{Number(surfaceCouplingSummary.window_count || 0).toLocaleString()}</strong><small>{Number(surfaceCouplingSummary.exchange_window_seconds || 0).toFixed(0)} s / {localizeAbuText('窗口')}</small></div>
                 <div><span>{localizeAbuText('交换接口')}</span><strong>{Number(surfaceCouplingSummary.interface_count || 0).toLocaleString()}</strong><small>{localizeAbuText('客户管网节点与二维单元')}</small></div>
@@ -3961,7 +4978,7 @@ export default function AbuDhabiFloodWorldModelTab() {
                 <div><span>ANUGA → SWMM</span><strong>{(Number(surfaceCouplingSummary.total_anuga_to_swmm_m3 || 0) / 1_000_000).toFixed(2)}</strong><small>{localizeAbuText('百万 m³')}</small></div>
               </div>}
               <div className="abu-flood-registered-result-receipt"><FileCheck2 size={15} /><div><strong>{localizeAbuText('登记成果运行回执')}</strong><span>Run ID: <code>{surfaceInvocationReceipt?.runId || publicCitywide2dDiagnostic?.metadata?.timeline?.run_id || '—'}</code></span><small>{localizeAbuText(`${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.total_cell_count || 0).toLocaleString()} 个陆域单元 · ${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.period_count || 0)} 个时间片 · 海边界 ${Number(surfaceModelConfiguration.sea_boundary_level_m || 0).toFixed(2)} m · 永久水体阈值 ${Number(surfaceModelConfiguration.water_cell_fraction_threshold || 0.2).toFixed(2)}`)}</small></div></div>
-              <div className="abu-flood-validation-gate pending"><LockKeyhole size={13} /><div><strong>{localizeAbuText('能力边界')}</strong><span>{localizeAbuText(surfaceIsBidirectionalValidation ? '该成果的回执记录了同步窗口中的正向与反向交换，可作为 SWMM–ANUGA 双向数值验证成果使用；但回执单独不能证明每个时间窗都重新调用了原生 SWMM，且完整 SWMM 系统质量平衡未在该动态 API 回执中评估。结果未校准、未工程准入。' : '这六套多年一遇成果使用已完成的 SWMM 原生 OUT 作为 ANUGA 单向源项，没有动态水头反向反馈；结果未校准、未工程准入。')}</span></div></div>
+              <div className="abu-flood-validation-gate pending"><LockKeyhole size={13} /><div><strong>{localizeAbuText('能力边界')}</strong><span>{localizeAbuText(surfaceIsPartialOneWay ? '这是现有 61 mm / 2 h 单向耦合的部分结果：311/312 个窗口已发布，最后 5 分钟缺失，完全退水未验证。最大积水范围图层按最大水深 ≥ 0.01 m 生成。结果未校准、未工程准入。' : surfaceIsBidirectionalValidation ? '该成果的回执记录了同步窗口中的正向与反向交换，可作为 SWMM–ANUGA 双向数值验证成果使用；但回执单独不能证明每个时间窗都重新调用了原生 SWMM，且完整 SWMM 系统质量平衡未在该动态 API 回执中评估。结果未校准、未工程准入。' : '这六套多年一遇成果使用已完成的 SWMM 原生 OUT 作为 ANUGA 单向源项，没有动态水头反向反馈；结果未校准、未工程准入。')}</span></div></div>
             </div>}
           </div>}
           {selectedKey === 'gwm' && <div className="abu-flood-surface-period-control abu-flood-gwm-control">

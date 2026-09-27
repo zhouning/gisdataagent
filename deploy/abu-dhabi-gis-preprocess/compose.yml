@@ -1,0 +1,20 @@
+services:
+  gis-preprocess:
+    build:
+      context: ../..
+      dockerfile: deploy/abu-dhabi-gis-preprocess/Dockerfile
+    image: ${ABU_DHABI_GIS_PREPROCESS_IMAGE:-abu-dhabi-gis-preprocess:v1}
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:size=2g,mode=1777
+    volumes:
+      - type: bind
+        source: ${ABU_DHABI_GIS_INPUT_DIR:?Set ABU_DHABI_GIS_INPUT_DIR to customer source data}
+        target: /input
+        read_only: true
+      - type: bind
+        source: ${ABU_DHABI_GIS_OUTPUT_DIR:?Set ABU_DHABI_GIS_OUTPUT_DIR to private derived-data storage}
+        target: /output

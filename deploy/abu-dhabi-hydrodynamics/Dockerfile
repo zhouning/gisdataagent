@@ -80,6 +80,7 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
+      libexpat1 \
       libgomp1 \
       && rm -rf /var/lib/apt/lists/*
 
