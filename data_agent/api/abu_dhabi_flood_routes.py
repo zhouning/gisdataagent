@@ -587,9 +587,18 @@ async def get_abu_dhabi_public_citywide_2d_bootstrap(request: Request) -> JSONRe
         raw_period = request.query_params.get("return_period_years")
         return_period = int(raw_period) if raw_period not in (None, "") else None
         result_source = request.query_params.get("result_source")
+        raw_rainfall_total = request.query_params.get("rainfall_total_mm")
+        raw_rainfall_duration = request.query_params.get("rainfall_duration_hours")
+        rainfall_total = int(raw_rainfall_total) if raw_rainfall_total not in (None, "") else None
+        rainfall_duration = int(raw_rainfall_duration) if raw_rainfall_duration not in (None, "") else None
 
         return JSONResponse(
-            public_citywide_2d_bootstrap_payload(return_period, result_source)
+            public_citywide_2d_bootstrap_payload(
+                return_period,
+                result_source,
+                rainfall_total,
+                rainfall_duration,
+            )
         )
     except (TypeError, ValueError) as error:
         return JSONResponse({"error": str(error)}, status_code=409)
@@ -603,6 +612,8 @@ async def get_abu_dhabi_public_citywide_2d_timeseries(request: Request) -> JSONR
     raw_index = request.query_params.get("time_index", "0")
     raw_period = request.query_params.get("return_period_years")
     result_source = request.query_params.get("result_source")
+    raw_rainfall_total = request.query_params.get("rainfall_total_mm")
+    raw_rainfall_duration = request.query_params.get("rainfall_duration_hours")
     try:
         time_index = int(raw_index)
     except (TypeError, ValueError):
@@ -610,10 +621,16 @@ async def get_abu_dhabi_public_citywide_2d_timeseries(request: Request) -> JSONR
     try:
         from ..abu_dhabi_flood_scenario_service import public_citywide_2d_timeseries_payload
         return_period = int(raw_period) if raw_period not in (None, "") else None
+        rainfall_total = int(raw_rainfall_total) if raw_rainfall_total not in (None, "") else None
+        rainfall_duration = int(raw_rainfall_duration) if raw_rainfall_duration not in (None, "") else None
 
         return JSONResponse(
             public_citywide_2d_timeseries_payload(
-                time_index, return_period, result_source
+                time_index,
+                return_period,
+                result_source,
+                rainfall_total,
+                rainfall_duration,
             )
         )
     except (TypeError, ValueError) as error:

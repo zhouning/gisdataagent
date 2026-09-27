@@ -1356,7 +1356,8 @@ type RainfallForcingTarget = 'swmm' | 'anuga' | 'commercial';
 type ReturnPeriodYears = 2 | 5 | 10 | 25 | 50 | 100;
 type GwmMode = 'trained' | 'screening';
 type SurfaceWorkspaceView = 'invoke' | 'results';
-type SurfaceResultSource = 'return_period_one_way' | 'bidirectional_validation' | 'partial_one_way_61mm_2h';
+type SurfaceResultSource = 'return_period_one_way' | 'bidirectional_validation' | 'partial_one_way_61mm_2h' | 'custom_rainfall';
+type CustomRainfallTotalMm = 33 | 61 | 96;
 
 interface SurfaceRunForm {
   solver: 'anuga';
@@ -2307,6 +2308,8 @@ export default function AbuDhabiFloodWorldModelTab() {
   const [surfaceRunError, setSurfaceRunError] = useState<string | null>(null);
   const [surfaceReturnPeriodYears, setSurfaceReturnPeriodYears] = useState<ReturnPeriodYears>(100);
   const [surfaceResultSource, setSurfaceResultSource] = useState<SurfaceResultSource>('return_period_one_way');
+  const [customRainfallTotalMm, setCustomRainfallTotalMm] = useState<CustomRainfallTotalMm>(96);
+  const [customRainfallDurationHours, setCustomRainfallDurationHours] = useState(2);
   const [surfaceReturnPeriodLoading, setSurfaceReturnPeriodLoading] = useState(false);
   const [surfaceReturnPeriodError, setSurfaceReturnPeriodError] = useState<string | null>(null);
   const [surfaceReloadToken, setSurfaceReloadToken] = useState(0);
@@ -2778,9 +2781,11 @@ export default function AbuDhabiFloodWorldModelTab() {
     let cancelled = false;
     setSurfaceReturnPeriodLoading(true);
     setSurfaceReturnPeriodError(null);
-    const selectedPeriod = surfaceResultSource === 'bidirectional_validation' ? 100 : surfaceResultSource === 'partial_one_way_61mm_2h' ? null : surfaceReturnPeriodYears;
+    const selectedPeriod = surfaceResultSource === 'bidirectional_validation' ? 100 : surfaceResultSource === 'custom_rainfall' || surfaceResultSource === 'partial_one_way_61mm_2h' ? null : surfaceReturnPeriodYears;
     const resultSource = encodeURIComponent(surfaceResultSource);
-    const periodQuery = selectedPeriod == null ? '' : `return_period_years=${selectedPeriod}&`;
+    const periodQuery = surfaceResultSource === 'custom_rainfall'
+      ? `rainfall_total_mm=${customRainfallTotalMm}&rainfall_duration_hours=${customRainfallDurationHours}&`
+      : selectedPeriod == null ? '' : `return_period_years=${selectedPeriod}&`;
     fetch(`/api/abu-dhabi/flood/public-citywide-2d/bootstrap?${periodQuery}result_source=${resultSource}`, { credentials: 'include', headers: getLocaleHeaders() })
       .then(async response => {
         const payload = await response.json().catch(() => null);
@@ -2799,7 +2804,7 @@ export default function AbuDhabiFloodWorldModelTab() {
             loadedAt: new Date().toISOString(),
           });
           const available = Array.isArray(payload.metadata?.available_return_periods) ? payload.metadata.available_return_periods.map(Number) : [];
-          if (selectedPeriod != null && !available.includes(selectedPeriod)) {
+          if (!['custom_rainfall', 'partial_one_way_61mm_2h'].includes(surfaceResultSource) && selectedPeriod != null && !available.includes(selectedPeriod)) {
             setSurfaceReturnPeriodError(`${selectedPeriod} 年一遇二维结果当前未生成。`);
           }
         } else if (payload?.error) {
@@ -2815,7 +2820,7 @@ export default function AbuDhabiFloodWorldModelTab() {
         if (!cancelled) setSurfaceReturnPeriodLoading(false);
       });
     return () => { cancelled = true; };
-  }, [surfaceReloadToken]);
+  }, [surfaceReloadToken, surfaceResultSource, customRainfallTotalMm, customRainfallDurationHours, surfaceReturnPeriodYears]);
 
   // Restore the latest completed private run after a browser refresh. The
   // server returns only the auditable run receipt; native OUT slices are still
@@ -4400,12 +4405,12 @@ export default function AbuDhabiFloodWorldModelTab() {
     : publicCitywide2dVisible
     ? localizeAbuPair(
       surfaceIsPartialOneWay
-        ? `61 mm / 2 h 全市 250 m 单向 SWMM→ANUGA 部分结果已接入：已完成 ${Number(publicCitywide2dDiagnostic?.metadata?.completed_window_count || 0)} / ${Number(publicCitywide2dDiagnostic?.metadata?.expected_window_count || 312)} 个五分钟窗口，覆盖到 ${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.elapsed_minutes?.slice(-1)[0] || 0).toFixed(0)} 分钟；最后 5 分钟缺失，不能证明完全退水。最大积水范围图层按 ≥ ${Number(publicCitywide2dDiagnostic?.metadata?.maximum_inundation_extent_threshold_m || 0.01).toFixed(2)} m 发布。`
+        ? `${String(publicCitywide2dDiagnostic?.metadata?.scenario_label || '61 mm / 2 h')} 全市 250 m 单向 SWMM→ANUGA 部分结果已接入：已完成 ${Number(publicCitywide2dDiagnostic?.metadata?.completed_window_count || 0)} / ${Number(publicCitywide2dDiagnostic?.metadata?.expected_window_count || 888)} 个五分钟窗口，覆盖到 ${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.elapsed_minutes?.slice(-1)[0] || 0).toFixed(0)} 分钟；最后 5 分钟缺失，不能证明完全退水。最大积水范围图层按 ≥ ${Number(publicCitywide2dDiagnostic?.metadata?.maximum_inundation_extent_threshold_m || 0.01).toFixed(2)} m 发布。`
         : surfaceIsBidirectionalValidation
         ? `客户 5 m DTM 的 100 年一遇 SWMM–ANUGA 同步双向数值验证成果已接入：${Number(surfaceCouplingSummary.window_count || 0)} 个同步窗口、${Number(surfaceCouplingSummary.interface_count || 0).toLocaleString()} 个交换接口，且回执记录非零 ANUGA→SWMM 回流。这是同步交换验证成果，未校准、未工程准入；每窗口原生 SWMM 重新调用仍需运行日志证明。`
         : `${customerDtmSurfaceActive ? '客户 5 m DTM 输入' : 'Copernicus DEM GLO-30 公共 DEM'}的全市二维结果已接入：250 m 计算网格、${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.period_count || 0)} 个时间片；ESA WorldCover 2021 陆海掩膜已应用，${Number(publicLandWaterMask?.excluded_permanent_water_cells || 0).toLocaleString()} 个永久水体或土地覆盖源外单元已排除。结果未校准、未工程准入。`,
       surfaceIsPartialOneWay
-        ? `The 61 mm / 2 h citywide 250 m partial one-way SWMM→ANUGA result is integrated: ${Number(publicCitywide2dDiagnostic?.metadata?.completed_window_count || 0)} of ${Number(publicCitywide2dDiagnostic?.metadata?.expected_window_count || 312)} five-minute windows are available through ${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.elapsed_minutes?.slice(-1)[0] || 0).toFixed(0)} minutes. The final five minutes are missing, so complete recession is not verified. The maximum-inundation extent layer uses a ≥ ${Number(publicCitywide2dDiagnostic?.metadata?.maximum_inundation_extent_threshold_m || 0.01).toFixed(2)} m threshold.`
+        ? `The ${String(publicCitywide2dDiagnostic?.metadata?.scenario_label || '61 mm / 2 h')} citywide 250 m partial one-way SWMM→ANUGA result is integrated: ${Number(publicCitywide2dDiagnostic?.metadata?.completed_window_count || 0)} of ${Number(publicCitywide2dDiagnostic?.metadata?.expected_window_count || 888)} five-minute windows are available through ${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.elapsed_minutes?.slice(-1)[0] || 0).toFixed(0)} minutes. The final five minutes are missing, so complete recession is not verified. The maximum-inundation extent layer uses a ≥ ${Number(publicCitywide2dDiagnostic?.metadata?.maximum_inundation_extent_threshold_m || 0.01).toFixed(2)} m threshold.`
         : surfaceIsBidirectionalValidation
         ? `The customer-DTM 100-year SWMM–ANUGA synchronous two-way numerical-validation result is integrated with ${Number(surfaceCouplingSummary.window_count || 0)} synchronized windows and ${Number(surfaceCouplingSummary.interface_count || 0).toLocaleString()} exchange interfaces; the receipt records non-zero ANUGA-to-SWMM return flow. It is not calibrated or engineering-admitted, and native SWMM re-invocation in every window still requires runtime-log evidence.`
         : `${customerDtmSurfaceActive ? 'The citywide 2D result using the customer 5 m DTM as input' : 'The citywide public 2D result using Copernicus DEM GLO-30'} is integrated on a 250 m computational grid with ${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.period_count || 0)} time slices. The ESA WorldCover 2021 mask excludes ${Number(publicLandWaterMask?.excluded_permanent_water_cells || 0).toLocaleString()} permanent-water or out-of-coverage cells. The result is uncalibrated and not engineering-admitted.`,
@@ -4950,11 +4955,14 @@ export default function AbuDhabiFloodWorldModelTab() {
               </aside>
             </div> : <div className="abu-flood-precomputed-surface-page">
               <div className="abu-flood-surface-period-control">
-                <div><strong>{localizeAbuText('已登记的二维成果')}</strong><small>{localizeAbuText('单向多年一遇成果、同步双向验证成果和现有 61 mm / 2 h 部分结果独立保留；加载只读成果和回执，不会启动新计算。')}</small></div>
-                <label>{localizeAbuText('成果来源')}<select value={surfaceResultSource} disabled={surfaceReturnPeriodLoading} onChange={event => { const source = event.target.value as SurfaceResultSource; setSurfaceReturnPeriodError(null); setSurfaceResultSource(source); if (source === 'bidirectional_validation') setSurfaceReturnPeriodYears(100); }}><option value="return_period_one_way">{localizeAbuText('SWMM→ANUGA 单向多年一遇（6 套）')}</option><option value="bidirectional_validation">{localizeAbuText('SWMM–ANUGA 同步双向验证（100 年一遇）')}</option><option value="partial_one_way_61mm_2h">{localizeAbuText('61 mm / 2 h 单向耦合部分结果（311/312 窗口）')}</option></select></label>
-                <label>{localizeAbuText('设计重现期')}<select value={surfaceResultSource === 'bidirectional_validation' ? 100 : surfaceReturnPeriodYears} disabled={surfaceReturnPeriodLoading || surfaceResultSource !== 'return_period_one_way'} onChange={event => { setSurfaceReturnPeriodError(null); setSurfaceReturnPeriodYears(Number(event.target.value) as ReturnPeriodYears); }}>{([2, 5, 10, 25, 50, 100] as ReturnPeriodYears[]).map(value => <option key={value} value={value}>{value}{localizeAbuText('年一遇')}</option>)}</select></label>
+                <div><strong>{localizeAbuText('已登记的二维成果')}</strong><small>{localizeAbuText('单向多年一遇成果、同步双向验证成果以及 2 小时 33 / 61 / 96 mm 单向耦合成果独立保留；加载只读成果和回执，不会启动新计算。')}</small></div>
+                <label>{localizeAbuText('成果来源')}<select value={surfaceResultSource} disabled={surfaceReturnPeriodLoading} onChange={event => { const source = event.target.value as SurfaceResultSource; setSurfaceReturnPeriodError(null); setSurfaceResultSource(source); if (source === 'bidirectional_validation') setSurfaceReturnPeriodYears(100); }}><option value="return_period_one_way">{localizeAbuText('SWMM→ANUGA 单向多年一遇（6 套）')}</option><option value="bidirectional_validation">{localizeAbuText('SWMM–ANUGA 同步双向验证（100 年一遇）')}</option><option value="custom_rainfall">{localizeAbuText('自定义降雨成果（2 小时 33 / 61 / 96 mm）')}</option><option value="partial_one_way_61mm_2h">{localizeAbuText('旧版 61 mm / 2 h 部分结果')}</option></select></label>
+                {surfaceResultSource === 'custom_rainfall' ? <>
+                  <label>{localizeAbuText('累计降雨量')}<select value={customRainfallTotalMm} disabled={surfaceReturnPeriodLoading} onChange={event => { setSurfaceReturnPeriodError(null); setCustomRainfallTotalMm(Number(event.target.value) as CustomRainfallTotalMm); }}>{([33, 61, 96] as CustomRainfallTotalMm[]).map(value => <option key={value} value={value}>{value} mm</option>)}</select></label>
+                  <label>{localizeAbuText('降雨时长')}<select value={customRainfallDurationHours} disabled={surfaceReturnPeriodLoading}><option value={2}>2 h</option></select></label>
+                </> : <label>{localizeAbuText('设计重现期')}<select value={surfaceResultSource === 'bidirectional_validation' ? 100 : surfaceReturnPeriodYears} disabled={surfaceReturnPeriodLoading || surfaceResultSource !== 'return_period_one_way'} onChange={event => { setSurfaceReturnPeriodError(null); setSurfaceReturnPeriodYears(Number(event.target.value) as ReturnPeriodYears); }}>{([2, 5, 10, 25, 50, 100] as ReturnPeriodYears[]).map(value => <option key={value} value={value}>{value}{localizeAbuText('年一遇')}</option>)}</select></label>}
                 <div className="abu-flood-scenario-actions"><button className="abu-flood-map-action" type="button" disabled={surfaceReturnPeriodLoading} onClick={() => setSurfaceReloadToken(value => value + 1)}>{surfaceReturnPeriodLoading ? <LoaderCircle className="abu-flood-loading-icon" size={14} /> : <MapIcon size={14} />}{surfaceReturnPeriodLoading ? localizeAbuText('正在加载二维结果…') : localizeAbuText('加载到地图')}</button></div>
-                <span className="abu-flood-surface-period-status" aria-live="polite">{surfaceReturnPeriodLoading ? localizeAbuText('正在读取最大深度、时间轴与运行回执…') : surfaceResultVariant === surfaceResultSource && surfaceModelConfiguration.execution_mode === 'registered_precomputed_result' ? localizeAbuText(surfaceResultSource === 'bidirectional_validation' ? '100 年一遇同步双向数值验证成果已加载' : surfaceResultSource === 'partial_one_way_61mm_2h' ? '61 mm / 2 h 部分结果已加载（311/312 窗口）' : `${surfaceReturnPeriodYears} 年一遇单向登记成果已加载`) : localizeAbuText('已选择成果来源，点击“加载到地图”读取成果')}</span>
+                <span className="abu-flood-surface-period-status" aria-live="polite">{surfaceReturnPeriodLoading ? localizeAbuText('正在读取最大深度、时间轴与运行回执…') : surfaceResultVariant === surfaceResultSource && surfaceModelConfiguration.execution_mode === 'registered_precomputed_result' ? localizeAbuText(surfaceResultSource === 'bidirectional_validation' ? '100 年一遇同步双向数值验证成果已加载' : surfaceResultSource === 'custom_rainfall' ? `${customRainfallTotalMm} mm / 2 h 单向耦合成果已加载` : surfaceResultSource === 'partial_one_way_61mm_2h' ? '旧版 61 mm / 2 h 部分结果已加载' : `${surfaceReturnPeriodYears} 年一遇单向登记成果已加载`) : localizeAbuText('已选择成果来源，点击“加载到地图”读取成果')}</span>
                 {surfaceReturnPeriodError && <span className="abu-flood-form-error"><AlertTriangle size={13} />{localizeAbuText(surfaceReturnPeriodError)}</span>}
               </div>
               <div className="abu-flood-scenario-result-metrics abu-flood-surface-result-metrics">
@@ -4978,7 +4986,7 @@ export default function AbuDhabiFloodWorldModelTab() {
                 <div><span>ANUGA → SWMM</span><strong>{(Number(surfaceCouplingSummary.total_anuga_to_swmm_m3 || 0) / 1_000_000).toFixed(2)}</strong><small>{localizeAbuText('百万 m³')}</small></div>
               </div>}
               <div className="abu-flood-registered-result-receipt"><FileCheck2 size={15} /><div><strong>{localizeAbuText('登记成果运行回执')}</strong><span>Run ID: <code>{surfaceInvocationReceipt?.runId || publicCitywide2dDiagnostic?.metadata?.timeline?.run_id || '—'}</code></span><small>{localizeAbuText(`${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.total_cell_count || 0).toLocaleString()} 个陆域单元 · ${Number(publicCitywide2dDiagnostic?.metadata?.timeline?.period_count || 0)} 个时间片 · 海边界 ${Number(surfaceModelConfiguration.sea_boundary_level_m || 0).toFixed(2)} m · 永久水体阈值 ${Number(surfaceModelConfiguration.water_cell_fraction_threshold || 0.2).toFixed(2)}`)}</small></div></div>
-              <div className="abu-flood-validation-gate pending"><LockKeyhole size={13} /><div><strong>{localizeAbuText('能力边界')}</strong><span>{localizeAbuText(surfaceIsPartialOneWay ? '这是现有 61 mm / 2 h 单向耦合的部分结果：311/312 个窗口已发布，最后 5 分钟缺失，完全退水未验证。最大积水范围图层按最大水深 ≥ 0.01 m 生成。结果未校准、未工程准入。' : surfaceIsBidirectionalValidation ? '该成果的回执记录了同步窗口中的正向与反向交换，可作为 SWMM–ANUGA 双向数值验证成果使用；但回执单独不能证明每个时间窗都重新调用了原生 SWMM，且完整 SWMM 系统质量平衡未在该动态 API 回执中评估。结果未校准、未工程准入。' : '这六套多年一遇成果使用已完成的 SWMM 原生 OUT 作为 ANUGA 单向源项，没有动态水头反向反馈；结果未校准、未工程准入。')}</span></div></div>
+              <div className="abu-flood-validation-gate pending"><LockKeyhole size={13} /><div><strong>{localizeAbuText('能力边界')}</strong><span>{localizeAbuText(surfaceIsPartialOneWay ? `这是现有 ${String(publicCitywide2dDiagnostic?.metadata?.scenario_label || '61 mm / 2 h')} 单向耦合的部分结果：${Number(publicCitywide2dDiagnostic?.metadata?.completed_window_count || 0)}/${Number(publicCitywide2dDiagnostic?.metadata?.expected_window_count || 888)} 个窗口已发布，最后 5 分钟缺失，完全退水未验证。最大积水范围图层按最大水深 ≥ 0.01 m 生成。结果未校准、未工程准入。` : surfaceIsBidirectionalValidation ? '该成果的回执记录了同步窗口中的正向与反向交换，可作为 SWMM–ANUGA 双向数值验证成果使用；但回执单独不能证明每个时间窗都重新调用了原生 SWMM，且完整 SWMM 系统质量平衡未在该动态 API 回执中评估。结果未校准、未工程准入。' : '这六套多年一遇成果使用已完成的 SWMM 原生 OUT 作为 ANUGA 单向源项，没有动态水头反向反馈；结果未校准、未工程准入。')}</span></div></div>
             </div>}
           </div>}
           {selectedKey === 'gwm' && <div className="abu-flood-surface-period-control abu-flood-gwm-control">
