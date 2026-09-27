@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import json
 import re
+import importlib.util
 from urllib.parse import quote_plus, urlparse
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,23 @@ from .storage import read_json, run_dir
 
 def _coordinator() -> HydroRunCoordinator:
     return HydroRunCoordinator()
+
+
+def _swmm_out_parser() -> Any:
+    """Load the native SWMM OUT parser without optional UWM dependencies."""
+
+    try:
+        from ..uwm.abu_dhabi_flood import swmm_out_parser
+
+        return swmm_out_parser
+    except ModuleNotFoundError:
+        parser_path = Path(__file__).resolve().parents[1] / "uwm" / "abu_dhabi_flood" / "swmm_out_parser.py"
+        spec = importlib.util.spec_from_file_location("hydro_swmm_out_parser", parser_path)
+        if spec is None or spec.loader is None:
+            raise
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
 
 
 def _optional_int_environment(name: str) -> int | None:
@@ -374,6 +392,79 @@ def _area_options_from_object_uri(uri: str) -> tuple[list[dict[str, Any]], dict[
     return options, {**metadata, "uri": uri}
 
 
+def _model_region_geometry(catchments: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Dissolve subcatchments into one honest model-region boundary.
+
+    Shapely is present in the hydrodynamics runtime and produces a compact
+    union.  The dependency-free fallback preserves the exact component
+    polygons as a MultiPolygon instead of replacing them with a misleading
+    bounding box.
+    """
+
+    geometries = [
+        item.get("geometry")
+        for item in catchments
+        if isinstance(item.get("geometry"), dict)
+        and item["geometry"].get("type") in {"Polygon", "MultiPolygon"}
+    ]
+    if not geometries:
+        return None
+    try:
+        from shapely.geometry import mapping, shape
+        from shapely.ops import unary_union
+
+        dissolved = mapping(unary_union([shape(geometry) for geometry in geometries]))
+        if dissolved.get("type") in {"Polygon", "MultiPolygon"}:
+            return dissolved
+    except Exception:
+        pass
+    polygons: list[Any] = []
+    for geometry in geometries:
+        if geometry["type"] == "Polygon":
+            polygons.append(geometry.get("coordinates") or [])
+        else:
+            polygons.extend(geometry.get("coordinates") or [])
+    return {"type": "MultiPolygon", "coordinates": polygons} if polygons else None
+
+
+def _model_region_options(
+    catchments: list[dict[str, Any]], regional_pilots: dict[str, dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Expose complete solver packages, not individual runoff units, as AOIs."""
+
+    by_region: dict[str, list[dict[str, Any]]] = {}
+    for option in catchments:
+        properties = option.get("properties") if isinstance(option.get("properties"), dict) else {}
+        region = str(properties.get("region") or "").strip()
+        if region:
+            by_region.setdefault(region, []).append(option)
+    options: list[dict[str, Any]] = []
+    for region, package in sorted(regional_pilots.items()):
+        members = by_region.get(region, [])
+        geometry = _model_region_geometry(members)
+        if geometry is None:
+            configured = package.get("geometry")
+            geometry = configured if isinstance(configured, dict) else None
+        if not geometry or geometry.get("type") not in {"Polygon", "MultiPolygon"}:
+            continue
+        options.append(
+            {
+                "id": region,
+                "name": str(package.get("name") or region),
+                "geometry": geometry,
+                "properties": {
+                    "region": region,
+                    "selection_role": "complete_model_region",
+                    "subcatchment_count": len(members)
+                    or int(package.get("catchment_count") or 0),
+                    "engineering_admission": package.get("engineering_admission", "diagnostic_only"),
+                    "status": package.get("status", "registered"),
+                },
+            }
+        )
+    return options
+
+
 _SAFE_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -494,7 +585,7 @@ def _area_options_from_database(kind: str) -> tuple[list[dict[str, Any]], dict[s
             "table": table,
         }
 def hydro_area_options_payload() -> dict[str, Any]:
-    """Return real administrative/catchment choices registered by a deployment."""
+    """Return administrative areas, model regions and subcatchment filters."""
 
     administrative = _area_options_from_environment("HYDRO_ADMINISTRATIVE_OPTIONS_JSON")
     catchments = _area_options_from_environment("HYDRO_CATCHMENT_OPTIONS_JSON")
@@ -511,13 +602,25 @@ def hydro_area_options_payload() -> dict[str, Any]:
         catchments, catchment_source = _area_options_from_object_uri(catchment_uri)
     elif not catchments:
         catchments, catchment_source = _area_options_from_database("catchments")
+    model_regions = _model_region_options(catchments, _regional_pilot_catalog())
+    model_region_source = {
+        "status": "ready" if model_regions else "not_registered",
+        "uri": catchment_source.get("uri", ""),
+        "count": len(model_regions),
+        "derived_from": "registered_subcatchment_catalog_and_regional_model_packages",
+    }
     return {
         "schema": "gwm.abu_dhabi_flood.hydro_area_options.v1",
         "crs": "EPSG:4326",
         "administrative_units": administrative,
+        "model_regions": model_regions,
+        "subcatchments": catchments,
+        # Compatibility alias for older clients and retained run manifests.
         "catchments": catchments,
         "sources": {
             "administrative_units": administrative_source,
+            "model_regions": model_region_source,
+            "subcatchments": catchment_source,
             "catchments": catchment_source,
         },
         "freehand": {"status": "ready"},
@@ -660,6 +763,7 @@ async def get_hydro_map(request: Request) -> JSONResponse:
     candidates = {
         "one_d": directory / "one_d" / "network.geojson",
         "two_d": directory / "two_d" / "depth_points.geojson",
+        "two_d_maximum": directory / "two_d" / "maximum_depth_points.geojson",
         "coupled": directory / "coupled" / "maximum_depth_wgs84.geojson",
     }
     path = (
@@ -673,6 +777,135 @@ async def get_hydro_map(request: Request) -> JSONResponse:
         return JSONResponse(read_json(path))
     except (OSError, ValueError, TypeError):
         return JSONResponse({"error": "hydro_map_not_ready"}, status_code=404)
+
+
+def _hydro_timeline_payload(directory: Path, layer: str | None = None) -> dict[str, Any]:
+    """Expose the solver-native time axes used by the shared map player."""
+
+    result_path = directory / "result.json"
+    result = read_json(result_path) if result_path.exists() else {}
+    branches: dict[str, dict[str, Any]] = {}
+    for key, result_key, directory_name in (
+        ("one_d", "one_d", "one_d"),
+        ("two_d", "two_d", "two_d"),
+    ):
+        branch = result.get(result_key)
+        if not isinstance(branch, dict) and isinstance(result.get("coupled"), dict):
+            branch = result["coupled"].get(result_key)
+        if not isinstance(branch, dict):
+            branch = {}
+        timeline_file = str(branch.get("timeline") or "")
+        path = Path(timeline_file) if timeline_file else directory / directory_name / "timeline.json"
+        if not path.is_absolute():
+            path = directory / path
+        if path.exists():
+            timeline = read_json(path)
+        elif key == "one_d":
+            # Backfill the timeline for runs created before the workbench
+            # started recording timeline.json. The native OUT is retained and
+            # is sufficient to reconstruct the report clock without rerunning.
+            binary = directory / directory_name / "model.out"
+            if not binary.exists() and (directory / "coupled" / directory_name / "model.out").exists():
+                binary = directory / "coupled" / directory_name / "model.out"
+            if not binary.exists():
+                continue
+            try:
+                parser = _swmm_out_parser()
+                header = parser.read_swmm_out_header(binary)
+                timeline = parser.timeline_from_header(header)
+                timeline.update({
+                    "kind": "swmm-node",
+                    "total_node_count": int(header.get("n_nodes", 0)),
+                    "report_step_minutes": float(header.get("report_step_seconds", 0)) / 60.0,
+                })
+            except (OSError, ValueError):
+                continue
+        else:
+            continue
+        if not isinstance(timeline, dict) or not timeline.get("available"):
+            continue
+        timeline = {**timeline}
+        timeline["endpoint"] = f"/api/abu-dhabi/flood/hydro-runs/__RUN_ID__/timeseries?layer={key}"
+        timeline["maximum_map"] = branch.get("maximum_map")
+        timeline["final_map"] = branch.get("map")
+        branches[key] = timeline
+    return {"schema": "gwm.abu_dhabi_flood.hydro_timeline.v1", "available": bool(branches), "layers": branches}
+
+
+async def get_hydro_timeline(request: Request) -> JSONResponse:
+    run_id = str(request.path_params.get("run_id") or "")
+    try:
+        coordinator = _coordinator()
+        coordinator.assert_access(run_id)
+        coordinator.assert_integrity(run_id)
+        directory = run_dir(run_id, coordinator.root) / "results"
+        payload = _hydro_timeline_payload(directory)
+        encoded = json.dumps(payload, ensure_ascii=False)
+        payload = json.loads(encoded.replace("__RUN_ID__", run_id))
+        return JSONResponse(payload)
+    except (FileNotFoundError, ValueError, OSError, HydroRunAccessError, HydroRunStateError):
+        return JSONResponse({"error": "hydro_timeline_not_ready"}, status_code=404)
+
+
+async def get_hydro_timeseries(request: Request) -> JSONResponse:
+    run_id = str(request.path_params.get("run_id") or "")
+    layer = str(request.query_params.get("layer") or "")
+    try:
+        time_index = int(request.query_params.get("time_index", "0"))
+    except ValueError:
+        return JSONResponse({"error": "time_index_invalid"}, status_code=400)
+    try:
+        coordinator = _coordinator()
+        coordinator.assert_access(run_id)
+        coordinator.assert_integrity(run_id)
+        directory = run_dir(run_id, coordinator.root) / "results"
+        timeline = _hydro_timeline_payload(directory).get("layers", {}).get(layer)
+        if not isinstance(timeline, dict):
+            return JSONResponse({"error": "hydro_timeline_layer_not_ready"}, status_code=404)
+        if time_index < 0 or time_index >= int(timeline.get("period_count", 0)):
+            return JSONResponse({"error": "time_index_out_of_range"}, status_code=400)
+        if layer == "two_d":
+            item = (timeline.get("snapshots") or [])[time_index]
+            path = Path(str(item.get("path") or ""))
+            if not path.is_absolute():
+                path = directory / path
+            payload = read_json(path)
+            payload["metadata"] = {**payload.get("metadata", {}), "timeline": timeline, "time_index": time_index, "elapsed_minutes": timeline.get("elapsed_minutes", [])[time_index]}
+            return JSONResponse(payload)
+        # SWMM OUT is read natively one reporting period at a time.
+        parser = _swmm_out_parser()
+        binary = directory / "one_d" / "model.out"
+        if not binary.exists() and (directory / "coupled" / "one_d" / "model.out").exists():
+            binary = directory / "coupled" / "one_d" / "model.out"
+        network_path = directory / "one_d" / "network.geojson"
+        if not network_path.exists():
+            network_path = directory / "coupled" / "one_d" / "network.geojson"
+        header = parser.read_swmm_out_header(binary)
+        period = parser.read_node_period(binary, header, time_index)
+        network = read_json(network_path)
+        geometries = {
+            str(feature.get("properties", {}).get("id")): feature.get("geometry")
+            for feature in network.get("features", [])
+            if feature.get("geometry") and feature.get("geometry", {}).get("type") == "Point"
+        }
+        features = []
+        for position, values in enumerate(period.get("nodes", [])):
+            if position >= len(header.get("node_names", [])) or len(values) < 6:
+                continue
+            node_id = str(header["node_names"][position])
+            geometry = geometries.get(node_id)
+            if not geometry:
+                continue
+            features.append({"type": "Feature", "geometry": geometry, "properties": {
+                "id": node_id, "kind": "junction", "time_index": time_index,
+                "timestamp": period.get("timestamp"), "elapsed_minutes": period.get("elapsed_minutes"),
+                "water_depth_m": max(0.0, float(values[0])),
+                "hydraulic_head_m": float(values[1]), "stored_volume_m3": max(0.0, float(values[2])),
+                "total_inflow_m3s": float(values[4]), "overflow_or_flooding_m3s": max(0.0, float(values[5])),
+            }})
+        return JSONResponse({"type": "FeatureCollection", "name": f"{run_id}_one_d_time_{time_index:04d}", "features": features, "metadata": {"timeline": timeline, "time_index": time_index, "timestamp": period.get("timestamp"), "elapsed_minutes": period.get("elapsed_minutes"), "node_feature_count": len(features)}})
+    except (FileNotFoundError, ValueError, OSError, HydroRunAccessError, HydroRunStateError):
+        return JSONResponse({"error": "hydro_timeseries_not_ready"}, status_code=404)
 
 
 def hydro_routes(*, authenticated: bool = False) -> list[Any]:
@@ -712,6 +945,8 @@ def hydro_routes(*, authenticated: bool = False) -> list[Any]:
                 methods=["GET"],
             ),
             Route("/api/abu-dhabi/flood/hydro-runs/{run_id}/map", get_hydro_map, methods=["GET"]),
+            Route("/api/abu-dhabi/flood/hydro-runs/{run_id}/timeline", get_hydro_timeline, methods=["GET"]),
+            Route("/api/abu-dhabi/flood/hydro-runs/{run_id}/timeseries", get_hydro_timeseries, methods=["GET"]),
         ]
     return []
 

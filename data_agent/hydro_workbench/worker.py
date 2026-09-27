@@ -19,6 +19,30 @@ from typing import Any
 from .contracts import manifest_sha256
 from .storage import atomic_json, read_manifest, run_dir, update_status
 
+# The full application exposes the parser through the Abu Dhabi adapter.  A
+# worker image is intentionally slimmer, however, and does not need the
+# adapter's optional geospatial stack (GeoPandas, raster tooling, etc.).  Load
+# the parser directly when importing the public package would pull those
+# optional modules into the Job and fail before the model starts.
+try:
+    from ..uwm.abu_dhabi_flood.swmm_out_parser import (
+        read_node_period,
+        read_swmm_out_header,
+        timeline_from_header,
+    )
+except ModuleNotFoundError:
+    import importlib.util
+
+    _parser_path = Path(__file__).resolve().parents[1] / "uwm" / "abu_dhabi_flood" / "swmm_out_parser.py"
+    _parser_spec = importlib.util.spec_from_file_location("hydro_swmm_out_parser", _parser_path)
+    if _parser_spec is None or _parser_spec.loader is None:
+        raise
+    _parser_module = importlib.util.module_from_spec(_parser_spec)
+    _parser_spec.loader.exec_module(_parser_module)
+    read_node_period = _parser_module.read_node_period
+    read_swmm_out_header = _parser_module.read_swmm_out_header
+    timeline_from_header = _parser_module.timeline_from_header
+
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
@@ -298,6 +322,20 @@ def _network_geojson(inp_path: Path, report_text: str, output: Path) -> Path:
     return geojson_path
 
 
+def _swmm_timeline_and_frames(binary: Path, network_path: Path, output: Path) -> Path:
+    """Persist a native SWMM OUT timeline contract for the shared map player."""
+    header = read_swmm_out_header(binary)
+    timeline = timeline_from_header(header)
+    timeline.update({
+        "kind": "swmm-node",
+        "total_node_count": int(header.get("n_nodes", 0)),
+        "report_step_minutes": float(header.get("report_step_seconds", 0)) / 60.0,
+    })
+    timeline_path = output / "timeline.json"
+    atomic_json(timeline_path, timeline)
+    return timeline_path
+
+
 def _run_1d(manifest: dict[str, Any], output: Path) -> dict[str, Any]:
     output.mkdir(parents=True, exist_ok=True)
     if manifest["request"]["input_mode"] == "customer_mount":
@@ -335,6 +373,7 @@ def _run_1d(manifest: dict[str, Any], output: Path) -> dict[str, Any]:
             {"type": "Feature", "geometry": {"type": "Point", "coordinates": [max_lon, mid_lat]}, "properties": {"id": "O1", "kind": "outfall"}},
             {"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[(min_lon + max_lon) / 2, mid_lat], [max_lon, mid_lat]]}, "properties": {"id": "C1", "kind": "conduit"}},
         ]))
+    timeline_path = _swmm_timeline_and_frames(binary, geojson_path, output)
     model_scope = "Musaffah_00 customer SWMM network" if manifest["request"]["input_mode"] == "customer_mount" else "single-subcatchment development fixture"
     return {
         "solver": "epa_swmm",
@@ -348,6 +387,7 @@ def _run_1d(manifest: dict[str, Any], output: Path) -> dict[str, Any]:
         "binary_sha256": _sha256(binary),
         "quality": _parse_swmm_report(report_text),
         "map": str(geojson_path),
+        "timeline": str(timeline_path),
     }
 
 
@@ -429,41 +469,106 @@ def _run_2d(manifest: dict[str, Any], output: Path) -> dict[str, Any]:
     anuga.Rate_operator(domain, rate=rate, label="manifest_rainfall")
     final_time = float(rainfall["duration_minutes"]) * 60.0
     yieldstep = min(float(params["timestep_seconds"]), 300.0)
-    for _ in domain.evolve(yieldstep=yieldstep, finaltime=final_time):
-        pass
     elevation = np.asarray(domain.quantities["elevation"].centroid_values, dtype=float)
-    stage = np.asarray(domain.quantities["stage"].centroid_values, dtype=float)
-    depth = np.maximum(0.0, stage - elevation)
     centroids = np.asarray(domain.centroid_coordinates, dtype=float)
     try:
         from pyproj import Transformer  # type: ignore
         to_wgs84 = Transformer.from_crs(terrain_crs, "EPSG:4326", always_xy=True) if terrain_path else None
     except Exception:
         to_wgs84 = None
-    features = []
-    stride = max(1, int(len(depth) / 400))
-    for index in range(0, len(depth), stride):
+    stride = max(1, int(len(centroids) / 1200))
+    sampled_indices = list(range(0, len(centroids), stride))
+    point_coordinates: dict[int, list[float]] = {}
+    for index in sampled_indices:
         x, y = centroids[index]
         if to_wgs84 is not None:
             lon, lat = to_wgs84.transform(float(x) + left, float(y) + bottom)
         else:
             lon = min_lon + (x / width_m) * (max_lon - min_lon)
             lat = min_lat + (y / height_m) * (max_lat - min_lat)
-        features.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": [float(lon), float(lat)]}, "properties": {"kind": "surface_depth", "depth_m": float(depth[index]), "cell_index": index}})
+        point_coordinates[index] = [float(lon), float(lat)]
+
+    snapshots_dir = output / "temporal_snapshots"
+    snapshots_dir.mkdir(parents=True, exist_ok=True)
+    snapshot_manifest: list[dict[str, Any]] = []
+    maximum_depth = np.zeros_like(elevation, dtype=float)
+    final_depth = np.zeros_like(elevation, dtype=float)
+    frame_index = 0
+    for _ in domain.evolve(yieldstep=yieldstep, finaltime=final_time):
+        stage = np.asarray(domain.quantities["stage"].centroid_values, dtype=float)
+        depth = np.maximum(0.0, stage - elevation)
+        maximum_depth = np.maximum(maximum_depth, depth)
+        final_depth = depth
+        features = [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": point_coordinates[index]},
+                "properties": {
+                    "kind": "surface_depth",
+                    "depth_m": float(depth[index]),
+                    "cell_index": index,
+                    "time_index": frame_index,
+                },
+            }
+            for index in sampled_indices
+        ]
+        frame_path = snapshots_dir / f"frame_{frame_index:04d}.geojson"
+        atomic_json(frame_path, _geojson_feature_collection(features))
+        snapshot_manifest.append({"time_index": frame_index, "elapsed_seconds": float(domain.get_time()), "path": str(frame_path)})
+        frame_index += 1
+    if not snapshot_manifest:
+        stage = np.asarray(domain.quantities["stage"].centroid_values, dtype=float)
+        final_depth = np.maximum(0.0, stage - elevation)
+        maximum_depth = final_depth.copy()
+    timeline = {
+        "available": bool(snapshot_manifest),
+        "source": "ANUGA yieldstep surface snapshots",
+        "kind": "surface-cell",
+        "period_count": len(snapshot_manifest),
+        "time_values": [f"+{float(item['elapsed_seconds']) / 60.0:.1f} min" for item in snapshot_manifest],
+        "elapsed_minutes": [round(float(item["elapsed_seconds"]) / 60.0, 3) for item in snapshot_manifest],
+        "step_minutes": float(yieldstep) / 60.0,
+        "total_cell_count": len(sampled_indices),
+        "snapshots": snapshot_manifest,
+    }
+    timeline_path = output / "timeline.json"
+    atomic_json(timeline_path, timeline)
+    final_features = [
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": point_coordinates[index]},
+            "properties": {"kind": "surface_depth", "depth_m": float(final_depth[index]), "cell_index": index},
+        }
+        for index in sampled_indices
+    ]
+    maximum_features = [
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": point_coordinates[index]},
+            "properties": {"kind": "surface_depth", "depth_m": float(maximum_depth[index]), "cell_index": index},
+        }
+        for index in sampled_indices
+    ]
     geojson_path = output / "depth_points.geojson"
-    atomic_json(geojson_path, _geojson_feature_collection(features))
+    maximum_path = output / "maximum_depth_points.geojson"
+    atomic_json(geojson_path, _geojson_feature_collection(final_features))
+    atomic_json(maximum_path, _geojson_feature_collection(maximum_features))
     summary = {
         "solver": "anuga_2d",
         "status": "completed",
         "anuga_version": str(getattr(anuga, "__version__", "unknown")),
         "triangle_count": int(len(depth)),
-        "minimum_depth_m": float(np.min(depth)),
-        "maximum_depth_m": float(np.max(depth)),
-        "finite": bool(np.isfinite(depth).all()),
+        "minimum_depth_m": float(np.min(final_depth)),
+        "maximum_depth_m": float(np.max(maximum_depth)),
+        "final_maximum_depth_m": float(np.max(final_depth)),
+        "finite": bool(np.isfinite(final_depth).all() and np.isfinite(maximum_depth).all()),
         "grid": {"nx": nx, "ny": ny, "effective_resolution_m": max(dx, dy)},
         "model_scope": "Musaffah_00 customer DTM diagnostic surface" if terrain_path else "single-subcatchment development fixture",
         "diagnostic_only": terrain_path is not None,
         "map": str(geojson_path),
+        "maximum_map": str(maximum_path),
+        "timeline": str(timeline_path),
+        "snapshot_count": len(snapshot_manifest),
     }
     atomic_json(output / "summary.json", summary)
     return summary

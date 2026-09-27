@@ -20,7 +20,10 @@ SCHEMA = "gwm.abu_dhabi_flood.hydro_run_manifest.v1"
 MODEL_TYPES = {"one_d", "two_d", "coupled_1d_2d"}
 RESOURCE_PROFILES = {"cpu_small", "cpu_large", "gpu"}
 INPUT_MODES = {"development_fixture", "customer_mount"}
-AREA_SELECTION_MODES = {"administrative", "catchment", "freehand"}
+# ``catchment`` remains accepted for historical run manifests, but new clients
+# select a model-ready hydraulic region.  Individual SWMM subcatchments are
+# optional filters/statistical units, not standalone 1D/2D solver domains.
+AREA_SELECTION_MODES = {"administrative", "model_region", "catchment", "freehand"}
 RAINFALL_PATTERNS = {"uniform", "alternating_block"}
 ONE_D_ROUTING_METHODS = {"KINWAVE", "DYNWAVE", "STEADY"}
 ONE_D_INFILTRATION_METHODS = {"HORTON", "GREEN_AMPT", "CURVE_NUMBER"}
@@ -78,31 +81,50 @@ def _integer(
 
 
 def _bbox(payload: Any, issues: list[dict[str, Any]]) -> list[float]:
-    if isinstance(payload, dict) and payload.get("type") == "Polygon":
+    if isinstance(payload, dict) and payload.get("type") in {"Polygon", "MultiPolygon"}:
         coordinates = payload.get("coordinates")
-        if isinstance(coordinates, list) and coordinates and isinstance(coordinates[0], list):
-            points = [
-                point for point in coordinates[0] if isinstance(point, list) and len(point) >= 2
-            ]
-            if len(points) >= 4:
-                try:
-                    if points[0][0] != points[-1][0] or points[0][1] != points[-1][1]:
-                        issues.append({"field": "aoi", "message": "Polygon ring must be closed"})
-                    payload = [
-                        min(float(point[0]) for point in points),
-                        min(float(point[1]) for point in points),
-                        max(float(point[0]) for point in points),
-                        max(float(point[1]) for point in points),
-                    ]
-                except (TypeError, ValueError):
-                    issues.append({"field": "aoi", "message": "Polygon coordinates must be numeric"})
-            else:
-                issues.append({"field": "aoi", "message": "Polygon ring must contain at least four points"})
+        points: list[list[Any]] = []
+
+        if payload.get("type") == "Polygon" and isinstance(coordinates, list) and coordinates:
+            outer_ring = coordinates[0]
+            if isinstance(outer_ring, list) and len(outer_ring) >= 2:
+                first, last = outer_ring[0], outer_ring[-1]
+                if (
+                    isinstance(first, list)
+                    and isinstance(last, list)
+                    and len(first) >= 2
+                    and len(last) >= 2
+                    and (first[0] != last[0] or first[1] != last[1])
+                ):
+                    issues.append({"field": "aoi", "message": "Polygon ring must be closed"})
+
+        def collect(value: Any) -> None:
+            if not isinstance(value, list):
+                return
+            if len(value) >= 2 and not isinstance(value[0], list) and not isinstance(value[1], list):
+                points.append(value)
+                return
+            for item in value:
+                collect(item)
+
+        collect(coordinates)
+        if len(points) >= 4:
+            try:
+                payload = [
+                    min(float(point[0]) for point in points),
+                    min(float(point[1]) for point in points),
+                    max(float(point[0]) for point in points),
+                    max(float(point[1]) for point in points),
+                ]
+            except (TypeError, ValueError):
+                issues.append({"field": "aoi", "message": "Polygon coordinates must be numeric"})
+        else:
+            issues.append({"field": "aoi", "message": "Polygon geometry must contain at least four points"})
     if not isinstance(payload, (list, tuple)) or len(payload) != 4:
         issues.append(
             {
                 "field": "aoi",
-                "message": "must be a bbox [min_lon,min_lat,max_lon,max_lat] or GeoJSON Polygon",
+                "message": "must be a bbox [min_lon,min_lat,max_lon,max_lat] or GeoJSON Polygon/MultiPolygon",
             }
         )
         return [54.35, 24.35, 54.45, 24.45]
@@ -138,10 +160,10 @@ def _aoi_geometry(payload: Any, bbox: list[float]) -> dict[str, Any]:
     downstream AOI extraction does not silently expand it to a rectangle.
     """
 
-    if isinstance(payload, dict) and payload.get("type") == "Polygon":
+    if isinstance(payload, dict) and payload.get("type") in {"Polygon", "MultiPolygon"}:
         coordinates = payload.get("coordinates")
         if isinstance(coordinates, list) and coordinates:
-            return {"type": "Polygon", "coordinates": coordinates}
+            return {"type": str(payload["type"]), "coordinates": coordinates}
     min_lon, min_lat, max_lon, max_lat = bbox
     return {
         "type": "Polygon",
@@ -476,11 +498,19 @@ def build_run_manifest(payload: dict[str, Any], *, strict_sources: bool = True) 
             "selection_mode": area_selection_mode,
             "selection_ids": list(area_selection_payload.get("ids") or []),
             "selection_labels": list(area_selection_payload.get("labels") or []),
-            # Deployment-registered regional pilots are selected from the
-            # catchment catalog.  Keep the explicit region in the immutable
-            # manifest so the worker never has to infer a package from an ID.
+            # The model region identifies the complete solver-ready package.
+            # Subcatchments remain optional result/statistics filters and must
+            # never be interpreted as the physical solver domain.
             "region": str(area_selection_payload.get("region") or "").strip() or None,
+            "model_region": str(area_selection_payload.get("model_region") or area_selection_payload.get("region") or "").strip() or None,
+            "selected_subcatchment_ids": [
+                str(value) for value in (area_selection_payload.get("subcatchment_ids") or [])
+            ],
             "user_aoi": {**aoi_geometry, "bbox": aoi, "crs": "EPSG:4326"},
+            "solver_domain": {
+                "scope": "complete_model_region" if area_selection_mode == "model_region" else "requested_aoi_pending_etl",
+                "region": str(area_selection_payload.get("model_region") or area_selection_payload.get("region") or "").strip() or None,
+            },
             "model_calculation_domain": {
                 "type": "bbox",
                 "bbox": model_domain,

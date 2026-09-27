@@ -11,6 +11,8 @@ from .api import (
     create_hydro_run,
     get_hydro_logs,
     get_hydro_map,
+    get_hydro_timeline,
+    get_hydro_timeseries,
     get_hydro_result,
     get_hydro_run,
     list_hydro_runs,
@@ -60,5 +62,7 @@ routes = [
     Route("/api/abu-dhabi/flood/hydro-runs/{run_id}/result", get_hydro_result, methods=["GET"]),
     Route("/api/abu-dhabi/flood/hydro-runs/{run_id}/logs", get_hydro_logs, methods=["GET"]),
     Route("/api/abu-dhabi/flood/hydro-runs/{run_id}/map", get_hydro_map, methods=["GET"]),
+    Route("/api/abu-dhabi/flood/hydro-runs/{run_id}/timeline", get_hydro_timeline, methods=["GET"]),
+    Route("/api/abu-dhabi/flood/hydro-runs/{run_id}/timeseries", get_hydro_timeseries, methods=["GET"]),
 ]
 app = Starlette(debug=False, routes=routes)

@@ -948,12 +948,29 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
     loadLayers();
   }, [layers, viewMode, t]);
 
-  const scenarioTimelineLayer = layers.find((layer) => Boolean(layer.scenarioTimeline))
+  const scenarioTimelineLayers = layers.filter((layer) => Boolean(layer.scenarioTimeline));
+  const [scenarioTimelineLayerName, setScenarioTimelineLayerName] = useState('');
+  const scenarioTimelineLayer = scenarioTimelineLayers.find((layer) => layer.name === scenarioTimelineLayerName)
+    || scenarioTimelineLayers.find((layer) => layer.scenarioTimeline?.kind === 'surface-cell' || layer.scenarioTimeline?.kind === 'gwm-surface-cell')
+    || scenarioTimelineLayers[0]
     || loadedLayers.find((layer) => Boolean(layer.scenarioTimeline));
   const scenarioTimeline = scenarioTimelineLayer?.scenarioTimeline;
+  const activeScenarioTimelineLayerName = scenarioTimelineLayer?.name || '';
   const scenarioTimelineSignature = scenarioTimeline
-    ? `${scenarioTimeline.runId}:${scenarioTimeline.endpoint}:${scenarioTimeline.periodCount}`
+    ? `${activeScenarioTimelineLayerName}:${scenarioTimeline.runId}:${scenarioTimeline.endpoint}:${scenarioTimeline.periodCount}`
     : '';
+
+  useEffect(() => {
+    if (!scenarioTimelineLayers.length) {
+      if (scenarioTimelineLayerName) setScenarioTimelineLayerName('');
+      return;
+    }
+    if (!scenarioTimelineLayers.some((layer) => layer.name === scenarioTimelineLayerName)) {
+      const preferred = scenarioTimelineLayers.find((layer) => layer.scenarioTimeline?.kind === 'surface-cell' || layer.scenarioTimeline?.kind === 'gwm-surface-cell')
+        || scenarioTimelineLayers[0];
+      setScenarioTimelineLayerName(preferred.name);
+    }
+  }, [scenarioTimelineLayerName, scenarioTimelineLayers.map((layer) => layer.name).join('|')]);
 
   // Start node timelines at their first native reporting period. Surface-water
   // runs often have an empty t0 frame, so open them at the final/peak period
@@ -994,6 +1011,15 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
     const index = Math.max(0, Math.min(scenarioTimeIndex, scenarioTimeline.periodCount - 1));
     const requestId = scenarioTimelineRequestRef.current + 1;
     scenarioTimelineRequestRef.current = requestId;
+    // A coupled run can have two independent timelines.  Keep only the
+    // selected result layer on the shared map; otherwise the previous 2D
+    // frame would remain visible after switching to 1D (and vice versa).
+    for (const config of layers.filter((layer) => layer.scenarioTimeline && layer.name !== activeScenarioTimelineLayerName)) {
+      const previousLayer = layerGroupsRef.current.get(config.name);
+      if (previousLayer && mapRef.current?.hasLayer(previousLayer)) {
+        mapRef.current.removeLayer(previousLayer);
+      }
+    }
     let cancelled = false;
     setScenarioTimelineLoading(true);
     const loadSlice = async () => {
@@ -1006,7 +1032,10 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
         const payload = await response.json();
         if (!response.ok) throw new Error(payload?.error || 'SWMM 时间切片读取失败');
         if (cancelled || requestId !== scenarioTimelineRequestRef.current) return;
-        const timelineConfigs = layers.filter((layer) => layer.scenarioTimeline);
+        // Only the selected timeline owns the fetched slice.  A coupled run
+        // can expose both SWMM node frames and ANUGA surface frames; applying
+        // one payload to every timeline layer silently mixed 1D and 2D data.
+        const timelineConfigs = layers.filter((layer) => layer.scenarioTimeline && layer.name === activeScenarioTimelineLayerName);
         const timelineNames = new Set(timelineConfigs.map((layer) => layer.name));
         const nextScenarioSliceData: Record<string, any> = {};
         for (const layerName of timelineNames) {
@@ -1030,16 +1059,16 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           }
         }
         setScenarioSliceData(nextScenarioSliceData);
-        setLoadedLayers((previous) => previous.map((layer) => (
-          layer.scenarioTimeline
-            ? {
-              ...layer,
-              geojsonData: layer.value_column === 'scenario_overflow_or_flooding_m3s'
-                ? { ...payload, features: (Array.isArray(payload?.features) ? payload.features : []).filter((feature: any) => Number(feature?.properties?.scenario_overflow_or_flooding_m3s || 0) > 0) }
-                : payload,
-            }
-            : layer
-        )));
+        setLoadedLayers((previous) => previous.map((layer) => {
+          if (!layer.scenarioTimeline) return layer;
+          if (layer.name !== activeScenarioTimelineLayerName) return { ...layer, geojsonData: undefined };
+          return {
+            ...layer,
+            geojsonData: layer.value_column === 'scenario_overflow_or_flooding_m3s'
+              ? { ...payload, features: (Array.isArray(payload?.features) ? payload.features : []).filter((feature: any) => Number(feature?.properties?.scenario_overflow_or_flooding_m3s || 0) > 0) }
+              : payload,
+          };
+        }));
         window.dispatchEvent(new CustomEvent('swmm-scenario-frame-loaded', {
           detail: {
             runId: scenarioTimeline.runId,
@@ -1067,7 +1096,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
     };
     loadSlice();
     return () => { cancelled = true; };
-  }, [scenarioTimelineSignature, scenarioTimeIndex, layers]);
+  }, [activeScenarioTimelineLayerName, scenarioTimelineSignature, scenarioTimeIndex, layers]);
 
   useEffect(() => {
     if (!scenarioTimeline || !scenarioTimelinePlaying || scenarioTimelineLoading) return;
@@ -1086,7 +1115,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
     // GWM pilots can be compact diagnostic networks. Keep them in the 2D
     // renderer so individual nodes remain inspectable; high-volume timelines
     // continue to use the WebGL renderer.
-    const timeline = layers.find((layer) => Boolean(layer.scenarioTimeline))?.scenarioTimeline;
+    const timeline = scenarioTimeline;
     if (timeline?.kind === 'gwm-node' && Number(timeline.totalNodeCount || 0) <= 2000) {
       setViewMode('2d');
       return;
@@ -1104,7 +1133,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       (l.geojsonData && l.geojsonData.features && l.geojsonData.features.length > 10000 && !l.scenarioTimeline)
     );
     if (has3D) setViewMode('3d');
-  }, [layers]);
+  }, [layers, scenarioTimeline]);
 
   // Find active choropleth layer for legend
   const choroplethLayer = loadedLayers.find(
@@ -1330,6 +1359,23 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           minWidth: 460, maxWidth: 'min(760px, calc(100% - 32px))',
         }} data-testid="swmm-scenario-timeline">
           <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            {scenarioTimelineLayers.length > 1 && (
+              <select
+                value={activeScenarioTimelineLayerName}
+                onChange={(event) => {
+                  setScenarioTimelinePlaying(false);
+                  setScenarioTimelineLayerName(event.target.value);
+                  setScenarioTimeIndex(0);
+                }}
+                aria-label={t('map.scenarioTimelineLayer')}
+                title={t('map.scenarioTimelineLayer')}
+                style={{ maxWidth: 180, minWidth: 120, fontSize: 11, borderRadius: 5, border: '1px solid #cbd5e1', padding: '4px 5px', color: '#334155', background: '#fff' }}
+              >
+                {scenarioTimelineLayers.map((layer) => (
+                  <option key={layer.name} value={layer.name}>{mapLayerLabel(layer.name)}</option>
+                ))}
+              </select>
+            )}
             <button
               onClick={() => setScenarioTimelinePlaying((playing) => !playing)}
               title={scenarioTimelinePlaying ? t('map.pauseTimeline') : t('map.playTimeline')}
@@ -1619,6 +1665,23 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           minWidth: 460, maxWidth: 'min(760px, calc(100% - 32px))',
         }} data-testid="swmm-scenario-timeline-3d">
           <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            {scenarioTimelineLayers.length > 1 && (
+              <select
+                value={activeScenarioTimelineLayerName}
+                onChange={(event) => {
+                  setScenarioTimelinePlaying(false);
+                  setScenarioTimelineLayerName(event.target.value);
+                  setScenarioTimeIndex(0);
+                }}
+                aria-label={t('map.scenarioTimelineLayer')}
+                title={t('map.scenarioTimelineLayer')}
+                style={{ maxWidth: 180, minWidth: 120, fontSize: 11, borderRadius: 5, border: '1px solid rgba(148,163,184,.55)', padding: '4px 5px', color: '#e2e8f0', background: '#1e293b' }}
+              >
+                {scenarioTimelineLayers.map((layer) => (
+                  <option key={layer.name} value={layer.name}>{mapLayerLabel(layer.name)}</option>
+                ))}
+              </select>
+            )}
             <button
               onClick={() => setScenarioTimelinePlaying((playing) => !playing)}
               title={scenarioTimelinePlaying ? t('map.pauseTimeline') : t('map.playTimeline')}

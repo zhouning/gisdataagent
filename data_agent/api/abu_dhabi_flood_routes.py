@@ -131,6 +131,26 @@ async def get_abu_dhabi_hydro_map(request: Request) -> JSONResponse:
     return await get_hydro_map(request)
 
 
+async def get_abu_dhabi_hydro_timeline(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from ..hydro_workbench.api import get_hydro_timeline
+
+    return await get_hydro_timeline(request)
+
+
+async def get_abu_dhabi_hydro_timeseries(request: Request) -> JSONResponse:
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    from ..hydro_workbench.api import get_hydro_timeseries
+
+    return await get_hydro_timeseries(request)
+
+
 async def get_abu_dhabi_flood_scenario(request: Request) -> JSONResponse:
     user = _get_user_from_request(request)
     if not user:
@@ -711,6 +731,16 @@ def get_abu_dhabi_flood_routes() -> list[Route]:
         Route(
             "/api/abu-dhabi/flood/hydro-runs/{run_id}/map",
             endpoint=get_abu_dhabi_hydro_map,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/hydro-runs/{run_id}/timeline",
+            endpoint=get_abu_dhabi_hydro_timeline,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/abu-dhabi/flood/hydro-runs/{run_id}/timeseries",
+            endpoint=get_abu_dhabi_hydro_timeseries,
             methods=["GET"],
         ),
         Route(
