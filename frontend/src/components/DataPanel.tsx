@@ -397,7 +397,13 @@ export default function DataPanel({
   onAddMapLayer,
 }: DataPanelProps) {
   const { t } = useTranslation('common');
-  const [activeTab, setActiveTab] = useState<TabKey>('files');
+  const [activeTab, setActiveTab] = useState<TabKey>(() => {
+    const workspace = new URLSearchParams(window.location.search).get('workspace');
+    // No-query access through http://localhost:8000 opens the delivered
+    // Mussafah flood comparison directly after authentication.
+    return (!workspace || workspace === 'abu_dhabi_flood_world_model')
+      ? 'abu_dhabi_flood_world_model' : 'files';
+  });
   const [navigation, setNavigation] = useState<NavigationConfig>(() => fallbackNavigation());
   const [activeGroup, setActiveGroup] = useState<NavigationGroupKey>('data');
   const [activeSection, setActiveSection] = useState('browse');

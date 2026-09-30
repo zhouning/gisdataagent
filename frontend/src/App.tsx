@@ -127,7 +127,12 @@ function GisDataAgentApp() {
   }, [chatWidth]);
 
   // --- Mobile adaptive layout ---
-  const [activePanel, setActivePanel] = useState<'chat' | 'map' | 'data'>('chat');
+  const [activePanel, setActivePanel] = useState<'chat' | 'map' | 'data'>(() => {
+    const workspace = new URLSearchParams(window.location.search).get('workspace');
+    // The root URL is the operator entry point for the current flood-model
+    // deliverable. Explicit workspaces retain their existing routing.
+    return (!workspace || workspace === 'abu_dhabi_flood_world_model') ? 'data' : 'chat';
+  });
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 1024px)').matches);
 
   const handleAddMapLayer = useCallback((layer: any) => {
