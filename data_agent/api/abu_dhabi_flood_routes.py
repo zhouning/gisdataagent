@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
+from starlette.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, Response
 from starlette.routing import Route
 
 from .helpers import _get_user_from_request, _set_user_context
@@ -588,16 +588,26 @@ async def get_abu_dhabi_public_citywide_2d_bootstrap(request: Request) -> JSONRe
         return_period = int(raw_period) if raw_period not in (None, "") else None
         result_source = request.query_params.get("result_source")
         raw_rainfall_total = request.query_params.get("rainfall_total_mm")
-        raw_rainfall_duration = request.query_params.get("rainfall_duration_hours")
-        rainfall_total = int(raw_rainfall_total) if raw_rainfall_total not in (None, "") else None
-        rainfall_duration = int(raw_rainfall_duration) if raw_rainfall_duration not in (None, "") else None
+        rainfall_total_mm = (
+            int(raw_rainfall_total)
+            if raw_rainfall_total not in (None, "")
+            else None
+        )
+        raw_rainfall_duration = request.query_params.get(
+            "rainfall_duration_hours"
+        )
+        rainfall_duration_hours = (
+            int(raw_rainfall_duration)
+            if raw_rainfall_duration not in (None, "")
+            else None
+        )
 
         return JSONResponse(
             public_citywide_2d_bootstrap_payload(
                 return_period,
                 result_source,
-                rainfall_total,
-                rainfall_duration,
+                rainfall_total_mm,
+                rainfall_duration_hours,
             )
         )
     except (TypeError, ValueError) as error:
@@ -621,17 +631,96 @@ async def get_abu_dhabi_public_citywide_2d_timeseries(request: Request) -> JSONR
     try:
         from ..abu_dhabi_flood_scenario_service import public_citywide_2d_timeseries_payload
         return_period = int(raw_period) if raw_period not in (None, "") else None
-        rainfall_total = int(raw_rainfall_total) if raw_rainfall_total not in (None, "") else None
-        rainfall_duration = int(raw_rainfall_duration) if raw_rainfall_duration not in (None, "") else None
+        rainfall_total_mm = (
+            int(raw_rainfall_total)
+            if raw_rainfall_total not in (None, "")
+            else None
+        )
+        rainfall_duration_hours = (
+            int(raw_rainfall_duration)
+            if raw_rainfall_duration not in (None, "")
+            else None
+        )
 
         return JSONResponse(
             public_citywide_2d_timeseries_payload(
                 time_index,
                 return_period,
                 result_source,
-                rainfall_total,
-                rainfall_duration,
+                rainfall_total_mm,
+                rainfall_duration_hours,
             )
+        )
+    except (TypeError, ValueError) as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+
+
+async def get_abu_dhabi_citywide_hotspot_metrics(request: Request) -> JSONResponse:
+    """Return one scenario's 506-hotspot depth, duration and recession table."""
+
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        from ..abu_dhabi_flood_scenario_service import (
+            custom_rainfall_hotspot_metrics_payload,
+        )
+
+        raw_total = request.query_params.get("rainfall_total_mm")
+        raw_duration = request.query_params.get("rainfall_duration_hours")
+        total_mm = int(raw_total) if raw_total not in (None, "") else None
+        duration_hours = (
+            int(raw_duration) if raw_duration not in (None, "") else None
+        )
+        return JSONResponse(
+            custom_rainfall_hotspot_metrics_payload(total_mm, duration_hours),
+            headers={"Cache-Control": "private, max-age=300"},
+        )
+    except (TypeError, ValueError) as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
+
+
+async def download_abu_dhabi_citywide_hotspot_metrics(
+    request: Request,
+) -> FileResponse | JSONResponse:
+    """Download the selected scenario CSV or the complete nine-sheet workbook."""
+
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        from ..abu_dhabi_flood_scenario_service import (
+            custom_rainfall_hotspot_metrics_download_path,
+        )
+
+        raw_total = request.query_params.get("rainfall_total_mm")
+        raw_duration = request.query_params.get("rainfall_duration_hours")
+        total_mm = int(raw_total) if raw_total not in (None, "") else None
+        duration_hours = (
+            int(raw_duration) if raw_duration not in (None, "") else None
+        )
+        file_format = str(request.query_params.get("format") or "csv").lower()
+        path = custom_rainfall_hotspot_metrics_download_path(
+            total_mm, duration_hours, file_format
+        )
+        if file_format == "xlsx":
+            filename = "abu_dhabi_506_hotspots_all_9_scenarios.xlsx"
+            media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        else:
+            resolved_total = total_mm if total_mm is not None else 96
+            resolved_duration = duration_hours if duration_hours is not None else 1
+            filename = (
+                f"abu_dhabi_506_hotspots_{resolved_total}mm_"
+                f"{resolved_duration}h.csv"
+            )
+            media_type = "text/csv; charset=utf-8"
+        return FileResponse(
+            path,
+            filename=filename,
+            media_type=media_type,
+            headers={"Cache-Control": "private, max-age=300"},
         )
     except (TypeError, ValueError) as error:
         return JSONResponse({"error": str(error)}, status_code=409)
@@ -1022,6 +1111,8 @@ async def get_abu_dhabi_flood_simulation_report_json(request: Request) -> JSONRe
 
 
 def get_abu_dhabi_flood_routes() -> list[Route]:
+    from .abu_dhabi_pond_routes import get_abu_dhabi_pond_routes
+
     return [
         Route("/api/abu-dhabi/flood/rainfall/profiles", endpoint=get_abu_dhabi_rainfall_profiles, methods=["GET"]),
         Route("/api/abu-dhabi/flood/rainfall/profiles", endpoint=save_abu_dhabi_rainfall_profile, methods=["POST"]),
@@ -1045,6 +1136,7 @@ def get_abu_dhabi_flood_routes() -> list[Route]:
         Route("/api/abu-dhabi/flood/al-bateen/runs/{run_id}/map", endpoint=get_al_bateen_flood_run_map, methods=["GET"]),
         Route("/api/abu-dhabi/flood/al-bateen/runs/{run_id}/timeseries", endpoint=get_al_bateen_flood_run_timeseries, methods=["GET"]),
         Route("/api/abu-dhabi/flood/al-bateen/runs/{run_id}", endpoint=get_al_bateen_flood_run, methods=["GET"]),
+        *get_abu_dhabi_pond_routes(),
         Route("/api/abu-dhabi/flood/customer-hotspots/bootstrap", endpoint=get_abu_dhabi_customer_hotspots_bootstrap, methods=["GET"]),
         Route("/api/abu-dhabi/flood/scenarios", endpoint=create_abu_dhabi_flood_scenario, methods=["POST"]),
         Route("/api/abu-dhabi/flood/scenarios/latest", endpoint=get_latest_abu_dhabi_flood_scenario, methods=["GET"]),
@@ -1057,6 +1149,8 @@ def get_abu_dhabi_flood_routes() -> list[Route]:
         Route("/api/abu-dhabi/flood/dtm-diagnostic/timeseries", endpoint=get_abu_dhabi_dtm_diagnostic_timeseries, methods=["GET"]),
         Route("/api/abu-dhabi/flood/public-citywide-2d/bootstrap", endpoint=get_abu_dhabi_public_citywide_2d_bootstrap, methods=["GET"]),
         Route("/api/abu-dhabi/flood/public-citywide-2d/timeseries", endpoint=get_abu_dhabi_public_citywide_2d_timeseries, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/public-citywide-2d/hotspot-metrics", endpoint=get_abu_dhabi_citywide_hotspot_metrics, methods=["GET"]),
+        Route("/api/abu-dhabi/flood/public-citywide-2d/hotspot-metrics/download", endpoint=download_abu_dhabi_citywide_hotspot_metrics, methods=["GET"]),
         Route("/api/abu-dhabi/flood/surface/runs", endpoint=create_abu_dhabi_surface_run, methods=["POST"]),
         Route("/api/abu-dhabi/flood/surface/runs/{run_id}", endpoint=get_abu_dhabi_surface_run, methods=["GET"]),
         Route("/api/abu-dhabi/flood/surface/runs/{run_id}/map/bootstrap", endpoint=get_abu_dhabi_surface_run_map, methods=["GET"]),

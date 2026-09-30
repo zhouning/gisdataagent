@@ -16,6 +16,8 @@ describe('Abu Dhabi flood world-model English presentation', () => {
     expect(layer.geojsonData.features).toHaveLength(506);
     expect(layer.category_column).toBe('priority');
     expect(layer.category_colors['Very Important']).toBe('#ef4444');
+    expect(layer.visible).toBe(false);
+    expect(translateAbuEnglishText(layer.name)).toBe('Customer historical flood points (506)');
     expect(layer.tooltip_fields).toEqual(expect.arrayContaining(['hotspot_id', 'priority', 'center', 'description']));
   });
 

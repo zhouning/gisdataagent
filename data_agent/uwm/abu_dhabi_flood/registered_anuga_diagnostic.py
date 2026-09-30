@@ -326,40 +326,55 @@ def _render_topography_function(terrain: dict[str, object]) -> list[str]:
     values = np.asarray(terrain["values"], dtype=np.float64)
     x_centres = np.asarray(terrain["x_centres"], dtype=np.float64)
     y_centres = np.asarray(terrain["y_centres"], dtype=np.float64)
-    lines = [
+    if values.ndim != 2 or min(values.shape) < 2:
+        raise ValueError("registered_anuga_terrain_array_invalid")
+    x_step = float(x_centres[1] - x_centres[0])
+    y_step = float(y_centres[0] - y_centres[1])
+    if (
+        x_step <= 0.0
+        or y_step <= 0.0
+        or not np.allclose(np.diff(x_centres), x_step)
+        or not np.allclose(np.diff(y_centres), -y_step)
+    ):
+        raise ValueError("registered_anuga_terrain_grid_not_regular")
+
+    # Keep the generated model self-contained while avoiding one block of Python
+    # statements per raster cell.  The compact array representation lets a local
+    # 5 m DTM window remain below the guarded ANUGA script-size limit.
+    flattened = ",".join(repr(float(value)) for value in values.ravel())
+    return [
+        (
+            "TOPOGRAPHY_VALUES = np.asarray(("
+            f"{flattened}), dtype=float).reshape({values.shape!r})"
+        ),
+        f"TOPOGRAPHY_X0 = {float(x_centres[0])!r}",
+        f"TOPOGRAPHY_Y0 = {float(y_centres[0])!r}",
+        f"TOPOGRAPHY_DX = {x_step!r}",
+        f"TOPOGRAPHY_DY = {y_step!r}",
+        "",
         "def topography(x, y):",
-        f"    result = 0.0 * x + {float(values.mean()):.12f}",
+        "    x = np.asarray(x, dtype=float)",
+        "    y = np.asarray(y, dtype=float)",
+        "    column = np.floor((x - TOPOGRAPHY_X0) / TOPOGRAPHY_DX).astype(int)",
+        "    row = np.floor((TOPOGRAPHY_Y0 - y) / TOPOGRAPHY_DY).astype(int)",
+        "    column = np.clip(column, 0, TOPOGRAPHY_VALUES.shape[1] - 2)",
+        "    row = np.clip(row, 0, TOPOGRAPHY_VALUES.shape[0] - 2)",
+        "    west = TOPOGRAPHY_X0 + column * TOPOGRAPHY_DX",
+        "    north = TOPOGRAPHY_Y0 - row * TOPOGRAPHY_DY",
+        "    x_weight = np.clip((x - west) / TOPOGRAPHY_DX, 0.0, 1.0)",
+        "    y_weight = np.clip((y - (north - TOPOGRAPHY_DY)) / TOPOGRAPHY_DY, 0.0, 1.0)",
+        "    north_west = TOPOGRAPHY_VALUES[row, column]",
+        "    north_east = TOPOGRAPHY_VALUES[row, column + 1]",
+        "    south_west = TOPOGRAPHY_VALUES[row + 1, column]",
+        "    south_east = TOPOGRAPHY_VALUES[row + 1, column + 1]",
+        "    return (",
+        "        south_west * (1.0 - x_weight) * (1.0 - y_weight)",
+        "        + south_east * x_weight * (1.0 - y_weight)",
+        "        + north_west * (1.0 - x_weight) * y_weight",
+        "        + north_east * x_weight * y_weight",
+        "    )",
+        "",
     ]
-    for row in range(values.shape[0] - 1):
-        north = float(y_centres[row])
-        south = float(y_centres[row + 1])
-        for column in range(values.shape[1] - 1):
-            west = float(x_centres[column])
-            east = float(x_centres[column + 1])
-            north_west = float(values[row, column])
-            north_east = float(values[row, column + 1])
-            south_west = float(values[row + 1, column])
-            south_east = float(values[row + 1, column + 1])
-            lines.extend(
-                [
-                    (
-                        "    selected = "
-                        f"(x >= {west:.6f}) & (x <= {east:.6f}) & "
-                        f"(y >= {south:.6f}) & (y <= {north:.6f})"
-                    ),
-                    f"    x_weight = (x[selected] - {west:.6f}) / {east - west:.12f}",
-                    f"    y_weight = (y[selected] - {south:.6f}) / {north - south:.12f}",
-                    (
-                        "    result[selected] = "
-                        f"{south_west:.12f} * (1.0 - x_weight) * (1.0 - y_weight) + "
-                        f"{south_east:.12f} * x_weight * (1.0 - y_weight) + "
-                        f"{north_west:.12f} * (1.0 - x_weight) * y_weight + "
-                        f"{north_east:.12f} * x_weight * y_weight"
-                    ),
-                ]
-            )
-    lines.extend(["    return result", ""])
-    return lines
 
 
 def _render_model_script(
@@ -377,9 +392,10 @@ def _render_model_script(
     values = np.asarray(terrain["values"], dtype=np.float64)
     fixed_boundary_stage = float(values.min() - policy.fixed_boundary_stage_margin_m)
     lines = [
-        '"""Generated local Abu Dhabi ANUGA surface diagnostic; public proxies only."""',
+        '"""Generated local Abu Dhabi ANUGA surface diagnostic."""',
         "",
         "import anuga",
+        "from anuga.utilities.numerical_tools import np",
         "",
         f"RAINFALL_MM = {tuple(float(value) for value in rainfall_mm)!r}",
         "",
@@ -442,10 +458,28 @@ def compile_registered_anuga_diagnostic(
     contour_manifest_path: Path,
     model_input_path_label: str,
     policy: RegisteredAnugaDiagnosticPolicy | None = None,
+    primary_product_label: str = "Copernicus DEM GLO-30 public proxy",
+    primary_evidence_class: str = "public_proxy_and_public_service_candidate",
+    primary_vertical_datum_verified: bool = False,
+    primary_urban_microtopography_supported: bool = False,
+    primary_engineering_dtm_verified: bool = False,
 ) -> tuple[str, dict[str, object]]:
     """Compile a self-contained ANUGA input and its provenance receipt."""
 
     active = policy or RegisteredAnugaDiagnosticPolicy()
+    if not isinstance(primary_product_label, str) or not primary_product_label.strip():
+        raise ValueError("registered_anuga_primary_product_label_invalid")
+    if not isinstance(primary_evidence_class, str) or not primary_evidence_class.strip():
+        raise ValueError("registered_anuga_primary_evidence_class_invalid")
+    if any(
+        not isinstance(value, bool)
+        for value in (
+            primary_vertical_datum_verified,
+            primary_urban_microtopography_supported,
+            primary_engineering_dtm_verified,
+        )
+    ):
+        raise ValueError("registered_anuga_primary_terrain_flags_invalid")
     swmm_receipt = _read_json(swmm_compile_receipt_path)
     try:
         expected_node_ids = set(swmm_receipt["model_input"]["ledger"]["node_elevation_m"])
@@ -499,7 +533,11 @@ def compile_registered_anuga_diagnostic(
     )
     receipt: dict[str, object] = {
         "schema": REGISTERED_ANUGA_COMPILE_SCHEMA,
-        "status": "compiled_registered_subnetwork_local_surface_public_proxy_not_calibrated",
+        "status": (
+            "compiled_registered_subnetwork_local_surface_public_proxy_not_calibrated"
+            if primary_evidence_class.startswith("public_proxy")
+            else "compiled_registered_subnetwork_local_surface_customer_candidate_not_calibrated"
+        ),
         "selection_link": {
             "selected_component_id": int(selection["selected_component_id"]),
             "root_outfall_node_id": str(selection["root_outfall_node_id"]),
@@ -521,7 +559,7 @@ def compile_registered_anuga_diagnostic(
             **model,
         },
         "terrain": {
-            "primary_product": "Copernicus DEM GLO-30 public proxy",
+            "primary_product": primary_product_label,
             "primary_path": _path_label(primary_dem_path),
             "primary_sha256": _sha256_file(primary_dem_path),
             "primary_crs": terrain["source_crs"],
@@ -544,9 +582,10 @@ def compile_registered_anuga_diagnostic(
                 "role": contour_manifest.get("role"),
                 **contours,
             },
-            "evidence_class": "public_proxy_and_public_service_candidate",
-            "vertical_datum_verified": False,
-            "urban_microtopography_supported": False,
+            "evidence_class": primary_evidence_class,
+            "vertical_datum_verified": primary_vertical_datum_verified,
+            "urban_microtopography_supported": primary_urban_microtopography_supported,
+            "engineering_dtm_verified": primary_engineering_dtm_verified,
         },
         "forcing": {
             "source": "Open-Meteo Historical API archive point product",
@@ -576,7 +615,9 @@ def compile_registered_anuga_diagnostic(
             "surface_drain_inlet_abstraction_applied": False,
             "manning_friction_is_diagnostic_assumption": True,
             "fixed_low_stage_boundary_is_diagnostic_free_drainage_assumption": True,
-            "copernicus_dem_is_dsm_not_engineering_dtm": True,
+            "copernicus_dem_is_dsm_not_engineering_dtm": primary_product_label
+            == "Copernicus DEM GLO-30 public proxy",
+            "customer_surface_engineering_dtm_verified": primary_engineering_dtm_verified,
         },
         "admission": {
             "traditional_model_admitted": False,

@@ -14,7 +14,7 @@ import { formatDate, formatNumber, getLocale, getLocaleHeaders } from '../i18n';
 
 interface MapLayer {
   name: string;
-  type: 'geojson' | 'point' | 'polygon' | 'choropleth' | 'heatmap' | 'bubble' | 'line'
+  type: 'geojson' | 'point' | 'polygon' | 'choropleth' | 'heatmap' | 'bubble' | 'line' | 'terrain'
       | 'extrusion' | 'arc' | 'column' | 'categorized' | 'image' | 'wms' | 'mvt' | 'fgb';
   geojson?: string;       // filename to fetch from /api/user/files/
   geojson_url?: string;   // authenticated API URL for a generated GeoJSON layer
@@ -27,6 +27,10 @@ interface MapLayer {
   category_colors?: Record<string, string>;  // value -> color mapping
   category_labels?: Record<string, string>;  // value -> display label
   style_map?: Record<string, Record<string, any>>; // value -> full style obj
+  property_filter?: Record<string, string | string[]>;
+  label_field?: string;
+  label_prefix?: string;
+  label_always_show?: boolean;
   legend_title?: string;
   tooltip_fields?: string[];
   tooltip_labels?: Record<string, string>;
@@ -104,6 +108,17 @@ function scenarioTimelineTimeLabel(
   const elapsed = Number(timeline.elapsedMinutes?.[index]);
   if (Number.isFinite(elapsed)) return `${elapsed.toFixed(0)} min`;
   return loadingLabel;
+}
+
+function filterGeoJsonFeatures(payload: any, propertyFilter?: Record<string, string | string[]>): any {
+  if (!propertyFilter || !payload || !Array.isArray(payload.features)) return payload;
+  const features = payload.features.filter((feature: any) => Object.entries(propertyFilter).every(([key, expected]) => {
+    const actual = String(feature?.properties?.[key] ?? '');
+    return Array.isArray(expected)
+      ? expected.map(value => String(value)).includes(actual)
+      : actual === String(expected);
+  }));
+  return { ...payload, features };
 }
 
 const BASEMAPS: Record<string, string> = {
@@ -1077,6 +1092,13 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
           if (!geojsonData) continue;
           if (!isCurrentLoad()) return;
+
+          // Apply the same property filter in the Leaflet renderer that the
+          // 3D renderer already applies.  Without this, a planning layer
+          // intended to show only underground box culverts silently renders
+          // the full stormwater network and the six box culvert points are
+          // visually buried among more than a thousand network features.
+          geojsonData = filterGeoJsonFeatures(geojsonData, layerConfig.property_filter);
 
           // Switch to 3D only for very large layers; SCCA demo outputs should stay in 2D
           // so the choropleth legend and popups remain easy to read.
@@ -2169,14 +2191,29 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
           fillOpacity: catStyle?.fillOpacity ?? style.fillOpacity ?? 0.85,
         };
       };
+      const onEachCategorizedFeature = (feature: any, layer: L.Layer) => {
+        bindPopup(feature, layer);
+        if (!config.label_field || !feature?.properties) return;
+        const labelValue = feature.properties[config.label_field];
+        if (labelValue === undefined || labelValue === null || String(labelValue).trim() === '') return;
+        const prefix = config.label_prefix || '';
+        layer.unbindTooltip();
+        layer.bindTooltip(`${prefix}${String(labelValue)}`, {
+          permanent: config.label_always_show === true,
+          direction: 'top',
+          sticky: config.label_always_show !== true,
+          className: 'map-asset-label',
+          opacity: 0.96,
+        });
+      };
       return L.geoJSON(geojsonData, {
         style: categoryStyle,
         pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
           ...categoryStyle(feature),
-          radius: Number(style.min_radius || 9),
+          radius: Number(style.point_radius || style.min_radius || 9),
           weight: Number(style.weight || 2),
         }),
-        onEachFeature: bindPopup,
+        onEachFeature: onEachCategorizedFeature,
       });
     }
 

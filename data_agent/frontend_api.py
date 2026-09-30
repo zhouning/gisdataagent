@@ -4753,6 +4753,7 @@ def get_frontend_api_routes():
     )
     from .api.semantic_interop_routes import get_semantic_interop_routes
     from .api.abu_dhabi_flood_routes import get_abu_dhabi_flood_routes
+    from .api.abu_dhabi_mussafah_routes import get_mussafah00_gap_routes
 
     return [
         Route("/sw.js", endpoint=_frontend_service_worker, methods=["GET"]),
@@ -4785,6 +4786,7 @@ def get_frontend_api_routes():
         # Interactive EPA SWMM diagnostic scenarios for the Abu Dhabi flood
         # world-model prototype. Customer inputs and artifacts stay private.
         *get_abu_dhabi_flood_routes(),
+        *get_mussafah00_gap_routes(),
         Route("/api/semantic/domains", endpoint=_api_semantic_domains, methods=["GET"]),
         Route("/api/semantic/hierarchy/{domain}", endpoint=_api_semantic_hierarchy, methods=["GET"]),
         Route("/api/semantic/sources", endpoint=_api_semantic_sources_list, methods=["GET"]),

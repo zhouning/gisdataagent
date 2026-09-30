@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeckGL from '@deck.gl/react';
-import { GeoJsonLayer, ScatterplotLayer, ArcLayer, ColumnLayer } from '@deck.gl/layers';
-import { MVTLayer } from '@deck.gl/geo-layers';
+import { GeoJsonLayer, ScatterplotLayer, ArcLayer, ColumnLayer, PathLayer } from '@deck.gl/layers';
+import { MVTLayer, TerrainLayer } from '@deck.gl/geo-layers';
 import { Map } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -11,14 +11,25 @@ interface MapLayer {
   name: string;
   type: string;
   geojson?: string;
+  geojson_url?: string;
   geojsonData?: any;
+  terrain_url?: string;
+  terrain_bounds?: [number, number, number, number];
+  terrain_decoder?: { rScaler: number; gScaler: number; bScaler: number; offset: number };
+  terrain_source?: 'customer_dtm_5m' | 'arcgis_world_elevation_3d';
+  terrain_service_url?: string;
+  terrain_vertical_reference?: string;
+  property_filter?: Record<string, string | string[]>;
   style?: Record<string, any>;
+  radius_column?: string;
   value_column?: string;
   breaks?: number[];
   color_scheme?: string;
   elevation_column?: string;
+  base_elevation_column?: string;
   elevation_scale?: number;
   extruded?: boolean;
+  subsurface?: boolean;
   pitch?: number;
   bearing?: number;
   // Categorized layer properties
@@ -77,6 +88,17 @@ function isColumnarSwmmFrame(value: any): boolean {
     && Array.isArray(value.node_ids)
     && Array.isArray(value.coordinates)
     && Array.isArray(value.values);
+}
+
+function filterGeoJsonFeatures(payload: any, propertyFilter?: Record<string, string | string[]>): any {
+  if (!propertyFilter || !payload || !Array.isArray(payload.features)) return payload;
+  const features = payload.features.filter((feature: any) => Object.entries(propertyFilter).every(([key, expected]) => {
+    const actual = String(feature?.properties?.[key] ?? '');
+    return Array.isArray(expected)
+      ? expected.map(value => String(value)).includes(actual)
+      : actual === String(expected);
+  }));
+  return { ...payload, features };
 }
 
 function columnarSwmmValue(frame: any, rowIndex: number, field: string): number {
@@ -258,6 +280,16 @@ function hexToRgba(hex: string, alpha = 200): [number, number, number, number] {
   return [r, g, b, alpha];
 }
 
+const cameraPresetStyle: CSSProperties = {
+  background: '#1f2937',
+  color: '#e5e7eb',
+  border: '1px solid #475569',
+  borderRadius: 3,
+  padding: '3px 5px',
+  cursor: 'pointer',
+  fontSize: 10,
+};
+
 function isCategorizedLegendLayer(layer: MapLayer) {
   return (layer.type === 'categorized' || layer.type === 'fgb' || layer.type === 'bubble')
     && Boolean(layer.category_colors || layer.style_map);
@@ -335,6 +367,8 @@ export default function Map3DView({
     if (changed) setLayerVisibility(prev => ({ ...prev, ...init }));
   }, [layers]);
   const [showLayerPanel, setShowLayerPanel] = useState(false);
+  const [showViewPanel, setShowViewPanel] = useState(false);
+  const [undergroundView, setUndergroundView] = useState(false);
 
   // Determine pitch/bearing from layer configs
   const pitch = useMemo(() => {
@@ -361,6 +395,15 @@ export default function Map3DView({
     minZoom: 2,
     maxZoom: 20,
   }), [center, zoom, pitch, bearing]);
+  const [viewState, setViewState] = useState<any>(initialViewState);
+
+  useEffect(() => {
+    setViewState(initialViewState);
+  }, [initialViewState]);
+
+  const updateViewState = useCallback((updates: Record<string, number>) => {
+    setViewState((previous: any) => ({ ...previous, ...updates }));
+  }, []);
 
   const mapStyle = useMemo(() => {
     const selected = basemap || 'ESRI Satellite';
@@ -371,16 +414,20 @@ export default function Map3DView({
 
   // Fetch GeoJSON / FlatGeobuf data for layers that need it
   useEffect(() => {
+    let cancelled = false;
     const fetchLayers = async () => {
       const newData: Record<string, any> = {};
       const fetchedGeojson: Record<string, any> = {};
       const fetchedFgb: Record<string, any> = {};
       for (const layer of layers) {
+        if (cancelled) return;
+        // TerrainLayer loads its own RGB height map; it is not GeoJSON.
+        if (layer.type === 'terrain') continue;
         // MVT layers don't need pre-fetched data
         if (layer.type === 'mvt') continue;
 
         if (layer.geojsonData) {
-          newData[layer.name] = layer.geojsonData;
+          newData[layer.name] = filterGeoJsonFeatures(layer.geojsonData, layer.property_filter);
         } else if (layer.fgb) {
           // FlatGeobuf: fetch the whole file with auth cookies, then deserialize
           // from a Uint8Array. Streaming via `deserialize(url)` is unusable here
@@ -388,12 +435,13 @@ export default function Map3DView({
           // and our /api/user/files route is JWT-gated.
           try {
             if (fetchedFgb[layer.fgb]) {
-              newData[layer.name] = fetchedFgb[layer.fgb];
+              newData[layer.name] = filterGeoJsonFeatures(fetchedFgb[layer.fgb], layer.property_filter);
               continue;
             }
             const { deserialize } = await import('flatgeobuf/lib/mjs/geojson.js');
             const fgbUrl = `/api/user/files/${layer.fgb}`;
             const resp = await fetch(fgbUrl, { credentials: 'include' });
+            if (cancelled) return;
             if (!resp.ok) {
               console.warn(`[Map3DView] FGB fetch failed ${layer.fgb}: HTTP ${resp.status}`);
               continue;
@@ -402,33 +450,38 @@ export default function Map3DView({
             const fc: any = deserialize(buf);
             // deserialize(Uint8Array) returns a FeatureCollection
             fetchedFgb[layer.fgb] = fc;
-            newData[layer.name] = fc;
+            newData[layer.name] = filterGeoJsonFeatures(fc, layer.property_filter);
           } catch (e) {
             console.warn(`[Map3DView] Failed to parse FlatGeobuf ${layer.fgb}:`, e);
           }
-        } else if (layer.geojson) {
+        } else if (layer.geojson_url || layer.geojson) {
           try {
             // Several diagnostic layers intentionally share one result file.
             // Fetch and parse each private GeoJSON only once, then reuse the
             // parsed FeatureCollection for the alternate renderer/metric.
-            if (fetchedGeojson[layer.geojson]) {
-              newData[layer.name] = fetchedGeojson[layer.geojson];
+            const sourceUrl = layer.geojson_url || `/api/user/files/${layer.geojson}`;
+            if (fetchedGeojson[sourceUrl]) {
+              newData[layer.name] = filterGeoJsonFeatures(fetchedGeojson[sourceUrl], layer.property_filter);
               continue;
             }
-            const resp = await fetch(`/api/user/files/${layer.geojson}`, { credentials: 'include' });
+            const resp = await fetch(sourceUrl, { credentials: 'include' });
+            if (cancelled) return;
             if (resp.ok) {
               const payload = await resp.json();
-              fetchedGeojson[layer.geojson] = payload;
-              newData[layer.name] = payload;
+              fetchedGeojson[sourceUrl] = payload;
+              newData[layer.name] = filterGeoJsonFeatures(payload, layer.property_filter);
+            } else {
+              console.warn(`[Map3DView] GeoJSON fetch failed ${sourceUrl}: HTTP ${resp.status}`);
             }
           } catch (e) {
             console.warn(`Failed to fetch GeoJSON for layer ${layer.name}:`, e);
           }
         }
       }
-      setLayerData(newData);
+      if (!cancelled) setLayerData(newData);
     };
     if (layers.length > 0) fetchLayers();
+    return () => { cancelled = true; };
   }, [layers]);
 
   const onHover = useCallback((info: any) => {
@@ -478,6 +531,30 @@ export default function Map3DView({
 
       const fillColor = hexToRgba(layer.style?.fillColor || '#4682B4', Math.round((layer.style?.fillOpacity ?? 0.7) * 255));
       const lineColor = hexToRgba(layer.style?.color || '#333333', Math.round((layer.style?.opacity ?? 0.8) * 255));
+
+      // Local 5 m DTM surface.  This is rendered as an actual depth surface
+      // so buried assets can be occluded by the terrain instead of appearing
+      // as symbols floating on a flat basemap.
+      if (layer.type === 'terrain' && layer.terrain_url && layer.terrain_bounds) {
+        return new TerrainLayer({
+          id: `layer-${idx}-${layer.name}`,
+          elevationData: layer.terrain_url,
+          bounds: layer.terrain_bounds,
+          extent: layer.terrain_bounds,
+          tileSize: 256,
+          minZoom: 10,
+          maxZoom: 17,
+          maxCacheByteSize: 32 * 1024 * 1024,
+          elevationDecoder: layer.terrain_decoder || { rScaler: 655.36, gScaler: 2.56, bScaler: 0.01, offset: 0 },
+          // Keep the surface visible over satellite/cartographic basemaps and
+          // write its depth so underground assets can be occluded by it.
+          color: [176, 160, 130, undergroundView ? 72 : 155],
+          meshMaxError: 0.5,
+          pickable: false,
+          parameters: { depthTest: !undergroundView, depthMask: !undergroundView },
+          loadOptions: { fetch: { credentials: 'include' } },
+        });
+      }
 
       // MVT vector tile layer — no pre-fetched data needed
       if (layer.type === 'mvt' && layer.tile_url) {
@@ -720,6 +797,87 @@ export default function Map3DView({
       // Categorized layer (per-category color from category_colors/style_map).
       // FGB layers that carry category_column/style_map also render here; the
       // fetch step above has already populated data from the FlatGeobuf buffer.
+      // Underground point assets are rendered as translucent vertical columns
+      // below the local 5 m surface reference.  The GeoJSON remains a point
+      // representation for 2D; this branch only changes its 3D presentation.
+      if (layer.subsurface && layer.type === 'categorized') {
+        const features = (data.features || []).filter((f: any) => f.geometry?.type === 'Point');
+        const catCol = layer.category_column || '';
+        const catColors = layer.category_colors || {};
+        const styleMap = layer.style_map || {};
+        const getCategoryStyle = (f: any) => {
+          const raw = String(f.properties?.[catCol] ?? '');
+          const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
+          return styleMap[raw] || styleMap[intForm] || null;
+        };
+        const getCategoryColor = (f: any, alpha = 220): [number, number, number, number] => {
+          const sm = getCategoryStyle(f);
+          const raw = String(f.properties?.[catCol] ?? '');
+          const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
+          const color = sm?.fillColor || catColors[raw] || catColors[intForm] || layer.style?.fillColor || '#7e22ce';
+          return hexToRgba(color, Math.round((sm?.fillOpacity ?? layer.style?.fillOpacity ?? 0.82) * alpha));
+        };
+        return new ColumnLayer({
+          id: `layer-${idx}-${layer.name}`,
+          data: features,
+          diskResolution: 16,
+          radius: Number(layer.style?.radius_m || 14),
+          extruded: true,
+          coverage: 0.86,
+          pickable: true,
+          getPosition: (f: any) => {
+            const coordinates = f.geometry?.coordinates || [0, 0];
+            const baseColumn = layer.base_elevation_column || 'bottom_m';
+            const base = Number(f.properties?.[baseColumn]);
+            return [Number(coordinates[0]), Number(coordinates[1]), Number.isFinite(base) ? base : -2];
+          },
+          getRadius: (f: any) => {
+            const radius = Number(f.properties?.[layer.radius_column || 'equivalent_radius_m']);
+            return Number.isFinite(radius) && radius > 0 ? radius : Number(layer.style?.radius_m || 14);
+          },
+          getElevation: (f: any) => {
+            const value = Number(f.properties?.[layer.elevation_column || 'height_m']);
+            return (Number.isFinite(value) ? value : 2) * Number(layer.elevation_scale || 1);
+          },
+          getFillColor: (f: any) => getCategoryColor(f, 255),
+          getLineColor: (f: any) => {
+            const sm = getCategoryStyle(f);
+            return hexToRgba(sm?.color || layer.style?.color || '#4c1d95', 230);
+          },
+          lineWidthMinPixels: 1,
+          parameters: { depthTest: true },
+          onHover: (info: any) => onLayerHover(info, layer),
+        });
+      }
+
+      // Underground connection pipes are rendered as 3D paths at their
+      // sampled burial elevation.  This keeps the pipes visibly below the
+      // surface plane while retaining their actual plan-view geometry.
+      if (layer.subsurface && layer.type === 'line') {
+        const features = (data.features || []).filter((f: any) => {
+          const type = f.geometry?.type;
+          return type === 'LineString' || type === 'MultiLineString';
+        });
+        return new PathLayer({
+          id: `layer-${idx}-${layer.name}`,
+          data: features,
+          pickable: true,
+          widthUnits: 'pixels',
+          widthMinPixels: Math.max(1, Number(layer.style?.weight || 3)),
+          getPath: (f: any) => {
+            const z = Number(f.properties?.[layer.elevation_column || 'underground_elevation_m']);
+            const elevation = Number.isFinite(z) ? z : -2;
+            const coordinates = f.geometry?.type === 'MultiLineString'
+              ? (f.geometry.coordinates?.[0] || [])
+              : (f.geometry?.coordinates || []);
+            return coordinates.map((coordinate: number[]) => [Number(coordinate[0]), Number(coordinate[1]), elevation]);
+          },
+          getColor: lineColor,
+          parameters: { depthTest: true },
+          onHover: (info: any) => onLayerHover(info, layer),
+        });
+      }
+
       if (layer.type === 'categorized' ||
           (layer.type === 'fgb' && (layer.category_column || layer.style_map))) {
         const catCol = layer.category_column || '';
@@ -808,13 +966,14 @@ export default function Map3DView({
         onHover: (info: any) => onLayerHover(info, layer),
       });
     }).filter(Boolean);
-  }, [layers, layerData, onHover, onLayerHover, layerVisibility, scenarioData]);
+  }, [layers, layerData, onHover, onLayerHover, layerVisibility, scenarioData, undergroundView]);
 
   return (
     <div className="map-3d-container" style={{ position: 'relative', width: '100%', height: '100%' }}>
       <DeckGL
         key={`${center[0]}-${center[1]}-${zoom}`}
-        initialViewState={initialViewState}
+        viewState={viewState || initialViewState}
+        onViewStateChange={({ viewState: nextViewState }: any) => setViewState(nextViewState)}
         controller={true}
         layers={deckLayers}
         style={{ position: 'absolute', top: '0', left: '0', width: '100%', height: '100%' }}
@@ -825,6 +984,25 @@ export default function Map3DView({
           style={{ width: '100%', height: '100%' }}
         />
       </DeckGL>
+      {layers.some(l => l.type === 'terrain' && l.terrain_url) && (
+        <div
+          role="status"
+          aria-label="5 m DTM terrain surface active"
+          style={{
+            position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 1000, background: 'rgba(20, 38, 29, 0.92)',
+            border: '1px solid rgba(134, 239, 172, 0.8)', borderRadius: 999,
+            color: '#dcfce7', padding: '5px 12px', fontSize: 12,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.28)', pointerEvents: 'none',
+          }}
+        >{(() => {
+          const terrain = layers.find(l => l.type === 'terrain' && l.terrain_url);
+          const source = terrain?.terrain_source === 'arcgis_world_elevation_3d'
+            ? 'ArcGIS WorldElevation3D 回退地形'
+            : '客户 5 m DTM 地形表面';
+          return `${source} · ${terrain?.terrain_vertical_reference || '高程基准待确认'} · ${undergroundView ? '地下透视模式' : '地下遮挡已启用'}`;
+        })()}</div>
+      )}
       {tooltip && (
         <div
           className="deck-tooltip"
@@ -835,6 +1013,51 @@ export default function Map3DView({
           ))}
         </div>
       )}
+
+      {/* Explicit 3D camera controls. Mouse/trackpad gestures remain enabled. */}
+      <div style={{ position: 'absolute', top: 54, left: 12, zIndex: 1000 }}>
+        <button
+          type="button"
+          onClick={() => setShowViewPanel(previous => !previous)}
+          style={{
+            background: showViewPanel ? '#1e3a5f' : 'rgba(0,0,0,0.68)',
+            color: '#e0e0e0', border: '1px solid #444', borderRadius: 4,
+            padding: '4px 8px', cursor: 'pointer', fontSize: 12,
+          }}
+        >{t('map.viewControls', { defaultValue: '视角' })}</button>
+        {showViewPanel && (
+          <div style={{
+            background: 'rgba(0,0,0,0.88)', border: '1px solid #333', borderRadius: 6,
+            padding: 9, marginTop: 4, width: 208, color: '#ddd', fontSize: 11,
+          }}>
+            <div style={{ display: 'flex', gap: 5, marginBottom: 8 }}>
+              <button type="button" onClick={() => updateViewState({ pitch: 0 })} style={cameraPresetStyle}>俯视</button>
+              <button type="button" onClick={() => updateViewState({ pitch: 45 })} style={cameraPresetStyle}>倾斜</button>
+              <button type="button" onClick={() => updateViewState({ pitch: 65 })} style={cameraPresetStyle}>剖视</button>
+              <button type="button" onClick={() => setUndergroundView(previous => !previous)} style={{ ...cameraPresetStyle, background: undergroundView ? '#7c3aed' : undefined }}>地下透视</button>
+              <button type="button" onClick={() => setViewState(initialViewState)} style={cameraPresetStyle}>重置</button>
+            </div>
+            <label style={{ display: 'block', marginBottom: 6 }}>
+              俯仰角：{Math.round(Number(viewState?.pitch ?? pitch))}°
+              <input type="range" min="0" max="75" step="1" value={Math.round(Number(viewState?.pitch ?? pitch))}
+                onChange={(event) => updateViewState({ pitch: Number(event.target.value) })}
+                style={{ width: '100%', accentColor: '#38bdf8' }} />
+            </label>
+            <label style={{ display: 'block', marginBottom: 6 }}>
+              方位角：{Math.round(Number(viewState?.bearing ?? bearing))}°
+              <input type="range" min="-180" max="180" step="1" value={Math.round(Number(viewState?.bearing ?? bearing))}
+                onChange={(event) => updateViewState({ bearing: Number(event.target.value) })}
+                style={{ width: '100%', accentColor: '#38bdf8' }} />
+            </label>
+            <label style={{ display: 'block' }}>
+              缩放：{Number(viewState?.zoom ?? zoom).toFixed(1)}
+              <input type="range" min="2" max="20" step="0.1" value={Number(viewState?.zoom ?? zoom)}
+                onChange={(event) => updateViewState({ zoom: Number(event.target.value) })}
+                style={{ width: '100%', accentColor: '#38bdf8' }} />
+            </label>
+          </div>
+        )}
+      </div>
 
       {/* 3D Layer Control Panel (v14.0) */}
       {layers.length > 0 && (

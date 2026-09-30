@@ -377,13 +377,17 @@ def render_registered_swmm_input(
     hourly_precipitation_mm: tuple[float, ...],
     *,
     forcing_label: str = "Open-Meteo",
+    start_datetime_utc: datetime | None = None,
+    report_step_seconds: int | None = None,
+    report_detail: str = "full",
+    report_node_results: bool = True,
 ) -> tuple[str, dict[str, object]]:
     """Render one self-contained SWMM input and return its derived node ledger."""
 
     policy = selection["policy"]
     if not isinstance(policy, RegisteredSwmmDiagnosticPolicy):
         raise ValueError("registered_swmm_policy_required")
-    if len(hourly_precipitation_mm) != 72 or any(
+    if not hourly_precipitation_mm or any(
         isinstance(value, bool)
         or not isinstance(value, (int, float))
         or not math.isfinite(value)
@@ -413,9 +417,28 @@ def render_registered_swmm_input(
     routing_step_seconds = int(selection.get("routing_step_seconds", 30))
     if routing_step_seconds < 1:
         raise ValueError("registered_swmm_routing_step_invalid")
+    if start_datetime_utc is None:
+        start_datetime_utc = datetime(2024, 4, 15)
+    if not isinstance(start_datetime_utc, datetime):
+        raise ValueError("registered_swmm_start_datetime_invalid")
+    # SWMM report output is the dominant artifact for a city-scale network.
+    # Keep the historical 15-minute default for the interactive diagnostic,
+    # while allowing event batches to use an hourly report cadence.
+    active_report_step_seconds = 900 if report_step_seconds is None else int(report_step_seconds)
+    if active_report_step_seconds < 60 or active_report_step_seconds % 60:
+        raise ValueError("registered_swmm_report_step_invalid")
+    if report_detail not in {"full", "compact"}:
+        raise ValueError("registered_swmm_report_detail_invalid")
+    if not isinstance(report_node_results, bool):
+        raise ValueError("registered_swmm_report_node_results_invalid")
     edges = selection["edges"]
     nodes = selection["nodes"]
     intake_node_ids = tuple(selection["intake_node_ids"])
+    subcatchment_slope_percent = float(
+        selection.get("subcatchment_slope_percent", policy.assumed_catchment_slope_percent)
+    )
+    if not math.isfinite(subcatchment_slope_percent) or subcatchment_slope_percent <= 0.0:
+        raise ValueError("registered_swmm_subcatchment_slope_invalid")
     node_elevation = _node_elevations(selection)
     node_coordinates = {
         str(row.node_id): (float(row.snap_x_m), float(row.snap_y_m))
@@ -495,7 +518,7 @@ def render_registered_swmm_input(
                 f"{policy.assumed_catchment_area_ha_per_intake_node:.3f}",
                 f"{policy.assumed_impervious_percent:.1f}",
                 f"{policy.assumed_catchment_width_m:.1f}",
-                f"{policy.assumed_catchment_slope_percent:.2f}",
+                f"{subcatchment_slope_percent:.2f}",
                 "0",
             )
         )
@@ -503,7 +526,7 @@ def render_registered_swmm_input(
         infiltration_rows.append((catchment_id, "75", "7", "4", "7", "0"))
 
     timeseries_rows = []
-    start = datetime(2024, 4, 15)
+    start = start_datetime_utc
     for index, depth_mm in enumerate(hourly_precipitation_mm):
         timestamp = start + timedelta(hours=index)
         timeseries_rows.append(
@@ -514,7 +537,8 @@ def render_registered_swmm_input(
                 f"{float(depth_mm):.6f}",
             )
         )
-    timeseries_rows.append(("TS_PUBLIC", "04/18/2024", "00:00", "0"))
+    end = start + timedelta(hours=len(hourly_precipitation_mm))
+    timeseries_rows.append(("TS_PUBLIC", end.strftime("%m/%d/%Y"), end.strftime("%H:%M"), "0"))
     coordinate_rows = [
         (node_id, f"{x:.3f}", f"{y:.3f}") for node_id, (x, y) in sorted(node_coordinates.items())
     ]
@@ -541,16 +565,20 @@ def render_registered_swmm_input(
                     ("MIN_SLOPE", "0"),
                     ("ALLOW_PONDING", "NO"),
                     ("SKIP_STEADY_STATE", "NO"),
-                    ("START_DATE", "04/15/2024"),
+                    ("START_DATE", start.strftime("%m/%d/%Y")),
                     ("START_TIME", "00:00:00"),
-                    ("REPORT_START_DATE", "04/15/2024"),
+                    ("REPORT_START_DATE", start.strftime("%m/%d/%Y")),
                     ("REPORT_START_TIME", "00:00:00"),
-                    ("END_DATE", "04/18/2024"),
-                    ("END_TIME", "06:00:00"),
+                    ("END_DATE", end.strftime("%m/%d/%Y")),
+                    ("END_TIME", end.strftime("%H:%M:%S")),
                     ("SWEEP_START", "01/01"),
                     ("SWEEP_END", "12/31"),
                     ("DRY_DAYS", "0"),
-                    ("REPORT_STEP", "00:15:00"),
+                    (
+                        "REPORT_STEP",
+                        f"{active_report_step_seconds // 3600:02d}:"
+                        f"{(active_report_step_seconds % 3600) // 60:02d}:00",
+                    ),
                     ("WET_STEP", "00:05:00"),
                     ("DRY_STEP", "01:00:00"),
                     (
@@ -576,14 +604,15 @@ def render_registered_swmm_input(
         (
             "REPORT",
             [
-                "INPUT  YES",
+                f"INPUT  {'YES' if report_detail == 'full' else 'NO'}",
                 "CONTROLS  NO",
-                # Keep all native objects in the RPT/OUT pair. The full-city
-                # report is retained privately and parsed for maxima; the
-                # browser consumes filtered GeoJSON and selected OUT periods.
-                "SUBCATCHMENTS  ALL",
-                "NODES  ALL",
-                "LINKS  ALL",
+                # A compact batch report keeps the continuity, flooding and
+                # convergence summaries while avoiding the multi-million-row
+                # static input tables. Full interactive diagnostics retain
+                # every native table through the default ``full`` mode.
+                f"SUBCATCHMENTS  {'ALL' if report_detail == 'full' else 'NONE'}",
+                f"NODES  {'ALL' if report_node_results else 'NONE'}",
+                f"LINKS  {'ALL' if report_detail == 'full' else 'NONE'}",
             ],
         ),
         ("COORDINATES", _format_rows(coordinate_rows)),
@@ -609,8 +638,14 @@ def render_registered_swmm_input(
         "conduit_count": len(conduit_rows),
         "subcatchment_count": len(subcatchment_rows),
         "rainfall_interval_count": len(hourly_precipitation_mm),
+        "rainfall_start_utc": start.isoformat() + ("Z" if start.tzinfo is None else ""),
+        "rainfall_end_utc": end.isoformat() + ("Z" if end.tzinfo is None else ""),
+        "report_step_seconds": active_report_step_seconds,
+        "report_detail": report_detail,
+        "report_node_results": report_node_results,
         "routing_method": routing_method,
         "routing_step_seconds": routing_step_seconds,
+        "subcatchment_slope_percent": subcatchment_slope_percent,
         "node_elevation_m": node_elevation,
         "conduits": conduit_ledger,
     }

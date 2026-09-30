@@ -23,6 +23,7 @@ from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from .abu_dhabi_hydraulic_result_admission import assess_hydraulic_result
 from .abu_dhabi_zone_b_design_storm import (
     SUPPORTED_RETURN_PERIODS,
     official_depth_mm,
@@ -85,25 +86,34 @@ DEFAULT_CUSTOMER_BIDIRECTIONAL_2D_ROOT = Path(
     )
 ).expanduser()
 DEFAULT_PUBLIC_CITYWIDE_2D_ROOT = DEFAULT_PUBLIC_ROOT / "copernicus_citywide_2d"
+DEFAULT_PUBLIC_NCEI_ROOT = DEFAULT_PUBLIC_ROOT / "ncei_2024_station_constraint"
+DEFAULT_CUSTOM_RAINFALL_ROOT = (
+    DEFAULT_PRIVATE_ROOT / "custom_rainfall_runs/citywide_250m_matrix_20260924"
+)
+DEFAULT_COUPLED_CUSTOM_33MM_2H_ROOT = DEFAULT_PRIVATE_ROOT / (
+    "citywide_coupled_matrix_v3_land_masked_20260926/"
+    "abu-dhabi-citywide-coupled-33mm-2h-250m-one-way-land-masked-74h/"
+    "runs/full-74h-one-way-swmm-to-anuga-routing30s"
+)
+DEFAULT_COUPLED_CUSTOM_61MM_2H_ROOT = DEFAULT_PRIVATE_ROOT / (
+    "citywide_coupled_matrix_v3_land_masked_20260926/"
+    "abu-dhabi-citywide-coupled-61mm-2h-250m-one-way-land-masked-74h/"
+    "runs/full-74h-one-way-swmm-to-anuga-routing30s"
+)
+DEFAULT_COUPLED_CUSTOM_96MM_2H_ROOT = DEFAULT_PRIVATE_ROOT / (
+    "citywide_coupled_matrix_v3_land_masked_20260926/"
+    "abu-dhabi-citywide-coupled-96mm-2h-250m-one-way-land-masked-74h/"
+    "runs/full-74h-one-way-swmm-to-anuga-routing30s"
+)
 DEFAULT_PARTIAL_CITYWIDE_61MM_2H_ROOT = _HYDRO_DATA_ROOT / (
     "citywide_coupled_matrix_v2_20260925/"
     "abu-dhabi-citywide-coupled-61mm-2h-250m-validation/"
     "runs/full-26h-one-way-swmm-to-anuga-routing30s"
 )
-DEFAULT_COUPLED_MATRIX_ROOT = _HYDRO_DATA_ROOT / (
-    "citywide_coupled_matrix_v3_land_masked_20260926"
-)
-DEFAULT_COUPLED_CUSTOM_61MM_2H_ROOT = DEFAULT_COUPLED_MATRIX_ROOT / (
-    "abu-dhabi-citywide-coupled-61mm-2h-250m-one-way-land-masked-74h/"
-    "runs/full-74h-one-way-swmm-to-anuga-routing30s"
-)
-DEFAULT_COUPLED_CUSTOM_96MM_2H_ROOT = DEFAULT_COUPLED_MATRIX_ROOT / (
-    "abu-dhabi-citywide-coupled-96mm-2h-250m-one-way-land-masked-74h/"
-    "runs/full-74h-one-way-swmm-to-anuga-routing30s"
-)
 SUPPORTED_CUSTOM_RAINFALL_TOTALS_MM = (33, 61, 96)
-SUPPORTED_CUSTOM_RAINFALL_DURATION_HOURS = (2,)
-DEFAULT_PUBLIC_NCEI_ROOT = DEFAULT_PUBLIC_ROOT / "ncei_2024_station_constraint"
+SUPPORTED_CUSTOM_RAINFALL_DURATIONS_HOURS = (1, 2, 24)
+DEFAULT_CUSTOM_RAINFALL_TOTAL_MM = 96
+DEFAULT_CUSTOM_RAINFALL_DURATION_HOURS = 1
 SWMM_SCENARIO_SCHEMA = "gwm.abu_dhabi_flood.interactive_swmm_scenario.v1"
 _IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
 _FLOAT = r"[-+]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[Ee][-+]?[0-9]+)?"
@@ -172,6 +182,44 @@ def _customer_bidirectional_2d_root() -> Path:
     ).expanduser().resolve()
 
 
+def _custom_rainfall_base_root() -> Path:
+    """Return the durable matrix (or legacy single-bundle) root."""
+
+    return _configured_path(
+        "ABU_DHABI_CUSTOM_RAINFALL_ROOT", DEFAULT_CUSTOM_RAINFALL_ROOT
+    ).expanduser().resolve()
+
+
+def _coupled_custom_33mm_2h_root() -> Path:
+    return _configured_path(
+        "ABU_DHABI_COUPLED_CUSTOM_33MM_2H_ROOT",
+        DEFAULT_COUPLED_CUSTOM_33MM_2H_ROOT,
+    ).expanduser().resolve()
+
+
+def _coupled_custom_matrix_2h_root(rainfall_total_mm: int) -> Path:
+    """Resolve the v3 land-masked one-way 2-hour coupled delivery.
+
+    These assets are published from already-computed SWW files.  This
+    selector only changes which read-only result bundle the GIS service
+    exposes; it never starts or repeats a hydraulic run.
+    """
+
+    defaults = {
+        33: DEFAULT_COUPLED_CUSTOM_33MM_2H_ROOT,
+        61: DEFAULT_COUPLED_CUSTOM_61MM_2H_ROOT,
+        96: DEFAULT_COUPLED_CUSTOM_96MM_2H_ROOT,
+    }
+    configured = os.environ.get(
+        f"ABU_DHABI_COUPLED_CUSTOM_{rainfall_total_mm}MM_2H_ROOT", ""
+    ).strip()
+    return (
+        Path(configured).expanduser().resolve()
+        if configured
+        else defaults[rainfall_total_mm].expanduser().resolve()
+    )
+
+
 def _partial_citywide_61mm_2h_root() -> Path:
     return _configured_path(
         "ABU_DHABI_PARTIAL_CITYWIDE_61MM_2H_ROOT",
@@ -179,32 +227,198 @@ def _partial_citywide_61mm_2h_root() -> Path:
     ).expanduser().resolve()
 
 
-def _coupled_custom_matrix_2h_root(rainfall_total_mm: int) -> Path:
-    defaults = {
-        33: DEFAULT_COUPLED_MATRIX_ROOT / (
-            "abu-dhabi-citywide-coupled-33mm-2h-250m-one-way-land-masked-74h/"
-            "runs/full-74h-one-way-swmm-to-anuga-routing30s"
-        ),
-        61: DEFAULT_COUPLED_CUSTOM_61MM_2H_ROOT,
-        96: DEFAULT_COUPLED_CUSTOM_96MM_2H_ROOT,
-    }
-    configured = os.environ.get(
-        f"ABU_DHABI_COUPLED_CUSTOM_{rainfall_total_mm}MM_2H_ROOT", ""
-    ).strip()
-    return Path(configured).expanduser().resolve() if configured else defaults[rainfall_total_mm]
-
-
 def _normalise_custom_rainfall_selection(
     rainfall_total_mm: int | None,
     rainfall_duration_hours: int | None,
 ) -> tuple[int, int]:
-    total_mm = 96 if rainfall_total_mm is None else int(rainfall_total_mm)
-    duration_hours = 2 if rainfall_duration_hours is None else int(rainfall_duration_hours)
+    total_mm = (
+        DEFAULT_CUSTOM_RAINFALL_TOTAL_MM
+        if rainfall_total_mm is None
+        else int(rainfall_total_mm)
+    )
+    duration_hours = (
+        DEFAULT_CUSTOM_RAINFALL_DURATION_HOURS
+        if rainfall_duration_hours is None
+        else int(rainfall_duration_hours)
+    )
     if total_mm not in SUPPORTED_CUSTOM_RAINFALL_TOTALS_MM:
         raise ValueError("custom_rainfall_total_not_supported")
-    if duration_hours not in SUPPORTED_CUSTOM_RAINFALL_DURATION_HOURS:
+    if duration_hours not in SUPPORTED_CUSTOM_RAINFALL_DURATIONS_HOURS:
         raise ValueError("custom_rainfall_duration_not_supported")
     return total_mm, duration_hours
+
+
+def _custom_rainfall_result_root(
+    rainfall_total_mm: int | None,
+    rainfall_duration_hours: int | None,
+) -> tuple[Path, int, int]:
+    total_mm, duration_hours = _normalise_custom_rainfall_selection(
+        rainfall_total_mm, rainfall_duration_hours
+    )
+    base = _custom_rainfall_base_root()
+    root_level_bundle = (
+        (base / "delivery_summary.json").is_file()
+        and (base / "maximum_depth_wgs84.geojson").is_file()
+        and (base / "temporal_snapshots" / "manifest.json").is_file()
+    )
+    if root_level_bundle:
+        root = base
+    else:
+        # Replace the three 2-hour matrix entries with the newer land-masked
+        # one-way SWMM→ANUGA results published from the existing 887-window
+        # SWW files.  The 1-hour and 24-hour entries remain their existing
+        # products until separately replaced.
+        coupled_override = (
+            _coupled_custom_matrix_2h_root(total_mm)
+            if duration_hours == 2
+            else None
+        )
+        use_coupled_override = (
+            duration_hours == 2
+            and coupled_override is not None
+            and coupled_override.is_dir()
+            and not os.environ.get("ABU_DHABI_CUSTOM_RAINFALL_ROOT", "").strip()
+        )
+        root = (
+            coupled_override
+            if use_coupled_override
+            else base
+            / f"abu-dhabi-citywide-rain-{total_mm}mm-{duration_hours}h-250m"
+        )
+    if not root.is_dir():
+        raise ValueError("custom_rainfall_citywide_2d_result_not_available")
+    return root, total_mm, duration_hours
+
+
+def _custom_rainfall_available_scenarios() -> list[dict[str, Any]]:
+    base = _custom_rainfall_base_root()
+    available: list[dict[str, Any]] = []
+    for total_mm in SUPPORTED_CUSTOM_RAINFALL_TOTALS_MM:
+        for duration_hours in SUPPORTED_CUSTOM_RAINFALL_DURATIONS_HOURS:
+            try:
+                candidate, _, _ = _custom_rainfall_result_root(
+                    total_mm, duration_hours
+                )
+            except ValueError:
+                continue
+            summary_path = candidate / "delivery_summary.json"
+            manifest_path = candidate / "temporal_snapshots" / "manifest.json"
+            maximum_path = candidate / "maximum_depth_wgs84.geojson"
+            if not (
+                summary_path.is_file()
+                and manifest_path.is_file()
+                and maximum_path.is_file()
+            ):
+                continue
+            try:
+                summary = json.loads(summary_path.read_text(encoding="utf-8"))
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                continue
+            snapshots = manifest.get("snapshots")
+            # The coupled matrix keeps its native INP beside the run
+            # directory (under input-routing30s-74h-total), while OUT/RPT
+            # and the coupling receipt live in the run directory.  Supply
+            # that sibling INP to the same evidence assessor used by the
+            # bootstrap endpoint so the availability list does not call a
+            # valid coupled bundle surface-only merely because of layout.
+            admission_summary = summary
+            input_path = _coupled_swmm_input_path(candidate)
+            if input_path is not None:
+                admission_summary = {
+                    **summary,
+                    "outputs": {
+                        **(summary.get("outputs") or {}),
+                        "swmm_input": str(input_path),
+                    },
+                }
+            admission = assess_hydraulic_result(candidate, admission_summary)
+            available.append(
+                {
+                    "rainfall_total_mm": total_mm,
+                    "rainfall_duration_hours": duration_hours,
+                    "rainfall_duration_minutes": duration_hours * 60,
+                    "run_id": str(summary.get("run_id") or candidate.name),
+                    "model_cell_size_m": (summary.get("domain") or {}).get(
+                        "cell_size_m"
+                    ),
+                    "period_count": len(snapshots)
+                    if isinstance(snapshots, list)
+                    else 0,
+                    "hydraulic_result_class": admission["result_class"],
+                    "is_1d_2d_coupled": admission["is_1d_2d_coupled"],
+                    "coupling_mode": admission["normalized_coupling_mode"]
+                    if admission.get("normalized_coupling_mode")
+                    else admission.get("declared_coupling_mode"),
+                }
+            )
+    return available
+
+
+def custom_rainfall_hotspot_metrics_payload(
+    rainfall_total_mm: int | None,
+    rainfall_duration_hours: int | None,
+) -> dict[str, Any]:
+    """Return the precomputed 506-hotspot metrics for one rainfall scenario."""
+
+    root, total_mm, duration_hours = _custom_rainfall_result_root(
+        rainfall_total_mm, rainfall_duration_hours
+    )
+    path = root / "hotspot_metrics_506.json"
+    if not path.is_file():
+        raise ValueError("custom_rainfall_hotspot_metrics_not_available")
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("custom_rainfall_hotspot_metrics_invalid") from error
+    records = payload.get("records") if isinstance(payload, dict) else None
+    metadata = payload.get("metadata") if isinstance(payload, dict) else None
+    if not isinstance(records, list) or len(records) != 506 or not isinstance(metadata, dict):
+        raise ValueError("custom_rainfall_hotspot_metrics_invalid")
+    metadata.setdefault("rainfall_total_mm", total_mm)
+    metadata.setdefault("rainfall_duration_hours", duration_hours)
+    metadata["hydraulic_result_class"] = "surface_only_diagnostic"
+    metadata["is_1d_2d_coupled"] = False
+    metadata["usage_boundary"] = (
+        "Derived from a surface-only ANUGA SWW. This table is not a coupled "
+        "1D/2D SWMM--ANUGA result."
+    )
+    metadata["csv_download_endpoint"] = (
+        "/api/abu-dhabi/flood/public-citywide-2d/hotspot-metrics/download?"
+        + urlencode(
+            {
+                "format": "csv",
+                "rainfall_total_mm": total_mm,
+                "rainfall_duration_hours": duration_hours,
+            }
+        )
+    )
+    metadata["matrix_workbook_download_endpoint"] = (
+        "/api/abu-dhabi/flood/public-citywide-2d/hotspot-metrics/download?format=xlsx"
+    )
+    return payload
+
+
+def custom_rainfall_hotspot_metrics_download_path(
+    rainfall_total_mm: int | None,
+    rainfall_duration_hours: int | None,
+    file_format: str,
+) -> Path:
+    """Resolve a validated CSV or all-scenario Excel hotspot table artifact."""
+
+    normalized_format = str(file_format or "csv").strip().lower()
+    if normalized_format == "xlsx":
+        path = _custom_rainfall_base_root() / "hotspot_metrics_506_all_9_scenarios.xlsx"
+    elif normalized_format == "csv":
+        root, _, _ = _custom_rainfall_result_root(
+            rainfall_total_mm, rainfall_duration_hours
+        )
+        path = root / "hotspot_metrics_506.csv"
+    else:
+        raise ValueError("custom_rainfall_hotspot_metrics_format_not_supported")
+    if not path.is_file():
+        raise ValueError("custom_rainfall_hotspot_metrics_not_available")
+    return path
 
 
 def _normalise_citywide_2d_result_source(result_source: str | None) -> str:
@@ -223,8 +437,8 @@ def _normalise_citywide_2d_result_source(result_source: str | None) -> str:
     if source not in {
         "return_period_one_way",
         "bidirectional_validation",
-        "partial_one_way_61mm_2h",
         "custom_rainfall",
+        "partial_one_way_61mm_2h",
     }:
         raise ValueError("public_citywide_2d_result_source_not_supported")
     return source
@@ -237,19 +451,16 @@ def _citywide_2d_result_root(
     rainfall_duration_hours: int | None = None,
 ) -> tuple[Path, str, int | None, int | None]:
     source = _normalise_citywide_2d_result_source(result_source)
-    if source == "custom_rainfall":
-        total_mm, duration_hours = _normalise_custom_rainfall_selection(
-            rainfall_total_mm, rainfall_duration_hours
-        )
-        root = _coupled_custom_matrix_2h_root(total_mm)
-        if not root.is_dir():
-            raise ValueError("custom_rainfall_citywide_2d_result_not_available")
-        return root, source, total_mm, duration_hours
     if source == "partial_one_way_61mm_2h":
         root = _partial_citywide_61mm_2h_root()
         if not root.is_dir():
             raise ValueError("partial_citywide_61mm_2h_result_not_available")
-        return root, source, 61, 2
+        return root, source, None, None
+    if source == "custom_rainfall":
+        root, total_mm, duration_hours = _custom_rainfall_result_root(
+            rainfall_total_mm, rainfall_duration_hours
+        )
+        return root, source, total_mm, duration_hours
     if source == "bidirectional_validation":
         if return_period_years not in (None, 100):
             raise ValueError("bidirectional_citywide_2d_only_available_for_100_year_result")
@@ -258,6 +469,21 @@ def _citywide_2d_result_root(
             raise ValueError("bidirectional_citywide_2d_result_not_available")
         return root, source, None, None
     return _public_citywide_2d_root(return_period_years), source, None, None
+
+
+def _coupled_swmm_input_path(result_root: Path) -> Path | None:
+    """Locate the native SWMM input beside a precomputed coupled result."""
+
+    scenario_root = result_root.parent.parent
+    candidates = [
+        scenario_root / "input-routing30s-74h-total" / "coupled_scenario.inp",
+        scenario_root / "input-routing30s-72h" / "coupled_scenario.inp",
+    ]
+    candidates.extend(sorted(scenario_root.glob("input-*/coupled_scenario.inp")))
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def _result_root_for_period(base: Path, return_period_years: int | None) -> Path:
@@ -2014,14 +2240,12 @@ def public_citywide_2d_bootstrap_payload(
         rainfall_total_mm,
         rainfall_duration_hours,
     )
+    partial_one_way = resolved_result_source == "partial_one_way_61mm_2h"
     custom_rainfall = resolved_result_source == "custom_rainfall"
-    partial_one_way = resolved_result_source in {
-        "partial_one_way_61mm_2h",
-        "custom_rainfall",
-    }
     bidirectional_validation = resolved_result_source == "bidirectional_validation"
     maximum_path = root / "maximum_depth_wgs84.geojson"
     maximum_extent_path = root / "maximum_inundation_extent_wgs84.geojson"
+    maximum_volume_path = root / "inundation_volume_points_wgs84.geojson"
     summary_path = root / "delivery_summary.json"
     manifest_path = root / "temporal_snapshots" / "manifest.json"
     required_paths = (
@@ -2041,12 +2265,25 @@ def public_citywide_2d_bootstrap_payload(
             if maximum_extent_path.is_file()
             else None
         )
+        maximum_volume_points = (
+            json.loads(maximum_volume_path.read_text(encoding="utf-8"))
+            if maximum_volume_path.is_file()
+            else None
+        )
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ValueError("public_citywide_2d_payload_invalid") from error
+    hydraulic_admission = assess_hydraulic_result(root, summary)
     if not isinstance(maximum, dict) or maximum.get("type") != "FeatureCollection":
         raise ValueError("public_citywide_2d_maximum_depth_invalid")
+    if maximum_volume_points is not None and (
+        not isinstance(maximum_volume_points, dict)
+        or maximum_volume_points.get("type") != "FeatureCollection"
+    ):
+        raise ValueError("public_citywide_2d_volume_points_invalid")
+    if partial_one_way and maximum_extent is None:
+        raise ValueError("public_citywide_2d_maximum_extent_missing")
     if maximum_extent is None:
         maximum_extent = {
             "type": "FeatureCollection",
@@ -2067,8 +2304,6 @@ def public_citywide_2d_bootstrap_payload(
             ],
             "metadata": {"inundation_extent_threshold_m": 0.01, "derived_from": "maximum_depth_wgs84.geojson"},
         }
-    if not isinstance(maximum_extent, dict) or maximum_extent.get("type") != "FeatureCollection":
-        raise ValueError("public_citywide_2d_maximum_extent_invalid")
     snapshots = manifest.get("snapshots")
     if not isinstance(snapshots, list) or not snapshots:
         raise ValueError("public_citywide_2d_timeline_invalid")
@@ -2084,7 +2319,7 @@ def public_citywide_2d_bootstrap_payload(
     forcing = summary.get("forcing") or {}
     selected_return_period = (
         None
-        if partial_one_way
+        if custom_rainfall or partial_one_way
         else int(
             return_period_years
             if return_period_years is not None
@@ -2101,17 +2336,75 @@ def public_citywide_2d_bootstrap_payload(
     if customer_surface and source_resolution is None:
         source_resolution = [5.0, 5.0]
     source_label = "customer_dtm_5m" if customer_surface else "copernicus_dem_glo30"
+    declared_model_configuration = summary.get("model_configuration") or {}
+    coupling_mode = str(
+        coupling.get("mode")
+        or coupling.get("coupling_mode")
+        or declared_model_configuration.get("coupling_mode")
+        or (
+            "one_way_swmm_to_anuga_partial"
+            if partial_one_way
+            else "direct_2d_rainfall"
+            if custom_rainfall
+            else "synchronous_two_way_swmm_anuga_surface_exchange"
+            if bidirectional_validation
+            else "one_way_swmm_to_anuga"
+        )
+    )
+    custom_rainfall_coupled = custom_rainfall and coupling_mode in {
+        "one_way_swmm_to_anuga",
+        "swmm_to_anuga",
+        "two_way_swmm_anuga",
+        "synchronous_two_way_swmm_anuga_surface_exchange",
+    }
+    delivery = summary.get("delivery") or {}
+    partial_custom_result = bool(
+        custom_rainfall
+        and (
+            str(summary.get("status", "")).startswith("partial_")
+            or (
+                delivery.get("completed_window_count") is not None
+                and delivery.get("expected_window_count") is not None
+                and int(delivery.get("completed_window_count"))
+                < int(delivery.get("expected_window_count"))
+            )
+        )
+    )
+    custom_rainfall_surface_only = custom_rainfall and not custom_rainfall_coupled
+    if custom_rainfall_coupled:
+        input_path = _coupled_swmm_input_path(root)
+        if input_path is not None:
+            hydraulic_admission = assess_hydraulic_result(
+                root,
+                {
+                    **summary,
+                    "outputs": {
+                        **(summary.get("outputs") or {}),
+                        "swmm_input": str(input_path),
+                    },
+                },
+            )
     if partial_one_way:
         claim_boundary = str(
             summary.get("claim_boundary")
             or "Partial one-way SWMM→ANUGA result; the final five minutes are missing and complete recession is not verified."
         )
-        if custom_rainfall:
-            result_name = "abu_dhabi_customer_dtm5m_citywide_swmm_anuga_partial_custom_rainfall"
-            run_prefix = "abu-dhabi-customer-dtm5m-citywide-swmm-anuga-partial-custom-rainfall"
-        else:
-            result_name = "abu_dhabi_customer_dtm5m_citywide_swmm_anuga_partial_61mm_2h"
-            run_prefix = "abu-dhabi-customer-dtm5m-citywide-swmm-anuga-partial-61mm-2h"
+        result_name = "abu_dhabi_customer_dtm5m_citywide_swmm_anuga_partial_61mm_2h"
+        run_prefix = "abu-dhabi-customer-dtm5m-citywide-swmm-anuga-partial-61mm-2h"
+    elif custom_rainfall_coupled:
+        claim_boundary = str(
+            summary.get("claim_boundary")
+            or "Completed one-way SWMM→ANUGA coupled diagnostic; not calibrated or engineering-admitted."
+        )
+        result_name = "abu_dhabi_customer_dtm5m_citywide_custom_rainfall_swmm_anuga"
+        run_prefix = "abu-dhabi-customer-dtm5m-citywide-custom-rainfall-swmm-anuga"
+    elif custom_rainfall_surface_only:
+        claim_boundary = str(
+            summary.get("claim_boundary")
+            or "Completed container ANUGA 2D custom-rainfall diagnostic; not calibrated or engineering-admitted."
+        )
+        result_name = "abu_dhabi_customer_dtm5m_citywide_custom_rainfall_anuga_2d"
+        run_prefix = "abu-dhabi-customer-dtm5m-citywide-custom-rainfall"
     elif bidirectional_validation:
         claim_boundary = str(
             summary.get("claim_boundary")
@@ -2127,55 +2420,53 @@ def public_citywide_2d_bootstrap_payload(
         claim_boundary = "Full-city public Copernicus DEM and ESA WorldCover land/water-mask prototype; coarse grid, not calibrated, not engineering-admitted."
         result_name = "abu_dhabi_public_copernicus_citywide_anuga_2d"
         run_prefix = "abu-dhabi-public-copernicus-citywide-anuga"
-    coupling_mode = str(
-        coupling.get("mode")
-        or (
-            "one_way_swmm_to_anuga_partial"
-            if partial_one_way
-            else "synchronous_two_way_swmm_anuga_surface_exchange"
-            if bidirectional_validation
-            else "one_way_swmm_to_anuga"
-        )
-    )
     dynamic_head_feedback = bidirectional_validation or bool(
         coupling.get("dynamic_head_feedback_in_this_run", False)
     )
     forcing_duration_minutes = forcing.get(
         "duration_minutes", forcing.get("configured_storm_duration_minutes")
     )
+    effective_forcing = dict(forcing)
+    if custom_rainfall:
+        effective_forcing.setdefault("source", "customer_requested_rainfall")
+        effective_forcing.setdefault("rainfall_total_mm", selected_rainfall_total_mm)
+        effective_forcing.setdefault(
+            "rainfall_duration_minutes",
+            (selected_rainfall_duration_hours or 0) * 60,
+        )
+    forcing_duration_minutes = (
+        forcing_duration_minutes
+        or effective_forcing.get("rainfall_duration_minutes")
+        or declared_model_configuration.get("rainfall_duration_minutes")
+    )
     simulation_duration_minutes = domain.get("simulation_duration_minutes")
     if simulation_duration_minutes is None and domain.get("simulation_duration_hours") is not None:
         simulation_duration_minutes = float(domain.get("simulation_duration_hours")) * 60.0
-    timeline_run_id = str(
-        summary.get("run_id")
-        or f"{run_prefix}{'' if selected_return_period is None else f'-rp{selected_return_period:03d}'}"
-    )
+    timeline_run_id = str(summary.get("run_id") or (
+        f"{run_prefix}-partial" if partial_one_way
+        else (
+            f"{run_prefix}-{selected_rainfall_total_mm}mm-{selected_rainfall_duration_hours}h"
+            if custom_rainfall
+            else f"{run_prefix}-rp{selected_return_period:03d}"
+        )
+    ))
     timeline_source_query = (
-        "&result_source=custom_rainfall"
-        f"&rainfall_total_mm={selected_rainfall_total_mm}"
-        f"&rainfall_duration_hours={selected_rainfall_duration_hours}"
-        if custom_rainfall
-        else "&result_source=partial_one_way_61mm_2h"
+        "&result_source=partial_one_way_61mm_2h"
         if partial_one_way
+        else
+        "&result_source=custom_rainfall"
+        if custom_rainfall
         else "&result_source=bidirectional_validation"
         if bidirectional_validation
         else ""
     )
-    available_result_sources = ["return_period_one_way"]
-    matrix_roots = {
-        total_mm: _coupled_custom_matrix_2h_root(total_mm)
-        for total_mm in SUPPORTED_CUSTOM_RAINFALL_TOTALS_MM
-    }
-    if all(
-        (candidate / "delivery_summary.json").is_file()
-        and (candidate / "temporal_snapshots" / "manifest.json").is_file()
-        and (candidate / "maximum_depth_wgs84.geojson").is_file()
-        and (candidate / "maximum_inundation_extent_wgs84.geojson").is_file()
-        for candidate in matrix_roots.values()
-    ):
-        available_result_sources.append("custom_rainfall")
+    available_result_sources = [
+        "partial_one_way_61mm_2h"
+        if partial_one_way
+        else "custom_rainfall" if custom_rainfall else "return_period_one_way"
+    ]
     partial_root = _partial_citywide_61mm_2h_root()
-    if (
+    if not custom_rainfall and (
         (partial_root / "delivery_summary.json").is_file()
         and (partial_root / "temporal_snapshots" / "manifest.json").is_file()
         and (partial_root / "maximum_depth_wgs84.geojson").is_file()
@@ -2183,7 +2474,7 @@ def public_citywide_2d_bootstrap_payload(
     ):
         available_result_sources.append("partial_one_way_61mm_2h")
     bidirectional_root = _customer_bidirectional_2d_root()
-    if (
+    if not custom_rainfall and (
         (bidirectional_root / "delivery_summary.json").is_file()
         and (bidirectional_root / "temporal_snapshots" / "manifest.json").is_file()
         and (bidirectional_root / "maximum_depth_wgs84.geojson").is_file()
@@ -2199,42 +2490,120 @@ def public_citywide_2d_bootstrap_payload(
             "result_status": summary.get("status"),
             "result_source": resolved_result_source,
             "result_variant": resolved_result_source,
+            "hydraulic_admission": hydraulic_admission,
+            "hydraulic_result_class": hydraulic_admission["result_class"],
+            "is_1d_2d_coupled": hydraulic_admission["is_1d_2d_coupled"],
             "available_result_sources": available_result_sources,
             "return_period_years": selected_return_period,
             "scenario_label": summary.get("scenario_label")
+            or ("61 mm / 2 h" if partial_one_way else None)
             or (
                 f"{selected_rainfall_total_mm} mm / {selected_rainfall_duration_hours} h"
-                if partial_one_way
-                else None
-            ),
-            "rainfall_total_mm": (
-                selected_rainfall_total_mm
                 if custom_rainfall
-                else forcing.get("total_depth_mm")
-                if partial_one_way
                 else None
             ),
-            "rainfall_duration_minutes": (
-                (selected_rainfall_duration_hours or 0) * 60
+            "partial_result": partial_one_way or partial_custom_result,
+            "completed_window_count": delivery.get("completed_window_count") if partial_one_way or partial_custom_result else None,
+            "expected_window_count": delivery.get("expected_window_count") if partial_one_way or partial_custom_result else None,
+            "missing_tail_minutes": float(delivery.get("missing_tail_seconds", 0.0) or 0.0) / 60.0 if partial_one_way or partial_custom_result else 0.0,
+            "complete_recession_verified": (
+                bool(delivery.get("complete_recession_verified", False))
+                if partial_one_way or partial_custom_result
+                else bool((results.get("dewatered_below_0_01m", True)))
+                if custom_rainfall_coupled
+                else True
+            ),
+            "maximum_inundation_extent_threshold_m": (
+                (summary.get("delivery") or {}).get("inundation_extent_threshold_m")
+                if partial_one_way
+                else results.get("minimum_published_depth_m")
+                if custom_rainfall_coupled
+                else None
+            ),
+            "rainfall_total_mm": selected_rainfall_total_mm,
+            "rainfall_duration_hours": selected_rainfall_duration_hours,
+            "available_custom_rainfall_scenarios": (
+                _custom_rainfall_available_scenarios() if custom_rainfall else []
+            ),
+            "hotspot_metrics": (
+                {
+                    **(summary.get("hotspot_metrics") or {}),
+                    "available": bool(
+                        (root / "hotspot_metrics_506.json").is_file()
+                        and (root / "hotspot_metrics_506.csv").is_file()
+                    ),
+                    "json_endpoint": (
+                        "/api/abu-dhabi/flood/public-citywide-2d/hotspot-metrics?"
+                        + urlencode(
+                            {
+                                "rainfall_total_mm": selected_rainfall_total_mm,
+                                "rainfall_duration_hours": selected_rainfall_duration_hours,
+                            }
+                        )
+                    ),
+                    "csv_download_endpoint": (
+                        "/api/abu-dhabi/flood/public-citywide-2d/hotspot-metrics/download?"
+                        + urlencode(
+                            {
+                                "format": "csv",
+                                "rainfall_total_mm": selected_rainfall_total_mm,
+                                "rainfall_duration_hours": selected_rainfall_duration_hours,
+                            }
+                        )
+                    ),
+                    "matrix_workbook_download_endpoint": (
+                        "/api/abu-dhabi/flood/public-citywide-2d/hotspot-metrics/download?format=xlsx"
+                    ),
+                }
                 if custom_rainfall
-                else forcing.get("duration_minutes")
-                if partial_one_way
-                else None
+                else {"available": False}
             ),
-            "partial_result": partial_one_way,
-            "completed_window_count": (summary.get("delivery") or {}).get("completed_window_count") if partial_one_way else None,
-            "expected_window_count": (summary.get("delivery") or {}).get("expected_window_count") if partial_one_way else None,
-            "missing_tail_minutes": float((summary.get("delivery") or {}).get("missing_tail_seconds", 0.0) or 0.0) / 60.0 if partial_one_way else 0.0,
-            "complete_recession_verified": bool((summary.get("delivery") or {}).get("complete_recession_verified", True)) if partial_one_way else True,
-            "maximum_inundation_extent_threshold_m": (summary.get("delivery") or {}).get("inundation_extent_threshold_m") if partial_one_way else None,
+            "inundation_volume_points": (
+                {
+                    "available": True,
+                    "point_count": len(maximum_volume_points.get("features") or []),
+                    "source": "ANUGA SWW stage_c/elevation_c triangle-volume aggregation",
+                    "volume_definition": (
+                        "每个250米交付网格在其自身峰值时刻的瞬时地表积水体积；"
+                        "三角形体积按 max(stage_c-elevation_c,0) × triangle_area 聚合"
+                    ),
+                    "maximum_surface_water_volume_m3": (
+                        (maximum_volume_points.get("metadata") or {}).get(
+                            "maximum_surface_water_volume_m3"
+                        )
+                    ),
+                    "maximum_surface_water_volume_time_minutes": (
+                        (maximum_volume_points.get("metadata") or {}).get(
+                            "maximum_surface_water_volume_time_minutes"
+                        )
+                    ),
+                    "completed_window_count": (
+                        (maximum_volume_points.get("metadata") or {}).get(
+                            "completed_window_count"
+                        )
+                    ),
+                    "expected_window_count": (
+                        (maximum_volume_points.get("metadata") or {}).get(
+                            "expected_window_count"
+                        )
+                    ),
+                    "complete_recession_verified": (
+                        (maximum_volume_points.get("metadata") or {}).get(
+                            "complete_recession_verified", False
+                        )
+                    ),
+                }
+                if maximum_volume_points is not None
+                else {"available": False}
+            ),
             "available_return_periods": (
-                [100]
+                []
+                if custom_rainfall or partial_one_way
+                else [100]
                 if bidirectional_validation
-                else []
-                if partial_one_way
                 else _public_citywide_2d_available_periods(base_root)
             ),
-            "forcing": forcing,
+            "forcing": effective_forcing,
             "surface_product": product,
             "surface_evidence_class": surface_source_class,
             "surface_source_class": surface_source_class,
@@ -2251,17 +2620,20 @@ def public_citywide_2d_bootstrap_payload(
                 "solver_chain": (
                     "EPA SWMM 5.2.4 native OUT -> ANUGA 2D (partial one-way result)"
                     if partial_one_way
-                    else (
-                    "EPA SWMM 5.2.4 <-> ANUGA 2D synchronous exchange validation"
+                    else
+                    "SWMM rainfall and native OUT -> ANUGA 2D (one-way coupled)"
+                    if custom_rainfall_coupled
+                    else "container rainfall forcing -> ANUGA 2D"
+                    if custom_rainfall_surface_only
+                    else "EPA SWMM 5.2.4 <-> ANUGA 2D synchronous exchange validation"
                     if bidirectional_validation
                     else "EPA SWMM 5.2.4 native OUT -> ANUGA 2D"
-                    )
                 ),
                 "terrain_source": source_label,
                 "terrain_product": product,
                 "terrain_source_resolution_m": source_resolution,
                 "model_cell_size_m": domain.get("cell_size_m"),
-                "forcing_source": forcing.get("source"),
+                "forcing_source": effective_forcing.get("source"),
                 "forcing_duration_minutes": forcing_duration_minutes,
                 "forcing_interval_minutes": forcing.get("native_interval_minutes"),
                 "forcing_peak_position_percent": forcing.get("peak_position_percent"),
@@ -2278,7 +2650,11 @@ def public_citywide_2d_bootstrap_payload(
                 "output_interval_minutes": domain.get("output_step_minutes"),
                 "coupling_mode": coupling_mode,
                 "exchange_quantity": (
-                    "head-difference exchange in both directions"
+                    "SWMM node overflow source"
+                    if custom_rainfall_coupled
+                    else "direct rainfall source"
+                    if custom_rainfall_surface_only
+                    else "head-difference exchange in both directions"
                     if bidirectional_validation
                     else (coupling.get("exchange_quantity") or {}).get("swmm_to_anuga")
                 ),
@@ -2288,9 +2664,17 @@ def public_citywide_2d_bootstrap_payload(
                 "water_cell_fraction_threshold": land_water.get(
                     "water_cell_fraction_threshold"
                 ),
-                "editable_parameters": [] if bidirectional_validation or partial_one_way else ["return_period_years"],
+                "editable_parameters": (
+                    []
+                    if custom_rainfall or partial_one_way or bidirectional_validation
+                    else ["return_period_years"]
+                ),
                 "frozen_parameter_reason": (
-                    "The current web contract selects an audited registered result. "
+                    "This bundle is a completed one-way SWMM→ANUGA custom-rainfall result; changing rainfall, mesh, boundary, or time-step settings requires a new container run."
+                    if custom_rainfall_coupled
+                    else "This bundle is a completed custom-rainfall container result; changing rainfall, mesh, boundary, or time-step settings requires a new container run."
+                    if custom_rainfall_surface_only
+                    else "The current web contract selects an audited registered result. "
                     "Changing mesh, boundary, coupling, roughness, or time-step settings "
                     "requires a new ANUGA run and a new run receipt."
                 ),
@@ -2323,6 +2707,25 @@ def public_citywide_2d_bootstrap_payload(
             "maximum_depth_m": results.get("maximum_depth_m"),
             "inundated_area_ge_0_01m2": results.get("inundated_area_ge_0_01m2"),
             "inundated_area_ge_0_05m2": results.get("inundated_area_ge_0_05m2"),
+            "maximum_surface_water_volume_m3": (
+                (maximum_volume_points.get("metadata") or {}).get(
+                    "maximum_surface_water_volume_m3"
+                )
+                if maximum_volume_points is not None
+                else None
+            ),
+            "maximum_surface_water_volume_time_minutes": (
+                (maximum_volume_points.get("metadata") or {}).get(
+                    "maximum_surface_water_volume_time_minutes"
+                )
+                if maximum_volume_points is not None
+                else None
+            ),
+            "inundation_volume_point_count": (
+                len(maximum_volume_points.get("features") or [])
+                if maximum_volume_points is not None
+                else 0
+            ),
             "coupling_summary": {
                 "mode": coupling_mode,
                 "quality_passed": coupling.get("quality_passed"),
@@ -2339,7 +2742,14 @@ def public_citywide_2d_bootstrap_payload(
                     "maximum_exchange_application_relative_difference"
                 ),
                 "execution_provenance": (
-                    "Receipt records synchronous two-way exchange; native SWMM re-invocation in every window requires runtime-log verification."
+                    "Registered native SWMM OUT is applied as a one-way ANUGA source; final five-minute window is missing."
+                    if partial_one_way
+                    else
+                    "SWMM rainfall and native OUT were applied to ANUGA in one-way mode."
+                    if custom_rainfall_coupled
+                    else "Direct rainfall forcing in the completed ANUGA container run."
+                    if custom_rainfall_surface_only
+                    else "Receipt records synchronous two-way exchange; native SWMM re-invocation in every window requires runtime-log verification."
                     if bidirectional_validation
                     else "Registered native SWMM OUT is applied as a one-way ANUGA source."
                 ),
@@ -2348,11 +2758,18 @@ def public_citywide_2d_bootstrap_payload(
                 "available": True,
                 "run_id": timeline_run_id,
                 "endpoint": (
-                    "/api/abu-dhabi/flood/public-citywide-2d/timeseries?result_source=custom_rainfall"
-                    + f"&rainfall_total_mm={selected_rainfall_total_mm}&rainfall_duration_hours={selected_rainfall_duration_hours}"
-                    if custom_rainfall
-                    else "/api/abu-dhabi/flood/public-citywide-2d/timeseries?result_source=partial_one_way_61mm_2h"
+                    "/api/abu-dhabi/flood/public-citywide-2d/timeseries?result_source=partial_one_way_61mm_2h"
                     if partial_one_way
+                    else
+                    "/api/abu-dhabi/flood/public-citywide-2d/timeseries?"
+                    + urlencode(
+                        {
+                            "result_source": "custom_rainfall",
+                            "rainfall_total_mm": selected_rainfall_total_mm,
+                            "rainfall_duration_hours": selected_rainfall_duration_hours,
+                        }
+                    )
+                    if custom_rainfall
                     else f"/api/abu-dhabi/flood/public-citywide-2d/timeseries?return_period_years={selected_return_period}{timeline_source_query}"
                 ),
                 "time_values": [
@@ -2373,7 +2790,11 @@ def public_citywide_2d_bootstrap_payload(
                 "This partial asset is retained as a read-only visualization of 311 completed windows. It must not be presented as a complete recession result; replace only with a verified 312-window rerun."
                 if partial_one_way
                 else
-                "This validation asset is retained alongside, not in place of, the six one-way return-period products. Replace it only with a rerun carrying equivalent synchronous-window receipts and runtime provenance."
+                "Replace this one-way coupled custom-rainfall bundle only with a new container result carrying the same output contract and a new run receipt."
+                if custom_rainfall_coupled
+                else "Replace this custom-rainfall bundle only with a new container result carrying the same output contract and a new run receipt."
+                if custom_rainfall_surface_only
+                else "This validation asset is retained alongside, not in place of, the six one-way return-period products. Replace it only with a rerun carrying equivalent synchronous-window receipts and runtime provenance."
                 if bidirectional_validation
                 else "Customer 5 m DTM is the primary surface; public Copernicus is used only when the selected customer result is unavailable."
                 if not customer_surface
@@ -2382,6 +2803,7 @@ def public_citywide_2d_bootstrap_payload(
         },
         "maximum_depth": maximum,
         "maximum_inundation_extent": maximum_extent,
+        "maximum_inundation_volume_points": maximum_volume_points,
     }
 
 
@@ -2407,11 +2829,8 @@ def public_citywide_2d_timeseries_payload(
         rainfall_total_mm,
         rainfall_duration_hours,
     )
+    partial_one_way = resolved_result_source == "partial_one_way_61mm_2h"
     custom_rainfall = resolved_result_source == "custom_rainfall"
-    partial_one_way = resolved_result_source in {
-        "partial_one_way_61mm_2h",
-        "custom_rainfall",
-    }
     bidirectional_validation = resolved_result_source == "bidirectional_validation"
     manifest_path = root / "temporal_snapshots" / "manifest.json"
     if not manifest_path.is_file():
@@ -2443,6 +2862,56 @@ def public_citywide_2d_timeseries_payload(
         summary = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.is_file() else {}
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         summary = {}
+    hydraulic_admission = assess_hydraulic_result(root, summary)
+    coupling = summary.get("coupling") or {}
+    model_configuration = summary.get("model_configuration") or {}
+    coupling_mode = str(
+        coupling.get("mode")
+        or coupling.get("coupling_mode")
+        or model_configuration.get("coupling_mode")
+        or (
+            "one_way_swmm_to_anuga_partial"
+            if partial_one_way
+            else "direct_2d_rainfall"
+            if custom_rainfall
+            else "synchronous_two_way_swmm_anuga_surface_exchange"
+            if bidirectional_validation
+            else "one_way_swmm_to_anuga"
+        )
+    )
+    custom_rainfall_coupled = custom_rainfall and coupling_mode in {
+        "one_way_swmm_to_anuga",
+        "swmm_to_anuga",
+        "two_way_swmm_anuga",
+        "synchronous_two_way_swmm_anuga_surface_exchange",
+    }
+    delivery = summary.get("delivery") or {}
+    partial_custom_result = bool(
+        custom_rainfall
+        and (
+            str(summary.get("status", "")).startswith("partial_")
+            or (
+                delivery.get("completed_window_count") is not None
+                and delivery.get("expected_window_count") is not None
+                and int(delivery.get("completed_window_count"))
+                < int(delivery.get("expected_window_count"))
+            )
+        )
+    )
+    if custom_rainfall_coupled:
+        input_path = _coupled_swmm_input_path(root)
+        if input_path is not None:
+            hydraulic_admission = assess_hydraulic_result(
+                root,
+                {
+                    **summary,
+                    "outputs": {
+                        **(summary.get("outputs") or {}),
+                        "swmm_input": str(input_path),
+                    },
+                },
+            )
+    results = summary.get("results") or {}
     surface = summary.get("surface") or {}
     evidence = str(surface.get("evidence_class") or "").lower()
     product = str(surface.get("product") or "")
@@ -2454,27 +2923,46 @@ def public_citywide_2d_timeseries_payload(
         "solver": summary.get("solver", "ANUGA 2D"),
         "result_source": resolved_result_source,
         "result_variant": resolved_result_source,
+        "hydraulic_admission": hydraulic_admission,
+        "hydraulic_result_class": hydraulic_admission["result_class"],
+        "is_1d_2d_coupled": hydraulic_admission["is_1d_2d_coupled"],
         "time_index": time_index,
         "time_seconds": float(item.get("time_seconds", 0.0)),
         "time_minutes": float(item.get("time_minutes", 0.0)),
         "return_period_years": return_period_years,
+        "rainfall_total_mm": selected_rainfall_total_mm,
+        "rainfall_duration_hours": selected_rainfall_duration_hours,
         "scenario_label": (
-            f"{selected_rainfall_total_mm} mm / {selected_rainfall_duration_hours} h"
-            if custom_rainfall
-            else "61 mm / 2 h"
+            "61 mm / 2 h"
             if partial_one_way
+            else f"{selected_rainfall_total_mm} mm / {selected_rainfall_duration_hours} h"
+            if custom_rainfall
             else None
         ),
-        "partial_result": partial_one_way,
-        "completed_window_count": (manifest.get("completed_window_count") if partial_one_way else None),
-        "expected_window_count": (manifest.get("expected_window_count") if partial_one_way else None),
-        "complete_recession_verified": False if partial_one_way else True,
-        "missing_tail_minutes": 5.0 if partial_one_way else 0.0,
+        "partial_result": partial_one_way or partial_custom_result,
+        "completed_window_count": manifest.get("completed_window_count") if partial_one_way else delivery.get("completed_window_count") if partial_custom_result else None,
+        "expected_window_count": manifest.get("expected_window_count") if partial_one_way else delivery.get("expected_window_count") if partial_custom_result else None,
+        "complete_recession_verified": (
+            False
+            if partial_one_way or partial_custom_result
+            else bool(results.get("dewatered_below_0_01m", True))
+            if custom_rainfall_coupled
+            else True
+        ),
+        "missing_tail_minutes": float(
+            manifest.get("missing_tail_seconds", delivery.get("missing_tail_seconds", 0.0)) or 0.0
+        ) / 60.0 if partial_one_way or partial_custom_result else 0.0,
         "depth_field": "depth_m",
         "crs": "EPSG:4326",
         "result_status": (
             "customer_dtm_citywide_partial_one_way_not_complete_recession"
             if partial_one_way
+            else
+            "customer_dtm_citywide_custom_rainfall_swmm_anuga_not_engineering_admitted"
+            if custom_rainfall_coupled
+            else
+            "customer_dtm_citywide_custom_rainfall_container_not_engineering_admitted"
+            if custom_rainfall
             else
             "customer_dtm_citywide_synchronous_bidirectional_validation_not_engineering_admitted"
             if bidirectional_validation
@@ -2483,14 +2971,13 @@ def public_citywide_2d_timeseries_payload(
             else "public_proxy_prototype_not_engineering_admitted"
         ),
         "coupling_mode": (
-            (summary.get("coupling") or {}).get("mode")
-            or (
-                "one_way_swmm_to_anuga_partial"
-                if partial_one_way
-                else "synchronous_two_way_swmm_anuga_surface_exchange"
-                if bidirectional_validation
-                else "one_way_swmm_to_anuga"
-            )
+            "one_way_swmm_to_anuga_partial"
+            if partial_one_way or partial_custom_result
+            else
+            coupling_mode
+            if custom_rainfall
+            else
+            coupling_mode
         ),
         "surface_product": product,
         "surface_source": source_label,
