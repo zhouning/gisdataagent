@@ -8,6 +8,8 @@ from pathlib import Path
 import pytest
 
 from data_agent.hydro_workbench.contracts import (
+    ENGINEERING_REQUIRED_SOURCES,
+    HYDRO_SOURCE_NAMES,
     ManifestValidationError,
     build_preflight,
     build_run_manifest,
@@ -344,6 +346,16 @@ def test_hydro_source_defaults_expose_registered_object_uris(monkeypatch):
     assert payload["sources"]["rainfall"]["admission"] == "prototype_sensitivity_only"
     assert payload["sources"]["rainfall"]["diagnostic_forcing_admitted"] is True
     assert payload["sources"]["rainfall"]["calibration_admitted"] is False
+    assert payload["sources"]["rainfall"]["engineering_admitted"] is False
+
+
+def test_hydro_source_defaults_expose_boundary_aliases(monkeypatch):
+    monkeypatch.setenv("HYDRO_CATCHMENT_BOUNDARY_URI", "nas://hydro/boundaries/catchments.geojson")
+    monkeypatch.setenv("HYDRO_COASTLINE_URI", "nas://hydro/boundaries/coastline.gpkg")
+    payload = hydro_source_defaults_payload()
+    assert payload["sources"]["catchments"]["uri"].endswith("catchments.geojson")
+    assert payload["sources"]["land_sea_boundary"]["uri"].endswith("coastline.gpkg")
+    assert payload["sources"]["land_sea_boundary"]["engineering_required"] is True
 
 
 def test_hydro_source_defaults_switch_to_registered_regional_pilot(monkeypatch):
@@ -446,6 +458,65 @@ def test_preflight_is_non_mutating_and_blocks_customer_etl_gap():
     assert customer["status"] == "blocked"
     assert customer["can_submit"] is False
     assert customer["checks"][-1]["key"] == "customer_etl"
+
+
+def test_hydro_source_catalog_includes_land_sea_and_engineering_inputs():
+    manifest = build_run_manifest(request())
+    assert set(HYDRO_SOURCE_NAMES).issubset(manifest["data_sources"])
+    assert manifest["data_sources"]["land_sea_boundary"]["engineering_required"] is True
+    assert manifest["data_sources"]["hydraulic_structures"]["engineering_required"] is True
+    assert manifest["data_sources"]["rainfall"]["engineering_required"] is True
+    assert manifest["data_sources"]["coastal_bathymetry"]["conditional"] is True
+    assert ENGINEERING_REQUIRED_SOURCES.issubset(manifest["data_sources"])
+
+
+def test_preflight_surfaces_engineering_gaps_without_blocking_fixture_execution():
+    report = build_preflight(request(input_mode="customer_mount", data_sources={
+        "network": {"uri": "nas://hydro/normalized/model.inp"},
+        "terrain": {"uri": "nas://hydro/normalized/dtm.tif"},
+    }))
+    assert "land_sea_boundary" in report["engineering_gaps"]
+    engineering = next(item for item in report["sources"] if item["key"] == "land_sea_boundary")
+    assert engineering["status"] == "optional"
+    assert engineering["engineering_required"] is True
+
+
+def test_fixture_only_marks_sources_consumed_by_the_diagnostic_worker_ready():
+    report = build_preflight(request())
+    statuses = {item["key"]: item for item in report["sources"]}
+    assert statuses["network"]["status"] == "ready"
+    assert statuses["terrain"]["status"] == "ready"
+    assert statuses["rainfall"]["status"] == "ready"
+    assert statuses["land_sea_boundary"]["status"] == "optional"
+    assert statuses["land_sea_boundary"]["detail_code"] == "engineering_gap"
+
+
+def test_registered_but_untransformed_engineering_source_remains_a_gap():
+    report = build_preflight(request(input_mode="customer_mount", data_sources={
+        "network": {"uri": "nas://hydro/normalized/model.inp", "etl_required": False},
+        "terrain": {"uri": "nas://hydro/normalized/dtm.tif", "etl_required": False},
+        "land_sea_boundary": {"uri": "nas://hydro/raw/coastline.gpkg", "etl_required": True},
+    }))
+    assert "land_sea_boundary" in report["engineering_gaps"]
+    coastline = next(item for item in report["sources"] if item["key"] == "land_sea_boundary")
+    assert coastline["status"] == "blocked"
+    assert coastline["detail_code"] == "registered_needs_etl"
+
+
+def test_public_rainfall_proxy_is_not_engineering_admitted():
+    report = build_preflight(request(input_mode="customer_mount", data_sources={
+        "network": {"uri": "nas://hydro/normalized/model.inp", "etl_required": False},
+        "terrain": {"uri": "nas://hydro/normalized/dtm.tif", "etl_required": False},
+        "rainfall": {
+            "uri": "minio://hydro/public/april-2024.json",
+            "etl_required": False,
+            "engineering_admitted": False,
+        },
+    }))
+    assert "rainfall" in report["engineering_gaps"]
+    rainfall = next(item for item in report["sources"] if item["key"] == "rainfall")
+    assert rainfall["status"] == "optional"
+    assert rainfall["detail_code"] == "engineering_gap"
 
 
 def test_preflight_reports_missing_customer_uris_without_throwing():

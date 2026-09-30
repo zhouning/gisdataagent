@@ -28,6 +28,71 @@ RAINFALL_PATTERNS = {"uniform", "alternating_block"}
 ONE_D_ROUTING_METHODS = {"KINWAVE", "DYNWAVE", "STEADY"}
 ONE_D_INFILTRATION_METHODS = {"HORTON", "GREEN_AMPT", "CURVE_NUMBER"}
 SUPPORTED_SOURCE_SCHEMES = {"file", "http", "https", "minio", "nas", "nfs", "s3", "oci"}
+HYDRO_SOURCE_NAMES = [
+    "network",
+    "terrain",
+    "rainfall",
+    "catchments",
+    "land_sea_boundary",
+    "tide",
+    "outfalls",
+    "pumps",
+    "hydraulic_structures",
+    "external_inflows",
+    "surface_cover",
+    "surface_features",
+    "inlet_coupling",
+    "soil_infiltration",
+    "groundwater",
+    "network_condition",
+    "initial_state",
+    "observations",
+    "coastal_bathymetry",
+]
+HYDRO_SOURCE_FORMATS = {
+    "network": "SWMM_INP/GDB",
+    "terrain": "GeoTIFF/NPZ",
+    "rainfall": "CSV/JSON/NetCDF time series",
+    "catchments": "GeoPackage/GeoJSON/SWMM subcatchments",
+    "land_sea_boundary": "GeoPackage/GeoJSON raster mask",
+    "tide": "CSV/JSON time series",
+    "outfalls": "GeoPackage/GeoJSON",
+    "pumps": "CSV/GeoPackage",
+    "hydraulic_structures": "GeoPackage/GeoJSON/SWMM_INP",
+    "external_inflows": "CSV/JSON/NetCDF time series",
+    "surface_cover": "GeoPackage/GeoTIFF",
+    "surface_features": "GeoPackage/GeoJSON",
+    "inlet_coupling": "GeoPackage/CSV/JSON",
+    "soil_infiltration": "GeoPackage/CSV/JSON",
+    "groundwater": "GeoTIFF/CSV/NetCDF",
+    "network_condition": "CSV/GeoPackage/JSON",
+    "initial_state": "CSV/JSON/NetCDF",
+    "observations": "CSV/GeoPackage/NetCDF",
+    "coastal_bathymetry": "GeoTIFF/GeoPackage",
+}
+# These inputs are needed for an engineering-admitted model.  The current
+# Musaffah pilot intentionally remains runnable with only network + terrain.
+ENGINEERING_REQUIRED_SOURCES = {
+    "rainfall",
+    "land_sea_boundary",
+    "tide",
+    "outfalls",
+    "pumps",
+    "hydraulic_structures",
+    "catchments",
+    "surface_cover",
+    "surface_features",
+    "inlet_coupling",
+    "soil_infiltration",
+    "network_condition",
+    "initial_state",
+    "observations",
+}
+CONDITIONAL_SOURCES = {"external_inflows", "groundwater", "coastal_bathymetry"}
+# Only these sources are actually synthesized by the current development
+# worker.  Other source cards must remain visibly absent even in fixture mode;
+# showing every card as "ready" would hide the engineering data gap.
+DIAGNOSTIC_FIXTURE_SOURCES = {"network", "terrain", "rainfall"}
 DEFAULT_MAX_TWO_D_CELLS = 50_000_000
 MAX_RAINFALL_DURATION_MINUTES = 7 * 24 * 60
 DEFAULTS: dict[str, Any] = {
@@ -185,7 +250,15 @@ def _expand_bbox(bbox: list[float], buffer_m: float) -> list[float]:
     return [min_lon - lon_delta, min_lat - lat_delta, max_lon + lon_delta, max_lat + lat_delta]
 
 
-def _source_record(value: Any, default_format: str, *, fixture: bool) -> dict[str, Any]:
+def _source_record(
+    value: Any,
+    default_format: str,
+    *,
+    fixture: bool,
+    fixture_source: bool = False,
+    engineering_required: bool = False,
+    conditional: bool = False,
+) -> dict[str, Any]:
     if isinstance(value, dict):
         record = {
             "uri": str(value.get("uri") or ""),
@@ -194,18 +267,29 @@ def _source_record(value: Any, default_format: str, *, fixture: bool) -> dict[st
             "provided_by_customer": bool(value.get("provided_by_customer", not fixture)),
             "etl_required": bool(value.get("etl_required", True)),
         }
+        if "engineering_admitted" in value:
+            record["engineering_admitted"] = bool(value["engineering_admitted"])
+        elif "calibration_admitted" in value:
+            record["engineering_admitted"] = bool(value["calibration_admitted"])
     else:
         record = {
             "uri": str(value or ""),
             "format": default_format,
             "version": "unversioned",
-            "provided_by_customer": not fixture,
-            "etl_required": True,
-        }
-    if fixture:
+                "provided_by_customer": not fixture,
+                "etl_required": True,
+            }
+    record["engineering_required"] = engineering_required
+    record["conditional"] = conditional
+    if fixture and fixture_source:
         record.update(
-            {"status": "development_fixture", "uri": record["uri"] or "runtime://fixtures"}
+            {
+                "status": "development_fixture",
+                "uri": record["uri"] or "runtime://fixtures",
+            }
         )
+    elif fixture:
+        record["status"] = "not_registered"
     else:
         record.setdefault("status", "customer_reference")
     return record
@@ -427,16 +511,15 @@ def build_run_manifest(payload: dict[str, Any], *, strict_sources: bool = True) 
     )
     fixture = input_mode == "development_fixture"
     data_sources = {
-        "network": _source_record(data_payload.get("network"), "SWMM_INP/GDB", fixture=fixture),
-        "terrain": _source_record(data_payload.get("terrain"), "GeoTIFF/NPZ", fixture=fixture),
-        "rainfall": _source_record(
-            data_payload.get("rainfall"), "CSV/JSON time series", fixture=fixture
-        ),
-        "tide": _source_record(data_payload.get("tide"), "CSV/JSON time series", fixture=fixture),
-        "outfalls": _source_record(
-            data_payload.get("outfalls"), "GeoPackage/GeoJSON", fixture=fixture
-        ),
-        "pumps": _source_record(data_payload.get("pumps"), "CSV/GeoPackage", fixture=fixture),
+        name: _source_record(
+            data_payload.get(name),
+            HYDRO_SOURCE_FORMATS[name],
+            fixture=fixture,
+            fixture_source=name in DIAGNOSTIC_FIXTURE_SOURCES,
+            engineering_required=name in ENGINEERING_REQUIRED_SOURCES,
+            conditional=name in CONDITIONAL_SOURCES,
+        )
+        for name in HYDRO_SOURCE_NAMES
     }
     required_sources = {
         "one_d": ["network"],
@@ -687,15 +770,24 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
                 ),
             }
         )
-    all_source_names = ["network", "terrain", "rainfall", "tide", "outfalls", "pumps"]
+    all_source_names = HYDRO_SOURCE_NAMES
     source_checks = []
     for name in all_source_names:
         source = manifest["data_sources"][name]
         is_required = name in required
-        if fixture and fixture_enabled:
+        engineering_required = bool(source.get("engineering_required"))
+        if fixture and fixture_enabled and source.get("status") == "development_fixture":
             status = "ready"
             detail = "Development fixture"
             detail_code = "development_fixture"
+        elif fixture and fixture_enabled and engineering_required:
+            status = "optional"
+            detail = "Engineering input is not included in the diagnostic fixture"
+            detail_code = "engineering_gap"
+        elif fixture and fixture_enabled:
+            status = "optional"
+            detail = "Not used by the diagnostic fixture"
+            detail_code = "optional"
         elif is_required and not source["uri"]:
             status = "blocked"
             detail = "URI required"
@@ -712,10 +804,18 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
             status = "blocked"
             detail = "Registered but not yet validated by ETL"
             detail_code = "registered_needs_etl"
+        elif engineering_required and source.get("engineering_admitted") is False:
+            status = "optional"
+            detail = "Registered for diagnostic forcing only; engineering admission is false"
+            detail_code = "engineering_gap"
         elif source["uri"]:
             status = "ready"
             detail = "Model-ready optional customer URI registered"
             detail_code = "model_ready_optional"
+        elif engineering_required:
+            status = "optional"
+            detail = "Engineering input not registered; diagnostic fallback/default remains active"
+            detail_code = "engineering_gap"
         else:
             status = "optional"
             detail = "Optional for the selected model"
@@ -725,12 +825,15 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
                 "key": name,
                 "label": name,
                 "required": is_required,
+                "engineering_required": engineering_required,
+                "conditional": bool(source.get("conditional")),
                 "status": status,
                 "uri": source["uri"],
                 "format": source["format"],
                 "version": source["version"],
                 "provided_by_customer": source["provided_by_customer"],
                 "etl_required": source["etl_required"],
+                "engineering_admitted": source.get("engineering_admitted"),
                 "detail": detail,
                 "detail_code": detail_code,
             }
@@ -768,6 +871,15 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
         )
     warnings: list[str] = []
     warning_codes: list[str] = []
+    engineering_gaps = [
+        name
+        for name in ENGINEERING_REQUIRED_SOURCES
+        if (
+            not manifest["data_sources"][name]["uri"]
+            or manifest["data_sources"][name]["etl_required"]
+            or manifest["data_sources"][name].get("engineering_admitted") is False
+        )
+    ]
     if fixture and fixture_enabled:
         warnings.append(
             "Results from development fixtures are execution evidence only and are "
@@ -804,6 +916,13 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
                 if required_sources_are_model_ready
                 else "customer_etl"
             )
+    if engineering_gaps and not fixture:
+        warnings.append(
+            "Engineering admission remains closed until the following inputs are registered: "
+            + ", ".join(sorted(engineering_gaps))
+            + ". Diagnostic defaults are not calibration evidence."
+        )
+        warning_codes.append("engineering_data_gaps")
     return {
         "schema": "gwm.abu_dhabi_flood.hydro_preflight.v1",
         "status": "ready" if execution_gate_ready and (fixture or regional_customer_enabled) else "blocked",
@@ -815,6 +934,7 @@ def build_preflight(payload: dict[str, Any]) -> dict[str, Any]:
         "parameter_readiness": parameter_readiness,
         "warnings": warnings,
         "warning_codes": warning_codes,
+        "engineering_gaps": sorted(engineering_gaps),
         "resource_estimate": {
             "profile": manifest["request"]["resource_profile"],
             "gpu_requested": gpu_requested,

@@ -16,7 +16,14 @@ from psycopg2 import sql
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse
 
-from .contracts import ManifestValidationError, build_preflight
+from .contracts import (
+    CONDITIONAL_SOURCES,
+    ENGINEERING_REQUIRED_SOURCES,
+    HYDRO_SOURCE_FORMATS,
+    HYDRO_SOURCE_NAMES,
+    ManifestValidationError,
+    build_preflight,
+)
 from .coordinator import HydroRunAccessError, HydroRunCoordinator, HydroRunStateError
 from .storage import read_json, run_dir
 
@@ -164,6 +171,7 @@ def hydro_source_defaults_payload(region: str | None = None) -> dict[str, Any]:
             "evidence_class": str(os.environ.get("HYDRO_RAINFALL_EVIDENCE_CLASS") or "public_reconstruction"),
             "admission": str(os.environ.get("HYDRO_RAINFALL_ADMISSION") or "prototype_sensitivity_only"),
             "calibration_admitted": False,
+            "engineering_admitted": False,
             "diagnostic_forcing_admitted": True,
         },
         "tide": {
@@ -191,11 +199,64 @@ def hydro_source_defaults_payload(region: str | None = None) -> dict[str, Any]:
             "registered": False,
         },
     }
+    # Keep the source catalog explicit at the API boundary.  These assets are
+    # not all required by the current diagnostic pilot, but their absence must
+    # be visible instead of being silently represented by solver defaults.
+    for key in HYDRO_SOURCE_NAMES:
+        if key not in sources:
+            prefix = key.upper()
+            alias_uri = {
+                "catchments": "HYDRO_CATCHMENT_BOUNDARY_URI",
+                "land_sea_boundary": "HYDRO_COASTLINE_URI",
+            }.get(key)
+            uri = str(
+                os.environ.get(f"HYDRO_DEFAULT_{prefix}_URI")
+                or (os.environ.get(alias_uri) if alias_uri else "")
+                or ""
+            ).strip()
+            sources[key] = {
+                "uri": uri,
+                "format": str(
+                    os.environ.get(f"HYDRO_DEFAULT_{prefix}_FORMAT")
+                    or ("GeoJSON" if key == "catchments" else "GeoPackage/GeoJSON raster mask" if key == "land_sea_boundary" else HYDRO_SOURCE_FORMATS[key])
+                ),
+                "version": str(os.environ.get(f"HYDRO_DEFAULT_{prefix}_VERSION") or "not-provided"),
+                "provided_by_customer": True,
+                "etl_required": True,
+                "registered": bool(uri),
+                "source_uri": str(os.environ.get(f"HYDRO_{prefix}_SOURCE_URI") or "").strip(),
+                "source_format": str(os.environ.get(f"HYDRO_{prefix}_SOURCE_FORMAT") or HYDRO_SOURCE_FORMATS[key]),
+                "source_name": str(os.environ.get(f"HYDRO_{prefix}_SOURCE_NAME") or "").strip(),
+            }
+            engineering_admitted_raw = str(
+                os.environ.get(f"HYDRO_DEFAULT_{prefix}_ENGINEERING_ADMITTED") or ""
+            ).strip()
+            if engineering_admitted_raw:
+                sources[key]["engineering_admitted"] = engineering_admitted_raw.lower() in {
+                    "1",
+                    "true",
+                    "yes",
+                }
+        sources.setdefault(
+            key,
+            {
+                "uri": "",
+                "format": HYDRO_SOURCE_FORMATS[key],
+                "version": "not-provided",
+                "provided_by_customer": False,
+                "etl_required": True,
+                "registered": False,
+            },
+        )
+        sources[key].setdefault("engineering_required", key in ENGINEERING_REQUIRED_SOURCES)
+        sources[key].setdefault("conditional", key in CONDITIONAL_SOURCES)
     regional_pilots = _regional_pilot_catalog()
     selected_region = str(region or "").strip() or None
     regional_pilot = regional_pilots.get(selected_region or "") if selected_region else None
     if regional_pilot:
-        for key in ("network", "terrain", "tide", "outfalls", "pumps"):
+        for key in HYDRO_SOURCE_NAMES:
+            if key == "rainfall":
+                continue
             override = regional_pilot.get(key)
             if isinstance(override, dict):
                 sources[key] = {**sources.get(key, {}), **override, "registered": bool(override.get("uri"))}
