@@ -1,35 +1,23 @@
-import { useState, useEffect, useCallback, useMemo, type CSSProperties } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeckGL from '@deck.gl/react';
-import { GeoJsonLayer, ScatterplotLayer, ArcLayer, ColumnLayer, PathLayer } from '@deck.gl/layers';
-import { MVTLayer, TerrainLayer } from '@deck.gl/geo-layers';
+import { GeoJsonLayer, ScatterplotLayer, ArcLayer, ColumnLayer } from '@deck.gl/layers';
+import { MVTLayer } from '@deck.gl/geo-layers';
 import { Map } from 'react-map-gl/maplibre';
-import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 interface MapLayer {
   name: string;
   type: string;
   geojson?: string;
-  geojson_url?: string;
   geojsonData?: any;
-  terrain_url?: string;
-  terrain_bounds?: [number, number, number, number];
-  terrain_decoder?: { rScaler: number; gScaler: number; bScaler: number; offset: number };
-  terrain_source?: 'customer_dtm_5m' | 'arcgis_world_elevation_3d';
-  terrain_service_url?: string;
-  terrain_vertical_reference?: string;
-  property_filter?: Record<string, string | string[]>;
   style?: Record<string, any>;
-  radius_column?: string;
   value_column?: string;
   breaks?: number[];
   color_scheme?: string;
   elevation_column?: string;
-  base_elevation_column?: string;
   elevation_scale?: number;
   extruded?: boolean;
-  subsurface?: boolean;
   pitch?: number;
   bearing?: number;
   // Categorized layer properties
@@ -55,7 +43,7 @@ interface MapLayer {
   // FlatGeobuf properties
   fgb?: string;
   geom_type?: string;
-  scenarioTimeline?: { runId: string; endpoint: string; timeValues: string[]; elapsedMinutes: number[]; periodCount: number; totalNodeCount?: number; reportStepMinutes?: number; initialTimeIndex?: number; kind?: 'swmm-node' | 'surface-cell' | 'gwm-surface-cell' };
+  scenarioTimeline?: { runId: string; endpoint: string; timeValues: string[]; elapsedMinutes: number[]; periodCount: number; totalNodeCount?: number };
 }
 
 interface Map3DViewProps {
@@ -74,108 +62,9 @@ interface TooltipInfo {
   text: string;
 }
 
-const SWMM_VALUE_COLUMN_INDEX: Record<string, number> = {
-  scenario_water_depth_m: 0,
-  scenario_hydraulic_head_m: 1,
-  scenario_stored_volume_m3: 2,
-  scenario_lateral_inflow_m3s: 3,
-  scenario_total_inflow_m3s: 4,
-  scenario_overflow_or_flooding_m3s: 5,
-};
-
-function isColumnarSwmmFrame(value: any): boolean {
-  return value?.format === 'swmm-node-columns-v1'
-    && Array.isArray(value.node_ids)
-    && Array.isArray(value.coordinates)
-    && Array.isArray(value.values);
-}
-
-function filterGeoJsonFeatures(payload: any, propertyFilter?: Record<string, string | string[]>): any {
-  if (!propertyFilter || !payload || !Array.isArray(payload.features)) return payload;
-  const features = payload.features.filter((feature: any) => Object.entries(propertyFilter).every(([key, expected]) => {
-    const actual = String(feature?.properties?.[key] ?? '');
-    return Array.isArray(expected)
-      ? expected.map(value => String(value)).includes(actual)
-      : actual === String(expected);
-  }));
-  return { ...payload, features };
-}
-
-function columnarSwmmValue(frame: any, rowIndex: number, field: string): number {
-  const columnIndex = SWMM_VALUE_COLUMN_INDEX[field];
-  return columnIndex == null ? 0 : Number(frame.values[rowIndex * 6 + columnIndex] || 0);
-}
-
-function columnarSwmmProperties(frame: any, rowIndex: number): Record<string, unknown> {
-  const overflow = columnarSwmmValue(frame, rowIndex, 'scenario_overflow_or_flooding_m3s');
-  const partitionIndex = Number(frame.partition_indexes?.[rowIndex] || 0);
-  return {
-    node_id: frame.node_ids[rowIndex],
-    partition_label: frame.partition_labels?.[partitionIndex] || '全市连续网络',
-    scenario_timestamp: frame.metadata?.timestamp,
-    scenario_elapsed_minutes: frame.metadata?.elapsed_minutes,
-    scenario_water_depth_m: columnarSwmmValue(frame, rowIndex, 'scenario_water_depth_m'),
-    scenario_hydraulic_head_m: columnarSwmmValue(frame, rowIndex, 'scenario_hydraulic_head_m'),
-    scenario_stored_volume_m3: columnarSwmmValue(frame, rowIndex, 'scenario_stored_volume_m3'),
-    scenario_lateral_inflow_m3s: columnarSwmmValue(frame, rowIndex, 'scenario_lateral_inflow_m3s'),
-    scenario_total_inflow_m3s: columnarSwmmValue(frame, rowIndex, 'scenario_total_inflow_m3s'),
-    scenario_overflow_or_flooding_m3s: overflow,
-    scenario_node_flooding_detected: overflow > 0,
-  };
-}
-
-const MAP3D_EXACT_ENGLISH_LABELS: Record<string, string> = {
-  '重要': 'Important',
-  '非常重要': 'Very Important',
-  '模型输入 · 客户 GDB 雨水管线（全量 MVT，238,287 条）': 'Model input · customer GDB stormwater pipes (full MVT, 238,287 features)',
-  '模型输入 · 客户 GDB 雨水管线（全量 MVT，高对比显示，238,287 条）': 'Model input · customer GDB stormwater pipes (full high-contrast MVT, 238,287 features)',
-  '模型输入 · 管线端点拓扑节点（全量 MVT，默认高亮，238,350 个）': 'Model input · pipe-endpoint topology nodes (full MVT, highlighted by default, 238,350 features)',
-  '客户管段 FID': 'Customer pipe FID',
-  '起点拓扑 ID': 'Source topology node ID',
-  '终点拓扑 ID': 'Target topology node ID',
-  '重算长度（m）': 'Recomputed length (m)',
-  '管径候选值': 'Candidate diameter',
-  '管材': 'Pipe material',
-  '管线状态': 'Pipe status',
-  '拓扑节点 ID': 'Topology node ID',
-  '连接度': 'Node degree',
-  '吸附端点数': 'Snapped endpoint count',
-  '连通分量': 'Connected component',
-  '候选设施数': 'Candidate facility count',
-  '候选设施角色': 'Candidate facility roles',
-  '设施 ID': 'Facility ID',
-  '物探点号': 'Survey point code',
-  '附属物类型': 'Facility type',
-  '地面高程': 'Ground elevation',
-  '井底高程': 'Invert elevation',
-  '二维单元 ID': '2D cell ID',
-  '模拟时间（h）': 'Simulation time (h)',
-  '模拟时间（分钟）': 'Simulation time (minutes)',
-  '积水深度（m）': 'Flood depth (m)',
-  '最大积水深度（m）': 'Maximum flood depth (m)',
-  '最大深度时刻（分钟）': 'Time of maximum depth (minutes)',
-  '末时刻积水深度（m）': 'Final-time flood depth (m)',
-  '时间（分钟）': 'Time (minutes)',
-  '陆地比例': 'Land fraction',
-  '永久水体比例': 'Permanent-water fraction',
-  '海边界水位（m）': 'Sea-boundary level (m)',
-  '永久水体阈值': 'Permanent-water threshold',
-  '全市陆域二维最大积水深度（m）· 客户 DTM 主结果': 'Citywide land-surface 2D maximum flood depth (m) · customer DTM primary result',
-  '全市陆域二维动态积水深度（m）· 客户 DTM 主结果': 'Citywide dynamic land-surface 2D flood depth (m) · customer DTM primary result',
-  '客户 DTM 主结果': 'customer DTM primary result',
-};
-
-export function map3dDisplayName(value: string, locale: string): string {
-  if (!locale.toLowerCase().startsWith('en')) return value;
-  const exact = MAP3D_EXACT_ENGLISH_LABELS[value];
-  if (exact) return exact;
-  if (!/[\u3400-\u9fff]/.test(value)) return value;
+function map3dDisplayName(value: string, locale: string): string {
+  if (locale !== 'en-US' || !/[\u3400-\u9fff]/.test(value)) return value;
   const replacements: Array<[RegExp, string]> = [
-    [/二维结果 · 客户 5 m DTM 全市陆域最大积水深度 · ([\d]+) 年一遇/g, '2D result · Customer 5 m DTM citywide land-surface maximum flood depth · $1-year return period'],
-    [/二维结果 · 客户 5 m DTM 全市陆域动态积水深度 · ([\d]+) 年一遇/g, '2D result · Customer 5 m DTM citywide dynamic land-surface flood depth · $1-year return period'],
-    [/全市陆域二维最大积水深度（m）· 客户 DTM 主结果/g, 'Citywide land-surface 2D maximum flood depth (m) · customer DTM primary result'],
-    [/全市陆域二维动态积水深度（m）· 客户 DTM 主结果/g, 'Citywide dynamic land-surface 2D flood depth (m) · customer DTM primary result'],
-    [/客户 DTM 主结果/g, 'customer DTM primary result'],
     [/阿布扎比暴雨内涝世界模型/g, 'Abu Dhabi Stormwater Flood World Model'],
     [/SWMM 全市连续网络/g, 'SWMM citywide continuous network'],
     [/全市连续网络/g, 'citywide continuous network'],
@@ -183,26 +72,6 @@ export function map3dDisplayName(value: string, locale: string): string {
     [/节点最大水深/g, 'maximum node water depth'],
     [/节点溢流\/积水/g, 'node overflow/flooding'],
     [/管段最大容量率/g, 'maximum link capacity fraction'],
-    [/全市陆域二维最大积水深度（m）· 公共 DEM 原型/g, 'citywide land-surface 2D maximum flood depth (m) · public DEM prototype'],
-    [/全市陆域二维动态积水深度（m）· 公共 DEM 原型/g, 'citywide dynamic land-surface 2D flood depth (m) · public DEM prototype'],
-    [/全市陆域最大积水深度/g, 'citywide land-surface maximum flood depth'],
-    [/全市陆域动态积水深度/g, 'citywide dynamic land-surface flood depth'],
-    [/永久水体比例/g, 'permanent-water fraction'],
-    [/陆地比例/g, 'land fraction'],
-    [/公共原型/g, 'public prototype'],
-    [/全市公共原型/g, 'full-city public prototype'],
-    [/二维结果/g, '2D result'],
-    [/最大积水深度/g, 'maximum flood depth'],
-    [/动态地表水深/g, 'dynamic surface-water depth'],
-    [/全市二维/g, 'citywide 2D'],
-    [/二维最大积水深度/g, 'maximum 2D flood depth'],
-    [/二维动态积水深度/g, 'dynamic 2D flood depth'],
-    [/全市二维最大积水深度（m）· 公共 DEM 原型/g, 'citywide 2D maximum flood depth (m) · public DEM prototype'],
-    [/全市二维动态积水深度（m）· 公共 DEM 原型/g, 'citywide 2D dynamic flood depth (m) · public DEM prototype'],
-    [/公共 DEM 原型/g, 'public DEM prototype'],
-    [/来源标签/g, 'data source'],
-    [/来源/g, 'source'],
-    [/客户节点/g, 'customer nodes'],
     [/运行状态/g, 'runtime status'],
     [/计算分块/g, 'compute partition'],
     [/分区/g, 'partition'],
@@ -223,18 +92,8 @@ export function map3dDisplayName(value: string, locale: string): string {
     [/百万升/g, 'million litres'],
   ];
   let translated = value;
-  for (const [source, target] of replacements.sort((left, right) => right[0].source.length - left[0].source.length)) {
-    translated = translated.replace(source, target);
-  }
-  return translated
-    .replace(/[\u3400-\u9fff]+/g, 'untranslated field')
-    .replace(/：/g, ': ')
-    .replace(/，/g, ', ')
-    .replace(/；/g, '; ')
-    .replace(/。/g, '.')
-    .replace(/（/g, ' (')
-    .replace(/）/g, ')')
-    .replace(/、/g, ', ');
+  for (const [source, target] of replacements) translated = translated.replace(source, target);
+  return translated.replace(/[\u3400-\u9fff]+/g, 'additional detail');
 }
 
 const BASEMAP_STYLES: Record<string, any> = {
@@ -280,16 +139,6 @@ function hexToRgba(hex: string, alpha = 200): [number, number, number, number] {
   return [r, g, b, alpha];
 }
 
-const cameraPresetStyle: CSSProperties = {
-  background: '#1f2937',
-  color: '#e5e7eb',
-  border: '1px solid #475569',
-  borderRadius: 3,
-  padding: '3px 5px',
-  cursor: 'pointer',
-  fontSize: 10,
-};
-
 function isCategorizedLegendLayer(layer: MapLayer) {
   return (layer.type === 'categorized' || layer.type === 'fgb' || layer.type === 'bubble')
     && Boolean(layer.category_colors || layer.style_map);
@@ -325,20 +174,6 @@ function rasterBasemapStyle(
   };
 }
 
-export function geoJsonAnimationProps(
-  continuous: boolean,
-  interpolationFraction?: unknown,
-): Record<string, any> {
-  if (!continuous) return {};
-  return {
-    transitions: { getFillColor: 90 },
-    updateTriggers: {
-      getFillColor: interpolationFraction,
-      getLineColor: interpolationFraction,
-    },
-  };
-}
-
 export default function Map3DView({
   layers, center, zoom, basemap, basemaps, basemapMetadata, scenarioData,
 }: Map3DViewProps) {
@@ -348,11 +183,6 @@ export default function Map3DView({
   const [layerData, setLayerData] = useState<Record<string, any>>({});
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
-
-  // A tooltip belongs to the layer set that produced it. Clear it when the
-  // workbench switches stages so SWMM node details cannot remain over a new
-  // ANUGA surface result.
-  useEffect(() => setTooltip(null), [layers]);
 
   // Initialize visibility from layer.visible property
   useEffect(() => {
@@ -367,8 +197,6 @@ export default function Map3DView({
     if (changed) setLayerVisibility(prev => ({ ...prev, ...init }));
   }, [layers]);
   const [showLayerPanel, setShowLayerPanel] = useState(false);
-  const [showViewPanel, setShowViewPanel] = useState(false);
-  const [undergroundView, setUndergroundView] = useState(false);
 
   // Determine pitch/bearing from layer configs
   const pitch = useMemo(() => {
@@ -395,15 +223,6 @@ export default function Map3DView({
     minZoom: 2,
     maxZoom: 20,
   }), [center, zoom, pitch, bearing]);
-  const [viewState, setViewState] = useState<any>(initialViewState);
-
-  useEffect(() => {
-    setViewState(initialViewState);
-  }, [initialViewState]);
-
-  const updateViewState = useCallback((updates: Record<string, number>) => {
-    setViewState((previous: any) => ({ ...previous, ...updates }));
-  }, []);
 
   const mapStyle = useMemo(() => {
     const selected = basemap || 'ESRI Satellite';
@@ -414,20 +233,16 @@ export default function Map3DView({
 
   // Fetch GeoJSON / FlatGeobuf data for layers that need it
   useEffect(() => {
-    let cancelled = false;
     const fetchLayers = async () => {
       const newData: Record<string, any> = {};
       const fetchedGeojson: Record<string, any> = {};
       const fetchedFgb: Record<string, any> = {};
       for (const layer of layers) {
-        if (cancelled) return;
-        // TerrainLayer loads its own RGB height map; it is not GeoJSON.
-        if (layer.type === 'terrain') continue;
         // MVT layers don't need pre-fetched data
         if (layer.type === 'mvt') continue;
 
         if (layer.geojsonData) {
-          newData[layer.name] = filterGeoJsonFeatures(layer.geojsonData, layer.property_filter);
+          newData[layer.name] = layer.geojsonData;
         } else if (layer.fgb) {
           // FlatGeobuf: fetch the whole file with auth cookies, then deserialize
           // from a Uint8Array. Streaming via `deserialize(url)` is unusable here
@@ -435,13 +250,12 @@ export default function Map3DView({
           // and our /api/user/files route is JWT-gated.
           try {
             if (fetchedFgb[layer.fgb]) {
-              newData[layer.name] = filterGeoJsonFeatures(fetchedFgb[layer.fgb], layer.property_filter);
+              newData[layer.name] = fetchedFgb[layer.fgb];
               continue;
             }
             const { deserialize } = await import('flatgeobuf/lib/mjs/geojson.js');
             const fgbUrl = `/api/user/files/${layer.fgb}`;
             const resp = await fetch(fgbUrl, { credentials: 'include' });
-            if (cancelled) return;
             if (!resp.ok) {
               console.warn(`[Map3DView] FGB fetch failed ${layer.fgb}: HTTP ${resp.status}`);
               continue;
@@ -450,38 +264,33 @@ export default function Map3DView({
             const fc: any = deserialize(buf);
             // deserialize(Uint8Array) returns a FeatureCollection
             fetchedFgb[layer.fgb] = fc;
-            newData[layer.name] = filterGeoJsonFeatures(fc, layer.property_filter);
+            newData[layer.name] = fc;
           } catch (e) {
             console.warn(`[Map3DView] Failed to parse FlatGeobuf ${layer.fgb}:`, e);
           }
-        } else if (layer.geojson_url || layer.geojson) {
+        } else if (layer.geojson) {
           try {
             // Several diagnostic layers intentionally share one result file.
             // Fetch and parse each private GeoJSON only once, then reuse the
             // parsed FeatureCollection for the alternate renderer/metric.
-            const sourceUrl = layer.geojson_url || `/api/user/files/${layer.geojson}`;
-            if (fetchedGeojson[sourceUrl]) {
-              newData[layer.name] = filterGeoJsonFeatures(fetchedGeojson[sourceUrl], layer.property_filter);
+            if (fetchedGeojson[layer.geojson]) {
+              newData[layer.name] = fetchedGeojson[layer.geojson];
               continue;
             }
-            const resp = await fetch(sourceUrl, { credentials: 'include' });
-            if (cancelled) return;
+            const resp = await fetch(`/api/user/files/${layer.geojson}`, { credentials: 'include' });
             if (resp.ok) {
               const payload = await resp.json();
-              fetchedGeojson[sourceUrl] = payload;
-              newData[layer.name] = filterGeoJsonFeatures(payload, layer.property_filter);
-            } else {
-              console.warn(`[Map3DView] GeoJSON fetch failed ${sourceUrl}: HTTP ${resp.status}`);
+              fetchedGeojson[layer.geojson] = payload;
+              newData[layer.name] = payload;
             }
           } catch (e) {
             console.warn(`Failed to fetch GeoJSON for layer ${layer.name}:`, e);
           }
         }
       }
-      if (!cancelled) setLayerData(newData);
+      setLayerData(newData);
     };
     if (layers.length > 0) fetchLayers();
-    return () => { cancelled = true; };
   }, [layers]);
 
   const onHover = useCallback((info: any) => {
@@ -532,57 +341,14 @@ export default function Map3DView({
       const fillColor = hexToRgba(layer.style?.fillColor || '#4682B4', Math.round((layer.style?.fillOpacity ?? 0.7) * 255));
       const lineColor = hexToRgba(layer.style?.color || '#333333', Math.round((layer.style?.opacity ?? 0.8) * 255));
 
-      // Local 5 m DTM surface.  This is rendered as an actual depth surface
-      // so buried assets can be occluded by the terrain instead of appearing
-      // as symbols floating on a flat basemap.
-      if (layer.type === 'terrain' && layer.terrain_url && layer.terrain_bounds) {
-        return new TerrainLayer({
-          id: `layer-${idx}-${layer.name}`,
-          elevationData: layer.terrain_url,
-          bounds: layer.terrain_bounds,
-          extent: layer.terrain_bounds,
-          tileSize: 256,
-          minZoom: 10,
-          maxZoom: 17,
-          maxCacheByteSize: 32 * 1024 * 1024,
-          elevationDecoder: layer.terrain_decoder || { rScaler: 655.36, gScaler: 2.56, bScaler: 0.01, offset: 0 },
-          // Keep the surface visible over satellite/cartographic basemaps and
-          // write its depth so underground assets can be occluded by it.
-          color: [176, 160, 130, undergroundView ? 72 : 155],
-          meshMaxError: 0.5,
-          pickable: false,
-          parameters: { depthTest: !undergroundView, depthMask: !undergroundView },
-          loadOptions: { fetch: { credentials: 'include' } },
-        });
-      }
-
       // MVT vector tile layer — no pre-fetched data needed
       if (layer.type === 'mvt' && layer.tile_url) {
-        const pointRadius = Number(layer.style?.radius || 4);
-        const pointRadiusUnits = layer.style?.radiusUnits === 'meters' ? 'meters' : 'pixels';
-        const pointRadiusMinPixels = Number(
-          layer.style?.radiusMinPixels
-          ?? (pointRadiusUnits === 'meters' ? 1 : Math.max(2, pointRadius)),
-        );
-        const pointRadiusMaxPixels = Number(
-          layer.style?.radiusMaxPixels
-          ?? (pointRadiusUnits === 'meters' ? 8 : Math.max(8, pointRadius * 1.75)),
-        );
         return new MVTLayer({
           id: `layer-${idx}-${layer.name}`,
           data: layer.tile_url,
           getFillColor: fillColor,
           getLineColor: lineColor,
-          getLineWidth: Number(layer.style?.weight || 1),
-          lineWidthUnits: 'pixels',
-          lineWidthMinPixels: Math.max(0.5, Number(layer.style?.weight || 1)),
-          getPointRadius: pointRadius,
-          pointRadiusUnits,
-          pointRadiusMinPixels,
-          pointRadiusMaxPixels,
-          stroked: true,
-          filled: true,
-          parameters: { depthTest: false },
+          lineWidthMinPixels: 1,
           minZoom: layer.min_zoom,
           maxZoom: layer.max_zoom,
           loadOptions: {
@@ -598,8 +364,6 @@ export default function Map3DView({
         ? scenarioData?.[layer.name] || layerData[layer.name]
         : layerData[layer.name];
       if (!data) return null;
-      const continuousGwm = layer.scenarioTimeline?.kind === 'gwm-surface-cell'
-        && data?.metadata?.visualization_mode === 'continuous_interpolation';
 
       // Extrusion layer (3D polygons)
       if (layer.type === 'extrusion' || (layer.extruded && (layer.type === 'polygon' || layer.type === 'choropleth'))) {
@@ -687,44 +451,6 @@ export default function Map3DView({
 
       // Point / Scatterplot layer
       if (layer.type === 'point' || layer.type === 'bubble') {
-        if (isColumnarSwmmFrame(data)) {
-          const rowIndexes = layer.value_column === 'scenario_overflow_or_flooding_m3s'
-            ? data.overflow_node_indexes || []
-            : data.node_ids.map((_: string, rowIndex: number) => rowIndex);
-          return new ScatterplotLayer({
-            id: `layer-${idx}-${layer.name}`,
-            data: rowIndexes,
-            pickable: true,
-            getPosition: (rowIndex: number) => [
-              Number(data.coordinates[rowIndex * 2]),
-              Number(data.coordinates[rowIndex * 2 + 1]),
-            ],
-            getRadius: (rowIndex: number) => {
-              const value = layer.value_column
-                ? columnarSwmmValue(data, rowIndex, layer.value_column)
-                : 0;
-              return Math.sqrt(Math.max(0, value)) * 10;
-            },
-            getFillColor: (rowIndex: number) => {
-              if (layer.value_column && layer.breaks) {
-                return getBreakColor(
-                  columnarSwmmValue(data, rowIndex, layer.value_column),
-                  layer.breaks,
-                  layer.color_scheme,
-                );
-              }
-              return fillColor;
-            },
-            radiusMinPixels: Number(layer.style?.min_radius || 2),
-            radiusMaxPixels: Number(layer.style?.max_radius || 30),
-            onHover: (info: any) => onLayerHover({
-              ...info,
-              object: info.object == null
-                ? null
-                : { properties: columnarSwmmProperties(data, Number(info.object)) },
-            }, layer),
-          });
-        }
         const features = data.features || [];
         return new ScatterplotLayer({
           id: `layer-${idx}-${layer.name}`,
@@ -797,87 +523,6 @@ export default function Map3DView({
       // Categorized layer (per-category color from category_colors/style_map).
       // FGB layers that carry category_column/style_map also render here; the
       // fetch step above has already populated data from the FlatGeobuf buffer.
-      // Underground point assets are rendered as translucent vertical columns
-      // below the local 5 m surface reference.  The GeoJSON remains a point
-      // representation for 2D; this branch only changes its 3D presentation.
-      if (layer.subsurface && layer.type === 'categorized') {
-        const features = (data.features || []).filter((f: any) => f.geometry?.type === 'Point');
-        const catCol = layer.category_column || '';
-        const catColors = layer.category_colors || {};
-        const styleMap = layer.style_map || {};
-        const getCategoryStyle = (f: any) => {
-          const raw = String(f.properties?.[catCol] ?? '');
-          const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
-          return styleMap[raw] || styleMap[intForm] || null;
-        };
-        const getCategoryColor = (f: any, alpha = 220): [number, number, number, number] => {
-          const sm = getCategoryStyle(f);
-          const raw = String(f.properties?.[catCol] ?? '');
-          const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
-          const color = sm?.fillColor || catColors[raw] || catColors[intForm] || layer.style?.fillColor || '#7e22ce';
-          return hexToRgba(color, Math.round((sm?.fillOpacity ?? layer.style?.fillOpacity ?? 0.82) * alpha));
-        };
-        return new ColumnLayer({
-          id: `layer-${idx}-${layer.name}`,
-          data: features,
-          diskResolution: 16,
-          radius: Number(layer.style?.radius_m || 14),
-          extruded: true,
-          coverage: 0.86,
-          pickable: true,
-          getPosition: (f: any) => {
-            const coordinates = f.geometry?.coordinates || [0, 0];
-            const baseColumn = layer.base_elevation_column || 'bottom_m';
-            const base = Number(f.properties?.[baseColumn]);
-            return [Number(coordinates[0]), Number(coordinates[1]), Number.isFinite(base) ? base : -2];
-          },
-          getRadius: (f: any) => {
-            const radius = Number(f.properties?.[layer.radius_column || 'equivalent_radius_m']);
-            return Number.isFinite(radius) && radius > 0 ? radius : Number(layer.style?.radius_m || 14);
-          },
-          getElevation: (f: any) => {
-            const value = Number(f.properties?.[layer.elevation_column || 'height_m']);
-            return (Number.isFinite(value) ? value : 2) * Number(layer.elevation_scale || 1);
-          },
-          getFillColor: (f: any) => getCategoryColor(f, 255),
-          getLineColor: (f: any) => {
-            const sm = getCategoryStyle(f);
-            return hexToRgba(sm?.color || layer.style?.color || '#4c1d95', 230);
-          },
-          lineWidthMinPixels: 1,
-          parameters: { depthTest: true },
-          onHover: (info: any) => onLayerHover(info, layer),
-        });
-      }
-
-      // Underground connection pipes are rendered as 3D paths at their
-      // sampled burial elevation.  This keeps the pipes visibly below the
-      // surface plane while retaining their actual plan-view geometry.
-      if (layer.subsurface && layer.type === 'line') {
-        const features = (data.features || []).filter((f: any) => {
-          const type = f.geometry?.type;
-          return type === 'LineString' || type === 'MultiLineString';
-        });
-        return new PathLayer({
-          id: `layer-${idx}-${layer.name}`,
-          data: features,
-          pickable: true,
-          widthUnits: 'pixels',
-          widthMinPixels: Math.max(1, Number(layer.style?.weight || 3)),
-          getPath: (f: any) => {
-            const z = Number(f.properties?.[layer.elevation_column || 'underground_elevation_m']);
-            const elevation = Number.isFinite(z) ? z : -2;
-            const coordinates = f.geometry?.type === 'MultiLineString'
-              ? (f.geometry.coordinates?.[0] || [])
-              : (f.geometry?.coordinates || []);
-            return coordinates.map((coordinate: number[]) => [Number(coordinate[0]), Number(coordinate[1]), elevation]);
-          },
-          getColor: lineColor,
-          parameters: { depthTest: true },
-          onHover: (info: any) => onLayerHover(info, layer),
-        });
-      }
-
       if (layer.type === 'categorized' ||
           (layer.type === 'fgb' && (layer.category_column || layer.style_map))) {
         const catCol = layer.category_column || '';
@@ -921,20 +566,13 @@ export default function Map3DView({
         id: `layer-${idx}-${layer.name}`,
         data,
         pickable: true,
-        stroked: !continuousGwm,
+        stroked: true,
         filled: true,
         extruded: false,
         getFillColor: (f: any) => {
           if (layer.value_column && layer.breaks && f.properties) {
             const val = Number(f.properties[layer.value_column]) || 0;
-            return continuousGwm
-              ? getContinuousColor(
-                val,
-                layer.breaks,
-                layer.color_scheme,
-                Math.round((layer.style?.fillOpacity ?? 0.82) * 255 * Number(f.properties.visual_opacity ?? 1)),
-              )
-              : getBreakColor(val, layer.breaks, layer.color_scheme);
+            return getBreakColor(val, layer.breaks, layer.color_scheme);
           }
           return fillColor;
         },
@@ -955,54 +593,26 @@ export default function Map3DView({
         pointRadiusMaxPixels: Math.max(1, Number(layer.style?.radius ?? 3)),
         getLineWidth: Number(layer.style?.weight ?? 1),
         lineWidthUnits: 'pixels',
-        lineWidthMinPixels: continuousGwm ? 0 : 1,
-        // Do not pass updateTriggers: undefined. GeoJsonLayer forwards every
-        // accessor through this object and deck.gl expects its default empty
-        // object to remain intact for ordinary ANUGA/SWMM polygons.
-        ...geoJsonAnimationProps(
-          continuousGwm,
-          data?.metadata?.interpolation_fraction,
-        ),
+        lineWidthMinPixels: 1,
         onHover: (info: any) => onLayerHover(info, layer),
       });
     }).filter(Boolean);
-  }, [layers, layerData, onHover, onLayerHover, layerVisibility, scenarioData, undergroundView]);
+  }, [layers, layerData, onHover, onLayerHover, layerVisibility, scenarioData]);
 
   return (
     <div className="map-3d-container" style={{ position: 'relative', width: '100%', height: '100%' }}>
       <DeckGL
         key={`${center[0]}-${center[1]}-${zoom}`}
-        viewState={viewState || initialViewState}
-        onViewStateChange={({ viewState: nextViewState }: any) => setViewState(nextViewState)}
+        initialViewState={initialViewState}
         controller={true}
         layers={deckLayers}
         style={{ position: 'absolute', top: '0', left: '0', width: '100%', height: '100%' }}
       >
         <Map
-          mapLib={maplibregl}
           mapStyle={mapStyle}
           style={{ width: '100%', height: '100%' }}
         />
       </DeckGL>
-      {layers.some(l => l.type === 'terrain' && l.terrain_url) && (
-        <div
-          role="status"
-          aria-label="5 m DTM terrain surface active"
-          style={{
-            position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-            zIndex: 1000, background: 'rgba(20, 38, 29, 0.92)',
-            border: '1px solid rgba(134, 239, 172, 0.8)', borderRadius: 999,
-            color: '#dcfce7', padding: '5px 12px', fontSize: 12,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.28)', pointerEvents: 'none',
-          }}
-        >{(() => {
-          const terrain = layers.find(l => l.type === 'terrain' && l.terrain_url);
-          const source = terrain?.terrain_source === 'arcgis_world_elevation_3d'
-            ? 'ArcGIS WorldElevation3D 回退地形'
-            : '客户 5 m DTM 地形表面';
-          return `${source} · ${terrain?.terrain_vertical_reference || '高程基准待确认'} · ${undergroundView ? '地下透视模式' : '地下遮挡已启用'}`;
-        })()}</div>
-      )}
       {tooltip && (
         <div
           className="deck-tooltip"
@@ -1013,51 +623,6 @@ export default function Map3DView({
           ))}
         </div>
       )}
-
-      {/* Explicit 3D camera controls. Mouse/trackpad gestures remain enabled. */}
-      <div style={{ position: 'absolute', top: 54, left: 12, zIndex: 1000 }}>
-        <button
-          type="button"
-          onClick={() => setShowViewPanel(previous => !previous)}
-          style={{
-            background: showViewPanel ? '#1e3a5f' : 'rgba(0,0,0,0.68)',
-            color: '#e0e0e0', border: '1px solid #444', borderRadius: 4,
-            padding: '4px 8px', cursor: 'pointer', fontSize: 12,
-          }}
-        >{t('map.viewControls', { defaultValue: '视角' })}</button>
-        {showViewPanel && (
-          <div style={{
-            background: 'rgba(0,0,0,0.88)', border: '1px solid #333', borderRadius: 6,
-            padding: 9, marginTop: 4, width: 208, color: '#ddd', fontSize: 11,
-          }}>
-            <div style={{ display: 'flex', gap: 5, marginBottom: 8 }}>
-              <button type="button" onClick={() => updateViewState({ pitch: 0 })} style={cameraPresetStyle}>俯视</button>
-              <button type="button" onClick={() => updateViewState({ pitch: 45 })} style={cameraPresetStyle}>倾斜</button>
-              <button type="button" onClick={() => updateViewState({ pitch: 65 })} style={cameraPresetStyle}>剖视</button>
-              <button type="button" onClick={() => setUndergroundView(previous => !previous)} style={{ ...cameraPresetStyle, background: undergroundView ? '#7c3aed' : undefined }}>地下透视</button>
-              <button type="button" onClick={() => setViewState(initialViewState)} style={cameraPresetStyle}>重置</button>
-            </div>
-            <label style={{ display: 'block', marginBottom: 6 }}>
-              俯仰角：{Math.round(Number(viewState?.pitch ?? pitch))}°
-              <input type="range" min="0" max="75" step="1" value={Math.round(Number(viewState?.pitch ?? pitch))}
-                onChange={(event) => updateViewState({ pitch: Number(event.target.value) })}
-                style={{ width: '100%', accentColor: '#38bdf8' }} />
-            </label>
-            <label style={{ display: 'block', marginBottom: 6 }}>
-              方位角：{Math.round(Number(viewState?.bearing ?? bearing))}°
-              <input type="range" min="-180" max="180" step="1" value={Math.round(Number(viewState?.bearing ?? bearing))}
-                onChange={(event) => updateViewState({ bearing: Number(event.target.value) })}
-                style={{ width: '100%', accentColor: '#38bdf8' }} />
-            </label>
-            <label style={{ display: 'block' }}>
-              缩放：{Number(viewState?.zoom ?? zoom).toFixed(1)}
-              <input type="range" min="2" max="20" step="0.1" value={Number(viewState?.zoom ?? zoom)}
-                onChange={(event) => updateViewState({ zoom: Number(event.target.value) })}
-                style={{ width: '100%', accentColor: '#38bdf8' }} />
-            </label>
-          </div>
-        )}
-      </div>
 
       {/* 3D Layer Control Panel (v14.0) */}
       {layers.length > 0 && (
@@ -1181,52 +746,7 @@ function getBreakColor(value: number, breaks: number[], scheme?: string): [numbe
   return colors[colors.length - 1];
 }
 
-function getContinuousColor(value: number, breaks: number[], scheme?: string, alpha = 210): [number, number, number, number] {
-  const colors = getRampColors(scheme);
-  if (!breaks.length) return [...colors[0].slice(0, 3), alpha] as [number, number, number, number];
-  const upperBreakIndex = breaks.findIndex(breakValue => value <= breakValue);
-  const resolvedUpperIndex = upperBreakIndex < 0 ? breaks.length - 1 : upperBreakIndex;
-  const lowerBreak = resolvedUpperIndex === 0 ? 0 : breaks[resolvedUpperIndex - 1];
-  const upperBreak = breaks[resolvedUpperIndex] || lowerBreak + 1;
-  const withinBreak = Math.max(0, Math.min(1, (value - lowerBreak) / Math.max(upperBreak - lowerBreak, Number.EPSILON)));
-  const breakPosition = resolvedUpperIndex + withinBreak;
-  const position = Math.min(colors.length - 1, breakPosition / Math.max(1, breaks.length - 1) * (colors.length - 1));
-  const lowerIndex = Math.floor(position);
-  const upperIndex = Math.min(colors.length - 1, lowerIndex + 1);
-  const fraction = position - lowerIndex;
-  const lower = colors[lowerIndex];
-  const upper = colors[upperIndex];
-  return [
-    Math.round(lower[0] + (upper[0] - lower[0]) * fraction),
-    Math.round(lower[1] + (upper[1] - lower[1]) * fraction),
-    Math.round(lower[2] + (upper[2] - lower[2]) * fraction),
-    alpha,
-  ];
-}
-
 function getRampColors(scheme?: string): [number, number, number, number][] {
-  if (scheme === 'Blues') {
-    return [
-      [239, 243, 255, 205],
-      [198, 219, 239, 205],
-      [158, 202, 225, 210],
-      [107, 174, 214, 215],
-      [66, 146, 198, 220],
-      [33, 113, 181, 225],
-      [8, 69, 148, 230],
-    ];
-  }
-  if (scheme === 'ObservedBlues') {
-    return [
-      [125, 211, 252, 210],
-      [56, 189, 248, 215],
-      [14, 165, 233, 220],
-      [2, 132, 199, 225],
-      [3, 105, 161, 230],
-      [7, 89, 133, 235],
-      [12, 74, 110, 240],
-    ];
-  }
   if (scheme === 'RdYlGn') {
     return [
       [215, 48, 39, 210],

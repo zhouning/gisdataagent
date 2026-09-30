@@ -6,18 +6,13 @@ import 'leaflet-draw/dist/leaflet.draw.css';
 import { Map as MapIcon, Pause, Play } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Map3DView from './Map3DView';
-import {
-  interpolateTimelineFeatureCollections,
-  type TimelinePresentationMode,
-} from './scenarioTimelineVisualization';
 import { formatDate, formatNumber, getLocale, getLocaleHeaders } from '../i18n';
 
 interface MapLayer {
   name: string;
-  type: 'geojson' | 'point' | 'polygon' | 'choropleth' | 'heatmap' | 'bubble' | 'line' | 'terrain'
+  type: 'geojson' | 'point' | 'polygon' | 'choropleth' | 'heatmap' | 'bubble' | 'line'
       | 'extrusion' | 'arc' | 'column' | 'categorized' | 'image' | 'wms' | 'mvt' | 'fgb';
   geojson?: string;       // filename to fetch from /api/user/files/
-  geojson_url?: string;   // authenticated API URL for a generated GeoJSON layer
   geojsonData?: any;      // already loaded GeoJSON
   style?: Record<string, any>;
   value_column?: string;
@@ -27,10 +22,6 @@ interface MapLayer {
   category_colors?: Record<string, string>;  // value -> color mapping
   category_labels?: Record<string, string>;  // value -> display label
   style_map?: Record<string, Record<string, any>>; // value -> full style obj
-  property_filter?: Record<string, string | string[]>;
-  label_field?: string;
-  label_prefix?: string;
-  label_always_show?: boolean;
   legend_title?: string;
   tooltip_fields?: string[];
   tooltip_labels?: Record<string, string>;
@@ -64,12 +55,6 @@ interface MapLayer {
     elapsedMinutes: number[];
     periodCount: number;
     totalNodeCount?: number;
-    reportStepMinutes?: number;
-    /** Optional GWM hint: skip a valid but empty initial surface frame. */
-    initialTimeIndex?: number;
-    // Surface-cell timelines use the same lazy loading mechanism as SWMM
-    // node timelines, but must not be labelled as nodes in the UI.
-    kind?: 'swmm-node' | 'surface-cell' | 'gwm-surface-cell';
   };
 }
 
@@ -90,35 +75,6 @@ interface MapPanelProps {
   center: [number, number];
   zoom: number;
   layerControl?: any;
-}
-
-/**
- * Render a human-readable time label even when a result manifest omits
- * `time_values`.  Some native/derived products only provide elapsed minutes;
- * showing that numeric value is preferable to a perpetual "Loading" label
- * and keeps the 2D and 3D timelines consistent.
- */
-function scenarioTimelineTimeLabel(
-  timeline: NonNullable<MapLayer['scenarioTimeline']>,
-  index: number,
-  loadingLabel: string,
-): string {
-  const raw = timeline.timeValues?.[index];
-  if (raw !== undefined && raw !== null && String(raw).trim() !== '') return String(raw);
-  const elapsed = Number(timeline.elapsedMinutes?.[index]);
-  if (Number.isFinite(elapsed)) return `${elapsed.toFixed(0)} min`;
-  return loadingLabel;
-}
-
-function filterGeoJsonFeatures(payload: any, propertyFilter?: Record<string, string | string[]>): any {
-  if (!propertyFilter || !payload || !Array.isArray(payload.features)) return payload;
-  const features = payload.features.filter((feature: any) => Object.entries(propertyFilter).every(([key, expected]) => {
-    const actual = String(feature?.properties?.[key] ?? '');
-    return Array.isArray(expected)
-      ? expected.map(value => String(value)).includes(actual)
-      : actual === String(expected);
-  }));
-  return { ...payload, features };
 }
 
 const BASEMAPS: Record<string, string> = {
@@ -142,18 +98,10 @@ function mapDisplayName(name: string, t: (key: string, options?: any) => string)
   const key = BASEMAP_LABEL_KEYS[name];
   if (key) return t(key, { defaultValue: name });
   // Business labels supplied by governed map results are already localized
-  // for the request.  Only apply the legacy Chinese-to-English display map
-  // when the active interface is English; otherwise it corrupts valid Chinese
-  // labels into a generic untranslated-field placeholder.
+  // for the request. Only apply the legacy Chinese-to-English display map
+  // when the active interface is English.
   if (getLocale() !== 'en-US' || !/[\u3400-\u9fff]/.test(name)) return name;
   const replacements: Array<[RegExp, string]> = [
-    [/非常重要/g, 'Very Important'],
-    [/重要/g, 'Important'],
-    [/二维结果 · 客户 5 m DTM 全市陆域最大积水深度 · ([\d]+) 年一遇/g, '2D result · Customer 5 m DTM citywide land-surface maximum flood depth · $1-year return period'],
-    [/二维结果 · 客户 5 m DTM 全市陆域动态积水深度 · ([\d]+) 年一遇/g, '2D result · Customer 5 m DTM citywide dynamic land-surface flood depth · $1-year return period'],
-    [/全市陆域二维最大积水深度（m）· 客户 DTM 主结果/g, 'Citywide land-surface 2D maximum flood depth (m) · customer DTM primary result'],
-    [/全市陆域二维动态积水深度（m）· 客户 DTM 主结果/g, 'Citywide dynamic land-surface 2D flood depth (m) · customer DTM primary result'],
-    [/客户 DTM 主结果/g, 'customer DTM primary result'],
     [/本次真实 SWMM 情景/g, 'Current real SWMM scenario'],
     [/原生 OUT 时间轴/g, 'native OUT timeline'],
     [/全量节点级时序结果/g, 'complete node-level time-series results'],
@@ -204,26 +152,6 @@ function mapDisplayName(name: string, t: (key: string, options?: any) => string)
     [/节点溢流\/积水/g, 'node overflow/flooding'],
     [/节点最大溢流\/积水/g, 'maximum node overflow/flooding'],
     [/管段最大容量率/g, 'maximum link capacity fraction'],
-    [/全市陆域二维最大积水深度（m）· 公共 DEM 原型/g, 'citywide land-surface 2D maximum flood depth (m) · public DEM prototype'],
-    [/全市陆域二维动态积水深度（m）· 公共 DEM 原型/g, 'citywide dynamic land-surface 2D flood depth (m) · public DEM prototype'],
-    [/全市陆域最大积水深度/g, 'citywide land-surface maximum flood depth'],
-    [/全市陆域动态积水深度/g, 'citywide dynamic land-surface flood depth'],
-    [/永久水体比例/g, 'permanent-water fraction'],
-    [/陆地比例/g, 'land fraction'],
-    [/公共原型/g, 'public prototype'],
-    [/全市公共原型/g, 'full-city public prototype'],
-    [/二维结果/g, '2D result'],
-    [/最大积水深度/g, 'maximum flood depth'],
-    [/动态地表水深/g, 'dynamic surface-water depth'],
-    [/全市二维/g, 'citywide 2D'],
-    [/二维最大积水深度/g, 'maximum 2D flood depth'],
-    [/二维动态积水深度/g, 'dynamic 2D flood depth'],
-    [/全市二维最大积水深度（m）· 公共 DEM 原型/g, 'citywide 2D maximum flood depth (m) · public DEM prototype'],
-    [/全市二维动态积水深度（m）· 公共 DEM 原型/g, 'citywide 2D dynamic flood depth (m) · public DEM prototype'],
-    [/公共 DEM 原型/g, 'public DEM prototype'],
-    [/来源标签/g, 'data source'],
-    [/来源/g, 'source'],
-    [/客户节点/g, 'customer nodes'],
     [/管段最大流量\/流速/g, 'maximum link flow/velocity'],
     [/管段最大流量/g, 'maximum link flow'],
     [/管段最大流速/g, 'maximum link velocity'],
@@ -253,33 +181,12 @@ function mapDisplayName(name: string, t: (key: string, options?: any) => string)
     [/积水/g, 'flooding'],
   ];
   let translated = name;
-  for (const [source, target] of replacements.sort((left, right) => right[0].source.length - left[0].source.length)) {
-    translated = translated.replace(source, target);
-  }
-  return translated
-    .replace(/：/g, ': ')
-    .replace(/，/g, ', ')
-    .replace(/；/g, '; ')
-    .replace(/。/g, '.')
-    .replace(/（/g, ' (')
-    .replace(/）/g, ')')
-    .replace(/、/g, ', ');
+  for (const [source, target] of replacements) translated = translated.replace(source, target);
+  return translated;
 }
 
 function mapPopupLabel(value: string): string {
   if (getLocale() !== 'en-US' || !/[\u3400-\u9fff]/.test(value)) return value;
-  const exact: Record<string, string> = {
-    '二维单元 ID': '2D cell ID',
-    '模拟时间（h）': 'Simulation time (h)',
-    '模拟时间（分钟）': 'Simulation time (minutes)',
-    '积水深度（m）': 'Flood depth (m)',
-    '最大积水深度（m）': 'Maximum flood depth (m)',
-    '最大深度时刻（分钟）': 'Time of maximum depth (minutes)',
-    '末时刻积水深度（m）': 'Final-time flood depth (m)',
-    '陆地比例': 'Land fraction',
-    '永久水体比例': 'Permanent-water fraction',
-  };
-  if (exact[value]) return exact[value];
   const replacements: Array<[RegExp, string]> = [
     [/S2真实地块/g, 'S2 actual parcel'], [/地块ID/g, 'Parcel ID'], [/村域/g, 'Planning area'], [/原始地类/g, 'Source land use'],
     [/面积/g, 'Area'], [/真实地块/g, 'actual parcel'], [/点击地块后将回填左侧S2输入框/g, 'Click the parcel to populate the S2 input'],
@@ -289,18 +196,8 @@ function mapPopupLabel(value: string): string {
     [/积水/g, 'Flooding'], [/结果/g, 'Result'], [/客户/g, 'Customer'], [/原始输入/g, 'Raw input'],
   ];
   let translated = value;
-  for (const [source, target] of replacements.sort((left, right) => right[0].source.length - left[0].source.length)) {
-    translated = translated.replace(source, target);
-  }
-  return translated
-    .replace(/[\u3400-\u9fff]+/g, 'untranslated field')
-    .replace(/：/g, ': ')
-    .replace(/，/g, ', ')
-    .replace(/；/g, '; ')
-    .replace(/。/g, '.')
-    .replace(/（/g, ' (')
-    .replace(/）/g, ')')
-    .replace(/、/g, ', ');
+  for (const [source, target] of replacements) translated = translated.replace(source, target);
+  return translated.replace(/[\u3400-\u9fff]+/g, 'additional detail');
 }
 
 interface BasemapMetadata {
@@ -333,9 +230,6 @@ const COLOR_RAMPS: Record<string, string[]> = {
   YlGnBu: ['#ffffcc', '#c7e9b4', '#7fcdbb', '#41b6c4', '#1d91c0', '#225ea8', '#0c2c84'],
   RdYlGn: ['#d73027', '#fc8d59', '#fee08b', '#ffffbf', '#d9ef8b', '#91cf60', '#1a9850'],
   Blues: ['#eff3ff', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#084594'],
-  // Satellite-observed water is drawn over a high-contrast imagery basemap.
-  // Keep every bin visibly blue; the generic Blues ramp starts nearly white.
-  ObservedBlues: ['#7dd3fc', '#38bdf8', '#0ea5e9', '#0284c7', '#0369a1', '#075985', '#0c4a6e'],
   Reds: ['#fee5d9', '#fcbba1', '#fc9272', '#fb6a4a', '#ef3b2c', '#cb181d', '#99000d'],
   Greens: ['#edf8e9', '#c7e9c0', '#a1d99b', '#74c476', '#41ab5d', '#238b45', '#005a32'],
   Spectral: ['#d53e4f', '#fc8d59', '#fee08b', '#ffffbf', '#e6f598', '#99d594', '#3288bd'],
@@ -348,10 +242,6 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const layerGroupsRef = useRef<Map<string, L.Layer>>(new Map());
-  // Each map update can start asynchronous GeoJSON requests. Keep a monotonic
-  // generation so a previous, wider-area request can never add its layers
-  // after a newer map update has already replaced the layer set.
-  const layerLoadGenerationRef = useRef(0);
   const baseTileRef = useRef<L.TileLayer | null>(null);
   const highlightLayerRef = useRef<L.GeoJSON | null>(null);
   const [activeBasemap, setActiveBasemap] = useState('ESRI Satellite');
@@ -361,16 +251,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   const [scenarioTimelinePlaying, setScenarioTimelinePlaying] = useState(false);
   const [scenarioTimelineLoading, setScenarioTimelineLoading] = useState(false);
   const [scenarioSliceData, setScenarioSliceData] = useState<Record<string, any>>({});
-  const [scenarioPresentationMode, setScenarioPresentationMode] = useState<TimelinePresentationMode>('scientific');
-  const [scenarioInterpolationProgress, setScenarioInterpolationProgress] = useState(0);
-  const [scenarioFramePair, setScenarioFramePair] = useState<{
-    currentIndex: number;
-    nextIndex: number;
-    current: any;
-    next: any;
-  } | null>(null);
   const scenarioTimelineRequestRef = useRef(0);
-  const scenarioFrameCacheRef = useRef(new Map<string, any>());
   const [showLayerControl, setShowLayerControl] = useState(false);
   const [showBasemapMenu, setShowBasemapMenu] = useState(false);
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
@@ -797,48 +678,20 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
   // Load and render layers
   useEffect(() => {
-    // A stage switch can move from a timeline-backed result (SWMM, ANUGA, or
-    // GWM) to a static input/result layer while the 3D renderer is mounted.
-    // Clear only the shared timeline cache in that case so the prior stage's
-    // playback controls cannot remain visible over the new stage.  The active
-    // stage's layer contract is still owned by `layers` below.
-    const hasScenarioTimeline = layers.some((layer) => Boolean(layer.scenarioTimeline));
-    if (!hasScenarioTimeline) {
-      setLoadedLayers([]);
-      setScenarioSliceData({});
-      setScenarioTimeIndex(0);
-      setScenarioTimelinePlaying(false);
-    }
     if (!mapRef.current) return;
-    const generation = ++layerLoadGenerationRef.current;
-    const isCurrentLoad = () => layerLoadGenerationRef.current === generation;
     console.log('[MapPanel] layers prop changed:', layers.length, 'layers:', JSON.stringify(layers.map(l => ({name: l.name, type: l.type, geojson: l.geojson}))));
 
     const loadLayers = async () => {
-      if (!isCurrentLoad()) return;
       // Clear existing layers
       for (const [, layer] of layerGroupsRef.current) {
         mapRef.current!.removeLayer(layer);
       }
       layerGroupsRef.current.clear();
 
-      // Native result timelines can contain more than 140,000 points per
-      // frame. Hand them directly to deck.gl instead of first constructing an
-      // equivalent set of Leaflet SVG objects on the soon-to-be-hidden map.
-      if (layers.some((layer) => Boolean(layer.scenarioTimeline))) {
-        setViewMode('3d');
-        setLoadedLayers(layers);
-        setLayerVisibility(Object.fromEntries(
-          layers.map((layer) => [layer.name, layer.visible !== false]),
-        ));
-        return;
-      }
-
       const loaded: MapLayer[] = [];
       const visibility: Record<string, boolean> = {};
 
       for (const layerConfig of layers) {
-        if (!isCurrentLoad()) return;
         try {
           if (layerConfig.type === 'image') {
             const leafletLayer = createLeafletLayer(layerConfig, null);
@@ -875,26 +728,16 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           let geojsonData = layerConfig.geojsonData;
 
           // Fetch GeoJSON if we only have a filename
-          if (!geojsonData && (layerConfig.geojson || layerConfig.geojson_url)) {
-            const sourceUrl = layerConfig.geojson_url || `/api/user/files/${layerConfig.geojson}`;
-            const resp = await fetch(sourceUrl, { credentials: 'include', headers: getLocaleHeaders() });
-            if (!isCurrentLoad()) return;
+          if (!geojsonData && layerConfig.geojson) {
+            const resp = await fetch(`/api/user/files/${layerConfig.geojson}`, { credentials: 'include', headers: getLocaleHeaders() });
             if (!resp.ok) {
-              console.warn(`[MapPanel] Failed to fetch ${sourceUrl}: ${resp.status}`);
+              console.warn(`[MapPanel] Failed to fetch ${layerConfig.geojson}: ${resp.status}`);
               continue;
             }
             geojsonData = await resp.json();
           }
 
           if (!geojsonData) continue;
-          if (!isCurrentLoad()) return;
-
-          // Apply the same property filter in the Leaflet renderer that the
-          // 3D renderer already applies.  Without this, a planning layer
-          // intended to show only underground box culverts silently renders
-          // the full stormwater network and the six box culvert points are
-          // visually buried among more than a thousand network features.
-          geojsonData = filterGeoJsonFeatures(geojsonData, layerConfig.property_filter);
 
           // Switch to 3D only for very large layers; SCCA demo outputs should stay in 2D
           // so the choropleth legend and popups remain easy to read.
@@ -958,7 +801,6 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
         }
       }
 
-      if (!isCurrentLoad()) return;
       setLoadedLayers(loaded);
       setLayerVisibility(visibility);
 
@@ -977,50 +819,29 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       }
     };
 
-    void loadLayers();
-    return () => {
-      // Invalidate pending fetch continuations before the next layer set is
-      // allowed to render or fit the map.
-      if (layerLoadGenerationRef.current === generation) layerLoadGenerationRef.current += 1;
-    };
+    loadLayers();
   }, [layers, viewMode, t]);
 
   const scenarioTimelineLayer = layers.find((layer) => Boolean(layer.scenarioTimeline))
     || loadedLayers.find((layer) => Boolean(layer.scenarioTimeline));
   const scenarioTimeline = scenarioTimelineLayer?.scenarioTimeline;
   const scenarioTimelineSignature = scenarioTimeline
-    ? `${scenarioTimeline.runId}:${scenarioTimeline.endpoint}:${scenarioTimeline.periodCount}:${scenarioTimeline.initialTimeIndex ?? 0}`
+    ? `${scenarioTimeline.runId}:${scenarioTimeline.endpoint}:${scenarioTimeline.periodCount}`
     : '';
-  const continuousPresentationAvailable = scenarioTimeline?.kind === 'gwm-surface-cell';
 
   // Reset a newly completed SWMM run to its first native reporting period.
   useEffect(() => {
     if (!scenarioTimelineSignature) {
       setScenarioTimeIndex(0);
       setScenarioTimelinePlaying(false);
-      setScenarioPresentationMode('scientific');
-      setScenarioFramePair(null);
-      scenarioFrameCacheRef.current.clear();
       return;
     }
-    const initialIndex = scenarioTimeline
-      ? Math.max(0, Math.min(
-        Number.isInteger(scenarioTimeline.initialTimeIndex) ? Number(scenarioTimeline.initialTimeIndex) : 0,
-        Math.max(0, scenarioTimeline.periodCount - 1),
-      ))
-      : 0;
-    setScenarioTimeIndex(initialIndex);
+    setScenarioTimeIndex(0);
     setScenarioTimelinePlaying(false);
-    setScenarioPresentationMode('scientific');
-    setScenarioInterpolationProgress(0);
-    setScenarioFramePair(null);
-    scenarioFrameCacheRef.current.clear();
-  }, [scenarioTimelineSignature, scenarioTimeline?.initialTimeIndex]);
+  }, [scenarioTimelineSignature]);
 
-  // Fetch and replace only the current scenario period. Both node and
-  // surface-cell result layers share the same lazy-loading contract. Keep
-  // this independent of the active renderer: Leaflet 2D and deck.gl 3D must
-  // observe the same frame selection when a user switches view modes.
+  // Fetch and replace only the current SWMM period. Both node result layers
+  // share the same GeoJSON payload but use different value columns/styles.
   useEffect(() => {
     if (!scenarioTimeline || !scenarioTimelineSignature) return;
     const index = Math.max(0, Math.min(scenarioTimeIndex, scenarioTimeline.periodCount - 1));
@@ -1028,46 +849,23 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
     scenarioTimelineRequestRef.current = requestId;
     let cancelled = false;
     setScenarioTimelineLoading(true);
-    const loadTimelineFrame = async (frameIndex: number) => {
-      const cacheKey = `${scenarioTimelineSignature}:${frameIndex}`;
-      const cached = scenarioFrameCacheRef.current.get(cacheKey);
-      if (cached) return cached;
-      const separator = scenarioTimeline.endpoint.includes('?') ? '&' : '?';
-      const response = await fetch(
-        `${scenarioTimeline.endpoint}${separator}time_index=${encodeURIComponent(String(frameIndex))}`,
-        { credentials: 'include' },
-      );
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || 'SWMM 时间切片读取失败');
-      scenarioFrameCacheRef.current.set(cacheKey, payload);
-      if (scenarioFrameCacheRef.current.size > 6) {
-        const oldest = scenarioFrameCacheRef.current.keys().next().value;
-        if (oldest) scenarioFrameCacheRef.current.delete(oldest);
-      }
-      return payload;
-    };
     const loadSlice = async () => {
       try {
-        const loopIndex = Math.max(0, Math.min(
-          Number.isInteger(scenarioTimeline.initialTimeIndex) ? Number(scenarioTimeline.initialTimeIndex) : 0,
-          Math.max(0, scenarioTimeline.periodCount - 1),
-        ));
-        const nextIndex = index + 1 < scenarioTimeline.periodCount ? index + 1 : loopIndex;
-        const payload = await loadTimelineFrame(index);
-        const nextPayload = continuousPresentationAvailable && scenarioPresentationMode === 'continuous'
-          ? await loadTimelineFrame(nextIndex)
-          : payload;
+        const separator = scenarioTimeline.endpoint.includes('?') ? '&' : '?';
+        const response = await fetch(
+          `${scenarioTimeline.endpoint}${separator}time_index=${encodeURIComponent(String(index))}`,
+          { credentials: 'include' },
+        );
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload?.error || 'SWMM 时间切片读取失败');
         if (cancelled || requestId !== scenarioTimelineRequestRef.current) return;
-        const isColumnarSwmmFrame = payload?.format === 'swmm-node-columns-v1';
         const timelineConfigs = layers.filter((layer) => layer.scenarioTimeline);
         const timelineNames = new Set(timelineConfigs.map((layer) => layer.name));
         const nextScenarioSliceData: Record<string, any> = {};
         for (const layerName of timelineNames) {
           const config = timelineConfigs.find((layer) => layer.name === layerName);
           if (!config) continue;
-          const sliceData = isColumnarSwmmFrame
-            ? payload
-            : config.value_column === 'scenario_overflow_or_flooding_m3s'
+          const sliceData = config.value_column === 'scenario_overflow_or_flooding_m3s'
             ? {
               ...payload,
               features: (Array.isArray(payload?.features) ? payload.features : [])
@@ -1075,21 +873,21 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
             }
             : payload;
           nextScenarioSliceData[layerName] = sliceData;
+          if (mapRef.current) {
+            const current = layerGroupsRef.current.get(layerName);
+            if (current && mapRef.current.hasLayer(current)) mapRef.current.removeLayer(current);
+            const replacement = createLeafletLayer({ ...config, geojsonData: sliceData }, sliceData);
+            if (!replacement) continue;
+            if (layerVisibility[layerName] !== false) replacement.addTo(mapRef.current);
+            layerGroupsRef.current.set(layerName, replacement);
+          }
         }
         setScenarioSliceData(nextScenarioSliceData);
-        setScenarioFramePair(
-          continuousPresentationAvailable && scenarioPresentationMode === 'continuous'
-            ? { currentIndex: index, nextIndex, current: payload, next: nextPayload }
-            : null,
-        );
-        setScenarioInterpolationProgress(0);
         setLoadedLayers((previous) => previous.map((layer) => (
           layer.scenarioTimeline
             ? {
               ...layer,
-              geojsonData: isColumnarSwmmFrame
-                ? layer.geojsonData
-                : layer.value_column === 'scenario_overflow_or_flooding_m3s'
+              geojsonData: layer.value_column === 'scenario_overflow_or_flooding_m3s'
                 ? { ...payload, features: (Array.isArray(payload?.features) ? payload.features : []).filter((feature: any) => Number(feature?.properties?.scenario_overflow_or_flooding_m3s || 0) > 0) }
                 : payload,
             }
@@ -1122,66 +920,14 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
     };
     loadSlice();
     return () => { cancelled = true; };
-  }, [scenarioTimelineSignature, scenarioTimeIndex, layers, viewMode, continuousPresentationAvailable, scenarioPresentationMode]);
-
-  useEffect(() => {
-    if (
-      !scenarioTimeline
-      || scenarioPresentationMode !== 'continuous'
-      || !continuousPresentationAvailable
-      || !scenarioFramePair
-    ) return;
-    const timelineLayers = layers.filter(layer => layer.scenarioTimeline?.kind === 'gwm-surface-cell');
-    if (!timelineLayers.length) return;
-    if (!scenarioTimelinePlaying) {
-      const exactData = Object.fromEntries(timelineLayers.map(layer => [layer.name, scenarioFramePair.current]));
-      setScenarioSliceData(previous => ({ ...previous, ...exactData }));
-      setScenarioInterpolationProgress(0);
-      return;
-    }
-    const startedAt = performance.now();
-    const durationMs = 1200;
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const compactDevice = window.matchMedia('(max-width: 768px)').matches;
-    const minimumFrameIntervalMs = reducedMotion ? 100 : compactDevice ? 66 : 40;
-    let lastRenderedAt = -Infinity;
-    let animationFrame = 0;
-    const animate = (now: number) => {
-      const progress = Math.min(1, Math.max(0, (now - startedAt) / durationMs));
-      if (progress < 1 && now - lastRenderedAt < minimumFrameIntervalMs) {
-        animationFrame = window.requestAnimationFrame(animate);
-        return;
-      }
-      lastRenderedAt = now;
-      const nextData: Record<string, any> = {};
-      for (const layer of timelineLayers) {
-        nextData[layer.name] = interpolateTimelineFeatureCollections(
-          scenarioFramePair.current,
-          scenarioFramePair.next,
-          progress,
-          String(layer.value_column || 'depth_m'),
-        );
-      }
-      setScenarioSliceData(previous => ({ ...previous, ...nextData }));
-      setScenarioInterpolationProgress(progress);
-      if (progress < 1) animationFrame = window.requestAnimationFrame(animate);
-    };
-    animationFrame = window.requestAnimationFrame(animate);
-    return () => window.cancelAnimationFrame(animationFrame);
-  }, [continuousPresentationAvailable, layers, scenarioFramePair, scenarioPresentationMode, scenarioTimeline, scenarioTimelinePlaying]);
+  }, [scenarioTimelineSignature, scenarioTimeIndex, layers]);
 
   useEffect(() => {
     if (!scenarioTimeline || !scenarioTimelinePlaying || scenarioTimelineLoading) return;
     const timer = window.setInterval(() => {
-      setScenarioTimeIndex((current) => {
-        const initialIndex = Math.max(0, Math.min(
-          Number.isInteger(scenarioTimeline.initialTimeIndex) ? Number(scenarioTimeline.initialTimeIndex) : 0,
-          Math.max(0, scenarioTimeline.periodCount - 1),
-        ));
-        // Keep playback on renderable GWM frames after the final frame.  The
-        // explicit empty t=0 frame remains selectable with the slider/API.
-        return current + 1 >= scenarioTimeline.periodCount ? initialIndex : current + 1;
-      });
+      setScenarioTimeIndex((current) => (
+        current + 1 >= scenarioTimeline.periodCount ? 0 : current + 1
+      ));
     }, 1200);
     return () => window.clearInterval(timer);
   }, [scenarioTimelineSignature, scenarioTimelinePlaying, scenarioTimelineLoading]);
@@ -1202,10 +948,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       Boolean(l.fgb) ||
       (l.geojsonData && l.geojsonData.features && l.geojsonData.features.length > 10000 && !l.scenarioTimeline)
     );
-    // A static layer update can follow a native SWMM timeline. Explicitly
-    // return to Leaflet for ordinary GeoJSON/choropleth layers; otherwise the
-    // 3D hand-off leaves a valid observation contract with no visible SVG.
-    setViewMode(has3D ? '3d' : '2d');
+    if (has3D) setViewMode('3d');
   }, [layers]);
 
   // Find active choropleth layer for legend
@@ -1446,30 +1189,11 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
               {scenarioTimelinePlaying ? <Pause size={14} /> : <Play size={14} />}
             </button>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#334155', whiteSpace: 'nowrap' }}>
-              {scenarioTimeline.kind === 'surface-cell' || scenarioTimeline.kind === 'gwm-surface-cell'
-                ? t(scenarioTimeline.kind === 'gwm-surface-cell' ? 'map.gwmSurfaceTimeline' : 'map.anugaSurfaceTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })
-                : t('map.swmmTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })}
+              {t('map.swmmTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })}
             </span>
-            {continuousPresentationAvailable && (
-              <div className="map-timeline-presentation-switch" role="group" aria-label={t('map.timelinePresentationMode')}>
-                <button
-                  type="button"
-                  className={scenarioPresentationMode === 'scientific' ? 'active' : ''}
-                  onClick={() => {
-                    setScenarioTimelinePlaying(false);
-                    setScenarioPresentationMode('scientific');
-                  }}
-                >{t('map.scientificGridMode')}</button>
-                <button
-                  type="button"
-                  className={scenarioPresentationMode === 'continuous' ? 'active' : ''}
-                  onClick={() => setScenarioPresentationMode('continuous')}
-                >{t('map.continuousPresentationMode')}</button>
-              </div>
-            )}
             <input
               type="range"
-              aria-label={scenarioTimeline.kind === 'surface-cell' || scenarioTimeline.kind === 'gwm-surface-cell' ? t(scenarioTimeline.kind === 'gwm-surface-cell' ? 'map.gwmSurfaceTimelineControl' : 'map.anugaSurfaceTimelineControl') : t('map.swmmNodeTimeline')}
+              aria-label={t('map.swmmNodeTimeline')}
               min={0}
               max={Math.max(0, scenarioTimeline.periodCount - 1)}
               value={Math.min(scenarioTimeIndex, Math.max(0, scenarioTimeline.periodCount - 1))}
@@ -1485,21 +1209,13 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 5 }}>
             <span style={{ fontSize: 11, color: '#64748b' }}>
-              {scenarioTimeline.kind === 'surface-cell' || scenarioTimeline.kind === 'gwm-surface-cell'
-                ? t('map.simulationTime', { time: scenarioTimelineTimeLabel(scenarioTimeline, scenarioTimeIndex, t('map.loading')) })
-                : t('map.nativeOut', { time: scenarioTimelineTimeLabel(scenarioTimeline, scenarioTimeIndex, t('map.loading')) })}
+              {t('map.nativeOut', { time: scenarioTimeline.timeValues[scenarioTimeIndex] || t('map.loading') })}
             </span>
             <span style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', whiteSpace: 'nowrap' }}>
-              {t('map.elapsedMinutes', { value: Number(
-                (scenarioTimeline.elapsedMinutes[scenarioTimeIndex] || 0)
-                + (scenarioPresentationMode === 'continuous' && scenarioTimelinePlaying ? scenarioInterpolationProgress * Number(scenarioTimeline.reportStepMinutes || 5) : 0),
-              ).toFixed(scenarioPresentationMode === 'continuous' && scenarioTimelinePlaying ? 1 : 0) })}
+              {t('map.elapsedMinutes', { value: Number(scenarioTimeline.elapsedMinutes[scenarioTimeIndex] || 0).toFixed(0) })}
               {scenarioTimelineLoading ? ` · ${t('map.loading')}` : ''}
             </span>
           </div>
-          {continuousPresentationAvailable && scenarioPresentationMode === 'continuous' && (
-            <div className="map-timeline-visualization-disclaimer">{t('map.visualInterpolationDisclaimer')}</div>
-          )}
         </div>
       )}
 
@@ -1744,31 +1460,10 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
             >
               {scenarioTimelinePlaying ? <Pause size={14} /> : <Play size={14} />}
             </button>
-            <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
-              {scenarioTimeline.kind === 'surface-cell' || scenarioTimeline.kind === 'gwm-surface-cell'
-                ? t(scenarioTimeline.kind === 'gwm-surface-cell' ? 'map.gwmSurfaceTimeline' : 'map.anugaSurfaceTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })
-                : t('map.swmmTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })}
-            </span>
-            {continuousPresentationAvailable && (
-              <div className="map-timeline-presentation-switch dark" role="group" aria-label={t('map.timelinePresentationMode')}>
-                <button
-                  type="button"
-                  className={scenarioPresentationMode === 'scientific' ? 'active' : ''}
-                  onClick={() => {
-                    setScenarioTimelinePlaying(false);
-                    setScenarioPresentationMode('scientific');
-                  }}
-                >{t('map.scientificGridMode')}</button>
-                <button
-                  type="button"
-                  className={scenarioPresentationMode === 'continuous' ? 'active' : ''}
-                  onClick={() => setScenarioPresentationMode('continuous')}
-                >{t('map.continuousPresentationMode')}</button>
-              </div>
-            )}
+            <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{t('map.swmmTimeline', { count: Number(scenarioTimeline.totalNodeCount || 0).toLocaleString() })}</span>
             <input
               type="range"
-              aria-label={scenarioTimeline.kind === 'surface-cell' || scenarioTimeline.kind === 'gwm-surface-cell' ? t(scenarioTimeline.kind === 'gwm-surface-cell' ? 'map.gwmSurfaceTimelineControl3d' : 'map.anugaSurfaceTimelineControl3d') : t('map.swmmNodeTimeline3d')}
+              aria-label={t('map.swmmNodeTimeline3d')}
               min={0}
               max={Math.max(0, scenarioTimeline.periodCount - 1)}
               value={Math.min(scenarioTimeIndex, Math.max(0, scenarioTimeline.periodCount - 1))}
@@ -1784,21 +1479,13 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 5 }}>
             <span style={{ fontSize: 11, color: '#cbd5e1' }}>
-              {scenarioTimeline.kind === 'surface-cell' || scenarioTimeline.kind === 'gwm-surface-cell'
-                ? t('map.simulationTime', { time: scenarioTimelineTimeLabel(scenarioTimeline, scenarioTimeIndex, t('map.loading')) })
-                : t('map.nativeOut', { time: scenarioTimelineTimeLabel(scenarioTimeline, scenarioTimeIndex, t('map.loading')) })}
+              {t('map.nativeOut', { time: scenarioTimeline.timeValues[scenarioTimeIndex] || t('map.loading') })}
             </span>
             <span style={{ fontSize: 12, fontWeight: 700, color: '#7dd3fc', whiteSpace: 'nowrap' }}>
-              {t('map.elapsedMinutes', { value: Number(
-                (scenarioTimeline.elapsedMinutes[scenarioTimeIndex] || 0)
-                + (scenarioPresentationMode === 'continuous' && scenarioTimelinePlaying ? scenarioInterpolationProgress * Number(scenarioTimeline.reportStepMinutes || 5) : 0),
-              ).toFixed(scenarioPresentationMode === 'continuous' && scenarioTimelinePlaying ? 1 : 0) })}
+              {t('map.elapsedMinutes', { value: Number(scenarioTimeline.elapsedMinutes[scenarioTimeIndex] || 0).toFixed(0) })}
               {scenarioTimelineLoading ? ` · ${t('map.loading')}` : ''}
             </span>
           </div>
-          {continuousPresentationAvailable && scenarioPresentationMode === 'continuous' && (
-            <div className="map-timeline-visualization-disclaimer dark">{t('map.visualInterpolationDisclaimer')}</div>
-          )}
         </div>
       )}
 
@@ -1898,10 +1585,10 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
           const fillColor = pickRampColor(colors, idx, breaks.length);
           return {
             fillColor,
-            color: style.color || '#0c4a6e',
-            weight: style.weight ?? 1,
-            opacity: style.opacity ?? 0.88,
-            fillOpacity: style.fillOpacity ?? 0.78,
+            color: '#666',
+            weight: 1,
+            opacity: 0.7,
+            fillOpacity: 0.7,
           };
         },
         onEachFeature: bindPopup,
@@ -1998,29 +1685,14 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
           fillOpacity: catStyle?.fillOpacity ?? style.fillOpacity ?? 0.85,
         };
       };
-      const onEachCategorizedFeature = (feature: any, layer: L.Layer) => {
-        bindPopup(feature, layer);
-        if (!config.label_field || !feature?.properties) return;
-        const labelValue = feature.properties[config.label_field];
-        if (labelValue === undefined || labelValue === null || String(labelValue).trim() === '') return;
-        const prefix = config.label_prefix || '';
-        layer.unbindTooltip();
-        layer.bindTooltip(`${prefix}${String(labelValue)}`, {
-          permanent: config.label_always_show === true,
-          direction: 'top',
-          sticky: config.label_always_show !== true,
-          className: 'map-asset-label',
-          opacity: 0.96,
-        });
-      };
       return L.geoJSON(geojsonData, {
         style: categoryStyle,
         pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
           ...categoryStyle(feature),
-          radius: Number(style.point_radius || style.min_radius || 9),
+          radius: Number(style.min_radius || 9),
           weight: Number(style.weight || 2),
         }),
-        onEachFeature: onEachCategorizedFeature,
+        onEachFeature: bindPopup,
       });
     }
 
