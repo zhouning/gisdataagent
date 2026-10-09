@@ -16,6 +16,7 @@ Admin endpoints require JWT + admin role.
 Routes are mounted before the Chainlit catch-all via mount_frontend_api().
 """
 import json
+import hashlib
 import os
 import re
 from collections import defaultdict
@@ -2529,8 +2530,18 @@ async def _api_workflow_run_status(request: Request):
 # Map/Data Pending Updates Endpoint
 # ---------------------------------------------------------------------------
 
+def _pending_map_delivery_id(map_config: dict) -> str:
+    payload = json.dumps(
+        map_config,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
 async def _api_map_pending(request: Request):
-    """GET /api/map/pending — pop and return pending map/data updates for current user."""
+    """Read or acknowledge pending updates for the current user."""
     user = _get_user_from_request(request)
     
     # Fallback for dev mode
@@ -2543,18 +2554,39 @@ async def _api_map_pending(request: Request):
     
     logger.info(f"[/api/map/pending] user={uid}, pending_keys={list(pending_map_updates.keys())}")
 
+    if request.method == "POST":
+        try:
+            payload = await request.json()
+        except Exception:
+            return JSONResponse({"error": "invalid_json"}, status_code=400)
+        delivery_id = str((payload or {}).get("map_delivery_id") or "")
+        if not re.fullmatch(r"[0-9a-f]{64}", delivery_id):
+            return JSONResponse({"error": "invalid_map_delivery_id"}, status_code=400)
+        with _pending_lock:
+            current = pending_map_updates.get(uid)
+            if current is None:
+                return JSONResponse({"acknowledged": False, "reason": "not_pending"})
+            if _pending_map_delivery_id(current) != delivery_id:
+                return JSONResponse(
+                    {"acknowledged": False, "reason": "delivery_superseded"},
+                    status_code=409,
+                )
+            pending_map_updates.pop(uid, None)
+        return JSONResponse({"acknowledged": True, "map_delivery_id": delivery_id})
+
     result = {}
     with _pending_lock:
-        map_cfg = pending_map_updates.pop(uid, None)
+        map_cfg = pending_map_updates.get(uid)
         data_cfg = pending_data_updates.pop(uid, None)
         workspace_cfg = pending_workspace_updates.pop(uid, None)
     if map_cfg:
         result["map_update"] = map_cfg
+        result["map_delivery_id"] = _pending_map_delivery_id(map_cfg)
     if data_cfg:
         result["data_update"] = data_cfg
     if workspace_cfg:
         result["workspace_update"] = workspace_cfg
-    return JSONResponse(result)
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
 
 
 async def _api_chart_pending(request: Request):
@@ -2725,9 +2757,16 @@ async def _api_mention_targets(request: Request):
             "label": t.get("label", t["handle"]),
             "type": t["type"],
             "description": t.get("description", ""),
-            "allowed": role in t.get("allowed_roles", []),
+            "allowed": (
+                role in t.get("allowed_roles", [])
+                and (t.get("type") != "managed_agent" or t.get("runtime_available", False))
+            ),
             "allowed_roles": t.get("allowed_roles", []),
             "required_state_keys": t.get("required_state_keys", []),
+            "runtime_available": t.get("runtime_available"),
+            "agent_status": t.get("agent_status"),
+            "deployment_revision": t.get("deployment_revision"),
+            "deployed_version": t.get("deployed_version"),
         })
     return JSONResponse({"targets": targets})
 
@@ -4695,6 +4734,7 @@ def get_frontend_api_routes():
     from .api.file_routes import get_file_routes
     from .api.topology_routes import get_topology_routes
     from .api.metadata_routes import get_metadata_routes
+    from .api.physical_lake_routes import get_physical_lake_routes
     from .api.navigation_routes import get_navigation_routes
     from .api.fusion_v2_routes import get_fusion_v2_routes
     from .api.tile_routes import get_tile_routes
@@ -4705,6 +4745,7 @@ def get_frontend_api_routes():
     from .api.semantic_model_routes import get_semantic_model_routes
     from .api.lineage_routes import get_lineage_routes
     from .api.agent_management_routes import get_agent_management_routes
+    from .api.managed_agents_routes import get_managed_agent_routes
     from .annotation_ws import annotation_ws_routes
     from .api.intake_routes import get_intake_routes
     from .api.classification_routes import get_classification_routes
@@ -4765,6 +4806,7 @@ def get_frontend_api_routes():
         # Interactive EPA SWMM diagnostic scenarios for the Abu Dhabi flood
         # world-model prototype. Customer inputs and artifacts stay private.
         *get_abu_dhabi_flood_routes(),
+        # Read-only Mussafah_00 L1/L2/L2+ gap review workspace.
         *get_mussafah00_gap_routes(),
         Route("/api/semantic/domains", endpoint=_api_semantic_domains, methods=["GET"]),
         Route("/api/semantic/hierarchy/{domain}", endpoint=_api_semantic_hierarchy, methods=["GET"]),
@@ -4826,7 +4868,7 @@ def get_frontend_api_routes():
         *get_metric_routes(),
         *get_capability_spec_routes(),
         # Map/Data pending updates (v7.0 — bypass Chainlit metadata limitation)
-        Route("/api/map/pending", endpoint=_api_map_pending, methods=["GET"]),
+        Route("/api/map/pending", endpoint=_api_map_pending, methods=["GET", "POST"]),
         Route("/api/chart/pending", endpoint=_api_chart_pending, methods=["GET"]),
         # Capabilities (aggregated skills + toolsets)
         Route("/api/capabilities", endpoint=_api_capabilities, methods=["GET"]),
@@ -5032,6 +5074,8 @@ def get_frontend_api_routes():
         *get_topology_routes(),
         # Metadata Management (v15.8)
         *get_metadata_routes(),
+        # Read-only operational view of the completed Abu Dhabi Iceberg intake.
+        *get_physical_lake_routes(),
         # Workspace navigation visibility and ordering (v26.0)
         *get_navigation_routes(),
         # Fusion v2.0 (v17.0)
@@ -5057,6 +5101,8 @@ def get_frontend_api_routes():
         *get_lineage_routes(),
         # Agent Management (v24.1)
         *get_agent_management_routes(),
+        # Managed custom agent lifecycle
+        *get_managed_agent_routes(),
         # Dataset Intake (v24.1)
         *get_intake_routes(),
         # Data Classification & Anonymization (v15.8)

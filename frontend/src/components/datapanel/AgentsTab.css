@@ -1,0 +1,336 @@
+.agent-management-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.agent-management-tabs button {
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #4b5563;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.agent-management-tabs button.active {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.agent-lifecycle {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.agent-lifecycle-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.agent-lifecycle-toolbar > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.agent-lifecycle-toolbar h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.agent-lifecycle-toolbar p {
+  margin: 4px 0 0;
+  color: #6b7280;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.agent-icon-button,
+.agent-lifecycle-actions button {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #fff;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.agent-icon-button:disabled,
+.agent-lifecycle-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.agent-primary-button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid #1d4ed8;
+  border-radius: 4px;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.agent-primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.agent-lifecycle-grid {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(250px, 0.9fr) minmax(320px, 1.1fr);
+  gap: 16px;
+  padding-top: 12px;
+}
+
+.agent-lifecycle-list {
+  min-width: 0;
+  overflow: auto;
+}
+
+.agent-lifecycle-item {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  background: #fff;
+}
+
+.agent-lifecycle-item.selected {
+  border-color: #93c5fd;
+  box-shadow: inset 2px 0 #2563eb;
+}
+
+.agent-lifecycle-item-main {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 9px 10px;
+  border: 0;
+  background: transparent;
+  color: #111827;
+  cursor: pointer;
+  text-align: start;
+}
+
+.agent-lifecycle-item-main strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.agent-lifecycle-item-main small,
+.agent-lifecycle-description {
+  color: #6b7280;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.agent-lifecycle-description {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.agent-state {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.state-published, .state-approved { background: #dcfce7; color: #166534; }
+.state-pending_approval, .state-testing { background: #fef3c7; color: #92400e; }
+.state-disabled, .state-archived { background: #f3f4f6; color: #6b7280; }
+.state-draft { background: #dbeafe; color: #1d4ed8; }
+
+.agent-lifecycle-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px;
+}
+
+.agent-lifecycle-actions button {
+  width: 27px;
+  height: 27px;
+}
+
+.agent-lifecycle-editor {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 9px;
+  padding-inline-start: 14px;
+  border-inline-start: 1px solid #e5e7eb;
+}
+
+.agent-editor-heading {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: space-between;
+  color: #111827;
+  font-size: 13px;
+}
+
+.agent-lifecycle-editor label {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  color: #374151;
+  font-size: 11px;
+}
+
+.agent-lifecycle-editor input,
+.agent-lifecycle-editor textarea,
+.agent-lifecycle-editor select {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #fff;
+  color: #111827;
+  font: inherit;
+  font-size: 12px;
+}
+
+.agent-lifecycle-editor textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.agent-toolset-picker {
+  display: flex;
+  min-width: 0;
+  max-height: 140px;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  overflow: auto;
+  margin: 0;
+  padding: 7px 9px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+
+.agent-toolset-picker legend {
+  padding: 0 4px;
+  color: #374151;
+  font-size: 11px;
+}
+
+.agent-lifecycle-editor .agent-toolset-picker label {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+}
+
+.agent-lifecycle-editor .agent-toolset-picker input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  padding: 0;
+}
+
+.agent-editor-row {
+  display: flex;
+  gap: 8px;
+}
+
+.agent-policy-flags {
+  flex-wrap: wrap;
+}
+
+.agent-lifecycle-editor .agent-policy-flags label {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.agent-lifecycle-editor .agent-policy-flags input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  padding: 0;
+}
+
+.agent-lifecycle-editor .agent-policy-flags input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
+.agent-form-hint {
+  color: #6b7280;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.agent-form-error,
+.agent-form-notice {
+  margin-top: 8px;
+  padding: 7px 9px;
+  border-radius: 4px;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.agent-form-error { background: #fef2f2; color: #991b1b; }
+.agent-form-notice { background: #ecfdf5; color: #166534; }
+.agent-lifecycle-empty { padding: 24px 8px; }
+
+@media (max-width: 760px) {
+  .agent-lifecycle-grid { grid-template-columns: minmax(0, 1fr); }
+  .agent-lifecycle-editor {
+    padding: 12px 0 0;
+    border-top: 1px solid #e5e7eb;
+    border-inline-start: 0;
+  }
+  .agent-lifecycle-actions { flex-wrap: wrap; justify-content: center; }
+}

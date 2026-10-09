@@ -58,7 +58,8 @@ def _get_toolset_registry() -> dict[str, type]:
         SemanticLayerToolset, StreamingToolset, TeamToolset,
         DataLakeToolset, McpHubToolset, FusionToolset,
         KnowledgeGraphToolset, KnowledgeBaseToolset,
-        AdvancedAnalysisToolset, NL2SQLEnhancedToolset,
+        AdvancedAnalysisToolset, ChartToolset, DataCleaningToolset,
+        GovernanceToolset, NL2SQLEnhancedToolset, SparkToolset,
         TerritoryWorldModelToolset,
     )
     from .toolsets.spatial_analysis_tier2_tools import SpatialAnalysisTier2Toolset
@@ -70,6 +71,7 @@ def _get_toolset_registry() -> dict[str, type]:
     from .toolsets.precision_tools import PrecisionToolset
     from .toolsets.causal_inference_tools import CausalInferenceToolset
     from .toolsets.dreamer_tools import DreamerToolset
+    from .toolsets.evolution_tools import ToolEvolutionToolset
     from .toolsets.domain_standard_tools import DomainStandardToolset
     from .toolsets.nl2sql_enhanced_tools import NL2SQLEnhancedToolset
     from .toolsets.territory_world_model_tools import TerritoryWorldModelToolset
@@ -94,6 +96,9 @@ def _get_toolset_registry() -> dict[str, type]:
         "KnowledgeGraphToolset": KnowledgeGraphToolset,
         "KnowledgeBaseToolset": KnowledgeBaseToolset,
         "AdvancedAnalysisToolset": AdvancedAnalysisToolset,
+        "ChartToolset": ChartToolset,
+        "DataCleaningToolset": DataCleaningToolset,
+        "GovernanceToolset": GovernanceToolset,
         "SpatialAnalysisTier2Toolset": SpatialAnalysisTier2Toolset,
         "WatershedToolset": WatershedToolset,
         "UserToolset": UserToolset,
@@ -103,8 +108,10 @@ def _get_toolset_registry() -> dict[str, type]:
         "PrecisionToolset": PrecisionToolset,
         "CausalInferenceToolset": CausalInferenceToolset,
         "DreamerToolset": DreamerToolset,
+        "ToolEvolutionToolset": ToolEvolutionToolset,
         "DomainStandardToolset": DomainStandardToolset,
         "NL2SQLEnhancedToolset": NL2SQLEnhancedToolset,
+        "SparkToolset": SparkToolset,
         "TerritoryWorldModelToolset": TerritoryWorldModelToolset,
     }
     return _toolset_registry_cache
@@ -334,6 +341,10 @@ def create_custom_skill(
                 "shared": is_shared,
                 "output_schema": output_schema or "",
             }).fetchone()
+            if row:
+                _insert_skill_version(
+                    conn, int(row[0]), 1, instruction, description or "", toolset_names or []
+                )
             conn.commit()
             return row[0] if row else None
     except Exception as e:
@@ -421,7 +432,7 @@ def update_custom_skill(skill_id: int, **fields) -> bool:
     try:
         username = current_user_id.get()
         set_clauses = ", ".join(f"{k} = :{k}" for k in updates)
-        set_clauses += ", updated_at = NOW()"
+        set_clauses += ", version = COALESCE(version, 1) + 1, updated_at = NOW()"
         updates["id"] = skill_id
         updates["owner"] = username
         with engine.connect() as conn:
@@ -429,9 +440,16 @@ def update_custom_skill(skill_id: int, **fields) -> bool:
                 UPDATE {T_CUSTOM_SKILLS}
                 SET {set_clauses}
                 WHERE id = :id AND owner_username = :owner
+                RETURNING version, instruction, description, toolset_names
             """), updates)
+            row = result.fetchone()
+            if not row:
+                return False
+            _insert_skill_version(
+                conn, skill_id, int(row[0]), row[1], row[2] or "", list(row[3] or [])
+            )
             conn.commit()
-            return result.rowcount > 0
+            return True
     except Exception as e:
         print(f"[CustomSkills] Failed to update: {e}")
         return False
@@ -659,30 +677,30 @@ def clone_skill(skill_id: int, new_owner: str, new_name: str = None) -> Optional
 # Version Management & Usage Tracking (v14.1)
 # ---------------------------------------------------------------------------
 
+def _insert_skill_version(conn, skill_id: int, version: int, instruction: str,
+                          description: str, toolset_names: list):
+    """Persist a version snapshot in the caller's transaction."""
+    conn.execute(text("""
+        INSERT INTO agent_skill_versions (skill_id, version, instruction, description, toolset_names)
+        VALUES (:sid, :ver, :instr, :desc, :tools)
+        ON CONFLICT (skill_id, version) DO NOTHING
+    """), {
+        "sid": skill_id, "ver": version, "instr": instruction,
+        "desc": description, "tools": toolset_names,
+    })
+
+
 def _save_skill_version(skill_id: int, instruction: str, description: str,
                         toolset_names: list, version: int):
-    """Save a snapshot of the skill's current state as a version."""
+    """Save a snapshot without pruning versions that published agents may pin."""
     engine = get_engine()
     if not engine:
         return
     try:
         with engine.connect() as conn:
-            conn.execute(text("""
-                INSERT INTO agent_skill_versions (skill_id, version, instruction, description, toolset_names)
-                VALUES (:sid, :ver, :instr, :desc, :tools)
-                ON CONFLICT (skill_id, version) DO NOTHING
-            """), {
-                "sid": skill_id, "ver": version, "instr": instruction,
-                "desc": description, "tools": toolset_names,
-            })
-            # Prune old versions (keep last 10)
-            conn.execute(text("""
-                DELETE FROM agent_skill_versions
-                WHERE skill_id = :sid AND version NOT IN (
-                    SELECT version FROM agent_skill_versions
-                    WHERE skill_id = :sid ORDER BY version DESC LIMIT 10
-                )
-            """), {"sid": skill_id})
+            _insert_skill_version(
+                conn, skill_id, version, instruction, description, toolset_names
+            )
             conn.commit()
     except Exception:
         pass
@@ -740,13 +758,21 @@ def rollback_skill(skill_id: int, target_version: int, owner_username: str) -> b
             result = conn.execute(text(
                 f"UPDATE {T_CUSTOM_SKILLS} SET instruction = :instr, description = :desc, "
                 f"toolset_names = :tools, version = version + 1, updated_at = NOW() "
-                f"WHERE id = :id AND owner_username = :owner"
+                f"WHERE id = :id AND owner_username = :owner "
+                f"RETURNING version, instruction, description, toolset_names"
             ), {
                 "id": skill_id, "owner": owner_username,
                 "instr": row[0], "desc": row[1], "tools": row[2],
             })
+            updated = result.fetchone()
+            if not updated:
+                return False
+            _insert_skill_version(
+                conn, skill_id, int(updated[0]), updated[1], updated[2] or "",
+                list(updated[3] or []),
+            )
             conn.commit()
-            return result.rowcount > 0
+            return True
     except Exception:
         return False
 

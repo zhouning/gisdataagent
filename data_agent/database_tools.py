@@ -6,7 +6,7 @@ import geopandas as gpd
 from sqlalchemy import text
 from .db_engine import get_engine
 from .gis_processors import _generate_output_path, _resolve_path
-from .user_context import current_user_id, current_user_role
+from .user_context import current_tenant_id, current_user_id, current_user_role
 from .observability import get_logger
 
 import urllib.parse
@@ -71,22 +71,25 @@ def get_async_db_url():
 
 
 def _inject_user_context(conn):
-    """Inject user identity and role into PostgreSQL session for RLS.
+    """Inject user, role, and tenant identity into PostgreSQL session for RLS.
 
     Sets two session-level GUC variables:
     - app.current_user: the username string
     - app.current_user_role: admin/analyst/viewer
+    - app.current_tenant: tenant identifier
 
     Both are transaction-local (reset when transaction ends).
     """
     uid = current_user_id.get()
     role = current_user_role.get()
+    tenant = current_tenant_id.get().strip() or "local-dev"
     if uid and uid != "anonymous":
         conn.execute(text("SELECT set_config('app.current_user', :uid, true)"), {"uid": uid})
         conn.execute(text("SELECT set_config('app.current_user_role', :role, true)"), {"role": role})
     else:
         conn.execute(text("SELECT set_config('app.current_user', 'anonymous', true)"))
         conn.execute(text("SELECT set_config('app.current_user_role', 'viewer', true)"))
+    conn.execute(text("SELECT set_config('app.current_tenant', :tenant, true)"), {"tenant": tenant})
 
 
 def query_database(sql_query: str) -> dict:

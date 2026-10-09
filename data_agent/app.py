@@ -98,7 +98,8 @@ try:
     from data_agent.report_generator import generate_word_report
     from data_agent.user_context import (
         current_user_id, current_session_id, current_user_role,
-        current_trace_id, current_nl2sql_requested_engine, get_user_upload_dir
+        current_trace_id, current_nl2sql_requested_engine, current_tenant_id,
+        get_user_upload_dir
     )
     from data_agent.audit_logger import (
         record_audit,
@@ -112,7 +113,7 @@ except ImportError:
     import report_generator
     from user_context import (
         current_user_id, current_session_id, current_user_role,
-        current_nl2sql_requested_engine, get_user_upload_dir
+        current_nl2sql_requested_engine, current_tenant_id, get_user_upload_dir
     )
     from audit_logger import (
         record_audit,
@@ -1663,6 +1664,7 @@ async def _execute_pipeline(
     router_tokens: int = 0,
     retry_attempt: int = 0,
     extra_parts: list = None,
+    tenant_id: str | None = None,
 ):
     """Execute a pipeline and handle success/error with optional retry.
 
@@ -1670,6 +1672,9 @@ async def _execute_pipeline(
     """
     from data_agent.user_context import get_user_upload_dir
     trace_id = _set_user_context(user_id, session_id, role)
+    # Callback execution can run in a child async task.  Set the tenant again
+    # at the pipeline boundary so every Tool sees the same identity tuple.
+    current_tenant_id.set((tenant_id or current_tenant_id.get() or "local-dev").strip() or "local-dev")
     logger.info("[Trace:%s] Pipeline=%s Intent=%s Started", trace_id, pipeline_name, intent)
 
     _plugins = [_hitl_plugin] if HITL_ENABLED else []
@@ -3786,7 +3791,7 @@ async def _handle_uwm_multistage_chat_message(user_text: str, user_id: str) -> N
     ).send()
 
 
-async def _handle_liveability_demo_message(
+async def _handle_liveability_nl2sql_message(
     user_text: str,
     user_id: str,
     role: str,
@@ -3943,7 +3948,7 @@ async def _handle_liveability_demo_message(
             with _pending_lock:
                 pending_map_updates[user_id] = map_update
             response += {
-                "zh": "\n\n已按本次受治理结果在地图中加载行政区数量分级设色图层。",
+                "zh": "\n\n已按本次受治理查询结果指标在地图中加载行政区分级设色图层。",
                 "en": "\n\nA governed choropleth layer for this result has been loaded on the map.",
                 "ar": "\n\nتم تحميل طبقة تدرج لوني محكومة لهذه النتيجة على الخريطة.",
             }[request.language]
@@ -4457,7 +4462,7 @@ async def _handle_abu_dhabi_unprefixed_message(
 
         cl.user_session.set("selected_virtual_source_id", SOURCE_ID)
         cl.user_session.set("selected_nl2sql_scope", "liveability")
-        return await _handle_liveability_demo_message(user_text, user_id, role)
+        return await _handle_liveability_nl2sql_message(user_text, user_id, role)
     return False
 
 
@@ -4576,6 +4581,13 @@ async def main(message: cl.Message):
         metadata = getattr(cl_user, "metadata", None) or {}
         role = metadata.get("role")
     role = str(role or "analyst")
+    user_metadata = getattr(cl_user, "metadata", None) or {}
+    tenant_id = str(
+        cl.user_session.get("tenant_id")
+        or user_metadata.get("tenant_id")
+        or "local-dev"
+    )
+    cl.user_session.set("tenant_id", tenant_id)
     session_id = cl.user_session.get("session_id") or cl.user_session.get("id")
     if not session_id:
         try:
@@ -4589,6 +4601,7 @@ async def main(message: cl.Message):
 
     # Re-set context variables (ContextVar is per-async-task)
     trace_id = _set_user_context(user_id, session_id, role)
+    current_tenant_id.set(tenant_id)
     message_metadata = getattr(message, "metadata", None) or {}
     requested_nl2sql_engine = str(
         message_metadata.get("nl2sql_execution_engine") or "postgis"
@@ -4636,7 +4649,7 @@ async def main(message: cl.Message):
         )
         return
     try:
-        if await _handle_liveability_demo_message(user_text, user_id, role):
+        if await _handle_liveability_nl2sql_message(user_text, user_id, role):
             return
     except Exception as error:
         await _send_source_route_failure(
@@ -4919,7 +4932,56 @@ async def main(message: cl.Message):
             return
 
         _mt_type = _mention_target["type"]
-        if _mt_type == "pipeline":
+        if _mt_type == "managed_agent":
+            if not _mention_target.get("runtime_available"):
+                await cl.Message(
+                    content=(f"@{_mention_target['handle']} 当前不可调用：Agent 必须处于已发布状态，"
+                             "并且存在 production 环境的 active deployment。")
+                ).send()
+                return
+            try:
+                from data_agent.managed_agents import build_managed_agent
+                selected_agent, _managed_release = build_managed_agent(
+                    _mention_target["managed_agent_id"],
+                    user_id=user_id,
+                    tenant_id=current_tenant_id.get(),
+                )
+            except Exception as _managed_error:
+                logger.warning(
+                    "[Trace:%s] Managed agent %s unavailable: %s",
+                    trace_id, _mention_target.get("managed_agent_id"), _managed_error,
+                )
+                await cl.Message(
+                    content=f"@{_mention_target['handle']} 当前没有可用的已发布版本。"
+                ).send()
+                return
+            if _mention_remaining:
+                full_prompt = _mention_remaining
+            pipeline_type = "managed_agent"
+            pipeline_name = (
+                f"Managed Agent: {_mention_target['label']} "
+                f"(v{_managed_release['version']} r{_managed_release['revision']})"
+            )
+            intent = "MANAGED_AGENT"
+            intent_reason = f"@{_mention_target['handle']} 显式路由"
+            cl.user_session.set("pipeline_type", pipeline_type)
+            await cl.Message(
+                content=t("routing.intent_recognized", intent=intent, pipeline_name=pipeline_name),
+                metadata={"routing_info": {
+                    "intent": intent, "pipeline": pipeline_type,
+                    "pipeline_name": pipeline_name, "reason": intent_reason,
+                    "agent_id": _managed_release["agent_id"],
+                    "agent_version": _managed_release["version"],
+                    "deployment_revision": _managed_release["revision"],
+                }},
+            ).send()
+            await _execute_pipeline(
+                user_id, session_id, role, full_prompt, uploaded_files,
+                pipeline_type, pipeline_name, intent, selected_agent,
+                router_tokens=0, extra_parts=extra_parts, tenant_id=tenant_id,
+            )
+            return
+        elif _mt_type == "pipeline":
             intent = _mention_target["pipeline"]
             intent_reason = f"@{_mention_target['handle']} 显式路由"
             router_tokens = 0
@@ -4961,7 +5023,7 @@ async def main(message: cl.Message):
             await _execute_pipeline(
                 user_id, session_id, role, full_prompt, uploaded_files,
                 pipeline_type, pipeline_name, intent, selected_agent,
-                router_tokens=0, extra_parts=extra_parts,
+                router_tokens=0, extra_parts=extra_parts, tenant_id=tenant_id,
             )
             return
         elif _mt_type == "custom_skill":
@@ -5009,7 +5071,7 @@ async def main(message: cl.Message):
             await _execute_pipeline(
                 user_id, session_id, role, full_prompt, uploaded_files,
                 pipeline_type, pipeline_name, intent, selected_agent,
-                router_tokens=0, extra_parts=extra_parts,
+                router_tokens=0, extra_parts=extra_parts, tenant_id=tenant_id,
             )
             return
     # --- End @SubAgent Mention Routing ---
@@ -5543,6 +5605,7 @@ async def main(message: cl.Message):
         pipeline_type, pipeline_name, intent, selected_agent,
         router_tokens=router_tokens,
         extra_parts=extra_parts,
+        tenant_id=tenant_id,
     )
 
 
@@ -5682,7 +5745,9 @@ async def on_retry_pipeline(action: cl.Action):
     user_id = cl.user_session.get("user_id")
     session_id = cl.user_session.get("session_id")
     role = cl.user_session.get("user_role", "analyst")
+    tenant_id = str(cl.user_session.get("tenant_id") or "local-dev")
     _set_user_context(user_id, session_id, role)
+    current_tenant_id.set(tenant_id)
 
     retry_attempt = (action.payload or {}).get("attempt", 1)
     full_prompt = cl.user_session.get("retry_full_prompt")
@@ -5728,6 +5793,7 @@ async def on_retry_pipeline(action: cl.Action):
         pipeline_type, pipeline_name, intent, selected_agent,
         retry_attempt=retry_attempt,
         extra_parts=retry_extra_parts,
+        tenant_id=tenant_id,
     )
 
 

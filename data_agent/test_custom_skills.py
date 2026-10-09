@@ -51,6 +51,12 @@ class TestToolsetRegistry(unittest.TestCase):
         self.assertIn("DatabaseToolset", TOOLSET_REGISTRY)
         self.assertNotIn("FakeToolset", TOOLSET_REGISTRY)
 
+    def test_registry_resolves_each_advertised_toolset(self):
+        from data_agent.custom_skills import TOOLSET_NAMES, _get_toolset_registry
+
+        registry = _get_toolset_registry()
+        self.assertEqual(set(registry), TOOLSET_NAMES)
+
 
 class TestValidateInstruction(unittest.TestCase):
     """Test instruction validation."""

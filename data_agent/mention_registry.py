@@ -11,6 +11,11 @@ try:
 except Exception:
     list_custom_skills = None  # type: ignore[assignment]
 
+try:
+    from .managed_agents import list_managed_agent_targets
+except Exception:
+    list_managed_agent_targets = None  # type: ignore[assignment]
+
 _PIPELINE_TARGETS = [
     {
         "handle": "Liveability",
@@ -166,6 +171,30 @@ def build_registry(user_id: str, role: str) -> list[dict]:
             finally:
                 if prev is not None:
                     current_user_id.set(prev)
+        except Exception:
+            pass
+
+    if list_managed_agent_targets is not None:
+        try:
+            from .user_context import current_tenant_id
+            for agent in list_managed_agent_targets(user_id, current_tenant_id.get()):
+                slug = str(agent.get("slug") or "").strip().lower()
+                if not slug:
+                    continue
+                targets.append({
+                    "handle": f"agent-{slug}",
+                    "label": agent.get("name") or slug,
+                    "type": "managed_agent",
+                    "description": agent.get("description") or "",
+                    "allowed_roles": ["admin", "analyst"],
+                    "required_state_keys": [],
+                    "managed_agent_id": int(agent["id"]),
+                    "runtime_available": bool(agent.get("runtime_available")),
+                    "agent_status": agent.get("status"),
+                    "deployment_revision": agent.get("deployment_revision"),
+                    "deployed_version": agent.get("deployed_version"),
+                    "aliases": [str(agent.get("name") or "")],
+                })
         except Exception:
             pass
 

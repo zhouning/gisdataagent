@@ -2705,7 +2705,8 @@
     "card": { "aliases": "别名：{{aliases}}" },
     "form": { "displayName": "显示名", "displayNamePlaceholder": "例如：数据探查", "aliases": "别名（逗号分隔）", "aliasesPlaceholder": "例如：探查, 数据探查" },
     "actions": { "pin": "置顶", "unpin": "取消置顶", "show": "显示", "hide": "隐藏", "saving": "保存中...", "save": "保存" },
-    "empty": { "noMatches": "无匹配项", "noDescription": "暂无描述" }
+    "empty": { "noMatches": "无匹配项", "noDescription": "暂无描述" },
+    "lifecycle": {"title":"智能体生命周期","registry":"@提及注册表","heading":"智能体生命周期管理","relationship":"Agent 是可调用运行主体；Skill 定义专业流程并固定版本；Toolset 是 Tool 的授权集合；Tool 在执行时校验身份、租户和数据权限。","relationHint":"发布版本会固定多个 Skill 版本、Toolset 白名单与数据策略；生产环境只加载 active deployment。","create":"新建智能体","edit":"编辑智能体","new":"新建智能体","close":"清空表单","refresh":"刷新","version":"版本 {{version}}","empty":"暂无智能体","noSkill":"不绑定 Skill","noTools":"暂无可用 Toolset","test":"测试配置","submit":"提交审批","approve":"审批通过","reject":"驳回审批","publish":"发布","disable":"停用","archive":"归档","rollback":"回滚到已发布版本","saveDraft":"保存草稿","fields":{"name":"名称","description":"描述","instruction":"系统指令","model":"模型档位","skill":"绑定 Skill","skills":"绑定 Skill（固定版本）","tools":"允许使用的 Toolset","dataPolicy":"数据访问策略","allowedResources":"允许访问的资源","allowMutations":"允许写入或变更","allowDiscovery":"允许发现资源","budget":"预算上限"},"resourcesPlaceholder":"每行或逗号分隔，例如：roads、table:assets、file:network.gpkg","policies":{"inherit":"继承用户权限","readOnly":"只读","restricted":"受限数据集"},"states":{"draft":"草稿","testing":"测试通过","pending_approval":"待审批","approved":"已审批","published":"已发布","disabled":"已停用","archived":"已归档"},"errors":{"load":"加载智能体失败","required":"名称和系统指令不能为空","budget":"预算上限必须是非负数字","resources":"受限数据策略至少需要配置一个允许访问的资源","save":"保存智能体失败","transition":"生命周期操作失败"},"notices":{"saved":"草稿已保存","test":"配置测试完成","submit":"已提交审批","approve":"审批通过","reject":"审批已驳回","publish":"智能体已发布","disable":"智能体已停用","archive":"智能体已归档","rollback":"已回滚到上一个发布版本"}}
   },
   "templatesTab": {
     "common": { "loading": "加载中..." },
