@@ -12,12 +12,25 @@ import {
 } from './scenarioTimelineVisualization';
 import { formatDate, formatNumber, getLocale, getLocaleHeaders } from '../i18n';
 
+function filterGeoJsonFeatures(payload: any, propertyFilter?: Record<string, string | string[]>): any {
+  if (!propertyFilter || !payload || !Array.isArray(payload.features)) return payload;
+  const features = payload.features.filter((feature: any) => Object.entries(propertyFilter).every(([key, expected]) => {
+    const actual = String(feature?.properties?.[key] ?? '');
+    return Array.isArray(expected)
+      ? expected.map(value => String(value)).includes(actual)
+      : actual === String(expected);
+  }));
+  return { ...payload, features };
+}
+
+
 interface MapLayer {
   name: string;
   type: 'geojson' | 'point' | 'polygon' | 'choropleth' | 'heatmap' | 'bubble' | 'line'
       | 'extrusion' | 'arc' | 'column' | 'categorized' | 'image' | 'wms' | 'mvt' | 'fgb';
   geojson?: string;       // filename to fetch from /api/user/files/
   geojson_url?: string;   // authenticated API URL for a generated GeoJSON layer
+  property_filter?: Record<string, string | string[]>;
   geojsonData?: any;      // already loaded GeoJSON
   style?: Record<string, any>;
   value_column?: string;
@@ -1075,6 +1088,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
             geojsonData = await resp.json();
           }
 
+          geojsonData = filterGeoJsonFeatures(geojsonData, layerConfig.property_filter);
           if (!geojsonData) continue;
           if (!isCurrentLoad()) return;
 

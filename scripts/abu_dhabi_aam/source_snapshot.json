@@ -1,0 +1,34 @@
+{
+  "schema": "aam.runtime_source_snapshot.v1",
+  "snapshot_date": "2026-10-16",
+  "files": {
+    "prepare_aam.py": {
+      "bytes": 14136,
+      "sha256": "849207509b5ba50baddb8bd7bbd3b318f9c77c298c7d88497674a0682abacdf9"
+    },
+    "run_aam.py": {
+      "bytes": 18866,
+      "sha256": "8505babae8db34bb6ab0a6d4b5ad74bf483dadbd1f01dcb64b61724bdf72ddd4"
+    },
+    "export_results.py": {
+      "bytes": 12631,
+      "sha256": "d75b5d6b29ba47cba62192e5d8473ec8a5f2d7ebcfe58a38e7cbb1a1d7afb43e"
+    },
+    "package_native_results.py": {
+      "bytes": 6408,
+      "sha256": "7df3f056ffcd2314c05cdc8f5ee0628a96e2d896029e86426ef240f7eb97b824"
+    },
+    "overnight_supervisor.py": {
+      "bytes": 5061,
+      "sha256": "f9e77d3f72108f4ad4f1f67d1d585aecdde15d933f22928fb2ffa629c87f016f"
+    },
+    "launch_overnight.py": {
+      "bytes": 1193,
+      "sha256": "2e2f3747953c3bb3adbcebf9b1eae5395cfd4d65744209633ce4f2d006d4300e"
+    },
+    "aam_swmm_bridge.c": {
+      "bytes": 1778,
+      "sha256": "927ca96e7ed9925a0c7b233a3c11a43ce55bb6f557dd8860c07d0e1c24fc80b0"
+    }
+  }
+}

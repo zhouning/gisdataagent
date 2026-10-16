@@ -401,7 +401,11 @@ export default function DataPanel({
   onAddMapLayer,
 }: DataPanelProps) {
   const { t } = useTranslation('common');
-  const [activeTab, setActiveTab] = useState<TabKey>('files');
+  const [activeTab, setActiveTab] = useState<TabKey>(() => {
+    const query = new URLSearchParams(window.location.search);
+    return query.get('view') === 'aam_native' || query.get('workspace') === 'abu_dhabi_flood_world_model'
+      ? 'abu_dhabi_flood_world_model' : 'files';
+  });
   const [navigation, setNavigation] = useState<NavigationConfig>(() => fallbackNavigation());
   const [activeGroup, setActiveGroup] = useState<NavigationGroupKey>('data');
   const [activeSection, setActiveSection] = useState('browse');

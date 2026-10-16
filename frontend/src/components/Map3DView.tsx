@@ -11,6 +11,8 @@ interface MapLayer {
   name: string;
   type: string;
   geojson?: string;
+  geojson_url?: string;
+  property_filter?: Record<string, string | string[]>;
   geojsonData?: any;
   style?: Record<string, any>;
   value_column?: string;
@@ -27,6 +29,9 @@ interface MapLayer {
   category_labels?: Record<string, string>;
   style_map?: Record<string, Record<string, any>>;
   legend_title?: string;
+  label_field?: string;
+  label_prefix?: string;
+  label_always_show?: boolean;
   tooltip_fields?: string[];
   tooltip_labels?: Record<string, string>;
   visible?: boolean;
@@ -78,6 +83,18 @@ function isColumnarSwmmFrame(value: any): boolean {
     && Array.isArray(value.coordinates)
     && Array.isArray(value.values);
 }
+
+function filterGeoJsonFeatures(payload: any, propertyFilter?: Record<string, string | string[]>): any {
+  if (!propertyFilter || !payload || !Array.isArray(payload.features)) return payload;
+  const features = payload.features.filter((feature: any) => Object.entries(propertyFilter).every(([key, expected]) => {
+    const actual = String(feature?.properties?.[key] ?? '');
+    return Array.isArray(expected)
+      ? expected.map(value => String(value)).includes(actual)
+      : actual === String(expected);
+  }));
+  return { ...payload, features };
+}
+
 
 function columnarSwmmValue(frame: any, rowIndex: number, field: string): number {
   const columnIndex = SWMM_VALUE_COLUMN_INDEX[field];
@@ -252,10 +269,10 @@ const BASEMAP_STYLES: Record<string, any> = {
 
 function hexToRgba(hex: string, alpha = 200): [number, number, number, number] {
   const h = hex.replace('#', '');
-  const r = parseInt(h.substring(0, 2), 16) || 100;
-  const g = parseInt(h.substring(2, 4), 16) || 100;
-  const b = parseInt(h.substring(4, 6), 16) || 200;
-  return [r, g, b, alpha];
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return [Number.isNaN(r) ? 100 : r, Number.isNaN(g) ? 100 : g, Number.isNaN(b) ? 200 : b, alpha];
 }
 
 function isCategorizedLegendLayer(layer: MapLayer) {
@@ -371,16 +388,18 @@ export default function Map3DView({
 
   // Fetch GeoJSON / FlatGeobuf data for layers that need it
   useEffect(() => {
+    let cancelled = false;
     const fetchLayers = async () => {
       const newData: Record<string, any> = {};
       const fetchedGeojson: Record<string, any> = {};
       const fetchedFgb: Record<string, any> = {};
       for (const layer of layers) {
+        if (cancelled) return;
         // MVT layers don't need pre-fetched data
         if (layer.type === 'mvt') continue;
 
         if (layer.geojsonData) {
-          newData[layer.name] = layer.geojsonData;
+          newData[layer.name] = filterGeoJsonFeatures(layer.geojsonData, layer.property_filter);
         } else if (layer.fgb) {
           // FlatGeobuf: fetch the whole file with auth cookies, then deserialize
           // from a Uint8Array. Streaming via `deserialize(url)` is unusable here
@@ -388,12 +407,13 @@ export default function Map3DView({
           // and our /api/user/files route is JWT-gated.
           try {
             if (fetchedFgb[layer.fgb]) {
-              newData[layer.name] = fetchedFgb[layer.fgb];
+              newData[layer.name] = filterGeoJsonFeatures(fetchedFgb[layer.fgb], layer.property_filter);
               continue;
             }
             const { deserialize } = await import('flatgeobuf/lib/mjs/geojson.js');
             const fgbUrl = `/api/user/files/${layer.fgb}`;
             const resp = await fetch(fgbUrl, { credentials: 'include' });
+            if (cancelled) return;
             if (!resp.ok) {
               console.warn(`[Map3DView] FGB fetch failed ${layer.fgb}: HTTP ${resp.status}`);
               continue;
@@ -402,33 +422,38 @@ export default function Map3DView({
             const fc: any = deserialize(buf);
             // deserialize(Uint8Array) returns a FeatureCollection
             fetchedFgb[layer.fgb] = fc;
-            newData[layer.name] = fc;
+            newData[layer.name] = filterGeoJsonFeatures(fc, layer.property_filter);
           } catch (e) {
             console.warn(`[Map3DView] Failed to parse FlatGeobuf ${layer.fgb}:`, e);
           }
-        } else if (layer.geojson) {
+        } else if (layer.geojson_url || layer.geojson) {
           try {
             // Several diagnostic layers intentionally share one result file.
             // Fetch and parse each private GeoJSON only once, then reuse the
             // parsed FeatureCollection for the alternate renderer/metric.
-            if (fetchedGeojson[layer.geojson]) {
-              newData[layer.name] = fetchedGeojson[layer.geojson];
+            const sourceUrl = layer.geojson_url || `/api/user/files/${layer.geojson}`;
+            if (fetchedGeojson[sourceUrl]) {
+              newData[layer.name] = filterGeoJsonFeatures(fetchedGeojson[sourceUrl], layer.property_filter);
               continue;
             }
-            const resp = await fetch(`/api/user/files/${layer.geojson}`, { credentials: 'include' });
+            const resp = await fetch(sourceUrl, { credentials: 'include' });
+            if (cancelled) return;
             if (resp.ok) {
               const payload = await resp.json();
-              fetchedGeojson[layer.geojson] = payload;
-              newData[layer.name] = payload;
+              fetchedGeojson[sourceUrl] = payload;
+              newData[layer.name] = filterGeoJsonFeatures(payload, layer.property_filter);
+            } else {
+              console.warn(`[Map3DView] GeoJSON fetch failed ${sourceUrl}: HTTP ${resp.status}`);
             }
           } catch (e) {
             console.warn(`Failed to fetch GeoJSON for layer ${layer.name}:`, e);
           }
         }
       }
-      setLayerData(newData);
+      if (!cancelled) setLayerData(newData);
     };
     if (layers.length > 0) fetchLayers();
+    return () => { cancelled = true; };
   }, [layers]);
 
   const onHover = useCallback((info: any) => {
@@ -673,8 +698,13 @@ export default function Map3DView({
             }
             return fillColor;
           },
-          radiusMinPixels: 3,
-          radiusMaxPixels: 30,
+          radiusMinPixels: Number(layer.style?.min_radius ?? 3),
+          radiusMaxPixels: Number(layer.style?.max_radius ?? 30),
+          stroked: Number(layer.style?.weight ?? 0) > 0,
+          getLineColor: lineColor,
+          lineWidthUnits: 'pixels',
+          getLineWidth: Number(layer.style?.weight ?? 0),
+          parameters: { depthTest: layer.style?.depthTest ?? true },
           onHover: (info: any) => onLayerHover(info, layer),
         });
       }
@@ -725,6 +755,7 @@ export default function Map3DView({
         const catCol = layer.category_column || '';
         const catColors = layer.category_colors || {};
         const styleMap = layer.style_map || {};
+        const permanentLabel = Boolean(layer.label_field && layer.label_always_show);
         const getCategoryStyle = (f: any) => {
           const raw = String(f.properties?.[catCol] ?? '');
           const intForm = raw.endsWith('.0') ? raw.slice(0, -2) : raw;
@@ -754,6 +785,29 @@ export default function Map3DView({
           getLineWidth: (f: any) => getCategoryStyle(f)?.weight ?? layer.style?.weight ?? 0.5,
           lineWidthUnits: 'pixels',
           lineWidthMinPixels: 0,
+          ...(permanentLabel ? {
+            pointType: 'circle+text',
+            getPointRadius: Number(layer.style?.point_radius || layer.style?.min_radius || 9),
+            pointRadiusUnits: 'pixels' as const,
+            getText: (f: any) => {
+              const value = f.properties?.[layer.label_field || ''];
+              return value == null ? '' : `${layer.label_prefix || ''}${String(value)}`;
+            },
+            getTextSize: 15,
+            getTextColor: [255, 255, 255, 255] as [number, number, number, number],
+            getTextAnchor: 'middle',
+            getTextAlignmentBaseline: 'bottom',
+            getTextPixelOffset: [0, -22],
+            getTextBackgroundColor: [127, 29, 29, 245] as [number, number, number, number],
+            textSizeUnits: 'pixels' as const,
+            textCharacterSet: 'auto',
+            textFontFamily: 'sans-serif',
+            textFontWeight: 600,
+            textBackground: true,
+            textBackgroundPadding: [8, 5, 8, 5],
+            onClick: (info: any) => onLayerHover(info, layer),
+          } : {}),
+          parameters: { depthTest: layer.style?.depthTest ?? true },
           onHover: (info: any) => onLayerHover(info, layer),
         });
       }

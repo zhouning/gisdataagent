@@ -1,7 +1,9 @@
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getLocale, getLocaleHeaders } from '../../i18n';
+import '../../styles/aam-native-workspace.css';
 import {
+  Download,
   Activity,
   AlertTriangle,
   ArrowRight,
@@ -2248,6 +2250,282 @@ function buildSentinelObservationMapUpdate(payload: SentinelObservationMapPayloa
   return localizeAbuLayerMetadata(mapUpdate);
 }
 
+type AamNativeScenario = {
+  key: string;
+  label: string;
+  description?: string;
+  status: string;
+  ready?: boolean;
+  solver?: string;
+  run_id?: string;
+  engineering_admitted?: boolean;
+  quality_passed?: boolean;
+  claim_boundary?: string;
+  domain?: Record<string, any>;
+  forcing?: Record<string, any>;
+  results?: Record<string, any>;
+  manifest?: { available?: boolean; period_count?: number; elapsed_minutes?: number[]; time_values?: string[]; endpoint?: string };
+  assets?: Record<string, string | null>;
+};
+
+function AamNativeResultWorkspace({ onBack }: { onBack: () => void }) {
+  const [scenarios, setScenarios] = useState<AamNativeScenario[]>([]);
+  const [overlays, setOverlays] = useState<{ pipelines?: Record<string, any>; hotspots?: Record<string, any>; connection_gap?: Record<string, any> }>({});
+  const [selected, setSelected] = useState('L1');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const publishRequestRef = useRef(0);
+
+  const publishScenarioToMap = useCallback((scenario: AamNativeScenario, focus?: [number, number], focusZoom = 13) => {
+    const mapHandler = (window as any).__handleMapUpdate;
+    if (typeof mapHandler !== 'function') return false;
+    const requestId = ++publishRequestRef.current;
+    const timeline = scenario.manifest;
+    const empty = { type: 'FeatureCollection', features: [] };
+    if (requestId !== publishRequestRef.current) return false;
+    mapHandler({
+      schema: 'map_update.v1',
+      center: focus || [24.10, 55.52],
+      zoom: focus ? focusZoom : 8,
+      summary: {
+        title: `AAM 全行政区 · ${scenario.label}`,
+        subtitle: `原生 EPA SWMM 5.2.4 + ANUGA 一二维耦合 · 100 m 格网 · ${Number(timeline?.period_count || 0)} 个 5 分钟时段`,
+        source_status: 'aam_native_1d_2d_result',
+        result_status: scenario.status,
+        solver: scenario.solver || 'EPA SWMM 5.2.4 + ANUGA 2D',
+        event_id: scenario.run_id,
+        claim_boundary: scenario.claim_boundary,
+      },
+      layers: [
+        {
+          name: 'AAM 行政区边界',
+          type: 'polygon',
+          geojson_url: '/api/abu-dhabi/flood/aam/boundary',
+          category_column: 'name',
+          style: { color: '#f97316', weight: 2.2, opacity: 0.95, fillOpacity: 0.03 },
+          visible: true,
+        },
+        {
+          name: `AAM · ${scenario.label} · 动态积水深度`,
+          type: 'choropleth',
+          geojsonData: empty,
+          value_column: 'depth_m',
+          breaks: [0.05, 0.1, 0.2, 0.5, 1, 2, 5],
+          color_scheme: 'Blues',
+          legend_title: `${scenario.label} 动态积水深度（m）`,
+          style: { weight: 0.15, opacity: 0.82, fillOpacity: 0.74 },
+          tooltip_fields: ['cell_id', 'depth_m', 'time_minutes', 'cell_size_m'],
+          tooltip_labels: { cell_id: '100 m 单元', depth_m: '积水深度（m）', time_minutes: '模拟时间（分钟）', cell_size_m: '格网精度（m）' },
+          scenarioTimeline: {
+            runId: String(scenario.run_id || `aam-${scenario.key}`),
+            endpoint: String(timeline?.endpoint || `/api/abu-dhabi/flood/aam/${encodeURIComponent(scenario.key)}/frame`),
+            timeValues: Array.isArray(timeline?.time_values) ? timeline.time_values : [],
+            elapsedMinutes: Array.isArray(timeline?.elapsed_minutes) ? timeline.elapsed_minutes : [],
+            periodCount: Number(timeline?.period_count || 0),
+            totalNodeCount: Number(scenario.domain?.active_cells || 0),
+            reportStepMinutes: 5,
+            kind: 'surface-cell',
+          },
+        },
+        {
+          name: `AAM · ${scenario.label} · 最大积水深度`,
+          type: 'choropleth',
+          geojson_url: scenario.assets?.maximum_depth || undefined,
+          visible: false,
+          value_column: 'maximum_depth_m',
+          breaks: [0.05, 0.1, 0.2, 0.5, 1, 2, 5],
+          color_scheme: 'Blues',
+          legend_title: `${scenario.label} 最大积水深度（m）`,
+          style: { weight: 0.15, opacity: 0.72, fillOpacity: 0.76 },
+          tooltip_fields: ['cell_id', 'maximum_depth_m', 'cell_size_m'],
+          tooltip_labels: { cell_id: '100 m 单元', maximum_depth_m: '最大积水深度（m）', cell_size_m: '格网精度（m）' },
+        },
+        {
+          name: 'L2 蓄水池位置（模型输入）',
+          type: 'polygon',
+          geojson_url: '/api/abu-dhabi/flood/aam/pond',
+          category_column: 'pond_name',
+          style: { color: '#166534', weight: 2.5, opacity: 1, fillColor: '#22c55e', fillOpacity: scenario.key === 'L2' ? 0.8 : 0.25 },
+          visible: true,
+          tooltip_fields: ['pond_name', 'bottom_m', 'crest_m', 'capacity_m3', 'inlet_node'],
+          tooltip_labels: { pond_name: '蓄水池', bottom_m: '塘底标高（m）', crest_m: '塘顶标高（m）', capacity_m3: '有效容积（m³）', inlet_node: '连接节点' },
+        },
+        ...(overlays.pipelines?.tile_url ? [{
+          name: `AAM · 排水管线 / 箱涵 / 排水沟（${Number(overlays.pipelines.feature_count).toLocaleString()} 条）`,
+          type: 'mvt',
+          layer_id: overlays.pipelines.layer_id,
+          tile_url: overlays.pipelines.tile_url,
+          metadata_url: overlays.pipelines.metadata_url,
+          source_layer: overlays.pipelines.source_layer,
+          bounds: overlays.pipelines.bounds,
+          min_zoom: 6,
+          max_zoom: 16,
+          visible: true,
+          style: { color: '#00e5ff', weight: 2, opacity: 0.95 },
+          tooltip_fields: ['source_layer', 'source_unitid', 'native_link_id', 'source_length_m', 'display_length_m', 'native_shape', 'height_or_diameter_m', 'width_m', 'included_in_native_model'],
+          tooltip_labels: { source_layer: '源图层', source_unitid: '源设施 ID', native_link_id: 'SWMM 管段 ID', source_length_m: '源长度（m）', display_length_m: 'AAM 内线长（m）', native_shape: '模型断面类型', height_or_diameter_m: '模型高度 / 管径（m）', width_m: '模型宽度（m）', included_in_native_model: '是否纳入本次原生模型' },
+        }] : []),
+        ...(Number(overlays.hotspots?.aam_count) > 0 ? [{
+          ...customerHotspotMapLayerBase,
+          name: `AAM · 历史积水点（${overlays.hotspots?.aam_count} / ${overlays.hotspots?.source_total_count}）`,
+          layer_id: 'aam-customer-historical-hotspots',
+          geojson_url: overlays.hotspots?.geojson_url,
+          visible: true,
+          legend_title: 'AAM 内历史积水点 · 静态参考',
+          style: { ...customerHotspotMapLayerBase.style, min_radius: 10, max_radius: 10, weight: 2, depthTest: false },
+        }] : []),
+        ...(overlays.connection_gap?.geojson_url ? [
+          {
+            name: '蓄水池连接诊断 · 橙色上游 / 绿色塘侧支路',
+            type: 'categorized',
+            geojson_url: overlays.connection_gap.geojson_url,
+            property_filter: { kind: ['upstream_side', 'pond_side'] },
+            category_column: 'kind',
+            category_labels: { upstream_side: '上游相邻管段 · 有来水', pond_side: '塘侧支路 · 模型未接上游' },
+            style_map: {
+              upstream_side: { color: '#ff9500', weight: 6, opacity: 1 },
+              pond_side: { color: '#39ff7a', weight: 5, opacity: 1 },
+            },
+            style: { depthTest: false },
+            visible: true,
+            legend_title: '本次模型的蓄水池连接核查',
+            tooltip_fields: ['位置说明', '源管道编号', '模型管段编号', '结果说明'],
+          },
+          {
+            name: '蓄水池连接诊断 · 约2.9cm模型断点',
+            type: 'categorized',
+            geojson_url: overlays.connection_gap.geojson_url,
+            property_filter: { kind: 'connection_gap' },
+            category_column: 'kind',
+            category_labels: { connection_gap: '约2.9cm模型连接断点' },
+            style_map: { connection_gap: { color: '#ffffff', fillColor: '#ef233c', fillOpacity: 1, opacity: 1, weight: 3 } },
+            style: { point_radius: 12, weight: 3, depthTest: false },
+            label_field: '标注',
+            label_always_show: true,
+            visible: true,
+            legend_title: '红点＝模型拓扑未连通的位置',
+            tooltip_fields: ['问题说明', '模型节点间距_cm', '上游节点', '塘侧节点', '上游源管道', '塘侧源管道', '对应检查井', '经纬度_WGS84', '上游有来水', '塘侧未进水', '客户说明', '符号说明'],
+          },
+        ] : []),
+      ],
+    });
+    return true;
+  }, [overlays]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch('/api/abu-dhabi/flood/aam/scenarios', { credentials: 'include', headers: getLocaleHeaders() })
+      .then(async response => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(String(payload?.error || 'AAM L1/L2 结果读取失败'));
+        return payload;
+      })
+      .then(payload => {
+        if (cancelled) return;
+        const rows = Array.isArray(payload?.scenarios) ? payload.scenarios as AamNativeScenario[] : [];
+        setScenarios(rows);
+        setOverlays(payload?.map_overlays || {});
+        if (!rows.length) setError('AAM L1/L2 结果尚未登记。');
+      })
+      .catch(reason => { if (!cancelled) setError(reason instanceof Error ? reason.message : 'AAM 结果读取失败'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const active = scenarios.find(row => row.key === selected) || scenarios[0];
+  useEffect(() => {
+    if (!active || publishScenarioToMap(active)) return;
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      if (publishScenarioToMap(active) || attempts >= 20) window.clearInterval(timer);
+    }, 150);
+    return () => window.clearInterval(timer);
+  }, [active, publishScenarioToMap]);
+  const metric = (key: string) => Number(active?.results?.[key] || 0);
+  const assetLabels: Record<string, string> = {
+    maximum_depth: '最大水深格网 · GeoJSON',
+    native_1d_out: '一维原生结果 · OUT',
+    native_1d_report: '一维计算报告 · RPT',
+    native_2d_sww: '二维原生结果 · SWW',
+    native_input_inp: '一维模型输入 · INP',
+    run_receipt: '运行记录 · JSON',
+  };
+
+  return (
+    <div className="aam-native-workspace">
+      <div className="aam-native-nav">
+        <button className="aam-native-back" type="button" onClick={onBack}>← 返回世界模型</button>
+        <span className="aam-native-breadcrumb">阿布扎比 / AAM 全行政区</span>
+      </div>
+      <section className="aam-native-section aam-native-intro">
+        <span className="aam-native-eyebrow">一二维水动力模型 · 原生结果</span>
+        <h2>AAM 全行政区 L1 / L2</h2>
+        <span className="aam-native-badge">100 m 格网 · 原生结果保留</span>
+        <p>地图显示原生一二维计算结果的受限预览；完整 EPA SWMM OUT/RPT、ANUGA SWW 和 INP 可从每个场景下载。</p>
+      </section>
+      {loading && <div className="aam-native-message" role="status">正在读取 AAM L1/L2 结果…</div>}
+      {error && <div className="aam-native-message aam-native-error" role="alert">{error}</div>}
+      {scenarios.length > 0 && <section className="aam-native-section" aria-label="场景切换">
+        <h3>场景切换</h3>
+        <div className="aam-native-scenarios">
+          {scenarios.map(row => <button key={row.key} type="button" className="aam-native-scenario" aria-pressed={row.key === active?.key} onClick={() => setSelected(row.key)}>
+            <strong>{row.label}</strong>
+            <small className={`aam-native-status ${row.ready && row.quality_passed ? 'is-passed' : 'is-pending'}`}>{row.ready ? (row.quality_passed ? '已完成 · 质量门通过' : '已完成 · 质量门未通过') : row.status}</small>
+          </button>)}
+        </div>
+      </section>}
+      <section className="aam-native-section">
+        <h3>地图与参考图层</h3>
+        {overlays.pipelines && <p>
+          地图已加入 AAM 排水管线、箱涵及排水沟，共 {Number(overlays.pipelines.feature_count).toLocaleString()} 条，可在地图图层面板开关。
+          {overlays.pipelines.download_url && <a className="aam-native-inline-download" href={overlays.pipelines.download_url}><Download size={14} aria-hidden="true" />下载管网图层（FlatGeobuf）</a>}
+        </p>}
+        {overlays.hotspots && <p>
+          506 个客户历史积水点中，AAM 内有 {Number(overlays.hotspots.aam_count)} 个{Array.isArray(overlays.hotspots.hotspot_ids) && overlays.hotspots.hotspot_ids.length > 0 ? `（ID：${overlays.hotspots.hotspot_ids.join('、')}）` : ''}，AAM 外有 {Number(overlays.hotspots.outside_aam_count)} 个。按 AAM 行政区边界作空间相交筛选；地图仅显示域内点，作为历史静态参考。
+        </p>}
+        {active && <div className="aam-native-map-actions">
+          <button className="aam-native-button" type="button" onClick={() => publishScenarioToMap(active)}><MapIcon size={16} aria-hidden="true" /><span>查看 AAM 全域</span></button>
+          {Array.isArray(overlays.hotspots?.focus_center) && <button className="aam-native-button" type="button" onClick={() => publishScenarioToMap(active, overlays.hotspots?.focus_center as [number, number])}><MapIcon size={16} aria-hidden="true" /><span>定位历史积水点 {overlays.hotspots?.hotspot_ids?.join('、')}</span></button>}
+          {Array.isArray(overlays.connection_gap?.focus_center) && <button className="aam-native-button" type="button" onClick={() => publishScenarioToMap(active, overlays.connection_gap?.focus_center as [number, number], Number(overlays.connection_gap?.focus_zoom || 18))}><Network size={16} aria-hidden="true" /><span>定位 2.9cm 模型断点</span></button>}
+          {Array.isArray(overlays.connection_gap?.overview_center) && <button className="aam-native-button" type="button" onClick={() => publishScenarioToMap(active, overlays.connection_gap?.overview_center as [number, number], Number(overlays.connection_gap?.overview_zoom || 16))}><Waves size={16} aria-hidden="true" /><span>查看断点与蓄水池</span></button>}
+        </div>}
+        {overlays.connection_gap && <aside className="aam-native-diagnostic" aria-label="蓄水池连接诊断">
+          <h4><AlertTriangle size={16} aria-hidden="true" /><span>L2 蓄水池零进水原因：模型连接未打通</span></h4>
+          <p>两侧管道端点相差约 2.9 cm，建模时被分成两个节点，上游来水无法进入蓄水池支路。</p>
+          <p>红点＝模型断点；橙线＝有来水的上游相邻管段；亮绿线＝通往蓄水池的 8 条支路管段。点击红点或悬停管线，查看管道编号与原生计算证据。</p>
+          <p className="aam-native-caption">原始管道属性指向同一检查井。这处标记说明本次模型拓扑问题，不能据此认定现实管线断裂或蓄水池无效。</p>
+        </aside>}
+      </section>
+      {active && <>
+        <section className="aam-native-section">
+          <h3>{active.key} 结果指标</h3>
+          <dl className="aam-native-metrics">
+            <div><dt>最大水深</dt><dd>{metric('maximum_depth_m').toFixed(3)} <span>m</span></dd></div>
+            <div><dt>≥0.15 m 最大包络</dt><dd>{metric('maximum_depth_envelope_area_ge_0_15m_km2').toLocaleString()} <span>km²</span></dd></div>
+            <div><dt>SWMM 连续性误差</dt><dd>{metric('swmm_routing_error_percent').toFixed(3)} <span>%</span></dd></div>
+            <div><dt>末时刻塘蓄水量</dt><dd>{metric('pond_final_volume_m3').toLocaleString()} <span>m³</span></dd></div>
+            <div><dt>降雨强迫</dt><dd>{Number(active.forcing?.rainfall_total_mm || 60)} <span>mm / {Number(active.forcing?.rainfall_duration_minutes || 60)} min</span></dd></div>
+            <div><dt>二维时间轴</dt><dd>{Number(active.manifest?.period_count || 0)} <span>个 5 分钟时段</span></dd></div>
+          </dl>
+        </section>
+        <section className="aam-native-section">
+          <h3>结果说明</h3>
+          <p><strong>{active.label}：</strong>{active.description}</p>
+          <p className="aam-native-caption">当前结果为未校准诊断结果，严格数值质量门未通过。L1 / L2 共用的管网在标记处未连通；L2 蓄水池在全部原生输出时刻均无入流，600 个耦合窗口蓄水量均为 0。当前对比无法评价现实蓄水池的减涝效益。</p>
+        </section>
+        <section className="aam-native-section">
+          <h3>{active.key} 结果与输入下载</h3>
+          <div className="aam-native-downloads">
+            {Object.entries(active.assets || {}).map(([name, url]) => url ? <a key={name} href={url} target="_blank" rel="noreferrer"><Download size={16} aria-hidden="true" /><span>{assetLabels[name] || name}</span></a> : null)}
+          </div>
+        </section>
+      </>}
+    </div>
+  );
+}
+
 export default function AbuDhabiFloodWorldModelTab() {
   const { t, i18n: activeI18n } = useTranslation('common');
   const zhUiText: Record<string, string> = {
@@ -2288,7 +2566,9 @@ export default function AbuDhabiFloodWorldModelTab() {
   // assets before opening any derived hydraulic result. Result stages remain
   // directly selectable from the stage rail.
   const [selectedKey, setSelectedKey] = useState('data');
-  const [view, setView] = useState<'flow' | 'models' | 'deliverables' | 'event' | 'observation'>('flow');
+  const [view, setView] = useState<'flow' | 'models' | 'deliverables' | 'event' | 'observation' | 'aam_native'>(() => (
+    new URLSearchParams(window.location.search).get('view') === 'aam_native' ? 'aam_native' : 'flow'
+  ));
   const [mapSent, setMapSent] = useState(false);
   const [customerMapReady, setCustomerMapReady] = useState(false);
   const [customerHotspots, setCustomerHotspots] = useState<CustomerHotspotsBootstrap | null>(null);
@@ -2964,7 +3244,7 @@ export default function AbuDhabiFloodWorldModelTab() {
   // restore. Retry briefly so the restored timeline is not lost when the
   // global map handler is not available on the first effect pass.
   useEffect(() => {
-    if (!scenarioMapPayload || selectedKey !== 'swmm') return;
+    if (view === 'aam_native' || !scenarioMapPayload || selectedKey !== 'swmm') return;
     const publish = () => {
       const mapHandler = (window as any).__handleMapUpdate;
       if (typeof mapHandler !== 'function') return false;
@@ -2979,7 +3259,7 @@ export default function AbuDhabiFloodWorldModelTab() {
       if (publish() || attempts >= 20) window.clearInterval(timer);
     }, 150);
     return () => window.clearInterval(timer);
-  }, [customerHotspots, scenarioMapPayload, selectedKey]);
+  }, [customerHotspots, scenarioMapPayload, selectedKey, view]);
 
   // The trained model accepts only the frozen historical-event catalog. Load
   // its read-only catalog during workbench bootstrap so pipeline readiness
@@ -3019,7 +3299,7 @@ export default function AbuDhabiFloodWorldModelTab() {
   // is separate from SWMM so a late SWMM/ANUGA response cannot overwrite the
   // GWM baseline/intervention/delta layers.
   useEffect(() => {
-    if (!gwmMapPayload || selectedKey !== 'gwm') return;
+    if (view === 'aam_native' || !gwmMapPayload || selectedKey !== 'gwm') return;
     const publish = () => {
       const mapHandler = (window as any).__handleMapUpdate;
       if (typeof mapHandler !== 'function') return false;
@@ -3034,12 +3314,12 @@ export default function AbuDhabiFloodWorldModelTab() {
       if (publish() || attempts >= 20) window.clearInterval(timer);
     }, 150);
     return () => window.clearInterval(timer);
-  }, [customerHotspots, gwmMapPayload, selectedKey]);
+  }, [customerHotspots, gwmMapPayload, selectedKey, view]);
 
   // Publish only the independent phase-5 replay contract when validation is
   // selected. The retry handles the map component mounting one render later.
   useEffect(() => {
-    if (!historicalReplayValidation || selectedKey !== 'validation') return;
+    if (view === 'aam_native' || !historicalReplayValidation || selectedKey !== 'validation') return;
     const publish = () => {
       const mapHandler = (window as any).__handleMapUpdate;
       if (typeof mapHandler !== 'function') return false;
@@ -3054,7 +3334,7 @@ export default function AbuDhabiFloodWorldModelTab() {
       if (publish() || attempts >= 20) window.clearInterval(timer);
     }, 150);
     return () => window.clearInterval(timer);
-  }, [customerHotspots, historicalReplayValidation, selectedKey]);
+  }, [customerHotspots, historicalReplayValidation, selectedKey, view]);
 
   // The Sentinel-2 observation is an independent read-only map contract. It
   // is published when the observation sub-view is selected and can never
@@ -4272,6 +4552,7 @@ export default function AbuDhabiFloodWorldModelTab() {
   // full-city public 2D prototype arrives. Both resources can become
   // available at different times after a page reload.
   useEffect(() => {
+    if (view === 'aam_native') return;
     if (!customerDtmDiagnostic && !publicCitywide2dDiagnostic && !customerHotspots) return;
     const publish = () => {
       const handler = (window as any).__handleMapUpdate;
@@ -4491,8 +4772,13 @@ export default function AbuDhabiFloodWorldModelTab() {
       'This is a public-proxy diagnostic result. Authoritative customer events, boundaries, and calibration data will replace it under the same result contract.',
     );
 
+  if (view === 'aam_native') return <AamNativeResultWorkspace onBack={() => setView('flow')} />;
+
   return (
     <div className="abu-flood-tab">
+      <button type="button" className="abu-flood-map-action" onClick={() => setView('aam_native')}>
+        <Waves size={15} />{localizeAbuText('打开 AAM 全行政区 L1 / L2 原生结果')}
+      </button>
       <section className="abu-flood-hero">
         <div>
           <span className="abu-flood-kicker">ABU DHABI / STORMWATER WORLD MODEL</span>
@@ -5188,6 +5474,7 @@ export default function AbuDhabiFloodWorldModelTab() {
           <button className={view === 'event' ? 'active' : ''} onClick={() => setView('event')}><CloudRain size={14} />{localizeAbuText('2024 事件证据与重构')}</button>
           <button className={view === 'observation' ? 'active' : ''} onClick={() => setView('observation')}><Globe2 size={14} />{localizeAbuPair('2024 历史观测验证', '2024 historical observation')}</button>
         </div>
+        <button className="abu-flood-map-action" onClick={() => setView('aam_native')}><Waves size={14} />{localizeAbuText('AAM 全行政区 L1/L2 原生结果')}</button>
         {view === 'flow' && <div className="abu-flood-flow-board">
           <div className="abu-flood-flow-node physical"><span>{localizeAbuText('传统模型')}</span><strong>SWMM + ANUGA</strong><small>{localizeAbuText('质量守恒、边界和物理验证')}</small></div>
           <ArrowRight className="abu-flood-flow-arrow" size={19} />
