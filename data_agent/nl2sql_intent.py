@@ -8,6 +8,8 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 
+from .nl2sql_model_profile import resolve_nl2sql_model_profile
+
 
 class IntentLabel(str, Enum):
     ATTRIBUTE_FILTER = "attribute_filter"
@@ -187,13 +189,25 @@ _JUDGE_PROMPT = (
 
 def _llm_judge(question: str) -> IntentResult:
     """Stage-2 LLM judge. May raise on transport / parse error."""
-    from google import genai
-    client = genai.Client()
-    resp = client.models.generate_content(
-        model=_JUDGE_MODEL,
-        contents=_JUDGE_PROMPT.format(question=question),
-    )
-    text = (resp.text or "").strip()
+    if os.environ.get("GDA_LLM_PROVIDER") or os.environ.get("GDA_LLM_BASE_URL"):
+        from .openai_compatible_llm import chat_completion
+        from .user_context import current_nl2sql_llm_calls
+
+        text, evidence = chat_completion(
+            system_prompt="Classify database question intent. Return strict JSON.",
+            user_prompt=_JUDGE_PROMPT.format(question=question),
+            max_tokens=512,
+        )
+        evidence["output_contract"] = "intent_json"
+        current_nl2sql_llm_calls.set([*current_nl2sql_llm_calls.get(), evidence])
+    else:
+        from google import genai
+        client = genai.Client()
+        resp = client.models.generate_content(
+            model=_JUDGE_MODEL,
+            contents=_JUDGE_PROMPT.format(question=question),
+        )
+        text = (resp.text or "").strip()
     if text.startswith("```"):
         text = text.strip("`")
         if text.startswith("json"):
@@ -203,25 +217,27 @@ def _llm_judge(question: str) -> IntentResult:
     return IntentResult(primary=label, confidence=float(payload.get("confidence", 0.7)), source="llm")
 
 
-def classify_intent(question: str, family: str | None = None) -> IntentResult:
-    """Public entrypoint: rule stage, then LLM judge if rule is uncertain.
+def classify_intent(
+    question: str,
+    family: str | None = None,
+    *,
+    strategy: str | None = None,
+) -> IntentResult:
+    """Classify intent using the selected model compatibility strategy.
 
-    Per-family override (v6 Phase 1):
-      - family="deepseek"  → rule stage ONLY (skip LLM judge). Evidence: on the
-        17 grounding-reversal qids (see docs/nl2sql_v6_phase1_error_attribution.md),
-        the LLM judge consistently misclassified aggregation questions as
-        attribute_filter or preview_listing, which then misled the DS prompt's
-        grounding block. DS's own system_instruction.md R2 handles
-        aggregation/listing distinction directly from question surface form.
-      - family="qwen" (planned) → same bypass as deepseek for now; revisit
-        after Phase 3 Qwen attribution pass.
-      - other families → rule + LLM judge (legacy behaviour).
+    ``family`` remains a compatibility argument for existing callers.  New
+    runtime paths resolve a versioned model profile and pass its strategy so
+    model-specific behaviour stays outside the classifier.
     """
     if os.environ.get("NL2SQL_DISABLE_INTENT") == "1":
         return IntentResult(primary=IntentLabel.UNKNOWN, confidence=0.0, source="disabled")
+    resolved_strategy = strategy or resolve_nl2sql_model_profile(
+        family=family
+    ).intent_strategy
+    if resolved_strategy not in {"rule_only", "rule_then_llm"}:
+        raise ValueError(f"unsupported NL2SQL intent strategy: {resolved_strategy}")
     rule = classify_rule(question)
-    # Families that benefit from rule-only classification skip the LLM judge.
-    if family in ("deepseek", "qwen", "gemma"):
+    if resolved_strategy == "rule_only":
         return rule
     if rule.primary is not IntentLabel.UNKNOWN and rule.confidence >= 0.7:
         return rule

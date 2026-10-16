@@ -10,6 +10,9 @@ from difflib import SequenceMatcher
 from .reference_queries import fetch_nl2sql_few_shots
 from .semantic_model import SemanticModelStore
 from .nl2sql_intent import classify_intent, IntentLabel
+from .nl2sql_model_profile import resolve_nl2sql_model_profile
+from .nl2sql_prompt_metadata import field_prompt_annotations, field_prompt_description
+from .nl2sql_observability import observe_stage
 
 logger = logging.getLogger(__name__)
 
@@ -231,6 +234,14 @@ def _prune_cross_domain_noise(user_text: str, sources: list[dict]) -> list[dict]
 
 
 def _extract_schema_hint(user_text: str) -> str | None:
+    # BIRD questions commonly name the dataset directly (for example,
+    # ``在 bird_financial 中``) rather than using SQL wording such as
+    # ``schema bird_financial``.  Treat that explicit registered namespace as
+    # a hard candidate boundary so bridge tables from other BIRD databases
+    # cannot compete for the LLM's limited table budget.
+    bird_match = re.search(r"(?<![A-Za-z0-9_])(bird_[a-z0-9_]+)(?![A-Za-z0-9_])", user_text or "", flags=re.IGNORECASE)
+    if bird_match:
+        return bird_match.group(1)
     m = re.search(r"schema\s+`([^`]+)`", user_text, flags=re.IGNORECASE)
     if m:
         return m.group(1)
@@ -362,6 +373,17 @@ def _sample_distinct_values(table_name: str, column_name: str, limit: int = 5) -
 
     Supports dotted schema-qualified table names. Best-effort only.
     """
+    if table_name.startswith("bird_") and "." in table_name:
+        from .bird_source import source_schema
+
+        try:
+            schema = source_schema(table_name)
+        except Exception:
+            return []
+        for column in (schema or {}).get("columns", []):
+            if column.get("column_name") == column_name:
+                return list(column.get("sample_values") or [])[:limit]
+        return []
     try:
         from .db_engine import get_engine
         from sqlalchemy import text as sa_text
@@ -514,7 +536,7 @@ def _build_candidate_table(source: dict, schema: dict) -> dict:
             "is_geometry": is_geom,
             "needs_quoting": _needs_quoting(column_name),
             "value_semantics": col.get("value_semantics") or {},
-            "sample_values": [],
+            "sample_values": list(col.get("sample_values") or []),
         })
     source_meta = schema.get("source_metadata") or {}
     source_kind = source.get("source_kind") or source_meta.get("source_kind") or "postgis"
@@ -545,6 +567,13 @@ def _build_candidate_table(source: dict, schema: dict) -> dict:
             or source.get("table_name")
             or schema.get("table_name"),
         }
+    if source_kind == "bird_postgres":
+        # This logical name belongs to an external database. Querying the
+        # control-plane pg_class (and then COUNT on the logical name) is wrong.
+        estimate = source_meta.get("estimated_rows")
+        row_count_hint = estimate if type(estimate) is int and estimate >= 0 else None
+    else:
+        row_count_hint = _estimate_table_size(source.get("table_name") or schema.get("table_name"))
     return {
         "table_name": source.get("table_name") or schema.get("table_name"),
         "display_name": source.get("display_name") or schema.get("display_name") or source.get("table_name"),
@@ -552,7 +581,9 @@ def _build_candidate_table(source: dict, schema: dict) -> dict:
         "table_aliases": _table_aliases_from_source(source, schema),
         "confidence": float(source.get("confidence", 0.0)),
         "columns": out_columns,
-        "row_count_hint": _estimate_table_size(source.get("table_name") or schema.get("table_name")),
+        "primary_keys": list(source_meta.get("primary_keys") or []),
+        "foreign_keys": list(source_meta.get("foreign_keys") or []),
+        "row_count_hint": row_count_hint,
         "schema_complete": True,
         "source_kind": source_kind,
         "projection_path": projection_path,
@@ -601,10 +632,46 @@ def _extract_sql_table_names(sql: str) -> list[str]:
     return names
 
 
-def refresh_nl2sql_grounding_prompt(payload: dict, family: str | None = None) -> dict:
+@observe_stage("catalog.refresh")
+def refresh_nl2sql_grounding_prompt(
+    payload: dict,
+    family: str | None = None,
+    *,
+    variant: str | None = None,
+) -> dict:
     """Re-render grounding after an execution adapter filters candidates."""
 
-    payload["grounding_prompt"] = _format_grounding_prompt(payload, family=family)
+    from .nl2sql_metric_grounding import registered_metric_context, registered_metrics
+    from .nl2sql_semantic_retrieval import semantic_retrieval_enabled, retrieve_semantics
+    from .semantic_layer import registered_bird_dataset_hints
+    from .bird_semantic_contracts import semantic_hint_applies_to_candidates
+
+    # Re-query after every candidate-scope change: a source adapter or governed
+    # binding can narrow the original table set after semantic discovery.
+    from .nl2sql_metric_compiler import metric_compilation_enabled
+    metrics = (registered_metrics(payload, required=True) if metric_compilation_enabled()
+               else registered_metrics(payload))
+    # Capture exactly the permission-filtered registry behind this prompt.
+    # Every source/permission refresh replaces the snapshot and derived hits.
+    payload["registered_metrics"] = metrics
+    payload["registered_metric_context"] = registered_metric_context(payload, metrics)
+    # Rebuild from the current authorized catalog, never retain hits across a
+    # narrowed binding or permission change.
+    payload.pop("semantic_retrieval", None)
+    if semantic_retrieval_enabled():
+        payload["semantic_retrieval"] = retrieve_semantics(payload, metrics)
+    # Re-query governed rules when the current binding or permission scope changes.
+    candidates = payload.get("candidate_tables") or []
+    payload["dataset_hints"] = [
+        hint for hint in registered_bird_dataset_hints(candidates, payload.get("user_question") or "")
+        if all(semantic_hint_applies_to_candidates(hint.get("scope_ref") or "", text, candidates)
+               for text in (hint.get("hint_text_en"), hint.get("hint_text_zh")) if text)
+    ]
+    payload["grounding_prompt"] = _format_grounding_prompt(
+        payload,
+        family=family,
+        variant=variant,
+    )
     stats = payload.setdefault("_hint_injection_stats", {})
     stats["candidate_tables"] = len(payload.get("candidate_tables") or [])
     return payload
@@ -1053,17 +1120,21 @@ def _format_kg_hints_lines(kg_hints: dict | None) -> list[str]:
     return lines
 
 
-def _format_grounding_prompt(payload: dict, family: str | None = None) -> str:
-    """Format the grounding payload into a strict prompt block for the LLM.
-
-    The Gemini-style rendering (legacy) is a long, narrative-heavy block with
-    detailed rules per intent. DeepSeek's system_instruction.md already
-    encodes those rules in R1-R7 strict form, so the DS rendering is a
-    slim schema-and-hints block that omits redundant rule restatements.
-    """
-    if family in ("deepseek", "qwen", "gemma"):
+def _format_grounding_prompt(
+    payload: dict,
+    family: str | None = None,
+    *,
+    variant: str | None = None,
+) -> str:
+    """Format grounding using the versioned compatibility profile variant."""
+    resolved_variant = variant or resolve_nl2sql_model_profile(
+        family=family
+    ).grounding_variant
+    if resolved_variant == "compact":
         return _format_grounding_prompt_compact(payload)
-    return _format_grounding_prompt_legacy(payload)
+    if resolved_variant == "legacy":
+        return _format_grounding_prompt_legacy(payload)
+    raise ValueError(f"unsupported NL2SQL grounding variant: {resolved_variant}")
 
 
 def _format_grounding_prompt_compact(payload: dict) -> str:
@@ -1079,18 +1150,31 @@ def _format_grounding_prompt_compact(payload: dict) -> str:
     """
     lines: list[str] = []
     lines.append("[NL2SQL question context — use the schema and hints below]")
+    if payload.get("semantic_retrieval"):
+        from .nl2sql_semantic_retrieval import retrieval_prompt
+        lines.append(retrieval_prompt(payload["semantic_retrieval"]))
 
     # Candidate schema — same content as legacy, but tighter formatting
     cand = payload.get("candidate_tables") or []
+    # For a selected BIRD database the authorized schema is complete. Stable
+    # presentation permits prefix reuse across questions without changing
+    # candidate selection, permissions, or dropping any field definitions.
+    bird_catalog = bool(cand) and all(table.get("source_kind") == "bird_postgres" for table in cand)
+    if bird_catalog:
+        cand = sorted(cand, key=lambda table: table["table_name"])
     if cand:
         lines.append("")
         lines.append("## Candidate tables")
         geom_srids: dict[str, int] = {}
         for table in cand:
             lines.append("")
+            confidence = "" if bird_catalog else f"confidence {table.get('confidence', 0.0):.2f}, "
+            count = table.get("row_count_hint")
+            row_count_label = "row count unknown" if count is None else f"~{count} rows"
             lines.append(f"### {table['table_name']}"
-                         f" (confidence {table.get('confidence', 0.0):.2f},"
-                         f" ~{table.get('row_count_hint', 0)} rows)")
+                         f" ({confidence}{row_count_label})")
+            if table.get("source_kind") == "bird_postgres" and table.get("description"):
+                lines.append(f"- table meaning: {table['description']}")
             priority = int(table.get("nl2sql_priority") or 0)
             if priority:
                 lines.append(
@@ -1102,10 +1186,10 @@ def _format_grounding_prompt_compact(payload: dict) -> str:
                 lines.append(f"- table aliases: {', '.join(str(a) for a in table_aliases[:12])}")
             for col in table.get("columns", []):
                 unit_str = f" [{col['unit']}]" if col.get("unit") else ""
-                aliases = col.get("aliases") or []
+                aliases, value_semantics = field_prompt_annotations(col)
                 alias_str = f" aka {', '.join(aliases)}" if aliases else ""
                 semantic_domain = str(col.get("semantic_domain") or "").strip()
-                description = str(col.get("description") or "").strip()
+                description = field_prompt_description(col)
                 meaning_parts = []
                 if semantic_domain:
                     meaning_parts.append(f"domain={semantic_domain}")
@@ -1117,7 +1201,6 @@ def _format_grounding_prompt_compact(payload: dict) -> str:
                     f" sample: {', '.join(str(v) for v in sv[:5])}"
                     if sv else ""
                 )
-                value_semantics = col.get("value_semantics") or {}
                 value_semantics_str = (
                     f" semantics: {json.dumps(value_semantics, ensure_ascii=False)}"
                     if value_semantics else ""
@@ -1221,7 +1304,7 @@ def _format_grounding_prompt_compact(payload: dict) -> str:
         lines.extend(kg_hint_lines)
 
     # Business rules from agent_semantic_hints (data-driven).
-    table_hints = payload.get("table_hints") or []
+    table_hints = [*(payload.get("table_hints") or []), *(payload.get("dataset_hints") or [])]
     column_hints = payload.get("column_hints") or {}
     if table_hints or column_hints:
         lines.append("")
@@ -1235,6 +1318,12 @@ def _format_grounding_prompt_compact(payload: dict) -> str:
                 mark = "!! " if h.get("severity") == "critical" else "- "
                 text = h.get("hint_text_en") or h["hint_text_zh"]
                 lines.append(f"{mark}{colkey}: {text}")
+
+    metric_context = str(payload.get("registered_metric_context") or "").strip()
+    if metric_context:
+        lines.append("")
+        lines.append("## Registered business metrics")
+        lines.append(metric_context)
 
     # Dynamic large-table list.
     large_tables = payload.get("large_tables") or []
@@ -1250,7 +1339,10 @@ def _format_grounding_prompt_compact(payload: dict) -> str:
     if wh and not spatial_query:
         lines.append("")
         lines.append("## Warehouse join paths")
-        for tbl, info in (wh.get("table_roles") or {}).items():
+        table_roles = (wh.get("table_roles") or {}).items()
+        if bird_catalog:
+            table_roles = sorted(table_roles)
+        for tbl, info in table_roles:
             role = "fact" if info.get("role") == "fact" else "dimension"
             entities = ", ".join(info.get("entities") or [])
             measures = ", ".join(info.get("measures") or [])
@@ -1260,7 +1352,8 @@ def _format_grounding_prompt_compact(payload: dict) -> str:
             if measures:
                 parts.append(f"measures={measures}")
             lines.append(f"- {'; '.join(parts)}")
-        for jp in wh.get("join_paths") or []:
+        join_paths = wh.get("join_paths") or []
+        for jp in sorted(join_paths) if bird_catalog else join_paths:
             lines.append(f"- JOIN: {jp}")
 
     # Few-shots — these are per-question retrieved examples, not static rules
@@ -1279,13 +1372,19 @@ def _format_grounding_prompt_legacy(payload: dict) -> str:
     """Format the grounding payload into a strict prompt block for the LLM."""
     lines: list[str] = []
     lines.append("[NL2SQL 上下文 — 必须严格遵循以下 schema]")
+    if payload.get("semantic_retrieval"):
+        from .nl2sql_semantic_retrieval import retrieval_prompt
+        lines.append(retrieval_prompt(payload["semantic_retrieval"]))
     lines.append("")
     lines.append("## 候选数据源")
     geom_srids: dict[str, int] = {}  # table.column -> srid
     for table in payload.get("candidate_tables", []):
         lines.append("")
         lines.append(f"### {table['table_name']} ({table.get('display_name') or table['table_name']})")
-        lines.append(f"置信度: {table.get('confidence', 0.0):.2f}; 估计行数: {table.get('row_count_hint', 0)}")
+        count_label = table.get("row_count_hint") if table.get("row_count_hint") is not None else "未知"
+        lines.append(f"置信度: {table.get('confidence', 0.0):.2f}; 估计行数: {count_label}")
+        if table.get("description"):
+            lines.append(f"- table meaning: {table['description']}")
         priority = int(table.get("nl2sql_priority") or 0)
         if priority:
             lines.append(
@@ -1295,13 +1394,26 @@ def _format_grounding_prompt_legacy(payload: dict) -> str:
         if table_aliases:
             lines.append(f"- table aliases: {', '.join(str(a) for a in table_aliases[:12])}")
         for col in table.get("columns", []):
-            alias_str = ", ".join(col.get("aliases") or []) or "—"
+            aliases, value_semantics = field_prompt_annotations(col)
+            alias_str = ", ".join(aliases) or "—"
             unit_str = f" [单位: {col['unit']}]" if col.get("unit") else ""
+            meaning_parts = []
+            semantic_domain = str(col.get("semantic_domain") or "").strip()
+            if semantic_domain:
+                meaning_parts.append(f"domain={semantic_domain}")
+            description = field_prompt_description(col)
+            if description:
+                meaning_parts.append(f"meaning={description}")
+            meaning_str = f" | {'; '.join(meaning_parts)}" if meaning_parts else ""
+            semantics_str = (
+                f" | semantics: {json.dumps(value_semantics, ensure_ascii=False)}"
+                if value_semantics else ""
+            )
             sample_str = ""
             sv = col.get("sample_values")
             if sv:
                 sample_str = f" | 示例值: {', '.join(str(v) for v in sv[:8])}"
-            lines.append(f"- {col['quoted_ref']} :: {col.get('pg_type','')}{unit_str} | 别名: {alias_str}{sample_str}")
+            lines.append(f"- {col['quoted_ref']} :: {col.get('pg_type','')}{unit_str} | 别名: {alias_str}{meaning_str}{sample_str}{semantics_str}")
             if col.get("is_geometry"):
                 pg_type = col.get("pg_type", "")
                 srid = 0
@@ -1375,18 +1487,26 @@ def _format_grounding_prompt_legacy(payload: dict) -> str:
     # Business rules (table- and column-scope) from agent_semantic_hints.
     # Previously lived hard-coded in prompts_nl2sql/*/system_instruction.md;
     # now data-driven so new customers configure via the semantic layer UI.
-    table_hints = payload.get("table_hints") or []
+    table_hints = [*(payload.get("table_hints") or []), *(payload.get("dataset_hints") or [])]
     column_hints = payload.get("column_hints") or {}
     if table_hints or column_hints:
         lines.append("")
         lines.append("## [业务规则]")
         for h in table_hints:
             mark = "⚠⚠ " if h.get("severity") == "critical" else "- "
-            lines.append(f"{mark}{h['scope_ref']}: {h['hint_text_zh']}")
+            text = h.get("hint_text_zh") or h.get("hint_text_en") or ""
+            lines.append(f"{mark}{h['scope_ref']}: {text}")
         for colkey, hs in column_hints.items():
             for h in hs:
                 mark = "⚠⚠ " if h.get("severity") == "critical" else "- "
-                lines.append(f"{mark}{colkey}: {h['hint_text_zh']}")
+                text = h.get("hint_text_zh") or h.get("hint_text_en") or ""
+                lines.append(f"{mark}{colkey}: {text}")
+
+    metric_context = str(payload.get("registered_metric_context") or "").strip()
+    if metric_context:
+        lines.append("")
+        lines.append("## [已注册业务指标]")
+        lines.append(metric_context)
 
     # Dynamic large-table list (replaces hard-coded names in system_instruction.md).
     large_tables = payload.get("large_tables") or []
@@ -1460,7 +1580,7 @@ def _format_grounding_prompt_legacy(payload: dict) -> str:
         lines.append("")
         lines.append("## 聚合语义规则")
         lines.append("- COUNT(*) 计入所有行（包含 NULL），COUNT(col) 只计 col 非 NULL 的行；二者结果常不同。")
-        lines.append("- COUNT(DISTINCT col) 只在题目明确要求“不同/独立/去重”时使用；默认计数用 COUNT(*) 或 COUNT(主键)。")
+        lines.append("- 按题目及治理口径确定计数粒度：记录数保留重复；实体数在一对多连接可能复制目标实体时，按该实体的治理键去重。不要仅因 JOIN 就更改计数口径。")
         lines.append("- 计算占比/比例（如 “百分之多少 / ratio / percentage”）时使用 SUM(CASE WHEN ... THEN 1 ELSE 0 END) * 1.0 / COUNT(*) 或 AVG(CASE...)；勿用整除。")
         lines.append("- 多表聚合时，先在 fact 表做聚合再 JOIN dim 表，避免重复计数膨胀。")
         lines.append("- \"每个 / per / 各 / 按...统计\" 等措辞需要 GROUP BY；GROUP BY 中所有非聚合 SELECT 列必须出现。")
@@ -1468,7 +1588,7 @@ def _format_grounding_prompt_legacy(payload: dict) -> str:
         lines.append("")
         lines.append("## DISTINCT 使用规则")
         lines.append("- 当 JOIN 产生一对多关系时，若问题要求返回左侧实体列表，应按该实体的治理主键去重；不要把关联明细行数当成实体数。")
-        lines.append("- 只有在 SELECT 中包含聚合函数（COUNT/SUM/AVG/MAX/MIN）时才不需要 DISTINCT（聚合本身已去重）。")
+        lines.append("- 聚合会为每组输出一行，但 COUNT/SUM/AVG 的输入仍保留重复；不得把聚合当作输入行自动去重。")
         lines.append("- 多表列表查询只有在关联会复制目标实体时才使用 SELECT DISTINCT；去重键必须来自当前 schema 的治理实体键。")
         lines.append("- **单表 COUNT(*) 不得擅自改成 COUNT(DISTINCT col)**：只有问题明确要求“不同/几类/去重”或语义层声明实体去重口径时，才使用 COUNT(DISTINCT <治理实体键>)。")
 
@@ -1481,7 +1601,7 @@ def _format_grounding_prompt_legacy(payload: dict) -> str:
         lines.append("")
         lines.append("## 输出列格式")
         lines.append("- 除非问题或语义层明确要求拼接展示值，否则保留 schema 中的原始字段，不要凭示例发明派生列。")
-        lines.append("- LIMIT 1 场景：如果问题要求 'the highest / the oldest / the youngest'，使用 ORDER BY ... LIMIT 1 而非子查询 WHERE col = (SELECT MAX/MIN...)。")
+        lines.append("- 最高/最低值查询应保留并列实体，除非题目明确要求只返回一个或指定 top-K；可用极值子查询或 DENSE_RANK。明确 top-K 才使用相应 LIMIT。")
 
         # Date / temporal handling — BIRD heavily uses TEXT-stored dates
         lines.append("")
@@ -1493,6 +1613,33 @@ def _format_grounding_prompt_legacy(payload: dict) -> str:
         lines.append("- 排序日期 TEXT 列时直接 ORDER BY 字符串即可（ISO 格式自然有序）。")
 
     return "\n".join(lines)
+
+
+def _bird_fk_join_paths(candidate_tables: list[dict]) -> list[str]:
+    """Expose registered BIRD foreign keys only when both tables are in scope."""
+    by_name = {
+        str(table.get("table_name") or "").casefold(): table
+        for table in candidate_tables
+        if table.get("source_kind") == "bird_postgres"
+    }
+    paths = []
+    for table in candidate_tables:
+        if table.get("source_kind") != "bird_postgres":
+            continue
+        qualified_name = str(table.get("table_name") or "")
+        if "." not in qualified_name:
+            continue
+        schema_name, source_name = qualified_name.rsplit(".", 1)
+        for fk in table.get("foreign_keys") or []:
+            target = by_name.get(f'{schema_name}.{fk.get("target_table") or ""}'.casefold())
+            if not target or not fk.get("column") or not fk.get("target_column"):
+                continue
+            target_name = str(target.get("table_name") or "").rsplit(".", 1)[-1]
+            paths.append(
+                f'{source_name}.{_quoted_ref(str(fk["column"]))} -> '
+                f'{target_name}.{_quoted_ref(str(fk["target_column"]))}'
+            )
+    return list(dict.fromkeys(paths))
 
 
 def _build_warehouse_join_hints(candidate_tables: list[dict]) -> dict | None:
@@ -1618,6 +1765,7 @@ def _build_warehouse_join_hints(candidate_tables: list[dict]) -> dict | None:
     return result
 
 
+@observe_stage("catalog.load")
 def build_nl2sql_context(
     user_text: str,
     schema_filter: str | None = None,
@@ -1646,7 +1794,18 @@ def build_nl2sql_context(
     # Family resolution order: explicit arg > env var > None (legacy behaviour)
     if family is None:
         family = _ablation_os.environ.get("NL2SQL_AGENT_FAMILY") or None
-    intent_result = classify_intent(user_text, family=family)
+    # An explicit BIRD database name is already an authorized namespace
+    # selection.  Apply it before source recall so the complete 3–13-table
+    # database schema (including low-lexical-score bridge tables) is retained.
+    if not schema_filter:
+        explicit_schema = _extract_schema_hint(user_text)
+        if explicit_schema and explicit_schema.casefold().startswith("bird_"):
+            schema_filter = explicit_schema
+    model_profile = resolve_nl2sql_model_profile(family=family)
+    intent_result = classify_intent(
+        user_text,
+        strategy=model_profile.intent_strategy,
+    )
     intent_value = getattr(intent_result.primary, "value", intent_result.primary)
     semantic = resolve_semantic_context(user_text)
     sources = list(semantic.get("sources") or [])
@@ -1723,8 +1882,10 @@ def build_nl2sql_context(
                 s["confidence"] = score
                 scored.append(s)
         scored.sort(key=lambda s: s.get("confidence", 0), reverse=True)
-        # When schema_filter is set, include more candidates (up to 8)
-        top_n = 8 if schema_filter else 2
+        # A selected, authorized database is already a bounded namespace.
+        # Keep its complete schema, including bridge tables with low lexical
+        # scores, rather than dropping them before the model sees any columns.
+        top_n = len(scored) if schema_filter else 2
         sources.extend(scored[:top_n])
         sources = _rank_sources(user_text, sources, semantic)
 
@@ -1755,6 +1916,8 @@ def build_nl2sql_context(
                 # Lazy schema dump: only fetch when actually invoking
                 from data_agent.semantic_layer import list_semantic_sources as _lss
                 _src_list = _lss().get("sources", []) if _lss else []
+                if schema_filter:
+                    _src_list = [s for s in _src_list if str(s.get("table_name", "")).startswith(f"{schema_filter}.")]
                 valid_names = {str(s.get("table_name", "")).split(".")[-1]
                                for s in _src_list if s.get("table_name")}
                 # Build a lightweight schema (table-name + col-list) from the
@@ -1838,7 +2001,7 @@ def build_nl2sql_context(
     spatial_source_limit = 4 if intent_value == IntentLabel.SPATIAL_JOIN.value else 3
     source_limit = 5 if not spatial_query else spatial_source_limit
     if schema_filter:
-        source_limit = 8  # warehouse benchmarks may have many tables per schema
+        source_limit = len(sources)
     selected_sources = _select_with_kg_priority(sources, source_limit, kg_hints, schema_filter)
     for source in selected_sources:
         table_name = source.get("table_name")
@@ -1864,7 +2027,7 @@ def build_nl2sql_context(
                         col["sample_values"] = vals
 
     # Limit candidate tables: more for warehouse (need full schema for join hints)
-    max_candidates = 5 if schema_filter else spatial_source_limit if spatial_query else 3
+    max_candidates = len(candidate_tables) if schema_filter else spatial_source_limit if spatial_query else 3
     candidate_tables = _select_with_kg_priority(
         _rank_candidate_tables(user_text, candidate_tables, semantic),
         max_candidates,
@@ -1898,6 +2061,12 @@ def build_nl2sql_context(
     warehouse_join_hints = None
     if not spatial_query:
         warehouse_join_hints = _build_warehouse_join_hints(candidate_tables)
+        bird_paths = _bird_fk_join_paths(candidate_tables)
+        if bird_paths:
+            warehouse_join_hints = warehouse_join_hints or {"table_roles": {}, "join_paths": []}
+            warehouse_join_hints["join_paths"] = list(dict.fromkeys(
+                [*(warehouse_join_hints.get("join_paths") or []), *bird_paths]
+            ))
 
     few_shot_text = ""
     few_shot_hits: list[dict] = []
@@ -2078,7 +2247,10 @@ def build_nl2sql_context(
         "few_shot_enabled": bool(payload.get("few_shot_policy", {}).get("enabled")),
         "few_shot_triggered": bool(payload.get("few_shot_policy", {}).get("triggered")),
         "few_shot_retrieved": bool(payload.get("few_shot_policy", {}).get("retrieved")),
-        "family": family or "default",
+        "family": model_profile.family,
+        "model_profile_id": model_profile.profile_id,
+        "model_profile_version": model_profile.profile_version,
+        "model_profile_fingerprint": model_profile.fingerprint,
     }
     payload["_hint_injection_stats"] = _hint_stats
     logger.info(
@@ -2088,5 +2260,11 @@ def build_nl2sql_context(
         _hint_stats["large_tables"], _hint_stats["candidate_tables"],
         _hint_stats["few_shots"], _hint_stats["family"],
     )
-    payload["grounding_prompt"] = _format_grounding_prompt(payload, family=family)
-    return payload
+    payload["model_compatibility_profile"] = {
+        "profile_id": model_profile.profile_id,
+        "profile_version": model_profile.profile_version,
+        "fingerprint": model_profile.fingerprint,
+        "intent_strategy": model_profile.intent_strategy,
+        "grounding_variant": model_profile.grounding_variant,
+    }
+    return refresh_nl2sql_grounding_prompt(payload, variant=model_profile.grounding_variant)

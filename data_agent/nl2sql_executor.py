@@ -8,6 +8,8 @@ import os
 import re
 import time
 
+from .nl2sql_observability import observe_request, observe_stage, annotate_stage, record_route, stage
+
 from .nl2sql_grounding import (
     _estimate_table_size,
     _needs_quoting,
@@ -16,6 +18,17 @@ from .nl2sql_grounding import (
     build_nl2sql_context,
     refresh_nl2sql_grounding_prompt,
 )
+from .nl2sql_model_profile import infer_model_family
+from .nl2sql_generation_policy import (
+    current_grounded_request,
+    generation_system_prompt,
+    generation_token_budget,
+    relational_generation_guidance,
+    remember_retry_grounding,
+    retry_grounding,
+    row_identity_context,
+)
+from .nl2sql_review_pipeline import review_draft
 from .semantic_layer import describe_table_semantic, list_semantic_sources
 from .sql_postprocessor import postprocess_sql
 from .toolsets.nl2sql_tools import execute_safe_sql
@@ -48,12 +61,11 @@ def _record_llm_evidence(evidence: dict) -> None:
 def _aggregate_llm_evidence() -> dict:
     calls = current_nl2sql_llm_calls.get()
 
-    def _token_total(name: str) -> int:
-        return sum(
-            int((call.get("usage") or {}).get(name) or 0)
-            for call in calls
-            if isinstance(call, dict)
-        )
+    def _token_total(name: str) -> int | None:
+        values = [(call.get("usage") or {}).get(name) for call in calls]
+        if any(type(value) is not int or value < 0 for value in values):
+            return None
+        return sum(values)
 
     costs = [
         call.get("estimated_cost_usd")
@@ -62,7 +74,7 @@ def _aggregate_llm_evidence() -> dict:
     ]
     local_only = bool(calls) and all(
         str(call.get("provider") or "").casefold()
-        in {"ollama", "lm_studio", "openai_compatible", "local"}
+        in {"ollama", "lm_studio", "local"}
         for call in calls
     )
     if len(costs) == len(calls):
@@ -558,8 +570,23 @@ def _build_ungrounded_table_retry_prompt(
 
 def _extract_sql(text: str) -> str:
     """Extract the most recent complete top-level SELECT/WITH statement."""
+    # Fences mark separate attempts; set-operation operands do not.
+    blocks = re.findall(r"\x60\x60\x60(?:sql)?\s*\n?(.*?)\x60\x60\x60", text or "", re.DOTALL | re.IGNORECASE)
+    for block in reversed(blocks):
+        candidate = _extract_sql(block)
+        if _looks_like_select_sql(candidate) and _sql_candidate_parseable(candidate):
+            return candidate
     sql = _strip_fences(text)
     sql = re.sub(r"^\s*(?:sql\s*:|SQL\s*:)", "", sql).strip()
+    try:
+        import sqlglot
+        from sqlglot import exp
+
+        statements = sqlglot.parse(sql, read="postgres")
+        if len(statements) == 1 and isinstance(statements[0], exp.Query):
+            return sql.rstrip(";").strip()
+    except Exception:
+        pass
     starts = _top_level_sql_starts(sql)
     candidates = [_slice_sql_statement(sql, start) for start in starts]
     candidates = [candidate for candidate in candidates if candidate]
@@ -629,6 +656,7 @@ def _top_level_sql_starts(sql: str) -> list[int]:
     in_line_comment = False
     in_block_comment = False
     in_top_level_with_statement = False
+    awaiting_set_operand = False
     i = 0
     while i < len(sql):
         ch = sql[i]
@@ -691,16 +719,19 @@ def _top_level_sql_starts(sql: str) -> list[int]:
             continue
         if ch == ";" and depth == 0:
             in_top_level_with_statement = False
+            awaiting_set_operand = False
             i += 1
             continue
-        if depth == 0:
-            if re.match(r"\bWITH\b", sql[i:], flags=re.IGNORECASE):
+        if depth == 0 and (i == 0 or not (sql[i - 1].isalnum() or sql[i - 1] == "_")):
+            if re.match(r"\b(?:UNION|INTERSECT|EXCEPT)\b", sql[i:], flags=re.IGNORECASE):
+                awaiting_set_operand = True
+            elif re.match(r"\bWITH\b", sql[i:], flags=re.IGNORECASE):
                 starts.append(i)
                 in_top_level_with_statement = True
-            elif not in_top_level_with_statement and re.match(
-                r"\bSELECT\b", sql[i:], flags=re.IGNORECASE
-            ):
-                starts.append(i)
+            elif re.match(r"\bSELECT\b", sql[i:], flags=re.IGNORECASE):
+                if not in_top_level_with_statement and not awaiting_set_operand:
+                    starts.append(i)
+                awaiting_set_operand = False
         i += 1
     return starts
 
@@ -709,10 +740,24 @@ def _slice_sql_statement(sql: str, start: int) -> str:
     depth = 0
     in_single = False
     in_double = False
+    in_line_comment = False
+    in_block_comment = False
     i = start
     while i < len(sql):
         ch = sql[i]
         nxt = sql[i + 1] if i + 1 < len(sql) else ""
+        if in_line_comment:
+            if ch == "\n":
+                in_line_comment = False
+            i += 1
+            continue
+        if in_block_comment:
+            if ch == "*" and nxt == "/":
+                in_block_comment = False
+                i += 2
+            else:
+                i += 1
+            continue
         if in_single:
             if ch == "'" and nxt == "'":
                 i += 2
@@ -728,6 +773,14 @@ def _slice_sql_statement(sql: str, start: int) -> str:
             if ch == '"':
                 in_double = False
             i += 1
+            continue
+        if ch == "-" and nxt == "-":
+            in_line_comment = True
+            i += 2
+            continue
+        if ch == "/" and nxt == "*":
+            in_block_comment = True
+            i += 2
             continue
         if ch == "'":
             in_single = True
@@ -777,24 +830,18 @@ def _get_standard_model_name() -> str:
 
 def _active_direct_harness_family() -> str:
     """Return the family namespace for the direct NL2Semantic2SQL harness."""
-    family = (os.environ.get("NL2SQL_AGENT_FAMILY") or "").strip().lower()
-    if family in {"deepseek", "gemini", "gemma", "openai", "qwen"}:
-        return family
     model_name = (
         os.environ.get("NL2SQL_AGENT_MODEL")
         or os.environ.get("GDA_LLM_MODEL")
         or os.environ.get("MODEL_STANDARD")
         or ""
     ).strip().lower()
-    if "deepseek" in model_name:
-        return "deepseek"
-    if "gemini" in model_name:
-        return "gemini"
-    if "qwen" in model_name:
-        return "qwen"
-    if model_name.startswith(("gpt-", "openai/gpt-", "chatgpt-")):
-        return "openai"
-    return "gemma"
+    family = os.environ.get("NL2SQL_AGENT_FAMILY") or None
+    resolved = infer_model_family(model_name, family)
+    # The direct harness historically used Gemma as its generic local
+    # fallback. Keep that deployment compatibility while routing recognised
+    # models through the shared profile resolver.
+    return resolved if resolved in {"deepseek", "gemini", "gemma", "openai", "qwen"} else "gemma"
 
 
 def _generation_retry_attempts() -> int:
@@ -882,6 +929,7 @@ def _filter_payload_for_execution_engine(payload: dict, engine: str, family: str
     return refresh_nl2sql_grounding_prompt(filtered, family=family)
 
 
+@observe_stage("execution.attempt")
 def _execute_for_engine(
     sql: str,
     payload: dict,
@@ -889,6 +937,11 @@ def _execute_for_engine(
     *,
     max_rows: int | None = None,
 ) -> str:
+    bird_db_id = payload.get("bird_db_id")
+    if bird_db_id:
+        from .bird_source import execute_bird_sql
+
+        return execute_bird_sql(bird_db_id, sql, max_rows=max_rows or 100000)
     if engine == "lake":
         from .lake_sql_executor import execute_lake_sql
 
@@ -961,6 +1014,8 @@ def _build_family_semantic_prompt(
         if key != "family"
     }
     harness_notes = _family_harness_notes(family, execution_engine=execution_engine)
+    identities = row_identity_context(payload)
+    relational_guidance = relational_generation_guidance()
     if execution_engine == "lake":
         dialect_instruction = """Convert the user question into one read-only DuckDB SQL statement over registered GeoParquet views.
 
@@ -1008,14 +1063,16 @@ Rules:
 {dialect_instruction}
 {harness_notes}
 
-User question:
-{question}
-
 Semantic candidate context:
 {grounding}
+{identities}
+{relational_guidance}
 
 Semantic injection stats:
 {json.dumps(stats, ensure_ascii=False)}
+
+User question:
+{question}
 """
 
 
@@ -1034,9 +1091,10 @@ Shared product harness notes:
 - For write/destructive requests output SELECT 1 only; never generate DELETE, UPDATE, DROP, INSERT, ALTER, TRUNCATE, or a SELECT wrapper around them.
 - A missing value is not an implicit filter: preserve NULL rows unless the user
   explicitly asks for non-null/present/有值 records.
-- A single-table query must not use DISTINCT unless the user asks for unique or
-  deduplicated results, or the semantic contract explicitly marks the result as
-  an entity count. Do not invent output aliases.
+- Choose DISTINCT from the requested result grain: category values or entities
+  may require deduplication without the word unique; stored observations retain
+  legitimate duplicates. Joining details does not turn an entity list into an
+  observation list. Do not invent output aliases.
 - For "nearest/最近的 K 个" without a user-supplied radius, use a candidate
   set, order by the distance expression, and LIMIT K. Do not add ST_Intersects,
   ST_DWithin, or another range predicate; nearest-neighbour ranking is not a
@@ -1212,7 +1270,8 @@ def _should_refuse_nl2sql_question(question: str, payload: dict) -> bool:
         "执行vacuum",
         "回收空间",
     )
-    if any(token in q_low for token in write_tokens):
+    if any((re.search(rf"\b{re.escape(token)}\b", q_low) if token.isascii()
+            else token in q_low) for token in write_tokens):
         return True
 
     if _has_missing_explicit_table_request(question, payload):
@@ -1235,6 +1294,8 @@ def _should_refuse_nl2sql_question(question: str, payload: dict) -> bool:
 
     ranking_terms = _extract_ranking_metric_terms(question)
     if ranking_terms:
+        if payload.get("bird_db_id"):
+            return False
         return not _payload_has_column_term(payload, tuple(ranking_terms))
     return False
 
@@ -1537,7 +1598,7 @@ def _extract_explicit_table_request_terms(question: str) -> list[str]:
             continue
         if (
             "." in ref
-            or "_" in prefix
+            or re.search(r"(?:\bFROM|\bJOIN|从|查询)\s*$", q[:match.start()], re.IGNORECASE)
             or any(
                 marker in tail
                 for marker in ("表", "数据集", "图层", "table", "dataset", "layer")
@@ -1965,12 +2026,19 @@ def _is_unbounded_full_row_preview(question: str, sql: str, payload: dict) -> bo
         )
 
 
-def _generate_gemma_sql(prompt: str, model_name: str | None = None) -> str:
+@observe_stage("planning.generate")
+def _generate_gemma_sql(
+    prompt: str, model_name: str | None = None, *, output_contract: str = "sql",
+    response_format: dict | None = None,
+) -> str:
     """Generate SQL through the configured model endpoint.
 
     The historical name is kept as an internal compatibility surface. The
     implementation is model-independent and is used for Gemma and Qwen.
     """
+    annotate_stage(purpose=output_contract)
+    if response_format is not None and output_contract != "registered_ir_json":
+        raise ValueError("A catalog response format is only supported for registered IR generation")
     explicit_model_name = model_name is not None
     model_name = model_name or _get_standard_model_name()
     if not explicit_model_name and (
@@ -1982,37 +2050,77 @@ def _generate_gemma_sql(prompt: str, model_name: str | None = None) -> str:
         )
 
         config = OpenAICompatibleLLMConfig.from_env()
-        configured_max_tokens = os.environ.get("GDA_NL2SQL_MAX_OUTPUT_TOKENS")
-        default_max_tokens = (
-            8192
-            if config.provider == "deepseek" and config.api_style == "responses"
-            else 1200
-        )
-        max_tokens = max(128, int(configured_max_tokens or default_max_tokens))
+        format_kwargs = {}
+        if output_contract == "review_json" and config.provider == "ollama":
+            from .nl2sql_output_contracts import review_response_format
+
+            format_kwargs["response_format"] = review_response_format()
+        if output_contract == "answer_plan_json" and config.provider == "ollama":
+            from .nl2sql_answer_plan import answer_plan_format
+            format_kwargs["response_format"] = answer_plan_format()
+        if output_contract == "registered_ir_json" and config.provider == "ollama":
+            from .nl2sql_registered_ir import registered_ir_response_format
+
+            format_kwargs["response_format"] = response_format if response_format is not None else registered_ir_response_format()
+        if response_format is not None and "response_format" not in format_kwargs:
+            raise ValueError("Catalog-constrained generation requires the Ollama schema endpoint")
+        max_tokens = generation_token_budget(config.provider, config.api_style)
         attempts = _generation_retry_attempts()
+        deadline_seconds = float(os.environ.get("GDA_NL2SQL_GENERATION_DEADLINE_SECONDS", "0"))
+        import math
+        if not math.isfinite(deadline_seconds) or deadline_seconds < 0:
+            raise ValueError("GDA_NL2SQL_GENERATION_DEADLINE_SECONDS must be finite and nonnegative")
+        generation_deadline = time.monotonic() + deadline_seconds if deadline_seconds else None
         last_exc: Exception | None = None
         for attempt in range(attempts):
+            attempt_config = config
+            if generation_deadline is not None:
+                from dataclasses import replace
+                from .openai_compatible_llm import LLMServiceError
+                remaining = generation_deadline - time.monotonic()
+                if remaining <= 0:
+                    raise LLMServiceError("SQL generation deadline exceeded", code="generation_deadline", retryable=False)
+                attempt_config = replace(config, timeout_seconds=min(config.timeout_seconds, remaining))
             try:
                 response_text, evidence = chat_completion(
-                    system_prompt=(
-                        "You are the GIS Data Agent NL2Semantic2SQL generator. "
-                        "Follow the supplied semantic context and output SQL only."
-                    ),
+                    system_prompt=generation_system_prompt(output_contract),
                     user_prompt=prompt,
-                    config=config,
+                    config=attempt_config,
                     max_tokens=max_tokens,
+                    **format_kwargs,
                 )
                 evidence["generation_attempt"] = attempt + 1
                 evidence["generation_attempt_limit"] = attempts
                 evidence["max_output_tokens"] = max_tokens
+                evidence["output_contract"] = output_contract
                 _record_llm_evidence(evidence)
                 return response_text
             except Exception as exc:
                 last_exc = exc
-                if attempt >= attempts - 1:
+                failure_evidence = dict(getattr(exc, "evidence", {}) or {})
+                if failure_evidence:
+                    failure_evidence.update(
+                        generation_attempt=attempt + 1, generation_attempt_limit=attempts,
+                        max_output_tokens=max_tokens, output_contract=output_contract)
+                    _record_llm_evidence(failure_evidence)
+                if attempt >= attempts - 1 or getattr(exc, "retryable", True) is False:
                     raise
-                time.sleep(_generation_retry_delay(config.provider, attempt))
+                delay = _generation_retry_delay(config.provider, attempt)
+                if generation_deadline is not None and generation_deadline - time.monotonic() <= delay:
+                    from .openai_compatible_llm import LLMServiceError
+                    raise LLMServiceError("SQL generation deadline exceeded before retry", code="generation_deadline", retryable=False) from exc
+                with stage("llm.retry_wait"):
+                    time.sleep(delay)
         raise last_exc or RuntimeError("configured SQL generation failed")
+
+    if response_format is not None:
+        raise ValueError("Catalog-constrained generation requires the configured Ollama schema endpoint")
+
+    from .llm_call_budget import active_budget
+    if active_budget() is not None:
+        # This legacy SDK route has its own retry behavior. Budgeted runs
+        # must use the single-dispatch transport, never silently bypass it.
+        active_budget()._deny("budget_unsupported_legacy_transport")
 
     from .model_gateway import ModelRegistry, create_model
 
@@ -2023,6 +2131,10 @@ def _generate_gemma_sql(prompt: str, model_name: str | None = None) -> str:
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.0,
     }
+    if output_contract != "sql":
+        completion_kwargs["messages"].insert(
+            0, {"role": "system", "content": generation_system_prompt(output_contract)}
+        )
 
     additional_args = getattr(adk_model, "_additional_args", {}) or {}
     extra_body = additional_args.get("extra_body") or info.get("extra_body")
@@ -2039,13 +2151,16 @@ def _generate_gemma_sql(prompt: str, model_name: str | None = None) -> str:
     started = time.perf_counter()
     for attempt in range(attempts):
         try:
-            resp = litellm.completion(**completion_kwargs)
+            with stage("llm.request", purpose=output_contract, model=model_name,
+                       provider=str(info.get("backend") or "unknown"), dispatched=True):
+                resp = litellm.completion(**completion_kwargs)
             break
         except Exception as exc:
             last_exc = exc
             if attempt >= attempts - 1:
                 raise
-            time.sleep(min(2**attempt, 8))
+            with stage("llm.retry_wait"):
+                time.sleep(min(2**attempt, 8))
     else:
         raise last_exc or RuntimeError("Gemma SQL generation failed")
 
@@ -2078,6 +2193,7 @@ def _generate_gemma_sql(prompt: str, model_name: str | None = None) -> str:
             "provider": provider,
             "model": model_name,
             "transport_model": completion_kwargs["model"],
+            "output_contract": output_contract,
             "base_url": base_url,
             "request_id": str(getattr(resp, "id", "") or ""),
             "latency_ms": round((time.perf_counter() - started) * 1000),
@@ -2233,6 +2349,7 @@ def _retry_with_llm(
     consistent with the primary request. Returns fixed SQL or None.
     """
     schema_block = _format_schema_for_retry(schemas)
+    governed_context = retry_grounding(question)
     dialect = (
         "DuckDB SQL over registered governed GeoParquet views. Never call read_parquet, "
         "read_csv, ATTACH, COPY, INSTALL, or LOAD."
@@ -2245,6 +2362,7 @@ def _retry_with_llm(
         f"Failed SQL: {failed_sql}\n"
         f"Error: {error}\n\n"
         f"Available schema:\n{schema_block}\n\n"
+        f"Authorized semantic context:\n{governed_context}\n\n"
         "Repair the SQL. Output only the repaired SQL, with no explanation.\n"
         "Preserve double quotes for case-sensitive or non-ASCII column names.\n"
         "Treat the schema as table-scoped: every qualified field must belong to "
@@ -2257,7 +2375,7 @@ def _retry_with_llm(
     for _ in range(MAX_RETRIES):
         try:
             raw = _generate_gemma_sql(base_prompt + feedback)
-            fixed = _strip_fences(raw)
+            fixed = _extract_sql(raw)
         except Exception:
             return None
         if not fixed:
@@ -2277,6 +2395,42 @@ def _retry_with_llm(
     return None
 
 
+@observe_stage("query.final_audit")
+def _validate_review_revision(
+    sql: str,
+    payload: dict,
+    governed_source_bindings: dict[str, dict] | None = None,
+) -> None:
+    """A semantic reviewer cannot expand the authorized source boundary."""
+    from .runtime_guards import is_safe_sql
+    from .nl2sql_metric_compiler import compile_product_metrics
+
+    # Review validates the executable expansion; the selected slot remains
+    # in the draft until final compilation after all model revisions.
+    sql, _ = compile_product_metrics(sql, payload, "postgis")
+
+    schemas, _ = _schemas_and_large_tables(payload)
+    bird_db_id = payload.get("bird_db_id")
+    ok, reason = is_safe_sql(sql, None if bird_db_id else set(schemas))
+    if not ok:
+        raise ValueError(f"runtime_guard:{reason}")
+    if bird_db_id:
+        from .bird_source import _validated_sql
+
+        columns = {
+            name.rsplit(".", 1)[-1]: [c["column_name"] for c in fields]
+            for name, fields in schemas.items()
+        }
+        _validated_sql(bird_db_id, sql, columns)
+    else:
+        ungrounded = _find_ungrounded_sql_reference("", sql, payload)
+        if ungrounded:
+            raise ValueError(f"runtime_guard:ungrounded_table:{ungrounded}")
+    unbound = _ungoverned_sql_source(sql, governed_source_bindings)
+    if unbound:
+        raise ValueError(f"source_admission:unbound_source:{unbound}")
+
+
 def _auto_curate(question: str, sql: str, execution_engine: str = "postgis") -> None:
     """Auto-curate successful (question, SQL) pairs into reference_queries.
 
@@ -2285,6 +2439,8 @@ def _auto_curate(question: str, sql: str, execution_engine: str = "postgis") -> 
     Non-fatal: silently ignores any errors.
     """
     if not question or not sql:
+        return
+    if os.environ.get("GDA_NL2SQL_AUTO_CURATE", "1") == "0":
         return
     local_provider = os.environ.get("GDA_LLM_PROVIDER", "").strip().casefold()
     if (
@@ -2328,6 +2484,7 @@ def prepare_nl2sql_context(
     Caches per-request schemas and large-table hints in ContextVars so the next
     tool call `execute_nl2sql()` can postprocess the generated SQL.
     """
+    current_grounded_request.set(None)
     family = _active_direct_harness_family()
     requested_engine = _normalize_execution_engine(execution_engine)
     context_kwargs = {}
@@ -2336,6 +2493,7 @@ def prepare_nl2sql_context(
     payload = build_nl2sql_context(user_question, **context_kwargs)
     resolved_engine = _resolve_execution_engine(payload, requested_engine)
     payload = _filter_payload_for_execution_engine(payload, resolved_engine, family)
+    remember_retry_grounding(user_question, payload)
 
     schemas = {}
     large_tables = set()
@@ -2431,12 +2589,61 @@ def execute_nl2sql(sql: str) -> str:
         last_sql = fixed_sql
 
 
+@observe_request
 def run_nl2semantic2sql(
     user_question: str,
     execution_engine: str | None = None,
     *,
     governed_source_bindings: dict[str, dict] | None = None,
     max_result_items: int = 100_000,
+    bird_db_id: str | None = None,
+) -> str:
+    """Run product NL2SQL, reporting semantic compiler failures explicitly."""
+    from .nl2sql_metric_compiler import MetricCompilationError
+    from .nl2sql_metric_grounding import MetricCatalogUnavailable
+    from .nl2sql_route_policy import QueryPolicyError, resolve_bird_query_policy
+    policy = None
+    # A configuration rejection must not reuse model evidence from an earlier
+    # request in the same worker/context.
+    current_nl2sql_llm_evidence.set({})
+    current_nl2sql_llm_calls.set([])
+    try:
+        if bird_db_id:
+            policy = resolve_bird_query_policy()
+        result = _run_nl2semantic2sql(
+            user_question, execution_engine,
+            governed_source_bindings=governed_source_bindings,
+            max_result_items=max_result_items, bird_db_id=bird_db_id,
+            route_policy=policy,
+        )
+        if policy is not None:
+            report = json.loads(result)
+            report["query_policy"] = policy.evidence()
+            return json.dumps(report, ensure_ascii=False)
+        return result
+    except QueryPolicyError as exc:
+        return json.dumps({"status": "rejected", "error": "query_policy:" + str(exc), "sql": "",
+                           "query_policy": {"status": "rejected"}, "llm_calls": []}, ensure_ascii=False)
+    except (MetricCompilationError, MetricCatalogUnavailable) as exc:
+        return json.dumps({
+            "status": "rejected", "error": "semantic_contract:" + str(exc), "sql": "",
+            "metric_compilation": {"status": "rejected", "reason": str(exc),
+                                   "evidence": getattr(exc, "evidence", {})},
+            "llm": current_nl2sql_llm_evidence.get(),
+            "llm_calls": current_nl2sql_llm_calls.get(),
+            "llm_usage": _aggregate_llm_evidence(),
+            "query_policy": policy.evidence() if policy else {},
+        }, ensure_ascii=False)
+
+
+def _run_nl2semantic2sql(
+    user_question: str,
+    execution_engine: str | None = None,
+    *,
+    governed_source_bindings: dict[str, dict] | None = None,
+    max_result_items: int = 100_000,
+    bird_db_id: str | None = None,
+    route_policy=None,
 ) -> str:
     """Run local-family/Ollama NL2Semantic2SQL as one high-level tool call.
 
@@ -2446,9 +2653,73 @@ def run_nl2semantic2sql(
     The Python side owns the full workflow: semantic grounding, SQL generation,
     deterministic semantic fixes, guards, execution, and structured return.
     """
+    if bird_db_id and route_policy is None:
+        from .nl2sql_route_policy import resolve_bird_query_policy
+        route_policy = resolve_bird_query_policy()
+    current_grounded_request.set(None)
     harness_family = _active_direct_harness_family()
     current_nl2sql_llm_evidence.set({})
     current_nl2sql_llm_calls.set([])
+    from .nl2sql_candidates import candidates_enabled, in_candidate_run, run_product_candidates
+    try:
+        use_candidates = bool(bird_db_id and not in_candidate_run() and candidates_enabled())
+    except ValueError:
+        return json.dumps({"status": "rejected", "error": "execution_consensus:invalid_setting", "sql": ""})
+    if use_candidates:
+        record_route("candidates")
+        try:
+            from .bird_source import query_rows, registered_database
+            if _normalize_execution_engine(execution_engine) not in {"auto", "postgis"}:
+                raise ValueError("Execution consensus requires the registered PostgreSQL source")
+            if route_policy and route_policy.route == "registered_ir":
+                raise ValueError("Execution consensus and registered IR are separate experimental paths")
+
+            state_variables = (
+                current_grounded_request, current_nl2sql_schemas, current_nl2sql_large_tables,
+                current_nl2sql_question, current_nl2sql_intent, current_nl2sql_requested_engine,
+                current_nl2sql_execution_engine, current_nl2sql_candidate_tables,
+            )
+            candidate_states = []
+
+            def run_single():
+                product = json.loads(run_nl2semantic2sql(
+                    user_question, execution_engine,
+                    governed_source_bindings=governed_source_bindings,
+                    max_result_items=max_result_items, bird_db_id=bird_db_id,
+                ))
+                # Early guard rejections also consumed model calls.
+                product.setdefault("llm_calls", current_nl2sql_llm_calls.get())
+                product.setdefault("llm", current_nl2sql_llm_evidence.get())
+                candidate_states.append(tuple(variable.get() for variable in state_variables))
+                return product
+
+            def read_result(product):
+                kwargs = {"parameters": product["sql_parameters"]} if "sql_parameters" in product else {}
+                return query_rows(bird_db_id, product["sql"], max_rows=max_result_items, **kwargs)
+
+            result = run_product_candidates(run_single, read_result,
+                                            lambda: registered_database(bird_db_id))
+            for variable, value in zip(state_variables, candidate_states[result["candidate_selection"]["selected_candidate_id"]]):
+                variable.set(value)
+            current_nl2sql_llm_calls.set(result["llm_calls"])
+            current_nl2sql_llm_evidence.set(result.get("llm") or {})
+            result["llm_usage"] = _aggregate_llm_evidence()
+            record_route("candidates")
+            return json.dumps(result, ensure_ascii=False)
+        except Exception as exc:
+            # Never return buffered candidate data after a principal change or
+            # source permission failure. Actual source failures are reported by
+            # the existing guarded run, not converted into successful votes.
+            current_nl2sql_llm_calls.set([])
+            current_nl2sql_llm_evidence.set({})
+            current_grounded_request.set(None)
+            current_nl2sql_schemas.set({})
+            current_nl2sql_large_tables.set(set())
+            current_nl2sql_candidate_tables.set([])
+            current_nl2sql_question.set("")
+            return json.dumps({"status": "rejected", "error": "execution_consensus:" + type(exc).__name__,
+                               "sql": "", "candidate_selection": {"decision": "rejected"}}, ensure_ascii=False)
+    record_route("sql")
     payload: dict = {}
     try:
         requested_engine = _normalize_execution_engine(execution_engine)
@@ -2464,9 +2735,19 @@ def run_nl2semantic2sql(
             ensure_ascii=False,
         )
     context_kwargs = {"family": harness_family}
+    if bird_db_id:
+        try:
+            from .bird_source import registered_database
+
+            registered_database(bird_db_id)
+        except Exception as exc:
+            return json.dumps({"status": "error", "error": str(exc), "sql": ""}, ensure_ascii=False)
+        context_kwargs["schema_filter"] = f"bird_{bird_db_id}"
     if requested_engine != "postgis":
         context_kwargs["execution_engine"] = requested_engine
     payload = build_nl2sql_context(user_question, **context_kwargs)
+    if bird_db_id:
+        payload["bird_db_id"] = bird_db_id
     resolved_engine = _resolve_execution_engine(payload, requested_engine)
     payload = _filter_payload_for_execution_engine(payload, resolved_engine, harness_family)
     payload = _apply_governed_source_bindings(
@@ -2490,6 +2771,7 @@ def run_nl2semantic2sql(
     current_nl2sql_question.set(user_question)
     current_nl2sql_execution_engine.set(resolved_engine)
     current_nl2sql_candidate_tables.set(payload.get("candidate_tables") or [])
+    remember_retry_grounding(user_question, payload)
     intent = payload.get("intent")
     if intent is not None:
         current_nl2sql_intent.set(intent)
@@ -2507,20 +2789,109 @@ def run_nl2semantic2sql(
             ensure_ascii=False,
         )
 
+    registered_ir = {"status": "disabled"}
+    from .nl2sql_registered_ir import generate_registered_query
+    from .nl2sql_answer_bindings import typed_bindings_enabled
+    if typed_bindings_enabled() and route_policy and route_policy.route == "registered_ir":
+        return json.dumps({"status": "rejected", "sql": "",
+                           "error": "semantic_contract:conflicting_generation_routes"}, ensure_ascii=False)
+    if route_policy and route_policy.strict_contract and resolved_engine != "postgis":
+        return json.dumps({"status": "rejected", "error": "query_policy:strict_ir_requires_postgis", "sql": ""})
+    if bird_db_id and resolved_engine == "postgis" and route_policy.route == "registered_ir":
+        record_route("registered_ir")
+        try:
+            plan, registered_ir = generate_registered_query(
+                user_question, payload, bird_db_id,
+                lambda p: _generate_gemma_sql(p, output_contract="registered_ir_json"),
+                max_result_items,
+                generate_with_format=lambda p, schema: _generate_gemma_sql(
+                    p, output_contract="registered_ir_json", response_format=schema),
+                strict_contract=route_policy.strict_contract,
+            )
+            if plan is not None:
+                # Compiler output still crosses the normal SQL/source boundary.
+                # No free-form SQL rewrite is allowed to alter an accepted IR.
+                _validate_review_revision(plan.compiled_statement, payload, governed_source_bindings)
+                from .nl2sql_reference_ranges import (
+                    reference_range_enforcement_enabled, requested_reference_ranges,
+                    audit_reference_range_contracts,
+                )
+                ir_range_review = {"status": "disabled"}
+                if reference_range_enforcement_enabled():
+                    ir_range_review = audit_reference_range_contracts(
+                        plan.compiled_statement, requested_reference_ranges(user_question, payload))
+                    if ir_range_review["status"] == "unverified":
+                        return json.dumps({
+                            "status": "rejected", "error": "semantic_contract:reference_range_unverified",
+                            "sql": plan.compiled_statement, "registered_ir": registered_ir,
+                            "reference_range_review": {"final_audit": ir_range_review},
+                            "semantic": _semantic_summary(payload),
+                        }, ensure_ascii=False)
+                from .bird_source import execute_bird_sql
+
+                execution = json.loads(execute_bird_sql(
+                    bird_db_id, plan.compiled_statement, max_rows=max_result_items,
+                    parameters=plan.parameter_bindings,
+                ))
+                registered_ir["compiled_plan"] = plan.model_dump(mode="json")
+                return json.dumps({
+                    "status": execution.get("status", "error"), "sql": plan.compiled_statement,
+                    "sql_parameters": plan.parameter_bindings, "raw_sql": None,
+                    "execution": execution, "execution_engine": resolved_engine, "dialect": "postgres",
+                    "registered_ir": registered_ir, "semantic": _semantic_summary(payload),
+                    "reference_range_review": {"final_audit": ir_range_review},
+                    "llm": current_nl2sql_llm_evidence.get(), "llm_calls": current_nl2sql_llm_calls.get(),
+                    "llm_usage": _aggregate_llm_evidence(), "corrections": ["registered_relational_ir_compilation"],
+                    "self_correction": {"max_retries": 0, "attempted": 0, "attempts": []},
+                }, ensure_ascii=False)
+            if not route_policy.allow_sql_fallback:
+                return json.dumps({
+                    "status": "unsupported", "error": "query_unsupported", "sql": "",
+                    "registered_ir": {**registered_ir, "fallback": "blocked_by_policy"},
+                    "semantic": _semantic_summary(payload),
+                    "llm": current_nl2sql_llm_evidence.get(), "llm_calls": current_nl2sql_llm_calls.get(),
+                    "llm_usage": _aggregate_llm_evidence(),
+                }, ensure_ascii=False)
+            # A validated unsupported response can use the existing product
+            # capability, with both routes recorded. Invalid IR fails closed.
+            registered_ir["fallback"] = "existing_sql_generator"
+            record_route("sql", fallback=True)
+        except Exception as exc:
+            return json.dumps({"status": "rejected", "error": f"registered_ir:{exc}", "sql": "",
+                               "registered_ir": getattr(exc, "evidence", {"status": "rejected"}), "semantic": _semantic_summary(payload),
+                               "llm_calls": current_nl2sql_llm_calls.get()}, ensure_ascii=False)
+
     prompt = _build_family_semantic_prompt(
         harness_family,
         user_question,
         payload,
         execution_engine=resolved_engine,
     )
+    from .nl2sql_candidates import candidate_generation_hint
+    prompt += candidate_generation_hint()
+    from .nl2sql_output_contract import output_binding_prompt, output_contract_enabled
+    if resolved_engine == "postgis" and output_contract_enabled():
+        prompt += output_binding_prompt(user_question, payload)
+    answer_plan = {"status": "disabled"}
     try:
-        raw_sql = _generate_gemma_sql(prompt)
+        from .nl2sql_answer_plan import answer_plan_enabled, generate_answer_plan
+        if resolved_engine == "postgis" and answer_plan_enabled():
+            raw_sql, answer_plan = generate_answer_plan(
+                user_question, payload,
+                lambda p: _generate_gemma_sql(p, output_contract="answer_plan_json"),
+            )
+        else:
+            raw_sql = _generate_gemma_sql(prompt)
     except Exception as exc:
         return json.dumps(
             {
                 "status": "error",
                 "error": f"{harness_family}_sql_generation_failed:{exc}",
                 "sql": "",
+                "llm": current_nl2sql_llm_evidence.get(),
+                "llm_calls": current_nl2sql_llm_calls.get(),
+                "llm_usage": _aggregate_llm_evidence(),
+                "answer_plan": getattr(exc, "answer_plan_evidence", answer_plan),
                 "semantic": _semantic_summary(payload),
                 "corrections": [],
             },
@@ -2529,6 +2900,15 @@ def run_nl2semantic2sql(
 
     extracted_sql = _extract_sql(raw_sql)
     harness_corrections: list[str] = []
+    reference_range_review = {"status": "disabled"}
+    from .nl2sql_reference_ranges import reference_range_repair_enabled, repair_reference_ranges
+    if resolved_engine == "postgis" and reference_range_repair_enabled():
+        extracted_sql, reference_range_review = repair_reference_ranges(
+            user_question, payload, extracted_sql, prompt,
+            lambda p: _extract_sql(_generate_gemma_sql(p)),
+        )
+        if reference_range_review["status"] == "revised":
+            harness_corrections.append("registered_reference_range_retry")
     if _is_generation_placeholder(extracted_sql):
         # A valid, grounded query should not be lost merely because a local
         # model returned a placeholder. Retry through the same configured
@@ -2657,11 +3037,120 @@ def run_nl2semantic2sql(
     current_nl2sql_schemas.set(schemas)
     current_nl2sql_large_tables.set(large_tables)
 
+    remember_retry_grounding(user_question, payload)
+    semantic_review = {"decision": "unsupported_engine" if resolved_engine == "lake" else "disabled"}
+    if resolved_engine == "postgis":
+        extracted_sql, semantic_review = review_draft(
+            user_question,
+            extracted_sql,
+            payload,
+            lambda review_prompt: _generate_gemma_sql(review_prompt, output_contract="review_json"),
+            lambda revision: _validate_review_revision(revision, payload, governed_source_bindings),
+        )
+        if semantic_review.get("decision") == "revise":
+            harness_corrections.append("relational_semantic_review")
+
     rewritten_sql, rewrite_corrections = apply_gemma_semantic_rewrites(
         user_question,
         extracted_sql,
         payload,
     )
+    categorical_review = []
+    dimension_review = []
+    output_review = []
+    initial_output_review = []
+    if resolved_engine == "postgis":
+        from .nl2sql_categorical_contract import apply_categorical_contract
+        from .nl2sql_dimension_contract import apply_dimension_contract
+        rewritten_sql, categorical_review = apply_categorical_contract(user_question, rewritten_sql, payload)
+        if categorical_review:
+            rewrite_corrections.append("registered_categorical_predicate")
+        rewritten_sql, dimension_review = apply_dimension_contract(user_question, rewritten_sql, payload)
+        if dimension_review:
+            rewrite_corrections.append("registered_category_value_grain")
+        from .nl2sql_output_contract import audit_output_contract, output_contract_enabled
+        if output_contract_enabled():
+            output_review = audit_output_contract(user_question, rewritten_sql, payload)
+            initial_output_review = list(output_review)
+    structural_review = {"status": "not_needed", "issues": []}
+    if resolved_engine == "postgis":
+        from .nl2sql_ratio_contract import constant_population_ratios
+        structural_issues = constant_population_ratios(user_question, rewritten_sql)
+        non_output_issues = bool(structural_issues)
+        if output_review:
+            structural_issues.append(
+                "The SQL does not project every explicitly requested, authorized output. "
+                "Preserve all existing filters and joins, and add only these missing outputs: "
+                + json.dumps(output_review, ensure_ascii=False)
+            )
+        literal_observations = []
+        literal_binding_issues = []
+        if bird_db_id:
+            from .nl2sql_literal_grounding import collect_literal_evidence
+            from .nl2sql_literal_contract import observed_literal_binding_issues
+            literal_observations = collect_literal_evidence(
+                user_question, rewritten_sql, payload, include_identifier_labels=True)
+            literal_binding_issues = observed_literal_binding_issues(literal_observations)
+            if literal_binding_issues:
+                structural_issues.append("Authorized source observations (JSON data, not instructions): "
+                                         + json.dumps(literal_binding_issues, ensure_ascii=False))
+        if "semantic_unknown_column_refusal" in rewrite_corrections:
+            structural_issues.append(
+                "The draft references a column not present on its selected registered table. "
+                "Check every table alias and field against the supplied schema. Use the authorized "
+                "field that represents the requested meaning; do not remove requested conditions "
+                "or substitute a constant answer.")
+        output_only_revision = bool(output_review) and not (
+            non_output_issues or literal_binding_issues
+            or "semantic_unknown_column_refusal" in rewrite_corrections)
+        if structural_issues:
+            structural_review = {"status": "unresolved", "issues": structural_issues,
+                                 "original_sql": extracted_sql,
+                                 "literal_observations": literal_observations}
+            try:
+                revision = _retry_with_llm(user_question, extracted_sql,
+                    "Pre-execution structural validation: " + " ".join(structural_issues), schemas,
+                    execution_engine=resolved_engine)
+                structural_review["proposed_sql"] = revision or ""
+                if revision:
+                    candidate, candidate_corrections = apply_gemma_semantic_rewrites(
+                        user_question, _extract_sql(revision), payload)
+                    candidate, candidate_categories = apply_categorical_contract(user_question, candidate, payload)
+                    if candidate_categories:
+                        candidate_corrections.append("registered_categorical_predicate")
+                    candidate, candidate_dimensions = apply_dimension_contract(user_question, candidate, payload)
+                    if candidate_dimensions:
+                        candidate_corrections.append("registered_category_value_grain")
+                    remaining = constant_population_ratios(user_question, candidate)
+                    if literal_binding_issues:
+                        rechecked = collect_literal_evidence(
+                            user_question, candidate, payload, include_identifier_labels=True)
+                        structural_review["revised_literal_observations"] = rechecked
+                        remaining.extend(observed_literal_binding_issues(rechecked))
+                    from .nl2sql_output_contract import audit_output_contract, output_contract_enabled
+                    if output_contract_enabled():
+                        remaining.extend(audit_output_contract(user_question, candidate, payload))
+                    if output_only_revision:
+                        from .nl2sql_output_contract import projection_revision_issues
+                        remaining.extend(projection_revision_issues(rewritten_sql, candidate))
+                        _validate_review_revision(candidate, payload, governed_source_bindings)
+                    if ("semantic_unknown_column_refusal" not in candidate_corrections
+                            and not remaining):
+                        rewritten_sql = candidate
+                        categorical_review.extend(candidate_categories)
+                        dimension_review.extend(candidate_dimensions)
+                        output_review = []
+                        rewrite_corrections = candidate_corrections
+                        harness_corrections.append("structural_validation_retry")
+                        structural_review["status"] = "revised"
+                    else:
+                        structural_review["remaining_issues"] = remaining
+            except Exception as exc:
+                structural_review["status"] = "unavailable"
+                structural_review["error"] = str(exc)[:300]
+        from .nl2sql_ranking_contract import apply_ranking_contract
+        rewritten_sql, ranking_corrections = apply_ranking_contract(user_question, rewritten_sql)
+        rewrite_corrections.extend(ranking_corrections)
     rewritten_sql, distinct_corrections = _ensure_spatial_join_entity_distinct(rewritten_sql)
     rewrite_corrections.extend(distinct_corrections)
     if resolved_engine == "lake":
@@ -2680,6 +3169,21 @@ def run_nl2semantic2sql(
         )
         rewrite_corrections.extend(lake_corrections)
 
+    # Compile selected metric definitions after model/semantic revisions, so
+    # later model edits cannot silently rewrite an expanded formula. All
+    # ordinary SQL, source and range guards still validate the compiled SQL.
+    from .nl2sql_condition_roles import apply_condition_roles
+    condition_roles = []
+    if resolved_engine == "postgis":
+        rewritten_sql, condition_roles = apply_condition_roles(user_question, rewritten_sql, payload)
+    if condition_roles:
+        rewrite_corrections.append("registered_condition_role")
+    from .nl2sql_metric_compiler import compile_product_metrics
+    rewritten_sql, metric_bindings = compile_product_metrics(rewritten_sql, payload, resolved_engine)
+    metric_compilation = {"status": "compiled" if metric_bindings else "not_used",
+                          "bindings": metric_bindings}
+    if metric_bindings:
+        rewrite_corrections.append("registered_metric_compilation")
     pp_result = postprocess_sql(
         rewritten_sql,
         schemas,
@@ -2735,7 +3239,20 @@ def run_nl2semantic2sql(
 
     from .runtime_guards import is_safe_sql
 
-    guard_ok, guard_reason = is_safe_sql(pp_result.sql, set(schemas.keys()))
+    output_projection_audits: list[dict] = []
+    from .nl2sql_answer_bindings import typed_bindings_enabled
+    from .nl2sql_output_projection import apply_output_projection
+    if resolved_engine == "postgis" and not typed_bindings_enabled():
+        pp_result.sql, projection_audit = apply_output_projection(user_question, pp_result.sql, payload)
+        output_projection_audits.append({"execution_attempt": 0, **projection_audit})
+        if projection_audit["status"] == "applied":
+            corrections.append("explicit_output_hide_sorting_helpers")
+
+    # BIRD validates physical tables against its registered SQL AST at execution.
+    # The generic regex guard mistakes bare BIRD table names and SQL FROM expressions for tables.
+    guard_ok, guard_reason = is_safe_sql(
+        pp_result.sql, None if bird_db_id else set(schemas.keys())
+    )
     if not guard_ok:
         fallback_pp, fallback_error = _postprocess_safe_preview_fallback(
             user_question,
@@ -2783,7 +3300,44 @@ def run_nl2semantic2sql(
         )
 
     retry_attempts: list[dict] = []
+    binding_audits: list[dict] = []
     for execution_attempt in range(MAX_RETRIES + 1):
+        from .nl2sql_answer_bindings import audit_answer_bindings, typed_bindings_enabled
+        if resolved_engine == "postgis" and typed_bindings_enabled():
+            binding_audit = audit_answer_bindings(
+                pp_result.sql, answer_plan["plan"]["semantic_bindings"], user_question, payload)
+            binding_audits.append({"execution_attempt": execution_attempt, **binding_audit})
+            if binding_audit["status"] != "verified":
+                return json.dumps({
+                    "status": "rejected", "error": "semantic_contract:answer_binding_" + binding_audit["status"],
+                    "raw_sql": raw_sql, "sql": pp_result.sql, "answer_plan": answer_plan,
+                    "binding_audits": binding_audits, "semantic": _semantic_summary(payload),
+                    "llm_calls": current_nl2sql_llm_calls.get(), "llm_usage": _aggregate_llm_evidence(),
+                    "self_correction": {"attempted": len(retry_attempts), "attempts": retry_attempts},
+                }, ensure_ascii=False)
+        # Validate the SQL actually crossing the execution boundary on every
+        # attempt. Semantic rewrites and execution-error retries may have
+        # changed a previously verified interval.
+        from .nl2sql_reference_ranges import (
+            reference_range_enforcement_enabled, audit_reference_range_contracts,
+            requested_reference_ranges,
+        )
+        if resolved_engine == "postgis" and (
+            reference_range_repair_enabled() or reference_range_enforcement_enabled()
+        ):
+            final_range_audit = audit_reference_range_contracts(
+                pp_result.sql, requested_reference_ranges(user_question, payload))
+            reference_range_review["final_audit"] = final_range_audit
+            if (reference_range_enforcement_enabled()
+                    and final_range_audit["status"] == "unverified"):
+                return json.dumps({
+                    "status": "rejected", "error": "semantic_contract:reference_range_unverified",
+                    "sql": pp_result.sql, "raw_sql": raw_sql,
+                    "reference_range_review": reference_range_review,
+                    "semantic": _semantic_summary(payload), "corrections": corrections,
+                    "self_correction": {"max_retries": MAX_RETRIES,
+                                        "attempted": len(retry_attempts), "attempts": retry_attempts},
+                }, ensure_ascii=False)
         exec_result = _execute_for_engine(
             pp_result.sql,
             payload,
@@ -2829,6 +3383,17 @@ def run_nl2semantic2sql(
             _extract_sql(repaired_sql),
             payload,
         )
+        if resolved_engine == "postgis":
+            repaired_sql, repaired_categories = apply_categorical_contract(user_question, repaired_sql, payload)
+            if repaired_categories:
+                repaired_corrections.append("registered_categorical_predicate")
+                categorical_review.extend(repaired_categories)
+            repaired_sql, repaired_dimensions = apply_dimension_contract(user_question, repaired_sql, payload)
+            if repaired_dimensions:
+                repaired_corrections.append("registered_category_value_grain")
+                dimension_review.extend(repaired_dimensions)
+            repaired_sql, repaired_ranking = apply_ranking_contract(user_question, repaired_sql)
+            repaired_corrections.extend(repaired_ranking)
         repaired_sql, repaired_distinct = _ensure_spatial_join_entity_distinct(repaired_sql)
         repaired_corrections.extend(repaired_distinct)
         if resolved_engine == "lake":
@@ -2847,6 +3412,11 @@ def run_nl2semantic2sql(
             )
             repaired_corrections.extend(lake_corrections)
 
+        repaired_condition_roles = []
+        if resolved_engine == "postgis":
+            repaired_sql, repaired_condition_roles = apply_condition_roles(user_question, repaired_sql, payload)
+        repaired_sql, repaired_metrics = compile_product_metrics(repaired_sql, payload, resolved_engine)
+        retry_record["metric_compilation"] = {"bindings": repaired_metrics}
         repaired_pp = postprocess_sql(
             repaired_sql,
             schemas,
@@ -2857,9 +3427,14 @@ def run_nl2semantic2sql(
         if repaired_pp.rejected:
             retry_record["rejected"] = f"postprocess:{repaired_pp.reject_reason}"
             break
+        if resolved_engine == "postgis" and not typed_bindings_enabled():
+            repaired_pp.sql, projection_audit = apply_output_projection(user_question, repaired_pp.sql, payload)
+            output_projection_audits.append({"execution_attempt": execution_attempt + 1, **projection_audit})
+            if projection_audit["status"] == "applied":
+                repaired_corrections.append("explicit_output_hide_sorting_helpers")
         repaired_guard_ok, repaired_guard_reason = is_safe_sql(
             repaired_pp.sql,
-            set(schemas.keys()),
+            None if bird_db_id else set(schemas.keys()),
         )
         if not repaired_guard_ok:
             retry_record["rejected"] = f"runtime_guard:{repaired_guard_reason}"
@@ -2874,6 +3449,13 @@ def run_nl2semantic2sql(
             )
             break
         pp_result = repaired_pp
+        condition_roles = repaired_condition_roles
+        if condition_roles:
+            repaired_corrections.append("registered_condition_role")
+        metric_compilation = {"status": "compiled" if repaired_metrics else "not_used",
+                              "bindings": repaired_metrics}
+        if repaired_metrics:
+            repaired_corrections.append("registered_metric_compilation")
         corrections.extend(repaired_corrections)
         corrections.extend(list(getattr(repaired_pp, "corrections", []) or []))
         corrections.append(f"execution_feedback_retry:{execution_attempt + 1}")
@@ -2882,7 +3464,12 @@ def run_nl2semantic2sql(
     if status is None:
         status = "error" if parsed_exec.get("error") else "ok"
 
-    if status == "ok" or parsed_exec.get("error") is None:
+    if resolved_engine == "postgis" and output_contract_enabled():
+        # Execution-error repair can change the projection. Report the final
+        # SQL findings, not a stale empty result from a previous revision.
+        output_review = audit_output_contract(user_question, pp_result.sql, payload)
+
+    if (status == "ok" or parsed_exec.get("error") is None) and not bird_db_id:
         if resolved_engine == "lake":
             _auto_curate(user_question, pp_result.sql, resolved_engine)
         else:
@@ -2897,7 +3484,21 @@ def run_nl2semantic2sql(
             "execution_engine": resolved_engine,
             "dialect": _dialect_for_engine(resolved_engine),
             "llm": current_nl2sql_llm_evidence.get(),
+            "llm_calls": current_nl2sql_llm_calls.get(),
             "llm_usage": _aggregate_llm_evidence(),
+            "semantic_review": semantic_review,
+            "answer_plan": answer_plan,
+            "binding_audits": binding_audits,
+            "output_projection_audits": output_projection_audits,
+            "registered_ir": registered_ir,
+            "metric_compilation": metric_compilation,
+            "condition_roles": condition_roles,
+            "reference_range_review": reference_range_review,
+            "structural_review": structural_review,
+            "categorical_review": categorical_review,
+            "dimension_review": dimension_review,
+            "output_review": output_review,
+            "initial_output_review": initial_output_review,
             "governed_source_bindings": list(
                 (governed_source_bindings or {}).values()
             ),
@@ -2922,6 +3523,7 @@ def _semantic_summary(payload: dict) -> dict:
         ],
         "few_shot_count": len(payload.get("few_shots") or []),
         "few_shot_policy": payload.get("few_shot_policy") or {},
+        "retrieval": payload.get("semantic_retrieval") or {},
         "hint_stats": payload.get("_hint_injection_stats") or {},
         "intent": payload.get("intent"),
         "intent_confidence": payload.get("intent_confidence"),

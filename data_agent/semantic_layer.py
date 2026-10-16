@@ -16,6 +16,7 @@ Instead, a [语义上下文] block is injected into the prompt with pre-resolved
 
 import os
 import json
+import logging
 import time
 import yaml
 from contextvars import ContextVar
@@ -35,6 +36,10 @@ from .user_context import current_user_id, current_user_role
 T_SEMANTIC_REGISTRY = "agent_semantic_registry"
 T_SEMANTIC_SOURCES = "agent_semantic_sources"
 T_SEMANTIC_DOMAINS = "agent_semantic_domains"
+
+
+def _semantic_source_kind(table_name: str) -> str:
+    return "bird_postgres" if table_name.startswith("bird_") and "." in table_name else "postgis"
 
 # ---------------------------------------------------------------------------
 # YAML Catalog Loading (cached, same pattern as prompts/__init__.py)
@@ -543,9 +548,14 @@ def resolve_semantic_context(user_text: str) -> dict:
                 _inject_user_context(conn)
 
                 rows = _get_cached_sources(conn)
+                from .bird_source import visible_bird_sources
+
+                visible_bird = visible_bird_sources(conn)
 
                 for row in rows:
                     tbl, disp, desc, geom_type, srid, syns = row[:6]
+                    if _semantic_source_kind(str(tbl)) == "bird_postgres" and str(tbl).split(".", 1)[0] not in visible_bird:
+                        continue
                     nl2sql_enabled = bool(row[6]) if len(row) > 6 else True
                     nl2sql_priority = int(row[7] or 0) if len(row) > 7 else 0
                     explicit_table_request = str(tbl).casefold() in (user_text or "").casefold()
@@ -564,7 +574,7 @@ def resolve_semantic_context(user_text: str) -> dict:
                                 "geometry_type": geom_type,
                                 "srid": srid,
                                 "confidence": score,
-                                "source_kind": "postgis",
+                                "source_kind": _semantic_source_kind(str(tbl)),
                                 "nl2sql_enabled": nl2sql_enabled,
                                 "nl2sql_priority": nl2sql_priority,
                             }
@@ -572,7 +582,11 @@ def resolve_semantic_context(user_text: str) -> dict:
 
                 # --- 1b. Column-reverse-lookup: recover tables missed by synonym matching ---
                 matched_table_names = {s["table_name"] for s in result["sources"]}
-                all_table_names = {r[0] for r in rows}
+                all_table_names = {
+                    r[0] for r in rows
+                    if _semantic_source_kind(str(r[0])) != "bird_postgres"
+                    or str(r[0]).split(".", 1)[0] in visible_bird
+                }
                 unmatched_tables = all_table_names - matched_table_names
                 if unmatched_tables:
                     rev_col_rows = _get_cached_registry(conn, list(unmatched_tables))
@@ -588,6 +602,8 @@ def resolve_semantic_context(user_text: str) -> dict:
                         if col_score > 0:
                             reverse_hits[r_tbl] = max(reverse_hits.get(r_tbl, 0), col_score)
                     for r_tbl, best_score in reverse_hits.items():
+                        if r_tbl not in all_table_names:
+                            continue
                         row_match = next((r for r in rows if r[0] == r_tbl), None)
                         if row_match:
                             _, disp, desc, geom_type, srid, _ = row_match[:6]
@@ -604,7 +620,7 @@ def resolve_semantic_context(user_text: str) -> dict:
                                     "geometry_type": geom_type,
                                     "srid": srid,
                                     "confidence": best_score * 0.8,
-                                    "source_kind": "postgis",
+                                    "source_kind": _semantic_source_kind(str(r_tbl)),
                                     "nl2sql_enabled": nl2sql_enabled,
                                     "nl2sql_priority": nl2sql_priority,
                                 }
@@ -914,6 +930,50 @@ def resolve_semantic_context(user_text: str) -> dict:
     return result
 
 
+def registered_bird_dataset_hints(candidate_tables: list[dict], user_text: str = "") -> list[dict]:
+    """Load dataset-scoped BIRD hints only for currently visible candidates."""
+    if current_user_id.get() in (None, "", "anonymous"):
+        return []
+    datasets = sorted({
+        str(table.get("table_name") or "").split(".", 1)[0]
+        for table in candidate_tables or []
+        if str(table.get("table_name") or "").startswith("bird_")
+        and "." in str(table.get("table_name") or "")
+    })
+    if not datasets:
+        return []
+    engine = get_engine()
+    if engine is None:
+        return []
+    try:
+        with engine.connect() as conn:
+            _inject_user_context(conn)
+            from .bird_source import visible_bird_sources
+            visible = visible_bird_sources(conn)
+            authorized = [name for name in datasets if name in visible]
+            if not authorized:
+                return []
+            rows = conn.execute(text("""
+                SELECT scope_ref, hint_kind, hint_text_zh, hint_text_en,
+                       severity, trigger_keywords
+                FROM agent_semantic_hints
+                WHERE scope_type='dataset' AND scope_ref=ANY(:datasets)
+                ORDER BY scope_ref, hint_kind, hint_text_en, hint_text_zh
+            """), {"datasets": authorized}).fetchall()
+        output = []
+        user_lower = (user_text or "").lower()
+        for scope_ref, kind, zh, en, severity, triggers in rows:
+            trigger_list = triggers if isinstance(triggers, list) else json.loads(triggers or "[]")
+            if severity != "critical" and trigger_list and not any(k.lower() in user_lower for k in trigger_list):
+                continue
+            output.append({"scope_ref": scope_ref, "hint_kind": kind,
+                           "hint_text_zh": zh, "hint_text_en": en, "severity": severity})
+        return output
+    except Exception:
+        logging.getLogger(__name__).exception("Could not load registered BIRD dataset semantic hints")
+        return []
+
+
 # ---------------------------------------------------------------------------
 # Context Prompt Builder
 # ---------------------------------------------------------------------------
@@ -1187,6 +1247,7 @@ def register_semantic_annotation(
     aliases_json: str = "[]",
     unit: str = "",
     description: str = "",
+    value_semantics_json: str | None = None,
 ) -> dict:
     """
     [Semantic Tool] Register or update a column-level semantic annotation.
@@ -1200,6 +1261,8 @@ def register_semantic_annotation(
         aliases_json: JSON array of alias strings (e.g. '["面积", "area", "zmj"]').
         unit: Unit of measurement (e.g. "m²", "度").
         description: Human-readable description.
+        value_semantics_json: Optional JSON object patch for governed field rules.
+            Omission preserves existing rules; supplied top-level keys are merged.
 
     Returns:
         Dict with status and message.
@@ -1216,6 +1279,17 @@ def register_semantic_annotation(
     except json.JSONDecodeError:
         return {"status": "error", "message": "Invalid JSON in aliases_json"}
 
+    try:
+        values = {} if value_semantics_json is None else json.loads(value_semantics_json)
+        if not isinstance(values, dict):
+            return {"status": "error", "message": "value_semantics_json must be a JSON object"}
+        if "value_presence" in values:
+            from .nl2sql_value_presence import presence_catalog
+            presence_catalog({"candidate_tables": [{"table_name": table_name, "columns": [
+                {"column_name": column_name, "value_semantics": values}]}]})
+    except (ValueError, TypeError):
+        return {"status": "error", "message": "Invalid governed value semantics"}
+
     owner = current_user_id.get() or "anonymous"
 
     try:
@@ -1225,14 +1299,16 @@ def register_semantic_annotation(
                 text(f"""
                 INSERT INTO {T_SEMANTIC_REGISTRY}
                     (table_name, column_name, semantic_domain, aliases,
-                     unit, description, owner_username, updated_at)
+                     unit, description, owner_username, value_semantics, updated_at)
                 VALUES (:t, :col, :domain, CAST(:aliases AS jsonb),
-                        :unit, :desc, :owner, NOW())
+                        :unit, :desc, :owner, CAST(:values AS jsonb), NOW())
                 ON CONFLICT (table_name, column_name) DO UPDATE SET
                     semantic_domain = :domain,
                     aliases = CAST(:aliases AS jsonb),
                     unit = :unit,
                     description = :desc,
+                    value_semantics = COALESCE({T_SEMANTIC_REGISTRY}.value_semantics, '{{}}'::jsonb)
+                        || CAST(:values AS jsonb),
                     updated_at = NOW()
             """),
                 {
@@ -1243,6 +1319,7 @@ def register_semantic_annotation(
                     "unit": unit,
                     "desc": description,
                     "owner": owner,
+                    "values": json.dumps(values, ensure_ascii=False),
                 },
             )
             conn.commit()
@@ -1381,6 +1458,13 @@ def describe_table_semantic(table_name: str) -> dict:
     Returns:
         Dict with columns (enriched), source metadata, and formatted message.
     """
+    if table_name.startswith("bird_") and "." in table_name:
+        from .bird_source import source_schema
+
+        bird_schema = source_schema(table_name)
+        if bird_schema is not None:
+            return bird_schema
+
     offline_source = next(
         (
             item
@@ -1634,12 +1718,17 @@ def list_semantic_sources() -> dict:
                 ORDER BY {order_clause}
             """)
             ).fetchall()
+            from .bird_source import visible_bird_sources
+
+            visible_bird = visible_bird_sources(conn)
 
             sources = []
             lines = []
             registered_names = set()
             for row in rows:
                 tbl, disp, desc, gt, srid, syns, analyses = row[:7]
+                if _semantic_source_kind(str(tbl)) == "bird_postgres" and str(tbl).split(".", 1)[0] not in visible_bird:
+                    continue
                 syn_list = syns if isinstance(syns, list) else json.loads(syns or "[]")
                 ana_list = analyses if isinstance(analyses, list) else json.loads(analyses or "[]")
                 sources.append(
@@ -1651,7 +1740,7 @@ def list_semantic_sources() -> dict:
                         "srid": srid,
                         "synonyms": syn_list,
                         "suggested_analyses": ana_list,
-                        "source_kind": "postgis",
+                        "source_kind": _semantic_source_kind(str(tbl)),
                         "nl2sql_enabled": bool(row[7]) if len(row) > 7 else True,
                         "nl2sql_priority": int(row[8] or 0) if len(row) > 8 else 0,
                     }
@@ -2277,6 +2366,7 @@ def register_metric(
     description: str = "",
     unit: str = "",
     aliases: str = "",
+    semantic_contract: dict | None = None,
 ) -> dict:
     """
     [Semantic Tool] Register a business metric definition.
@@ -2288,6 +2378,7 @@ def register_metric(
         description: Human-readable description.
         unit: Unit of measurement (e.g. "%", "m²").
         aliases: Comma-separated alternative names.
+        semantic_contract: Governed grain, aggregation, population, NULL policy and provenance.
 
     Returns:
         Dict with status and metric id.
@@ -2296,18 +2387,21 @@ def register_metric(
     if not engine:
         return {"status": "error", "message": "Database not configured"}
 
+    if semantic_contract is not None and not isinstance(semantic_contract, dict):
+        return {"status": "error", "message": "semantic_contract must be an object"}
     owner = current_user_id.get() or "system"
     try:
         with engine.connect() as conn:
             result = conn.execute(
                 text(f"""
                 INSERT INTO {T_SEMANTIC_METRICS}
-                    (metric_name, definition, domain, description, unit, aliases, owner_username)
-                VALUES (:name, :def, :domain, :desc, :unit, :aliases, :owner)
+                    (metric_name, definition, domain, description, unit, aliases, owner_username, semantic_contract)
+                VALUES (:name, :def, :domain, :desc, :unit, :aliases, :owner, CAST(:contract AS JSONB))
                 ON CONFLICT (metric_name, owner_username)
                 DO UPDATE SET definition = EXCLUDED.definition,
                     domain = EXCLUDED.domain, description = EXCLUDED.description,
-                    unit = EXCLUDED.unit, aliases = EXCLUDED.aliases
+                    unit = EXCLUDED.unit, aliases = EXCLUDED.aliases,
+                    semantic_contract = EXCLUDED.semantic_contract
                 RETURNING id
             """),
                 {
@@ -2318,6 +2412,7 @@ def register_metric(
                     "unit": unit,
                     "aliases": aliases,
                     "owner": owner,
+                    "contract": json.dumps(semantic_contract or {}, ensure_ascii=False),
                 },
             )
             row = result.fetchone()
@@ -2345,7 +2440,7 @@ def resolve_metric(user_text: str) -> dict:
         with engine.connect() as conn:
             rows = conn.execute(
                 text(f"""
-                SELECT id, metric_name, definition, domain, description, unit, aliases
+                SELECT id, metric_name, definition, domain, description, unit, aliases, semantic_contract
                 FROM {T_SEMANTIC_METRICS}
                 ORDER BY metric_name
             """)
@@ -2397,6 +2492,7 @@ def resolve_metric(user_text: str) -> dict:
                     "domain": best_match[3],
                     "description": best_match[4],
                     "unit": best_match[5],
+                    "semantic_contract": best_match[7] or {},
                 },
                 "confidence": round(best_score, 2),
                 "message": f"度量 '{best_match[1]}' 的定义: {best_match[2]}",
@@ -2429,7 +2525,7 @@ def list_metrics(domain: str = None) -> dict:
             if domain:
                 rows = conn.execute(
                     text(f"""
-                    SELECT id, metric_name, definition, domain, description, unit
+                    SELECT id, metric_name, definition, domain, description, unit, semantic_contract
                     FROM {T_SEMANTIC_METRICS} WHERE domain = :domain
                     ORDER BY metric_name
                 """),
@@ -2438,7 +2534,7 @@ def list_metrics(domain: str = None) -> dict:
             else:
                 rows = conn.execute(
                     text(f"""
-                    SELECT id, metric_name, definition, domain, description, unit
+                    SELECT id, metric_name, definition, domain, description, unit, semantic_contract
                     FROM {T_SEMANTIC_METRICS} ORDER BY metric_name
                 """)
                 ).fetchall()
@@ -2451,6 +2547,7 @@ def list_metrics(domain: str = None) -> dict:
                 "domain": r[3],
                 "description": r[4],
                 "unit": r[5],
+                "semantic_contract": r[6] or {},
             }
             for r in rows
         ]

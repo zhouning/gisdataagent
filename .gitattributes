@@ -1,0 +1,2 @@
+# Keep the diagnostic CSV's original CRLF bytes while checking other whitespace.
+benchmarks/bird_full150_v9_离线改进清单_20261016.csv whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

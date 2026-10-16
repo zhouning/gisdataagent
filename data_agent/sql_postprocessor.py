@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Optional
 
 import sqlglot
 import sqlglot.expressions as exp
+from .nl2sql_observability import observe_stage
 
 if TYPE_CHECKING:
     from .nl2sql_intent import IntentLabel
@@ -262,6 +263,7 @@ def explain_row_estimate(sql: str, timeout_ms: int = 2000) -> Optional[int]:
         return None
 
 
+@observe_stage("query.postprocess")
 def postprocess_sql(
     raw_sql: str,
     table_schemas: dict,

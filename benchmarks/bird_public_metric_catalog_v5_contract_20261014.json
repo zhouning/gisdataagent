@@ -1,0 +1,2547 @@
+{
+  "version": "bird-public-metric-contracts-v1",
+  "metrics": [
+    {
+      "metric_name": "california_schools_frpm_record_count",
+      "domain": "bird_california_schools.frpm",
+      "definition": "COUNT(frpm.\"CDSCode\")",
+      "description": "Number of stored frpm records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD california_schools table frpm; foreign keys: CDSCode -> schools.CDSCode. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "frpm count, number of frpm records",
+      "semantic_contract": {
+        "row_grain": "BIRD california_schools table frpm; foreign keys: CDSCode -> schools.CDSCode",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/california_schools/database_description/frpm.csv",
+          "artifact_sha256": "f2c3fa53a02c5d711866a192f580c6a545389192a096441767f40d72ffa41334"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "california_schools_satscores_record_count",
+      "domain": "bird_california_schools.satscores",
+      "definition": "COUNT(satscores.\"cds\")",
+      "description": "Number of stored satscores records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD california_schools table satscores; foreign keys: cds -> schools.CDSCode. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "satscores count, number of satscores records",
+      "semantic_contract": {
+        "row_grain": "BIRD california_schools table satscores; foreign keys: cds -> schools.CDSCode",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/california_schools/database_description/satscores.csv",
+          "artifact_sha256": "a44145158100894387d05a96987c487e3c83742892b13127b486de309bb8f138"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "california_schools_schools_record_count",
+      "domain": "bird_california_schools.schools",
+      "definition": "COUNT(schools.\"CDSCode\")",
+      "description": "Number of stored schools records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD california_schools table schools. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "schools count, number of schools records",
+      "semantic_contract": {
+        "row_grain": "BIRD california_schools table schools",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/california_schools/database_description/schools.csv",
+          "artifact_sha256": "f18d96abf47892e4bd8094dd47d6978ea6bbc11821eccdf91f3f54dd1685979f"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "card_games_cards_record_count",
+      "domain": "bird_card_games.cards",
+      "definition": "COUNT(cards.\"id\")",
+      "description": "Number of stored card printing records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: One stored card printing; name alone is not a unique printing. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "card printing count, number of card printing records",
+      "semantic_contract": {
+        "row_grain": "One stored card printing; name alone is not a unique printing",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/card_games/database_description/cards.csv",
+          "artifact_sha256": "41bc566e91e165f43f7484a1d3d3f17e66094e2c0cc3092829366f6e2f019d23"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "card_games_foreign_data_record_count",
+      "domain": "bird_card_games.foreign_data",
+      "definition": "COUNT(foreign_data.\"id\")",
+      "description": "Number of stored foreign card translation records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Foreign-language record attached to a card printing. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "foreign card translation count, number of foreign card translation records",
+      "semantic_contract": {
+        "row_grain": "Foreign-language record attached to a card printing",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/card_games/database_description/foreign_data.csv",
+          "artifact_sha256": "ac254726eeb2d0fd574ec64bac31617ac233842623f692469b7569febe9f3310"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "card_games_legalities_record_count",
+      "domain": "bird_card_games.legalities",
+      "definition": "COUNT(legalities.\"id\")",
+      "description": "Number of stored legalities records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Play-format legalities of a card printing, from the printing's legalities mapping. uuid associates the detail with the card printing; format identifies the play format and status describes legality in that format. A printing can have multiple format records with different statuses.. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "legalities count, number of legalities records",
+      "semantic_contract": {
+        "row_grain": "Play-format legalities of a card printing, from the printing's legalities mapping. uuid associates the detail with the card printing; format identifies the play format and status describes legality in that format. A printing can have multiple format records with different statuses.",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/card_games/database_description/legalities.csv",
+          "artifact_sha256": "223def1785f0f6f277db07a7881e8938e4314382697da47c080d14b52f1253e9"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "card_games_rulings_record_count",
+      "domain": "bird_card_games.rulings",
+      "definition": "COUNT(rulings.\"id\")",
+      "description": "Number of stored rulings records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Official rulings attached to a card printing, from its rulings list. uuid associates each ruling with the card printing. date and text describe a ruling; a printing can have multiple ruling records.. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "rulings count, number of rulings records",
+      "semantic_contract": {
+        "row_grain": "Official rulings attached to a card printing, from its rulings list. uuid associates each ruling with the card printing. date and text describe a ruling; a printing can have multiple ruling records.",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/card_games/database_description/rulings.csv",
+          "artifact_sha256": "c50c64dd4d882a17d1a8478cd48b889103a39464c78f3da5dd904fde966bd3d4"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "card_games_sets_record_count",
+      "domain": "bird_card_games.sets",
+      "definition": "COUNT(sets.\"id\")",
+      "description": "Number of stored sets records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD card_games table sets. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "sets count, number of sets records",
+      "semantic_contract": {
+        "row_grain": "BIRD card_games table sets",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/card_games/database_description/sets.csv",
+          "artifact_sha256": "3679c8051713f1574d40ff6793eaebf590705915d20f086ffe3ee930a4ddbb0e"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "card_games_set_translations_record_count",
+      "domain": "bird_card_games.set_translations",
+      "definition": "COUNT(set_translations.\"id\")",
+      "description": "Number of stored set translation records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: One stored language translation for a set. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "set translation count, number of set translation records",
+      "semantic_contract": {
+        "row_grain": "One stored language translation for a set",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/card_games/database_description/set_translations.csv",
+          "artifact_sha256": "d6f172ff2add8a399176cdb9ef32a5d60c8cf11186363e6142bb48a09debb2ff"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "codebase_community_badges_record_count",
+      "domain": "bird_codebase_community.badges",
+      "definition": "COUNT(badges.\"Id\")",
+      "description": "Number of stored badges records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD codebase_community table badges; foreign keys: UserId -> users.Id. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "badges count, number of badges records",
+      "semantic_contract": {
+        "row_grain": "BIRD codebase_community table badges; foreign keys: UserId -> users.Id",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/codebase_community/database_description/badges.csv",
+          "artifact_sha256": "a1a7fc9783f11107c6b80adc54d0404a31d7bc162a1f5ae5e246e4852dc41a09"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "codebase_community_comments_record_count",
+      "domain": "bird_codebase_community.comments",
+      "definition": "COUNT(comments.\"Id\")",
+      "description": "Number of stored comments records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD codebase_community table comments; foreign keys: PostId -> posts.Id, UserId -> users.Id. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "comments count, number of comments records",
+      "semantic_contract": {
+        "row_grain": "BIRD codebase_community table comments; foreign keys: PostId -> posts.Id, UserId -> users.Id",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/codebase_community/database_description/comments.csv",
+          "artifact_sha256": "bd8de09b3eab2b4a1f69d9298460b0f39d919504d5dfb34d00de302b77e520eb"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "codebase_community_postHistory_record_count",
+      "domain": "bird_codebase_community.postHistory",
+      "definition": "COUNT(postHistory.\"Id\")",
+      "description": "Number of stored posthistory records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD codebase_community table postHistory; foreign keys: PostId -> posts.Id, UserId -> users.Id. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "posthistory count, number of posthistory records",
+      "semantic_contract": {
+        "row_grain": "BIRD codebase_community table postHistory; foreign keys: PostId -> posts.Id, UserId -> users.Id",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/codebase_community/database_description/postHistory.csv",
+          "artifact_sha256": "053779c106b3bc61da71744e918b321a2436180e5c57ad2a706e9c29fef11e94"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "codebase_community_postLinks_record_count",
+      "domain": "bird_codebase_community.postLinks",
+      "definition": "COUNT(postLinks.\"Id\")",
+      "description": "Number of stored postlinks records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD codebase_community table postLinks; foreign keys: PostId -> posts.Id, RelatedPostId -> posts.Id. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "postlinks count, number of postlinks records",
+      "semantic_contract": {
+        "row_grain": "BIRD codebase_community table postLinks; foreign keys: PostId -> posts.Id, RelatedPostId -> posts.Id",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/codebase_community/database_description/postLinks.csv",
+          "artifact_sha256": "789fefbd5b9b8db2653f8079c78325d6e3fd23a2ceff69ed7ee8959674ff014c"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "codebase_community_posts_record_count",
+      "domain": "bird_codebase_community.posts",
+      "definition": "COUNT(posts.\"Id\")",
+      "description": "Number of stored posts records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD codebase_community table posts; foreign keys: LastEditorUserId -> users.Id, OwnerUserId -> users.Id, ParentId -> posts.Id. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "posts count, number of posts records",
+      "semantic_contract": {
+        "row_grain": "BIRD codebase_community table posts; foreign keys: LastEditorUserId -> users.Id, OwnerUserId -> users.Id, ParentId -> posts.Id",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/codebase_community/database_description/posts.csv",
+          "artifact_sha256": "33e6883bbadc4fe77b5f4f593f7f23d74c2bc2bc45c8f2086c328beeefeb28e2"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "codebase_community_tags_record_count",
+      "domain": "bird_codebase_community.tags",
+      "definition": "COUNT(tags.\"Id\")",
+      "description": "Number of stored tags records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD codebase_community table tags; foreign keys: ExcerptPostId -> posts.Id. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "tags count, number of tags records",
+      "semantic_contract": {
+        "row_grain": "BIRD codebase_community table tags; foreign keys: ExcerptPostId -> posts.Id",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/codebase_community/database_description/tags.csv",
+          "artifact_sha256": "27bc5022eeb20e18dc588a1f3cb63ac2c23720670f003fdd776ae9a5aad0a0d7"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "codebase_community_users_record_count",
+      "domain": "bird_codebase_community.users",
+      "definition": "COUNT(users.\"Id\")",
+      "description": "Number of stored users records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD codebase_community table users. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "users count, number of users records",
+      "semantic_contract": {
+        "row_grain": "BIRD codebase_community table users",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/codebase_community/database_description/users.csv",
+          "artifact_sha256": "69d3297922932d9b39eb56e673606ba56fb3474a650fe417ea32d4d627160014"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "codebase_community_votes_record_count",
+      "domain": "bird_codebase_community.votes",
+      "definition": "COUNT(votes.\"Id\")",
+      "description": "Number of stored votes records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD codebase_community table votes; foreign keys: PostId -> posts.Id, UserId -> users.Id. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "votes count, number of votes records",
+      "semantic_contract": {
+        "row_grain": "BIRD codebase_community table votes; foreign keys: PostId -> posts.Id, UserId -> users.Id",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/codebase_community/database_description/votes.csv",
+          "artifact_sha256": "9c3856469bc9fd563d86f7062bfb9d632c6e98ae42fd7c52117e0be15e9e7ccf"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "european_football_2_Country_record_count",
+      "domain": "bird_european_football_2.Country",
+      "definition": "COUNT(Country.\"id\")",
+      "description": "Number of stored country records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD european_football_2 table Country. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "country count, number of country records",
+      "semantic_contract": {
+        "row_grain": "BIRD european_football_2 table Country",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/european_football_2/database_description/Country.csv",
+          "artifact_sha256": "e74aa65527321782a69ec5fdc68c3993aa6e1e5684426724776b81d12bcbe437"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "european_football_2_League_record_count",
+      "domain": "bird_european_football_2.League",
+      "definition": "COUNT(League.\"id\")",
+      "description": "Number of stored league records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD european_football_2 table League; foreign keys: country_id -> Country.id. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "league count, number of league records",
+      "semantic_contract": {
+        "row_grain": "BIRD european_football_2 table League; foreign keys: country_id -> Country.id",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/european_football_2/database_description/League.csv",
+          "artifact_sha256": "d44bbef373f44c16dee4729012375c1bf901664f1097e3af4bb3dfc973067437"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "european_football_2_Match_record_count",
+      "domain": "bird_european_football_2.Match",
+      "definition": "COUNT(Match.\"id\")",
+      "description": "Number of stored match records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD european_football_2 table Match; foreign keys: country_id -> Country.id, league_id -> League.id, home_team_api_id -> Team.team_api_id, away_team_api_id -> Team.team_api_id. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "match count, number of match records",
+      "semantic_contract": {
+        "row_grain": "BIRD european_football_2 table Match; foreign keys: country_id -> Country.id, league_id -> League.id, home_team_api_id -> Team.team_api_id, away_team_api_id -> Team.team_api_id",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/european_football_2/database_description/Match.csv",
+          "artifact_sha256": "2facc86ec5e869e7bb61b67fa660591c0a4f6291da79125dc2777a2bdafdd4dd"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "european_football_2_Player_record_count",
+      "domain": "bird_european_football_2.Player",
+      "definition": "COUNT(Player.\"id\")",
+      "description": "Number of stored player records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD european_football_2 table Player. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "player count, number of player records",
+      "semantic_contract": {
+        "row_grain": "BIRD european_football_2 table Player",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/european_football_2/database_description/Player.csv",
+          "artifact_sha256": "a7a3cdc5c995227bbfcddf88d789f9244ffcfe0f6aed8aa69fcbef084149b92c"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "european_football_2_Player_Attributes_record_count",
+      "domain": "bird_european_football_2.Player_Attributes",
+      "definition": "COUNT(Player_Attributes.\"id\")",
+      "description": "Number of stored player attribute observation records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Dated FIFA rating observation for a player. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "player attribute observation count, number of player attribute observation records",
+      "semantic_contract": {
+        "row_grain": "Dated FIFA rating observation for a player",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/european_football_2/database_description/Player_Attributes.csv",
+          "artifact_sha256": "d01a00206b4ec6e94435f3af7e5153abca01931c4e93a519bb86ca5bbd42b46c"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "european_football_2_Team_record_count",
+      "domain": "bird_european_football_2.Team",
+      "definition": "COUNT(Team.\"id\")",
+      "description": "Number of stored team records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD european_football_2 table Team. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "team count, number of team records",
+      "semantic_contract": {
+        "row_grain": "BIRD european_football_2 table Team",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/european_football_2/database_description/Team.csv",
+          "artifact_sha256": "104e03607f09cb41deddcb24a96add08aa2e9d8fc169454c3091a792df9f81ef"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "european_football_2_Team_Attributes_record_count",
+      "domain": "bird_european_football_2.Team_Attributes",
+      "definition": "COUNT(Team_Attributes.\"id\")",
+      "description": "Number of stored team attribute observation records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Dated FIFA rating observation for a team. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "team attribute observation count, number of team attribute observation records",
+      "semantic_contract": {
+        "row_grain": "Dated FIFA rating observation for a team",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/european_football_2/database_description/Team_Attributes.csv",
+          "artifact_sha256": "3fbad7950903c65a467c291282ab90d773a9e517802e0fffad5c5abfa7390840"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "financial_account_record_count",
+      "domain": "bird_financial.account",
+      "definition": "COUNT(account.\"account_id\")",
+      "description": "Number of stored account records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: One row per bank account. frequency is the account statement issuance schedule; date is the account opening date. district_id links the account to a district. Account-to-client association is recorded by disp.account_id and disp.client_id; equal district_id values alone do not establish that a client holds a particular account.. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "account count, number of account records",
+      "semantic_contract": {
+        "row_grain": "One row per bank account. frequency is the account statement issuance schedule; date is the account opening date. district_id links the account to a district. Account-to-client association is recorded by disp.account_id and disp.client_id; equal district_id values alone do not establish that a client holds a particular account.",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/financial/database_description/account.csv",
+          "artifact_sha256": "98f9b72619c30593fadc013efc668d081193f34f2bda1353214c48c8013f03b3"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "financial_card_record_count",
+      "domain": "bird_financial.card",
+      "definition": "COUNT(card.\"card_id\")",
+      "description": "Number of stored card records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: One row per issued payment card. disp_id connects the card to the client-to-account disposition; follow disp to recover the client or account. Card type and issuance date describe the card.. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "card count, number of card records",
+      "semantic_contract": {
+        "row_grain": "One row per issued payment card. disp_id connects the card to the client-to-account disposition; follow disp to recover the client or account. Card type and issuance date describe the card.",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/financial/database_description/card.csv",
+          "artifact_sha256": "1dd79bf48c7696a5e6c3fc4835c9994b129f58307ad75c2f874f9cd1078fe300"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "financial_client_record_count",
+      "domain": "bird_financial.client",
+      "definition": "COUNT(client.\"client_id\")",
+      "description": "Number of stored client records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: One row per client. gender and birth_date describe the person. Accounts associated with the person are linked through disp.client_id and disp.account_id. The district relationship describes district membership and is not the client-to-account association.. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "client count, number of client records",
+      "semantic_contract": {
+        "row_grain": "One row per client. gender and birth_date describe the person. Accounts associated with the person are linked through disp.client_id and disp.account_id. The district relationship describes district membership and is not the client-to-account association.",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/financial/database_description/client.csv",
+          "artifact_sha256": "d1ef6f74b4730737517307c2f3b219496af264d83fe3e34f435c078b368dd800"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "financial_disp_record_count",
+      "domain": "bird_financial.disp",
+      "definition": "COUNT(disp.\"disp_id\")",
+      "description": "Number of stored disp records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: A disposition is a client-to-account association: each row connects one client_id and one account_id. type distinguishes the OWNER role from DISPONENT access. Use this association when joining a client to the accounts they hold or can use; preserve the distinction between ownership and other disposition roles.. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "disp count, number of disp records",
+      "semantic_contract": {
+        "row_grain": "A disposition is a client-to-account association: each row connects one client_id and one account_id. type distinguishes the OWNER role from DISPONENT access. Use this association when joining a client to the accounts they hold or can use; preserve the distinction between ownership and other disposition roles.",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/financial/database_description/disp.csv",
+          "artifact_sha256": "3b7ade14650a78e7122fdf4f423c4dae241e923d73039c65e5e85b7ac7919ffe"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "financial_district_record_count",
+      "domain": "bird_financial.district",
+      "definition": "COUNT(district.\"district_id\")",
+      "description": "Number of stored district records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: One row per district with district name and demographic or economic attributes. A11 is the district average salary, A12/A13 unemployment rates in 1995/1996, and A15/A16 crime counts in 1995/1996. Joining district to accounts or clients repeats district attributes for each joined row; a district-level aggregate and an account/client-weighted aggregate therefore have different meanings.. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "district count, number of district records",
+      "semantic_contract": {
+        "row_grain": "One row per district with district name and demographic or economic attributes. A11 is the district average salary, A12/A13 unemployment rates in 1995/1996, and A15/A16 crime counts in 1995/1996. Joining district to accounts or clients repeats district attributes for each joined row; a district-level aggregate and an account/client-weighted aggregate therefore have different meanings.",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/financial/database_description/district.csv",
+          "artifact_sha256": "6da804294fe9e7f9f8285759b842e39e0c5c8cb10390a93d5e292c2cb28fdc48"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "financial_loan_record_count",
+      "domain": "bird_financial.loan",
+      "definition": "COUNT(loan.\"loan_id\")",
+      "description": "Number of stored loan records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: One row per loan on an account, with an approval date, approved amount and duration. status separates two dimensions: contract finished = A or B; contract still running/unfinished = C or D; no repayment problems = A or C; repayment problems/debt = B or D. A means finished without problems, B finished with unpaid debt, C running and OK so far, D running with client in debt. A question that gives only one dimension does not automatically constrain the other dimension. Monetary loan volume is the sum of amount; number of loans counts loan rows. A client associated with a loan is reached through loan.account_id to disp.account_id, then disp.client_id to client.client_id.. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "loan count, number of loan records",
+      "semantic_contract": {
+        "row_grain": "One row per loan on an account, with an approval date, approved amount and duration. status separates two dimensions: contract finished = A or B; contract still running/unfinished = C or D; no repayment problems = A or C; repayment problems/debt = B or D. A means finished without problems, B finished with unpaid debt, C running and OK so far, D running with client in debt. A question that gives only one dimension does not automatically constrain the other dimension. Monetary loan volume is the sum of amount; number of loans counts loan rows. A client associated with a loan is reached through loan.account_id to disp.account_id, then disp.client_id to client.client_id.",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/financial/database_description/loan.csv",
+          "artifact_sha256": "e6f4c7393d3973c9647913206ec4da2b9480bca4a8fb1ed45f4d42c433112756"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "financial_order_record_count",
+      "domain": "bird_financial.order",
+      "definition": "COUNT(order.\"order_id\")",
+      "description": "Number of stored order records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: One row per standing payment order from an account, with destination bank/account, ordered amount and payment-purpose code k_symbol. These are payment instructions. The trans table records individual account transactions; a standing order and a posted transaction have different row grains.. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "order count, number of order records",
+      "semantic_contract": {
+        "row_grain": "One row per standing payment order from an account, with destination bank/account, ordered amount and payment-purpose code k_symbol. These are payment instructions. The trans table records individual account transactions; a standing order and a posted transaction have different row grains.",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/financial/database_description/order.csv",
+          "artifact_sha256": "d01db89f3121b96a8c5876108d835ad0ab8d8bd5e132d9d823d384ae12706476"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "financial_trans_record_count",
+      "domain": "bird_financial.trans",
+      "definition": "COUNT(trans.\"trans_id\")",
+      "description": "Number of stored trans records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: One row per recorded transaction on an account, with transaction date, credit/withdrawal type, operation, amount, resulting balance and purpose code k_symbol. It is linked to account by account_id. Client association is via disp, and account district is via account.district_id.. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "trans count, number of trans records",
+      "semantic_contract": {
+        "row_grain": "One row per recorded transaction on an account, with transaction date, credit/withdrawal type, operation, amount, resulting balance and purpose code k_symbol. It is linked to account by account_id. Client association is via disp, and account district is via account.district_id.",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/financial/database_description/trans.csv",
+          "artifact_sha256": "59efafabbb4347853f29ebfc14fdd18633f724a669e7e26cb7b2ecd628d6c4a2"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula_1_circuits_record_count",
+      "domain": "bird_formula_1.circuits",
+      "definition": "COUNT(circuits.\"circuitId\")",
+      "description": "Number of stored circuits records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD formula_1 table circuits. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "circuits count, number of circuits records",
+      "semantic_contract": {
+        "row_grain": "BIRD formula_1 table circuits",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/circuits.csv",
+          "artifact_sha256": "fd69591f97ae0cb3b36b2d35524f03e5ec250c52358a71b2e41d435f3b2b658d"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula_1_constructorResults_record_count",
+      "domain": "bird_formula_1.constructorResults",
+      "definition": "COUNT(constructorResults.\"constructorResultsId\")",
+      "description": "Number of stored constructor race result records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Constructor points for one race. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "constructor race result count, number of constructor race result records",
+      "semantic_contract": {
+        "row_grain": "Constructor points for one race",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/constructorResults.csv",
+          "artifact_sha256": "b446078a76a422e9fbbb3246acf18a36bc75a441fac5f907555ac7031834f7d5"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula_1_constructors_record_count",
+      "domain": "bird_formula_1.constructors",
+      "definition": "COUNT(constructors.\"constructorId\")",
+      "description": "Number of stored constructors records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD formula_1 table constructors. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "constructors count, number of constructors records",
+      "semantic_contract": {
+        "row_grain": "BIRD formula_1 table constructors",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/constructors.csv",
+          "artifact_sha256": "79eb5ffde214702c1465ffa8584d59d3fc2e6a43fd8c41db91c02402af239dd4"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula_1_constructorStandings_record_count",
+      "domain": "bird_formula_1.constructorStandings",
+      "definition": "COUNT(constructorStandings.\"constructorStandingsId\")",
+      "description": "Number of stored constructor standing observation records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Cumulative constructor championship standing after one race. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "constructor standing observation count, number of constructor standing observation records",
+      "semantic_contract": {
+        "row_grain": "Cumulative constructor championship standing after one race",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/constructorStandings.csv",
+          "artifact_sha256": "d7df8f78744b244375278bb092f8b6d05c9cf4964bdc9cd41eb60261678db861"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula_1_drivers_record_count",
+      "domain": "bird_formula_1.drivers",
+      "definition": "COUNT(drivers.\"driverId\")",
+      "description": "Number of stored drivers records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Driver identity records. driverId identifies the driver used by race results, standings, lap timings, pit stops and qualifying. forename and surname are components of the personal name; a driver can participate in many races and have many observation records.. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "drivers count, number of drivers records",
+      "semantic_contract": {
+        "row_grain": "Driver identity records. driverId identifies the driver used by race results, standings, lap timings, pit stops and qualifying. forename and surname are components of the personal name; a driver can participate in many races and have many observation records.",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/drivers.csv",
+          "artifact_sha256": "0444a1610c97dcc1cb1af25a8aed4dc3ca585a0b27f8326d1bb9ffaa6f4e8635"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula_1_driverStandings_record_count",
+      "domain": "bird_formula_1.driverStandings",
+      "definition": "COUNT(driverStandings.\"driverStandingsId\")",
+      "description": "Number of stored driver standing observation records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Cumulative driver championship standing after one race. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "driver standing observation count, number of driver standing observation records",
+      "semantic_contract": {
+        "row_grain": "Cumulative driver championship standing after one race",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/driverStandings.csv",
+          "artifact_sha256": "3cc467154abbf10dfc7f8ea5fdec512b5674f0683d36b893085a04de5d9aca5e"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula_1_lapTimes_record_count",
+      "domain": "bird_formula_1.lapTimes",
+      "definition": "COUNT(lapTimes.\"driverId\")",
+      "description": "Number of stored lap observation records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: One driver lap in one race. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "lap observation count, number of lap observation records",
+      "semantic_contract": {
+        "row_grain": "One driver lap in one race",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/lapTimes.csv",
+          "artifact_sha256": "6fc86f0867ca9fc350b8583c18a74784d7a2e78afb1bc6462f83e3b7cddf5573"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula_1_pitStops_record_count",
+      "domain": "bird_formula_1.pitStops",
+      "definition": "COUNT(pitStops.\"driverId\")",
+      "description": "Number of stored pit stop records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: One numbered pit stop for a driver in a race. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "pit stop count, number of pit stop records",
+      "semantic_contract": {
+        "row_grain": "One numbered pit stop for a driver in a race",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/pitStops.csv",
+          "artifact_sha256": "6c1c7eb14a445b617710ac286e1f5a303e8b808062fa760c2054c276b2b79fab"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula_1_qualifying_record_count",
+      "domain": "bird_formula_1.qualifying",
+      "definition": "COUNT(qualifying.\"qualifyId\")",
+      "description": "Number of stored qualifying observation records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Driver qualifying result for a race. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "qualifying observation count, number of qualifying observation records",
+      "semantic_contract": {
+        "row_grain": "Driver qualifying result for a race",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/qualifying.csv",
+          "artifact_sha256": "35b7e1ce9def76a653407a54f2b18901768392d92d1ef2484d24c20077c77e0e"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula_1_races_record_count",
+      "domain": "bird_formula_1.races",
+      "definition": "COUNT(races.\"raceId\")",
+      "description": "Number of stored races records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD formula_1 table races; foreign keys: circuitId -> circuits.circuitId, year -> seasons.year. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "races count, number of races records",
+      "semantic_contract": {
+        "row_grain": "BIRD formula_1 table races; foreign keys: circuitId -> circuits.circuitId, year -> seasons.year",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/races.csv",
+          "artifact_sha256": "a8e61de0c7e966c5198c701475d80276065f3a1cf96c3b79051c3541d8fd60d3"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula_1_results_record_count",
+      "domain": "bird_formula_1.results",
+      "definition": "COUNT(results.\"resultId\")",
+      "description": "Number of stored driver race result records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Driver result in one race. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "driver race result count, number of driver race result records",
+      "semantic_contract": {
+        "row_grain": "Driver result in one race",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/results.csv",
+          "artifact_sha256": "7f7cde75b468b8ea135c6ed0872ef30ff715fda691786ca58e70d783b0a23b5d"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula_1_seasons_record_count",
+      "domain": "bird_formula_1.seasons",
+      "definition": "COUNT(seasons.\"year\")",
+      "description": "Number of stored seasons records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD formula_1 table seasons. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "seasons count, number of seasons records",
+      "semantic_contract": {
+        "row_grain": "BIRD formula_1 table seasons",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/seasons.csv",
+          "artifact_sha256": "6a87681dcc94db3f6c81879c8569ec29a966eccc7277aa1d9ad59b16e314e5c9"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula_1_status_record_count",
+      "domain": "bird_formula_1.status",
+      "definition": "COUNT(status.\"statusId\")",
+      "description": "Number of stored status records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD formula_1 table status. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "status count, number of status records",
+      "semantic_contract": {
+        "row_grain": "BIRD formula_1 table status",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/status.csv",
+          "artifact_sha256": "78725236cee342600f862cea296e87a4ea2e047d64d365f594526363f8acde57"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "superhero_alignment_record_count",
+      "domain": "bird_superhero.alignment",
+      "definition": "COUNT(alignment.\"id\")",
+      "description": "Number of stored alignment records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD superhero table alignment. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "alignment count, number of alignment records",
+      "semantic_contract": {
+        "row_grain": "BIRD superhero table alignment",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/superhero/database_description/alignment.csv",
+          "artifact_sha256": "ebff59e5832b2870c298d2bbc85607e0f6b93c4921ff4d3265803d02a8796dce"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "superhero_attribute_record_count",
+      "domain": "bird_superhero.attribute",
+      "definition": "COUNT(attribute.\"id\")",
+      "description": "Number of stored attribute records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD superhero table attribute. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "attribute count, number of attribute records",
+      "semantic_contract": {
+        "row_grain": "BIRD superhero table attribute",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/superhero/database_description/attribute.csv",
+          "artifact_sha256": "3c6bac9176d61e05ba059e8be6a3d5c5aa6eb743f526f07a1570f172cdbf6c72"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "superhero_colour_record_count",
+      "domain": "bird_superhero.colour",
+      "definition": "COUNT(colour.\"id\")",
+      "description": "Number of stored colour records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD superhero table colour. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "colour count, number of colour records",
+      "semantic_contract": {
+        "row_grain": "BIRD superhero table colour",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/superhero/database_description/colour.csv",
+          "artifact_sha256": "ba732eddb938dc077cbc3f038057f566f9f12ccb53cc131168a5da538514b9cf"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "superhero_gender_record_count",
+      "domain": "bird_superhero.gender",
+      "definition": "COUNT(gender.\"id\")",
+      "description": "Number of stored gender records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD superhero table gender. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "gender count, number of gender records",
+      "semantic_contract": {
+        "row_grain": "BIRD superhero table gender",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/superhero/database_description/gender.csv",
+          "artifact_sha256": "7311f964c77b6319184bbfc9ce8cc0ef87a103106bb1d6967461a5c681a3fe08"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "superhero_hero_attribute_record_count",
+      "domain": "bird_superhero.hero_attribute",
+      "definition": "COUNT(hero_attribute.\"hero_id\")",
+      "description": "Number of stored hero attribute observation records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Hero and attribute value relationship. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "hero attribute observation count, number of hero attribute observation records",
+      "semantic_contract": {
+        "row_grain": "Hero and attribute value relationship",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/superhero/database_description/hero_attribute.csv",
+          "artifact_sha256": "65af1dfdb96e4ddaba6262f3dffe9f61ea240c31d0ea2122e974d769827f039b"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "superhero_hero_power_record_count",
+      "domain": "bird_superhero.hero_power",
+      "definition": "COUNT(hero_power.\"hero_id\")",
+      "description": "Number of stored hero power relationship records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Hero and superpower relationship. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "hero power relationship count, number of hero power relationship records",
+      "semantic_contract": {
+        "row_grain": "Hero and superpower relationship",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/superhero/database_description/hero_power.csv",
+          "artifact_sha256": "54eb40baa6b5b726bff28c872478caa8da8500f195239f8c6c3c552797c3794f"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "superhero_publisher_record_count",
+      "domain": "bird_superhero.publisher",
+      "definition": "COUNT(publisher.\"id\")",
+      "description": "Number of stored publisher records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD superhero table publisher. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "publisher count, number of publisher records",
+      "semantic_contract": {
+        "row_grain": "BIRD superhero table publisher",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/superhero/database_description/publisher.csv",
+          "artifact_sha256": "232e8656107f426beb3c7a25f1833afb295dbfa2ae3981b2a200f08ed4f1f000"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "superhero_race_record_count",
+      "domain": "bird_superhero.race",
+      "definition": "COUNT(race.\"id\")",
+      "description": "Number of stored race records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD superhero table race. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "race count, number of race records",
+      "semantic_contract": {
+        "row_grain": "BIRD superhero table race",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/superhero/database_description/race.csv",
+          "artifact_sha256": "8eb79fe0d1fc7d5641eff43d34e0e10b89fa726360d913bbee31dd55191064c7"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "superhero_superhero_record_count",
+      "domain": "bird_superhero.superhero",
+      "definition": "COUNT(superhero.\"id\")",
+      "description": "Number of stored superhero records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD superhero table superhero; foreign keys: alignment_id -> alignment.id, eye_colour_id -> colour.id, gender_id -> gender.id, hair_colour_id -> colour.id, publisher_id -> publisher.id, race_id -> race.id, skin_colour_id -> colour.id. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "superhero count, number of superhero records",
+      "semantic_contract": {
+        "row_grain": "BIRD superhero table superhero; foreign keys: alignment_id -> alignment.id, eye_colour_id -> colour.id, gender_id -> gender.id, hair_colour_id -> colour.id, publisher_id -> publisher.id, race_id -> race.id, skin_colour_id -> colour.id",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/superhero/database_description/superhero.csv",
+          "artifact_sha256": "503f0a71acd1766923c571865277f81accbf79b2c9d8df4a18439dfe01ec6f44"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "superhero_superpower_record_count",
+      "domain": "bird_superhero.superpower",
+      "definition": "COUNT(superpower.\"id\")",
+      "description": "Number of stored superpower records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD superhero table superpower. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "superpower count, number of superpower records",
+      "semantic_contract": {
+        "row_grain": "BIRD superhero table superpower",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/superhero/database_description/superpower.csv",
+          "artifact_sha256": "4edef8900f158238382843e348ff9842991c83f1d384c53bef5dd8cb1e613ee2"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_prediction_Examination_record_count",
+      "domain": "bird_thrombosis_prediction.Examination",
+      "definition": "COUNT(Examination.\"ID\")",
+      "description": "Number of stored examination observation records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Examination observation belonging to a patient. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "examination observation count, number of examination observation records",
+      "semantic_contract": {
+        "row_grain": "Examination observation belonging to a patient",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Examination.csv",
+          "artifact_sha256": "b563c9030159bf169236e4582b653386bd34706e309227bf5eceb63b91eb0a89"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_prediction_Laboratory_record_count",
+      "domain": "bird_thrombosis_prediction.Laboratory",
+      "definition": "COUNT(Laboratory.\"ID\")",
+      "description": "Number of stored laboratory observation records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Laboratory test observation belonging to a patient. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "laboratory observation count, number of laboratory observation records",
+      "semantic_contract": {
+        "row_grain": "Laboratory test observation belonging to a patient",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Laboratory.csv",
+          "artifact_sha256": "cf9704e56cf3aca75e38de09277c307a7f0f726301b472254ce66ff4a352ff9f"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_prediction_Patient_record_count",
+      "domain": "bird_thrombosis_prediction.Patient",
+      "definition": "COUNT(Patient.\"ID\")",
+      "description": "Number of stored patient records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Patient identified by ID. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "patient count, number of patient records",
+      "semantic_contract": {
+        "row_grain": "Patient identified by ID",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Patient.csv",
+          "artifact_sha256": "519838a9f2592760bb26d1fb4f074bc304eee4e7aeaf46d03f652c370230e175"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "toxicology_atom_record_count",
+      "domain": "bird_toxicology.atom",
+      "definition": "COUNT(atom.\"atom_id\")",
+      "description": "Number of stored atom records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD toxicology table atom; foreign keys: molecule_id -> molecule.molecule_id. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "atom count, number of atom records",
+      "semantic_contract": {
+        "row_grain": "BIRD toxicology table atom; foreign keys: molecule_id -> molecule.molecule_id",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/toxicology/database_description/atom.csv",
+          "artifact_sha256": "9de75492701c77c1229242e8c3b688ced9eb9095ac59d37361dfb0ec34300245"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "toxicology_bond_record_count",
+      "domain": "bird_toxicology.bond",
+      "definition": "COUNT(bond.\"bond_id\")",
+      "description": "Number of stored bond records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD toxicology table bond; foreign keys: molecule_id -> molecule.molecule_id. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "bond count, number of bond records",
+      "semantic_contract": {
+        "row_grain": "BIRD toxicology table bond; foreign keys: molecule_id -> molecule.molecule_id",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/toxicology/database_description/bond.csv",
+          "artifact_sha256": "7d200d38b0dcc07e8fe22718bd6bdb1bdf4b6522b7a84a5d0c95340b6d8cb4bc"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "toxicology_connected_record_count",
+      "domain": "bird_toxicology.connected",
+      "definition": "COUNT(connected.\"atom_id\")",
+      "description": "Number of stored bond endpoint relationship records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: Stored bond endpoints; both endpoint columns refer to atoms. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "bond endpoint relationship count, number of bond endpoint relationship records",
+      "semantic_contract": {
+        "row_grain": "Stored bond endpoints; both endpoint columns refer to atoms",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/toxicology/database_description/connected.csv",
+          "artifact_sha256": "589b24206b9f884863ca57f3e339abcb2409a15feeaff0b08afcd955cd211036"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "toxicology_molecule_record_count",
+      "domain": "bird_toxicology.molecule",
+      "definition": "COUNT(molecule.\"molecule_id\")",
+      "description": "Number of stored molecule records. Entity counts across one-to-many joins require the target entity identifier, not repeated observation rows. Grain: BIRD toxicology table molecule. Aggregation: COUNT at the documented stored row grain; before joins that multiply it.. Population: The population explicitly requested by the user. NULL/zero policy: COUNT of the non-null record identifier; no automatic deduplication of observations.",
+      "unit": "records",
+      "aliases": "molecule count, number of molecule records",
+      "semantic_contract": {
+        "row_grain": "BIRD toxicology table molecule",
+        "aggregation": "COUNT at the documented stored row grain; before joins that multiply it.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "COUNT of the non-null record identifier; no automatic deduplication of observations.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/toxicology/database_description/molecule.csv",
+          "artifact_sha256": "a6ff2966916d03b07fd3ce275823d9ec65abb0b55158e871b07c40972b292d70"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "california_free_meal_rate_ages5_17",
+      "domain": "bird_california_schools.frpm",
+      "definition": "frpm.\"Free Meal Count (Ages 5-17)\" / NULLIF(frpm.\"Enrollment (Ages 5-17)\", 0)",
+      "description": "Free-meal eligibility share among students ages 5-17, excluding reduced-price-only eligibility. Grain: One source record before aggregation. Aggregation: Use the registered expression at the requested grouping grain. Do not sum percentages across groups.. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "ratio",
+      "aliases": "ages 5-17 eligible free rate, ages 5-17 free meal rate",
+      "semantic_contract": {
+        "row_grain": "One source record before aggregation",
+        "aggregation": "Use the registered expression at the requested grouping grain. Do not sum percentages across groups.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/california_schools/database_description/frpm.csv",
+          "artifact_sha256": "f2c3fa53a02c5d711866a192f580c6a545389192a096441767f40d72ffa41334"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "california_free_meal_rate_k12",
+      "domain": "bird_california_schools.frpm",
+      "definition": "frpm.\"Free Meal Count (K-12)\" / NULLIF(frpm.\"Enrollment (K-12)\", 0)",
+      "description": "K-12 free-meal eligibility share, excluding reduced-price-only eligibility. Grain: One source record before aggregation. Aggregation: Use the registered expression at the requested grouping grain. Do not sum percentages across groups.. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "ratio",
+      "aliases": "K-12 eligible free rate, K-12 free meal rate",
+      "semantic_contract": {
+        "row_grain": "One source record before aggregation",
+        "aggregation": "Use the registered expression at the requested grouping grain. Do not sum percentages across groups.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/california_schools/database_description/frpm.csv",
+          "artifact_sha256": "f2c3fa53a02c5d711866a192f580c6a545389192a096441767f40d72ffa41334"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "california_frpm_rate",
+      "domain": "bird_california_schools.frpm",
+      "definition": "frpm.\"FRPM Count (K-12)\" / NULLIF(frpm.\"Enrollment (K-12)\", 0)",
+      "description": "K-12 free or reduced-price meal eligibility share. Use matching K-12 count and enrollment. Free meals alone and ages 5-17 are separate populations. Grain: One source record before aggregation. Aggregation: Use the registered expression at the requested grouping grain. Do not sum percentages across groups.. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "ratio",
+      "aliases": "free reduced price meal rate, FRPM rate, eligible FRPM rate",
+      "semantic_contract": {
+        "row_grain": "One source record before aggregation",
+        "aggregation": "Use the registered expression at the requested grouping grain. Do not sum percentages across groups.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/california_schools/database_description/frpm.csv",
+          "artifact_sha256": "f2c3fa53a02c5d711866a192f580c6a545389192a096441767f40d72ffa41334"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "california_frpm_rate_ages5_17",
+      "domain": "bird_california_schools.frpm",
+      "definition": "frpm.\"FRPM Count (Ages 5-17)\" / NULLIF(frpm.\"Enrollment (Ages 5-17)\", 0)",
+      "description": "Free or reduced-price meal eligibility share among students ages 5-17. Grain: One source record before aggregation. Aggregation: Use the registered expression at the requested grouping grain. Do not sum percentages across groups.. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "ratio",
+      "aliases": "ages 5-17 FRPM rate, eligible FRPM rate ages 5-17",
+      "semantic_contract": {
+        "row_grain": "One source record before aggregation",
+        "aggregation": "Use the registered expression at the requested grouping grain. Do not sum percentages across groups.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/california_schools/database_description/frpm.csv",
+          "artifact_sha256": "f2c3fa53a02c5d711866a192f580c6a545389192a096441767f40d72ffa41334"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "california_excellence_rate",
+      "domain": "bird_california_schools.satscores",
+      "definition": "CAST(satscores.\"NumGE1500\" AS DOUBLE PRECISION) / NULLIF(CAST(satscores.\"NumTstTakr\" AS DOUBLE PRECISION), 0)",
+      "description": "Share of test takers scoring at least 1500, using the official SAT score fields. Grain: One source record before aggregation. Aggregation: Use the registered expression at the requested grouping grain. Do not sum percentages across groups.. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "ratio",
+      "aliases": "excellence rate, excellence ratio, score 1500 rate",
+      "semantic_contract": {
+        "row_grain": "One source record before aggregation",
+        "aggregation": "Use the registered expression at the requested grouping grain. Do not sum percentages across groups.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/california_schools/database_description/satscores.csv",
+          "artifact_sha256": "a44145158100894387d05a96987c487e3c83742892b13127b486de309bb8f138"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "card_foreign_language_rate",
+      "domain": "bird_card_games.foreign_data",
+      "definition": "100.0 * COUNT(foreign_data.id) / NULLIF(SUM(COUNT(foreign_data.id)) OVER (), 0)",
+      "description": "Group foreign_data rows by language to measure each language's percentage of all foreign-language rows in the stated population. Apply any population filters before computing the window denominator; select the requested language after computing shares. Grain: Foreign-language record attached to a card printing. Aggregation: Use the registered expression at the requested grouping grain. Do not sum percentages across groups.. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "percent",
+      "aliases": "foreign language percentage, language share",
+      "semantic_contract": {
+        "row_grain": "Foreign-language record attached to a card printing",
+        "aggregation": "Use the registered expression at the requested grouping grain. Do not sum percentages across groups.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/card_games/database_description/foreign_data.csv",
+          "artifact_sha256": "ac254726eeb2d0fd574ec64bac31617ac233842623f692469b7569febe9f3310"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "football_goal_difference",
+      "domain": "bird_european_football_2.Match",
+      "definition": "Match.away_team_goal - Match.home_team_goal",
+      "description": "Away goals minus home goals for a match. Grain: One source record before aggregation. Aggregation: Use the registered expression at the requested grouping grain. Do not sum percentages across groups.. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "goals",
+      "aliases": "goal difference, away minus home goals, winning margin",
+      "semantic_contract": {
+        "row_grain": "One source record before aggregation",
+        "aggregation": "Use the registered expression at the requested grouping grain. Do not sum percentages across groups.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/european_football_2/database_description/Match.csv",
+          "artifact_sha256": "2facc86ec5e869e7bb61b67fa660591c0a4f6291da79125dc2777a2bdafdd4dd"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "football_build_up_play_passing",
+      "domain": "bird_european_football_2.Team_Attributes",
+      "definition": "Team_Attributes.buildUpPlayPassing",
+      "description": "FIFA team build-up passing score. Grain: Dated FIFA rating observation for a team. Aggregation: Use the registered expression at the requested grouping grain. Do not sum percentages across groups.. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "score",
+      "aliases": "build up play passing, build-up passing, passing score",
+      "semantic_contract": {
+        "row_grain": "Dated FIFA rating observation for a team",
+        "aggregation": "Use the registered expression at the requested grouping grain. Do not sum percentages across groups.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/european_football_2/database_description/Team_Attributes.csv",
+          "artifact_sha256": "3fbad7950903c65a467c291282ab90d773a9e517802e0fffad5c5abfa7390840"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "football_build_up_play_speed",
+      "domain": "bird_european_football_2.Team_Attributes",
+      "definition": "Team_Attributes.buildUpPlaySpeed",
+      "description": "FIFA team attack build-up speed score. Grain: Dated FIFA rating observation for a team. Aggregation: Use the registered expression at the requested grouping grain. Do not sum percentages across groups.. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "score",
+      "aliases": "build up play speed, build-up speed, attack speed",
+      "semantic_contract": {
+        "row_grain": "Dated FIFA rating observation for a team",
+        "aggregation": "Use the registered expression at the requested grouping grain. Do not sum percentages across groups.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/european_football_2/database_description/Team_Attributes.csv",
+          "artifact_sha256": "3fbad7950903c65a467c291282ab90d773a9e517802e0fffad5c5abfa7390840"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "unemployment_rate_increment_percent_1995_1996",
+      "domain": "bird_financial.district",
+      "definition": "100.0 * (district.\"A13\" - district.\"A12\") / NULLIF(district.\"A12\", 0)",
+      "description": "Percentage change in the district unemployment rate from 1995 (A12) to 1996 (A13). Grain: One source record before aggregation. Aggregation: Use the registered expression at the requested grouping grain. Do not sum percentages across groups.. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "percent",
+      "aliases": "unemployment rate increment, unemployment percentage increase, unemployment growth rate",
+      "semantic_contract": {
+        "row_grain": "One source record before aggregation",
+        "aggregation": "Use the registered expression at the requested grouping grain. Do not sum percentages across groups.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/financial/database_description/district.csv",
+          "artifact_sha256": "6da804294fe9e7f9f8285759b842e39e0c5c8cb10390a93d5e292c2cb28fdc48"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula1_completion_rate",
+      "domain": "bird_formula_1.results",
+      "definition": "100.0 * SUM(CASE WHEN results.statusId = 1 THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0)",
+      "description": "Percentage of result rows whose status is finished (statusId 1). Grain: Driver result in one race. Aggregation: Use the registered expression at the requested grouping grain. Do not sum percentages across groups.. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "percent",
+      "aliases": "race completion percentage, completion rate, finished percentage",
+      "semantic_contract": {
+        "row_grain": "Driver result in one race",
+        "aggregation": "Use the registered expression at the requested grouping grain. Do not sum percentages across groups.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/results.csv",
+          "artifact_sha256": "7f7cde75b468b8ea135c6ed0872ef30ff715fda691786ca58e70d783b0a23b5d"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_normal_cpk_threshold",
+      "domain": "bird_thrombosis_prediction.Laboratory",
+      "definition": "Laboratory.CPK < 250",
+      "description": "Normal creatinine phosphokinase boundary documented by the BIRD thrombosis schema. Grain: Laboratory test observation belonging to a patient. Aggregation: Use the registered expression at the requested grouping grain. Do not sum percentages across groups.. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "boolean",
+      "aliases": "normal creatinine phosphokinase, normal CPK",
+      "semantic_contract": {
+        "row_grain": "Laboratory test observation belonging to a patient",
+        "aggregation": "Use the registered expression at the requested grouping grain. Do not sum percentages across groups.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Laboratory.csv",
+          "artifact_sha256": "cf9704e56cf3aca75e38de09277c307a7f0f726301b472254ce66ff4a352ff9f"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "toxicology_double_bond_rate",
+      "domain": "bird_toxicology.bond",
+      "definition": "100.0 * SUM(CASE WHEN bond.bond_type = '=' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0)",
+      "description": "Percentage of bonds represented by the double-bond symbol (=). Grain: One source record before aggregation. Aggregation: Use the registered expression at the requested grouping grain. Do not sum percentages across groups.. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "percent",
+      "aliases": "double bond percentage, double-bond rate, proportion of double bonds",
+      "semantic_contract": {
+        "row_grain": "One source record before aggregation",
+        "aggregation": "Use the registered expression at the requested grouping grain. Do not sum percentages across groups.",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/toxicology/database_description/bond.csv",
+          "artifact_sha256": "7d200d38b0dcc07e8fe22718bd6bdb1bdf4b6522b7a84a5d0c95340b6d8cb4bc"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "school_enrollment_difference_k12_ages5_17",
+      "domain": "bird_california_schools.frpm",
+      "definition": "frpm.\"Enrollment (K-12)\" - frpm.\"Enrollment (Ages 5-17)\"",
+      "description": "Difference between K-12 enrollment and enrollment ages 5-17. These are different public populations. Grain: One school and academic year. Aggregation: Row arithmetic; AVG for an explicitly requested mean across schools. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "students",
+      "aliases": "enrollment difference, K-12 enrollment minus ages 5-17 enrollment",
+      "semantic_contract": {
+        "row_grain": "One school and academic year",
+        "aggregation": "Row arithmetic; AVG for an explicitly requested mean across schools",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/california_schools/database_description/frpm.csv",
+          "artifact_sha256": "f2c3fa53a02c5d711866a192f580c6a545389192a096441767f40d72ffa41334"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "school_mean_reading_score",
+      "domain": "bird_california_schools.satscores",
+      "definition": "satscores.\"AvgScrRead\"",
+      "description": "Reported school SAT average critical reading score; not the sum of reading scores. Grain: One SAT reporting record identified by cds. Aggregation: Reported per-record mean; do not average across schools without a stated weighting policy. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "score",
+      "aliases": "average reading score, mean reading score",
+      "semantic_contract": {
+        "row_grain": "One SAT reporting record identified by cds",
+        "aggregation": "Reported per-record mean; do not average across schools without a stated weighting policy",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/california_schools/database_description/satscores.csv",
+          "artifact_sha256": "a44145158100894387d05a96987c487e3c83742892b13127b486de309bb8f138"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "school_mean_math_score",
+      "domain": "bird_california_schools.satscores",
+      "definition": "satscores.\"AvgScrMath\"",
+      "description": "Reported school SAT average mathematics score. Grain: One SAT reporting record. Aggregation: Reported mean. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "score",
+      "aliases": "average math score, average mathematics score",
+      "semantic_contract": {
+        "row_grain": "One SAT reporting record",
+        "aggregation": "Reported mean",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/california_schools/database_description/satscores.csv",
+          "artifact_sha256": "a44145158100894387d05a96987c487e3c83742892b13127b486de309bb8f138"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "school_sat_participation_rate",
+      "domain": "bird_california_schools.satscores",
+      "definition": "100.0 * satscores.\"NumTstTakr\" / NULLIF(satscores.enroll12,0)",
+      "description": "SAT test-taker percentage among enrolled twelfth-grade students. Grain: One SAT reporting record. Aggregation: Ratio of counts at same population. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "percent",
+      "aliases": "SAT participation rate, twelfth grade test participation",
+      "semantic_contract": {
+        "row_grain": "One SAT reporting record",
+        "aggregation": "Ratio of counts at same population",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/california_schools/database_description/satscores.csv",
+          "artifact_sha256": "a44145158100894387d05a96987c487e3c83742892b13127b486de309bb8f138"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "community_answer_count",
+      "domain": "bird_codebase_community.posts",
+      "definition": "posts.\"AnswerCount\"",
+      "description": "Stored number of answers to a question post. This is different from counting question posts or counting accepted answers. Grain: One question post. Aggregation: Use stored count per question; SUM for total answers across selected question posts. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "answers",
+      "aliases": "number of answers, answer count, total answers",
+      "semantic_contract": {
+        "row_grain": "One question post",
+        "aggregation": "Use stored count per question; SUM for total answers across selected question posts",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/codebase_community/database_description/posts.csv",
+          "artifact_sha256": "33e6883bbadc4fe77b5f4f593f7f23d74c2bc2bc45c8f2086c328beeefeb28e2"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "community_comment_count",
+      "domain": "bird_codebase_community.posts",
+      "definition": "posts.\"CommentCount\"",
+      "description": "Stored comment count for a post. Counting comments rows is a separate observation measure. Grain: One post. Aggregation: Stored count per post; SUM across selected posts. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "comments",
+      "aliases": "number of comments, comment count",
+      "semantic_contract": {
+        "row_grain": "One post",
+        "aggregation": "Stored count per post; SUM across selected posts",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/codebase_community/database_description/posts.csv",
+          "artifact_sha256": "33e6883bbadc4fe77b5f4f593f7f23d74c2bc2bc45c8f2086c328beeefeb28e2"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "community_post_score",
+      "domain": "bird_codebase_community.posts",
+      "definition": "posts.\"Score\"",
+      "description": "Net score of a post. It is different from comment Score and from user Reputation. Grain: One post. Aggregation: Per-post score; aggregate only as requested. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "score",
+      "aliases": "post score, question score, answer score",
+      "semantic_contract": {
+        "row_grain": "One post",
+        "aggregation": "Per-post score; aggregate only as requested",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/codebase_community/database_description/posts.csv",
+          "artifact_sha256": "33e6883bbadc4fe77b5f4f593f7f23d74c2bc2bc45c8f2086c328beeefeb28e2"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "community_user_reputation",
+      "domain": "bird_codebase_community.users",
+      "definition": "users.\"Reputation\"",
+      "description": "User reputation at the data snapshot. This differs from post votes and profile Views. Grain: One user. Aggregation: Per-user snapshot; no time accumulation. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "points",
+      "aliases": "user reputation, reputation score",
+      "semantic_contract": {
+        "row_grain": "One user",
+        "aggregation": "Per-user snapshot; no time accumulation",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/codebase_community/database_description/users.csv",
+          "artifact_sha256": "69d3297922932d9b39eb56e673606ba56fb3474a650fe417ea32d4d627160014"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "community_post_view_count",
+      "domain": "bird_codebase_community.posts",
+      "definition": "posts.\"ViewCount\"",
+      "description": "Number of views of the post; differs from users.Views, which counts profile views. Grain: One post. Aggregation: Stored cumulative count at snapshot. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "views",
+      "aliases": "post views, question views",
+      "semantic_contract": {
+        "row_grain": "One post",
+        "aggregation": "Stored cumulative count at snapshot",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/codebase_community/database_description/posts.csv",
+          "artifact_sha256": "33e6883bbadc4fe77b5f4f593f7f23d74c2bc2bc45c8f2086c328beeefeb28e2"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "football_total_match_goals",
+      "domain": "bird_european_football_2.Match",
+      "definition": "\"Match\".home_team_goal + \"Match\".away_team_goal",
+      "description": "Total home plus away goals scored in one match. Grain: One match. Aggregation: Row sum; SUM across selected matches. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "goals",
+      "aliases": "total goals, match goal total",
+      "semantic_contract": {
+        "row_grain": "One match",
+        "aggregation": "Row sum; SUM across selected matches",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/european_football_2/database_description/Match.csv",
+          "artifact_sha256": "2facc86ec5e869e7bb61b67fa660591c0a4f6291da79125dc2777a2bdafdd4dd"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "football_home_win_count",
+      "domain": "bird_european_football_2.Match",
+      "definition": "SUM(CASE WHEN \"Match\".home_team_goal > \"Match\".away_team_goal THEN 1 ELSE 0 END)",
+      "description": "Number of selected matches won by the home side. Use home_team_api_id to identify that side. Grain: One match. Aggregation: SUM of win indicator over selected matches. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "wins",
+      "aliases": "home wins, home team won",
+      "semantic_contract": {
+        "row_grain": "One match",
+        "aggregation": "SUM of win indicator over selected matches",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/european_football_2/database_description/Match.csv",
+          "artifact_sha256": "2facc86ec5e869e7bb61b67fa660591c0a4f6291da79125dc2777a2bdafdd4dd"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "football_away_win_count",
+      "domain": "bird_european_football_2.Match",
+      "definition": "SUM(CASE WHEN \"Match\".away_team_goal > \"Match\".home_team_goal THEN 1 ELSE 0 END)",
+      "description": "Number of selected matches won by the away side. Use away_team_api_id to identify that side. Grain: One match. Aggregation: SUM of win indicator over selected matches. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "wins",
+      "aliases": "away wins, away team won",
+      "semantic_contract": {
+        "row_grain": "One match",
+        "aggregation": "SUM of win indicator over selected matches",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/european_football_2/database_description/Match.csv",
+          "artifact_sha256": "2facc86ec5e869e7bb61b67fa660591c0a4f6291da79125dc2777a2bdafdd4dd"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "football_draw_count",
+      "domain": "bird_european_football_2.Match",
+      "definition": "SUM(CASE WHEN \"Match\".away_team_goal = \"Match\".home_team_goal THEN 1 ELSE 0 END)",
+      "description": "Number of selected matches with equal home and away goals. Grain: One match. Aggregation: SUM of draw indicator. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "matches",
+      "aliases": "draw count, drawn matches",
+      "semantic_contract": {
+        "row_grain": "One match",
+        "aggregation": "SUM of draw indicator",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/european_football_2/database_description/Match.csv",
+          "artifact_sha256": "2facc86ec5e869e7bb61b67fa660591c0a4f6291da79125dc2777a2bdafdd4dd"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "football_mean_finishing_score",
+      "domain": "bird_european_football_2.Player_Attributes",
+      "definition": "AVG(\"Player_Attributes\".finishing)",
+      "description": "Mean finishing attribute across the selected dated FIFA observations. finishing and overall_rating measure different qualities. Grain: One player rating observation per date. Aggregation: AVG; GROUP BY player identity for per-player means. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "score",
+      "aliases": "average finishing, mean finishing rate",
+      "semantic_contract": {
+        "row_grain": "One player rating observation per date",
+        "aggregation": "AVG; GROUP BY player identity for per-player means",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/european_football_2/database_description/Player_Attributes.csv",
+          "artifact_sha256": "d01a00206b4ec6e94435f3af7e5153abca01931c4e93a519bb86ca5bbd42b46c"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "football_player_strength",
+      "domain": "bird_european_football_2.Player_Attributes",
+      "definition": "\"Player_Attributes\".strength",
+      "description": "FIFA physical strength attribute. It differs from overall_rating, an overall ability rating. Grain: One dated player observation. Aggregation: Per-observation value; select time or aggregate as requested. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "score",
+      "aliases": "physical strength, strength rating",
+      "semantic_contract": {
+        "row_grain": "One dated player observation",
+        "aggregation": "Per-observation value; select time or aggregate as requested",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/european_football_2/database_description/Player_Attributes.csv",
+          "artifact_sha256": "d01a00206b4ec6e94435f3af7e5153abca01931c4e93a519bb86ca5bbd42b46c"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "financial_male_client_percentage",
+      "domain": "bird_financial.client",
+      "definition": "100.0 * SUM(CASE WHEN client.gender = 'M' THEN 1 ELSE 0 END) / NULLIF(COUNT(client.client_id),0)",
+      "description": "Male clients as a percentage of all selected clients. client.district_id represents residential district; account.district_id represents account branch. Grain: One client. Aggregation: Conditional SUM divided by client count; do not multiply by account dispositions. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "percent",
+      "aliases": "male client percentage, percentage of male clients",
+      "semantic_contract": {
+        "row_grain": "One client",
+        "aggregation": "Conditional SUM divided by client count; do not multiply by account dispositions",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/financial/database_description/client.csv",
+          "artifact_sha256": "d1ef6f74b4730737517307c2f3b219496af264d83fe3e34f435c078b368dd800"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "financial_female_client_count",
+      "domain": "bird_financial.client",
+      "definition": "SUM(CASE WHEN client.gender = 'F' THEN 1 ELSE 0 END)",
+      "description": "Number of selected female clients at the client population grain. Grain: One client. Aggregation: Conditional SUM before one-to-many account joins. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "clients",
+      "aliases": "female clients, number of female clients",
+      "semantic_contract": {
+        "row_grain": "One client",
+        "aggregation": "Conditional SUM before one-to-many account joins",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/financial/database_description/client.csv",
+          "artifact_sha256": "d1ef6f74b4730737517307c2f3b219496af264d83fe3e34f435c078b368dd800"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "financial_total_transaction_amount",
+      "domain": "bird_financial.trans",
+      "definition": "SUM(trans.amount)",
+      "description": "Total recorded transaction amounts for the explicitly selected type and operation. Grain: One transaction. Aggregation: SUM of amount; select transaction codes from dictionary. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "currency",
+      "aliases": "total transaction amount, total withdrawals, total deposits",
+      "semantic_contract": {
+        "row_grain": "One transaction",
+        "aggregation": "SUM of amount; select transaction codes from dictionary",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/financial/database_description/trans.csv",
+          "artifact_sha256": "59efafabbb4347853f29ebfc14fdd18633f724a669e7e26cb7b2ecd628d6c4a2"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "financial_total_loan_amount",
+      "domain": "bird_financial.loan",
+      "definition": "SUM(loan.amount)",
+      "description": "Sum of loan principal for selected loan contracts; not total monthly payments. Grain: One loan contract. Aggregation: SUM across contracts. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "currency",
+      "aliases": "total loan amount, loan principal",
+      "semantic_contract": {
+        "row_grain": "One loan contract",
+        "aggregation": "SUM across contracts",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/financial/database_description/loan.csv",
+          "artifact_sha256": "e6f4c7393d3973c9647913206ec4da2b9480bca4a8fb1ed45f4d42c433112756"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "financial_monthly_loan_payment",
+      "domain": "bird_financial.loan",
+      "definition": "loan.payments",
+      "description": "Monthly payment of a loan contract. Grain: One loan contract. Aggregation: Per-contract value; sum only when requested. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "currency per month",
+      "aliases": "monthly payment, loan payments",
+      "semantic_contract": {
+        "row_grain": "One loan contract",
+        "aggregation": "Per-contract value; sum only when requested",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/financial/database_description/loan.csv",
+          "artifact_sha256": "e6f4c7393d3973c9647913206ec4da2b9480bca4a8fb1ed45f4d42c433112756"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula1_race_points_total",
+      "domain": "bird_formula_1.results",
+      "definition": "SUM(results.points)",
+      "description": "Points earned in individual races by selected driver results. Different from cumulative driverStandings.points after a race. Grain: One driver and race result. Aggregation: SUM by requested driver, constructor or period. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "points",
+      "aliases": "total race points, points earned in races",
+      "semantic_contract": {
+        "row_grain": "One driver and race result",
+        "aggregation": "SUM by requested driver, constructor or period",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/results.csv",
+          "artifact_sha256": "7f7cde75b468b8ea135c6ed0872ef30ff715fda691786ca58e70d783b0a23b5d"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula1_driver_championship_points",
+      "domain": "bird_formula_1.driverStandings",
+      "definition": "\"driverStandings\".points",
+      "description": "Cumulative championship points of a driver after a specific race. Summing snapshots double-counts earlier rounds. Grain: One driver standing snapshot after one race. Aggregation: Snapshot value; choose requested race or final round, never sum across rounds. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "points",
+      "aliases": "driver championship points, driver standings points",
+      "semantic_contract": {
+        "row_grain": "One driver standing snapshot after one race",
+        "aggregation": "Snapshot value; choose requested race or final round, never sum across rounds",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/driverStandings.csv",
+          "artifact_sha256": "3cc467154abbf10dfc7f8ea5fdec512b5674f0683d36b893085a04de5d9aca5e"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula1_constructor_championship_points",
+      "domain": "bird_formula_1.constructorStandings",
+      "definition": "\"constructorStandings\".points",
+      "description": "Cumulative constructor championship points after a race. Distinct from constructorResults.points earned in one race. Grain: One constructor standing snapshot after one race. Aggregation: Snapshot value; no sum across rounds. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "points",
+      "aliases": "constructor standings points, constructor championship points",
+      "semantic_contract": {
+        "row_grain": "One constructor standing snapshot after one race",
+        "aggregation": "Snapshot value; no sum across rounds",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/constructorStandings.csv",
+          "artifact_sha256": "d7df8f78744b244375278bb092f8b6d05c9cf4964bdc9cd41eb60261678db861"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula1_constructor_race_points",
+      "domain": "bird_formula_1.constructorResults",
+      "definition": "\"constructorResults\".points",
+      "description": "Points earned by the constructor in one race, not cumulative championship points. Grain: One constructor race result. Aggregation: Per-race points or SUM across specified races. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "points",
+      "aliases": "constructor race points, points earned by constructor in a race",
+      "semantic_contract": {
+        "row_grain": "One constructor race result",
+        "aggregation": "Per-race points or SUM across specified races",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/constructorResults.csv",
+          "artifact_sha256": "b446078a76a422e9fbbb3246acf18a36bc75a441fac5f907555ac7031834f7d5"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula1_driver_best_lap_seconds",
+      "domain": "bird_formula_1.lapTimes",
+      "definition": "MIN(\"lapTimes\".milliseconds) / 1000.0",
+      "description": "Shortest elapsed lap duration among selected recorded laps, measured numerically in seconds. Grain: One driver lap observation in one race. Aggregation: MIN of milliseconds; GROUP BY driver identity before ranking drivers. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "seconds",
+      "aliases": "shortest lap time, best lap time, fastest recorded lap",
+      "semantic_contract": {
+        "row_grain": "One driver lap observation in one race",
+        "aggregation": "MIN of milliseconds; GROUP BY driver identity before ranking drivers",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/lapTimes.csv",
+          "artifact_sha256": "6fc86f0867ca9fc350b8583c18a74784d7a2e78afb1bc6462f83e3b7cddf5573"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula1_lap_seconds",
+      "domain": "bird_formula_1.lapTimes",
+      "definition": "\"lapTimes\".milliseconds / 1000.0",
+      "description": "Elapsed time of one recorded lap in seconds. Grain: One lap observation. Aggregation: Row conversion from milliseconds; 120 seconds equals 02:00.000. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "seconds",
+      "aliases": "lap duration, lap time seconds",
+      "semantic_contract": {
+        "row_grain": "One lap observation",
+        "aggregation": "Row conversion from milliseconds; 120 seconds equals 02:00.000",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/lapTimes.csv",
+          "artifact_sha256": "6fc86f0867ca9fc350b8583c18a74784d7a2e78afb1bc6462f83e3b7cddf5573"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "formula1_pit_stop_seconds",
+      "domain": "bird_formula_1.pitStops",
+      "definition": "\"pitStops\".milliseconds / 1000.0",
+      "description": "Elapsed pit stop duration converted from milliseconds. Grain: One pit stop. Aggregation: Row conversion; aggregate as explicitly requested. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "seconds",
+      "aliases": "pit stop duration, pit stop time",
+      "semantic_contract": {
+        "row_grain": "One pit stop",
+        "aggregation": "Row conversion; aggregate as explicitly requested",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/formula_1/database_description/pitStops.csv",
+          "artifact_sha256": "6c1c7eb14a445b617710ac286e1f5a303e8b808062fa760c2054c276b2b79fab"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "superhero_attribute_value",
+      "domain": "bird_superhero.hero_attribute",
+      "definition": "hero_attribute.attribute_value",
+      "description": "Numeric value for the attribute selected through hero_attribute.attribute_id and attribute.attribute_name. Intelligence, Strength, Speed and Power are distinct attributes. Grain: One hero and attribute observation. Aggregation: Row value; join attribute to select the requested attribute by name. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "score",
+      "aliases": "intelligence score, strength score, speed score, power score",
+      "semantic_contract": {
+        "row_grain": "One hero and attribute observation",
+        "aggregation": "Row value; join attribute to select the requested attribute by name",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/superhero/database_description/hero_attribute.csv",
+          "artifact_sha256": "65af1dfdb96e4ddaba6262f3dffe9f61ea240c31d0ea2122e974d769827f039b"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "superhero_hero_count",
+      "domain": "bird_superhero.superhero",
+      "definition": "COUNT(superhero.id)",
+      "description": "Number of superhero entities. Hero attributes and powers are separate detail relations and can multiply hero rows. Grain: One superhero. Aggregation: COUNT of entity id before detail joins; COUNT DISTINCT id after multiplying detail joins. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "heroes",
+      "aliases": "number of superheroes, superhero count",
+      "semantic_contract": {
+        "row_grain": "One superhero",
+        "aggregation": "COUNT of entity id before detail joins; COUNT DISTINCT id after multiplying detail joins",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/superhero/database_description/superhero.csv",
+          "artifact_sha256": "503f0a71acd1766923c571865277f81accbf79b2c9d8df4a18439dfe01ec6f44"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "superhero_average_height",
+      "domain": "bird_superhero.superhero",
+      "definition": "AVG(superhero.height_cm)",
+      "description": "Average documented height in centimetres among the selected superhero population. Grain: One superhero. Aggregation: AVG across selected heroes. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "cm",
+      "aliases": "average height, mean superhero height",
+      "semantic_contract": {
+        "row_grain": "One superhero",
+        "aggregation": "AVG across selected heroes",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/superhero/database_description/superhero.csv",
+          "artifact_sha256": "503f0a71acd1766923c571865277f81accbf79b2c9d8df4a18439dfe01ec6f44"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "superhero_average_weight",
+      "domain": "bird_superhero.superhero",
+      "definition": "AVG(superhero.weight_kg)",
+      "description": "Average documented weight in kilograms among selected superheroes. Grain: One superhero. Aggregation: AVG across selected heroes. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "kg",
+      "aliases": "average weight, mean superhero weight",
+      "semantic_contract": {
+        "row_grain": "One superhero",
+        "aggregation": "AVG across selected heroes",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/superhero/database_description/superhero.csv",
+          "artifact_sha256": "503f0a71acd1766923c571865277f81accbf79b2c9d8df4a18439dfe01ec6f44"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "toxicology_atom_count",
+      "domain": "bird_toxicology.atom",
+      "definition": "COUNT(DISTINCT atom.atom_id)",
+      "description": "Count of distinct atoms in the selected population. A molecule having a bond type differs from an atom being an endpoint of that bond. Grain: One atom. Aggregation: COUNT DISTINCT atom identity after bond joins. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "atoms",
+      "aliases": "number of atoms, atom count",
+      "semantic_contract": {
+        "row_grain": "One atom",
+        "aggregation": "COUNT DISTINCT atom identity after bond joins",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/toxicology/database_description/atom.csv",
+          "artifact_sha256": "9de75492701c77c1229242e8c3b688ced9eb9095ac59d37361dfb0ec34300245"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "toxicology_molecule_count",
+      "domain": "bird_toxicology.molecule",
+      "definition": "COUNT(DISTINCT molecule.molecule_id)",
+      "description": "Count of distinct molecules; label is the documented carcinogenicity class. Grain: One molecule. Aggregation: COUNT DISTINCT molecule identity after atom joins. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "molecules",
+      "aliases": "number of molecules, molecule count",
+      "semantic_contract": {
+        "row_grain": "One molecule",
+        "aggregation": "COUNT DISTINCT molecule identity after atom joins",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/toxicology/database_description/molecule.csv",
+          "artifact_sha256": "a6ff2966916d03b07fd3ce275823d9ec65abb0b55158e871b07c40972b292d70"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_patient_count",
+      "domain": "bird_thrombosis_prediction.Patient",
+      "definition": "COUNT(DISTINCT \"Patient\".\"ID\")",
+      "description": "Count of distinct registered patients. Laboratory and Examination contain repeated observations and may omit patients; clinical filters restrict only the stated patient population. Grain: One patient. Aggregation: COUNT DISTINCT patient identity when observations are joined. Population: The population explicitly requested by the user. NULL/zero policy: SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+      "unit": "patients",
+      "aliases": "number of patients, patient count",
+      "semantic_contract": {
+        "row_grain": "One patient",
+        "aggregation": "COUNT DISTINCT patient identity when observations are joined",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "SQL aggregates ignore NULL measures. A zero denominator returns NULL.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Patient.csv",
+          "artifact_sha256": "519838a9f2592760bb26d1fb4f074bc304eee4e7aeaf46d03f652c370230e175"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_normal_tp",
+      "domain": "bird_thrombosis_prediction.Laboratory",
+      "definition": "\"Laboratory\".\"TP\" > 6.0 AND \"Laboratory\".\"TP\" < 8.5",
+      "description": "Published normal range for TP: 6.0 < N < 8.5. Bounds are strict; not inclusive BETWEEN. Grain: One laboratory observation. Aggregation: Boolean predicate, not a patient count. Population: The population explicitly requested by the user. NULL/zero policy: NULL is unknown and does not satisfy the normal predicate.",
+      "unit": "boolean",
+      "aliases": "normal TP, normal TP, normal total protein",
+      "semantic_contract": {
+        "row_grain": "One laboratory observation",
+        "aggregation": "Boolean predicate, not a patient count",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "NULL is unknown and does not satisfy the normal predicate.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Laboratory.csv",
+          "artifact_sha256": "cf9704e56cf3aca75e38de09277c307a7f0f726301b472254ce66ff4a352ff9f"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_normal_alb",
+      "domain": "bird_thrombosis_prediction.Laboratory",
+      "definition": "\"Laboratory\".\"ALB\" > 3.5 AND \"Laboratory\".\"ALB\" < 5.5",
+      "description": "Published normal range for ALB: 3.5 < N < 5.5. Bounds are strict; not inclusive BETWEEN. Grain: One laboratory observation. Aggregation: Boolean predicate, not a patient count. Population: The population explicitly requested by the user. NULL/zero policy: NULL is unknown and does not satisfy the normal predicate.",
+      "unit": "boolean",
+      "aliases": "normal ALB, normal ALB, normal albumin",
+      "semantic_contract": {
+        "row_grain": "One laboratory observation",
+        "aggregation": "Boolean predicate, not a patient count",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "NULL is unknown and does not satisfy the normal predicate.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Laboratory.csv",
+          "artifact_sha256": "cf9704e56cf3aca75e38de09277c307a7f0f726301b472254ce66ff4a352ff9f"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_normal_wbc",
+      "domain": "bird_thrombosis_prediction.Laboratory",
+      "definition": "\"Laboratory\".\"WBC\" > 3.5 AND \"Laboratory\".\"WBC\" < 9.0",
+      "description": "Published normal range for WBC: 3.5 < N < 9.0. Bounds are strict; not inclusive BETWEEN. Grain: One laboratory observation. Aggregation: Boolean predicate, not a patient count. Population: The population explicitly requested by the user. NULL/zero policy: NULL is unknown and does not satisfy the normal predicate.",
+      "unit": "boolean",
+      "aliases": "normal WBC, normal WBC, normal White blood cell",
+      "semantic_contract": {
+        "row_grain": "One laboratory observation",
+        "aggregation": "Boolean predicate, not a patient count",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "NULL is unknown and does not satisfy the normal predicate.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Laboratory.csv",
+          "artifact_sha256": "cf9704e56cf3aca75e38de09277c307a7f0f726301b472254ce66ff4a352ff9f"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_normal_rbc",
+      "domain": "bird_thrombosis_prediction.Laboratory",
+      "definition": "\"Laboratory\".\"RBC\" > 3.5 AND \"Laboratory\".\"RBC\" < 6.0",
+      "description": "Published normal range for RBC: 3.5 < N < 6.0. Bounds are strict; not inclusive BETWEEN. Grain: One laboratory observation. Aggregation: Boolean predicate, not a patient count. Population: The population explicitly requested by the user. NULL/zero policy: NULL is unknown and does not satisfy the normal predicate.",
+      "unit": "boolean",
+      "aliases": "normal RBC, normal RBC, normal Red blood cell",
+      "semantic_contract": {
+        "row_grain": "One laboratory observation",
+        "aggregation": "Boolean predicate, not a patient count",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "NULL is unknown and does not satisfy the normal predicate.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Laboratory.csv",
+          "artifact_sha256": "cf9704e56cf3aca75e38de09277c307a7f0f726301b472254ce66ff4a352ff9f"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_normal_hgb",
+      "domain": "bird_thrombosis_prediction.Laboratory",
+      "definition": "\"Laboratory\".\"HGB\" > 10 AND \"Laboratory\".\"HGB\" < 17",
+      "description": "Published normal range for HGB: 10 < N < 17. Bounds are strict; not inclusive BETWEEN. Grain: One laboratory observation. Aggregation: Boolean predicate, not a patient count. Population: The population explicitly requested by the user. NULL/zero policy: NULL is unknown and does not satisfy the normal predicate.",
+      "unit": "boolean",
+      "aliases": "normal HGB, normal HGB, normal Hemoglobin",
+      "semantic_contract": {
+        "row_grain": "One laboratory observation",
+        "aggregation": "Boolean predicate, not a patient count",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "NULL is unknown and does not satisfy the normal predicate.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Laboratory.csv",
+          "artifact_sha256": "cf9704e56cf3aca75e38de09277c307a7f0f726301b472254ce66ff4a352ff9f"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_normal_hct",
+      "domain": "bird_thrombosis_prediction.Laboratory",
+      "definition": "\"Laboratory\".\"HCT\" > 29 AND \"Laboratory\".\"HCT\" < 52",
+      "description": "Published normal range for HCT: 29 < N < 52. Bounds are strict; not inclusive BETWEEN. Grain: One laboratory observation. Aggregation: Boolean predicate, not a patient count. Population: The population explicitly requested by the user. NULL/zero policy: NULL is unknown and does not satisfy the normal predicate.",
+      "unit": "boolean",
+      "aliases": "normal HCT, normal HCT, normal Hematoclit",
+      "semantic_contract": {
+        "row_grain": "One laboratory observation",
+        "aggregation": "Boolean predicate, not a patient count",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "NULL is unknown and does not satisfy the normal predicate.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Laboratory.csv",
+          "artifact_sha256": "cf9704e56cf3aca75e38de09277c307a7f0f726301b472254ce66ff4a352ff9f"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_normal_plt",
+      "domain": "bird_thrombosis_prediction.Laboratory",
+      "definition": "\"Laboratory\".\"PLT\" > 100 AND \"Laboratory\".\"PLT\" < 400",
+      "description": "Published normal range for PLT: 100 < N < 400. Bounds are strict; not inclusive BETWEEN. Grain: One laboratory observation. Aggregation: Boolean predicate, not a patient count. Population: The population explicitly requested by the user. NULL/zero policy: NULL is unknown and does not satisfy the normal predicate.",
+      "unit": "boolean",
+      "aliases": "normal PLT, normal PLT, normal platelet",
+      "semantic_contract": {
+        "row_grain": "One laboratory observation",
+        "aggregation": "Boolean predicate, not a patient count",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "NULL is unknown and does not satisfy the normal predicate.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Laboratory.csv",
+          "artifact_sha256": "cf9704e56cf3aca75e38de09277c307a7f0f726301b472254ce66ff4a352ff9f"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_normal_fg",
+      "domain": "bird_thrombosis_prediction.Laboratory",
+      "definition": "\"Laboratory\".\"FG\" > 150 AND \"Laboratory\".\"FG\" < 450",
+      "description": "Published normal range for FG: 150 < N < 450. Bounds are strict; not inclusive BETWEEN. Grain: One laboratory observation. Aggregation: Boolean predicate, not a patient count. Population: The population explicitly requested by the user. NULL/zero policy: NULL is unknown and does not satisfy the normal predicate.",
+      "unit": "boolean",
+      "aliases": "normal FG, normal FG, normal fibrinogen",
+      "semantic_contract": {
+        "row_grain": "One laboratory observation",
+        "aggregation": "Boolean predicate, not a patient count",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "NULL is unknown and does not satisfy the normal predicate.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Laboratory.csv",
+          "artifact_sha256": "cf9704e56cf3aca75e38de09277c307a7f0f726301b472254ce66ff4a352ff9f"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_normal_u_pro",
+      "domain": "bird_thrombosis_prediction.Laboratory",
+      "definition": "\"Laboratory\".\"U-PRO\" > 0 AND \"Laboratory\".\"U-PRO\" < 30",
+      "description": "Published normal range for U-PRO: 0 < N < 30. Bounds are strict; not inclusive BETWEEN. Grain: One laboratory observation. Aggregation: Boolean predicate, not a patient count. Population: The population explicitly requested by the user. NULL/zero policy: NULL is unknown and does not satisfy the normal predicate.",
+      "unit": "boolean",
+      "aliases": "normal U-PRO, normal U-PRO, normal proteinuria",
+      "semantic_contract": {
+        "row_grain": "One laboratory observation",
+        "aggregation": "Boolean predicate, not a patient count",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "NULL is unknown and does not satisfy the normal predicate.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Laboratory.csv",
+          "artifact_sha256": "cf9704e56cf3aca75e38de09277c307a7f0f726301b472254ce66ff4a352ff9f"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_normal_igg",
+      "domain": "bird_thrombosis_prediction.Laboratory",
+      "definition": "\"Laboratory\".\"IGG\" > 900 AND \"Laboratory\".\"IGG\" < 2000",
+      "description": "Published normal range for IGG: 900 < N < 2000. Bounds are strict; not inclusive BETWEEN. Grain: One laboratory observation. Aggregation: Boolean predicate, not a patient count. Population: The population explicitly requested by the user. NULL/zero policy: NULL is unknown and does not satisfy the normal predicate.",
+      "unit": "boolean",
+      "aliases": "normal IGG, normal IGG, normal Ig G",
+      "semantic_contract": {
+        "row_grain": "One laboratory observation",
+        "aggregation": "Boolean predicate, not a patient count",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "NULL is unknown and does not satisfy the normal predicate.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Laboratory.csv",
+          "artifact_sha256": "cf9704e56cf3aca75e38de09277c307a7f0f726301b472254ce66ff4a352ff9f"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_normal_iga",
+      "domain": "bird_thrombosis_prediction.Laboratory",
+      "definition": "\"Laboratory\".\"IGA\" > 80 AND \"Laboratory\".\"IGA\" < 500",
+      "description": "Published normal range for IGA: 80 < N < 500. Bounds are strict; not inclusive BETWEEN. Grain: One laboratory observation. Aggregation: Boolean predicate, not a patient count. Population: The population explicitly requested by the user. NULL/zero policy: NULL is unknown and does not satisfy the normal predicate.",
+      "unit": "boolean",
+      "aliases": "normal IGA, normal IGA, normal Ig A",
+      "semantic_contract": {
+        "row_grain": "One laboratory observation",
+        "aggregation": "Boolean predicate, not a patient count",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "NULL is unknown and does not satisfy the normal predicate.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Laboratory.csv",
+          "artifact_sha256": "cf9704e56cf3aca75e38de09277c307a7f0f726301b472254ce66ff4a352ff9f"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    },
+    {
+      "metric_name": "thrombosis_normal_igm",
+      "domain": "bird_thrombosis_prediction.Laboratory",
+      "definition": "\"Laboratory\".\"IGM\" > 40 AND \"Laboratory\".\"IGM\" < 400",
+      "description": "Published normal range for IGM: 40 < N < 400. Bounds are strict; not inclusive BETWEEN. Grain: One laboratory observation. Aggregation: Boolean predicate, not a patient count. Population: The population explicitly requested by the user. NULL/zero policy: NULL is unknown and does not satisfy the normal predicate.",
+      "unit": "boolean",
+      "aliases": "normal IGM, normal IGM, normal Ig M",
+      "semantic_contract": {
+        "row_grain": "One laboratory observation",
+        "aggregation": "Boolean predicate, not a patient count",
+        "population": "The population explicitly requested by the user.",
+        "null_policy": "NULL is unknown and does not satisfy the normal predicate.",
+        "dimensions": [],
+        "provenance": {
+          "url": "https://bird-bench.github.io/",
+          "artifact_path": "data/bird_official_metadata_2024/thrombosis_prediction/database_description/Laboratory.csv",
+          "artifact_sha256": "cf9704e56cf3aca75e38de09277c307a7f0f726301b472254ce66ff4a352ff9f"
+        },
+        "derivation": "Reusable arithmetic or aggregation over documented public fields; not a benchmark answer."
+      }
+    }
+  ],
+  "inputs": "Public dictionaries and registered source metadata only."
+}

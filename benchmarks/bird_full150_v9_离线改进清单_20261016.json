@@ -1,0 +1,3082 @@
+{
+  "created_at": "2026-10-16T13:37:54.557369+00:00",
+  "scope": "Offline diagnosis of a development set; historical scores unchanged; no product rules keyed by question ID",
+  "model_generation_calls": 0,
+  "database_queries": 0,
+  "baseline": {
+    "n": 150,
+    "correct": 90,
+    "accuracy": 0.6,
+    "failed": 60
+  },
+  "workstream_counts": {
+    "人群与关联粒度": 11,
+    "值域与边界": 7,
+    "Gold与定义一致性": 9,
+    "排序与TopN": 4,
+    "输出契约": 10,
+    "指标与概念绑定": 13,
+    "比例与复杂计算": 5,
+    "集合与作用域": 1
+  },
+  "workstreams": {
+    "指标与概念绑定": {
+      "action": "建立概念到字段/指标的明确绑定及反例；区分单场与累计、实体与观测、属性与标识。优先把登记指标接入可执行契约；歧义不能默选。",
+      "exit_evidence": "公开定义和登记版本可追溯；脱离题号的改写/反例用例通过；记录所选指标、来源字段、统计粒度及未选候选。"
+    },
+    "人群与关联粒度": {
+      "action": "明确统计对象、分子分母人群、去重键、关联方向和缺失关联行策略；编译前检查基数，必要时先聚合或半连接。",
+      "exit_evidence": "带重复键、空值、缺失关联行的独立数据夹具验证结果；关联前后人群和计数可解释。"
+    },
+    "值域与边界": {
+      "action": "核验公开字典和现有值域，维护编码、别名、时间表示及区间开闭；名称纠正须有候选值和依据，不能静默替换。",
+      "exit_evidence": "字典来源/数据适用范围清楚；边界值、NULL、未知编码和近似名称均有测试。"
+    },
+    "比例与复杂计算": {
+      "action": "扩展具类型的条件聚合、结果间计算及百分比单位；显式保存分子、分母、过滤作用域、基期和零值策略；不支持时拒绝。",
+      "exit_evidence": "条件分子、全量/条件分母、增长率与占比差等独立夹具通过；登记公式完整展开，不能退化为单字段。"
+    },
+    "输出契约": {
+      "action": "明确回答字段及顺序、ID与名称、拼接与分列、布尔展示、标量与列表；区分内部排序键和最终输出。",
+      "exit_evidence": "列数、列序、数据类型、答案粒度的独立断言通过；无法由问句确定时记录歧义。"
+    },
+    "排序与TopN": {
+      "action": "明确排名字段、方向、NULL位置、并列和数量；校验显式Top-N不被改写。并列规则需要稳定口径，不能按某次Gold返回选键。",
+      "exit_evidence": "Top20、NULL极值、并列极值和稳定排序夹具通过；IR数量和输出限制一致。"
+    },
+    "集合与作用域": {
+      "action": "显式建模EXISTS/NOT EXISTS、各层过滤及关系角色；区分全部不含与存在一条不等、评论者与帖子所有者。",
+      "exit_evidence": "多语言、多子记录、嵌套过滤及不同角色的反例夹具通过；计划记录条件所属人群。"
+    },
+    "Gold与定义一致性": {
+      "action": "比对问句、公开定义、登记语义和Gold；记录冲突及证据。正式基线不改分，另列产品语义质量核验，不能以Gold反向污染产品。",
+      "exit_evidence": "原始成绩保留；冲突有公开来源及数据证据，歧义有产品处理策略；独立评测前固定评分协议。"
+    }
+  },
+  "cases": [
+    {
+      "question_id": 1252,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "question": "Among the patients with a normal Ig G level, how many of them have symptoms?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT COUNT(DISTINCT t1.\"ID\") FROM \"bird_thrombosis_prediction\".\"Laboratory\" AS t1 JOIN \"bird_thrombosis_prediction\".\"Examination\" AS t2 ON t1.\"ID\" = t2.\"ID\" WHERE t1.\"IGG\" > 900 AND t1.\"IGG\" < 2000 AND t2.\"Symptoms\" IS NOT NULL",
+      "sql_parameters": null,
+      "gold_sql": "SELECT COUNT(T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID INNER JOIN Examination AS T3 ON T3.ID = T2.ID WHERE T2.IGG BETWEEN 900 AND 2000 AND NOT T3.Symptoms IS NULL",
+      "gold_execution_sql": "SELECT COUNT(T1.\"ID\") FROM \"Patient\" AS T1 INNER JOIN \"Laboratory\" AS T2 ON T1.\"ID\" = T2.\"ID\" INNER JOIN \"Examination\" AS T3 ON T3.\"ID\" = T2.\"ID\" WHERE T2.\"IGG\" BETWEEN 900 AND 2000 AND NOT T3.\"Symptoms\" IS NULL",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 5038,
+      "workstream": "人群与关联粒度",
+      "observation": "预测COUNT DISTINCT患者且IGG用开区间；Gold按关联记录计数并用BETWEEN闭区间，且额外关联Patient。边界和粒度须分别核验。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确统计对象、分子分母人群、去重键、关联方向和缺失关联行策略；编译前检查基数，必要时先聚合或半连接。",
+      "exit_evidence": "带重复键、空值、缺失关联行的独立数据夹具验证结果；关联前后人群和计数可解释。"
+    },
+    {
+      "question_id": 1267,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "question": "Among the patients with normal anti-SM, how many of them does not have thrombosis?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT COUNT(DISTINCT t1.\"ID\") FROM bird_thrombosis_prediction.\"Laboratory\" AS t1 JOIN bird_thrombosis_prediction.\"Examination\" AS t2 ON t1.\"ID\" = t2.\"ID\" WHERE (t1.\"SM\" = '-' OR t1.\"SM\" = '+-') AND t2.\"Thrombosis\" = 0",
+      "sql_parameters": null,
+      "gold_sql": "SELECT COUNT(T1.ID) FROM Examination AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.SM IN ('negative', '0') AND T1.Thrombosis = 0",
+      "gold_execution_sql": "SELECT COUNT(T1.\"ID\") FROM \"Examination\" AS T1 INNER JOIN \"Laboratory\" AS T2 ON T1.\"ID\" = T2.\"ID\" WHERE T2.\"SM\" IN ('negative', '0') AND T1.\"Thrombosis\" = 0",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 4579,
+      "workstream": "值域与边界",
+      "observation": "预测normal anti-SM为'-'、'+-'并去重患者；Gold使用'negative'、'0'且计关联记录。存在编码和统计粒度差异。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "核验公开字典和现有值域，维护编码、别名、时间表示及区间开闭；名称纠正须有候选值和依据，不能静默替换。",
+      "exit_evidence": "字典来源/数据适用范围清楚；边界值、NULL、未知编码和近似名称均有测试。"
+    },
+    {
+      "question_id": 1029,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "question": "What are the speed in which attacks are put together of the top 4 teams with the highest build Up Play Speed?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT \"buildUpPlaySpeed\" FROM bird_european_football_2.Team_Attributes ORDER BY \"buildUpPlaySpeed\" DESC NULLS LAST LIMIT 4",
+      "sql_parameters": null,
+      "gold_sql": "SELECT t1.buildUpPlaySpeed FROM Team_Attributes AS t1 INNER JOIN Team AS t2 ON t1.team_api_id = t2.team_api_id ORDER BY t1.buildUpPlaySpeed ASC NULLS FIRST LIMIT 4",
+      "gold_execution_sql": "SELECT t1.\"buildUpPlaySpeed\" FROM \"Team_Attributes\" AS t1 INNER JOIN \"Team\" AS t2 ON t1.\"team_api_id\" = t2.\"team_api_id\" ORDER BY t1.\"buildUpPlaySpeed\" ASC NULLS FIRST LIMIT 4",
+      "prediction_error": null,
+      "prediction_row_count": 4,
+      "gold_row_count": 4,
+      "latency_ms": 5753,
+      "workstream": "Gold与定义一致性",
+      "observation": "问句highest；预测降序，Gold升序且NULLS FIRST并额外关联Team。不能直接把产品改为升序以追分。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "比对问句、公开定义、登记语义和Gold；记录冲突及证据。正式基线不改分，另列产品语义质量核验，不能以Gold反向污染产品。",
+      "exit_evidence": "原始成绩保留；冲突有公开来源及数据证据，歧义有产品处理策略；独立评测前固定评分协议。"
+    },
+    {
+      "question_id": 1032,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "question": "Give the name of the league with the highest matches of all time and how many matches were played in the said league.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT t1.name, COUNT(t2.id) FROM bird_european_football_2.League AS t1 INNER JOIN bird_european_football_2.Match AS t2 ON t1.id = t2.league_id GROUP BY t1.id, t1.name ORDER BY COUNT(t2.id) DESC NULLS LAST LIMIT 1",
+      "sql_parameters": null,
+      "gold_sql": "SELECT t2.name, t1.max_count FROM League AS t2 JOIN (SELECT league_id, MAX(cnt) AS max_count FROM (SELECT league_id, COUNT(id) AS cnt FROM Match GROUP BY league_id) AS subquery GROUP BY league_id ORDER BY MAX(cnt) DESC LIMIT 1) AS t1 ON t1.league_id = t2.id",
+      "gold_execution_sql": "SELECT t2.\"name\", t1.max_count FROM \"League\" AS t2 JOIN (SELECT \"league_id\", MAX(cnt) AS max_count FROM (SELECT \"league_id\", COUNT(\"id\") AS cnt FROM \"Match\" GROUP BY \"league_id\") AS subquery GROUP BY \"league_id\" ORDER BY MAX(cnt) DESC LIMIT 1) AS t1 ON t1.\"league_id\" = t2.\"id\"",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 6043,
+      "workstream": "排序与TopN",
+      "observation": "两者都按比赛数降序LIMIT1；历史只读诊断发现最大计数并列，返回联赛不一致。尚无稳定并列键合同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确排名字段、方向、NULL位置、并列和数量；校验显式Top-N不被改写。并列规则需要稳定口径，不能按某次Gold返回选键。",
+      "exit_evidence": "Top20、NULL极值、并列极值和稳定排序夹具通过；IR数量和输出限制一致。"
+    },
+    {
+      "question_id": 1036,
+      "db_id": "european_football_2",
+      "difficulty": "challenging",
+      "question": "List the long name of teams with above-average build-up play passing in 2012.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT t.team_long_name FROM bird_european_football_2.Team AS t JOIN bird_european_football_2.Team_Attributes AS ta ON t.team_api_id = ta.team_api_id WHERE ta.date LIKE '2012%' AND ta.\"buildUpPlayPassing\" > (SELECT AVG(Team_Attributes.\"buildUpPlayPassing\") FROM bird_european_football_2.Team_Attributes WHERE date LIKE '2012%')",
+      "sql_parameters": null,
+      "gold_sql": "SELECT DISTINCT t4.team_long_name FROM Team_Attributes AS t3 INNER JOIN Team AS t4 ON t3.team_api_id = t4.team_api_id WHERE SUBSTR(t3.\"date\", 1, 4) = '2012' AND t3.buildUpPlayPassing > (SELECT CAST(SUM(t2.buildUpPlayPassing) AS REAL) / NULLIF(COUNT(t1.id), 0) FROM Team AS t1 INNER JOIN Team_Attributes AS t2 ON t1.team_api_id = t2.team_api_id WHERE TO_CHAR(CAST(t2.\"date\" AS TIMESTAMP), 'YYYY') = '2012')",
+      "gold_execution_sql": "SELECT DISTINCT t4.\"team_long_name\" FROM \"Team_Attributes\" AS t3 INNER JOIN \"Team\" AS t4 ON t3.\"team_api_id\" = t4.\"team_api_id\" WHERE SUBSTRING(t3.\"date\" FROM 1 FOR 4) = '2012' AND t3.\"buildUpPlayPassing\" > (SELECT CAST(SUM(t2.\"buildUpPlayPassing\") AS REAL) / NULLIF(COUNT(t1.\"id\"), 0) FROM \"Team\" AS t1 INNER JOIN \"Team_Attributes\" AS t2 ON t1.\"team_api_id\" = t2.\"team_api_id\" WHERE TO_CHAR(CAST(t2.\"date\" AS TIMESTAMP), 'YYYY') = '2012')",
+      "prediction_error": null,
+      "prediction_row_count": 129,
+      "gold_row_count": 128,
+      "latency_ms": 8414,
+      "workstream": "人群与关联粒度",
+      "observation": "预测不去重队名并在属性表直接AVG；Gold DISTINCT队名，平均值使用Team关联后的SUM/COUNT。须分开核验重复输出和均值人群。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确统计对象、分子分母人群、去重键、关联方向和缺失关联行策略；编译前检查基数，必要时先聚合或半连接。",
+      "exit_evidence": "带重复键、空值、缺失关联行的独立数据夹具验证结果；关联前后人群和计数可解释。"
+    },
+    {
+      "question_id": 1058,
+      "db_id": "european_football_2",
+      "difficulty": "challenging",
+      "question": "Who has the highest average finishing rate between the highest and shortest football player?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT T1.player_name FROM bird_european_football_2.\"Player\" AS T1 JOIN bird_european_football_2.\"Player_Attributes\" AS T2 ON T1.player_api_id = T2.player_api_id WHERE T1.height = (SELECT MAX(height) FROM bird_european_football_2.\"Player\") OR T1.height = (SELECT MIN(height) FROM bird_european_football_2.\"Player\") GROUP BY T1.player_name, T1.player_api_id ORDER BY AVG(T2.finishing) DESC NULLS LAST LIMIT 1",
+      "sql_parameters": null,
+      "gold_sql": "SELECT A FROM (SELECT AVG(finishing) AS result, 'Max' AS A FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE T1.height = (SELECT MAX(height) FROM Player) UNION SELECT AVG(finishing) AS result, 'Min' AS A FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE T1.height = (SELECT MIN(height) FROM Player)) AS subquery ORDER BY result DESC LIMIT 1",
+      "gold_execution_sql": "SELECT A FROM (SELECT AVG(\"finishing\") AS result, 'Max' AS A FROM \"Player\" AS T1 INNER JOIN \"Player_Attributes\" AS T2 ON T1.\"player_api_id\" = T2.\"player_api_id\" WHERE T1.\"height\" = (SELECT MAX(\"height\") FROM \"Player\") UNION SELECT AVG(\"finishing\") AS result, 'Min' AS A FROM \"Player\" AS T1 INNER JOIN \"Player_Attributes\" AS T2 ON T1.\"player_api_id\" = T2.\"player_api_id\" WHERE T1.\"height\" = (SELECT MIN(\"height\") FROM \"Player\")) AS subquery ORDER BY result DESC LIMIT 1",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 5320,
+      "workstream": "输出契约",
+      "observation": "预测在最高/最矮球员中输出个人姓名；Gold按身高极值群体分别AVG并返回Max/Min类别。比较对象和输出合同不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确回答字段及顺序、ID与名称、拼接与分列、布尔展示、标量与列表；区分内部排序键和最终输出。",
+      "exit_evidence": "列数、列序、数据类型、答案粒度的独立断言通过；无法由问句确定时记录歧义。"
+    },
+    {
+      "question_id": 1107,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "question": "When was the first time did Kevin Constant have his highest crossing score? Give the date.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT T2.date FROM bird_european_football_2.Player AS T1 JOIN bird_european_football_2.Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE T1.player_name = 'Kevin Constant' ORDER BY T2.crossing DESC NULLS LAST, T2.date ASC LIMIT 1",
+      "sql_parameters": null,
+      "gold_sql": "SELECT \"date\" FROM (SELECT t2.crossing, t2.\"date\" FROM Player AS t1 INNER JOIN Player_Attributes AS t2 ON t1.player_fifa_api_id = t2.player_fifa_api_id WHERE t1.player_name = 'Kevin Constant' ORDER BY t2.crossing DESC) AS subquery ORDER BY \"date\" DESC LIMIT 1",
+      "gold_execution_sql": "SELECT \"date\" FROM (SELECT t2.\"crossing\", t2.\"date\" FROM \"Player\" AS t1 INNER JOIN \"Player_Attributes\" AS t2 ON t1.\"player_fifa_api_id\" = t2.\"player_fifa_api_id\" WHERE t1.\"player_name\" = 'Kevin Constant' ORDER BY t2.\"crossing\" DESC) AS subquery ORDER BY \"date\" DESC LIMIT 1",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 5945,
+      "workstream": "Gold与定义一致性",
+      "observation": "预测最高crossing内按日期升序选first；Gold外层按日期降序LIMIT1，且使用另一关联键。时间口径与关联键须独立复核。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "比对问句、公开定义、登记语义和Gold；记录冲突及证据。正式基线不改分，另列产品语义质量核验，不能以Gold反向污染产品。",
+      "exit_evidence": "原始成绩保留；冲突有公开来源及数据证据，歧义有产品处理策略；独立评测前固定评分协议。"
+    },
+    {
+      "question_id": 1122,
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "question": "State the name of the most strongest player.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT T1.player_name FROM bird_european_football_2.Player AS T1 JOIN bird_european_football_2.Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE T2.strength IS NOT NULL ORDER BY T2.strength DESC NULLS LAST LIMIT 1",
+      "sql_parameters": null,
+      "gold_sql": "SELECT DISTINCT t1.player_name FROM Player AS t1 INNER JOIN Player_Attributes AS t2 ON t1.player_api_id = t2.player_api_id WHERE t2.overall_rating = (SELECT MAX(overall_rating) FROM Player_Attributes)",
+      "gold_execution_sql": "SELECT DISTINCT t1.\"player_name\" FROM \"Player\" AS t1 INNER JOIN \"Player_Attributes\" AS t2 ON t1.\"player_api_id\" = t2.\"player_api_id\" WHERE t2.\"overall_rating\" = (SELECT MAX(\"overall_rating\") FROM \"Player_Attributes\")",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 4971,
+      "workstream": "指标与概念绑定",
+      "observation": "预测strongest对应strength；Gold对应overall_rating最大值并保留不同姓名。概念字段和并列口径均不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "建立概念到字段/指标的明确绑定及反例；区分单场与累计、实体与观测、属性与标识。优先把登记指标接入可执行契约；歧义不能默选。",
+      "exit_evidence": "公开定义和登记版本可追溯；脱离题号的改写/反例用例通过；记录所选指标、来源字段、统计粒度及未选候选。"
+    },
+    {
+      "question_id": 1134,
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "question": "What is the difference between players 6 and 23's jumping scores?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT (SELECT jumping FROM bird_european_football_2.Player_Attributes WHERE player_api_id = 6) - (SELECT jumping FROM bird_european_football_2.Player_Attributes WHERE player_api_id = 23)",
+      "sql_parameters": null,
+      "gold_sql": "SELECT SUM(CASE WHEN t1.id = 6 THEN t1.jumping ELSE 0 END) - SUM(CASE WHEN t1.id = 23 THEN t1.jumping ELSE 0 END) FROM Player_Attributes AS t1",
+      "gold_execution_sql": "SELECT SUM(CASE WHEN t1.\"id\" = 6 THEN t1.\"jumping\" ELSE 0 END) - SUM(CASE WHEN t1.\"id\" = 23 THEN t1.\"jumping\" ELSE 0 END) FROM \"Player_Attributes\" AS t1",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 5091,
+      "workstream": "指标与概念绑定",
+      "observation": "预测用player_api_id=6/23的标量子查询；Gold用Player_Attributes.id=6/23做条件求和。ID命名空间及多观测处理不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "建立概念到字段/指标的明确绑定及反例；区分单场与累计、实体与观测、属性与标识。优先把登记指标接入可执行契约；歧义不能默选。",
+      "exit_evidence": "公开定义和登记版本可追溯；脱离题号的改写/反例用例通过；记录所选指标、来源字段、统计粒度及未选候选。"
+    },
+    {
+      "question_id": 1135,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "question": "Please provide top four football players' IDs who are among the lowest potential players and prefer to use the right foot when attacking.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT player_api_id FROM bird_european_football_2.Player_Attributes WHERE preferred_foot = 'right' GROUP BY player_api_id ORDER BY MIN(potential) ASC LIMIT 4",
+      "sql_parameters": null,
+      "gold_sql": "SELECT id FROM Player_Attributes WHERE preferred_foot = 'right' ORDER BY potential ASC NULLS LAST LIMIT 4",
+      "gold_execution_sql": "SELECT \"id\" FROM \"Player_Attributes\" WHERE \"preferred_foot\" = 'right' ORDER BY \"potential\" ASC LIMIT 4",
+      "prediction_error": null,
+      "prediction_row_count": 4,
+      "gold_row_count": 4,
+      "latency_ms": 10075,
+      "workstream": "指标与概念绑定",
+      "observation": "预测返回player_api_id并按球员MIN(potential)排名；Gold返回属性记录id，直接按观测potential排名。实体与观测ID混用。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "建立概念到字段/指标的明确绑定及反例；区分单场与累计、实体与观测、属性与标识。优先把登记指标接入可执行契约；歧义不能默选。",
+      "exit_evidence": "公开定义和登记版本可追溯；脱离题号的改写/反例用例通过；记录所选指标、来源字段、统计粒度及未选候选。"
+    },
+    {
+      "question_id": 872,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "question": "In the race No. 45, for the driver who had the Q3 time as 0:01:33, what is his abbreviated code?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT T2.code FROM bird_formula_1.qualifying AS T1 JOIN bird_formula_1.drivers AS T2 ON T1.\"driverId\" = T2.\"driverId\" WHERE T1.\"raceId\" = 45 AND T1.q3 = '0:01:33'",
+      "sql_parameters": null,
+      "gold_sql": "SELECT T2.code FROM qualifying AS T1 INNER JOIN drivers AS T2 ON T2.driverId = T1.driverId WHERE T1.raceId = 45 AND T1.q3 LIKE '1:33%'",
+      "gold_execution_sql": "SELECT T2.\"code\" FROM \"qualifying\" AS T1 INNER JOIN \"drivers\" AS T2 ON T2.\"driverId\" = T1.\"driverId\" WHERE T1.\"raceId\" = 45 AND T1.\"q3\" LIKE '1:33%'",
+      "prediction_error": null,
+      "prediction_row_count": 0,
+      "gold_row_count": 1,
+      "latency_ms": 8905,
+      "workstream": "值域与边界",
+      "observation": "预测q3精确等于'0:01:33'；Gold使用'1:33%'前缀。问句时间格式与实际存储格式需有可追溯归一化。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "核验公开字典和现有值域，维护编码、别名、时间表示及区间开闭；名称纠正须有候选值和依据，不能静默替换。",
+      "exit_evidence": "字典来源/数据适用范围清楚；边界值、NULL、未知编码和近似名称均有测试。"
+    },
+    {
+      "question_id": 879,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "question": "For the driver who set the fastest lap speed, what is his nationality?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT T2.nationality FROM bird_formula_1.results AS T1 JOIN bird_formula_1.drivers AS T2 ON T1.\"driverId\" = T2.\"driverId\" ORDER BY CAST(T1.\"fastestLapSpeed\" AS DOUBLE PRECISION) DESC NULLS LAST LIMIT 1",
+      "sql_parameters": null,
+      "gold_sql": "SELECT T1.nationality FROM drivers AS T1 INNER JOIN results AS T2 ON T2.driverId = T1.driverId ORDER BY T2.fastestLapSpeed DESC NULLS LAST LIMIT 1",
+      "gold_execution_sql": "SELECT T1.\"nationality\" FROM \"drivers\" AS T1 INNER JOIN \"results\" AS T2 ON T2.\"driverId\" = T1.\"driverId\" ORDER BY T2.\"fastestLapSpeed\" DESC NULLS LAST LIMIT 1",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 10438,
+      "workstream": "Gold与定义一致性",
+      "observation": "预测把fastestLapSpeed转数值降序；Gold按文本降序。历史只读诊断已显示文本最大值与数值最大值不同，须固定类型和评分口径。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "比对问句、公开定义、登记语义和Gold；记录冲突及证据。正式基线不改分，另列产品语义质量核验，不能以Gold反向污染产品。",
+      "exit_evidence": "原始成绩保留；冲突有公开来源及数据证据，歧义有产品处理策略；独立评测前固定评分协议。"
+    },
+    {
+      "question_id": 892,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "question": "State the driver with the most points scored. Find his full name with that points.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT t1.forename, t1.surname, SUM(t2.points) FROM bird_formula_1.drivers AS t1 JOIN bird_formula_1.results AS t2 ON t1.\"driverId\" = t2.\"driverId\" GROUP BY t1.\"driverId\", t1.forename, t1.surname ORDER BY SUM(t2.points) DESC NULLS LAST LIMIT 1",
+      "sql_parameters": null,
+      "gold_sql": "SELECT T3.forename, T3.surname, T2.points FROM races AS T1 INNER JOIN driverStandings AS T2 ON T2.raceId = T1.raceId INNER JOIN drivers AS T3 ON T3.driverId = T2.driverId ORDER BY T2.points DESC NULLS LAST LIMIT 1",
+      "gold_execution_sql": "SELECT T3.\"forename\", T3.\"surname\", T2.\"points\" FROM \"races\" AS T1 INNER JOIN \"driverStandings\" AS T2 ON T2.\"raceId\" = T1.\"raceId\" INNER JOIN \"drivers\" AS T3 ON T3.\"driverId\" = T2.\"driverId\" ORDER BY T2.\"points\" DESC NULLS LAST LIMIT 1",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 4987,
+      "workstream": "指标与概念绑定",
+      "observation": "预测SUM(results.points)取生涯单场分总和；Gold取driverStandings.points的最大累计观测。历史检索已有相关累计指标命中，但没有形成执行约束。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "建立概念到字段/指标的明确绑定及反例；区分单场与累计、实体与观测、属性与标识。优先把登记指标接入可执行契约；歧义不能默选。",
+      "exit_evidence": "公开定义和登记版本可追溯；脱离题号的改写/反例用例通过；记录所选指标、来源字段、统计粒度及未选候选。"
+    },
+    {
+      "question_id": 896,
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "question": "Calculate the percentage whereby Hamilton was not at the 1st track of the the f1 circuit since 2010.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT 100.0 * SUM(CASE WHEN t1.position <> 1 THEN 1 ELSE 0 END) / COUNT(*) FROM bird_formula_1.results AS t1 JOIN bird_formula_1.drivers AS t2 ON t1.\"driverId\" = t2.\"driverId\" JOIN bird_formula_1.races AS t3 ON t1.\"raceId\" = t3.\"raceId\" WHERE t2.surname = 'Hamilton' AND t3.year >= 2010",
+      "sql_parameters": null,
+      "gold_sql": "SELECT CAST(COUNT(CASE WHEN T2.position <> 1 THEN T2.position END) AS REAL) * 100 / NULLIF(COUNT(T2.driverStandingsId), 0) FROM races AS T1 INNER JOIN driverStandings AS T2 ON T2.raceId = T1.raceId INNER JOIN drivers AS T3 ON T3.driverId = T2.driverId WHERE T3.surname = 'Hamilton' AND T1.year >= 2010",
+      "gold_execution_sql": "SELECT CAST(COUNT(CASE WHEN T2.\"position\" <> 1 THEN T2.\"position\" END) AS REAL) * 100 / NULLIF(COUNT(T2.\"driverStandingsId\"), 0) FROM \"races\" AS T1 INNER JOIN \"driverStandings\" AS T2 ON T2.\"raceId\" = T1.\"raceId\" INNER JOIN \"drivers\" AS T3 ON T3.\"driverId\" = T2.\"driverId\" WHERE T3.\"surname\" = 'Hamilton' AND T1.\"year\" >= 2010",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 6038,
+      "workstream": "指标与概念绑定",
+      "observation": "预测统计results.position；Gold统计driverStandings.position。单场成绩与积分榜排名使用不同事实表。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "建立概念到字段/指标的明确绑定及反例；区分单场与累计、实体与观测、属性与标识。优先把登记指标接入可执行契约；歧义不能默选。",
+      "exit_evidence": "公开定义和登记版本可追溯；脱离题号的改写/反例用例通过；记录所选指标、来源字段、统计粒度及未选候选。"
+    },
+    {
+      "question_id": 928,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "question": "Which driver ranked the first in the Canadian Grand Prix in 2007? Please give his reference name.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT t1.\"driverRef\" FROM bird_formula_1.drivers AS t1 JOIN bird_formula_1.results AS t2 ON t1.\"driverId\" = t2.\"driverId\" JOIN bird_formula_1.races AS t3 ON t2.\"raceId\" = t3.\"raceId\" WHERE t3.name = 'Canadian Grand Prix' AND t3.year = 2007 AND t2.position = 1",
+      "sql_parameters": null,
+      "gold_sql": "SELECT T3.forename, T3.surname, T3.driverRef FROM races AS T1 INNER JOIN results AS T2 ON T2.raceId = T1.raceId INNER JOIN drivers AS T3 ON T3.driverId = T2.driverId WHERE T1.name = 'Canadian Grand Prix' AND T2.rank = 1 AND T1.year = 2007",
+      "gold_execution_sql": "SELECT T3.\"forename\", T3.\"surname\", T3.\"driverRef\" FROM \"races\" AS T1 INNER JOIN \"results\" AS T2 ON T2.\"raceId\" = T1.\"raceId\" INNER JOIN \"drivers\" AS T3 ON T3.\"driverId\" = T2.\"driverId\" WHERE T1.\"name\" = 'Canadian Grand Prix' AND T2.\"rank\" = 1 AND T1.\"year\" = 2007",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 8119,
+      "workstream": "指标与概念绑定",
+      "observation": "预测过滤position=1且只输出driverRef；Gold过滤rank=1并输出forename、surname、driverRef。排名含义和输出列均不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "建立概念到字段/指标的明确绑定及反例；区分单场与累计、实体与观测、属性与标识。优先把登记指标接入可执行契约；歧义不能默选。",
+      "exit_evidence": "公开定义和登记版本可追溯；脱离题号的改写/反例用例通过；记录所选指标、来源字段、统计粒度及未选候选。"
+    },
+    {
+      "question_id": 937,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "question": "What's the finish time for the driver who ranked second in 2008's Chinese Grand Prix?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT results.time FROM bird_formula_1.results JOIN bird_formula_1.races ON results.\"raceId\" = races.\"raceId\" WHERE races.year = 2008 AND races.name = 'Chinese Grand Prix' AND results.position = 2",
+      "sql_parameters": null,
+      "gold_sql": "SELECT T1.time FROM results AS T1 INNER JOIN races AS T2 ON T1.raceId = T2.raceId WHERE T1.rank = 2 AND T2.name = 'Chinese Grand Prix' AND T2.year = 2008",
+      "gold_execution_sql": "SELECT T1.\"time\" FROM \"results\" AS T1 INNER JOIN \"races\" AS T2 ON T1.\"raceId\" = T2.\"raceId\" WHERE T1.\"rank\" = 2 AND T2.\"name\" = 'Chinese Grand Prix' AND T2.\"year\" = 2008",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 8261,
+      "workstream": "指标与概念绑定",
+      "observation": "预测按results.position=2；Gold按results.rank=2。需要区分完赛名次与最快圈排名，不应凭ranked一词默选。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "建立概念到字段/指标的明确绑定及反例；区分单场与累计、实体与观测、属性与标识。优先把登记指标接入可执行契约；歧义不能默选。",
+      "exit_evidence": "公开定义和登记版本可追溯；脱离题号的改写/反例用例通过；记录所选指标、来源字段、统计粒度及未选候选。"
+    },
+    {
+      "question_id": 948,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "question": "What are the maximum points of British constructors?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT MAX(T1.points) FROM bird_formula_1.\"constructorResults\" AS T1 JOIN bird_formula_1.constructors AS T2 ON T1.\"constructorId\" = T2.\"constructorId\" WHERE T2.nationality = 'British'",
+      "sql_parameters": null,
+      "gold_sql": "SELECT MAX(T1.points) FROM constructorStandings AS T1 INNER JOIN constructors AS T2 ON T1.constructorId = T2.constructorId WHERE T2.nationality = 'British'",
+      "gold_execution_sql": "SELECT MAX(T1.\"points\") FROM \"constructorStandings\" AS T1 INNER JOIN \"constructors\" AS T2 ON T1.\"constructorId\" = T2.\"constructorId\" WHERE T2.\"nationality\" = 'British'",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 5299,
+      "workstream": "指标与概念绑定",
+      "observation": "预测MAX(constructorResults.points)；Gold MAX(constructorStandings.points)。单场与累计积分事实源不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "建立概念到字段/指标的明确绑定及反例；区分单场与累计、实体与观测、属性与标识。优先把登记指标接入可执行契约；歧义不能默选。",
+      "exit_evidence": "公开定义和登记版本可追溯；脱离题号的改写/反例用例通过；记录所选指标、来源字段、统计粒度及未选候选。"
+    },
+    {
+      "question_id": 950,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "question": "Please list the constructor names with 0 points at race 291.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT T1.name FROM bird_formula_1.constructors AS T1 INNER JOIN bird_formula_1.\"constructorResults\" AS T2 ON T1.\"constructorId\" = T2.\"constructorId\" WHERE T2.\"raceId\" = 291 AND T2.points = 0",
+      "sql_parameters": null,
+      "gold_sql": "SELECT T2.name FROM constructorStandings AS T1 INNER JOIN constructors AS T2 ON T1.constructorId = T2.constructorId WHERE T1.points = 0 AND T1.raceId = 291",
+      "gold_execution_sql": "SELECT T2.\"name\" FROM \"constructorStandings\" AS T1 INNER JOIN \"constructors\" AS T2 ON T1.\"constructorId\" = T2.\"constructorId\" WHERE T1.\"points\" = 0 AND T1.\"raceId\" = 291",
+      "prediction_error": null,
+      "prediction_row_count": 11,
+      "gold_row_count": 6,
+      "latency_ms": 4622,
+      "workstream": "指标与概念绑定",
+      "observation": "预测race291的constructorResults零分；Gold使用constructorStandings零分。问句积分口径存在歧义。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "建立概念到字段/指标的明确绑定及反例；区分单场与累计、实体与观测、属性与标识。优先把登记指标接入可执行契约；歧义不能默选。",
+      "exit_evidence": "公开定义和登记版本可追溯；脱离题号的改写/反例用例通过；记录所选指标、来源字段、统计粒度及未选候选。"
+    },
+    {
+      "question_id": 962,
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "question": "From 2000 to 2005, what percentage of drivers who were born before 1985 and the lap numbers were over 50?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT COUNT(DISTINCT CASE WHEN SUBSTRING(t1.dob FROM 1 FOR 4) < '1985' AND t2.laps > 50 THEN t1.\"driverId\" END) * 100.0 / NULLIF(COUNT(DISTINCT t1.\"driverId\"), 0) FROM bird_formula_1.drivers AS t1 JOIN bird_formula_1.results AS t2 ON t1.\"driverId\" = t2.\"driverId\" JOIN bird_formula_1.races AS t3 ON t2.\"raceId\" = t3.\"raceId\" WHERE t3.year BETWEEN 2000 AND 2005",
+      "sql_parameters": null,
+      "gold_sql": "SELECT CAST(SUM(CASE WHEN TO_CHAR(CAST(T3.dob AS TIMESTAMP), 'YYYY') < '1985' AND T1.laps > 50 THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(*), 0) FROM results AS T1 INNER JOIN races AS T2 ON T1.raceId = T2.raceId INNER JOIN drivers AS T3 ON T1.driverId = T3.driverId WHERE T2.year BETWEEN 2000 AND 2005",
+      "gold_execution_sql": "SELECT CAST(SUM(CASE WHEN TO_CHAR(CAST(T3.\"dob\" AS TIMESTAMP), 'YYYY') < '1985' AND T1.\"laps\" > 50 THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(*), 0) FROM \"results\" AS T1 INNER JOIN \"races\" AS T2 ON T1.\"raceId\" = T2.\"raceId\" INNER JOIN \"drivers\" AS T3 ON T1.\"driverId\" = T3.\"driverId\" WHERE T2.\"year\" BETWEEN 2000 AND 2005",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 5891,
+      "workstream": "人群与关联粒度",
+      "observation": "预测分子分母按DISTINCT driverId；Gold分子分母按车手参赛记录。百分比统计对象不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确统计对象、分子分母人群、去重键、关联方向和缺失关联行策略；编译前检查基数，必要时先聚合或半连接。",
+      "exit_evidence": "带重复键、空值、缺失关联行的独立数据夹具验证结果；关联前后人群和计数可解释。"
+    },
+    {
+      "question_id": 963,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "question": "How many French drivers who obtain the laptime less than 02:00.00?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT COUNT(DISTINCT t1.\"driverId\") FROM bird_formula_1.drivers AS t1 INNER JOIN bird_formula_1.\"lapTimes\" AS t2 ON t1.\"driverId\" = t2.\"driverId\" WHERE t1.nationality = 'French' AND t2.milliseconds < 120000",
+      "sql_parameters": null,
+      "gold_sql": "SELECT COUNT(T1.driverId) FROM drivers AS T1 INNER JOIN lapTimes AS T2 ON T1.driverId = T2.driverId WHERE T1.nationality = 'French' AND (EXTRACT(MINUTE FROM T2.time::INTERVAL) * 60 + EXTRACT(SECOND FROM T2.time::INTERVAL)) < 120",
+      "gold_execution_sql": "SELECT COUNT(T1.\"driverId\") FROM \"drivers\" AS T1 INNER JOIN \"lapTimes\" AS T2 ON T1.\"driverId\" = T2.\"driverId\" WHERE T1.\"nationality\" = 'French' AND (EXTRACT(MINUTE FROM CAST(T2.\"time\" AS INTERVAL)) * 60 + EXTRACT(SECOND FROM CAST(T2.\"time\" AS INTERVAL))) < 120",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 4977,
+      "workstream": "人群与关联粒度",
+      "observation": "预测按去重车手计数并用milliseconds<120000；Gold按lapTimes关联记录计数并转换time。须核验粒度及时间字段等价性。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确统计对象、分子分母人群、去重键、关联方向和缺失关联行策略；编译前检查基数，必要时先聚合或半连接。",
+      "exit_evidence": "带重复键、空值、缺失关联行的独立数据夹具验证结果；关联前后人群和计数可解释。"
+    },
+    {
+      "question_id": 967,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "question": "State code numbers of top 3 yougest drivers. How many Netherlandic drivers among them?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "WITH top_3_youngest AS (SELECT code, nationality FROM bird_formula_1.drivers WHERE dob IS NOT NULL ORDER BY dob DESC LIMIT 3) SELECT code, (SELECT COUNT(*) FROM top_3_youngest WHERE nationality = 'Dutch') FROM top_3_youngest",
+      "sql_parameters": null,
+      "gold_sql": "SELECT COUNT(*) FROM (SELECT nationality FROM drivers ORDER BY dob DESC LIMIT 3) AS T3 WHERE nationality = 'Dutch'",
+      "gold_execution_sql": "SELECT COUNT(*) FROM (SELECT \"nationality\" FROM \"drivers\" ORDER BY \"dob\" DESC LIMIT 3) AS T3 WHERE \"nationality\" = 'Dutch'",
+      "prediction_error": null,
+      "prediction_row_count": 3,
+      "gold_row_count": 1,
+      "latency_ms": 5326,
+      "workstream": "输出契约",
+      "observation": "预测输出前三车手code列表及重复的荷兰人数；Gold只输出荷兰人数标量。问句包含两个要求，评分输出合同需明确。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确回答字段及顺序、ID与名称、拼接与分列、布尔展示、标量与列表；区分内部排序键和最终输出。",
+      "exit_evidence": "列数、列序、数据类型、答案粒度的独立断言通过；无法由问句确定时记录歧义。"
+    },
+    {
+      "question_id": 1002,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "question": "As of the present, what is the full name of the youngest racer? Indicate her nationality and the name of the race to which he/she first joined.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "WITH youngest_driver AS (SELECT drivers.\"driverId\", forename || ' ' || surname AS full_name, nationality FROM bird_formula_1.drivers ORDER BY dob DESC LIMIT 1), first_race AS (SELECT r.name AS race_name FROM bird_formula_1.results AS res JOIN bird_formula_1.races AS r ON res.\"raceId\" = r.\"raceId\" WHERE res.\"driverId\" = (SELECT \"driverId\" FROM youngest_driver) ORDER BY r.date ASC LIMIT 1) SELECT yd.full_name, yd.nationality, fr.race_name FROM youngest_driver AS yd CROSS JOIN first_race AS fr",
+      "sql_parameters": null,
+      "gold_sql": "SELECT T1.forename, T1.surname, T1.nationality, T3.name FROM drivers AS T1 INNER JOIN driverStandings AS T2 ON T1.driverId = T2.driverId INNER JOIN races AS T3 ON T2.raceId = T3.raceId WHERE T1.dob notnull ORDER BY T1.dob DESC LIMIT 1",
+      "gold_execution_sql": "SELECT T1.\"forename\", T1.\"surname\", T1.\"nationality\", T3.\"name\" FROM \"drivers\" AS T1 INNER JOIN \"driverStandings\" AS T2 ON T1.\"driverId\" = T2.\"driverId\" INNER JOIN \"races\" AS T3 ON T2.\"raceId\" = T3.\"raceId\" WHERE T1.\"dob\" IS NOT NULL ORDER BY T1.\"dob\" DESC LIMIT 1",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 6767,
+      "workstream": "输出契约",
+      "observation": "预测拼接全名并从results按最早race日期查首赛；Gold分列姓名，经driverStandings关联但未显式按首赛日期排序。输出及首赛口径不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确回答字段及顺序、ID与名称、拼接与分列、布尔展示、标量与列表；区分内部排序键和最终输出。",
+      "exit_evidence": "列数、列序、数据类型、答案粒度的独立断言通过；无法由问句确定时记录歧义。"
+    },
+    {
+      "question_id": 1011,
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "question": "Which top 20 driver created the shortest lap time ever record in a Formula_1 race? Please give them full names.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "WITH lap_times_in_seconds AS (SELECT T1.\"driverId\", (CASE WHEN SPLIT_PART(T1.\"time\", ':', 1) <> '' THEN CAST(SPLIT_PART(T1.\"time\", ':', 1) AS DOUBLE PRECISION) * 60 ELSE 0 END + CASE WHEN SPLIT_PART(SPLIT_PART(T1.\"time\", ':', 2), '.', 1) <> '' THEN CAST(SPLIT_PART(SPLIT_PART(T1.\"time\", ':', 2), '.', 1) AS DOUBLE PRECISION) ELSE 0 END + CASE WHEN SPLIT_PART(SPLIT_PART(T1.\"time\", ':', 2), '.', 2) <> '' THEN CAST(SPLIT_PART(SPLIT_PART(T1.\"time\", ':', 2), '.', 2) AS DOUBLE PRECISION) / 1000 ELSE 0 END) AS time_in_seconds FROM bird_formula_1.\"lapTimes\" AS T1) SELECT T2.forename, T2.surname, T1.\"driverId\" FROM (SELECT \"driverId\", MIN(time_in_seconds) AS min_time_in_seconds FROM lap_times_in_seconds GROUP BY \"driverId\") AS T1 INNER JOIN bird_formula_1.drivers AS T2 ON T1.\"driverId\" = T2.\"driverId\" ORDER BY T1.min_time_in_seconds ASC LIMIT 1",
+      "sql_parameters": null,
+      "gold_sql": "WITH lap_times_in_seconds AS (SELECT driverId, (CASE WHEN SPLIT_PART(time, ':', 1) <> '' THEN CAST(SPLIT_PART(time, ':', 1) AS float) * 60 ELSE 0 END + CASE WHEN SPLIT_PART(SPLIT_PART(time, ':', 2), '.', 1) <> '' THEN CAST(SPLIT_PART(SPLIT_PART(time, ':', 2), '.', 1) AS float) ELSE 0 END + CASE WHEN SPLIT_PART(SPLIT_PART(time, ':', 2), '.', 2) <> '' THEN CAST(SPLIT_PART(SPLIT_PART(time, ':', 2), '.', 2) AS float) / 1000 ELSE 0 END) AS time_in_seconds FROM lapTimes) SELECT T2.forename, T2.surname, T1.driverId FROM (SELECT driverId, MIN(time_in_seconds) AS min_time_in_seconds FROM lap_times_in_seconds GROUP BY driverId) AS T1 INNER JOIN drivers AS T2 ON T1.driverId = T2.driverId ORDER BY T1.min_time_in_seconds ASC LIMIT 20",
+      "gold_execution_sql": "WITH lap_times_in_seconds AS (SELECT \"driverId\", (CASE WHEN SPLIT_PART(\"time\", ':', 1) <> '' THEN CAST(SPLIT_PART(\"time\", ':', 1) AS DOUBLE PRECISION) * 60 ELSE 0 END + CASE WHEN SPLIT_PART(SPLIT_PART(\"time\", ':', 2), '.', 1) <> '' THEN CAST(SPLIT_PART(SPLIT_PART(\"time\", ':', 2), '.', 1) AS DOUBLE PRECISION) ELSE 0 END + CASE WHEN SPLIT_PART(SPLIT_PART(\"time\", ':', 2), '.', 2) <> '' THEN CAST(SPLIT_PART(SPLIT_PART(\"time\", ':', 2), '.', 2) AS DOUBLE PRECISION) / 1000 ELSE 0 END) AS time_in_seconds FROM \"lapTimes\") SELECT T2.\"forename\", T2.\"surname\", T1.\"driverId\" FROM (SELECT \"driverId\", MIN(time_in_seconds) AS min_time_in_seconds FROM lap_times_in_seconds GROUP BY \"driverId\") AS T1 INNER JOIN \"drivers\" AS T2 ON T1.\"driverId\" = T2.\"driverId\" ORDER BY T1.min_time_in_seconds ASC LIMIT 20",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 20,
+      "latency_ms": 9636,
+      "workstream": "排序与TopN",
+      "observation": "问句及Gold要求top20；预测SQL最终LIMIT1。当前代码新增显式Top-N校验可阻止该类型计划，但未重新生成本题或证明答对。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确排名字段、方向、NULL位置、并列和数量；校验显式Top-N不被改写。并列规则需要稳定口径，不能按某次Gold返回选键。",
+      "exit_evidence": "Top20、NULL极值、并列极值和稳定排序夹具通过；IR数量和输出限制一致。"
+    },
+    {
+      "question_id": 743,
+      "db_id": "superhero",
+      "difficulty": "challenging",
+      "question": "What is the percentage of superheroes who act in their own self-interest or make decisions based on their own moral code? Indicate how many of the said superheroes were published by Marvel Comics.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT CAST(SUM(CASE WHEN t2.alignment = 'Neutral' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(t1.id), COUNT(CASE WHEN t2.alignment = 'Neutral' AND t3.publisher_name = 'Marvel Comics' THEN t1.id ELSE NULL END) FROM bird_superhero.superhero AS t1 LEFT JOIN bird_superhero.alignment AS t2 ON t1.alignment_id = t2.id LEFT JOIN bird_superhero.publisher AS t3 ON t1.publisher_id = t3.id",
+      "sql_parameters": null,
+      "gold_sql": "SELECT (CAST(COUNT(*) AS REAL) * 100 / NULLIF((SELECT COUNT(*) FROM superhero), 0)), CAST(SUM(CASE WHEN T2.publisher_name = 'Marvel Comics' THEN 1 ELSE 0 END) AS REAL) FROM superhero AS T1 INNER JOIN publisher AS T2 ON T1.publisher_id = T2.id INNER JOIN alignment AS T3 ON T3.id = T1.alignment_id WHERE T3.alignment = 'Bad'",
+      "gold_execution_sql": "SELECT (CAST(COUNT(*) AS REAL) * 100 / NULLIF((SELECT COUNT(*) FROM \"superhero\"), 0)), CAST(SUM(CASE WHEN T2.\"publisher_name\" = 'Marvel Comics' THEN 1 ELSE 0 END) AS REAL) FROM \"superhero\" AS T1 INNER JOIN \"publisher\" AS T2 ON T1.\"publisher_id\" = T2.\"id\" INNER JOIN \"alignment\" AS T3 ON T3.\"id\" = T1.\"alignment_id\" WHERE T3.\"alignment\" = 'Bad'",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 7243,
+      "workstream": "比例与复杂计算",
+      "observation": "预测self-interest/moral code对应Neutral，Gold对应Bad；同时关联方式及占比分母不同。先核验alignment定义，再验证双输出比例。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "扩展具类型的条件聚合、结果间计算及百分比单位；显式保存分子、分母、过滤作用域、基期和零值策略；不支持时拒绝。",
+      "exit_evidence": "条件分子、全量/条件分母、增长率与占比差等独立夹具通过；登记公式完整展开，不能退化为单字段。"
+    },
+    {
+      "question_id": 747,
+      "db_id": "superhero",
+      "difficulty": "simple",
+      "question": "What is the total number of superheroes without full name?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT COUNT(id) FROM bird_superhero.superhero WHERE full_name IS NULL OR full_name = '' OR full_name = '-'",
+      "sql_parameters": null,
+      "gold_sql": "SELECT COUNT(id) FROM superhero WHERE full_name IS NULL",
+      "gold_execution_sql": "SELECT COUNT(\"id\") FROM \"superhero\" WHERE \"full_name\" IS NULL",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 3878,
+      "workstream": "值域与边界",
+      "observation": "预测无姓名包括NULL、空串及'-'；Gold仅NULL。缺失编码须按字段字典明确，不能任意扩展。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "核验公开字典和现有值域，维护编码、别名、时间表示及区间开闭；名称纠正须有候选值和依据，不能静默替换。",
+      "exit_evidence": "字典来源/数据适用范围清楚；边界值、NULL、未知编码和近似名称均有测试。"
+    },
+    {
+      "question_id": 533,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "question": "How many users last accessed the website after 2014/9/1?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT COUNT(\"Id\") FROM bird_codebase_community.users WHERE \"LastAccessDate\" > '2014-09-01'",
+      "sql_parameters": null,
+      "gold_sql": "SELECT COUNT(Id) FROM users WHERE DATE(LastAccessDate) > '2014-09-01'",
+      "gold_execution_sql": "SELECT COUNT(\"Id\") FROM \"users\" WHERE DATE(\"LastAccessDate\") > '2014-09-01'",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 4241,
+      "workstream": "值域与边界",
+      "observation": "预测LastAccessDate>'2014-09-01'按时间点比较；Gold DATE(LastAccessDate)>'2014-09-01'排除当日全部时刻。after的日期粒度须明确。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "核验公开字典和现有值域，维护编码、别名、时间表示及区间开闭；名称纠正须有候选值和依据，不能静默替换。",
+      "exit_evidence": "字典来源/数据适用范围清楚；边界值、NULL、未知编码和近似名称均有测试。"
+    },
+    {
+      "question_id": 557,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "question": "Among the posts with a score of over 5, what is the percentage of them being owned by an elder user?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT SUM(CASE WHEN t2.\"Age\" > 65 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) FROM bird_codebase_community.posts AS t1 LEFT JOIN bird_codebase_community.users AS t2 ON t1.\"OwnerUserId\" = t2.\"Id\" WHERE t1.\"Score\" > 5",
+      "sql_parameters": null,
+      "gold_sql": "SELECT CAST(SUM(CASE WHEN T2.Age > 65 THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(T1.Id), 0) FROM posts AS T1 INNER JOIN users AS T2 ON T1.OwnerUserId = T2.Id WHERE T1.Score > 5",
+      "gold_execution_sql": "SELECT CAST(SUM(CASE WHEN T2.\"Age\" > 65 THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(T1.\"Id\"), 0) FROM \"posts\" AS T1 INNER JOIN \"users\" AS T2 ON T1.\"OwnerUserId\" = T2.\"Id\" WHERE T1.\"Score\" > 5",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 4803,
+      "workstream": "人群与关联粒度",
+      "observation": "预测LEFT JOIN users，Gold INNER JOIN users；分母对无用户关联的帖子处理不同，不能仅检查关联未放大行数。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确统计对象、分子分母人群、去重键、关联方向和缺失关联行策略；编译前检查基数，必要时先聚合或半连接。",
+      "exit_evidence": "带重复键、空值、缺失关联行的独立数据夹具验证结果；关联前后人群和计数可解释。"
+    },
+    {
+      "question_id": 587,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "question": "Calculate the average view count of each post tagged as 'humor' and list the title and the comment of each post.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT posts.\"Title\", AVG(posts.\"ViewCount\"), comments.\"Text\" FROM bird_codebase_community.posts AS posts JOIN bird_codebase_community.comments AS comments ON posts.\"Id\" = comments.\"PostId\" WHERE posts.\"Tags\" LIKE '%<humor>%' GROUP BY posts.\"Title\", comments.\"Text\"",
+      "sql_parameters": null,
+      "gold_sql": "SELECT AVG(T2.ViewCount) AS AverageViewCount, T2.Title, T1.Text FROM comments AS T1 INNER JOIN posts AS T2 ON T2.Id = T1.PostId WHERE T2.Tags = '<humor>' GROUP BY T2.Title, T1.Text",
+      "gold_execution_sql": "SELECT AVG(T2.\"ViewCount\") AS AverageViewCount, T2.\"Title\", T1.\"Text\" FROM \"comments\" AS T1 INNER JOIN \"posts\" AS T2 ON T2.\"Id\" = T1.\"PostId\" WHERE T2.\"Tags\" = '<humor>' GROUP BY T2.\"Title\", T1.\"Text\"",
+      "prediction_error": null,
+      "prediction_row_count": 19,
+      "gold_row_count": 9,
+      "latency_ms": 5359,
+      "workstream": "输出契约",
+      "observation": "预测列序Title、AVG(ViewCount)、Text；Gold AVG、Title、Text。Tags同时存在包含'<humor>'与精确等于'<humor>'的差异。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确回答字段及顺序、ID与名称、拼接与分列、布尔展示、标量与列表；区分内部排序键和最终输出。",
+      "exit_evidence": "列数、列序、数据类型、答案粒度的独立断言通过；无法由问句确定时记录歧义。"
+    },
+    {
+      "question_id": 595,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "question": "Which user have only one post history per post and having at least 1000 views?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT t1.\"Id\" FROM bird_codebase_community.users AS t1 JOIN bird_codebase_community.postHistory AS t2 ON t1.\"Id\" = t2.\"UserId\" WHERE t1.\"Views\" >= 1000 GROUP BY t1.\"Id\" HAVING COUNT(t2.\"Id\") = COUNT(DISTINCT t2.\"PostId\")",
+      "sql_parameters": null,
+      "gold_sql": "SELECT T2.UserId FROM users AS T1 INNER JOIN postHistory AS T2 ON T1.Id = T2.UserId INNER JOIN posts AS T3 ON T2.PostId = T3.Id WHERE T3.ViewCount >= 1000 GROUP BY T2.UserId HAVING COUNT(DISTINCT T2.PostHistoryTypeId) = 1",
+      "gold_execution_sql": "SELECT T2.\"UserId\" FROM \"users\" AS T1 INNER JOIN \"postHistory\" AS T2 ON T1.\"Id\" = T2.\"UserId\" INNER JOIN \"posts\" AS T3 ON T2.\"PostId\" = T3.\"Id\" WHERE T3.\"ViewCount\" >= 1000 GROUP BY T2.\"UserId\" HAVING COUNT(DISTINCT T2.\"PostHistoryTypeId\") = 1",
+      "prediction_error": null,
+      "prediction_row_count": 0,
+      "gold_row_count": 94,
+      "latency_ms": 8610,
+      "workstream": "指标与概念绑定",
+      "observation": "预测过滤users.Views且HAVING历史行数=不同PostId数；Gold过滤posts.ViewCount且不同PostHistoryTypeId数量=1。字段归属与only-one含义不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "建立概念到字段/指标的明确绑定及反例；区分单场与累计、实体与观测、属性与标识。优先把登记指标接入可执行契约；歧义不能默选。",
+      "exit_evidence": "公开定义和登记版本可追溯；脱离题号的改写/反例用例通过；记录所选指标、来源字段、统计粒度及未选候选。"
+    },
+    {
+      "question_id": 598,
+      "db_id": "codebase_community",
+      "difficulty": "challenging",
+      "question": "What is the percentage difference of student badges given during 2010 and 2011?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT (COUNT(CASE WHEN \"Date\" LIKE '2011%' THEN 1 END) - COUNT(CASE WHEN \"Date\" LIKE '2010%' THEN 1 END)) * 100.0 / COUNT(CASE WHEN \"Date\" LIKE '2010%' THEN 1 END) FROM bird_codebase_community.badges WHERE \"Name\" = 'Student' AND (\"Date\" LIKE '2010%' OR \"Date\" LIKE '2011%')",
+      "sql_parameters": null,
+      "gold_sql": "SELECT CAST(SUM(CASE WHEN TO_CHAR(CAST(Date AS TIMESTAMP), 'YYYY') = '2010' THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(Id), 0) - CAST(SUM(CASE WHEN TO_CHAR(CAST(Date AS TIMESTAMP), 'YYYY') = '2011' THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(Id), 0) FROM badges WHERE Name = 'Student'",
+      "gold_execution_sql": "SELECT CAST(SUM(CASE WHEN TO_CHAR(CAST(\"Date\" AS TIMESTAMP), 'YYYY') = '2010' THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(\"Id\"), 0) - CAST(SUM(CASE WHEN TO_CHAR(CAST(\"Date\" AS TIMESTAMP), 'YYYY') = '2011' THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(\"Id\"), 0) FROM \"badges\" WHERE \"Name\" = 'Student'",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 5032,
+      "workstream": "比例与复杂计算",
+      "observation": "预测(2011数-2010数)/2010数；Gold以全部Student徽章为共同分母，计算2010占比减2011占比。增长率与占比差、方向均不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "扩展具类型的条件聚合、结果间计算及百分比单位；显式保存分子、分母、过滤作用域、基期和零值策略；不支持时拒绝。",
+      "exit_evidence": "条件分子、全量/条件分母、增长率与占比差等独立夹具通过；登记公式完整展开，不能退化为单字段。"
+    },
+    {
+      "question_id": 694,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "question": "Provide the text of the latest 10 comments to the post with the title 'Analysing wind data with R' and the display name of the user who left it.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT t1.\"Text\", t3.\"DisplayName\" FROM bird_codebase_community.comments AS t1 JOIN bird_codebase_community.posts AS t2 ON t1.\"PostId\" = t2.\"Id\" LEFT JOIN bird_codebase_community.users AS t3 ON t1.\"UserId\" = t3.\"Id\" WHERE t2.\"Title\" = 'Analysing wind data with R' ORDER BY t1.\"CreationDate\" DESC NULLS LAST LIMIT 10",
+      "sql_parameters": null,
+      "gold_sql": "SELECT T3.Text, T1.DisplayName FROM users AS T1 INNER JOIN posts AS T2 ON T1.Id = T2.OwnerUserId INNER JOIN comments AS T3 ON T2.Id = T3.PostId WHERE T2.Title = 'Analysing wind data with R' ORDER BY T1.CreationDate DESC NULLS LAST LIMIT 10",
+      "gold_execution_sql": "SELECT T3.\"Text\", T1.\"DisplayName\" FROM \"users\" AS T1 INNER JOIN \"posts\" AS T2 ON T1.\"Id\" = T2.\"OwnerUserId\" INNER JOIN \"comments\" AS T3 ON T2.\"Id\" = T3.\"PostId\" WHERE T2.\"Title\" = 'Analysing wind data with R' ORDER BY T1.\"CreationDate\" DESC NULLS LAST LIMIT 10",
+      "prediction_error": null,
+      "prediction_row_count": 10,
+      "gold_row_count": 10,
+      "latency_ms": 8697,
+      "workstream": "Gold与定义一致性",
+      "observation": "预测返回评论者名字并按评论日期倒序；Gold返回帖子所有者名字并按用户创建时间倒序。问句latest comments与Gold的角色/排序存在待核验冲突。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "比对问句、公开定义、登记语义和Gold；记录冲突及证据。正式基线不改分，另列产品语义质量核验，不能以Gold反向污染产品。",
+      "exit_evidence": "原始成绩保留；冲突有公开来源及数据证据，歧义有产品处理策略；独立评测前固定评分协议。"
+    },
+    {
+      "question_id": 341,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "question": "What are the borderless cards available without powerful foils?",
+      "product_status": "rejected",
+      "prediction_status": "rejected",
+      "failure_category": "generation_or_execution_error",
+      "sql": "",
+      "sql_parameters": null,
+      "gold_sql": "SELECT id FROM cards WHERE borderColor = 'borderless' AND (cardKingdomId IS NULL OR cardKingdomId IS NULL)",
+      "gold_execution_sql": "SELECT \"id\" FROM \"cards\" WHERE \"borderColor\" = 'borderless' AND (\"cardKingdomId\" IS NULL OR \"cardKingdomId\" IS NULL)",
+      "prediction_error": "generation_placeholder",
+      "prediction_row_count": null,
+      "gold_row_count": 67,
+      "latency_ms": 9832,
+      "workstream": "指标与概念绑定",
+      "observation": "预测被generation_placeholder拒绝；Gold映射without powerful foils为cardKingdomId空值，且重复同一条件。需核验公开字段定义，拒绝数保留分母。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "建立概念到字段/指标的明确绑定及反例；区分单场与累计、实体与观测、属性与标识。优先把登记指标接入可执行契约；歧义不能默选。",
+      "exit_evidence": "公开定义和登记版本可追溯；脱离题号的改写/反例用例通过；记录所选指标、来源字段、统计粒度及未选候选。"
+    },
+    {
+      "question_id": 347,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "question": "Find all cards illustrated by Stephen Daniel and describe the text of the ruling of these cards. State if these cards have missing or degraded properties and values.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT t1.name, t2.text, t1.\"hasContentWarning\" FROM bird_card_games.cards AS t1 INNER JOIN bird_card_games.rulings AS t2 ON t1.uuid = t2.uuid WHERE t1.artist = 'Stephen Daniel'",
+      "sql_parameters": null,
+      "gold_sql": "SELECT T1.id, T2.text, T1.hasContentWarning FROM cards AS T1 INNER JOIN rulings AS T2 ON T1.uuid = T2.uuid WHERE T1.artist = 'Stephen Daniele'",
+      "gold_execution_sql": "SELECT T1.\"id\", T2.\"text\", T1.\"hasContentWarning\" FROM \"cards\" AS T1 INNER JOIN \"rulings\" AS T2 ON T1.\"uuid\" = T2.\"uuid\" WHERE T1.\"artist\" = 'Stephen Daniele'",
+      "prediction_error": null,
+      "prediction_row_count": 0,
+      "gold_row_count": 23,
+      "latency_ms": 9413,
+      "workstream": "值域与边界",
+      "observation": "预测artist='Stephen Daniel'且输出name；Gold artist='Stephen Daniele'且输出id。名称拼写匹配和输出类型均不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "核验公开字典和现有值域，维护编码、别名、时间表示及区间开闭；名称纠正须有候选值和依据，不能静默替换。",
+      "exit_evidence": "字典来源/数据适用范围清楚；边界值、NULL、未知编码和近似名称均有测试。"
+    },
+    {
+      "question_id": 349,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "question": "Name the card and artist with the most ruling information. Also state if the card is a promotional printing.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT cards.name, cards.artist, cards.\"isPromo\" FROM bird_card_games.cards JOIN bird_card_games.rulings ON cards.uuid = rulings.uuid GROUP BY cards.id, cards.name, cards.artist, cards.\"isPromo\" ORDER BY COUNT(rulings.id) DESC NULLS LAST LIMIT 1",
+      "sql_parameters": null,
+      "gold_sql": "SELECT T1.name, T1.artist, T1.isPromo FROM cards AS T1 INNER JOIN rulings AS T2 ON T1.uuid = T2.uuid WHERE T1.isPromo = 1 AND T1.artist = (SELECT artist FROM cards WHERE isPromo = 1 GROUP BY artist HAVING COUNT(DISTINCT uuid) = (SELECT MAX(count_uuid) FROM (SELECT COUNT(DISTINCT uuid) AS count_uuid FROM cards WHERE isPromo = 1 GROUP BY artist) AS subquery)) LIMIT 1",
+      "gold_execution_sql": "SELECT T1.\"name\", T1.\"artist\", T1.\"isPromo\" FROM \"cards\" AS T1 INNER JOIN \"rulings\" AS T2 ON T1.\"uuid\" = T2.\"uuid\" WHERE T1.\"isPromo\" = 1 AND T1.\"artist\" = (SELECT \"artist\" FROM \"cards\" WHERE \"isPromo\" = 1 GROUP BY \"artist\" HAVING COUNT(DISTINCT \"uuid\") = (SELECT MAX(count_uuid) FROM (SELECT COUNT(DISTINCT \"uuid\") AS count_uuid FROM \"cards\" WHERE \"isPromo\" = 1 GROUP BY \"artist\") AS subquery)) LIMIT 1",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 6205,
+      "workstream": "Gold与定义一致性",
+      "observation": "预测按每卡rulings数量排名；Gold先限定isPromo=1，再选不同uuid卡数最多的artist。most ruling information与Gold统计目标不一致，待来源核验。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "比对问句、公开定义、登记语义和Gold；记录冲突及证据。正式基线不改分，另列产品语义质量核验，不能以Gold反向污染产品。",
+      "exit_evidence": "原始成绩保留；冲突有公开来源及数据证据，歧义有产品处理策略；独立评测前固定评分协议。"
+    },
+    {
+      "question_id": 352,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "question": "Calculate the percentage of the cards availabe in Chinese Simplified.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT 100.0 * COUNT(DISTINCT CASE WHEN t2.language = 'Chinese Simplified' THEN t1.id END) / NULLIF(COUNT(DISTINCT t1.id), 0) FROM bird_card_games.cards AS t1 LEFT JOIN bird_card_games.foreign_data AS t2 ON t1.uuid = t2.uuid",
+      "sql_parameters": null,
+      "gold_sql": "SELECT CAST(SUM(CASE WHEN T2.language = 'Chinese Simplified' THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(T1.id), 0) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid",
+      "gold_execution_sql": "SELECT CAST(SUM(CASE WHEN T2.\"language\" = 'Chinese Simplified' THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(T1.\"id\"), 0) FROM \"cards\" AS T1 INNER JOIN \"foreign_data\" AS T2 ON T1.\"uuid\" = T2.\"uuid\"",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 5813,
+      "workstream": "人群与关联粒度",
+      "observation": "预测在全体卡中按DISTINCT卡ID统计中文支持；Gold在foreign_data关联行上统计。语言行和卡实体的分母不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确统计对象、分子分母人群、去重键、关联方向和缺失关联行策略；编译前检查基数，必要时先聚合或半连接。",
+      "exit_evidence": "带重复键、空值、缺失关联行的独立数据夹具验证结果；关联前后人群和计数可解释。"
+    },
+    {
+      "question_id": 356,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "question": "How many cards have infinite power?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT COUNT(id) FROM bird_card_games.cards WHERE power = '∞'",
+      "sql_parameters": null,
+      "gold_sql": "SELECT COUNT(*) FROM cards WHERE power = '*'",
+      "gold_execution_sql": "SELECT COUNT(*) FROM \"cards\" WHERE \"power\" = '*'",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 4939,
+      "workstream": "Gold与定义一致性",
+      "observation": "预测infinite power为'∞'；Gold为'*'。需核验公开定义、语义登记和值域，不能按答案把两个概念合并。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "比对问句、公开定义、登记语义和Gold；记录冲突及证据。正式基线不改分，另列产品语义质量核验，不能以Gold反向污染产品。",
+      "exit_evidence": "原始成绩保留；冲突有公开来源及数据证据，歧义有产品处理策略；独立评测前固定评分协议。"
+    },
+    {
+      "question_id": 366,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "question": "What is the rule of playing card \"Benalish Knight\"?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT text FROM bird_card_games.cards WHERE name = 'Benalish Knight' LIMIT 1",
+      "sql_parameters": null,
+      "gold_sql": "SELECT T2.format FROM cards AS T1 INNER JOIN legalities AS T2 ON T1.uuid = T2.uuid WHERE T1.name = 'Benalish Knight'",
+      "gold_execution_sql": "SELECT T2.\"format\" FROM \"cards\" AS T1 INNER JOIN \"legalities\" AS T2 ON T1.\"uuid\" = T2.\"uuid\" WHERE T1.\"name\" = 'Benalish Knight'",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 32,
+      "latency_ms": 4902,
+      "workstream": "指标与概念绑定",
+      "observation": "预测rule输出cards.text且LIMIT1；Gold输出legalities.format。卡面规则文本与赛制合法性含义不同，需核验问句约定。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "建立概念到字段/指标的明确绑定及反例；区分单场与累计、实体与观测、属性与标识。优先把登记指标接入可执行契约；歧义不能默选。",
+      "exit_evidence": "公开定义和登记版本可追溯；脱离题号的改写/反例用例通过；记录所选指标、来源字段、统计粒度及未选候选。"
+    },
+    {
+      "question_id": 402,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "question": "What is the percentage of Story Spotlight cards that do not have a text box? List them by their ID.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT id, SUM(CASE WHEN \"isTextless\" = 1 THEN 1.0 ELSE 0.0 END) OVER () * 100.0 / COUNT(*) OVER () FROM bird_card_games.cards WHERE \"isStorySpotlight\" = 1 AND \"isTextless\" = 1",
+      "sql_parameters": null,
+      "gold_sql": "SELECT CAST(SUM(CASE WHEN isTextless = 0 AND isStorySpotlight = 1 THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(id), 0) FROM cards",
+      "gold_execution_sql": "SELECT CAST(SUM(CASE WHEN \"isTextless\" = 0 AND \"isStorySpotlight\" = 1 THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(\"id\"), 0) FROM \"cards\"",
+      "prediction_error": null,
+      "prediction_row_count": 0,
+      "gold_row_count": 1,
+      "latency_ms": 5961,
+      "workstream": "比例与复杂计算",
+      "observation": "预测先过滤StorySpotlight且isTextless=1，窗口比例的人群已被缩小；Gold在全体卡中算isTextless=0且StorySpotlight占比，并只输出标量。过滤作用域、编码及输出均不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "扩展具类型的条件聚合、结果间计算及百分比单位；显式保存分子、分母、过滤作用域、基期和零值策略；不支持时拒绝。",
+      "exit_evidence": "条件分子、全量/条件分母、增长率与占比差等独立夹具通过；登记公式完整展开，不能退化为单字段。"
+    },
+    {
+      "question_id": 412,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "question": "What is the foreign name of the card in French of type Creature, normal layout and black border color, by artist Matthew D. Wilson?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT bird_card_games.foreign_data.name FROM bird_card_games.cards JOIN bird_card_games.foreign_data ON bird_card_games.cards.uuid = bird_card_games.foreign_data.uuid WHERE bird_card_games.foreign_data.language = 'French' AND bird_card_games.cards.type LIKE '%Creature%' AND bird_card_games.cards.layout = 'normal' AND bird_card_games.cards.\"borderColor\" = 'black' AND bird_card_games.cards.artist = 'Matthew D. Wilson'",
+      "sql_parameters": null,
+      "gold_sql": "SELECT name FROM foreign_data WHERE uuid IN (SELECT uuid FROM cards WHERE types = 'Creature' AND layout = 'normal' AND borderColor = 'black' AND artist = 'Matthew D. Wilson') AND language = 'French'",
+      "gold_execution_sql": "SELECT \"name\" FROM \"foreign_data\" WHERE \"uuid\" IN (SELECT \"uuid\" FROM \"cards\" WHERE \"types\" = 'Creature' AND \"layout\" = 'normal' AND \"borderColor\" = 'black' AND \"artist\" = 'Matthew D. Wilson') AND \"language\" = 'French'",
+      "prediction_error": null,
+      "prediction_row_count": 51,
+      "gold_row_count": 50,
+      "latency_ms": 8047,
+      "workstream": "值域与边界",
+      "observation": "预测cards.type包含Creature；Gold cards.types精确Creature并采用IN集合。类型字段与完整值/包含值语义不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "核验公开字典和现有值域，维护编码、别名、时间表示及区间开闭；名称纠正须有候选值和依据，不能静默替换。",
+      "exit_evidence": "字典来源/数据适用范围清楚；边界值、NULL、未知编码和近似名称均有测试。"
+    },
+    {
+      "question_id": 416,
+      "db_id": "card_games",
+      "difficulty": "challenging",
+      "question": "What percentage of cards without power are in French?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT 100.0 * COUNT(CASE WHEN EXISTS(SELECT 1 FROM bird_card_games.foreign_data WHERE foreign_data.uuid = cards.uuid AND foreign_data.language = 'French') THEN 1 END) / COUNT(*) FROM bird_card_games.cards WHERE power IS NULL",
+      "sql_parameters": null,
+      "gold_sql": "SELECT CAST(SUM(CASE WHEN T2.language = 'French' THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(T1.id), 0) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.power IS NULL OR T1.power = '*'",
+      "gold_execution_sql": "SELECT CAST(SUM(CASE WHEN T2.\"language\" = 'French' THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(T1.\"id\"), 0) FROM \"cards\" AS T1 INNER JOIN \"foreign_data\" AS T2 ON T1.\"uuid\" = T2.\"uuid\" WHERE T1.\"power\" IS NULL OR T1.\"power\" = '*'",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 6199,
+      "workstream": "人群与关联粒度",
+      "observation": "预测以power为NULL的卡为分母，并用EXISTS判断French；Gold以cards/foreign_data关联行作分母，且power为NULL或'*'。缺失与变量力量的分类及分母均不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确统计对象、分子分母人群、去重键、关联方向和缺失关联行策略；编译前检查基数，必要时先聚合或半连接。",
+      "exit_evidence": "带重复键、空值、缺失关联行的独立数据夹具验证结果；关联前后人群和计数可解释。"
+    },
+    {
+      "question_id": 424,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "question": "What proportion of cards do not have a text box with a normal layout?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT CAST(COUNT(CASE WHEN \"isTextless\" = 1 THEN 1 END) AS DOUBLE PRECISION) / COUNT(*) FROM bird_card_games.cards WHERE layout = 'normal'",
+      "sql_parameters": null,
+      "gold_sql": "SELECT CAST(SUM(CASE WHEN isTextless = 1 AND layout = 'normal' THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(*), 0) FROM cards",
+      "gold_execution_sql": "SELECT CAST(SUM(CASE WHEN \"isTextless\" = 1 AND \"layout\" = 'normal' THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(*), 0) FROM \"cards\"",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 6890,
+      "workstream": "比例与复杂计算",
+      "observation": "预测比例的分母先限定normal layout并未乘100；Gold以所有卡为分母且乘100。人群作用域与单位均不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "扩展具类型的条件聚合、结果间计算及百分比单位；显式保存分子、分母、过滤作用域、基期和零值策略；不支持时拒绝。",
+      "exit_evidence": "条件分子、全量/条件分母、增长率与占比差等独立夹具通过；登记公式完整展开，不能退化为单字段。"
+    },
+    {
+      "question_id": 462,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "question": "What's the Italian name of the set of cards with \"Ancestor's Chosen\" is in?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT bird_card_games.set_translations.translation FROM bird_card_games.set_translations INNER JOIN bird_card_games.cards ON bird_card_games.set_translations.\"setCode\" = bird_card_games.cards.\"setCode\" WHERE bird_card_games.cards.name = 'Ancestor''s Chosen' AND bird_card_games.set_translations.language = 'Italian'",
+      "sql_parameters": null,
+      "gold_sql": "SELECT translation FROM set_translations WHERE setCode IN (SELECT setCode FROM cards WHERE name = 'Ancestor''s Chosen') AND language = 'Italian'",
+      "gold_execution_sql": "SELECT \"translation\" FROM \"set_translations\" WHERE \"setCode\" IN (SELECT \"setCode\" FROM \"cards\" WHERE \"name\" = 'Ancestor''s Chosen') AND \"language\" = 'Italian'",
+      "prediction_error": null,
+      "prediction_row_count": 3,
+      "gold_row_count": 2,
+      "latency_ms": 9057,
+      "workstream": "人群与关联粒度",
+      "observation": "预测JOIN cards查询set translation；Gold IN子查询setCode。多张同名卡可能复制同一翻译输出，需核验重复行影响。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确统计对象、分子分母人群、去重键、关联方向和缺失关联行策略；编译前检查基数，必要时先聚合或半连接。",
+      "exit_evidence": "带重复键、空值、缺失关联行的独立数据夹具验证结果；关联前后人群和计数可解释。"
+    },
+    {
+      "question_id": 465,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "question": "For the set of cards with \"Ancestor's Chosen\" in it, is there a Korean version of it?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT EXISTS(SELECT 1 FROM bird_card_games.set_translations WHERE set_translations.\"setCode\" IN (SELECT cards.\"setCode\" FROM bird_card_games.cards WHERE name = 'Ancestor''s Chosen') AND language = 'Korean')",
+      "sql_parameters": null,
+      "gold_sql": "SELECT CASE WHEN SUM(CASE WHEN T2.language = 'Korean' AND NOT T2.translation IS NULL THEN 1 ELSE 0 END) > 0 THEN 'YES' ELSE 'NO' END FROM cards AS T1 INNER JOIN set_translations AS T2 ON T2.setCode = T1.setCode WHERE T1.name = 'Ancestor''s Chosen'",
+      "gold_execution_sql": "SELECT CASE WHEN SUM(CASE WHEN T2.\"language\" = 'Korean' AND NOT T2.\"translation\" IS NULL THEN 1 ELSE 0 END) > 0 THEN 'YES' ELSE 'NO' END FROM \"cards\" AS T1 INNER JOIN \"set_translations\" AS T2 ON T2.\"setCode\" = T1.\"setCode\" WHERE T1.\"name\" = 'Ancestor''s Chosen'",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 8334,
+      "workstream": "输出契约",
+      "observation": "预测返回EXISTS布尔值；Gold返回YES/NO字符串且要求translation非NULL。答案表示和存在性条件不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确回答字段及顺序、ID与名称、拼接与分列、布尔展示、标量与列表；区分内部排序键和最终输出。",
+      "exit_evidence": "列数、列序、数据类型、答案粒度的独立断言通过；无法由问句确定时记录歧义。"
+    },
+    {
+      "question_id": 469,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "question": "Did the set of cards with \"Angel of Mercy\" appear on Magic: The Gathering Online?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT T2.\"mtgoCode\" FROM bird_card_games.cards AS T1 INNER JOIN bird_card_games.sets AS T2 ON T1.\"setCode\" = T2.code WHERE T1.name = 'Angel of Mercy'",
+      "sql_parameters": null,
+      "gold_sql": "SELECT CASE WHEN NOT T2.mtgoCode IS NULL THEN 'YES' ELSE 'NO' END FROM cards AS T1 INNER JOIN sets AS T2 ON T2.code = T1.setCode WHERE T1.name = 'Angel of Mercy'",
+      "gold_execution_sql": "SELECT CASE WHEN NOT T2.\"mtgoCode\" IS NULL THEN 'YES' ELSE 'NO' END FROM \"cards\" AS T1 INNER JOIN \"sets\" AS T2 ON T2.\"code\" = T1.\"setCode\" WHERE T1.\"name\" = 'Angel of Mercy'",
+      "prediction_error": null,
+      "prediction_row_count": 15,
+      "gold_row_count": 15,
+      "latency_ms": 5732,
+      "workstream": "输出契约",
+      "observation": "预测直接返回mtgoCode；Gold按mtgoCode非NULL返回YES/NO。内部判断字段未转换为最终答案。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确回答字段及顺序、ID与名称、拼接与分列、布尔展示、标量与列表；区分内部排序键和最终输出。",
+      "exit_evidence": "列数、列序、数据类型、答案粒度的独立断言通过；无法由问句确定时记录歧义。"
+    },
+    {
+      "question_id": 472,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "question": "Among the sets in the block \"Ice Age\", how many of them have an Italian translation?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT COUNT(DISTINCT t1.code) FROM bird_card_games.sets AS t1 INNER JOIN bird_card_games.set_translations AS t2 ON t1.code = t2.\"setCode\" WHERE t1.block = 'Ice Age' AND t2.language = 'Italian'",
+      "sql_parameters": null,
+      "gold_sql": "SELECT COUNT(DISTINCT T1.id) FROM sets AS T1 INNER JOIN set_translations AS T2 ON T2.setCode = T1.code WHERE T1.block = 'Ice Age' AND T2.language = 'Italian' AND NOT T2.translation IS NULL",
+      "gold_execution_sql": "SELECT COUNT(DISTINCT T1.\"id\") FROM \"sets\" AS T1 INNER JOIN \"set_translations\" AS T2 ON T2.\"setCode\" = T1.\"code\" WHERE T1.\"block\" = 'Ice Age' AND T2.\"language\" = 'Italian' AND NOT T2.\"translation\" IS NULL",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 6899,
+      "workstream": "值域与边界",
+      "observation": "预测Italian语言行存在即计入且COUNT DISTINCT code；Gold要求translation非NULL并COUNT DISTINCT id。空翻译和实体键需核验。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "核验公开字典和现有值域，维护编码、别名、时间表示及区间开闭；名称纠正须有候选值和依据，不能静默替换。",
+      "exit_evidence": "字典来源/数据适用范围清楚；边界值、NULL、未知编码和近似名称均有测试。"
+    },
+    {
+      "question_id": 487,
+      "db_id": "card_games",
+      "difficulty": "challenging",
+      "question": "What is the percentage of incredibly powerful cards in the set Coldsnap?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT 100.0 * COUNT(CASE WHEN CAST(cards.power AS DECIMAL) > 5 THEN 1 END) / COUNT(*) FROM bird_card_games.cards JOIN bird_card_games.sets ON cards.\"setCode\" = sets.code WHERE sets.name = 'Coldsnap' AND cards.power ~ '^[0-9]+(\\.[0-9]+)?$'",
+      "sql_parameters": null,
+      "gold_sql": "SELECT CAST(SUM(CASE WHEN NOT T1.cardKingdomFoilId IS NULL AND NOT T1.cardKingdomId IS NULL THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(T1.id), 0) FROM cards AS T1 INNER JOIN sets AS T2 ON T2.code = T1.setCode WHERE T2.name = 'Coldsnap'",
+      "gold_execution_sql": "SELECT CAST(SUM(CASE WHEN NOT T1.\"cardKingdomFoilId\" IS NULL AND NOT T1.\"cardKingdomId\" IS NULL THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(T1.\"id\"), 0) FROM \"cards\" AS T1 INNER JOIN \"sets\" AS T2 ON T2.\"code\" = T1.\"setCode\" WHERE T2.\"name\" = 'Coldsnap'",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 13186,
+      "workstream": "指标与概念绑定",
+      "observation": "预测incredibly powerful为数值power>5；Gold映射为cardKingdomFoilId与cardKingdomId都非NULL。缺乏支持该概念绑定的明确来源。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "建立概念到字段/指标的明确绑定及反例；区分单场与累计、实体与观测、属性与标识。优先把登记指标接入可执行契约；歧义不能默选。",
+      "exit_evidence": "公开定义和登记版本可追溯；脱离题号的改写/反例用例通过；记录所选指标、来源字段、统计粒度及未选候选。"
+    },
+    {
+      "question_id": 529,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "question": "Find and list the names of sets which doesn't have Japanese translation but have Korean translation.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT s.name FROM bird_card_games.sets AS s WHERE EXISTS(SELECT 1 FROM bird_card_games.set_translations AS st_ko WHERE st_ko.\"setCode\" = s.code AND st_ko.language = 'Korean') AND NOT EXISTS(SELECT 1 FROM bird_card_games.set_translations AS st_ja WHERE st_ja.\"setCode\" = s.code AND st_ja.language = 'Japanese')",
+      "sql_parameters": null,
+      "gold_sql": "SELECT name FROM sets WHERE code IN (SELECT setCode FROM set_translations WHERE language = 'Korean' AND NOT language LIKE '%Japanese%')",
+      "gold_execution_sql": "SELECT \"name\" FROM \"sets\" WHERE \"code\" IN (SELECT \"setCode\" FROM \"set_translations\" WHERE \"language\" = 'Korean' AND NOT \"language\" LIKE '%Japanese%')",
+      "prediction_error": null,
+      "prediction_row_count": 0,
+      "gold_row_count": 121,
+      "latency_ms": 7628,
+      "workstream": "Gold与定义一致性",
+      "observation": "预测Korean存在且Japanese不存在；Gold在同一语言行上language='Korean' AND NOT LIKE '%Japanese%'。跨记录不存在与行内排除含义不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "比对问句、公开定义、登记语义和Gold；记录冲突及证据。正式基线不改分，另列产品语义质量核验，不能以Gold反向污染产品。",
+      "exit_evidence": "原始成绩保留；冲突有公开来源及数据证据，歧义有产品处理策略；独立评测前固定评分协议。"
+    },
+    {
+      "question_id": 215,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "question": "How many atoms with iodine and with sulfur type elements are there in single bond molecules?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT COUNT(atom.atom_id) FROM bird_toxicology.atom AS atom WHERE atom.element IN ('i', 's') AND atom.molecule_id IN (SELECT bond.molecule_id FROM bird_toxicology.bond AS bond WHERE bond.bond_type = '-')",
+      "sql_parameters": null,
+      "gold_sql": "SELECT COUNT(DISTINCT CASE WHEN T1.element = 'i' THEN T1.atom_id ELSE NULL END) AS iodine_nums, COUNT(DISTINCT CASE WHEN T1.element = 's' THEN T1.atom_id ELSE NULL END) AS sulfur_nums FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '-'",
+      "gold_execution_sql": "SELECT COUNT(DISTINCT CASE WHEN T1.\"element\" = 'i' THEN T1.\"atom_id\" ELSE NULL END) AS iodine_nums, COUNT(DISTINCT CASE WHEN T1.\"element\" = 's' THEN T1.\"atom_id\" ELSE NULL END) AS sulfur_nums FROM \"atom\" AS T1 INNER JOIN \"connected\" AS T2 ON T1.\"atom_id\" = T2.\"atom_id\" INNER JOIN \"bond\" AS T3 ON T2.\"bond_id\" = T3.\"bond_id\" WHERE T3.\"bond_type\" = '-'",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 5387,
+      "workstream": "输出契约",
+      "observation": "预测单列合计i/s原子，限定分子存在单键；Gold沿atom-connected-bond统计参与单键的原子，并分别输出iodine、sulfur两列。关系路径与输出均不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确回答字段及顺序、ID与名称、拼接与分列、布尔展示、标量与列表；区分内部排序键和最终输出。",
+      "exit_evidence": "列数、列序、数据类型、答案粒度的独立断言通过；无法由问句确定时记录歧义。"
+    },
+    {
+      "question_id": 218,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "question": "What percentage of carcinogenic-type molecules does not contain fluorine?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT 100.0 * SUM(CASE WHEN NOT EXISTS(SELECT 1 FROM bird_toxicology.atom WHERE bird_toxicology.atom.molecule_id = bird_toxicology.molecule.molecule_id AND bird_toxicology.atom.element = 'f') THEN 1 ELSE 0 END) / COUNT(*) FROM bird_toxicology.molecule WHERE label = '+'",
+      "sql_parameters": null,
+      "gold_sql": "SELECT CAST(COUNT(DISTINCT CASE WHEN T1.element <> 'f' THEN T2.molecule_id ELSE NULL END) AS REAL) * 100 / NULLIF(COUNT(DISTINCT T2.molecule_id), 0) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '+'",
+      "gold_execution_sql": "SELECT CAST(COUNT(DISTINCT CASE WHEN T1.\"element\" <> 'f' THEN T2.\"molecule_id\" ELSE NULL END) AS REAL) * 100 / NULLIF(COUNT(DISTINCT T2.\"molecule_id\"), 0) FROM \"atom\" AS T1 INNER JOIN \"molecule\" AS T2 ON T1.\"molecule_id\" = T2.\"molecule_id\" WHERE T2.\"label\" = '+'",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 4986,
+      "workstream": "Gold与定义一致性",
+      "observation": "预测分子NOT EXISTS氟原子；Gold分子存在element<>'f'的原子。同一分子可同时含氟和非氟，两个条件不等价。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "比对问句、公开定义、登记语义和Gold；记录冲突及证据。正式基线不改分，另列产品语义质量核验，不能以Gold反向污染产品。",
+      "exit_evidence": "原始成绩保留；冲突有公开来源及数据证据，歧义有产品处理策略；独立评测前固定评分协议。"
+    },
+    {
+      "question_id": 245,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "question": "What is the average number of bonds the atoms with the element iodine have?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT AVG(sub.bond_count) FROM (SELECT COUNT(c.bond_id) AS bond_count FROM bird_toxicology.atom AS a LEFT JOIN bird_toxicology.connected AS c ON a.atom_id = c.atom_id OR a.atom_id = c.atom_id2 WHERE a.element = 'i' GROUP BY a.atom_id) AS sub",
+      "sql_parameters": null,
+      "gold_sql": "SELECT CAST(COUNT(T2.bond_id) AS REAL) / NULLIF(COUNT(T1.atom_id), 0) FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id WHERE T1.element = 'i'",
+      "gold_execution_sql": "SELECT CAST(COUNT(T2.\"bond_id\") AS REAL) / NULLIF(COUNT(T1.\"atom_id\"), 0) FROM \"atom\" AS T1 INNER JOIN \"connected\" AS T2 ON T1.\"atom_id\" = T2.\"atom_id\" WHERE T1.\"element\" = 'i'",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 4469,
+      "workstream": "人群与关联粒度",
+      "observation": "预测按两个原子端点统计每个碘原子的键数后AVG；Gold只用atom_id一端，按关联行COUNT(bond_id)/COUNT(atom_id)。关联角色与平均值分母不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确统计对象、分子分母人群、去重键、关联方向和缺失关联行策略；编译前检查基数，必要时先聚合或半连接。",
+      "exit_evidence": "带重复键、空值、缺失关联行的独立数据夹具验证结果；关联前后人群和计数可解释。"
+    },
+    {
+      "question_id": 281,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "question": "Tally the toxicology element of the 4th atom of each molecule that was carcinogenic.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT t1.element, COUNT(*) FROM (SELECT atom.element, ROW_NUMBER() OVER (PARTITION BY atom.molecule_id ORDER BY atom.atom_id) AS rn FROM bird_toxicology.atom AS atom INNER JOIN bird_toxicology.molecule AS molecule ON atom.molecule_id = molecule.molecule_id WHERE molecule.label = '+') AS t1 WHERE t1.rn = 4 GROUP BY t1.element",
+      "sql_parameters": null,
+      "gold_sql": "SELECT DISTINCT T1.element FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '+' AND RIGHT(T1.atom_id, 1) = '4' AND LENGTH(T1.atom_id) = 7",
+      "gold_execution_sql": "SELECT DISTINCT T1.\"element\" FROM \"atom\" AS T1 INNER JOIN \"molecule\" AS T2 ON T1.\"molecule_id\" = T2.\"molecule_id\" WHERE T2.\"label\" = '+' AND RIGHT(T1.\"atom_id\", 1) = '4' AND LENGTH(T1.\"atom_id\") = 7",
+      "prediction_error": null,
+      "prediction_row_count": 8,
+      "gold_row_count": 8,
+      "latency_ms": 9880,
+      "workstream": "输出契约",
+      "observation": "预测每分子按atom_id排序取第4行并按element计数；Gold把第4原子解释为固定长度ID尾码4，只返回DISTINCT element。ID结构与序数及输出不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确回答字段及顺序、ID与名称、拼接与分列、布尔展示、标量与列表；区分内部排序键和最终输出。",
+      "exit_evidence": "列数、列序、数据类型、答案粒度的独立断言通过；无法由问句确定时记录歧义。"
+    },
+    {
+      "question_id": 28,
+      "db_id": "california_schools",
+      "difficulty": "challenging",
+      "question": "Consider the average difference between K-12 enrollment and 15-17 enrollment of schools that are locally funded, list the names and DOC type of schools which has a difference above this average.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT t1.\"School\", t1.\"DOCType\" FROM bird_california_schools.schools AS t1 JOIN bird_california_schools.frpm AS t2 ON t1.\"CDSCode\" = t2.\"CDSCode\" WHERE (t2.\"Enrollment (K-12)\" - t2.\"Enrollment (Ages 5-17)\") > (SELECT AVG(t4.\"Enrollment (K-12)\" - t4.\"Enrollment (Ages 5-17)\") FROM bird_california_schools.schools AS t3 JOIN bird_california_schools.frpm AS t4 ON t3.\"CDSCode\" = t4.\"CDSCode\" WHERE t3.\"FundingType\" = 'Locally funded')",
+      "sql_parameters": null,
+      "gold_sql": "SELECT T2.School, T2.DOC FROM frpm AS T1 INNER JOIN schools AS T2 ON T1.CDSCode = T2.CDSCode WHERE T2.FundingType = 'Locally funded' AND (T1.\"Enrollment (K-12)\" - T1.\"Enrollment (Ages 5-17)\") > (SELECT AVG(T3.\"Enrollment (K-12)\" - T3.\"Enrollment (Ages 5-17)\") FROM frpm AS T3 INNER JOIN schools AS T4 ON T3.CDSCode = T4.CDSCode WHERE T4.FundingType = 'Locally funded')",
+      "gold_execution_sql": "SELECT T2.\"School\", T2.\"DOC\" FROM \"frpm\" AS T1 INNER JOIN \"schools\" AS T2 ON T1.\"CDSCode\" = T2.\"CDSCode\" WHERE T2.\"FundingType\" = 'Locally funded' AND (T1.\"Enrollment (K-12)\" - T1.\"Enrollment (Ages 5-17)\") > (SELECT AVG(T3.\"Enrollment (K-12)\" - T3.\"Enrollment (Ages 5-17)\") FROM \"frpm\" AS T3 INNER JOIN \"schools\" AS T4 ON T3.\"CDSCode\" = T4.\"CDSCode\" WHERE T4.\"FundingType\" = 'Locally funded')",
+      "prediction_error": null,
+      "prediction_row_count": 2541,
+      "gold_row_count": 57,
+      "latency_ms": 8773,
+      "workstream": "集合与作用域",
+      "observation": "预测Locally funded只限定平均值子查询，未限定外层候选学校；输出DOCType，而Gold为DOC。人群继承与编码/标签字段须分别核验。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "显式建模EXISTS/NOT EXISTS、各层过滤及关系角色；区分全部不含与存在一条不等、评论者与帖子所有者。",
+      "exit_evidence": "多语言、多子记录、嵌套过滤及不同角色的反例夹具通过；计划记录条件所属人群。"
+    },
+    {
+      "question_id": 37,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "question": "What is the complete address of the school with the lowest excellence rate? Indicate the Street, City, Zip and State.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT t1.\"Street\", t1.\"City\", t1.\"State\", t1.\"Zip\" FROM bird_california_schools.schools AS t1 INNER JOIN bird_california_schools.satscores AS t2 ON t1.\"CDSCode\" = t2.cds ORDER BY CAST(t2.\"NumGE1500\" AS DOUBLE PRECISION) / NULLIF(CAST(t2.\"NumTstTakr\" AS DOUBLE PRECISION), 0) ASC LIMIT 1",
+      "sql_parameters": null,
+      "gold_sql": "SELECT T2.Street, T2.City, T2.State, T2.Zip FROM satscores AS T1 INNER JOIN schools AS T2 ON T1.cds = T2.CDSCode ORDER BY CAST(T1.NumGE1500 AS REAL) / NULLIF(T1.NumTstTakr, 0) ASC NULLS FIRST LIMIT 1",
+      "gold_execution_sql": "SELECT T2.\"Street\", T2.\"City\", T2.\"State\", T2.\"Zip\" FROM \"satscores\" AS T1 INNER JOIN \"schools\" AS T2 ON T1.\"cds\" = T2.\"CDSCode\" ORDER BY CAST(T1.\"NumGE1500\" AS REAL) / NULLIF(T1.\"NumTstTakr\", 0) ASC NULLS FIRST LIMIT 1",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 5603,
+      "workstream": "排序与TopN",
+      "observation": "两者使用同一比率排名；预测ASC默认NULLS LAST，Gold显式NULLS FIRST。最低比率是否包括无有效分母须有产品规则。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确排名字段、方向、NULL位置、并列和数量；校验显式Top-N不被改写。并列规则需要稳定口径，不能按某次Gold返回选键。",
+      "exit_evidence": "Top20、NULL极值、并列极值和稳定排序夹具通过；IR数量和输出限制一致。"
+    },
+    {
+      "question_id": 36,
+      "db_id": "california_schools",
+      "difficulty": "challenging",
+      "question": "Under whose administration is the school with the highest number of students scoring 1500 or more on the SAT? Indicate their full names.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT CONCAT(t2.\"AdmFName1\", ' ', t2.\"AdmLName1\") FROM bird_california_schools.satscores AS t1 INNER JOIN bird_california_schools.schools AS t2 ON t1.cds = t2.\"CDSCode\" WHERE t1.\"NumGE1500\" IS NOT NULL ORDER BY t1.\"NumGE1500\" DESC NULLS LAST LIMIT 1",
+      "sql_parameters": null,
+      "gold_sql": "SELECT T2.AdmFName1, T2.AdmLName1, T2.AdmFName2, T2.AdmLName2, T2.AdmFName3, T2.AdmLName3 FROM satscores AS T1 INNER JOIN schools AS T2 ON T1.cds = T2.CDSCode ORDER BY T1.NumGE1500 DESC NULLS LAST LIMIT 1",
+      "gold_execution_sql": "SELECT T2.\"AdmFName1\", T2.\"AdmLName1\", T2.\"AdmFName2\", T2.\"AdmLName2\", T2.\"AdmFName3\", T2.\"AdmLName3\" FROM \"satscores\" AS T1 INNER JOIN \"schools\" AS T2 ON T1.\"cds\" = T2.\"CDSCode\" ORDER BY T1.\"NumGE1500\" DESC NULLS LAST LIMIT 1",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 6861,
+      "workstream": "输出契约",
+      "observation": "预测仅拼接第一位管理员姓名；Gold返回最多三位管理员的六个姓名字段。多值属性、拼接/分列合同缺失。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确回答字段及顺序、ID与名称、拼接与分列、布尔展示、标量与列表；区分内部排序键和最终输出。",
+      "exit_evidence": "列数、列序、数据类型、答案粒度的独立断言通过；无法由问句确定时记录歧义。"
+    },
+    {
+      "question_id": 41,
+      "db_id": "california_schools",
+      "difficulty": "simple",
+      "question": "List the names of virtual schools that are among the top 5 in their respective counties based on average reading scores.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "WITH ranked_schools AS (SELECT t1.\"School\", DENSE_RANK() OVER (PARTITION BY t1.\"County\" ORDER BY t2.\"AvgScrRead\" DESC NULLS LAST) AS rnk FROM bird_california_schools.schools AS t1 INNER JOIN bird_california_schools.satscores AS t2 ON t1.\"CDSCode\" = t2.cds WHERE (t1.\"Virtual\" = 'F' OR t1.\"Virtual\" = 'V') AND t2.\"AvgScrRead\" IS NOT NULL) SELECT \"School\" FROM ranked_schools WHERE rnk <= 5",
+      "sql_parameters": null,
+      "gold_sql": "SELECT School FROM (SELECT T2.School, T1.AvgScrRead, RANK() OVER (PARTITION BY T2.County ORDER BY T1.AvgScrRead DESC NULLS LAST) AS rnk FROM satscores AS T1 INNER JOIN schools AS T2 ON T1.cds = T2.CDSCode WHERE T2.Virtual = 'F') AS ranked_schools WHERE rnk <= 5",
+      "gold_execution_sql": "SELECT \"School\" FROM (SELECT T2.\"School\", T1.\"AvgScrRead\", RANK() OVER (PARTITION BY T2.\"County\" ORDER BY T1.\"AvgScrRead\" DESC NULLS LAST) AS rnk FROM \"satscores\" AS T1 INNER JOIN \"schools\" AS T2 ON T1.\"cds\" = T2.\"CDSCode\" WHERE T2.\"Virtual\" = 'F') AS ranked_schools WHERE rnk <= 5",
+      "prediction_error": null,
+      "prediction_row_count": 4,
+      "gold_row_count": 34,
+      "latency_ms": 6258,
+      "workstream": "排序与TopN",
+      "observation": "预测Virtual IN(F,V)、DENSE_RANK且排除空阅读分；Gold Virtual=F、RANK且保留空值。按县前5的候选人群及并列算法不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确排名字段、方向、NULL位置、并列和数量；校验显式Top-N不被改写。并列规则需要稳定口径，不能按某次Gold返回选键。",
+      "exit_evidence": "Top20、NULL极值、并列极值和稳定排序夹具通过；IR数量和输出限制一致。"
+    },
+    {
+      "question_id": 115,
+      "db_id": "financial",
+      "difficulty": "challenging",
+      "question": "For the branch which located in the south Bohemia with biggest number of inhabitants, what is the percentage of the male clients?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "WITH target_district AS (SELECT district_id FROM bird_financial.district WHERE district.\"A3\" = 'south Bohemia' ORDER BY CAST(district.\"A4\" AS DECIMAL) DESC LIMIT 1), target_clients AS (SELECT DISTINCT c.client_id, c.gender FROM bird_financial.client AS c JOIN bird_financial.disp AS d ON c.client_id = d.client_id JOIN bird_financial.account AS a ON d.account_id = a.account_id JOIN target_district AS td ON a.district_id = td.district_id) SELECT 100.0 * SUM(CASE WHEN gender = 'M' THEN 1 ELSE 0 END) / NULLIF(COUNT(client_id), 0) FROM target_clients",
+      "sql_parameters": null,
+      "gold_sql": "SELECT CAST(SUM(CASE WHEN T1.gender = 'M' THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(T1.client_id), 0) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T2.A3 = 'south Bohemia' GROUP BY T2.A4 ORDER BY T2.A4 DESC LIMIT 1",
+      "gold_execution_sql": "SELECT CAST(SUM(CASE WHEN T1.\"gender\" = 'M' THEN 1 ELSE 0 END) AS REAL) * 100 / NULLIF(COUNT(T1.\"client_id\"), 0) FROM \"client\" AS T1 INNER JOIN \"district\" AS T2 ON T1.\"district_id\" = T2.\"district_id\" WHERE T2.\"A3\" = 'south Bohemia' GROUP BY T2.\"A4\" ORDER BY T2.\"A4\" DESC LIMIT 1",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 7823,
+      "workstream": "人群与关联粒度",
+      "observation": "预测从account.district经disp找客户并去重；Gold按client.district关联统计且按A4分组排名。区县归属和人群不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确统计对象、分子分母人群、去重键、关联方向和缺失关联行策略；编译前检查基数，必要时先聚合或半连接。",
+      "exit_evidence": "带重复键、空值、缺失关联行的独立数据夹具验证结果；关联前后人群和计数可解释。"
+    },
+    {
+      "question_id": 128,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "question": "List the top nine districts, by descending order, from the highest to the lowest, the number of female account holders.",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT district.district_id, COUNT(DISTINCT client.client_id) FROM bird_financial.district AS district LEFT JOIN bird_financial.client AS client ON district.district_id = client.district_id JOIN bird_financial.disp AS disp ON client.client_id = disp.client_id AND client.gender = 'F' WHERE disp.type = 'OWNER' GROUP BY district.district_id ORDER BY COUNT(DISTINCT client.client_id) DESC NULLS LAST LIMIT 9",
+      "sql_parameters": null,
+      "gold_sql": "SELECT T2.A2, COUNT(T1.client_id) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.gender = 'F' GROUP BY T2.district_id, T2.A2 ORDER BY COUNT(T1.client_id) DESC NULLS LAST LIMIT 9",
+      "gold_execution_sql": "SELECT T2.\"A2\", COUNT(T1.\"client_id\") FROM \"client\" AS T1 INNER JOIN \"district\" AS T2 ON T1.\"district_id\" = T2.\"district_id\" WHERE T1.\"gender\" = 'F' GROUP BY T2.\"district_id\", T2.\"A2\" ORDER BY COUNT(T1.\"client_id\") DESC NULLS LAST LIMIT 9",
+      "prediction_error": null,
+      "prediction_row_count": 9,
+      "gold_row_count": 9,
+      "latency_ms": 6124,
+      "workstream": "输出契约",
+      "observation": "预测输出district_id并限定disp OWNER、去重客户；Gold输出A2区名且统计全部女性client。答案名称及账户持有人口径不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确回答字段及顺序、ID与名称、拼接与分列、布尔展示、标量与列表；区分内部排序键和最终输出。",
+      "exit_evidence": "列数、列序、数据类型、答案粒度的独立断言通过；无法由问句确定时记录歧义。"
+    },
+    {
+      "question_id": 129,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "question": "Which are the top ten withdrawals (non-credit card) by district names for the month of January 1996?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT t5.\"A2\" FROM bird_financial.trans AS t8 JOIN bird_financial.account AS t1 ON t8.account_id = t1.account_id JOIN bird_financial.district AS t5 ON t1.district_id = t5.district_id WHERE t8.type = 'VYDAJ' AND t8.operation <> 'VYBER KARTOU' AND t8.date LIKE '1996-01%' ORDER BY t8.amount DESC NULLS LAST LIMIT 10",
+      "sql_parameters": null,
+      "gold_sql": "SELECT DISTINCT T1.A2 FROM district AS T1 INNER JOIN account AS T2 ON T1.district_id = T2.district_id INNER JOIN trans AS T3 ON T2.account_id = T3.account_id WHERE T3.type = 'VYDAJ' AND CAST(T3.date AS TEXT) LIKE '1996-01%' ORDER BY T1.A2 ASC LIMIT 10",
+      "gold_execution_sql": "SELECT DISTINCT T1.\"A2\" FROM \"district\" AS T1 INNER JOIN \"account\" AS T2 ON T1.\"district_id\" = T2.\"district_id\" INNER JOIN \"trans\" AS T3 ON T2.\"account_id\" = T3.\"account_id\" WHERE T3.\"type\" = 'VYDAJ' AND CAST(T3.\"date\" AS TEXT) LIKE '1996-01%' ORDER BY T1.\"A2\" ASC LIMIT 10",
+      "prediction_error": null,
+      "prediction_row_count": 10,
+      "gold_row_count": 10,
+      "latency_ms": 6238,
+      "workstream": "Gold与定义一致性",
+      "observation": "预测排除信用卡提款并按amount降序前10交易；Gold未排除该operation，按区名升序取DISTINCT前10。问句top withdrawals的排名和分类需独立核验。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "比对问句、公开定义、登记语义和Gold；记录冲突及证据。正式基线不改分，另列产品语义质量核验，不能以Gold反向污染产品。",
+      "exit_evidence": "原始成绩保留；冲突有公开来源及数据证据，歧义有产品处理策略；独立评测前固定评分协议。"
+    },
+    {
+      "question_id": 152,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "question": "What is the average number of crimes committed in 1995 in regions where the number exceeds 4000 and the region has accounts that are opened starting from the year 1997?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "SELECT AVG(t1.\"A15\") FROM bird_financial.district AS t1 WHERE t1.\"A15\" > 4000 AND t1.\"A3\" IN (SELECT t3.\"A3\" FROM bird_financial.account AS t2 JOIN bird_financial.district AS t3 ON t2.district_id = t3.district_id WHERE t2.date >= '1997-01-01')",
+      "sql_parameters": null,
+      "gold_sql": "SELECT AVG(T1.A15) FROM district AS T1 INNER JOIN account AS T2 ON T1.district_id = T2.district_id WHERE TO_CHAR(CAST(T2.date AS TIMESTAMP), 'YYYY') >= '1997' AND T1.A15 > 4000",
+      "gold_execution_sql": "SELECT AVG(T1.\"A15\") FROM \"district\" AS T1 INNER JOIN \"account\" AS T2 ON T1.\"district_id\" = T2.\"district_id\" WHERE TO_CHAR(CAST(T2.\"date\" AS TIMESTAMP), 'YYYY') >= '1997' AND T1.\"A15\" > 4000",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 7750,
+      "workstream": "人群与关联粒度",
+      "observation": "预测按region A3半连接筛district后AVG；Gold按district_id关联accounts再AVG，可能按账户数加权。区域归属及均值粒度不同。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "明确统计对象、分子分母人群、去重键、关联方向和缺失关联行策略；编译前检查基数，必要时先聚合或半连接。",
+      "exit_evidence": "带重复键、空值、缺失关联行的独立数据夹具验证结果；关联前后人群和计数可解释。"
+    },
+    {
+      "question_id": 169,
+      "db_id": "financial",
+      "difficulty": "challenging",
+      "question": "What was the growth rate of the total amount of loans across all accounts for a male client between 1996 and 1997?",
+      "product_status": "ok",
+      "prediction_status": "ok",
+      "failure_category": "wrong_result",
+      "sql": "WITH loans_by_year AS (SELECT SUM(CASE WHEN l.date LIKE '1996%' THEN l.amount ELSE 0 END) AS total_1996, SUM(CASE WHEN l.date LIKE '1997%' THEN l.amount ELSE 0 END) AS total_1997 FROM bird_financial.loan AS l INNER JOIN bird_financial.disp AS d ON l.account_id = d.account_id INNER JOIN bird_financial.client AS c ON d.client_id = c.client_id WHERE c.gender = 'M') SELECT (total_1997 - total_1996) / CAST(total_1996 AS DECIMAL) FROM loans_by_year",
+      "sql_parameters": null,
+      "gold_sql": "SELECT CAST((SUM(CASE WHEN TO_CHAR(CAST(T1.date AS TIMESTAMP), 'YYYY') = '1997' THEN T1.amount ELSE 0 END) - SUM(CASE WHEN TO_CHAR(CAST(T1.date AS TIMESTAMP), 'YYYY') = '1996' THEN T1.amount ELSE 0 END)) AS REAL) * 100 / NULLIF(SUM(CASE WHEN TO_CHAR(CAST(T1.date AS TIMESTAMP), 'YYYY') = '1996' THEN T1.amount ELSE 0 END), 0) FROM loan AS T1 INNER JOIN account AS T2 ON T1.account_id = T2.account_id INNER JOIN disp AS T3 ON T3.account_id = T2.account_id INNER JOIN client AS T4 ON T4.client_id = T3.client_id WHERE T4.gender = 'M' AND T3.type = 'OWNER'",
+      "gold_execution_sql": "SELECT CAST((SUM(CASE WHEN TO_CHAR(CAST(T1.\"date\" AS TIMESTAMP), 'YYYY') = '1997' THEN T1.\"amount\" ELSE 0 END) - SUM(CASE WHEN TO_CHAR(CAST(T1.\"date\" AS TIMESTAMP), 'YYYY') = '1996' THEN T1.\"amount\" ELSE 0 END)) AS REAL) * 100 / NULLIF(SUM(CASE WHEN TO_CHAR(CAST(T1.\"date\" AS TIMESTAMP), 'YYYY') = '1996' THEN T1.\"amount\" ELSE 0 END), 0) FROM \"loan\" AS T1 INNER JOIN \"account\" AS T2 ON T1.\"account_id\" = T2.\"account_id\" INNER JOIN \"disp\" AS T3 ON T3.\"account_id\" = T2.\"account_id\" INNER JOIN \"client\" AS T4 ON T4.\"client_id\" = T3.\"client_id\" WHERE T4.\"gender\" = 'M' AND T3.\"type\" = 'OWNER'",
+      "prediction_error": null,
+      "prediction_row_count": 1,
+      "gold_row_count": 1,
+      "latency_ms": 5780,
+      "workstream": "比例与复杂计算",
+      "observation": "预测缺少disp.type=OWNER、增长率未乘100且没有分母零保护；Gold限定OWNER、乘100并NULLIF。角色过滤、单位和零值策略须全部进入契约。",
+      "verification_state": "Static SQL/evidence differences reviewed; data-level cause and corrected output remain unverified",
+      "next_action": "扩展具类型的条件聚合、结果间计算及百分比单位；显式保存分子、分母、过滤作用域、基期和零值策略；不支持时拒绝。",
+      "exit_evidence": "条件分子、全量/条件分母、增长率与占比差等独立夹具通过；登记公式完整展开，不能退化为单字段。"
+    }
+  ],
+  "metric_snapshot_audit": {
+    "scope": "Expression binding against historical public metric and field-type snapshots only; not full query compilation or deployed coverage",
+    "n": 121,
+    "capabilities": {
+      "aggregate_formula": 72,
+      "scalar_formula": 23,
+      "semantic_guidance_only_in_snapshot": 26
+    },
+    "metrics": [
+      {
+        "metric_name": "california_schools_frpm_record_count",
+        "domain": "bird_california_schools.frpm",
+        "definition": "COUNT(frpm.\"CDSCode\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_california_schools.frpm",
+            "semantic_field": "CDSCode"
+          }
+        }
+      },
+      {
+        "metric_name": "california_schools_satscores_record_count",
+        "domain": "bird_california_schools.satscores",
+        "definition": "COUNT(satscores.\"cds\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_california_schools.satscores",
+            "semantic_field": "cds"
+          }
+        }
+      },
+      {
+        "metric_name": "california_schools_schools_record_count",
+        "domain": "bird_california_schools.schools",
+        "definition": "COUNT(schools.\"CDSCode\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_california_schools.schools",
+            "semantic_field": "CDSCode"
+          }
+        }
+      },
+      {
+        "metric_name": "card_games_cards_record_count",
+        "domain": "bird_card_games.cards",
+        "definition": "COUNT(cards.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_card_games.cards",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "card_games_foreign_data_record_count",
+        "domain": "bird_card_games.foreign_data",
+        "definition": "COUNT(foreign_data.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_card_games.foreign_data",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "card_games_legalities_record_count",
+        "domain": "bird_card_games.legalities",
+        "definition": "COUNT(legalities.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_card_games.legalities",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "card_games_rulings_record_count",
+        "domain": "bird_card_games.rulings",
+        "definition": "COUNT(rulings.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_card_games.rulings",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "card_games_sets_record_count",
+        "domain": "bird_card_games.sets",
+        "definition": "COUNT(sets.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_card_games.sets",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "card_games_set_translations_record_count",
+        "domain": "bird_card_games.set_translations",
+        "definition": "COUNT(set_translations.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_card_games.set_translations",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "codebase_community_badges_record_count",
+        "domain": "bird_codebase_community.badges",
+        "definition": "COUNT(badges.\"Id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_codebase_community.badges",
+            "semantic_field": "Id"
+          }
+        }
+      },
+      {
+        "metric_name": "codebase_community_comments_record_count",
+        "domain": "bird_codebase_community.comments",
+        "definition": "COUNT(comments.\"Id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_codebase_community.comments",
+            "semantic_field": "Id"
+          }
+        }
+      },
+      {
+        "metric_name": "codebase_community_postHistory_record_count",
+        "domain": "bird_codebase_community.postHistory",
+        "definition": "COUNT(postHistory.\"Id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_codebase_community.postHistory",
+            "semantic_field": "Id"
+          }
+        }
+      },
+      {
+        "metric_name": "codebase_community_postLinks_record_count",
+        "domain": "bird_codebase_community.postLinks",
+        "definition": "COUNT(postLinks.\"Id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_codebase_community.postLinks",
+            "semantic_field": "Id"
+          }
+        }
+      },
+      {
+        "metric_name": "codebase_community_posts_record_count",
+        "domain": "bird_codebase_community.posts",
+        "definition": "COUNT(posts.\"Id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_codebase_community.posts",
+            "semantic_field": "Id"
+          }
+        }
+      },
+      {
+        "metric_name": "codebase_community_tags_record_count",
+        "domain": "bird_codebase_community.tags",
+        "definition": "COUNT(tags.\"Id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_codebase_community.tags",
+            "semantic_field": "Id"
+          }
+        }
+      },
+      {
+        "metric_name": "codebase_community_users_record_count",
+        "domain": "bird_codebase_community.users",
+        "definition": "COUNT(users.\"Id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_codebase_community.users",
+            "semantic_field": "Id"
+          }
+        }
+      },
+      {
+        "metric_name": "codebase_community_votes_record_count",
+        "domain": "bird_codebase_community.votes",
+        "definition": "COUNT(votes.\"Id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_codebase_community.votes",
+            "semantic_field": "Id"
+          }
+        }
+      },
+      {
+        "metric_name": "european_football_2_Country_record_count",
+        "domain": "bird_european_football_2.Country",
+        "definition": "COUNT(Country.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_european_football_2.Country",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "european_football_2_League_record_count",
+        "domain": "bird_european_football_2.League",
+        "definition": "COUNT(League.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_european_football_2.League",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "european_football_2_Match_record_count",
+        "domain": "bird_european_football_2.Match",
+        "definition": "COUNT(Match.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_european_football_2.Match",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "european_football_2_Player_record_count",
+        "domain": "bird_european_football_2.Player",
+        "definition": "COUNT(Player.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_european_football_2.Player",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "european_football_2_Player_Attributes_record_count",
+        "domain": "bird_european_football_2.Player_Attributes",
+        "definition": "COUNT(Player_Attributes.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_european_football_2.Player_Attributes",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "european_football_2_Team_record_count",
+        "domain": "bird_european_football_2.Team",
+        "definition": "COUNT(Team.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_european_football_2.Team",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "european_football_2_Team_Attributes_record_count",
+        "domain": "bird_european_football_2.Team_Attributes",
+        "definition": "COUNT(Team_Attributes.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_european_football_2.Team_Attributes",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "financial_account_record_count",
+        "domain": "bird_financial.account",
+        "definition": "COUNT(account.\"account_id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_financial.account",
+            "semantic_field": "account_id"
+          }
+        }
+      },
+      {
+        "metric_name": "financial_card_record_count",
+        "domain": "bird_financial.card",
+        "definition": "COUNT(card.\"card_id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_financial.card",
+            "semantic_field": "card_id"
+          }
+        }
+      },
+      {
+        "metric_name": "financial_client_record_count",
+        "domain": "bird_financial.client",
+        "definition": "COUNT(client.\"client_id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_financial.client",
+            "semantic_field": "client_id"
+          }
+        }
+      },
+      {
+        "metric_name": "financial_disp_record_count",
+        "domain": "bird_financial.disp",
+        "definition": "COUNT(disp.\"disp_id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_financial.disp",
+            "semantic_field": "disp_id"
+          }
+        }
+      },
+      {
+        "metric_name": "financial_district_record_count",
+        "domain": "bird_financial.district",
+        "definition": "COUNT(district.\"district_id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_financial.district",
+            "semantic_field": "district_id"
+          }
+        }
+      },
+      {
+        "metric_name": "financial_loan_record_count",
+        "domain": "bird_financial.loan",
+        "definition": "COUNT(loan.\"loan_id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_financial.loan",
+            "semantic_field": "loan_id"
+          }
+        }
+      },
+      {
+        "metric_name": "financial_order_record_count",
+        "domain": "bird_financial.order",
+        "definition": "COUNT(order.\"order_id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_financial.order",
+            "semantic_field": "order_id"
+          }
+        }
+      },
+      {
+        "metric_name": "financial_trans_record_count",
+        "domain": "bird_financial.trans",
+        "definition": "COUNT(trans.\"trans_id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_financial.trans",
+            "semantic_field": "trans_id"
+          }
+        }
+      },
+      {
+        "metric_name": "formula_1_circuits_record_count",
+        "domain": "bird_formula_1.circuits",
+        "definition": "COUNT(circuits.\"circuitId\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.circuits",
+            "semantic_field": "circuitId"
+          }
+        }
+      },
+      {
+        "metric_name": "formula_1_constructorResults_record_count",
+        "domain": "bird_formula_1.constructorResults",
+        "definition": "COUNT(constructorResults.\"constructorResultsId\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.constructorResults",
+            "semantic_field": "constructorResultsId"
+          }
+        }
+      },
+      {
+        "metric_name": "formula_1_constructors_record_count",
+        "domain": "bird_formula_1.constructors",
+        "definition": "COUNT(constructors.\"constructorId\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.constructors",
+            "semantic_field": "constructorId"
+          }
+        }
+      },
+      {
+        "metric_name": "formula_1_constructorStandings_record_count",
+        "domain": "bird_formula_1.constructorStandings",
+        "definition": "COUNT(constructorStandings.\"constructorStandingsId\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.constructorStandings",
+            "semantic_field": "constructorStandingsId"
+          }
+        }
+      },
+      {
+        "metric_name": "formula_1_drivers_record_count",
+        "domain": "bird_formula_1.drivers",
+        "definition": "COUNT(drivers.\"driverId\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.drivers",
+            "semantic_field": "driverId"
+          }
+        }
+      },
+      {
+        "metric_name": "formula_1_driverStandings_record_count",
+        "domain": "bird_formula_1.driverStandings",
+        "definition": "COUNT(driverStandings.\"driverStandingsId\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.driverStandings",
+            "semantic_field": "driverStandingsId"
+          }
+        }
+      },
+      {
+        "metric_name": "formula_1_lapTimes_record_count",
+        "domain": "bird_formula_1.lapTimes",
+        "definition": "COUNT(lapTimes.\"driverId\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.lapTimes",
+            "semantic_field": "driverId"
+          }
+        }
+      },
+      {
+        "metric_name": "formula_1_pitStops_record_count",
+        "domain": "bird_formula_1.pitStops",
+        "definition": "COUNT(pitStops.\"driverId\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.pitStops",
+            "semantic_field": "driverId"
+          }
+        }
+      },
+      {
+        "metric_name": "formula_1_qualifying_record_count",
+        "domain": "bird_formula_1.qualifying",
+        "definition": "COUNT(qualifying.\"qualifyId\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.qualifying",
+            "semantic_field": "qualifyId"
+          }
+        }
+      },
+      {
+        "metric_name": "formula_1_races_record_count",
+        "domain": "bird_formula_1.races",
+        "definition": "COUNT(races.\"raceId\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.races",
+            "semantic_field": "raceId"
+          }
+        }
+      },
+      {
+        "metric_name": "formula_1_results_record_count",
+        "domain": "bird_formula_1.results",
+        "definition": "COUNT(results.\"resultId\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.results",
+            "semantic_field": "resultId"
+          }
+        }
+      },
+      {
+        "metric_name": "formula_1_seasons_record_count",
+        "domain": "bird_formula_1.seasons",
+        "definition": "COUNT(seasons.\"year\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.seasons",
+            "semantic_field": "year"
+          }
+        }
+      },
+      {
+        "metric_name": "formula_1_status_record_count",
+        "domain": "bird_formula_1.status",
+        "definition": "COUNT(status.\"statusId\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.status",
+            "semantic_field": "statusId"
+          }
+        }
+      },
+      {
+        "metric_name": "superhero_alignment_record_count",
+        "domain": "bird_superhero.alignment",
+        "definition": "COUNT(alignment.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_superhero.alignment",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "superhero_attribute_record_count",
+        "domain": "bird_superhero.attribute",
+        "definition": "COUNT(attribute.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_superhero.attribute",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "superhero_colour_record_count",
+        "domain": "bird_superhero.colour",
+        "definition": "COUNT(colour.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_superhero.colour",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "superhero_gender_record_count",
+        "domain": "bird_superhero.gender",
+        "definition": "COUNT(gender.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_superhero.gender",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "superhero_hero_attribute_record_count",
+        "domain": "bird_superhero.hero_attribute",
+        "definition": "COUNT(hero_attribute.\"hero_id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_superhero.hero_attribute",
+            "semantic_field": "hero_id"
+          }
+        }
+      },
+      {
+        "metric_name": "superhero_hero_power_record_count",
+        "domain": "bird_superhero.hero_power",
+        "definition": "COUNT(hero_power.\"hero_id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_superhero.hero_power",
+            "semantic_field": "hero_id"
+          }
+        }
+      },
+      {
+        "metric_name": "superhero_publisher_record_count",
+        "domain": "bird_superhero.publisher",
+        "definition": "COUNT(publisher.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_superhero.publisher",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "superhero_race_record_count",
+        "domain": "bird_superhero.race",
+        "definition": "COUNT(race.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_superhero.race",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "superhero_superhero_record_count",
+        "domain": "bird_superhero.superhero",
+        "definition": "COUNT(superhero.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_superhero.superhero",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "superhero_superpower_record_count",
+        "domain": "bird_superhero.superpower",
+        "definition": "COUNT(superpower.\"id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_superhero.superpower",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "thrombosis_prediction_Examination_record_count",
+        "domain": "bird_thrombosis_prediction.Examination",
+        "definition": "COUNT(Examination.\"ID\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_thrombosis_prediction.Examination",
+            "semantic_field": "ID"
+          }
+        }
+      },
+      {
+        "metric_name": "thrombosis_prediction_Laboratory_record_count",
+        "domain": "bird_thrombosis_prediction.Laboratory",
+        "definition": "COUNT(Laboratory.\"ID\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_thrombosis_prediction.Laboratory",
+            "semantic_field": "ID"
+          }
+        }
+      },
+      {
+        "metric_name": "thrombosis_prediction_Patient_record_count",
+        "domain": "bird_thrombosis_prediction.Patient",
+        "definition": "COUNT(Patient.\"ID\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_thrombosis_prediction.Patient",
+            "semantic_field": "ID"
+          }
+        }
+      },
+      {
+        "metric_name": "toxicology_atom_record_count",
+        "domain": "bird_toxicology.atom",
+        "definition": "COUNT(atom.\"atom_id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_toxicology.atom",
+            "semantic_field": "atom_id"
+          }
+        }
+      },
+      {
+        "metric_name": "toxicology_bond_record_count",
+        "domain": "bird_toxicology.bond",
+        "definition": "COUNT(bond.\"bond_id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_toxicology.bond",
+            "semantic_field": "bond_id"
+          }
+        }
+      },
+      {
+        "metric_name": "toxicology_connected_record_count",
+        "domain": "bird_toxicology.connected",
+        "definition": "COUNT(connected.\"atom_id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_toxicology.connected",
+            "semantic_field": "atom_id"
+          }
+        }
+      },
+      {
+        "metric_name": "toxicology_molecule_record_count",
+        "domain": "bird_toxicology.molecule",
+        "definition": "COUNT(molecule.\"molecule_id\")",
+        "unit": "records",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_toxicology.molecule",
+            "semantic_field": "molecule_id"
+          }
+        }
+      },
+      {
+        "metric_name": "california_free_meal_rate_ages5_17",
+        "domain": "bird_california_schools.frpm",
+        "definition": "frpm.\"Free Meal Count (Ages 5-17)\" / NULLIF(frpm.\"Enrollment (Ages 5-17)\", 0)",
+        "unit": "ratio",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": null,
+          "derived_expression": {
+            "operator": "divide",
+            "operands": [
+              {
+                "semantic_entity": "bird_california_schools.frpm",
+                "semantic_field": "field_811ef5e63d2d9a87"
+              },
+              {
+                "semantic_entity": "bird_california_schools.frpm",
+                "semantic_field": "field_8d25edee80b265c9"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "metric_name": "california_free_meal_rate_k12",
+        "domain": "bird_california_schools.frpm",
+        "definition": "frpm.\"Free Meal Count (K-12)\" / NULLIF(frpm.\"Enrollment (K-12)\", 0)",
+        "unit": "ratio",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": null,
+          "derived_expression": {
+            "operator": "divide",
+            "operands": [
+              {
+                "semantic_entity": "bird_california_schools.frpm",
+                "semantic_field": "field_d863a3767b52fd8b"
+              },
+              {
+                "semantic_entity": "bird_california_schools.frpm",
+                "semantic_field": "field_dca51f37332a76c3"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "metric_name": "california_frpm_rate",
+        "domain": "bird_california_schools.frpm",
+        "definition": "frpm.\"FRPM Count (K-12)\" / NULLIF(frpm.\"Enrollment (K-12)\", 0)",
+        "unit": "ratio",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": null,
+          "derived_expression": {
+            "operator": "divide",
+            "operands": [
+              {
+                "semantic_entity": "bird_california_schools.frpm",
+                "semantic_field": "field_635e96be671f4264"
+              },
+              {
+                "semantic_entity": "bird_california_schools.frpm",
+                "semantic_field": "field_dca51f37332a76c3"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "metric_name": "california_frpm_rate_ages5_17",
+        "domain": "bird_california_schools.frpm",
+        "definition": "frpm.\"FRPM Count (Ages 5-17)\" / NULLIF(frpm.\"Enrollment (Ages 5-17)\", 0)",
+        "unit": "ratio",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": null,
+          "derived_expression": {
+            "operator": "divide",
+            "operands": [
+              {
+                "semantic_entity": "bird_california_schools.frpm",
+                "semantic_field": "field_1476c5a608760472"
+              },
+              {
+                "semantic_entity": "bird_california_schools.frpm",
+                "semantic_field": "field_8d25edee80b265c9"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "metric_name": "california_excellence_rate",
+        "domain": "bird_california_schools.satscores",
+        "definition": "CAST(satscores.\"NumGE1500\" AS DOUBLE PRECISION) / NULLIF(CAST(satscores.\"NumTstTakr\" AS DOUBLE PRECISION), 0)",
+        "unit": "ratio",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": null,
+          "derived_expression": {
+            "operator": "divide",
+            "operands": [
+              {
+                "semantic_entity": "bird_california_schools.satscores",
+                "semantic_field": "NumGE1500"
+              },
+              {
+                "semantic_entity": "bird_california_schools.satscores",
+                "semantic_field": "NumTstTakr"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "metric_name": "card_foreign_language_rate",
+        "domain": "bird_card_games.foreign_data",
+        "definition": "100.0 * COUNT(foreign_data.id) / NULLIF(SUM(COUNT(foreign_data.id)) OVER (), 0)",
+        "unit": "percent",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "football_goal_difference",
+        "domain": "bird_european_football_2.Match",
+        "definition": "Match.away_team_goal - Match.home_team_goal",
+        "unit": "goals",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": null,
+          "derived_expression": {
+            "operator": "subtract",
+            "operands": [
+              {
+                "semantic_entity": "bird_european_football_2.Match",
+                "semantic_field": "away_team_goal"
+              },
+              {
+                "semantic_entity": "bird_european_football_2.Match",
+                "semantic_field": "home_team_goal"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "metric_name": "football_build_up_play_passing",
+        "domain": "bird_european_football_2.Team_Attributes",
+        "definition": "Team_Attributes.buildUpPlayPassing",
+        "unit": "score",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": {
+            "semantic_entity": "bird_european_football_2.Team_Attributes",
+            "semantic_field": "buildUpPlayPassing"
+          }
+        }
+      },
+      {
+        "metric_name": "football_build_up_play_speed",
+        "domain": "bird_european_football_2.Team_Attributes",
+        "definition": "Team_Attributes.buildUpPlaySpeed",
+        "unit": "score",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": {
+            "semantic_entity": "bird_european_football_2.Team_Attributes",
+            "semantic_field": "buildUpPlaySpeed"
+          }
+        }
+      },
+      {
+        "metric_name": "unemployment_rate_increment_percent_1995_1996",
+        "domain": "bird_financial.district",
+        "definition": "100.0 * (district.\"A13\" - district.\"A12\") / NULLIF(district.\"A12\", 0)",
+        "unit": "percent",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "formula1_completion_rate",
+        "domain": "bird_formula_1.results",
+        "definition": "100.0 * SUM(CASE WHEN results.statusId = 1 THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0)",
+        "unit": "percent",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "thrombosis_normal_cpk_threshold",
+        "domain": "bird_thrombosis_prediction.Laboratory",
+        "definition": "Laboratory.CPK < 250",
+        "unit": "boolean",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "toxicology_double_bond_rate",
+        "domain": "bird_toxicology.bond",
+        "definition": "100.0 * SUM(CASE WHEN bond.bond_type = '=' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0)",
+        "unit": "percent",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "school_enrollment_difference_k12_ages5_17",
+        "domain": "bird_california_schools.frpm",
+        "definition": "frpm.\"Enrollment (K-12)\" - frpm.\"Enrollment (Ages 5-17)\"",
+        "unit": "students",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": null,
+          "derived_expression": {
+            "operator": "subtract",
+            "operands": [
+              {
+                "semantic_entity": "bird_california_schools.frpm",
+                "semantic_field": "field_dca51f37332a76c3"
+              },
+              {
+                "semantic_entity": "bird_california_schools.frpm",
+                "semantic_field": "field_8d25edee80b265c9"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "metric_name": "school_mean_reading_score",
+        "domain": "bird_california_schools.satscores",
+        "definition": "satscores.\"AvgScrRead\"",
+        "unit": "score",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": {
+            "semantic_entity": "bird_california_schools.satscores",
+            "semantic_field": "AvgScrRead"
+          }
+        }
+      },
+      {
+        "metric_name": "school_mean_math_score",
+        "domain": "bird_california_schools.satscores",
+        "definition": "satscores.\"AvgScrMath\"",
+        "unit": "score",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": {
+            "semantic_entity": "bird_california_schools.satscores",
+            "semantic_field": "AvgScrMath"
+          }
+        }
+      },
+      {
+        "metric_name": "school_sat_participation_rate",
+        "domain": "bird_california_schools.satscores",
+        "definition": "100.0 * satscores.\"NumTstTakr\" / NULLIF(satscores.enroll12,0)",
+        "unit": "percent",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "community_answer_count",
+        "domain": "bird_codebase_community.posts",
+        "definition": "posts.\"AnswerCount\"",
+        "unit": "answers",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": {
+            "semantic_entity": "bird_codebase_community.posts",
+            "semantic_field": "AnswerCount"
+          }
+        }
+      },
+      {
+        "metric_name": "community_comment_count",
+        "domain": "bird_codebase_community.posts",
+        "definition": "posts.\"CommentCount\"",
+        "unit": "comments",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": {
+            "semantic_entity": "bird_codebase_community.posts",
+            "semantic_field": "CommentCount"
+          }
+        }
+      },
+      {
+        "metric_name": "community_post_score",
+        "domain": "bird_codebase_community.posts",
+        "definition": "posts.\"Score\"",
+        "unit": "score",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": {
+            "semantic_entity": "bird_codebase_community.posts",
+            "semantic_field": "Score"
+          }
+        }
+      },
+      {
+        "metric_name": "community_user_reputation",
+        "domain": "bird_codebase_community.users",
+        "definition": "users.\"Reputation\"",
+        "unit": "points",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": {
+            "semantic_entity": "bird_codebase_community.users",
+            "semantic_field": "Reputation"
+          }
+        }
+      },
+      {
+        "metric_name": "community_post_view_count",
+        "domain": "bird_codebase_community.posts",
+        "definition": "posts.\"ViewCount\"",
+        "unit": "views",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": {
+            "semantic_entity": "bird_codebase_community.posts",
+            "semantic_field": "ViewCount"
+          }
+        }
+      },
+      {
+        "metric_name": "football_total_match_goals",
+        "domain": "bird_european_football_2.Match",
+        "definition": "\"Match\".home_team_goal + \"Match\".away_team_goal",
+        "unit": "goals",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": null,
+          "derived_expression": {
+            "operator": "add",
+            "operands": [
+              {
+                "semantic_entity": "bird_european_football_2.Match",
+                "semantic_field": "home_team_goal"
+              },
+              {
+                "semantic_entity": "bird_european_football_2.Match",
+                "semantic_field": "away_team_goal"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "metric_name": "football_home_win_count",
+        "domain": "bird_european_football_2.Match",
+        "definition": "SUM(CASE WHEN \"Match\".home_team_goal > \"Match\".away_team_goal THEN 1 ELSE 0 END)",
+        "unit": "wins",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "football_away_win_count",
+        "domain": "bird_european_football_2.Match",
+        "definition": "SUM(CASE WHEN \"Match\".away_team_goal > \"Match\".home_team_goal THEN 1 ELSE 0 END)",
+        "unit": "wins",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "football_draw_count",
+        "domain": "bird_european_football_2.Match",
+        "definition": "SUM(CASE WHEN \"Match\".away_team_goal = \"Match\".home_team_goal THEN 1 ELSE 0 END)",
+        "unit": "matches",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "football_mean_finishing_score",
+        "domain": "bird_european_football_2.Player_Attributes",
+        "definition": "AVG(\"Player_Attributes\".finishing)",
+        "unit": "score",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "avg",
+          "field_ref": {
+            "semantic_entity": "bird_european_football_2.Player_Attributes",
+            "semantic_field": "finishing"
+          }
+        }
+      },
+      {
+        "metric_name": "football_player_strength",
+        "domain": "bird_european_football_2.Player_Attributes",
+        "definition": "\"Player_Attributes\".strength",
+        "unit": "score",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": {
+            "semantic_entity": "bird_european_football_2.Player_Attributes",
+            "semantic_field": "strength"
+          }
+        }
+      },
+      {
+        "metric_name": "financial_male_client_percentage",
+        "domain": "bird_financial.client",
+        "definition": "100.0 * SUM(CASE WHEN client.gender = 'M' THEN 1 ELSE 0 END) / NULLIF(COUNT(client.client_id),0)",
+        "unit": "percent",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "financial_female_client_count",
+        "domain": "bird_financial.client",
+        "definition": "SUM(CASE WHEN client.gender = 'F' THEN 1 ELSE 0 END)",
+        "unit": "clients",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "financial_total_transaction_amount",
+        "domain": "bird_financial.trans",
+        "definition": "SUM(trans.amount)",
+        "unit": "currency",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "sum",
+          "field_ref": {
+            "semantic_entity": "bird_financial.trans",
+            "semantic_field": "amount"
+          }
+        }
+      },
+      {
+        "metric_name": "financial_total_loan_amount",
+        "domain": "bird_financial.loan",
+        "definition": "SUM(loan.amount)",
+        "unit": "currency",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "sum",
+          "field_ref": {
+            "semantic_entity": "bird_financial.loan",
+            "semantic_field": "amount"
+          }
+        }
+      },
+      {
+        "metric_name": "financial_monthly_loan_payment",
+        "domain": "bird_financial.loan",
+        "definition": "loan.payments",
+        "unit": "currency per month",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": {
+            "semantic_entity": "bird_financial.loan",
+            "semantic_field": "payments"
+          }
+        }
+      },
+      {
+        "metric_name": "formula1_race_points_total",
+        "domain": "bird_formula_1.results",
+        "definition": "SUM(results.points)",
+        "unit": "points",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "sum",
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.results",
+            "semantic_field": "points"
+          }
+        }
+      },
+      {
+        "metric_name": "formula1_driver_championship_points",
+        "domain": "bird_formula_1.driverStandings",
+        "definition": "\"driverStandings\".points",
+        "unit": "points",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.driverStandings",
+            "semantic_field": "points"
+          }
+        }
+      },
+      {
+        "metric_name": "formula1_constructor_championship_points",
+        "domain": "bird_formula_1.constructorStandings",
+        "definition": "\"constructorStandings\".points",
+        "unit": "points",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.constructorStandings",
+            "semantic_field": "points"
+          }
+        }
+      },
+      {
+        "metric_name": "formula1_constructor_race_points",
+        "domain": "bird_formula_1.constructorResults",
+        "definition": "\"constructorResults\".points",
+        "unit": "points",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": {
+            "semantic_entity": "bird_formula_1.constructorResults",
+            "semantic_field": "points"
+          }
+        }
+      },
+      {
+        "metric_name": "formula1_driver_best_lap_seconds",
+        "domain": "bird_formula_1.lapTimes",
+        "definition": "MIN(\"lapTimes\".milliseconds) / 1000.0",
+        "unit": "seconds",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "formula1_lap_seconds",
+        "domain": "bird_formula_1.lapTimes",
+        "definition": "\"lapTimes\".milliseconds / 1000.0",
+        "unit": "seconds",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "formula1_pit_stop_seconds",
+        "domain": "bird_formula_1.pitStops",
+        "definition": "\"pitStops\".milliseconds / 1000.0",
+        "unit": "seconds",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "superhero_attribute_value",
+        "domain": "bird_superhero.hero_attribute",
+        "definition": "hero_attribute.attribute_value",
+        "unit": "score",
+        "snapshot_capability": "scalar_formula",
+        "binding": {
+          "field_ref": {
+            "semantic_entity": "bird_superhero.hero_attribute",
+            "semantic_field": "attribute_value"
+          }
+        }
+      },
+      {
+        "metric_name": "superhero_hero_count",
+        "domain": "bird_superhero.superhero",
+        "definition": "COUNT(superhero.id)",
+        "unit": "heroes",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count",
+          "field_ref": {
+            "semantic_entity": "bird_superhero.superhero",
+            "semantic_field": "id"
+          }
+        }
+      },
+      {
+        "metric_name": "superhero_average_height",
+        "domain": "bird_superhero.superhero",
+        "definition": "AVG(superhero.height_cm)",
+        "unit": "cm",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "avg",
+          "field_ref": {
+            "semantic_entity": "bird_superhero.superhero",
+            "semantic_field": "height_cm"
+          }
+        }
+      },
+      {
+        "metric_name": "superhero_average_weight",
+        "domain": "bird_superhero.superhero",
+        "definition": "AVG(superhero.weight_kg)",
+        "unit": "kg",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "avg",
+          "field_ref": {
+            "semantic_entity": "bird_superhero.superhero",
+            "semantic_field": "weight_kg"
+          }
+        }
+      },
+      {
+        "metric_name": "toxicology_atom_count",
+        "domain": "bird_toxicology.atom",
+        "definition": "COUNT(DISTINCT atom.atom_id)",
+        "unit": "atoms",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count_distinct",
+          "field_ref": {
+            "semantic_entity": "bird_toxicology.atom",
+            "semantic_field": "atom_id"
+          }
+        }
+      },
+      {
+        "metric_name": "toxicology_molecule_count",
+        "domain": "bird_toxicology.molecule",
+        "definition": "COUNT(DISTINCT molecule.molecule_id)",
+        "unit": "molecules",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count_distinct",
+          "field_ref": {
+            "semantic_entity": "bird_toxicology.molecule",
+            "semantic_field": "molecule_id"
+          }
+        }
+      },
+      {
+        "metric_name": "thrombosis_patient_count",
+        "domain": "bird_thrombosis_prediction.Patient",
+        "definition": "COUNT(DISTINCT \"Patient\".\"ID\")",
+        "unit": "patients",
+        "snapshot_capability": "aggregate_formula",
+        "binding": {
+          "role": "metric",
+          "aggregate": "count_distinct",
+          "field_ref": {
+            "semantic_entity": "bird_thrombosis_prediction.Patient",
+            "semantic_field": "ID"
+          }
+        }
+      },
+      {
+        "metric_name": "thrombosis_normal_tp",
+        "domain": "bird_thrombosis_prediction.Laboratory",
+        "definition": "\"Laboratory\".\"TP\" > 6.0 AND \"Laboratory\".\"TP\" < 8.5",
+        "unit": "boolean",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "thrombosis_normal_alb",
+        "domain": "bird_thrombosis_prediction.Laboratory",
+        "definition": "\"Laboratory\".\"ALB\" > 3.5 AND \"Laboratory\".\"ALB\" < 5.5",
+        "unit": "boolean",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "thrombosis_normal_wbc",
+        "domain": "bird_thrombosis_prediction.Laboratory",
+        "definition": "\"Laboratory\".\"WBC\" > 3.5 AND \"Laboratory\".\"WBC\" < 9.0",
+        "unit": "boolean",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "thrombosis_normal_rbc",
+        "domain": "bird_thrombosis_prediction.Laboratory",
+        "definition": "\"Laboratory\".\"RBC\" > 3.5 AND \"Laboratory\".\"RBC\" < 6.0",
+        "unit": "boolean",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "thrombosis_normal_hgb",
+        "domain": "bird_thrombosis_prediction.Laboratory",
+        "definition": "\"Laboratory\".\"HGB\" > 10 AND \"Laboratory\".\"HGB\" < 17",
+        "unit": "boolean",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "thrombosis_normal_hct",
+        "domain": "bird_thrombosis_prediction.Laboratory",
+        "definition": "\"Laboratory\".\"HCT\" > 29 AND \"Laboratory\".\"HCT\" < 52",
+        "unit": "boolean",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "thrombosis_normal_plt",
+        "domain": "bird_thrombosis_prediction.Laboratory",
+        "definition": "\"Laboratory\".\"PLT\" > 100 AND \"Laboratory\".\"PLT\" < 400",
+        "unit": "boolean",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "thrombosis_normal_fg",
+        "domain": "bird_thrombosis_prediction.Laboratory",
+        "definition": "\"Laboratory\".\"FG\" > 150 AND \"Laboratory\".\"FG\" < 450",
+        "unit": "boolean",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "thrombosis_normal_u_pro",
+        "domain": "bird_thrombosis_prediction.Laboratory",
+        "definition": "\"Laboratory\".\"U-PRO\" > 0 AND \"Laboratory\".\"U-PRO\" < 30",
+        "unit": "boolean",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "thrombosis_normal_igg",
+        "domain": "bird_thrombosis_prediction.Laboratory",
+        "definition": "\"Laboratory\".\"IGG\" > 900 AND \"Laboratory\".\"IGG\" < 2000",
+        "unit": "boolean",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "thrombosis_normal_iga",
+        "domain": "bird_thrombosis_prediction.Laboratory",
+        "definition": "\"Laboratory\".\"IGA\" > 80 AND \"Laboratory\".\"IGA\" < 500",
+        "unit": "boolean",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      },
+      {
+        "metric_name": "thrombosis_normal_igm",
+        "domain": "bird_thrombosis_prediction.Laboratory",
+        "definition": "\"Laboratory\".\"IGM\" > 40 AND \"Laboratory\".\"IGM\" < 400",
+        "unit": "boolean",
+        "snapshot_capability": "semantic_guidance_only_in_snapshot",
+        "binding": null
+      }
+    ]
+  },
+  "inputs": {
+    "records": {
+      "path": "benchmarks/bird_online_product_full150_gemini_flash_v9_20261016_aggregate/records.jsonl",
+      "sha256": "10171179f01eb67e34bf80500c8b49b5b9b69488ce80f5bb7c687af93ae29160"
+    },
+    "annotations": {
+      "path": "benchmarks/bird_full150_v9_离线复核标注_20261016.json",
+      "sha256": "40c37a286e0f5eb9613359cbf753bc337095519e7d2966c995d0281e849b6d32"
+    },
+    "metric_catalog": {
+      "path": "benchmarks/bird_public_metric_catalog_v5_contract_20261014.json",
+      "sha256": "5881725b677509d5f408160dd92804cab515d10ed6655ee9c33c6a5a9a04e283"
+    },
+    "inventory": {
+      "path": "benchmarks/bird_semantic_runtime_inventory_20261014.json",
+      "sha256": "a659760443fcb18460b9c1cf52aab73fba81fd19a53c947f875b291efdd9ceb5"
+    },
+    "binding_implementation": {
+      "path": "data_agent/nl2sql_registered_ir.py",
+      "sha256": "b9561b7acea2e8bb37bf447d99bba44ba975732356d9ad12ce14d94d8834ff68"
+    },
+    "diagnostic_builder": {
+      "path": "scripts/nl2sql_bench_bird/build_offline_worklist.py",
+      "sha256": "adf89439b3e96854fedbc812d0c0b9f4af02a0275ca05e30c640ce71b7209f9d"
+    }
+  }
+}

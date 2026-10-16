@@ -1,0 +1,85 @@
+{
+  "n": 150,
+  "correct": 90,
+  "execution_accuracy": 0.6,
+  "valid_sql": 149,
+  "valid_sql_rate": 0.9933,
+  "gold_executable": 150,
+  "by_database": {
+    "california_schools": {
+      "n": 9,
+      "correct": 5,
+      "execution_accuracy": 0.5556
+    },
+    "card_games": {
+      "n": 21,
+      "correct": 5,
+      "execution_accuracy": 0.2381
+    },
+    "codebase_community": {
+      "n": 19,
+      "correct": 13,
+      "execution_accuracy": 0.6842
+    },
+    "european_football_2": {
+      "n": 20,
+      "correct": 12,
+      "execution_accuracy": 0.6
+    },
+    "financial": {
+      "n": 17,
+      "correct": 12,
+      "execution_accuracy": 0.7059
+    },
+    "formula_1": {
+      "n": 28,
+      "correct": 15,
+      "execution_accuracy": 0.5357
+    },
+    "superhero": {
+      "n": 15,
+      "correct": 13,
+      "execution_accuracy": 0.8667
+    },
+    "thrombosis_prediction": {
+      "n": 7,
+      "correct": 5,
+      "execution_accuracy": 0.7143
+    },
+    "toxicology": {
+      "n": 14,
+      "correct": 10,
+      "execution_accuracy": 0.7143
+    }
+  },
+  "by_difficulty": {
+    "challenging": {
+      "n": 33,
+      "correct": 17,
+      "execution_accuracy": 0.5152
+    },
+    "moderate": {
+      "n": 76,
+      "correct": 46,
+      "execution_accuracy": 0.6053
+    },
+    "simple": {
+      "n": 41,
+      "correct": 27,
+      "execution_accuracy": 0.6585
+    }
+  },
+  "failure_categories": {
+    "wrong_result": 59,
+    "generation_or_execution_error": 1
+  },
+  "model": "gemini-3.8-flash",
+  "provider": "gemini",
+  "product_entrypoint": "data_agent.nl2sql_executor.run_nl2semantic2sql",
+  "grading": "unordered multiset (bag) equality, including duplicate counts; numeric values rounded to five decimals",
+  "gold_adaptation": "BIRD source SQL identifiers and imported text date columns adapted for PostgreSQL only during gold execution",
+  "notes": "Only question text was passed to the product. Benchmark evidence and gold SQL were used solely for scoring.",
+  "generated_at": "2026-10-16T12:16:10.022296+00:00",
+  "is_complete_accuracy_result": true,
+  "assembly": "Unique scored questions across preserved diagnostic segments"
+}

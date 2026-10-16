@@ -1,0 +1,99 @@
+{
+  "purpose": "仅用于离线诊断。题号、Gold及诊断归类不得作为产品运行规则。静态差异已复核，因果影响和修复效果仍待验证。",
+  "workstreams": {
+    "指标与概念绑定": {
+      "action": "建立概念到字段/指标的明确绑定及反例；区分单场与累计、实体与观测、属性与标识。优先把登记指标接入可执行契约；歧义不能默选。",
+      "exit_evidence": "公开定义和登记版本可追溯；脱离题号的改写/反例用例通过；记录所选指标、来源字段、统计粒度及未选候选。"
+    },
+    "人群与关联粒度": {
+      "action": "明确统计对象、分子分母人群、去重键、关联方向和缺失关联行策略；编译前检查基数，必要时先聚合或半连接。",
+      "exit_evidence": "带重复键、空值、缺失关联行的独立数据夹具验证结果；关联前后人群和计数可解释。"
+    },
+    "值域与边界": {
+      "action": "核验公开字典和现有值域，维护编码、别名、时间表示及区间开闭；名称纠正须有候选值和依据，不能静默替换。",
+      "exit_evidence": "字典来源/数据适用范围清楚；边界值、NULL、未知编码和近似名称均有测试。"
+    },
+    "比例与复杂计算": {
+      "action": "扩展具类型的条件聚合、结果间计算及百分比单位；显式保存分子、分母、过滤作用域、基期和零值策略；不支持时拒绝。",
+      "exit_evidence": "条件分子、全量/条件分母、增长率与占比差等独立夹具通过；登记公式完整展开，不能退化为单字段。"
+    },
+    "输出契约": {
+      "action": "明确回答字段及顺序、ID与名称、拼接与分列、布尔展示、标量与列表；区分内部排序键和最终输出。",
+      "exit_evidence": "列数、列序、数据类型、答案粒度的独立断言通过；无法由问句确定时记录歧义。"
+    },
+    "排序与TopN": {
+      "action": "明确排名字段、方向、NULL位置、并列和数量；校验显式Top-N不被改写。并列规则需要稳定口径，不能按某次Gold返回选键。",
+      "exit_evidence": "Top20、NULL极值、并列极值和稳定排序夹具通过；IR数量和输出限制一致。"
+    },
+    "集合与作用域": {
+      "action": "显式建模EXISTS/NOT EXISTS、各层过滤及关系角色；区分全部不含与存在一条不等、评论者与帖子所有者。",
+      "exit_evidence": "多语言、多子记录、嵌套过滤及不同角色的反例夹具通过；计划记录条件所属人群。"
+    },
+    "Gold与定义一致性": {
+      "action": "比对问句、公开定义、登记语义和Gold；记录冲突及证据。正式基线不改分，另列产品语义质量核验，不能以Gold反向污染产品。",
+      "exit_evidence": "原始成绩保留；冲突有公开来源及数据证据，歧义有产品处理策略；独立评测前固定评分协议。"
+    }
+  },
+  "cases": {
+    "1252": {"workstream": "人群与关联粒度", "observation": "预测COUNT DISTINCT患者且IGG用开区间；Gold按关联记录计数并用BETWEEN闭区间，且额外关联Patient。边界和粒度须分别核验。"},
+    "1267": {"workstream": "值域与边界", "observation": "预测normal anti-SM为'-'、'+-'并去重患者；Gold使用'negative'、'0'且计关联记录。存在编码和统计粒度差异。"},
+    "1029": {"workstream": "Gold与定义一致性", "observation": "问句highest；预测降序，Gold升序且NULLS FIRST并额外关联Team。不能直接把产品改为升序以追分。"},
+    "1032": {"workstream": "排序与TopN", "observation": "两者都按比赛数降序LIMIT1；历史只读诊断发现最大计数并列，返回联赛不一致。尚无稳定并列键合同。"},
+    "1036": {"workstream": "人群与关联粒度", "observation": "预测不去重队名并在属性表直接AVG；Gold DISTINCT队名，平均值使用Team关联后的SUM/COUNT。须分开核验重复输出和均值人群。"},
+    "1058": {"workstream": "输出契约", "observation": "预测在最高/最矮球员中输出个人姓名；Gold按身高极值群体分别AVG并返回Max/Min类别。比较对象和输出合同不同。"},
+    "1107": {"workstream": "Gold与定义一致性", "observation": "预测最高crossing内按日期升序选first；Gold外层按日期降序LIMIT1，且使用另一关联键。时间口径与关联键须独立复核。"},
+    "1122": {"workstream": "指标与概念绑定", "observation": "预测strongest对应strength；Gold对应overall_rating最大值并保留不同姓名。概念字段和并列口径均不同。"},
+    "1134": {"workstream": "指标与概念绑定", "observation": "预测用player_api_id=6/23的标量子查询；Gold用Player_Attributes.id=6/23做条件求和。ID命名空间及多观测处理不同。"},
+    "1135": {"workstream": "指标与概念绑定", "observation": "预测返回player_api_id并按球员MIN(potential)排名；Gold返回属性记录id，直接按观测potential排名。实体与观测ID混用。"},
+    "872": {"workstream": "值域与边界", "observation": "预测q3精确等于'0:01:33'；Gold使用'1:33%'前缀。问句时间格式与实际存储格式需有可追溯归一化。"},
+    "879": {"workstream": "Gold与定义一致性", "observation": "预测把fastestLapSpeed转数值降序；Gold按文本降序。历史只读诊断已显示文本最大值与数值最大值不同，须固定类型和评分口径。"},
+    "892": {"workstream": "指标与概念绑定", "observation": "预测SUM(results.points)取生涯单场分总和；Gold取driverStandings.points的最大累计观测。历史检索已有相关累计指标命中，但没有形成执行约束。"},
+    "896": {"workstream": "指标与概念绑定", "observation": "预测统计results.position；Gold统计driverStandings.position。单场成绩与积分榜排名使用不同事实表。"},
+    "928": {"workstream": "指标与概念绑定", "observation": "预测过滤position=1且只输出driverRef；Gold过滤rank=1并输出forename、surname、driverRef。排名含义和输出列均不同。"},
+    "937": {"workstream": "指标与概念绑定", "observation": "预测按results.position=2；Gold按results.rank=2。需要区分完赛名次与最快圈排名，不应凭ranked一词默选。"},
+    "948": {"workstream": "指标与概念绑定", "observation": "预测MAX(constructorResults.points)；Gold MAX(constructorStandings.points)。单场与累计积分事实源不同。"},
+    "950": {"workstream": "指标与概念绑定", "observation": "预测race291的constructorResults零分；Gold使用constructorStandings零分。问句积分口径存在歧义。"},
+    "962": {"workstream": "人群与关联粒度", "observation": "预测分子分母按DISTINCT driverId；Gold分子分母按车手参赛记录。百分比统计对象不同。"},
+    "963": {"workstream": "人群与关联粒度", "observation": "预测按去重车手计数并用milliseconds<120000；Gold按lapTimes关联记录计数并转换time。须核验粒度及时间字段等价性。"},
+    "967": {"workstream": "输出契约", "observation": "预测输出前三车手code列表及重复的荷兰人数；Gold只输出荷兰人数标量。问句包含两个要求，评分输出合同需明确。"},
+    "1002": {"workstream": "输出契约", "observation": "预测拼接全名并从results按最早race日期查首赛；Gold分列姓名，经driverStandings关联但未显式按首赛日期排序。输出及首赛口径不同。"},
+    "1011": {"workstream": "排序与TopN", "observation": "问句及Gold要求top20；预测SQL最终LIMIT1。当前代码新增显式Top-N校验可阻止该类型计划，但未重新生成本题或证明答对。"},
+    "743": {"workstream": "比例与复杂计算", "observation": "预测self-interest/moral code对应Neutral，Gold对应Bad；同时关联方式及占比分母不同。先核验alignment定义，再验证双输出比例。"},
+    "747": {"workstream": "值域与边界", "observation": "预测无姓名包括NULL、空串及'-'；Gold仅NULL。缺失编码须按字段字典明确，不能任意扩展。"},
+    "533": {"workstream": "值域与边界", "observation": "预测LastAccessDate>'2014-09-01'按时间点比较；Gold DATE(LastAccessDate)>'2014-09-01'排除当日全部时刻。after的日期粒度须明确。"},
+    "557": {"workstream": "人群与关联粒度", "observation": "预测LEFT JOIN users，Gold INNER JOIN users；分母对无用户关联的帖子处理不同，不能仅检查关联未放大行数。"},
+    "587": {"workstream": "输出契约", "observation": "预测列序Title、AVG(ViewCount)、Text；Gold AVG、Title、Text。Tags同时存在包含'<humor>'与精确等于'<humor>'的差异。"},
+    "595": {"workstream": "指标与概念绑定", "observation": "预测过滤users.Views且HAVING历史行数=不同PostId数；Gold过滤posts.ViewCount且不同PostHistoryTypeId数量=1。字段归属与only-one含义不同。"},
+    "598": {"workstream": "比例与复杂计算", "observation": "预测(2011数-2010数)/2010数；Gold以全部Student徽章为共同分母，计算2010占比减2011占比。增长率与占比差、方向均不同。"},
+    "694": {"workstream": "Gold与定义一致性", "observation": "预测返回评论者名字并按评论日期倒序；Gold返回帖子所有者名字并按用户创建时间倒序。问句latest comments与Gold的角色/排序存在待核验冲突。"},
+    "341": {"workstream": "指标与概念绑定", "observation": "预测被generation_placeholder拒绝；Gold映射without powerful foils为cardKingdomId空值，且重复同一条件。需核验公开字段定义，拒绝数保留分母。"},
+    "347": {"workstream": "值域与边界", "observation": "预测artist='Stephen Daniel'且输出name；Gold artist='Stephen Daniele'且输出id。名称拼写匹配和输出类型均不同。"},
+    "349": {"workstream": "Gold与定义一致性", "observation": "预测按每卡rulings数量排名；Gold先限定isPromo=1，再选不同uuid卡数最多的artist。most ruling information与Gold统计目标不一致，待来源核验。"},
+    "352": {"workstream": "人群与关联粒度", "observation": "预测在全体卡中按DISTINCT卡ID统计中文支持；Gold在foreign_data关联行上统计。语言行和卡实体的分母不同。"},
+    "356": {"workstream": "Gold与定义一致性", "observation": "预测infinite power为'∞'；Gold为'*'。需核验公开定义、语义登记和值域，不能按答案把两个概念合并。"},
+    "366": {"workstream": "指标与概念绑定", "observation": "预测rule输出cards.text且LIMIT1；Gold输出legalities.format。卡面规则文本与赛制合法性含义不同，需核验问句约定。"},
+    "402": {"workstream": "比例与复杂计算", "observation": "预测先过滤StorySpotlight且isTextless=1，窗口比例的人群已被缩小；Gold在全体卡中算isTextless=0且StorySpotlight占比，并只输出标量。过滤作用域、编码及输出均不同。"},
+    "412": {"workstream": "值域与边界", "observation": "预测cards.type包含Creature；Gold cards.types精确Creature并采用IN集合。类型字段与完整值/包含值语义不同。"},
+    "416": {"workstream": "人群与关联粒度", "observation": "预测以power为NULL的卡为分母，并用EXISTS判断French；Gold以cards/foreign_data关联行作分母，且power为NULL或'*'。缺失与变量力量的分类及分母均不同。"},
+    "424": {"workstream": "比例与复杂计算", "observation": "预测比例的分母先限定normal layout并未乘100；Gold以所有卡为分母且乘100。人群作用域与单位均不同。"},
+    "462": {"workstream": "人群与关联粒度", "observation": "预测JOIN cards查询set translation；Gold IN子查询setCode。多张同名卡可能复制同一翻译输出，需核验重复行影响。"},
+    "465": {"workstream": "输出契约", "observation": "预测返回EXISTS布尔值；Gold返回YES/NO字符串且要求translation非NULL。答案表示和存在性条件不同。"},
+    "469": {"workstream": "输出契约", "observation": "预测直接返回mtgoCode；Gold按mtgoCode非NULL返回YES/NO。内部判断字段未转换为最终答案。"},
+    "472": {"workstream": "值域与边界", "observation": "预测Italian语言行存在即计入且COUNT DISTINCT code；Gold要求translation非NULL并COUNT DISTINCT id。空翻译和实体键需核验。"},
+    "487": {"workstream": "指标与概念绑定", "observation": "预测incredibly powerful为数值power>5；Gold映射为cardKingdomFoilId与cardKingdomId都非NULL。缺乏支持该概念绑定的明确来源。"},
+    "529": {"workstream": "Gold与定义一致性", "observation": "预测Korean存在且Japanese不存在；Gold在同一语言行上language='Korean' AND NOT LIKE '%Japanese%'。跨记录不存在与行内排除含义不同。"},
+    "215": {"workstream": "输出契约", "observation": "预测单列合计i/s原子，限定分子存在单键；Gold沿atom-connected-bond统计参与单键的原子，并分别输出iodine、sulfur两列。关系路径与输出均不同。"},
+    "218": {"workstream": "Gold与定义一致性", "observation": "预测分子NOT EXISTS氟原子；Gold分子存在element<>'f'的原子。同一分子可同时含氟和非氟，两个条件不等价。"},
+    "245": {"workstream": "人群与关联粒度", "observation": "预测按两个原子端点统计每个碘原子的键数后AVG；Gold只用atom_id一端，按关联行COUNT(bond_id)/COUNT(atom_id)。关联角色与平均值分母不同。"},
+    "281": {"workstream": "输出契约", "observation": "预测每分子按atom_id排序取第4行并按element计数；Gold把第4原子解释为固定长度ID尾码4，只返回DISTINCT element。ID结构与序数及输出不同。"},
+    "28": {"workstream": "集合与作用域", "observation": "预测Locally funded只限定平均值子查询，未限定外层候选学校；输出DOCType，而Gold为DOC。人群继承与编码/标签字段须分别核验。"},
+    "37": {"workstream": "排序与TopN", "observation": "两者使用同一比率排名；预测ASC默认NULLS LAST，Gold显式NULLS FIRST。最低比率是否包括无有效分母须有产品规则。"},
+    "36": {"workstream": "输出契约", "observation": "预测仅拼接第一位管理员姓名；Gold返回最多三位管理员的六个姓名字段。多值属性、拼接/分列合同缺失。"},
+    "41": {"workstream": "排序与TopN", "observation": "预测Virtual IN(F,V)、DENSE_RANK且排除空阅读分；Gold Virtual=F、RANK且保留空值。按县前5的候选人群及并列算法不同。"},
+    "115": {"workstream": "人群与关联粒度", "observation": "预测从account.district经disp找客户并去重；Gold按client.district关联统计且按A4分组排名。区县归属和人群不同。"},
+    "128": {"workstream": "输出契约", "observation": "预测输出district_id并限定disp OWNER、去重客户；Gold输出A2区名且统计全部女性client。答案名称及账户持有人口径不同。"},
+    "129": {"workstream": "Gold与定义一致性", "observation": "预测排除信用卡提款并按amount降序前10交易；Gold未排除该operation，按区名升序取DISTINCT前10。问句top withdrawals的排名和分类需独立核验。"},
+    "152": {"workstream": "人群与关联粒度", "observation": "预测按region A3半连接筛district后AVG；Gold按district_id关联accounts再AVG，可能按账户数加权。区域归属及均值粒度不同。"},
+    "169": {"workstream": "比例与复杂计算", "observation": "预测缺少disp.type=OWNER、增长率未乘100且没有分母零保护；Gold限定OWNER、乘100并NULLIF。角色过滤、单位和零值策略须全部进入契约。"}
+  }
+}

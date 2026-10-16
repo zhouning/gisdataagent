@@ -14,6 +14,12 @@ current_tenant_id: ContextVar[str] = ContextVar('current_tenant_id', default='')
 current_trace_id: ContextVar[str] = ContextVar('current_trace_id', default='')
 current_tool_categories: ContextVar[set] = ContextVar('current_tool_categories', default=set())
 current_model_tier: ContextVar[str] = ContextVar('current_model_tier', default='standard')
+# Managed Agent authorization is populated only while a published managed
+# agent is executing.  Keeping it in a ContextVar makes the identity and
+# policy available to every tool without widening tool function signatures.
+current_managed_agent_authorization: ContextVar[object | None] = ContextVar(
+    'current_managed_agent_authorization', default=None,
+)
 
 # NL2SQL grounding cache (Phase 1)
 current_nl2sql_schemas: ContextVar[dict] = ContextVar('current_nl2sql_schemas', default={})

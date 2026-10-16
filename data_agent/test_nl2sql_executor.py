@@ -332,6 +332,44 @@ def test_extract_sql_keeps_exists_subquery_inside_outer_statement():
     assert _extract_sql(text) == text
 
 
+@pytest.mark.parametrize("operator", ["UNION", "UNION ALL", "INTERSECT", "EXCEPT"])
+def test_extract_sql_preserves_complete_set_operation(operator):
+    from data_agent.nl2sql_executor import _extract_sql
+
+    sql = f"SELECT name FROM current_items {operator} SELECT name FROM archived_items"
+    assert _extract_sql(sql + ";") == sql
+
+
+def test_extract_sql_preserves_latest_fenced_set_operation():
+    from data_agent.nl2sql_executor import _extract_sql
+
+    final = "SELECT name FROM current_items UNION ALL SELECT name FROM archived_items"
+    fence = chr(96) * 3
+    text = fence + "sql\nSELECT name FROM current_items;\n" + fence + "\nCorrection:\n" + fence + "sql\n" + final + ";\n" + fence
+    assert _extract_sql(text) == final
+
+
+def test_extract_sql_set_operation_after_correction_with_comment_semicolon():
+    from data_agent.nl2sql_executor import _extract_sql
+
+    final = "SELECT name FROM current_items UNION /* retain both; SELECT */ ALL SELECT name FROM archived_items"
+    assert _extract_sql("SELECT name FROM current_items;\nCorrect query:\n" + final + ";") == final
+
+
+def test_extract_sql_preserves_parenthesized_set_operands():
+    from data_agent.nl2sql_executor import _extract_sql
+
+    sql = "(SELECT name FROM current_items ORDER BY name LIMIT 2) UNION ALL (SELECT name FROM archived_items LIMIT 2)"
+    assert _extract_sql(sql + ";") == sql
+
+
+def test_extract_sql_preserves_cte_with_set_operation():
+    from data_agent.nl2sql_executor import _extract_sql
+
+    sql = "WITH active AS (SELECT name FROM current_items) SELECT name FROM active EXCEPT SELECT name FROM archived_items"
+    assert _extract_sql(sql + ";") == sql
+
+
 def test_extract_sql_keeps_cte_with_final_select():
     from data_agent.nl2sql_executor import _extract_sql
 

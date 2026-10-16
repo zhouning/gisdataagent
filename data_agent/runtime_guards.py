@@ -12,6 +12,7 @@ system instruction (R5, R6 for DeepSeek).
 from __future__ import annotations
 
 import re
+from .nl2sql_observability import observe_stage
 
 # ----------------------------------------------------------------------------
 # Give-up SQL detection (bucket G)
@@ -111,6 +112,22 @@ def detect_hallucinated_table_name(
     targets: list[str] = []
     cte_names = _extract_cte_names(sql)
     for m in re.finditer(r"\b(?:from|join)\s+", sql, re.IGNORECASE):
+        # EXTRACT(YEAR FROM expression) uses FROM as an expression separator.
+        if re.search(
+            r"\bextract\s*\(\s*(?:year|month|day|hour|minute|second|epoch)\s*$",
+            sql[: m.start()],
+            re.IGNORECASE,
+        ):
+            continue
+        # ``FROM`` is also part of PostgreSQL's null-safe comparison syntax.
+        # It does not introduce a relation and must not enter the table
+        # allow-list check.
+        if re.search(
+            r"\bis\s+(?:not\s+)?distinct\s*$",
+            sql[: m.start()],
+            re.IGNORECASE,
+        ):
+            continue
         rest = sql[m.end():]
         # Skip subqueries
         if rest.lstrip().startswith("("):
@@ -164,6 +181,40 @@ def detect_hallucinated_table_name(
 # ----------------------------------------------------------------------------
 
 
+_PRIVILEGED_SQL_FUNCTIONS = frozenset({
+    "pg_read_file", "pg_read_binary_file", "pg_stat_file", "pg_ls_dir",
+    "pg_write_file", "pg_file_write", "pg_file_rename", "pg_file_unlink",
+    "pg_terminate_backend", "pg_cancel_backend", "pg_reload_conf", "pg_rotate_logfile",
+    "pg_notify", "pg_sleep", "pg_sleep_for", "pg_sleep_until", "set_config",
+    "lo_import", "lo_export", "lo_unlink",
+})
+
+
+def detect_privileged_sql_function(sql: str) -> str | None:
+    """Reject administrative calls in query drafts, including nested calls.
+
+    Inspect function nodes, never words in comments, strings or field names.
+    Database read-only transactions and least-privilege roles remain required.
+    """
+    import sqlglot
+    from sqlglot import exp
+
+    try:
+        for statement in sqlglot.parse(sql, read="postgres"):
+            if statement is None:
+                continue
+            for function in statement.find_all(exp.Func):
+                name = function.name if isinstance(function, exp.Anonymous) else function.sql_name()
+                name = name.casefold()
+                if (name in _PRIVILEGED_SQL_FUNCTIONS or name.startswith("dblink")
+                        or name.startswith("pg_advisory_") or name.startswith("pg_ls_")):
+                    return name
+    except sqlglot.errors.SqlglotError:
+        pass  # The SQL parser and execution adapter own syntax rejection.
+    return None
+
+
+@observe_stage("query.runtime_guard", rejected_when=lambda result: not result[0])
 def is_safe_sql(
     sql: str, allowed_tables: set[str] | None = None
 ) -> tuple[bool, str]:
@@ -177,6 +228,12 @@ def is_safe_sql(
     the runner can record the original SQL with valid=0 reason=<label>, OR
     optionally re-prompt the model for a corrected SQL.
     """
+    from .nl2sql_metric_compiler import contains_metric_slots
+    if contains_metric_slots(sql):
+        return False, "uncompiled_semantic_metric"
+    privileged = detect_privileged_sql_function(sql)
+    if privileged:
+        return False, f"privileged_function:{privileged}"
     if detect_give_up_sql(sql):
         return False, "give_up_placeholder"
     halluc = detect_hallucinated_table_name(sql, allowed_tables)

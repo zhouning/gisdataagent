@@ -7,6 +7,7 @@ such as aliases, units, and value_semantics, not in Python branches.
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -148,6 +149,23 @@ def apply_semantic_sql_rewrites(
             corrections.append("semantic_round_numeric_cast")
         return rewritten2, corrections
 
+    # BIRD publishes several relational value and grain definitions that are
+    # stronger than a model guess (for example, exact enum values, the
+    # cardKingdom foil meaning, the Patient->Laboratory->Examination path and
+    # the registered Formula 1 best-lap measure).  Apply those deterministic
+    # contracts before the generic SQL normalizers.  They are scoped by the
+    # candidate catalog and are therefore inert for customer GIS sources.
+    try:
+        from .nl2sql_bird_contracts import apply_bird_semantic_contracts
+        rewritten, bird_corrections = apply_bird_semantic_contracts(
+            question, rewritten, context
+        )
+        corrections.extend(bird_corrections)
+    except Exception:
+        # A malformed optional BIRD contract must never disable the normal
+        # semantic rewrite pipeline; the execution guards still apply.
+        pass
+
     rewritten, changed = _normalize_versioned_table_refs(rewritten, tables)
     if changed:
         corrections.append("semantic_table_normalized")
@@ -156,7 +174,16 @@ def apply_semantic_sql_rewrites(
     if changed:
         corrections.append("semantic_table_normalized")
 
-    rewritten, changed = _prefer_question_aliased_candidate_table(question, rewritten, tables)
+    # Relational databases contain many distinct roles with overlapping IDs.
+    # Alias preference is a spatial sibling-source policy, not permission to
+    # replace an explicitly selected relational table such as rulings with
+    # cards merely because the question mentions cards more often.
+    relational_source = bool(context.get("candidate_tables")) and all(
+        table.get("source_kind") == "bird_postgres"
+        for table in context.get("candidate_tables", [])
+    )
+    rewritten, changed = ((rewritten, False) if relational_source else
+                          _prefer_question_aliased_candidate_table(question, rewritten, tables))
     if changed:
         corrections.append("semantic_question_alias_table")
 
@@ -168,7 +195,8 @@ def apply_semantic_sql_rewrites(
     if changed:
         corrections.append("semantic_cte_spatial_exists_count")
 
-    rewritten, changed = _prefer_exact_physical_column_table(question, rewritten, tables)
+    rewritten, changed = ((rewritten, False) if relational_source else
+                          _prefer_exact_physical_column_table(question, rewritten, tables))
     if changed:
         corrections.append("semantic_exact_column_table")
 
@@ -1920,6 +1948,23 @@ def _rewrite_unqualified_select_projection_columns(
     alias_map: dict[str, tuple[TableInfo, ColumnInfo | None]],
 ) -> tuple[str, bool]:
     if not re.match(r"^\s*SELECT\b", sql or "", flags=re.IGNORECASE):
+        return sql, False
+    # A lexical FROM search can select a physical table inside a derived
+    # relation and qualify an outer projection with its inaccessible alias.
+    # This legacy alias repair applies only to a direct outer physical source.
+    try:
+        import sqlglot
+        from sqlglot import exp
+        from sqlglot.optimizer.scope import build_scope
+        tree = sqlglot.parse_one(sql, read="postgres")
+        scope = build_scope(tree)
+        source = tree.args.get("from_")
+        source = source.this if source else None
+        if (scope is None or not isinstance(source, exp.Table)
+                or source.alias_or_name not in scope.selected_sources
+                or not isinstance(scope.selected_sources[source.alias_or_name][1], exp.Table)):
+            return sql, False
+    except (sqlglot.errors.SqlglotError, sqlglot.errors.OptimizeError):
         return sql, False
     first = _first_from_table(sql, tables)
     if not first:
@@ -6994,19 +7039,51 @@ def _rewrite_ranked_metric_not_null(
         return sql, False
     if re.search(rf"{re.escape(metric)}\s+IS\s+NOT\s+NULL", sql or "", re.IGNORECASE):
         return sql, False
-    metric_qualifier = metric.split(".", 1)[0] if "." in metric else ""
-    if metric_qualifier:
-        outer_from = _top_level_clause_body(
-            sql or "", "FROM", ("WHERE", "GROUP BY", "HAVING", "ORDER BY", "LIMIT")
-        )
-        if not re.search(rf"\b{re.escape(metric_qualifier)}\b", outer_from, flags=re.IGNORECASE):
-            # A ranking metric may live inside a CTE while the outer query
-            # reads the CTE alias.  Do not inject a dangling inner-table
-            # qualifier into that outer WHERE clause.
-            return sql, False
+    # Seeing an alias anywhere in the FROM text is insufficient: a derived
+    # table contains its inner aliases, but does not export them. Resolve
+    # only columns visible from the actual outer SQL scope.
+    if not _outer_scope_exposes_column(sql, metric, tables):
+        return sql, False
     predicate = f"{metric} IS NOT NULL"
     rewritten = _inject_top_level_predicate(sql, predicate)
     return rewritten, rewritten != (sql or "")
+
+
+def _outer_scope_exposes_column(sql: str, reference: str, tables: list[TableInfo]) -> bool:
+    import sqlglot
+    from sqlglot import exp
+    from sqlglot.optimizer.scope import Scope, build_scope
+    try:
+        tree = sqlglot.parse_one(sql, read="postgres")
+        column = sqlglot.parse_one(reference, read="postgres")
+        scope = build_scope(tree)
+        if scope is None or not isinstance(column, exp.Column) or column.db or column.catalog:
+            return False
+        matches = 0
+        for alias, (_, source) in scope.selected_sources.items():
+            if column.table and column.table.casefold() != alias.casefold():
+                continue
+            if isinstance(source, Scope):
+                names = source.outer_columns or source.expression.named_selects
+                if '*' in names:
+                    continue  # Do not infer the exported fields of SELECT *.
+            elif isinstance(source, exp.Table) and not source.catalog:
+                if source.args.get('alias') and source.args['alias'].args.get('columns'):
+                    names = [c.name for c in source.args['alias'].args['columns']]
+                else:
+                    full_name = (source.db + '.' + source.name) if source.db else source.name
+                    candidates = [t for t in tables if t.table_name.casefold() == full_name.casefold()
+                                  or (not source.db and t.table_name.rsplit('.', 1)[-1].casefold() == source.name.casefold())]
+                    if len(candidates) != 1:
+                        continue
+                    names = [c.column_name for c in candidates[0].columns]
+            else:
+                continue
+            if column.name.casefold() in {name.casefold() for name in names}:
+                matches += 1
+        return matches == 1
+    except (sqlglot.errors.SqlglotError, sqlglot.errors.OptimizeError):
+        return False
 
 
 def _rewrite_ranked_partition_group_label(
@@ -7069,12 +7146,63 @@ def _rewrite_ranked_partition_group_label(
 
 
 def _rank_order_metric_ref(sql: str) -> str:
-    match = re.search(
-        r"\bORDER\s+BY\s+(?P<ref>(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_]*))\s+(?:DESC|ASC)",
-        sql or "",
-        flags=re.IGNORECASE,
-    )
-    return match.group("ref") if match else ""
+    """Locate a ranking measure whose identity survives into the outer scope.
+
+    An ORDER BY inside a scalar subquery can reuse an outer alias without
+    referring to its rows. A derived output with the same name can also be
+    a different expression. Neither is evidence for an outer NULL filter.
+    """
+    import sqlglot
+    from sqlglot import exp
+    from sqlglot.optimizer.scope import Scope, build_scope
+
+    try:
+        tree = sqlglot.parse_one(sql, read="postgres")
+        if not isinstance(tree, exp.Select):
+            return ""
+        scope = build_scope(tree)
+        if scope is None:
+            return ""
+        sources = list(scope.selected_sources.values())
+        candidates = []
+        for window in tree.find_all(exp.Window):
+            if not isinstance(window.this, (exp.RowNumber, exp.Rank, exp.DenseRank)):
+                continue
+            order = window.args.get("order")
+            if not order or not order.expressions:
+                continue
+            metric = order.expressions[0].this
+            if not isinstance(metric, exp.Column) or metric.is_star:
+                continue
+            owner = window.find_ancestor(exp.Select)
+            if owner is tree:
+                candidates.append(metric.sql(dialect="postgres"))
+                continue
+            # Preserve only a direct, unique, unchanged exported column from
+            # the single derived input. Never equate inner and outer aliases.
+            if len(sources) != 1 or metric.table or metric.db or metric.catalog:
+                continue
+            source = sources[0][1]
+            if (not isinstance(source, Scope) or source.expression is not owner
+                    or source.outer_columns):
+                continue
+            outputs = [item for item in owner.expressions if item.output_name == metric.name]
+            if len(outputs) != 1 or not isinstance(outputs[0], exp.Column):
+                continue
+            if outputs[0] == metric:
+                candidates.append(metric.sql(dialect="postgres"))
+        if not candidates:
+            distinct = tree.args.get("distinct")
+            order = tree.args.get("order")
+            if distinct and distinct.args.get("on") and order:
+                for item in order.expressions:
+                    if isinstance(item.this, exp.Column) and item.args.get("desc") is not None:
+                        candidates.append(item.this.sql(dialect="postgres"))
+                        break
+        unique = set(candidates)
+        return next(iter(unique)) if len(unique) == 1 else ""
+    except (sqlglot.errors.SqlglotError, sqlglot.errors.OptimizeError):
+        return ""
 
 
 def _inject_top_level_predicate(sql: str, predicate: str) -> str:
@@ -7169,7 +7297,10 @@ def _rewrite_unrequested_unreferenced_spatial_joins(question: str, sql: str) -> 
         flags=re.IGNORECASE | re.DOTALL,
     )
 
+    pruned = False
+
     def repl(match: re.Match) -> str:
+        nonlocal pruned
         alias = match.group("alias")
         on_clause = match.group("on")
         if not _sql_has_spatial_join_function(on_clause):
@@ -7179,11 +7310,11 @@ def _rewrite_unrequested_unreferenced_spatial_joins(question: str, sql: str) -> 
         outside = f"{sql[:match.start()]} {sql[match.end():]}"
         if re.search(rf"\b{re.escape(alias)}\.", outside, flags=re.IGNORECASE):
             return match.group(0)
+        pruned = True
         return " "
 
-    rewritten, n = pattern.subn(repl, sql or "")
-    rewritten = re.sub(r"\s+", " ", rewritten).strip()
-    return rewritten, bool(n and rewritten != (sql or ""))
+    rewritten = pattern.sub(repl, sql or "")
+    return (rewritten.strip(), True) if pruned else (sql, False)
 
 
 def _question_requests_any_spatial_relation(question: str) -> bool:
@@ -7574,6 +7705,33 @@ def _rewrite_missing_group_label_projection(
     ):
         return sql, False
     if not re.search(r"\bGROUP\s+BY\b", sql or "", flags=re.IGNORECASE):
+        return sql, False
+
+    # Adding a label is justified only for an aggregate-only result with one
+    # unambiguous group key. Existing labels can deliberately differ from a
+    # hidden grouping identity (e.g. a title grouped with its internal ID).
+    # Never widen that result simply because GROUP BY starts with the ID.
+    import sqlglot
+    from sqlglot import exp
+    try:
+        tree = sqlglot.parse_one(sql, read="postgres")
+        if not isinstance(tree, exp.Select) or tree.args.get("distinct"):
+            return sql, False
+        group = tree.args.get("group")
+        if (not group or len(group.expressions) != 1
+                or not isinstance(group.expressions[0], exp.Column)
+                or any(node is not tree for node in tree.find_all(exp.Select))
+                or any(tree.find_all(exp.Window))):
+            return sql, False
+        if not _outer_scope_exposes_column(sql, group.expressions[0].sql(dialect="postgres"),
+                                          list({t.table_name: t for t, _ in alias_map.values()}.values())):
+            return sql, False
+        for item in tree.expressions:
+            if not item.find(exp.AggFunc):
+                return sql, False
+            if any(column.find_ancestor(exp.AggFunc) is None for column in item.find_all(exp.Column)):
+                return sql, False
+    except (sqlglot.errors.SqlglotError, sqlglot.errors.OptimizeError):
         return sql, False
 
     select_positions = _top_level_keyword_positions(sql or "", "SELECT")
@@ -8366,11 +8524,31 @@ def _parse_conditional_sum_projection(expr: str) -> dict[str, str] | None:
     }
 
 
+def _has_partition_ranking(sql: str) -> bool:
+    import sqlglot
+    from sqlglot import exp
+
+    try:
+        tree = sqlglot.parse_one(sql, read="postgres")
+        return any(window.args.get("partition_by") and
+                   isinstance(window.this, (exp.Rank, exp.DenseRank, exp.RowNumber))
+                   for window in tree.find_all(exp.Window))
+    except sqlglot.errors.SqlglotError:
+        return bool(re.search(r"\bPARTITION\s+BY\b", sql or "", re.I))
+
+
 def _rewrite_question_limit(question: str, sql: str) -> tuple[str, bool]:
     if re.search(r"\bLIMIT\s+\d+\b", sql or "", flags=re.IGNORECASE):
         return sql, False
     limit = _extract_question_limit(question)
     if not limit:
+        return sql, False
+    # A bound inside each partition is not a limit on the total answer rows.
+    # QUALIFY is subsequently lowered by the PostgreSQL postprocessor; adding
+    # LIMIT here would truncate its input before the rank filter is applied.
+    if _has_partition_ranking(sql):
+        return sql, False
+    if re.search(r"\b(?:per|each|respective)\b|每(?:个|组|类|个地区)", question or "", re.I):
         return sql, False
     stripped = (sql or "").rstrip().rstrip(";").rstrip()
     if not stripped:
@@ -9036,6 +9214,42 @@ def _raw_column_reference_alternatives(qualifier: str | None, column_name: str) 
     return "|".join(rf"(?<![\.\w\"]){re.escape(r)}\b" for r in refs)
 
 
+@lru_cache(maxsize=128)
+def _parsed_column_reference_spans(sql: str) -> tuple[tuple[int, int, str, str], ...] | None:
+    """Locate actual identifier tokens without touching types, literals or aliases.
+
+    Preserve source formatting and syntax (including QUALIFY) instead of
+    serializing the tree at this early stage of the rewrite pipeline.
+    """
+    import sqlglot
+    from sqlglot import exp
+    from sqlglot.optimizer.scope import traverse_scope
+
+    try:
+        statements = sqlglot.parse(sql, read="postgres")
+        if len(statements) != 1 or statements[0] is None:
+            return None
+        tree = statements[0]
+        scopes = list(traverse_scope(tree))
+        references = {id(column) for scope in scopes for column in scope.columns}
+        result = []
+        for column in tree.find_all(exp.Column):
+            if scopes and id(column) not in references:
+                continue  # ORDER BY an explicit output alias is not a source field.
+            identifier = column.this
+            if not isinstance(identifier, exp.Identifier):
+                continue
+            start, end = identifier.meta.get("start"), identifier.meta.get("end")
+            if start is None or end is None:
+                continue
+            qualifiers = [column.catalog, column.db, column.table]
+            qualifier = ".".join(part for part in qualifiers if part)
+            result.append((start, end + 1, qualifier, column.name))
+        return tuple(result)
+    except sqlglot.errors.SqlglotError:
+        return None
+
+
 def _replace_column_reference(
     sql: str,
     alias: str | None,
@@ -9046,6 +9260,21 @@ def _replace_column_reference(
 ) -> tuple[str, int]:
     total = 0
     wrong_unquoted = _strip_identifier_quotes(wrong)
+    spans = _parsed_column_reference_spans(sql)
+    if spans is not None:
+        edits = []
+        for start, end, qualifier, name in spans:
+            if name.casefold() != wrong_unquoted.casefold():
+                continue
+            qualified_match = bool(alias and qualifier.casefold() == alias.casefold())
+            unqualified_match = unqualified and not qualifier
+            if (qualified_match or unqualified_match) and sql[start:end] != right:
+                edits.append((start, end))
+        for start, end in sorted(set(edits), reverse=True):
+            sql = sql[:start] + right + sql[end:]
+        return sql, len(edits)
+    # Preserve the legacy best-effort repair for malformed SQL. A successful
+    # parse always takes the token-aware path above.
     parts = re.split(_SQL_STRING_RE, sql)
     for i in range(0, len(parts), 2):
         segment = parts[i]

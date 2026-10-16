@@ -1,0 +1,689 @@
+{
+  "benchmark": "bird_pg_heldout_150.json",
+  "benchmark_sha256": "cade23f7a95d08626e1578c5ed5bb37a0f50d1fa655f29da6119af70f2e466b4",
+  "question_ids": [
+    1235,
+    1238,
+    1239,
+    1251,
+    1252,
+    1267,
+    1302,
+    1028,
+    1029,
+    1032,
+    1036,
+    1039,
+    1040,
+    1042,
+    1044,
+    1058,
+    1084,
+    1092,
+    1098,
+    1103,
+    1107,
+    1110,
+    1113,
+    1122,
+    1134,
+    1135,
+    1146,
+    859,
+    865,
+    868,
+    869,
+    872,
+    879,
+    884,
+    892,
+    896,
+    906,
+    909,
+    910,
+    915,
+    928,
+    930,
+    937,
+    940,
+    945,
+    948,
+    950,
+    954,
+    962,
+    963,
+    964,
+    967,
+    988,
+    717,
+    1002,
+    1011,
+    732,
+    736,
+    737,
+    739,
+    743,
+    747,
+    751,
+    769,
+    773,
+    775,
+    779,
+    781,
+    797,
+    806,
+    531,
+    533,
+    539,
+    544,
+    547,
+    557,
+    563,
+    571,
+    572,
+    576,
+    578,
+    581,
+    587,
+    592,
+    595,
+    598,
+    694,
+    705,
+    707,
+    341,
+    345,
+    346,
+    347,
+    349,
+    352,
+    356,
+    366,
+    368,
+    402,
+    412,
+    416,
+    424,
+    440,
+    462,
+    465,
+    469,
+    472,
+    487,
+    529,
+    530,
+    207,
+    208,
+    213,
+    215,
+    218,
+    220,
+    226,
+    230,
+    236,
+    245,
+    255,
+    268,
+    281,
+    282,
+    23,
+    28,
+    31,
+    32,
+    37,
+    36,
+    41,
+    47,
+    82,
+    89,
+    92,
+    98,
+    100,
+    112,
+    115,
+    117,
+    118,
+    125,
+    128,
+    129,
+    137,
+    152,
+    169,
+    173,
+    189,
+    192
+  ],
+  "databases": [
+    "california_schools",
+    "card_games",
+    "codebase_community",
+    "european_football_2",
+    "financial",
+    "formula_1",
+    "superhero",
+    "thrombosis_prediction",
+    "toxicology"
+  ],
+  "semantic_sha256": "8d98c9ee027c1ddde6d255fa407b19f8ed92aac86c594705b7e6a468bc4f7dce",
+  "registered_source_anchors_sha256": "33719441bfb0d76c29a87ef77656ee4845ac17fb3bdadf3983a480b876c81016",
+  "metric_sha256": "2eadb9fcf89616dde788b2c59e52ceed2530eaa6a343cd3f2f6e44b0cd245098",
+  "metric_count": 121,
+  "code_sha256": {
+    "data_agent/bird_source.py": "1b895f007e7d4708b228550c602f1c0a7788135ff1249367bacd50a7d1f7b4d2",
+    "data_agent/nl2sql_executor.py": "898b41fab2e3aa3c79df9569bbb5341f76373cd956005f1d2001bb03b59ff6d5",
+    "data_agent/nl2sql_grounding.py": "70fffdd884e22a31816326ba7c7b29d469aac3d43d8bd55c3571cfc73716819f",
+    "data_agent/nl2sql_semantic_rewrite.py": "d6c6c59a991bc1ecbec7c25badf5071bb9e8cfaf2e59efdd3ad3a154ca8618e1",
+    "data_agent/sql_postprocessor.py": "b71dabc090e32e24ab91106f8c8e9fda935d280423b81fb2feb711b39319026d",
+    "data_agent/runtime_guards.py": "ecdf82b787adc9bb54782ee391a62f47a334b50cbae7e4cccd01f103ae213602",
+    "data_agent/nl2sql_model_profile.py": "26927aeab3141a0f48cb7d1027fa49dae410a71bdc7200a8e9a0d7f9cc98cad5",
+    "data_agent/openai_compatible_llm.py": "099c385549851072d6900a574d50b239f1f6ae17e75fa437794158c9fb009efe",
+    "data_agent/llm_reasoning.py": "7652b5ac99b54df72c3964d5d860dd0b9387ac6fbe831d4c8c866b33c7c41d18",
+    "data_agent/nl2sql_generation_policy.py": "203ce5df0b4acf0308064781a34679bf9bc03e3911d66bff3b81f111b7e330ac",
+    "data_agent/nl2sql_relational_review.py": "9581e995841794dfdb41e5c6f434523e652adb31d6c8c4fea7caba2171003a60",
+    "data_agent/nl2sql_literal_grounding.py": "70551090e3a63b8760081b6fe5089e9f08e683824ea41c75f3593ffc14e32d19",
+    "data_agent/nl2sql_review_pipeline.py": "edbc9eefed88faa4a73961dc74916d9de3ae53cc338d17a8673d5b76f15bb1b9",
+    "data_agent/semantic_layer.py": "f33ee1121277e022df55519cfa1be7505ef9bce9b95f2195e7f6b1c244860d32",
+    "data_agent/semantic_catalog.yaml": "430fc5e23f00f16e7bf59062cb1c991ee7f4227ff27871864a6b5ce53137f3cc",
+    "data_agent/nl2sql_metric_grounding.py": "3499ba0b3cf118f9a2c106aa773654ec5f0dc6cf1eba31f6ebf61746960ea10b",
+    "data_agent/nl2sql_metric_compiler.py": "71e3949aaa3e886def47e225289831f5e4b32a2ddf99041762a60fe7344f9a66",
+    "data_agent/nl2sql_field_roles.py": "c343a50795af917a66825915b349545724db963b58dfe377d70cb76de79750b4",
+    "data_agent/nl2sql_metric_grain.py": "47f768b092208b1e8cb9e8a58682106c12dc7340bcb68aa1d735cf7a6ab2f4b2",
+    "data_agent/nl2sql_answer_bindings.py": "39866d681c7b3ccbcf0279ba456af20371e1da07146e55c6dfff75c13e967c11",
+    "data_agent/nl2sql_relational_bindings.py": "e04cc20e89d882eacd140170c0ad8bf4e666491cab74f1f3ee94428a7f0ef7ff",
+    "data_agent/nl2sql_condition_roles.py": "1ee8011423f697a3994a5812091ac2c891ee83795d779d782712234975798c8c",
+    "data_agent/nl2sql_value_presence.py": "669def698e482782342fec10cd0a8134a30b48c4218d76f55b39e0f9c834b830",
+    "data_agent/llm_call_budget.py": "b40fb113c32de105247bc13d85e7e2193662044242f1e3e34e06c043d7ad1354",
+    "data_agent/nl2sql_semantic_retrieval.py": "28dca162045e8da82098b6d06ee72cc8c286b555eaced36baa0099be47fd5d4e",
+    "data_agent/nl2sql_relationship_retrieval.py": "243294f39f5f1236848e143e7d1547f8d19a96c5eabf3a710202016c9233ef14",
+    "data_agent/nl2sql_prompt_metadata.py": "395e623dc53be9711baffa5abb00882691da122e4b9e3e372076fd77eb700da7",
+    "data_agent/nl2sql_output_contracts.py": "9d183cd191a52a59c54a359562ca27320138fa621134864b23e65958f0414912",
+    "data_agent/bird_semantic_contracts.py": "8968bd0f689fa9fc48b8f1cf33342fb0fb864231788fadb19a67321a559b4dc3",
+    "data_agent/seed_semantic_hints_bird.py": "28573a2c225fe98b671c9eeb5578fd67f5b34a0af2d55ddb8e4d9ad71e3ab37d",
+    "data_agent/nl2sql_answer_plan.py": "5fc74d0137f4248827992bdd24479f07ba53fa1497e79b8c578b497515cb97fb",
+    "data_agent/nl2sql_ranking_contract.py": "ef8b6816d0297fa46241c6f26e862f8ec8c64c481cb35c50e4f68386f5abb506",
+    "data_agent/nl2sql_dimension_contract.py": "5cfca8e06f66f7bb5b5ed8d1c079373e86e8781f43dda337d50134a692397480",
+    "data_agent/nl2sql_output_contract.py": "e704ca8448270815d07b80986a717f264748e1844066cb4c3bb3101d24953305",
+    "data_agent/nl2sql_output_projection.py": "909c4262ed5c73c0463b6cb70e9c1d24e46fc98131ce39fae1a892acd1601124",
+    "data_agent/nl2sql_ratio_contract.py": "ac16b49941a72f0bf27599d29e200e416f1daaf8739260d3d7856b0115fed2dd",
+    "data_agent/nl2sql_literal_contract.py": "e347075cad27ec60ab9d260ee43474afebd3365d2a8d71526dca105d9373229f",
+    "data_agent/nl2sql_categorical_contract.py": "534ae01f553413e763741d26ea85535c5e0aaec0eef9ea6236a8226bf19976ac",
+    "data_agent/nl2sql_reference_ranges.py": "bdd6bd832563cf75a0fd6d0430cb9405835a29e6dcd87a02f3c4ffcfc90ec4b8",
+    "data_agent/nl2sql_registered_ir.py": "0ae3ddcb395844b7e6d4477c300101009a3a66640ea3c9373134fce337873111",
+    "data_agent/nl2sql_candidates.py": "b36f8a706d89785d3ff5da3d113ee657d2e423b72e770616b0d3ae433409b28c",
+    "data_agent/nl2sql_intent.py": "737c968700bc95432e5cfb86d3492ecbcab7f6a8632d6eaf9b2c714401d05408",
+    "data_agent/semantic_query_ir.py": "238674c3e2988eeba76368709925d8d534e0635994ec6a5362645efd6b89996f",
+    "scripts/nl2sql_bench_bird/product_manifest.py": "de54090165cb3e695f006c1400d37027a69c051e14cd6238d65594c29deffd70",
+    "scripts/nl2sql_bench_bird/check_product_acceptance.py": "3a4ad82a5d5730b109b0f450bd50922279f10fa3602b2a6e393ea1fa098a3a01",
+    "scripts/nl2sql_bench_bird/snapshot_product_data.py": "e714da1f518f58bcde4521ed2f6e7f39665caae4f92ff633f49b061280c734e3",
+    "scripts/nl2sql_bench_bird/eval_product_source.py": "f2118e7a50f5a302f157fa955cd71fc5a8e6fede72642136ef530314212d8aba",
+    "scripts/nl2sql_bench_bird/run_remote_bird_eval.py": "cd37614f6df792f3da3b9f66ad03302728747c462c3199f9ee57ea01752fb721"
+  },
+  "model_profile": {
+    "profile_id": "gemini-legacy",
+    "profile_version": "nl2sql-model-profile-v1",
+    "model_id": "gemini-3.8-flash",
+    "provider": "gemini",
+    "family": "gemini",
+    "prompt_variant": "gemini_legacy",
+    "intent_strategy": "rule_then_llm",
+    "grounding_variant": "legacy",
+    "structured_output_mode": "native_json_schema_baseline_text_ir",
+    "reasoning_effort": "none",
+    "temperature": null,
+    "max_generation_attempts": 2,
+    "generation_attempt_timeout_seconds": null,
+    "max_generation_output_tokens": null,
+    "semantic_ir_enabled": true,
+    "repair_strategy": "contract_retry_then_deterministic_validation",
+    "refusal_policy": "deterministic_read_only_preflight_then_model_contract",
+    "minimum_benchmark_thresholds": {
+      "liveability_gold_equivalence": 0.8,
+      "makani_gold_equivalence": 0.2,
+      "refusal_precision": 0.9,
+      "refusal_recall": 0.95,
+      "query_execution_success": 0.9
+    }
+  },
+  "deployed_model": {
+    "model": "gemini-3.8-flash",
+    "provider": "gemini",
+    "digest": null,
+    "identity_kind": "official-provider-metadata-v1",
+    "metadata": {
+      "name": "models/gemini-3.8-flash",
+      "version": "3.0",
+      "displayName": "Gemini 3.8 Flash",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536,
+      "supportedGenerationMethods": [
+        "generateContent",
+        "countTokens",
+        "createCachedContent",
+        "batchGenerateContent"
+      ]
+    },
+    "metadata_sha256": "8094b1c44802e303fe9118e18dfa6b9f37699d9fc9b75a1c58bdcd8bc3be975e",
+    "metadata_endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash",
+    "limitation": "Provider model metadata is checked before and after the run; hosted weights cannot be independently frozen."
+  },
+  "source_data": {
+    "version": "ordered-row-json-md5-v1",
+    "tables": [
+      {
+        "db_id": "california_schools",
+        "table": "frpm",
+        "rows": 9986,
+        "ordered_row_md5": "910f0be06fef016bb8c8b977ff3b9a44"
+      },
+      {
+        "db_id": "california_schools",
+        "table": "satscores",
+        "rows": 2269,
+        "ordered_row_md5": "de43259e99e11426d674aa1580af5bc5"
+      },
+      {
+        "db_id": "california_schools",
+        "table": "schools",
+        "rows": 17686,
+        "ordered_row_md5": "7eefabe89af752d95952e777283afbbc"
+      },
+      {
+        "db_id": "card_games",
+        "table": "cards",
+        "rows": 56822,
+        "ordered_row_md5": "07f1e7a5c6092fcba446bba182429cc8"
+      },
+      {
+        "db_id": "card_games",
+        "table": "foreign_data",
+        "rows": 229186,
+        "ordered_row_md5": "a7e1424c6ff77e30cf1d1db7f0b9da15"
+      },
+      {
+        "db_id": "card_games",
+        "table": "legalities",
+        "rows": 427907,
+        "ordered_row_md5": "140d97e8d50d524fc8009273f74b43fa"
+      },
+      {
+        "db_id": "card_games",
+        "table": "rulings",
+        "rows": 87769,
+        "ordered_row_md5": "8c0136a6eb7ff5920db9fb5865ec694c"
+      },
+      {
+        "db_id": "card_games",
+        "table": "sets",
+        "rows": 551,
+        "ordered_row_md5": "7f2f9066e059221b11024baf721dc63d"
+      },
+      {
+        "db_id": "card_games",
+        "table": "set_translations",
+        "rows": 1210,
+        "ordered_row_md5": "98e30f7a8384cbca7397c2409b5ad228"
+      },
+      {
+        "db_id": "codebase_community",
+        "table": "badges",
+        "rows": 79851,
+        "ordered_row_md5": "a5f535096e7feb1a70bcbfac48dd831d"
+      },
+      {
+        "db_id": "codebase_community",
+        "table": "comments",
+        "rows": 174285,
+        "ordered_row_md5": "8d492e3690a3c0e5b4e6d23016519a98"
+      },
+      {
+        "db_id": "codebase_community",
+        "table": "postHistory",
+        "rows": 303155,
+        "ordered_row_md5": "7763489db16fb03aca43f7fcf07cf99a"
+      },
+      {
+        "db_id": "codebase_community",
+        "table": "postLinks",
+        "rows": 11102,
+        "ordered_row_md5": "4d0a3bfdff0793a25a85d0d258916589"
+      },
+      {
+        "db_id": "codebase_community",
+        "table": "posts",
+        "rows": 91966,
+        "ordered_row_md5": "22c35fa0b852f7cd54ff93318fe1b711"
+      },
+      {
+        "db_id": "codebase_community",
+        "table": "tags",
+        "rows": 1032,
+        "ordered_row_md5": "824a37944d20de177f5779a083d87588"
+      },
+      {
+        "db_id": "codebase_community",
+        "table": "users",
+        "rows": 40325,
+        "ordered_row_md5": "dbdcc065e5c5b9c2c10f2e13cad5eb54"
+      },
+      {
+        "db_id": "codebase_community",
+        "table": "votes",
+        "rows": 38930,
+        "ordered_row_md5": "659894ba3cef8a9dd192d1fb10400f52"
+      },
+      {
+        "db_id": "european_football_2",
+        "table": "Country",
+        "rows": 11,
+        "ordered_row_md5": "4daef22a5b36cce1eda32e88d27f369c"
+      },
+      {
+        "db_id": "european_football_2",
+        "table": "League",
+        "rows": 11,
+        "ordered_row_md5": "4162750af99004a9b7c403f6a1e63654"
+      },
+      {
+        "db_id": "european_football_2",
+        "table": "Match",
+        "rows": 25979,
+        "ordered_row_md5": "8ff708fa38000e1498eea29b9b44cb31"
+      },
+      {
+        "db_id": "european_football_2",
+        "table": "Player",
+        "rows": 11060,
+        "ordered_row_md5": "70bcc127ad5fe3ae322e3289e7fa0d2b"
+      },
+      {
+        "db_id": "european_football_2",
+        "table": "Player_Attributes",
+        "rows": 183978,
+        "ordered_row_md5": "73889390009a143c9292d90690cb5e6c"
+      },
+      {
+        "db_id": "european_football_2",
+        "table": "Team",
+        "rows": 299,
+        "ordered_row_md5": "a4c86562a7721462a9168694733f3463"
+      },
+      {
+        "db_id": "european_football_2",
+        "table": "Team_Attributes",
+        "rows": 1458,
+        "ordered_row_md5": "d4e41d569dad92000df63a2d3161c102"
+      },
+      {
+        "db_id": "financial",
+        "table": "account",
+        "rows": 4500,
+        "ordered_row_md5": "09d6661d5de3d812f031ef35fc839c42"
+      },
+      {
+        "db_id": "financial",
+        "table": "card",
+        "rows": 892,
+        "ordered_row_md5": "7dcee970d04cec261dd6b117b5bbcd9b"
+      },
+      {
+        "db_id": "financial",
+        "table": "client",
+        "rows": 5369,
+        "ordered_row_md5": "090286ee5bb5c3c30f819a64f59f867f"
+      },
+      {
+        "db_id": "financial",
+        "table": "disp",
+        "rows": 5369,
+        "ordered_row_md5": "7d7b529f3c5e78f134ca30cc9254a170"
+      },
+      {
+        "db_id": "financial",
+        "table": "district",
+        "rows": 77,
+        "ordered_row_md5": "f539515d5841fa0656dcb43b5bab80e6"
+      },
+      {
+        "db_id": "financial",
+        "table": "loan",
+        "rows": 682,
+        "ordered_row_md5": "97e0583aaded5b8dc14b124b4380a233"
+      },
+      {
+        "db_id": "financial",
+        "table": "order",
+        "rows": 6471,
+        "ordered_row_md5": "190f34719cc2ca85209b24314881d8aa"
+      },
+      {
+        "db_id": "financial",
+        "table": "trans",
+        "rows": 1056320,
+        "ordered_row_md5": "5dae3bbd087d3d8f37c7862a9919a4f0"
+      },
+      {
+        "db_id": "formula_1",
+        "table": "circuits",
+        "rows": 72,
+        "ordered_row_md5": "7c3e619de70b21088c502edd2b548fd0"
+      },
+      {
+        "db_id": "formula_1",
+        "table": "constructorResults",
+        "rows": 11082,
+        "ordered_row_md5": "b3875b86757a894aa316b47bcd451b4d"
+      },
+      {
+        "db_id": "formula_1",
+        "table": "constructors",
+        "rows": 208,
+        "ordered_row_md5": "75c1c6d967bc7066b16c585ba75240fd"
+      },
+      {
+        "db_id": "formula_1",
+        "table": "constructorStandings",
+        "rows": 11836,
+        "ordered_row_md5": "454ea5890c07f3702090bded21304379"
+      },
+      {
+        "db_id": "formula_1",
+        "table": "drivers",
+        "rows": 840,
+        "ordered_row_md5": "e5533f46dd67db10642a841258e7bee9"
+      },
+      {
+        "db_id": "formula_1",
+        "table": "driverStandings",
+        "rows": 31578,
+        "ordered_row_md5": "6f50d7c47ab8a64cc327e85162f9bdb6"
+      },
+      {
+        "db_id": "formula_1",
+        "table": "lapTimes",
+        "rows": 420369,
+        "ordered_row_md5": "92657b348b9a3816ea690b519737e5c2"
+      },
+      {
+        "db_id": "formula_1",
+        "table": "pitStops",
+        "rows": 6070,
+        "ordered_row_md5": "a58baea5eac6e71b1856ad0dcca11a60"
+      },
+      {
+        "db_id": "formula_1",
+        "table": "qualifying",
+        "rows": 7397,
+        "ordered_row_md5": "c3804a3d8bee561d225c03ff9c50b7b1"
+      },
+      {
+        "db_id": "formula_1",
+        "table": "races",
+        "rows": 976,
+        "ordered_row_md5": "3182f34119f6d13bd21b350d0a660e72"
+      },
+      {
+        "db_id": "formula_1",
+        "table": "results",
+        "rows": 23657,
+        "ordered_row_md5": "717880c0b893e4a09e1dfe55e06124bc"
+      },
+      {
+        "db_id": "formula_1",
+        "table": "seasons",
+        "rows": 68,
+        "ordered_row_md5": "f0fcde22569a5d736ff556cb86e5f5dc"
+      },
+      {
+        "db_id": "formula_1",
+        "table": "status",
+        "rows": 134,
+        "ordered_row_md5": "8c4d9aaf2d94cbbf98bd55bf3f5488e8"
+      },
+      {
+        "db_id": "superhero",
+        "table": "alignment",
+        "rows": 4,
+        "ordered_row_md5": "61178febd8e11912a031d9a861657332"
+      },
+      {
+        "db_id": "superhero",
+        "table": "attribute",
+        "rows": 6,
+        "ordered_row_md5": "9cafe37afa4c188b0f692eb9d464939c"
+      },
+      {
+        "db_id": "superhero",
+        "table": "colour",
+        "rows": 35,
+        "ordered_row_md5": "a23f22a3515575c16bc117ca30b53d99"
+      },
+      {
+        "db_id": "superhero",
+        "table": "gender",
+        "rows": 3,
+        "ordered_row_md5": "60030cd8abd987b35d6a52e995018060"
+      },
+      {
+        "db_id": "superhero",
+        "table": "hero_attribute",
+        "rows": 3738,
+        "ordered_row_md5": "e60e02852e350c84dec1f448736b8b48"
+      },
+      {
+        "db_id": "superhero",
+        "table": "hero_power",
+        "rows": 5825,
+        "ordered_row_md5": "08612729173b37ac6eea4a5fffb1e902"
+      },
+      {
+        "db_id": "superhero",
+        "table": "publisher",
+        "rows": 25,
+        "ordered_row_md5": "af1b24e3ef1a48f986f0af5ad97f3e0d"
+      },
+      {
+        "db_id": "superhero",
+        "table": "race",
+        "rows": 61,
+        "ordered_row_md5": "8b8c46f53ddbb468b7b612e72b8d392d"
+      },
+      {
+        "db_id": "superhero",
+        "table": "superhero",
+        "rows": 750,
+        "ordered_row_md5": "7753e7262f732c16937430a34c26ba0c"
+      },
+      {
+        "db_id": "superhero",
+        "table": "superpower",
+        "rows": 167,
+        "ordered_row_md5": "a4a41f24f8c91ba9b143d194e8773c60"
+      },
+      {
+        "db_id": "thrombosis_prediction",
+        "table": "Examination",
+        "rows": 806,
+        "ordered_row_md5": "6684b289b1119e6a957efdae617ad4f7"
+      },
+      {
+        "db_id": "thrombosis_prediction",
+        "table": "Laboratory",
+        "rows": 13908,
+        "ordered_row_md5": "eba068e56a2fcf2e67eb1b6d8bda5a89"
+      },
+      {
+        "db_id": "thrombosis_prediction",
+        "table": "Patient",
+        "rows": 1238,
+        "ordered_row_md5": "a66259d97fa9a192a8e83f929e7cdd42"
+      },
+      {
+        "db_id": "toxicology",
+        "table": "atom",
+        "rows": 12333,
+        "ordered_row_md5": "368b71f2dc33846eddc3c2c429da6644"
+      },
+      {
+        "db_id": "toxicology",
+        "table": "bond",
+        "rows": 12379,
+        "ordered_row_md5": "c722f55ab557ebf14cf7e4007082ed68"
+      },
+      {
+        "db_id": "toxicology",
+        "table": "connected",
+        "rows": 24758,
+        "ordered_row_md5": "df5ff55e940b262adbf18dab67ac0026"
+      },
+      {
+        "db_id": "toxicology",
+        "table": "molecule",
+        "rows": 343,
+        "ordered_row_md5": "d73282d0d4bf2446a6dbee9d3cbda837"
+      }
+    ],
+    "fingerprint_sha256": "3979655710f3de7e0c6c829ca24881870cac22e46b6fb35e1f2fb0ab31bb12d3"
+  },
+  "settings": {
+    "GDA_GEMINI_REASONING_EFFORT": "low",
+    "GDA_GEMINI_TRANSPORT": "direct",
+    "GDA_LLM_API_STYLE": "chat",
+    "GDA_LLM_BASE_URL": "https://generativelanguage.googleapis.com/v1beta/openai",
+    "GDA_LLM_ENABLE_THINKING": "0",
+    "GDA_LLM_HTTP_PROXY": "http://127.0.0.1:7897",
+    "GDA_LLM_MODEL": "gemini-3.8-flash",
+    "GDA_LLM_PROVIDER": "gemini",
+    "GDA_LLM_TIMEOUT_SECONDS": "180",
+    "GDA_NL2SQL_ALLOW_BENCHMARK_FEWSHOT": "0",
+    "GDA_NL2SQL_ALLOW_CROSS_DOMAIN_FEWSHOT": "0",
+    "GDA_NL2SQL_ALLOW_UNREVIEWED_FEWSHOT": "0",
+    "GDA_NL2SQL_AUTO_CURATE": "0",
+    "GDA_NL2SQL_BENCH_REQUEST_INTERVAL_SECONDS": "2",
+    "GDA_NL2SQL_GENERATION_RETRIES": "5",
+    "GDA_NL2SQL_LOCAL_FEWSHOT": "0",
+    "GDA_NL2SQL_MAX_OUTPUT_TOKENS": "8192",
+    "GDA_NL2SQL_ONLINE_RETRY_BASE_SECONDS": "10",
+    "GDA_NL2SQL_ONLINE_RETRY_MAX_SECONDS": "60",
+    "GDA_NL2SQL_SEMANTIC_RETRIEVAL": "1",
+    "NL2SQL_AGENT_FAMILY": "gemini",
+    "NL2SQL_AGENT_MODEL": "gemini-3.8-flash",
+    "NL2SQL_DISABLE_FEWSHOT": "1"
+  },
+  "product_inputs": "question text and authorized database only",
+  "grading_version": "bird-unordered-five-decimal-v1",
+  "call_budget_policy": {
+    "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+    "cost_ceiling_per_call_usd": "1.00",
+    "expires_at": "2026-10-18T23:59:59+08:00",
+    "max_calls": 240,
+    "max_calls_per_question": 8,
+    "max_cost_usd": "240.00",
+    "max_output_tokens_per_call": 8192,
+    "max_request_bytes": 1000000,
+    "max_total_output_tokens": 1966080,
+    "model": "gemini-3.8-flash",
+    "pricing_reference": "https://ai.google.dev/gemini-api/docs/pricing",
+    "provider": "gemini",
+    "run_id": "bird-product-full150-gemini-3-8-flash-v9-continuation-20261016"
+  }
+}

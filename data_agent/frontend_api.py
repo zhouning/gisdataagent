@@ -4754,6 +4754,7 @@ def get_frontend_api_routes():
     from .api.metric_routes import get_metric_routes
     from .api.capability_spec_routes import get_capability_spec_routes
     from .api.governed_query_routes import get_governed_query_routes
+    from .api.bird_chat_routes import get_bird_chat_routes
     from .api.governed_query_policy_routes import get_governed_query_policy_routes
     from .api.semantic_planning_routes import get_semantic_planning_routes
     from .api.gis_analysis_routes import get_gis_analysis_routes
@@ -4786,6 +4787,7 @@ def get_frontend_api_routes():
         *get_map_publication_routes(),
         *get_ontology_routes(),
         *get_governed_query_routes(),
+        *get_bird_chat_routes(),
         *get_governed_query_policy_routes(),
         *get_semantic_planning_routes(),
         *get_gis_analysis_routes(),

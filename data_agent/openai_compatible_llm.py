@@ -15,9 +15,18 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
+from .nl2sql_observability import observe_stage, annotate_stage
+
 
 class LLMServiceError(RuntimeError):
     """Raised when a required local LLM request cannot be completed."""
+
+    def __init__(self, message: str, *, code: str = "request_failed",
+                 retryable: bool = True, evidence: dict | None = None):
+        super().__init__(message)
+        self.code = code
+        self.retryable = retryable
+        self.evidence = evidence or {}
 
 
 def normalize_openai_base_url(value: str) -> str:
@@ -112,6 +121,7 @@ class OpenAICompatibleLLMConfig:
     api_key: str
     timeout_seconds: float
     api_style: str = "chat"
+    http_proxy: str | None = None
 
     @classmethod
     def from_env(cls) -> OpenAICompatibleLLMConfig:
@@ -120,6 +130,11 @@ class OpenAICompatibleLLMConfig:
         configured_base = (
             os.environ.get("GDA_LLM_BASE_URL")
             or (os.environ.get("OPENAI_BASE_URL") if provider_hint == "openai" else None)
+            or (
+                "https://generativelanguage.googleapis.com/v1beta/openai"
+                if provider_hint == "gemini"
+                else None
+            )
             or os.environ.get("LM_STUDIO_BASE_URL")
             or os.environ.get("OLLAMA_API_BASE")
             or (
@@ -171,7 +186,13 @@ class OpenAICompatibleLLMConfig:
         )
         if api_style not in {"chat", "responses"}:
             raise ValueError("GDA_LLM_API_STYLE must be chat or responses")
-        return cls(provider, base_url, model, api_key, timeout, api_style)
+        http_proxy = os.environ.get("GDA_LLM_HTTP_PROXY", "").strip() or None
+        if http_proxy:
+            parsed_proxy = urlsplit(http_proxy)
+            if (parsed_proxy.scheme not in {"http", "https", "socks5", "socks5h"}
+                    or not parsed_proxy.hostname or parsed_proxy.query or parsed_proxy.fragment):
+                raise ValueError("GDA_LLM_HTTP_PROXY must be a valid proxy URL")
+        return cls(provider, base_url, model, api_key, timeout, api_style, http_proxy)
 
     @property
     def chat_completions_url(self) -> str:
@@ -184,6 +205,25 @@ class OpenAICompatibleLLMConfig:
 
 def _sha256_text(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def llm_http_client_options(config: OpenAICompatibleLLMConfig) -> dict[str, Any]:
+    """Apply an explicit online proxy while always bypassing it for local models."""
+    if config.provider in {"ollama", "lm_studio"}:
+        return {"trust_env": False}
+    if config.http_proxy:
+        return {"proxy": config.http_proxy, "trust_env": False}
+    return {"trust_env": True}
+
+
+def public_proxy_url(value: str) -> str:
+    """Keep proxy routing evidence without user information or URL secrets."""
+    parsed = urlsplit(value)
+    host = parsed.hostname or ""
+    if ":" in host:
+        host = f"[{host}]"
+    netloc = host + (f":{parsed.port}" if parsed.port else "")
+    return urlunsplit((parsed.scheme, netloc, parsed.path, "", ""))
 
 
 def _optional_bool_env(name: str) -> bool | None:
@@ -200,6 +240,7 @@ def _optional_bool_env(name: str) -> bool | None:
     raise ValueError(f"{name} must be a boolean")
 
 
+@observe_stage("llm.request")
 def chat_completion(
     *,
     system_prompt: str,
@@ -207,17 +248,43 @@ def chat_completion(
     config: OpenAICompatibleLLMConfig | None = None,
     max_tokens: int = 800,
     client_factory: Callable[..., Any] | None = None,
+    response_format: dict[str, Any] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """Call a required local model and return response text plus audit evidence."""
 
     cfg = config or OpenAICompatibleLLMConfig.from_env()
+    annotate_stage(provider=cfg.provider, model=cfg.model, dispatched=False)
     started = time.perf_counter()
     response_for_diagnostics: Any = None
     response_model = ""
+    request: dict[str, Any] = {}
+    response_id = ""
+    usage_payload = None
+    text = ""
+    from .llm_call_budget import BudgetDenied, active_budget
+    budget = active_budget()
+    reservation = None
+
+    def evidence(status: str, error_code: str | None = None) -> dict:
+        result = _completion_evidence(
+            cfg, request, response_for_diagnostics, usage_payload,
+            response_id=response_id, response_model=response_model,
+            prompt=system_prompt + "\n" + user_prompt, response_text=text,
+            elapsed_ms=round((time.perf_counter() - started) * 1000), status=status,
+        )
+        if error_code:
+            result["error_code"] = error_code
+        if reservation is not None:
+            result["budget_reservation"] = reservation
+        annotate_stage(actual_model=response_model or cfg.model,
+                       **(result.get("usage") or {}))
+        return result
     try:
         use_responses = cfg.api_style == "responses"
+        if response_format is not None and use_responses:
+            raise ValueError("response_format requires the Chat Completions API")
         if use_responses:
-            request: dict[str, Any] = {
+            request = {
                 "model": cfg.model,
                 "instructions": system_prompt,
                 "input": user_prompt,
@@ -237,8 +304,10 @@ def chat_completion(
                 "temperature": 0,
                 "max_tokens": max_tokens,
             }
+            if response_format is not None:
+                request["response_format"] = response_format
             thinking_enabled = _optional_bool_env("GDA_LLM_ENABLE_THINKING")
-            if thinking_enabled is not None and cfg.provider != "gemini":
+            if thinking_enabled is not None and cfg.provider not in {"gemini", "ollama"}:
                 # DashScope/Qwen's OpenAI-compatible endpoint supports this
                 # top-level extension. It is opt-in so ordinary OpenAI-shaped
                 # servers never receive a vendor extension unexpectedly.
@@ -265,9 +334,21 @@ def chat_completion(
                 # Ollama's OpenAI-compatible endpoint maps reasoning_effort=none
                 # to native think=false. Sending a top-level think flag is
                 # currently ignored by the OpenAI compatibility layer.
-                request["reasoning_effort"] = "none"
-        response_id = ""
-        usage_payload = None
+                from .llm_reasoning import ollama_reasoning_effort
+
+                effort = ollama_reasoning_effort()
+                if effort is not None:
+                    request["reasoning_effort"] = effort
+        if budget is not None:
+            reservation = budget.reserve(cfg, request)
+            # Admission expires across generation, repair and retry calls.
+            from dataclasses import replace
+            from datetime import datetime, timezone
+            remaining = (datetime.fromisoformat(budget.policy['expires_at'].replace('Z', '+00:00'))
+                         - datetime.now(timezone.utc)).total_seconds()
+            if remaining <= 0:
+                budget._deny("budget_expired")
+            cfg = replace(cfg, timeout_seconds=min(cfg.timeout_seconds, remaining))
         if client_factory is not None:
             # Test/integration hook for an OpenAI-shaped fake client.
             client = client_factory(
@@ -276,6 +357,7 @@ def chat_completion(
                 timeout=cfg.timeout_seconds,
                 max_retries=0,
             )
+            annotate_stage(dispatched=True)
             response = (
                 client.responses.create(**request)
                 if use_responses
@@ -301,8 +383,8 @@ def chat_completion(
             # Local services must bypass system proxies; online DeepSeek must
             # be allowed to use the configured HTTPS proxy in restricted
             # environments.
-            trust_env = cfg.provider not in {"ollama", "lm_studio"}
-            with httpx.Client(timeout=cfg.timeout_seconds, trust_env=trust_env) as client:
+            with httpx.Client(timeout=cfg.timeout_seconds, **llm_http_client_options(cfg)) as client:
+                annotate_stage(dispatched=True)
                 wire_response = client.post(
                     endpoint,
                     headers={
@@ -324,6 +406,9 @@ def chat_completion(
                 ) from exc
             payload = wire_response.json()
             response_for_diagnostics = payload
+            response_id = str(payload.get("id") or "")
+            response_model = str(payload.get("model") or "")
+            usage_payload = payload.get("usage")
             if use_responses:
                 text = _response_output_text(payload)
             else:
@@ -332,26 +417,60 @@ def chat_completion(
                     raise LLMServiceError("LLM response does not contain choices")
                 message = choices[0].get("message") or {}
                 text = str(message.get("content") or "").strip()
-            response_id = str(payload.get("id") or "")
-            response_model = str(payload.get("model") or "")
-            usage_payload = payload.get("usage")
-        if not text:
+        finish_reason = _chat_finish_reason(response_for_diagnostics) if not use_responses else None
+        if not text or finish_reason == "length":
             details = (
                 f" ({_response_empty_diagnostics(response_for_diagnostics)})"
                 if use_responses
                 else ""
             )
-            raise LLMServiceError(f"{cfg.provider} LLM returned an empty response{details}")
-    except LLMServiceError:
+            code = "output_token_limit" if finish_reason == "length" else "empty_response"
+            if code == "output_token_limit":
+                message = f"{cfg.provider} LLM output reached the configured token limit"
+            else:
+                message = f"{cfg.provider} LLM returned an empty response{details}"
+            raise LLMServiceError(message, code=code, retryable=code != "output_token_limit")
+    except BudgetDenied:
+        raise
+    except LLMServiceError as exc:
+        if reservation is not None:
+            budget.finish(reservation, "failed", usage_payload)
+        exc.evidence = evidence("failed", exc.code)
         raise
     except Exception as exc:
+        if reservation is not None:
+            budget.finish(reservation, "failed", usage_payload)
         raise LLMServiceError(
             f"{cfg.provider} LLM request failed at "
             f"{cfg.responses_url if cfg.api_style == 'responses' else cfg.chat_completions_url}: "
-            f"{exc}"
+            f"{exc}", evidence=evidence("failed", "request_failed")
         ) from exc
+    except BaseException:
+        if reservation is not None:
+            budget.finish(reservation, "interrupted", usage_payload)
+        raise
 
-    elapsed_ms = round((time.perf_counter() - started) * 1000)
+    if reservation is not None:
+        budget.finish(reservation, "succeeded", usage_payload)
+    return text, evidence("succeeded")
+
+
+def _value(obj: Any, name: str, default=None):
+    return obj.get(name, default) if isinstance(obj, dict) else getattr(obj, name, default)
+
+
+def _chat_finish_reason(response: Any) -> str | None:
+    choices = _value(response, "choices", []) or []
+    if not choices:
+        return None
+    reason = _value(choices[0], "finish_reason")
+    # Diagnostics must not copy arbitrary model/provider text into traces.
+    return reason if reason in {"stop", "length", "content_filter", "tool_calls", "function_call"} else "other" if reason else None
+
+
+def _completion_evidence(cfg, request, response, usage, *, response_id: str,
+                         response_model: str, prompt: str, response_text: str,
+                         elapsed_ms: int, status: str) -> dict:
     evidence = {
         "provider": cfg.provider,
         "model": cfg.model,
@@ -361,25 +480,44 @@ def chat_completion(
         "request_id": response_id,
         "response_model": response_model or None,
         "latency_ms": elapsed_ms,
-        "prompt_sha256": _sha256_text(f"{system_prompt}\n{user_prompt}"),
-        "response_sha256": _sha256_text(text),
-        "status": "succeeded",
+        "prompt_sha256": _sha256_text(prompt),
+        "response_sha256": _sha256_text(response_text),
+        "status": status,
+        "response_received": response is not None,
+        "max_output_tokens": request.get("max_tokens", request.get("max_output_tokens", request.get("max_completion_tokens"))),
     }
+    finish_reason = _chat_finish_reason(response)
+    if finish_reason:
+        evidence["finish_reason"] = finish_reason
+    if cfg.http_proxy and cfg.provider not in {"ollama", "lm_studio"}:
+        evidence["http_proxy"] = public_proxy_url(cfg.http_proxy)
     if "enable_thinking" in request:
         evidence["thinking_enabled"] = request["enable_thinking"]
+    if "response_format" in request:
+        evidence["response_format"] = request["response_format"].get("type")
     if "reasoning_effort" in request:
         evidence["reasoning_effort"] = request["reasoning_effort"]
-    usage = usage_payload
+    elif cfg.provider == "ollama":
+        evidence["reasoning_effort"] = "auto"
     if usage is not None:
         def _usage_value(name: str):
-            return usage.get(name) if isinstance(usage, dict) else getattr(usage, name, None)
+            value = _value(usage, name)
+            return value if type(value) is int and value >= 0 else None
+
+        def _first_usage(primary, alternate):
+            value = _usage_value(primary)
+            return value if value is not None else _usage_value(alternate)
 
         evidence["usage"] = {
-            "prompt_tokens": _usage_value("prompt_tokens") or _usage_value("input_tokens"),
-            "completion_tokens": _usage_value("completion_tokens") or _usage_value("output_tokens"),
+            "prompt_tokens": _first_usage("prompt_tokens", "input_tokens"),
+            "completion_tokens": _first_usage("completion_tokens", "output_tokens"),
             "total_tokens": _usage_value("total_tokens"),
         }
-    return text, evidence
+        details = _value(usage, "completion_tokens_details") or _value(usage, "output_tokens_details")
+        reasoning = _value(details, "reasoning_tokens")
+        if type(reasoning) is int and reasoning >= 0:
+            evidence["usage"]["reasoning_tokens"] = reasoning
+    return evidence
 
 
 def _response_output_text(response: Any) -> str:

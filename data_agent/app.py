@@ -4620,6 +4620,11 @@ async def main(message: cl.Message):
     user_text = message.content
     cl.user_session.set("last_user_message", user_text)
 
+    # An explicit authorized source selection takes precedence over inference.
+    from data_agent.bird_chat import handle_bird_chat
+    if await handle_bird_chat(user_text, message_metadata):
+        return
+
     # Source-scoped GPT-5.1 routes run the product NL2Semantic2SQL guards
     # against registered virtual databases before the general planner.
     try:

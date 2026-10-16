@@ -2693,6 +2693,14 @@ class SemanticHavingFilter(_FrozenModel):
         return self
 
 
+class SemanticFieldComparison(_FrozenModel):
+    """An AND predicate comparing two registered numeric row fields."""
+
+    left_field_ref: SemanticModelFieldRef
+    operator: Literal["eq", "neq", "gt", "gte", "lt", "lte"]
+    right_field_ref: SemanticModelFieldRef
+
+
 class SemanticAnyFilterGroup(_FrozenModel):
     """An OR group combined with ordinary filters and other groups by AND."""
 
@@ -2896,6 +2904,7 @@ class AdHocSemanticQueryIR(_FrozenModel):
         default=(), max_length=8
     )
     filters: tuple[SemanticFilter, ...] = Field(default=(), max_length=24)
+    field_comparisons: tuple[SemanticFieldComparison, ...] = Field(default=(), max_length=8)
     having_filters: tuple[SemanticHavingFilter, ...] = Field(default=(), max_length=24)
     any_filter_groups: tuple[SemanticAnyFilterGroup, ...] = Field(default=(), max_length=8)
     universal_conditions: tuple[SemanticUniversalCondition, ...] = Field(
@@ -2908,6 +2917,9 @@ class AdHocSemanticQueryIR(_FrozenModel):
     # alias and returns the tied extreme rows deterministically; this is intentionally
     # separate from global top-N ordering.
     extreme_order_by: tuple[SemanticIROrder, ...] = Field(default=(), max_length=2)
+    # Explicit answer columns, in order. Other projections may be needed to
+    # rank rows/groups without becoming part of the user's answer.
+    final_output_names: tuple[str, ...] = Field(default=(), max_length=32)
     group_average_filter: SemanticGroupAverageFilter | None = None
     group_average_filters: tuple[SemanticGroupAverageFilter, ...] = Field(
         default=(), max_length=8
@@ -2966,12 +2978,14 @@ class AdHocSemanticQueryIR(_FrozenModel):
                     self.projections,
                     self.result_expressions,
                     self.filters,
+                    self.field_comparisons,
                     self.having_filters,
                     self.any_filter_groups,
                     self.universal_conditions,
                     self.joins,
                     self.order_by,
                     self.extreme_order_by,
+                    self.final_output_names,
                     self.group_average_filter,
                     self.group_average_filters,
                     self.partition_statistics,
@@ -3106,6 +3120,10 @@ class AdHocSemanticQueryIR(_FrozenModel):
             projection.json_array.field_ref
             for projection in self.projections
             if projection.json_array is not None
+        ] + [
+            reference
+            for comparison in self.field_comparisons
+            for reference in (comparison.left_field_ref, comparison.right_field_ref)
         ]
         if self.band_summary is not None:
             field_refs.extend(
@@ -3367,12 +3385,29 @@ class AdHocSemanticQueryIR(_FrozenModel):
                 raise ValueError("map value output must reference a numeric output")
         if self.order_by and self.extreme_order_by:
             raise ValueError("semantic IR cannot combine global and extreme ordering")
-        if self.extreme_order_by and not has_metric:
-            raise ValueError("semantic IR extrema require an aggregate metric")
-        if self.extreme_order_by and not any(
+        if self.extreme_order_by and has_metric and not any(
             item.role is ProjectionRole.DIMENSION for item in self.projections
         ):
             raise ValueError("semantic IR extrema require a grouped dimension")
+        if self.final_output_names:
+            names = [name.casefold() for name in self.final_output_names]
+            ordinary_names = {item.output_name.casefold() for item in self.projections}
+            if len(names) != len(set(names)) or not set(names) <= ordinary_names:
+                raise ValueError("final outputs require unique projection aliases")
+            # DISTINCT is unchanged when the final answer merely reorders all
+            # its keys. Dropping any key would change the equivalence classes.
+            if self.distinct_rows and set(names) != ordinary_names:
+                raise ValueError("distinct final outputs must retain every projection alias")
+            # More advanced result stages need their own output contract.
+            if len(self.extreme_order_by) > 1 or any((
+                self.band_summary, self.two_value_comparison, self.categorical_pivot,
+                self.universal_conditions, self.result_expressions,
+                self.group_average_filter, self.group_average_filters,
+                self.partition_statistics, self.post_statistic_expressions,
+                self.result_filters, self.cumulative_windows,
+                self.post_window_filters, self.partition_by, self.include_result_count,
+            )):
+                raise ValueError("final outputs support ordinary queries and one extreme")
         if has_metric and any(item.role is ProjectionRole.ATTRIBUTE for item in self.projections):
             raise ValueError("aggregate semantic IR requires dimensions, not attributes")
         return self
@@ -4614,9 +4649,14 @@ _SQL_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 def _quote_identifier(value: str) -> str:
-    if not _SQL_IDENTIFIER_RE.fullmatch(value):
+    # Physical identifiers come from validated semantic bindings. PostgreSQL
+    # permits spaces, Unicode and punctuation in quoted identifiers; escaping
+    # embedded quotes keeps those names literal rather than executable text.
+    # Model-facing logical references and output aliases remain constrained
+    # separately by the IR schema.
+    if not isinstance(value, str) or not value or "\x00" in value:
         raise SemanticIRCompilationError("semantic_identifier_invalid")
-    return f'"{value}"'
+    return '"' + value.replace('"', '""') + '"'
 
 
 def _quote_table_identifier(value: str) -> str:
@@ -7504,6 +7544,16 @@ def build_compiled_ad_hoc_semantic_plan(
         )
     for filter_spec in semantic_ir.filters:
         resolved_filter_fields.append(resolve_field(filter_spec.field_ref))
+    for comparison in semantic_ir.field_comparisons:
+        for reference in (comparison.left_field_ref, comparison.right_field_ref):
+            field = resolve_field(reference)
+            data_type = str((field.get("technical_metadata") or {}).get("data_type")
+                            or field.get("data_type") or "").casefold()
+            if not re.search(r"\b(?:smallint|integer|bigint|int[248]?|numeric|decimal|real|double precision|float[48]?)\b", data_type):
+                raise SemanticIRCompilationError("semantic_field_comparison_requires_numeric_fields")
+            if str(field.get("usage") or "") == "predicate_or_derived_metric_only":
+                raise SemanticIRCompilationError("semantic_field_comparison_field_usage_rejected")
+            resolved_filter_fields.append(field)
     for filter_spec in semantic_ir.having_filters:
         resolved_having_fields.append(resolve_field(filter_spec.field_ref))
     for group in semantic_ir.any_filter_groups:
@@ -7614,7 +7664,9 @@ def build_compiled_ad_hoc_semantic_plan(
                 raise SemanticIRCompilationError(
                     "semantic_derived_expression_divide_requires_two_operands"
                 )
-            return f"({operands[0]} / NULLIF({operands[1]}, 0))"
+            # Stored integer measures must yield a ratio, not PostgreSQL's
+            # truncated integer division. Keep the zero guard in every case.
+            return f"(CAST({operands[0]} AS DOUBLE PRECISION) / NULLIF(CAST({operands[1]} AS DOUBLE PRECISION), 0))"
         raise SemanticIRCompilationError("semantic_derived_expression_operator_unsupported")
 
     def aggregate_field_sql(filter_spec: SemanticHavingFilter) -> str:
@@ -8177,6 +8229,16 @@ def build_compiled_ad_hoc_semantic_plan(
         *any_filter_groups_sql,
         *(join_conditions[index] for index in residual_join_indexes),
     ]
+    comparison_operators = {"eq": "=", "neq": "<>", "gt": ">", "gte": ">=", "lt": "<", "lte": "<="}
+    for comparison in semantic_ir.field_comparisons:
+        if any(ref.semantic_entity not in entity_aliases for ref in (
+            comparison.left_field_ref, comparison.right_field_ref,
+        )):
+            raise SemanticIRCompilationError("semantic_field_comparison_entity_not_joined")
+        where_clauses.append(
+            field_sql(comparison.left_field_ref) + " " + comparison_operators[comparison.operator]
+            + " " + field_sql(comparison.right_field_ref)
+        )
     universal_statement_built = False
     if semantic_ir.band_summary is not None:
         band_summary = semantic_ir.band_summary
@@ -9014,7 +9076,7 @@ def build_compiled_ad_hoc_semantic_plan(
             for item in semantic_ir.projections
             if item.role is ProjectionRole.METRIC
         }
-        if any(
+        if has_metric and any(
             item.output_name.casefold() not in metric_aliases
             for item in semantic_ir.extreme_order_by
         ):
@@ -9034,11 +9096,10 @@ def build_compiled_ad_hoc_semantic_plan(
             order_terms = [
                 f"{_quote_identifier(item.output_name)} {item.direction.upper()} NULLS LAST"
             ]
-            order_terms.extend(
-                f"{_quote_identifier(alias)} ASC"
-                for alias in dimension_aliases
-                if alias.casefold() != item.output_name.casefold()
-            )
+            # WITH TIES compares every ORDER BY expression.  Adding an
+            # entity label here would turn equal metrics into unequal rows
+            # and silently discard tied entities.  Stabilize presentation
+            # only after each complete extreme has been selected.
             cte_name = f"gda_extreme_{ordinal:03d}"
             cte_names.append(cte_name)
             # Keep each ordered extreme in a CTE.  Besides being valid
@@ -9061,6 +9122,14 @@ def build_compiled_ad_hoc_semantic_plan(
             for name in cte_names
         )
         statement = "WITH " + ",\n".join(branches) + "\n" + union_branches
+        if dimension_aliases:
+            statement += "\nORDER BY " + ", ".join(
+                f"{_quote_identifier(alias)} ASC" for alias in dimension_aliases
+            )
+        # An extreme can return many tied entities, not one row per branch.
+        # Apply the ordinary result cap to the union and report the same cap
+        # in the executable plan.
+        statement += f"\nLIMIT {limit}"
     elif semantic_ir.band_summary is None and not universal_statement_built:
         if effective_order_by:
             statement_parts.append(
@@ -9081,11 +9150,30 @@ def build_compiled_ad_hoc_semantic_plan(
         statement_parts.append(f"LIMIT {limit}")
         statement = "\n".join(statement_parts)
     if semantic_ir.band_summary is None:
-        plan_result_limit = (
-            len(semantic_ir.extreme_order_by)
-            if semantic_ir.extreme_order_by
-            else limit
+        plan_result_limit = limit
+
+    if semantic_ir.final_output_names:
+        declared = {item.output_name.casefold(): item.output_name for item in semantic_ir.projections}
+        final_names = tuple(declared[name.casefold()] for name in semantic_ir.final_output_names)
+        if any(name in compiler_hidden_output_names for name in final_names):
+            raise SemanticIRCompilationError("semantic_final_output_not_available")
+        compiler_hidden_output_names = tuple(dict.fromkeys((
+            *compiler_hidden_output_names,
+            *(item.output_name for item in semantic_ir.projections if item.output_name not in final_names),
+        )))
+        # Select the answer only after ranking/limiting with the complete
+        # internal projection. Preserve duplicate rows and requested order.
+        statement = "SELECT " + ", ".join(_quote_identifier(name) for name in final_names) + (
+            "\nFROM (\n" + statement + "\n) AS gda_final_result"
         )
+        final_order = [(name, direction) for name, direction, is_expression in effective_order_by
+                       if not is_expression]
+        if final_order:
+            statement += "\nORDER BY " + ", ".join(
+                _quote_identifier(name) + " " + direction.upper()
+                + (" NULLS LAST" if name.casefold() in metric_order_output_names else "")
+                for name, direction in final_order
+            )
 
     logical_nodes: list[LogicalPlanNode] = [
         LogicalPlanNode(
@@ -9123,7 +9211,7 @@ def build_compiled_ad_hoc_semantic_plan(
             )
         )
         current = join_node
-    if filters_sql or any_filter_groups_sql or residual_join_indexes:
+    if where_clauses:
         logical_nodes.append(
             LogicalPlanNode(
                 node_id="filter_001",
@@ -9419,6 +9507,8 @@ def build_compiled_ad_hoc_semantic_plan(
                         == str(universal_policy.get("group_field") or "")
                     ]
                     if universal_statement_built
+                    else list(final_names)
+                    if semantic_ir.final_output_names
                     else [
                         item.output_name
                         for item in semantic_ir.projections
