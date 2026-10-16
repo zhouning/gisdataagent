@@ -102,7 +102,7 @@ PYTHONPATH=. .venv/bin/python scripts/build_aam_map_overlays.py \
   --run-dir "$AAM_RUN" --evidence-dir "$AAM_EVIDENCE"
 ```
 
-`AAM_SOURCE` 必须包含 `aam_boundary.gpkg`、`stormwater.gdb` 和 `aa_wr/*.gdb`，包括 `aa_wr/DMT_IrrigationStormWater_AlAin.gdb`。先生成地图 manifest，再生成连接问题叠加；后者会补充 manifest。这些命令生成展示与诊断材料，不重算 L1 / L2。
+`AAM_SOURCE` 必须包含 `aam_boundary.gpkg`、`stormwater.gdb` 和 `aa_wr/*.gdb`，包括 `aa_wr/DMT_IrrigationStormWater_AlAin.gdb`。先生成地图 manifest，再生成连接问题叠加；接口分别读取 manifest 和连接问题 GeoJSON。这些命令生成展示与诊断材料，不重算 L1 / L2。
 
 ## 蓄水池为何没有进水
 
